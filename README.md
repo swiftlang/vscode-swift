@@ -58,4 +58,4 @@ Custom tasks support the following properties:
 - **args** (required): list of arguments for the base command. Each argument will be individually quoted if it contains spaces.
 - **group** (optional): either `"build"` or `"test"`.
 - **label** (optional): a name for the task. You should overwrite this property to differentiate your customized task from the ones provided by this extension.
-- **detail** (optional): a description of this task. If not provided, the task’zs command (including its arguments) will be used instead.
+- **detail** (optional): a description of this task. If not provided, the task’s command (including its arguments) will be used instead.
