@@ -33,21 +33,21 @@ You can customize a task by clicking the gear icon next to it. This will add the
 
 ```json
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"type": "swift",
-			"command": "swift",
-			"args": [
-				"run",
-				"Run",
-				"--env",
-				"production"
-			],
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "swift",
+            "command": "swift",
+            "args": [
+                "run",
+                "Run",
+                "--env",
+                "production"
+            ],
             "group": "build",
-			"label": "swift: Run in Production Environment"
-		}
-	]
+            "label": "swift: Run in Production Environment"
+        }
+    ]
 }
 ```
 
