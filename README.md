@@ -2,7 +2,9 @@
 
 ## Installation
 
-Currently, the only way to install this extension is to build it from source. To do this, first make sure you have [NPM](https://www.npmjs.com) installed, then clone this repository, and run the following commands:
+Currently, the only way to install this extension is to build it from source. To do this, you'll need to have [Node.js](https://nodejs.org) installed. On Linux, make sure to install Node.js from its official website or from [NodeSource](https://github.com/nodesource/distributions/) as the version included with your distribution may be outdated.
+
+Next, clone this repository, and run the following commands:
 
 ```
 npm install
