@@ -1,9 +1,12 @@
 {
-  "name": "vscode-swift",
-  "displayName": "Swift for Visual Studio Code",
+  "name": "swift",
+  "displayName": "Swift",
   "description": "",
   "version": "0.0.1",
-  "repository": "https://github.com/swift-server/vscode-swift",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/swift-server/vscode-swift"
+  },
   "engines": {
     "vscode": "^1.62.0"
   },
@@ -16,16 +19,57 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "swift.resolveDependencies",
+        "title": "Resolve Package Dependencies",
+        "icon": "$(refresh)",
+        "category": "Swift"
+      }
+    ],
+    "configuration": [
+      {
+        "title": "Swift",
+        "properties": {
+          "swift.excludePathsFromPackageDependencies": {
+            "description": "A list of paths to exclude from the Package Dependencies view.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              ".git",
+              ".github"
+            ]
+          }
+        }
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "swift.resolveDependencies",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "swift.resolveDependencies",
+          "when": "view == packageDependencies",
+          "group": "navigation"
+        }
+      ]
+    },
     "taskDefinitions": [
       {
         "type": "swift",
         "properties": {
           "command": {
-            "description": "The command to execute. Don't include any arguments as that will cause the command to be quoted.",
+            "description": "The command to execute. This should not contain any arguments as it will be quoted.",
             "type": "string"
           },
           "args": {
-            "description": "An array of arguments for the command. Each argument will be quoted individually.",
+            "description": "An array of arguments for the command. Each argument will be quoted separately.",
             "type": "array",
             "items": {
               "type": "string"
@@ -37,6 +81,22 @@
           "args"
         ],
         "when": "swift.hasPackage"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "packageDependencies",
+          "name": "Package Dependencies",
+          "icon": "$(archive)",
+          "when": "swift.packageHasDependencies"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+          "view": "packageDependencies",
+          "contents": "Resolving dependencies..."
       }
     ]
   },

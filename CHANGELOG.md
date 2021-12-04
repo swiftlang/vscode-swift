@@ -9,3 +9,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 
 - Automatically create tasks based on the targets in a package.
+- Show package dependencies in the Explorer.
+- Resolve dependencies when **Package.swift** or **Package.resolved** changes.

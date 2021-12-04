@@ -59,3 +59,21 @@ Custom tasks support the following properties:
 - **group** (optional): either `"build"` or `"test"`.
 - **label** (optional): a name for the task. You should overwrite this property to differentiate your customized task from the ones provided by this extension.
 - **detail** (optional): a description of this task. If not provided, the task’s command (including its arguments) will be used instead.
+
+### Package dependencies
+
+If your workspace contains a package that has dependencies, this extension will add a **Package Dependencies** view to the Explorer:
+
+![](images/package-dependencies.png)
+
+Additionally, the extension will monitor **Package.swift** and **Package.resolved** for changes, resolve any changes to the dependencies, and update the view as needed.
+
+> **Note**: When browsing the files in a package, Visual Studio Code may also open these files in the Explorer. If this is undesirable, open **Preferences ▸ Settings** and set **Explorer: Auto Reveal** to `false`.
+
+## Configuration
+
+You can find the settings for this extension in **Preferences ▸ Settings** under **Extensions ▸ Swift** or by searching for the prefix `swift`.
+
+The following settings are available:
+
+- **excludePathsFromPackageDependencies**: A list of paths to exclude from the Package Dependencies view.

@@ -68,8 +68,8 @@ function createSwiftTask(command: string, args: string[], name: string, group?: 
         'swift',
         new vscode.ShellExecution(command, args)
     );
-    // TODO: The detail string should include any quotes added by VS Code.
-    // How can we find out which quotes were added?
+    // This doesn't include any quotes added by VS Code.
+    // See also: https://github.com/microsoft/vscode/issues/137895
     task.detail = `${command} ${args.join(' ')}`;
     task.group = group;
     return task;
