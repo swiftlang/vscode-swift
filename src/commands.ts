@@ -17,7 +17,7 @@ const commands = {
     /**
      * Executes a {@link vscode.Task task} to resolve this package's dependencies.
      */
-    async resolveDependencies() {
+     async resolveDependencies() {
         let tasks = await vscode.tasks.fetchTasks();
         let task = tasks.find(task =>
             task.definition.command === 'swift' &&
@@ -28,11 +28,25 @@ const commands = {
     },
 
     /**
+     * Executes a {@link vscode.Task task} to update this package's dependencies.
+     */
+     async updateDependencies() {
+        let tasks = await vscode.tasks.fetchTasks();
+        let task = tasks.find(task =>
+            task.definition.command === 'swift' &&
+            task.definition.args[0] === 'package' &&
+            task.definition.args[1] === 'update'
+        )!;
+        vscode.tasks.executeTask(task);
+    },
+
+    /**
      * Registers this extension's commands in the given {@link vscode.ExtensionContext context}.
      */
     register(context: vscode.ExtensionContext) {
         context.subscriptions.push(
-            vscode.commands.registerCommand('swift.resolveDependencies', this.resolveDependencies)
+            vscode.commands.registerCommand('swift.resolveDependencies', this.resolveDependencies),
+            vscode.commands.registerCommand('swift.updateDependencies', this.updateDependencies)
         );
     }
 };
