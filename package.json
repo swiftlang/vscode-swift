@@ -59,7 +59,7 @@
         },
         {
           "command": "swift.updateDependencies",
-          "when": "true"
+          "when": "false"
         }
       ],
       "view/title": [
