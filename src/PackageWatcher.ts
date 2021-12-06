@@ -71,7 +71,7 @@ export class PackageWatcher {
      * This will update the context keys and trigger a `resolve` task,
      * which will in turn update the Package Dependencies view.
      */
-     async handlePackageSwiftChange() {
+    async handlePackageSwiftChange() {
         contextKeys.hasPackage = true;
         if (await this.packageHasDependencies()) {
             contextKeys.packageHasDependencies = true;
