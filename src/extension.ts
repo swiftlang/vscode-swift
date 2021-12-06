@@ -3,10 +3,26 @@ import { setFlagsFromString } from 'v8';
 import * as vscode from 'vscode';
 import commands from './commands';
 import contextKeys from './contextKeys';
+import { Package } from './package';
 import { PackageDependenciesProvider } from './PackageDependencyProvider';
 import { PackageWatcher } from './PackageWatcher';
 import { SwiftTaskProvider } from './SwiftTaskProvider';
 import { exec, pathExists } from './utilities';
+
+export class SwiftExtension {
+	readonly context: vscode.ExtensionContext
+	constructor(context: vscode.ExtensionContext) {
+		this.context = context
+	}
+
+	get package(): Package {
+		return this.context.workspaceState.get("package") as Package
+	}
+
+	set package(value: Package) {
+		this.context.workspaceState.update("package", value)
+	}
+}
 
 /**
  * Activate the extension. This is the main entry point.
@@ -26,6 +42,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		return;
 	}
 
+	let extension = new SwiftExtension(context)
+	extension.package = new Package(workspaceRoot)
+
 	// Register tasks and commands.
 	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(workspaceRoot));
 	commands.register(context);
@@ -38,7 +57,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 
 	// Watch for changes to Package.swift and Package.resolved.
-	const packageWatcher = new PackageWatcher(workspaceRoot);
+	const packageWatcher = new PackageWatcher(workspaceRoot, extension);
 	packageWatcher.install();
 
 	// Initialize the context keys and trigger a resolve task if needed.
@@ -61,17 +80,3 @@ export async function activate(context: vscode.ExtensionContext) {
  */
 export function deactivate() {}
 
-export class Package {
-	public folder: string
-	public package: Object;
-	
-	public constructor(folder: string) {
-		this.folder = folder
-		this.package = []
-	}
-
-	public async loadPackage() {
-		const { stdout } = await exec('swift package describe --type json', { cwd: this.folder });
-        this.package = JSON.parse(stdout)		
-	}
-}

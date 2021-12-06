@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import commands from './commands';
 import contextKeys from './contextKeys';
 import { exec, pathExists } from './utilities';
+import { SwiftExtension } from './extension';
+import { Package } from './package';
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
@@ -14,7 +16,13 @@ export class PackageWatcher {
     private packageFileWatcher?: vscode.FileSystemWatcher;
     private resolvedFileWatcher?: vscode.FileSystemWatcher;
 
-    constructor(private workspaceRoot: string) { }
+    private extension: SwiftExtension
+    private workspaceRoot: string
+
+    constructor(workspaceRoot: string, extension: SwiftExtension) {
+        this.workspaceRoot = workspaceRoot
+        this.extension = extension
+    }
 
     /**
      * Creates and installs {@link vscode.FileSystemWatcher file system watchers} for
@@ -73,6 +81,7 @@ export class PackageWatcher {
      */
     async handlePackageChange() {
         contextKeys.hasPackage = true;
+        await this.extension.package.loadPackage()
         if (await this.packageHasDependencies()) {
             contextKeys.packageHasDependencies = true;
             await commands.resolveDependencies();
@@ -84,8 +93,7 @@ export class PackageWatcher {
     /**
      * Whether this package has any dependencies.
      */
-    private async packageHasDependencies(): Promise<boolean> {
-        const { stdout } = await exec('swift package describe --type json', { cwd: this.workspaceRoot });
-        return JSON.parse(stdout).dependencies.length !== 0;
+    private packageHasDependencies(): boolean {
+        return this.extension.package.contents.dependencies.length != 0
     }
 }
