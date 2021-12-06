@@ -44,12 +44,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	packageWatcher.install();
 
 	// Initialize the context keys and trigger a resolve task if needed.
-	if (await pathExists(workspaceRoot, 'Package.swift')) {
-		packageWatcher.handlePackageChange();
-	} else {
-		contextKeys.hasPackage = false;
-		contextKeys.packageHasDependencies = false;
-	}
+	packageWatcher.handlePackageChange();
 
 	// Register any disposables for cleanup when the extension deactivates.
 	context.subscriptions.push(taskProvider, dependenciesView, packageWatcher);

@@ -47,10 +47,7 @@ export class PackageWatcher {
         );
         watcher.onDidCreate(async () => await this.handlePackageChange());
         watcher.onDidChange(async () => await this.handlePackageChange());
-        watcher.onDidDelete(() => {
-            contextKeys.hasPackage = false;
-            contextKeys.packageHasDependencies = false;
-        });
+        watcher.onDidDelete(async () => await this.handlePackageChange());
         return watcher;
     }
 
@@ -60,15 +57,7 @@ export class PackageWatcher {
         );
         watcher.onDidCreate(async () => await this.handlePackageChange());
         watcher.onDidChange(async () => await this.handlePackageChange());
-        watcher.onDidDelete(async () => {
-            if (await pathExists(this.workspaceRoot, 'Package.swift')) {
-                // Recreate Package.resolved.
-                this.handlePackageChange();
-            } else {
-                contextKeys.hasPackage = false;
-                contextKeys.packageHasDependencies = false;
-            }
-        });
+        watcher.onDidDelete(async () => await this.handlePackageChange());
         return watcher;
     }
 
@@ -79,20 +68,9 @@ export class PackageWatcher {
      * which will in turn update the Package Dependencies view.
      */
     async handlePackageChange() {
-        contextKeys.hasPackage = true;
         await this.ctx.spmPackage.reload()
         if (this.ctx.spmPackage.dependencies.length > 0) {
-            contextKeys.packageHasDependencies = true;
             await commands.resolveDependencies();
-        } else {
-            contextKeys.packageHasDependencies = false;
         }
-    }
-
-    /**
-     * Whether this package has any dependencies.
-     */
-    private packageHasDependencies(): boolean {
-        return this.ctx.spmPackage.contents.dependencies.length != 0
     }
 }

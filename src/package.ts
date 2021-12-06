@@ -51,6 +51,7 @@ export class SPMPackage {
             contextKeys.hasPackage = false;
             contextKeys.packageHasDependencies = false;
         }
-        contextKeys.packageHasDependencies = this.contents.dependencies.length > 0;       
+        contextKeys.hasPackage = true
+        contextKeys.packageHasDependencies = this.contents.dependencies.length > 0;  
     }
 }
