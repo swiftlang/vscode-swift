@@ -1,10 +1,12 @@
+import { wrap } from 'module';
+import { setFlagsFromString } from 'v8';
 import * as vscode from 'vscode';
 import commands from './commands';
 import contextKeys from './contextKeys';
 import { PackageDependenciesProvider } from './PackageDependencyProvider';
 import { PackageWatcher } from './PackageWatcher';
 import { SwiftTaskProvider } from './SwiftTaskProvider';
-import { pathExists } from './utilities';
+import { exec, pathExists } from './utilities';
 
 /**
  * Activate the extension. This is the main entry point.
@@ -58,3 +60,18 @@ export async function activate(context: vscode.ExtensionContext) {
  * disposed of, so there's nothing left to do here.
  */
 export function deactivate() {}
+
+export class Package {
+	public folder: string
+	public package: Object;
+	
+	public constructor(folder: string) {
+		this.folder = folder
+		this.package = []
+	}
+
+	public async loadPackage() {
+		const { stdout } = await exec('swift package describe --type json', { cwd: this.folder });
+        this.package = JSON.parse(stdout)		
+	}
+}
