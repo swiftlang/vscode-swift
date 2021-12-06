@@ -3,7 +3,7 @@ import commands from './commands';
 import contextKeys from './contextKeys';
 import { exec, pathExists } from './utilities';
 import { SwiftExtension } from './extension';
-import { Package } from './package';
+import { SPMPackage } from './package';
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
@@ -82,7 +82,7 @@ export class PackageWatcher {
     async handlePackageChange() {
         contextKeys.hasPackage = true;
         await this.extension.package.loadPackage()
-        if (await this.packageHasDependencies()) {
+        if (this.extension.package.hasDependencies()) {
             contextKeys.packageHasDependencies = true;
             await commands.resolveDependencies();
         } else {

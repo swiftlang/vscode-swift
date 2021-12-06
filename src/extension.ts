@@ -3,7 +3,7 @@ import { setFlagsFromString } from 'v8';
 import * as vscode from 'vscode';
 import commands from './commands';
 import contextKeys from './contextKeys';
-import { Package } from './package';
+import { SPMPackage } from './package';
 import { PackageDependenciesProvider } from './PackageDependencyProvider';
 import { PackageWatcher } from './PackageWatcher';
 import { SwiftTaskProvider } from './SwiftTaskProvider';
@@ -15,11 +15,11 @@ export class SwiftExtension {
 		this.context = context
 	}
 
-	get package(): Package {
-		return this.context.workspaceState.get("package") as Package
+	get package(): SPMPackage {
+		return this.context.workspaceState.get("package") as SPMPackage
 	}
 
-	set package(value: Package) {
+	set package(value: SPMPackage) {
 		this.context.workspaceState.update("package", value)
 	}
 }
@@ -43,7 +43,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	}
 
 	let extension = new SwiftExtension(context)
-	extension.package = new Package(workspaceRoot)
+	extension.package = new SPMPackage(workspaceRoot)
 
 	// Register tasks and commands.
 	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(workspaceRoot));
