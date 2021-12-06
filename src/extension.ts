@@ -1,5 +1,3 @@
-import { wrap } from 'module';
-import { setFlagsFromString } from 'v8';
 import * as vscode from 'vscode';
 import commands from './commands';
 import contextKeys from './contextKeys';
@@ -7,22 +5,8 @@ import { SPMPackage } from './package';
 import { PackageDependenciesProvider } from './PackageDependencyProvider';
 import { PackageWatcher } from './PackageWatcher';
 import { SwiftTaskProvider } from './SwiftTaskProvider';
-import { exec, pathExists } from './utilities';
-
-export class SwiftExtension {
-	readonly context: vscode.ExtensionContext
-	constructor(context: vscode.ExtensionContext) {
-		this.context = context
-	}
-
-	get package(): SPMPackage {
-		return this.context.workspaceState.get("package") as SPMPackage
-	}
-
-	set package(value: SPMPackage) {
-		this.context.workspaceState.update("package", value)
-	}
-}
+import { pathExists } from './utilities';
+import { Ctx } from './ctx';
 
 /**
  * Activate the extension. This is the main entry point.
@@ -42,8 +26,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		return;
 	}
 
-	let extension = new SwiftExtension(context)
-	extension.package = new SPMPackage(workspaceRoot)
+	let ctx = await Ctx.create(workspaceRoot, context)
 
 	// Register tasks and commands.
 	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(workspaceRoot));
@@ -57,7 +40,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 
 	// Watch for changes to Package.swift and Package.resolved.
-	const packageWatcher = new PackageWatcher(workspaceRoot, extension);
+	const packageWatcher = new PackageWatcher(workspaceRoot, ctx);
 	packageWatcher.install();
 
 	// Initialize the context keys and trigger a resolve task if needed.

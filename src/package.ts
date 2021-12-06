@@ -3,35 +3,54 @@ import contextKeys from './contextKeys';
 import { exec, pathExists } from './utilities';
 
 export class SPMPackage {
-	public folder: string
-	public contents: any;
-	
-	public constructor(folder: string) {
-		this.folder = folder
-		this.contents = {}
-	}
+	private constructor(
+        readonly folder: string,
+        public contents: any
+    ) {
+        this.setContextKeys()
+    }
 
-	public async loadPackage() {
-        // Check if Package.swift exists
-        if (!await pathExists(this.folder, 'Package.swift')) {
-            contextKeys.hasPackage = false;
-            contextKeys.packageHasDependencies = false;
-        }
-
+    public static async create(folder: string): Promise<SPMPackage> {
         try {
-            const { stdout } = await exec('swift package describe --type json', { cwd: this.folder });
-            this.contents = JSON.parse(stdout)
-
-            contextKeys.hasPackage = true;
-            contextKeys.packageHasDependencies = this.contents.dependencies.length > 0;
+            let contents = await SPMPackage.loadPackage(folder)
+            return new SPMPackage(folder, contents)
         } catch(error) {
-            console.log(error)
-            contextKeys.hasPackage = false;
-            contextKeys.packageHasDependencies = false;
+            // TODO: output errors
+            return new SPMPackage(folder, null)
         }
     }
 
-    public hasDependencies(): boolean {
-        return this.contents.dependencies?.length > 0
+    public static async loadPackage(folder: string): Promise<any> {
+        const { stdout } = await exec('swift package describe --type json', { cwd: folder });
+        return JSON.parse(stdout)
+    }
+
+    public async reload() {
+        try {
+            this.contents = await SPMPackage.loadPackage(this.folder)
+        } catch {
+            
+        }
+        this.setContextKeys()
+    }
+
+    get products(): Array<any> {
+        return this.contents.products
+    }
+
+    get dependencies(): Array<any> {
+        return this.contents.dependencies
+    }
+
+    get targets(): Array<any> {
+        return this.contents.targets
+    }
+
+    private setContextKeys() {
+        if (this.contents == null) {
+            contextKeys.hasPackage = false;
+            contextKeys.packageHasDependencies = false;
+        }
+        contextKeys.packageHasDependencies = this.contents.dependencies.length > 0;       
     }
 }

@@ -1,9 +1,8 @@
 import * as vscode from 'vscode';
 import commands from './commands';
 import contextKeys from './contextKeys';
-import { exec, pathExists } from './utilities';
-import { SwiftExtension } from './extension';
-import { SPMPackage } from './package';
+import { pathExists } from './utilities';
+import { Ctx } from './ctx';
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
@@ -16,12 +15,12 @@ export class PackageWatcher {
     private packageFileWatcher?: vscode.FileSystemWatcher;
     private resolvedFileWatcher?: vscode.FileSystemWatcher;
 
-    private extension: SwiftExtension
+    private ctx: Ctx
     private workspaceRoot: string
 
-    constructor(workspaceRoot: string, extension: SwiftExtension) {
+    constructor(workspaceRoot: string, ctx: Ctx) {
         this.workspaceRoot = workspaceRoot
-        this.extension = extension
+        this.ctx = ctx
     }
 
     /**
@@ -81,8 +80,8 @@ export class PackageWatcher {
      */
     async handlePackageChange() {
         contextKeys.hasPackage = true;
-        await this.extension.package.loadPackage()
-        if (this.extension.package.hasDependencies()) {
+        await this.ctx.spmPackage.reload()
+        if (this.ctx.spmPackage.dependencies.length > 0) {
             contextKeys.packageHasDependencies = true;
             await commands.resolveDependencies();
         } else {
@@ -94,6 +93,6 @@ export class PackageWatcher {
      * Whether this package has any dependencies.
      */
     private packageHasDependencies(): boolean {
-        return this.extension.package.contents.dependencies.length != 0
+        return this.ctx.spmPackage.contents.dependencies.length != 0
     }
 }
