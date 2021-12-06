@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import commands from './commands';
 import contextKeys from './contextKeys';
 import { exec, pathExists } from './utilities';
-import { PackageDependenciesProvider } from './PackageDependencyProvider';
+
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
  * 
@@ -20,9 +20,9 @@ export class PackageWatcher {
      * Creates and installs {@link vscode.FileSystemWatcher file system watchers} for
      * **Package.swift** and **Package.resolved**.
      */
-    install(dependencyTree: PackageDependenciesProvider) {
+    install() {
         this.packageFileWatcher = this.createPackageFileWatcher();
-        this.resolvedFileWatcher = this.createResolvedFileWatcher(dependencyTree);
+        this.resolvedFileWatcher = this.createResolvedFileWatcher();
     }
 
     /**
@@ -47,12 +47,12 @@ export class PackageWatcher {
         return watcher;
     }
 
-    private createResolvedFileWatcher(dependencyTree: PackageDependenciesProvider): vscode.FileSystemWatcher {
+    private createResolvedFileWatcher(): vscode.FileSystemWatcher {
         const watcher = vscode.workspace.createFileSystemWatcher(
             new vscode.RelativePattern(this.workspaceRoot, 'Package.resolved')
         );
-        watcher.onDidCreate(async () => dependencyTree.triggerRebuild());
-        watcher.onDidChange(async () => dependencyTree.triggerRebuild());
+        watcher.onDidCreate(async () => await this.handlePackageResolvedChange());
+        watcher.onDidChange(async () => await this.handlePackageResolvedChange());
         watcher.onDidDelete(async () => {
             if (await pathExists(this.workspaceRoot, 'Package.swift')) {
                 // Recreate Package.resolved.
@@ -87,8 +87,14 @@ export class PackageWatcher {
      * This will update the context keys and trigger a `resolve` task,
      * which will in turn update the Package Dependencies view.
      */
-     async handlePackageResolvedChange() {
-       // commands.rebuildDependencyGraph()
+    async handlePackageResolvedChange() {
+        contextKeys.hasPackage = true;
+        if (await this.packageHasDependencies()) {
+            contextKeys.packageHasDependencies = true;
+            await commands.resolveDependencies();
+        } else {
+            contextKeys.packageHasDependencies = false;
+        }
     }
 
     /**
