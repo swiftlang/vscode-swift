@@ -83,15 +83,10 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
     private didChangeTreeDataEmitter = new vscode.EventEmitter<TreeNode | undefined | null | void>();
     onDidChangeTreeData = this.didChangeTreeDataEmitter.event;
 
-    constructor(private workspaceRoot: string) {
-        // Refresh the tree when a package resolve or package update task completes.
-        vscode.tasks.onDidEndTask((event) => {
-            const definition = event.execution.task.definition;
-            if (definition.command === 'swift' && definition.args[0] === 'package' &&
-               (definition.args[1] === 'resolve' || definition.args[1] === 'update')) {
-                this.didChangeTreeDataEmitter.fire();
-            }
-        });
+    constructor(private workspaceRoot: string) {}
+
+    triggerRebuild() {
+        this.didChangeTreeDataEmitter.fire();
     }
 
     getTreeItem(element: TreeNode): vscode.TreeItem {

@@ -37,11 +37,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Watch for changes to Package.swift and Package.resolved.
 	const packageWatcher = new PackageWatcher(workspaceRoot);
-	packageWatcher.install();
+	packageWatcher.install(dependenciesProvider);
 
 	// Initialize the context keys and trigger a resolve task if needed.
 	if (await pathExists(workspaceRoot, 'Package.swift')) {
-		packageWatcher.handlePackageChange();
+		packageWatcher.handlePackageSwiftChange();
 	} else {
 		contextKeys.hasPackage = false;
 		contextKeys.packageHasDependencies = false;

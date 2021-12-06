@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import commands from './commands';
 import contextKeys from './contextKeys';
 import { exec, pathExists } from './utilities';
-
+import { PackageDependenciesProvider } from './PackageDependencyProvider';
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
  * 
@@ -20,9 +20,9 @@ export class PackageWatcher {
      * Creates and installs {@link vscode.FileSystemWatcher file system watchers} for
      * **Package.swift** and **Package.resolved**.
      */
-    install() {
+    install(dependencyTree: PackageDependenciesProvider) {
         this.packageFileWatcher = this.createPackageFileWatcher();
-        this.resolvedFileWatcher = this.createResolvedFileWatcher();
+        this.resolvedFileWatcher = this.createResolvedFileWatcher(dependencyTree);
     }
 
     /**
@@ -38,8 +38,8 @@ export class PackageWatcher {
         const watcher = vscode.workspace.createFileSystemWatcher(
             new vscode.RelativePattern(this.workspaceRoot, 'Package.swift')
         );
-        watcher.onDidCreate(async () => await this.handlePackageChange());
-        watcher.onDidChange(async () => await this.handlePackageChange());
+        watcher.onDidCreate(async () => await this.handlePackageSwiftChange());
+        watcher.onDidChange(async () => await this.handlePackageSwiftChange());
         watcher.onDidDelete(() => {
             contextKeys.hasPackage = false;
             contextKeys.packageHasDependencies = false;
@@ -47,16 +47,16 @@ export class PackageWatcher {
         return watcher;
     }
 
-    private createResolvedFileWatcher(): vscode.FileSystemWatcher {
+    private createResolvedFileWatcher(dependencyTree: PackageDependenciesProvider): vscode.FileSystemWatcher {
         const watcher = vscode.workspace.createFileSystemWatcher(
             new vscode.RelativePattern(this.workspaceRoot, 'Package.resolved')
         );
-        watcher.onDidCreate(async () => await this.handlePackageChange());
-        watcher.onDidChange(async () => await this.handlePackageChange());
+        watcher.onDidCreate(async () => dependencyTree.triggerRebuild());
+        watcher.onDidChange(async () => dependencyTree.triggerRebuild());
         watcher.onDidDelete(async () => {
             if (await pathExists(this.workspaceRoot, 'Package.swift')) {
                 // Recreate Package.resolved.
-                this.handlePackageChange();
+                this.handlePackageSwiftChange();
             } else {
                 contextKeys.hasPackage = false;
                 contextKeys.packageHasDependencies = false;
@@ -65,13 +65,13 @@ export class PackageWatcher {
         return watcher;
     }
 
-    /**
+     /**
      * Handles a create or change event for **Package.swift** and **Package.resolved**.
      * 
      * This will update the context keys and trigger a `resolve` task,
      * which will in turn update the Package Dependencies view.
      */
-    async handlePackageChange() {
+     async handlePackageSwiftChange() {
         contextKeys.hasPackage = true;
         if (await this.packageHasDependencies()) {
             contextKeys.packageHasDependencies = true;
@@ -79,6 +79,16 @@ export class PackageWatcher {
         } else {
             contextKeys.packageHasDependencies = false;
         }
+    }
+
+    /**
+     * Handles a create or change event for **Package.swift** and **Package.resolved**.
+     * 
+     * This will update the context keys and trigger a `resolve` task,
+     * which will in turn update the Package Dependencies view.
+     */
+     async handlePackageResolvedChange() {
+       // commands.rebuildDependencyGraph()
     }
 
     /**
