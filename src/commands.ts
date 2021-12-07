@@ -17,7 +17,7 @@ const commands = {
     /**
      * Executes a {@link vscode.Task task} to resolve this package's dependencies.
      */
-     async resolveDependencies() {
+    async resolveDependencies() {
         let tasks = await vscode.tasks.fetchTasks();
         let task = tasks.find(task =>
             task.definition.command === 'swift' &&
@@ -30,7 +30,7 @@ const commands = {
     /**
      * Executes a {@link vscode.Task task} to update this package's dependencies.
      */
-     async updateDependencies() {
+    async updateDependencies() {
         let tasks = await vscode.tasks.fetchTasks();
         let task = tasks.find(task =>
             task.definition.command === 'swift' &&

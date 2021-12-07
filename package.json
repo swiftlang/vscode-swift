@@ -21,12 +21,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "swift.resolveDependencies",
-        "title": "Resolve Package Dependencies",
-        "icon": "$(refresh)",
-        "category": "Swift"
-      },
-      {
         "command": "swift.updateDependencies",
         "title": "Update Package Dependencies",
         "icon": "$(cloud-download)",
@@ -53,10 +47,6 @@
     ],
     "menus": {
       "commandPalette": [
-        {
-          "command": "swift.resolveDependencies",
-          "when": "false"
-        },
         {
           "command": "swift.updateDependencies",
           "when": "false"
