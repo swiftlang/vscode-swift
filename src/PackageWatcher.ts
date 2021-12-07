@@ -65,8 +65,8 @@ export class PackageWatcher {
      * which will in turn update the Package Dependencies view.
      */
     async handlePackageChange() {
-        await this.ctx.spmPackage.reload();
-        if (this.ctx.spmPackage.dependencies.length > 0) {
+        await this.ctx.swiftPackage.reload();
+        if (this.ctx.swiftPackage.dependencies.length > 0) {
             await commands.resolveDependencies();
         }
     }

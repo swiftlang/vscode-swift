@@ -5,7 +5,7 @@ export class SwiftContext {
 	private constructor(
         public workspaceRoot: string,
         public extContext: vscode.ExtensionContext,
-        public spmPackage: SwiftPackage
+        public swiftPackage: SwiftPackage
     ) {}
 
     static async create(
@@ -13,8 +13,8 @@ export class SwiftContext {
         extContext: vscode.ExtensionContext
     ): Promise<SwiftContext> 
     {
-        let spmPackage = await SwiftPackage.create(workspaceRoot);
-        return new SwiftContext(workspaceRoot, extContext, spmPackage);
+        let swiftPackage = await SwiftPackage.create(workspaceRoot);
+        return new SwiftContext(workspaceRoot, extContext, swiftPackage);
     }
 }
 
