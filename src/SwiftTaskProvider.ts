@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { Ctx } from  './ctx';
-import { exec } from './utilities';
+import { SwiftContext } from  './context';
+import { Target } from './package';
 
 /**
  * References:
@@ -12,14 +12,6 @@ import { exec } from './utilities';
  * - Implementing task providers:
  *   https://code.visualstudio.com/api/extension-guides/task-provider
  */
-
-/**
- * Describes a target in this package.
- */
-interface Target {
-    name: string;
-    type: 'executable' | 'library' | 'test';
-}
 
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
@@ -83,7 +75,7 @@ function createSwiftTask(command: string, args: string[], name: string, group?: 
  */
 export class SwiftTaskProvider implements vscode.TaskProvider {
 
-    constructor(private ctx: Ctx) { }
+    constructor(private ctx: SwiftContext) { }
 
     /**
      * Provides tasks to run the following commands:
@@ -135,8 +127,6 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
      * Uses SwiftPM package description cache to find all targets in this package.
      */
     private findTargets(): Target[] {
-        return this.ctx.spmPackage.targets.map((target, any) => {
-            return { name: target.name, type: target.type };
-        });
+        return this.ctx.spmPackage.targets;
     }
 }

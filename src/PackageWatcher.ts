@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import commands from './commands';
 import contextKeys from './contextKeys';
 import { pathExists } from './utilities';
-import { Ctx } from './ctx';
+import { SwiftContext } from './context';
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
@@ -15,12 +15,9 @@ export class PackageWatcher {
     private packageFileWatcher?: vscode.FileSystemWatcher;
     private resolvedFileWatcher?: vscode.FileSystemWatcher;
 
-    private ctx: Ctx
-    private workspaceRoot: string
-
-    constructor(workspaceRoot: string, ctx: Ctx) {
-        this.workspaceRoot = workspaceRoot
-        this.ctx = ctx
+    constructor(
+        private workspaceRoot: string, 
+        private ctx: SwiftContext) {
     }
 
     /**
@@ -68,7 +65,7 @@ export class PackageWatcher {
      * which will in turn update the Package Dependencies view.
      */
     async handlePackageChange() {
-        await this.ctx.spmPackage.reload()
+        await this.ctx.spmPackage.reload();
         if (this.ctx.spmPackage.dependencies.length > 0) {
             await commands.resolveDependencies();
         }

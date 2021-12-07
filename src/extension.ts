@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
 import commands from './commands';
 import contextKeys from './contextKeys';
-import { SPMPackage } from './package';
+import { SwiftPackage } from './package';
 import { PackageDependenciesProvider } from './PackageDependencyProvider';
 import { PackageWatcher } from './PackageWatcher';
 import { SwiftTaskProvider } from './SwiftTaskProvider';
 import { pathExists } from './utilities';
-import { Ctx } from './ctx';
+import { SwiftContext } from './context';
 
 /**
  * Activate the extension. This is the main entry point.
@@ -26,7 +26,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		return;
 	}
 
-	let ctx = await Ctx.create(workspaceRoot, context);
+	let ctx = await SwiftContext.create(workspaceRoot, context);
 
 	// Register tasks and commands.
 	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(ctx));
