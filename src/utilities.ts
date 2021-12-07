@@ -4,8 +4,11 @@ import * as path from 'path';
 
 /**
  * Asynchronous wrapper around {@link cp.exec child_process.exec}.
+ * 
+ * Commands will be executed by the user's `$SHELL`, if configured.
  */
 export async function exec(command: string, options: cp.ExecOptions): Promise<{ stdout: string; stderr: string }> {
+    options.shell = process.env.SHELL;
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => 
         cp.exec(command, options, (error, stdout, stderr) => {
             if (error) {
