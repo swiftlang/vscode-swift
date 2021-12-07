@@ -18,12 +18,15 @@ import { PackageDependenciesProvider } from './PackageDependencyProvider';
 import { PackageWatcher } from './PackageWatcher';
 import { SwiftTaskProvider } from './SwiftTaskProvider';
 import { SwiftContext } from './SwiftContext';
+import { activate as activateSourceKitLSP } from './sourcekit-lsp/extension';
 
 /**
  * Activate the extension. This is the main entry point.
  */
 export async function activate(context: vscode.ExtensionContext) {
 	console.debug('Activating Swift for Visual Studio Code...');
+
+	await activateSourceKitLSP(context);
 
 	// Check if we have a workspace folder open.
 	// This only supports single-root workspaces.
