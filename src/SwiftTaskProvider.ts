@@ -132,7 +132,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
     }
 
     /**
-     * Uses spm package description cache to find all targets in this package.
+     * Uses SwiftPM package description cache to find all targets in this package.
      */
     private findTargets(): Target[] {
         return this.ctx.spmPackage.targets.map((target, any) => {
