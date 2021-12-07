@@ -69,15 +69,15 @@ export class SwiftPackage implements PackageContents {
         return this.contents?.name ?? '';
     }
 
-    get products(): Array<Product> {
+    get products(): Product[] {
         return this.contents?.products ?? [];
     }
 
-    get dependencies(): Array<Dependency> {
+    get dependencies(): Dependency[] {
         return this.contents?.dependencies ?? [];
     }
 
-    get targets(): Array<Target> {
+    get targets(): Target[] {
         return this.contents?.targets ?? [];
     }
 
