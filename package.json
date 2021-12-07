@@ -21,9 +21,9 @@
   "contributes": {
     "commands": [
       {
-        "command": "swift.resolveDependencies",
-        "title": "Resolve Package Dependencies",
-        "icon": "$(refresh)",
+        "command": "swift.updateDependencies",
+        "title": "Update Package Dependencies",
+        "icon": "$(cloud-download)",
         "category": "Swift"
       }
     ],
@@ -48,13 +48,13 @@
     "menus": {
       "commandPalette": [
         {
-          "command": "swift.resolveDependencies",
+          "command": "swift.updateDependencies",
           "when": "false"
         }
       ],
       "view/title": [
         {
-          "command": "swift.resolveDependencies",
+          "command": "swift.updateDependencies",
           "when": "view == packageDependencies",
           "group": "navigation"
         }
@@ -95,8 +95,8 @@
     },
     "viewsWelcome": [
       {
-          "view": "packageDependencies",
-          "contents": "Resolving dependencies..."
+        "view": "packageDependencies",
+        "contents": "Resolving dependencies..."
       }
     ]
   },
