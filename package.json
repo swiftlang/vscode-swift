@@ -64,11 +64,6 @@
       ],
       "view/title": [
         {
-          "command": "swift.resolveDependencies",
-          "when": "view == packageDependencies",
-          "group": "navigation"
-        },
-        {
           "command": "swift.updateDependencies",
           "when": "view == packageDependencies",
           "group": "navigation"
