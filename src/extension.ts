@@ -26,10 +26,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		return;
 	}
 
-	let ctx = await Ctx.create(workspaceRoot, context)
+	let ctx = await Ctx.create(workspaceRoot, context);
 
 	// Register tasks and commands.
-	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(workspaceRoot));
+	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(ctx));
 	commands.register(context);
 
 	// Create the Package Dependencies view.

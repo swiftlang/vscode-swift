@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { Ctx } from  './ctx';
 import { exec } from './utilities';
 
 /**
@@ -16,7 +17,6 @@ import { exec } from './utilities';
  * Describes a target in this package.
  */
 interface Target {
-
     name: string;
     type: 'executable' | 'library' | 'test';
 }
@@ -83,7 +83,7 @@ function createSwiftTask(command: string, args: string[], name: string, group?: 
  */
 export class SwiftTaskProvider implements vscode.TaskProvider {
 
-    constructor(private workspaceRoot: string) { }
+    constructor(private ctx: Ctx) { }
 
     /**
      * Provides tasks to run the following commands:
@@ -101,7 +101,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             createResolveTask(),
             createUpdateTask()
         ];
-        const targets = await this.findTargets();
+        const targets = this.findTargets();
         for (const target of targets) {
             if (target.type === 'executable') {
                 tasks.push(createExecutableTask(target));
@@ -132,11 +132,10 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
     }
 
     /**
-     * Uses `swift package describe` to find all targets in this package.
+     * Uses spm package description cache to find all targets in this package.
      */
-    private async findTargets(): Promise<Target[]> {
-        const { stdout } = await exec('swift package describe --type json', { cwd: this.workspaceRoot });
-        return JSON.parse(stdout).targets.map((target: any) => {
+    private findTargets(): Target[] {
+        return this.ctx.spmPackage.targets.map((target, any) => {
             return { name: target.name, type: target.type };
         });
     }
