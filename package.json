@@ -149,6 +149,9 @@
       }
     ]
   },
+  "extensionDependencies": [
+    "vadimcn.vscode-lldb"
+  ],
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
