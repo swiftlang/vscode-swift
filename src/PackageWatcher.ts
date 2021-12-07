@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from 'vscode';
+import * as debug from './debug';
 import commands from './commands';
 import { SwiftContext } from './SwiftContext';
 
@@ -54,9 +55,9 @@ export class PackageWatcher {
         const watcher = vscode.workspace.createFileSystemWatcher(
             new vscode.RelativePattern(this.workspaceRoot, 'Package.swift')
         );
-        watcher.onDidCreate(async () => await this.handlePackageChange());
-        watcher.onDidChange(async () => await this.handlePackageChange());
-        watcher.onDidDelete(async () => await this.handlePackageChange());
+        watcher.onDidCreate(async () => await this.handlePackageSwiftChange());
+        watcher.onDidChange(async () => await this.handlePackageSwiftChange());
+        watcher.onDidDelete(async () => await this.handlePackageSwiftChange());
         return watcher;
     }
 
@@ -64,9 +65,9 @@ export class PackageWatcher {
         const watcher = vscode.workspace.createFileSystemWatcher(
             new vscode.RelativePattern(this.workspaceRoot, 'Package.resolved')
         );
-        watcher.onDidCreate(async () => await this.handlePackageChange());
-        watcher.onDidChange(async () => await this.handlePackageChange());
-        watcher.onDidDelete(async () => await this.handlePackageChange());
+        watcher.onDidCreate(async () => await this.handlePackageResolvedChange());
+        watcher.onDidChange(async () => await this.handlePackageResolvedChange());
+        watcher.onDidDelete(async () => await this.handlePackageResolvedChange());
         return watcher;
     }
 
@@ -76,8 +77,21 @@ export class PackageWatcher {
      * This will update the context keys and trigger a `resolve` task,
      * which will in turn update the Package Dependencies view.
      */
-    async handlePackageChange() {
+     async handlePackageSwiftChange() {
         await this.ctx.swiftPackage.reload();
+        debug.makeDebugConfigurations(this.ctx);
+        if (this.ctx.swiftPackage.dependencies.length > 0) {
+            await commands.resolveDependencies();
+        }
+    }
+
+    /**
+     * Handles a create or change event for **Package.swift** and **Package.resolved**.
+     * 
+     * This will update the context keys and trigger a `resolve` task,
+     * which will in turn update the Package Dependencies view.
+     */
+     async handlePackageResolvedChange() {
         if (this.ctx.swiftPackage.dependencies.length > 0) {
             await commands.resolveDependencies();
         }

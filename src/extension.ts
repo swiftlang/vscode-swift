@@ -44,7 +44,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Register tasks and commands.
 	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(ctx));
-	commands.register(context);
+	commands.register(ctx);
 
 	// Create the Package Dependencies view.
 	const dependenciesProvider = new PackageDependenciesProvider(workspaceRoot);
@@ -58,7 +58,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	packageWatcher.install();
 
 	// Initialize the context keys and trigger a resolve task if needed.
-	packageWatcher.handlePackageChange();
+	packageWatcher.handlePackageSwiftChange();
 
 	// Register any disposables for cleanup when the extension deactivates.
 	context.subscriptions.push(taskProvider, dependenciesView, packageWatcher);

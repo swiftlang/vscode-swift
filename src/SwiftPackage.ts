@@ -94,6 +94,12 @@ export class SwiftPackage implements PackageContents {
         return this.contents?.targets ?? [];
     }
 
+    getTargets(type: 'executable'|'library'|'test'): Target[] {
+        return this.targets.filter((target, index, array) => {
+            return target.type === type;
+        });    
+    }
+
     private setContextKeys() {
         if (this.contents === undefined) {
             contextKeys.hasPackage = false;

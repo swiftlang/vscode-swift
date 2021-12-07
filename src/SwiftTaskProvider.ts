@@ -46,7 +46,7 @@ function createCleanTask(): vscode.Task {
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
  function createExecutableTask(target: Target): vscode.Task {
-    return createSwiftTask('swift', ['run', target.name], `Run ${target.name}`, vscode.TaskGroup.Build);
+    return createSwiftTask('swift', ['run', target.name], `Run ${target.name}`);
 }
 
 /**
@@ -107,11 +107,9 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             createResolveTask(),
             createUpdateTask()
         ];
-        const targets = this.findTargets();
+        const targets = this.ctx.swiftPackage.getTargets('executable');
         for (const target of targets) {
-            if (target.type === 'executable') {
-                tasks.push(createExecutableTask(target));
-            }
+            tasks.push(createExecutableTask(target));
         }
         return tasks;
     }
@@ -135,12 +133,5 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         newTask.detail = task.detail ?? `${task.definition.command} ${task.definition.args.join(' ')}`;
         newTask.group = task.group;
         return newTask;
-    }
-
-    /**
-     * Uses SwiftPM package description cache to find all targets in this package.
-     */
-    private findTargets(): Target[] {
-        return this.ctx.swiftPackage.targets;
     }
 }
