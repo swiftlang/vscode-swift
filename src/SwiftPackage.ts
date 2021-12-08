@@ -27,7 +27,7 @@ export interface PackageContents {
 export interface Product {
     name: string
     targets: string[]
-    type: 'library'|'executable'
+    type: {executable?: null, library?: string[]}
 }
 
 // Swift Package Manager target
@@ -92,6 +92,18 @@ export class SwiftPackage implements PackageContents {
 
     get targets(): Target[] {
         return this.contents?.targets ?? [];
+    }
+
+    get executableProducts(): Product[] {
+        return this.products.filter((product, index, array) => {
+            return product.type.executable !== undefined;
+        });    
+    }
+
+    get libraryProducts(): Product[] {
+        return this.products.filter((product, index, array) => {
+            return product.type.library !== undefined;
+        });    
     }
 
     getTargets(type: 'executable'|'library'|'test'): Target[] {

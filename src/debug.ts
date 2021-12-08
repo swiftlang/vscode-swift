@@ -32,14 +32,14 @@ export async function makeDebugConfigurations(ctx: SwiftContext) {
 
 // Return array of DebugConfigurations based on what is in Package.swift
 function createDebugConfigurations(ctx: SwiftContext): vscode.DebugConfiguration[] {
-    let executableTargets = ctx.swiftPackage.getTargets('executable');
+    const executableProducts = ctx.swiftPackage.executableProducts;
 
-    return executableTargets.map((target) => {
+    return executableProducts.map((product) => {
         return {
             type: "lldb",
             request: "launch",
-            name: `Run ${target.name}`,
-            program: "${workspaceFolder}/.build/debug/" + target.name,
+            name: `Run ${product.name}`,
+            program: "${workspaceFolder}/.build/debug/" + product.name,
             args: [],
             cwd: "${workspaceFolder}",
             preLaunchTask: "swift: Build All Targets"
