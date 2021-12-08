@@ -45,7 +45,7 @@ async function createDebugConfigurations(ctx: SwiftContext): Promise<vscode.Debu
             program: `${executableFolder}/${target.name}`,
             args: [],
             cwd: ctx.workspaceRoot,
-            preLaunchTask: "${defaultBuildTask}"
+            preLaunchTask: "swift: Build All Targets"
         };    
     
     });
