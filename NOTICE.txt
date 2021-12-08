@@ -17,13 +17,15 @@ Visual Studio Code Swift Extension project
 This product contains source code from Apple's SourceKit LSP project
 
   * LICENSE (Apache License 2.0):
-    * https://github.com/apple/sourcekit-lsp/blob/main/LICENSE.txt
+    * https://www.apache.org/licenses/LICENSE-2.0
   * HOMEPAGE:
     * https://github.com/apple/sourcekit-lsp
- 
+
+---
+
 This product contains a derivation of various scripts from SwiftNIO.
 
-   * LICENSE (Apache License 2.0):
-     * https://www.apache.org/licenses/LICENSE-2.0
-   * HOMEPAGE:
-     * https://github.com/apple/swift-nio
+  * LICENSE (Apache License 2.0):
+    * https://www.apache.org/licenses/LICENSE-2.0
+  * HOMEPAGE:
+    * https://github.com/apple/swift-nio
