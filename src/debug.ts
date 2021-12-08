@@ -8,13 +8,13 @@ export async function makeDebugConfigurations(ctx: SwiftContext) {
     const wsLaunchSection = vscode.workspace.getConfiguration("launch", vscode.window.activeTextEditor?.document.uri);
     const launchConfigs = wsLaunchSection.get<any[]>("configurations") || [];
 
-    let configs = await createDebugConfigurations(ctx);
+    let configs = createDebugConfigurations(ctx);
     var edited = false;
     for (const config of configs) {
         const index = launchConfigs.findIndex(c => (c.name === config.name));
         if (index !== -1) {
             if (launchConfigs[index].program !== config.program) {
-                const answer = await vscode.window.showErrorMessage(`Launch configuration for '${config.name}' already exists. Do you want to update it?`, 'Cancel', 'Update');
+                const answer = await vscode.window.showErrorMessage(`Launch configuration '${config.name}' already exists. Do you want to update it?`, 'Cancel', 'Update');
                 if (answer === "Cancel") { continue; }
                 launchConfigs[index] = config;
                 edited = true;
@@ -31,20 +31,17 @@ export async function makeDebugConfigurations(ctx: SwiftContext) {
 }
 
 // Return array of DebugConfigurations based on what is in Package.swift
-async function createDebugConfigurations(ctx: SwiftContext): Promise<vscode.DebugConfiguration[]> {
-    // get executable path
-    const { stdout } = await exec('swift build --show-bin-path', { cwd: ctx.workspaceRoot });
-    let executableFolder = stdout.split("\n", 1)[0];
+function createDebugConfigurations(ctx: SwiftContext): vscode.DebugConfiguration[] {
     let executableTargets = ctx.swiftPackage.getTargets('executable');
 
     return executableTargets.map((target) => {
         return {
             type: "lldb",
             request: "launch",
-            name: `Debug ${target.name}`,
-            program: `${executableFolder}/${target.name}`,
+            name: `Run ${target.name}`,
+            program: "${workspaceFolder}/.build/debug/" + target.name,
             args: [],
-            cwd: ctx.workspaceRoot,
+            cwd: "${workspaceFolder}",
             preLaunchTask: "swift: Build All Targets"
         };    
     
