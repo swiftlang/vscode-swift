@@ -14,7 +14,7 @@
 
 import * as vscode from 'vscode';
 import * as debug from './debug';
-import { SwiftContext, Command } from './SwiftContext';
+import { SwiftContext } from './SwiftContext';
 
 /**
  * References:
@@ -43,10 +43,8 @@ const commands = {
         vscode.tasks.executeTask(task);
     },
 
-    makeDebugConfig(ctx: SwiftContext): Command {
-        return async() => {
-            await debug.makeDebugConfigurations(ctx);
-        };
+    async makeDebugConfig(ctx: SwiftContext) {
+        await debug.makeDebugConfigurations(ctx);
     },
 
     /**
@@ -69,7 +67,7 @@ const commands = {
         ctx.extensionContext.subscriptions.push(
             vscode.commands.registerCommand('swift.resolveDependencies', this.resolveDependencies),
             vscode.commands.registerCommand('swift.updateDependencies', this.updateDependencies),
-            ctx.registerCommand("makeDebugConfig", this.makeDebugConfig)
+            vscode.commands.registerCommand('swift.makeDebugConfig', this.makeDebugConfig.bind(this, ctx)),
         );
     }
 };
