@@ -78,8 +78,12 @@ export class PackageWatcher {
      * which will in turn update the Package Dependencies view.
      */
      async handlePackageSwiftChange() {
+        // Load SwiftPM Package.swift description 
         await this.ctx.swiftPackage.reload();
+        // Create launch.json files based on package description. Run this in parallel
+        // with package resolution
         debug.makeDebugConfigurations(this.ctx);
+        // if package has dependencies resolve them
         if (this.ctx.swiftPackage.dependencies.length > 0) {
             await commands.resolveDependencies();
         }

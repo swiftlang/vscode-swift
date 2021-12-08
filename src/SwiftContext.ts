@@ -31,6 +31,8 @@ export class SwiftContext {
         return new SwiftContext(workspaceRoot, extContext, swiftPackage);
     }
 
+    // register command that requires a reference to SwiftContext. This is based 
+    // off code in the vscode-rust extension
     registerCommand(name: string, factory: (ctx: SwiftContext) => Command): vscode.Disposable {
         const fullName = `swift.${name}`;
         const cmd = factory(this);

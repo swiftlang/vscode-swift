@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { SwiftContext } from './SwiftContext';
 import { exec } from './utilities';
 
+// Edit launch.json based on contents of Swift Package
+// Adds launch configurations based on the executables in Package.swift
 export async function makeDebugConfigurations(ctx: SwiftContext) {
     const wsLaunchSection = vscode.workspace.getConfiguration("launch", vscode.window.activeTextEditor?.document.uri);
     const launchConfigs = wsLaunchSection.get<any[]>("configurations") || [];
@@ -28,6 +30,7 @@ export async function makeDebugConfigurations(ctx: SwiftContext) {
     }
 }
 
+// Return array of DebugConfigurations based on what is in Package.swift
 async function createDebugConfigurations(ctx: SwiftContext): Promise<vscode.DebugConfiguration[]> {
     // get executable path
     const { stdout } = await exec('swift build --show-bin-path', { cwd: ctx.workspaceRoot });
