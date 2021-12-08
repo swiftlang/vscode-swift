@@ -51,7 +51,7 @@ export class SwiftPackage implements PackageContents {
         }
     }
 
-    public static async loadPackage(folder: string): Promise<any> {
+    public static async loadPackage(folder: string): Promise<PackageContents> {
         const { stdout } = await exec('swift package describe --type json', { cwd: folder });
         return JSON.parse(stdout);
     }
