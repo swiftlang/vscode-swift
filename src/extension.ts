@@ -1,10 +1,9 @@
 import * as vscode from 'vscode';
 import commands from './commands';
-import contextKeys from './contextKeys';
 import { PackageDependenciesProvider } from './PackageDependencyProvider';
 import { PackageWatcher } from './PackageWatcher';
 import { SwiftTaskProvider } from './SwiftTaskProvider';
-import { pathExists } from './utilities';
+import { SwiftContext } from './SwiftContext';
 
 /**
  * Activate the extension. This is the main entry point.
@@ -24,8 +23,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		return;
 	}
 
+	let ctx = await SwiftContext.create(workspaceRoot, context);
+
 	// Register tasks and commands.
-	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(workspaceRoot));
+	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(ctx));
 	commands.register(context);
 
 	// Create the Package Dependencies view.
@@ -36,16 +37,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 
 	// Watch for changes to Package.swift and Package.resolved.
-	const packageWatcher = new PackageWatcher(workspaceRoot);
+	const packageWatcher = new PackageWatcher(workspaceRoot, ctx);
 	packageWatcher.install();
 
 	// Initialize the context keys and trigger a resolve task if needed.
-	if (await pathExists(workspaceRoot, 'Package.swift')) {
-		packageWatcher.handlePackageChange();
-	} else {
-		contextKeys.hasPackage = false;
-		contextKeys.packageHasDependencies = false;
-	}
+	packageWatcher.handlePackageChange();
 
 	// Register any disposables for cleanup when the extension deactivates.
 	context.subscriptions.push(taskProvider, dependenciesView, packageWatcher);
@@ -58,3 +54,4 @@ export async function activate(context: vscode.ExtensionContext) {
  * disposed of, so there's nothing left to do here.
  */
 export function deactivate() {}
+

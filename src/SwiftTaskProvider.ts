@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { exec } from './utilities';
+import { SwiftContext } from  './SwiftContext';
+import { Target } from './SwiftPackage';
 
 /**
  * References:
@@ -11,15 +12,6 @@ import { exec } from './utilities';
  * - Implementing task providers:
  *   https://code.visualstudio.com/api/extension-guides/task-provider
  */
-
-/**
- * Describes a target in this package.
- */
-interface Target {
-
-    name: string;
-    type: 'executable' | 'library' | 'test';
-}
 
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
@@ -83,7 +75,7 @@ function createSwiftTask(command: string, args: string[], name: string, group?: 
  */
 export class SwiftTaskProvider implements vscode.TaskProvider {
 
-    constructor(private workspaceRoot: string) { }
+    constructor(private ctx: SwiftContext) { }
 
     /**
      * Provides tasks to run the following commands:
@@ -101,7 +93,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             createResolveTask(),
             createUpdateTask()
         ];
-        const targets = await this.findTargets();
+        const targets = this.findTargets();
         for (const target of targets) {
             if (target.type === 'executable') {
                 tasks.push(createExecutableTask(target));
@@ -132,12 +124,9 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
     }
 
     /**
-     * Uses `swift package describe` to find all targets in this package.
+     * Uses SwiftPM package description cache to find all targets in this package.
      */
-    private async findTargets(): Promise<Target[]> {
-        const { stdout } = await exec('swift package describe --type json', { cwd: this.workspaceRoot });
-        return JSON.parse(stdout).targets.map((target: any) => {
-            return { name: target.name, type: target.type };
-        });
+    private findTargets(): Target[] {
+        return this.ctx.swiftPackage.targets;
     }
 }

@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import commands from './commands';
-import contextKeys from './contextKeys';
-import { exec, pathExists } from './utilities';
+import { SwiftContext } from './SwiftContext';
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
@@ -14,7 +13,10 @@ export class PackageWatcher {
     private packageFileWatcher?: vscode.FileSystemWatcher;
     private resolvedFileWatcher?: vscode.FileSystemWatcher;
 
-    constructor(private workspaceRoot: string) { }
+    constructor(
+        private workspaceRoot: string, 
+        private ctx: SwiftContext) {
+    }
 
     /**
      * Creates and installs {@link vscode.FileSystemWatcher file system watchers} for
@@ -40,10 +42,7 @@ export class PackageWatcher {
         );
         watcher.onDidCreate(async () => await this.handlePackageChange());
         watcher.onDidChange(async () => await this.handlePackageChange());
-        watcher.onDidDelete(() => {
-            contextKeys.hasPackage = false;
-            contextKeys.packageHasDependencies = false;
-        });
+        watcher.onDidDelete(async () => await this.handlePackageChange());
         return watcher;
     }
 
@@ -53,15 +52,7 @@ export class PackageWatcher {
         );
         watcher.onDidCreate(async () => await this.handlePackageChange());
         watcher.onDidChange(async () => await this.handlePackageChange());
-        watcher.onDidDelete(async () => {
-            if (await pathExists(this.workspaceRoot, 'Package.swift')) {
-                // Recreate Package.resolved.
-                this.handlePackageChange();
-            } else {
-                contextKeys.hasPackage = false;
-                contextKeys.packageHasDependencies = false;
-            }
-        });
+        watcher.onDidDelete(async () => await this.handlePackageChange());
         return watcher;
     }
 
@@ -72,20 +63,9 @@ export class PackageWatcher {
      * which will in turn update the Package Dependencies view.
      */
     async handlePackageChange() {
-        contextKeys.hasPackage = true;
-        if (await this.packageHasDependencies()) {
-            contextKeys.packageHasDependencies = true;
+        await this.ctx.swiftPackage.reload();
+        if (this.ctx.swiftPackage.dependencies.length > 0) {
             await commands.resolveDependencies();
-        } else {
-            contextKeys.packageHasDependencies = false;
         }
-    }
-
-    /**
-     * Whether this package has any dependencies.
-     */
-    private async packageHasDependencies(): Promise<boolean> {
-        const { stdout } = await exec('swift package describe --type json', { cwd: this.workspaceRoot });
-        return JSON.parse(stdout).dependencies.length !== 0;
     }
 }
