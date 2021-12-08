@@ -15,6 +15,7 @@
 import * as vscode from 'vscode';
 import * as debug from './debug';
 import { SwiftContext } from './SwiftContext';
+import { executeTaskAndWait } from './SwiftTaskProvider';
 
 /**
  * References:
@@ -25,22 +26,32 @@ import { SwiftContext } from './SwiftContext';
  *   https://code.visualstudio.com/api/extension-guides/command
  */
 
-/**
+// flags to indicating whether a resolve or update is in progress
+var resolveRunning = false;
+var updateRunning = false;
+
+ /**
  * Contains the commands defined in this extension.
- */
+ */ 
 const commands = {
 
     /**
      * Executes a {@link vscode.Task task} to resolve this package's dependencies.
      */
     async resolveDependencies() {
+        // return if running resolve or update already
+        if (resolveRunning || updateRunning) { return; }
+        resolveRunning = true;
+
         let tasks = await vscode.tasks.fetchTasks();
         let task = tasks.find(task =>
             task.definition.command === 'swift' &&
             task.definition.args[0] === 'package' &&
             task.definition.args[1] === 'resolve'
         )!;
-        vscode.tasks.executeTask(task);
+        await executeTaskAndWait(task);
+
+        resolveRunning = false;
     },
 
     async generateLaunchConfig(ctx: SwiftContext) {
@@ -51,13 +62,18 @@ const commands = {
      * Executes a {@link vscode.Task task} to update this package's dependencies.
      */
     async updateDependencies() {
+        if (updateRunning) { return; }
+        updateRunning = true;
+
         let tasks = await vscode.tasks.fetchTasks();
         let task = tasks.find(task =>
             task.definition.command === 'swift' &&
             task.definition.args[0] === 'package' &&
             task.definition.args[1] === 'update'
         )!;
-        vscode.tasks.executeTask(task);
+        await executeTaskAndWait(task);
+
+        updateRunning = false;
     },
 
     /**
