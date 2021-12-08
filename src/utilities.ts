@@ -20,6 +20,27 @@ export async function exec(command: string, options: cp.ExecOptions): Promise<{ 
 }
 
 /**
+ * Extracts the base name of a repository from its URL.
+ * 
+ * The base name is the last path component of the URL, without the extension `.git`,
+ * and without an optional trailing slash.
+ */
+export function getRepositoryName(url: string): string {
+    // This regular expression consists of:
+    // - any number of characters that aren't a slash: ([^/]*)
+    // - optionally followed by a trailing slash: \/? 
+    // - at the end of the URL: $
+    const pattern = /([^/]*)\/?$/;
+    // The capture group in this pattern will match the last path component of the URL.
+    let lastPathComponent = url.match(pattern)![1];
+    // Trim the optional .git extension.
+    if (lastPathComponent.endsWith('.git')) {
+        lastPathComponent = lastPathComponent.replace(/\.git$/, '');
+    }
+    return lastPathComponent;
+}
+
+/**
  * Whether the given path exists.
  * 
  * Does not check whether the user has permission to read the path.

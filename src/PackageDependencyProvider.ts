@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import configuration from './configuration';
-import { exec, pathExists } from './utilities';
+import { exec, getRepositoryName, pathExists } from './utilities';
 
 /**
  * References:
@@ -109,7 +109,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
         if (element instanceof PackageNode) {
             // Read the contents of a package.
             const packagePath = element.type === 'remote' ?
-                path.join(this.workspaceRoot, '.build', 'checkouts', this.getRepositoryName(element.path)) :
+                path.join(this.workspaceRoot, '.build', 'checkouts', getRepositoryName(element.path)) :
                 element.path;
             return this.getNodesInDirectory(packagePath);
         } else {
@@ -152,23 +152,6 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             pin.state.version ?? pin.state.branch,
             'remote'
         ));
-    }
-
-    /**
-     * Extracts the base name of a repository from its URL.
-     * 
-     * The base name is the last path component of the URL, without the extension `.git`
-     * and without an optional trailing slash.
-     */
-    private getRepositoryName(url: string): string {
-        // This regular expression consist of:
-        // - any number of characters that aren't a slash or a period: ([^/.]*)
-        // - optionally followed by .git: (?:\.git)?
-        // - optionally followed by a trailing slash: \/? 
-        // - at the end of the URL: $
-        const pattern = /([^/.]*)(?:\.git)?\/?$/;
-        // Return the first capture group in this regex.
-        return url.match(pattern)![1];
     }
 
     /**
