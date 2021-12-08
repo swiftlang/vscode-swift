@@ -4,7 +4,7 @@ import { SwiftPackage } from './package';
 export class SwiftContext {
 	private constructor(
         public workspaceRoot: string,
-        public extContext: vscode.ExtensionContext,
+        public extensionContext: vscode.ExtensionContext,
         public swiftPackage: SwiftPackage
     ) {}
 
