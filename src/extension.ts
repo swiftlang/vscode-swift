@@ -1,12 +1,9 @@
 import * as vscode from 'vscode';
 import commands from './commands';
-import contextKeys from './contextKeys';
-import { SwiftPackage } from './package';
 import { PackageDependenciesProvider } from './PackageDependencyProvider';
 import { PackageWatcher } from './PackageWatcher';
 import { SwiftTaskProvider } from './SwiftTaskProvider';
-import { pathExists } from './utilities';
-import { SwiftContext } from './context';
+import { SwiftContext } from './SwiftContext';
 
 /**
  * Activate the extension. This is the main entry point.

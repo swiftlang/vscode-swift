@@ -1,6 +1,5 @@
-import { privateEncrypt } from 'crypto';
 import contextKeys from './contextKeys';
-import { exec, pathExists } from './utilities';
+import { exec } from './utilities';
 
 // Swift Package Manager contents
 export interface PackageContents {

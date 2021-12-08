@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { SwiftPackage } from './package';
+import { SwiftPackage } from './SwiftPackage';
 
 export class SwiftContext {
 	private constructor(

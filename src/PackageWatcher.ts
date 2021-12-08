@@ -1,8 +1,6 @@
 import * as vscode from 'vscode';
 import commands from './commands';
-import contextKeys from './contextKeys';
-import { pathExists } from './utilities';
-import { SwiftContext } from './context';
+import { SwiftContext } from './SwiftContext';
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.

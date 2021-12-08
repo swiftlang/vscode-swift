@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { SwiftContext } from  './context';
-import { Target } from './package';
+import { SwiftContext } from  './SwiftContext';
+import { Target } from './SwiftPackage';
 
 /**
  * References:
