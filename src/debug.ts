@@ -42,7 +42,7 @@ function createDebugConfigurations(ctx: SwiftContext): vscode.DebugConfiguration
             program: "${workspaceFolder}/.build/debug/" + product.name,
             args: [],
             cwd: "${workspaceFolder}",
-            preLaunchTask: "swift: Build All Targets"
+            preLaunchTask: `swift: Build ${product.name}`
         };    
     
     });
