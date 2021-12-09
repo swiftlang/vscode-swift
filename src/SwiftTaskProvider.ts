@@ -53,7 +53,7 @@ function createCleanTask(): vscode.Task {
  * Creates a {@link vscode.Task Task} to resolve the package dependencies.
  */
 function createResolveTask(): vscode.Task {
-    return createSwiftTask('swift', ['package', 'resolve'], 'Resolve Package Dependencies');
+    return createSwiftTask('swift', ['package', 'resolve'], 'Resolve Package Dependencies', undefined, ["$package-swift", "$package-swift-parse"]);
 }
 
 /**
@@ -66,13 +66,14 @@ function createUpdateTask(): vscode.Task {
 /**
  * Helper function to create a {@link vscode.Task Task} with the given parameters.
  */
-function createSwiftTask(command: string, args: string[], name: string, group?: vscode.TaskGroup): vscode.Task {
+function createSwiftTask(command: string, args: string[], name: string, group?: vscode.TaskGroup, problemMatcher?: string|string[]): vscode.Task {
     let task = new vscode.Task(
         { type: 'swift', command: command, args: args },
         vscode.TaskScope.Workspace,
         name,
         'swift',
-        new vscode.ShellExecution(command, args)
+        new vscode.ShellExecution(command, args),
+        problemMatcher
     );
     // This doesn't include any quotes added by VS Code.
     // See also: https://github.com/microsoft/vscode/issues/137895

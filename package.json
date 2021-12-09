@@ -109,6 +109,32 @@
         }
       ]
     },
+    "problemMatchers": [
+      {
+        "name": "package-swift",
+        "owner": "swift",
+        "fileLocation": ["absolute"],
+        "pattern": {
+          "regexp": "^([a-zA-Z0-9.\/]*):\\s+(warning|error):\\s+(?!manifest parse)(.*)$",
+          "file": 1,
+          "severity": 2,
+          "message": 3
+        }
+      },
+      {
+        "name": "package-swift-parse",
+        "owner": "swift",
+        "fileLocation": ["absolute"],
+        "pattern": {
+          "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+          "file": 1,
+          "line": 2, 
+          "column": 3,
+          "severity": 4,
+          "message": 5
+        }
+      }
+    ],
     "taskDefinitions": [
       {
         "type": "swift",
