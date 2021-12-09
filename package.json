@@ -1,8 +1,10 @@
 {
   "name": "swift",
   "displayName": "Swift",
-  "description": "",
+  "description": "Swift Language Support for Visual Studio Code.",
   "version": "0.0.1",
+  "publisher": "sswg",
+  "icon": "icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/swift-server/vscode-swift"
@@ -13,6 +15,11 @@
   "categories": [
     "Programming Languages"
   ],
+  "keywords": [
+    "swift",
+    "sswg"
+  ],
+  "preview": true,
   "activationEvents": [
     "onLanguage:swift",
     "workspaceContains:Package.swift"
