@@ -53,7 +53,9 @@ function createCleanTask(): vscode.Task {
  * Creates a {@link vscode.Task Task} to resolve the package dependencies.
  */
 function createResolveTask(): vscode.Task {
-    return createSwiftTask('swift', ['package', 'resolve'], 'Resolve Package Dependencies', undefined, ["$package-swift", "$package-swift-parse"]);
+    // note problem matchers need to be in the order "$package-swift-parse", "$package-swift" as the second matcher catches the cases from the
+    // first one as well
+    return createSwiftTask('swift', ['package', 'resolve'], 'Resolve Package Dependencies', undefined, ["$package-swift-parse", "$package-swift"]);
 }
 
 /**
