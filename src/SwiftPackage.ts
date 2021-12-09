@@ -124,7 +124,7 @@ export class SwiftPackage implements PackageContents {
     }
 
     private setContextKeys() {
-        if (this.contents === undefined) {
+        if (this.contents === null) {
             contextKeys.hasPackage = false;
             contextKeys.packageHasDependencies = false;
         }
