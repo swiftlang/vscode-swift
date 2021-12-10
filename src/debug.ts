@@ -22,7 +22,7 @@ export async function makeDebugConfigurations(ctx: SwiftContext) {
     const launchConfigs = wsLaunchSection.get<any[]>("configurations") || [];
 
     let configs = createDebugConfigurations(ctx);
-    var edited = false;
+    let edited = false;
     for (const config of configs) {
         const index = launchConfigs.findIndex(c => (c.name === config.name));
         if (index !== -1) {
