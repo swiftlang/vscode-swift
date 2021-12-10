@@ -47,6 +47,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
+	let listener = workspaceContext.observerFolders((folder, operation) => {
+		console.log(`${operation}: ${folder.rootFolder.uri.fsPath}`);
+	});
+
 	// Register tasks and commands.
 	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(workspaceContext));
 	commands.register(workspaceContext);
@@ -59,7 +63,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 
 	// Register any disposables for cleanup when the extension deactivates.
-	context.subscriptions.push(taskProvider, dependenciesView, workspaceContext);
+	context.subscriptions.push(taskProvider, dependenciesView, workspaceContext, listener);
 }
 
 /**

@@ -46,6 +46,7 @@ export class WorkspaceContext implements vscode.Disposable {
         const isRootFolder = this.folders.length === 0;
         const folderContext = await FolderContext.create(folder, isRootFolder);
         this.folders.push(folderContext);
+        this.observers.forEach(fn => fn(folderContext, 'add'));
     }
 
     // remove folder from workspace
@@ -56,8 +57,16 @@ export class WorkspaceContext implements vscode.Disposable {
             console.error(`Trying to delete folder ${folder} which has no record`);
             return;
         }
+        this.observers.forEach(fn => fn(context!, 'remove'));
         context.dispose();
         // remove context with root folder
         this.folders = this.folders.filter((context: FolderContext, _) => { context.rootFolder !== folder; });
     }
+
+    observerFolders(fn: (folder: FolderContext, operation: 'add'|'remove') => void): vscode.Disposable {
+        this.observers.add(fn);
+        return { dispose: () => this.observers.delete(fn) };
+    }
+
+    private observers: Set<(arg: FolderContext, operation: 'add'|'remove') => void> = new Set();
 }
