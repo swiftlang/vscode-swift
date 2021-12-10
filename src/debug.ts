@@ -18,7 +18,7 @@ import { SwiftContext } from './SwiftContext';
 // Edit launch.json based on contents of Swift Package
 // Adds launch configurations based on the executables in Package.swift
 export async function makeDebugConfigurations(ctx: SwiftContext) {
-    const wsLaunchSection = vscode.workspace.getConfiguration("launch", vscode.window.activeTextEditor?.document.uri);
+    const wsLaunchSection = vscode.workspace.getConfiguration("launch", vscode.Uri.file(ctx.workspaceRoot));
     const launchConfigs = wsLaunchSection.get<any[]>("configurations") || [];
 
     let configs = createDebugConfigurations(ctx);
