@@ -45,7 +45,7 @@ function createCleanTask(): vscode.Task {
 /**
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
- function createExecutableTask(product: Product): vscode.Task {
+ function createBuildTask(product: Product): vscode.Task {
     return createSwiftTask('swift', ['build', '--product', product.name], `Build ${product.name}`, vscode.TaskGroup.Build);
 }
 
@@ -109,7 +109,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         ];
         const executables = this.ctx.swiftPackage.executableProducts;
         for (const executable of executables) {
-            tasks.push(createExecutableTask(executable));
+            tasks.push(createBuildTask(executable));
         }
         return tasks;
     }

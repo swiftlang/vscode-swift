@@ -72,10 +72,11 @@ export class PackageWatcher {
     }
 
     /**
-     * Handles a create or change event for **Package.swift** and **Package.resolved**.
+     * Handles a create or change event for **Package.swift**.
      * 
-     * This will update the context keys and trigger a `resolve` task,
-     * which will in turn update the Package Dependencies view.
+     * This will reload the swift package description, update the 
+     * launch configuration if required and then resolve the package
+     * dependencies.
      */
      async handlePackageSwiftChange() {
         // Load SwiftPM Package.swift description 
@@ -90,10 +91,9 @@ export class PackageWatcher {
     }
 
     /**
-     * Handles a create or change event for **Package.swift** and **Package.resolved**.
+     * Handles a create or change event for **Package.resolved**.
      * 
-     * This will update the context keys and trigger a `resolve` task,
-     * which will in turn update the Package Dependencies view.
+     * This will resolve any changes in the Package.resolved.
      */
      async handlePackageResolvedChange() {
         if (this.ctx.swiftPackage.dependencies.length > 0) {

@@ -34,8 +34,8 @@
         "category": "Swift"
       },
       {
-        "command": "swift.makeDebugConfig",
-        "title": "Generate launch configuration",
+        "command": "swift.generateLaunchConfig",
+        "title": "Generate Launch Configuration",
         "category": "Swift"
       }
     ],
@@ -97,7 +97,7 @@
           "when": "false"
         },
         {
-          "command": "swift.makeDebugConfig",
+          "command": "swift.generateLaunchConfig",
           "when": "swift.hasPackage"
         }
       ],

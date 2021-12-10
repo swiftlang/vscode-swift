@@ -95,15 +95,11 @@ export class SwiftPackage implements PackageContents {
     }
 
     get executableProducts(): Product[] {
-        return this.products.filter((product, index, array) => {
-            return product.type.executable !== undefined;
-        });    
+        return this.products.filter(product => product.type.executable !== undefined);
     }
 
     get libraryProducts(): Product[] {
-        return this.products.filter((product, index, array) => {
-            return product.type.library !== undefined;
-        });    
+        return this.products.filter(product => product.type.library !== undefined);
     }
 
     getTargets(type: 'executable'|'library'|'test'): Target[] {

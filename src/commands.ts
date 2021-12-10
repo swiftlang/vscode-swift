@@ -43,7 +43,7 @@ const commands = {
         vscode.tasks.executeTask(task);
     },
 
-    async makeDebugConfig(ctx: SwiftContext) {
+    async generateLaunchConfig(ctx: SwiftContext) {
         await debug.makeDebugConfigurations(ctx);
     },
 
@@ -67,7 +67,7 @@ const commands = {
         ctx.extensionContext.subscriptions.push(
             vscode.commands.registerCommand('swift.resolveDependencies', this.resolveDependencies),
             vscode.commands.registerCommand('swift.updateDependencies', this.updateDependencies),
-            vscode.commands.registerCommand('swift.makeDebugConfig', this.makeDebugConfig.bind(this, ctx)),
+            vscode.commands.registerCommand('swift.generateLaunchConfig', this.generateLaunchConfig.bind(this, ctx)),
         );
     }
 };
