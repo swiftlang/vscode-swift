@@ -141,7 +141,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             createResolveTask(),
             createUpdateTask()
         ];
-        
+
         for (const folder of this.workspaceContext.folders) {
             const executables = folder.swiftPackage.executableProducts;
             for (const executable of executables) {

@@ -13,12 +13,12 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from 'vscode';
-import { SwiftContext } from './SwiftContext';
+import { FolderContext } from './FolderContext';
 
 // Edit launch.json based on contents of Swift Package
 // Adds launch configurations based on the executables in Package.swift
-export async function makeDebugConfigurations(ctx: SwiftContext) {
-    const wsLaunchSection = vscode.workspace.getConfiguration("launch", vscode.Uri.file(ctx.workspaceRoot));
+export async function makeDebugConfigurations(ctx: FolderContext) {
+    const wsLaunchSection = vscode.workspace.getConfiguration("launch", ctx.rootFolder.uri);
     const launchConfigs = wsLaunchSection.get<any[]>("configurations") || [];
 
     let configs = createDebugConfigurations(ctx);
@@ -44,7 +44,7 @@ export async function makeDebugConfigurations(ctx: SwiftContext) {
 }
 
 // Return array of DebugConfigurations based on what is in Package.swift
-function createDebugConfigurations(ctx: SwiftContext): vscode.DebugConfiguration[] {
+function createDebugConfigurations(ctx: FolderContext): vscode.DebugConfiguration[] {
     const executableProducts = ctx.swiftPackage.executableProducts;
 
     return executableProducts.map((product) => {

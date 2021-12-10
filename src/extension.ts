@@ -34,7 +34,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		workspaceContext.onDidChangeWorkspaceFolders(event);
 	});
 
-	// Register tasks and commands.
+	// Register commands.
 	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(workspaceContext));
 	commands.register(workspaceContext);
 
