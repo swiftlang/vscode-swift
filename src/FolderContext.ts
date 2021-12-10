@@ -27,7 +27,6 @@ export class FolderContext implements vscode.Disposable {
         if (this.isRootFolder) {
             this.packageWatcher = new PackageWatcher(this);
             this.packageWatcher.install();
-            this.packageWatcher.handlePackageChange();
         }
     }
 

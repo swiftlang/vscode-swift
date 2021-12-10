@@ -14,6 +14,7 @@
 
 import * as vscode from 'vscode';
 import { FolderContext } from './FolderContext';
+import commands from './commands';
 
 // Context for whole workspace. Holds array of contexts for each workspace folder
 // and the ExtensionContext
@@ -22,18 +23,16 @@ export class WorkspaceContext implements vscode.Disposable {
 
 	public constructor(
         public extensionContext: vscode.ExtensionContext
-    ) {
-        vscode.workspace.onDidChangeWorkspaceFolders(this.onDidChangeWorkspaceFolders);
-    }
+    ) {}
 
     dispose() {
-        this.folders.forEach((f) => {f.dispose();});
+        this.folders.forEach(f => f.dispose());
     }
 
     // catch workspace folder changes and add/remove folders based on those changes
-    async onDidChangeWorkspaceFolders(event: vscode.WorkspaceFoldersChangeEvent) {
+    public async onDidChangeWorkspaceFolders(event: vscode.WorkspaceFoldersChangeEvent) {
         for (const folder of event.added) {
-            this.addFolder(folder);
+            await this.addFolder(folder);
         }
 
         for (const folder of event.removed) {
@@ -44,15 +43,19 @@ export class WorkspaceContext implements vscode.Disposable {
     // add folder to workspace
     public async addFolder(folder: vscode.WorkspaceFolder) {
         const isRootFolder = this.folders.length === 0;
-        const folderContext = await FolderContext.create(folder, isRootFolder);
+        let folderContext = await FolderContext.create(folder, isRootFolder);
         this.folders.push(folderContext);
         this.observers.forEach(fn => fn(folderContext, 'add'));
+        // resolve root package
+        if (isRootFolder) {
+            await commands.resolveDependencies();
+        }
     }
 
     // remove folder from workspace
     removeFolder(folder: vscode.WorkspaceFolder) {
         // find context with root folder
-        let context = this.folders.find((context: FolderContext, _) => { context.rootFolder === folder; });
+        let context = this.folders.find((context: FolderContext, _) => { return context.rootFolder === folder; });
         if (context === undefined) {
             console.error(`Trying to delete folder ${folder} which has no record`);
             return;
