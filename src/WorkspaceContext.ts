@@ -15,6 +15,7 @@
 import * as vscode from 'vscode';
 import { FolderContext } from './FolderContext';
 import commands from './commands';
+import * as debug from './debug';
 
 // Context for whole workspace. Holds array of contexts for each workspace folder
 // and the ExtensionContext
@@ -48,6 +49,8 @@ export class WorkspaceContext implements vscode.Disposable {
         this.observers.forEach(fn => fn(folderContext, 'add'));
         // resolve root package
         if (isRootFolder) {
+        // Create launch.json files based on package description. 
+        debug.makeDebugConfigurations(folderContext);
             await commands.resolveDependencies();
         }
     }

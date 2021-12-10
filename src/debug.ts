@@ -24,7 +24,7 @@ export async function makeDebugConfigurations(ctx: FolderContext) {
     let configs = createDebugConfigurations(ctx);
     let edited = false;
     for (const config of configs) {
-        const index = launchConfigs.findIndex(c => (c.name === config.name));
+        const index = launchConfigs.findIndex(c => c.name === config.name);
         if (index !== -1) {
             if (launchConfigs[index].program !== config.program) {
                 const answer = await vscode.window.showErrorMessage(`Launch configuration '${config.name}' already exists. Do you want to update it?`, 'Cancel', 'Update');
