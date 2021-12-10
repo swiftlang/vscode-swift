@@ -40,11 +40,16 @@ export async function activate(context: vscode.ExtensionContext) {
 		return;
 	}
 
-	let ctx = await WorkspaceContext.create(workspaceRoot, context);
+	let workspaceContext = new WorkspaceContext(context);
+	if (vscode.workspace.workspaceFolders !== undefined) {
+		for (const folder of vscode.workspace.workspaceFolders) {
+			workspaceContext.addFolder(folder);
+		}
+	}
 
 	// Register tasks and commands.
-	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(ctx));
-	commands.register(ctx);
+	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(workspaceContext));
+	commands.register(workspaceContext);
 
 	// Create the Package Dependencies view.
 	const dependenciesProvider = new PackageDependenciesProvider(ctx);
@@ -53,15 +58,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		showCollapseAll: true
 	});
 
-	// Watch for changes to Package.swift and Package.resolved.
-	const packageWatcher = new PackageWatcher(workspaceRoot, ctx);
-	packageWatcher.install();
-
-	// Initialize the context keys and trigger a resolve task if needed.
-	packageWatcher.handlePackageSwiftChange();
-
 	// Register any disposables for cleanup when the extension deactivates.
-	context.subscriptions.push(taskProvider, dependenciesView, packageWatcher);
+	context.subscriptions.push(taskProvider, dependenciesView, workspaceContext);
 }
 
 /**

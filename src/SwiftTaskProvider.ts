@@ -120,7 +120,7 @@ export async function executeTaskAndWait(task: vscode.Task) {
  */
 export class SwiftTaskProvider implements vscode.TaskProvider {
 
-    constructor(private ctx: WorkspaceContext) { }
+    constructor(private workspaceContext: WorkspaceContext) { }
 
     /**
      * Provides tasks to run the following commands:
@@ -132,15 +132,20 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
      * - `swift run ${target}` for every executable target
      */
     async provideTasks(token: vscode.CancellationToken): Promise<vscode.Task[]> {
+        if (this.workspaceContext.folders.length === 0) {
+            return [];
+        }
         let tasks = [
             createBuildAllTask(),
             createCleanTask(),
             createResolveTask(),
             createUpdateTask()
         ];
-        const executables = this.ctx.swiftPackage.executableProducts;
-        for (const executable of executables) {
-            tasks.push(createBuildTask(executable));
+        
+        for (const folder of this.workspaceContext.folders) {
+            const executables = folder.swiftPackage.executableProducts;
+            for (const executable of executables) {
+                tasks.push(createBuildTask(executable));
         }
         return tasks;
     }
