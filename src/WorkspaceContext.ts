@@ -49,8 +49,8 @@ export class WorkspaceContext implements vscode.Disposable {
         this.observers.forEach(fn => fn(folderContext, 'add'));
         // resolve root package
         if (isRootFolder) {
-        // Create launch.json files based on package description. 
-        debug.makeDebugConfigurations(folderContext);
+            // Create launch.json files based on package description. 
+            debug.makeDebugConfigurations(folderContext);
             await commands.resolveDependencies();
         }
     }
