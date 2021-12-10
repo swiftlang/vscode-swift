@@ -31,4 +31,3 @@ export class SwiftContext {
         return new SwiftContext(workspaceRoot, extContext, swiftPackage);
     }
 }
-

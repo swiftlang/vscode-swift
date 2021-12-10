@@ -14,7 +14,7 @@
 
 import * as vscode from 'vscode';
 import { SwiftContext } from  './SwiftContext';
-import { Target } from './SwiftPackage';
+import { Product } from './SwiftPackage';
 
 /**
  * References:
@@ -32,7 +32,7 @@ import { Target } from './SwiftPackage';
  * This excludes test targets.
  */
 function createBuildAllTask(): vscode.Task {
-    return createSwiftTask('swift', ['build'], 'Build All Targets', vscode.TaskGroup.Build);
+    return createSwiftTask('swift', ['build'], 'Build All', vscode.TaskGroup.Build);
 }
 
 /**
@@ -45,8 +45,8 @@ function createCleanTask(): vscode.Task {
 /**
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
- function createExecutableTask(target: Target): vscode.Task {
-    return createSwiftTask('swift', ['run', target.name], `Run ${target.name}`, vscode.TaskGroup.Build);
+ function createBuildTask(product: Product): vscode.Task {
+    return createSwiftTask('swift', ['build', '--product', product.name], `Build ${product.name}`, vscode.TaskGroup.Build);
 }
 
 /**
@@ -107,11 +107,9 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             createResolveTask(),
             createUpdateTask()
         ];
-        const targets = this.findTargets();
-        for (const target of targets) {
-            if (target.type === 'executable') {
-                tasks.push(createExecutableTask(target));
-            }
+        const executables = this.ctx.swiftPackage.executableProducts;
+        for (const executable of executables) {
+            tasks.push(createBuildTask(executable));
         }
         return tasks;
     }
@@ -135,12 +133,5 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         newTask.detail = task.detail ?? `${task.definition.command} ${task.definition.args.join(' ')}`;
         newTask.group = task.group;
         return newTask;
-    }
-
-    /**
-     * Uses SwiftPM package description cache to find all targets in this package.
-     */
-    private findTargets(): Target[] {
-        return this.ctx.swiftPackage.targets;
     }
 }

@@ -13,6 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from 'vscode';
+import * as debug from './debug';
+import { SwiftContext } from './SwiftContext';
 
 /**
  * References:
@@ -41,6 +43,10 @@ const commands = {
         vscode.tasks.executeTask(task);
     },
 
+    async generateLaunchConfig(ctx: SwiftContext) {
+        await debug.makeDebugConfigurations(ctx);
+    },
+
     /**
      * Executes a {@link vscode.Task task} to update this package's dependencies.
      */
@@ -57,10 +63,11 @@ const commands = {
     /**
      * Registers this extension's commands in the given {@link vscode.ExtensionContext context}.
      */
-    register(context: vscode.ExtensionContext) {
-        context.subscriptions.push(
+    register(ctx: SwiftContext) {
+        ctx.extensionContext.subscriptions.push(
             vscode.commands.registerCommand('swift.resolveDependencies', this.resolveDependencies),
-            vscode.commands.registerCommand('swift.updateDependencies', this.updateDependencies)
+            vscode.commands.registerCommand('swift.updateDependencies', this.updateDependencies),
+            vscode.commands.registerCommand('swift.generateLaunchConfig', this.generateLaunchConfig.bind(this, ctx)),
         );
     }
 };
