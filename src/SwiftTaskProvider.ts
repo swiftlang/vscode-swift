@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from 'vscode';
-import { SwiftContext } from  './SwiftContext';
+import { WorkspaceContext } from  './WorkspaceContext';
 import { Product } from './SwiftPackage';
 
 /**
@@ -120,7 +120,7 @@ export async function executeTaskAndWait(task: vscode.Task) {
  */
 export class SwiftTaskProvider implements vscode.TaskProvider {
 
-    constructor(private ctx: SwiftContext) { }
+    constructor(private ctx: WorkspaceContext) { }
 
     /**
      * Provides tasks to run the following commands:

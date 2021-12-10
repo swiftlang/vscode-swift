@@ -15,7 +15,7 @@
 import * as vscode from 'vscode';
 import { SwiftPackage } from './SwiftPackage';
 
-export class SwiftContext {
+export class WorkspaceContext {
 	private constructor(
         public workspaceRoot: string,
         public extensionContext: vscode.ExtensionContext,
@@ -25,9 +25,9 @@ export class SwiftContext {
     static async create(
         workspaceRoot: string, 
         extContext: vscode.ExtensionContext
-    ): Promise<SwiftContext> 
+    ): Promise<WorkspaceContext> 
     {
         let swiftPackage = await SwiftPackage.create(workspaceRoot);
-        return new SwiftContext(workspaceRoot, extContext, swiftPackage);
+        return new WorkspaceContext(workspaceRoot, extContext, swiftPackage);
     }
 }

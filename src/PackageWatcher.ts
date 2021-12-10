@@ -15,7 +15,7 @@
 import * as vscode from 'vscode';
 import * as debug from './debug';
 import * as commands from './commands';
-import { SwiftContext } from './SwiftContext';
+import { WorkspaceContext } from './WorkspaceContext';
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
@@ -30,7 +30,7 @@ export class PackageWatcher {
 
     constructor(
         private workspaceRoot: string, 
-        private ctx: SwiftContext) {
+        private ctx: WorkspaceContext) {
     }
 
     /**

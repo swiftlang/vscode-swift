@@ -17,7 +17,7 @@ import * as commands from './commands';
 import { PackageDependenciesProvider } from './PackageDependencyProvider';
 import { PackageWatcher } from './PackageWatcher';
 import { SwiftTaskProvider } from './SwiftTaskProvider';
-import { SwiftContext } from './SwiftContext';
+import { WorkspaceContext } from './WorkspaceContext';
 import { activate as activateSourceKitLSP } from './sourcekit-lsp/extension';
 
 /**
@@ -40,7 +40,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		return;
 	}
 
-	let ctx = await SwiftContext.create(workspaceRoot, context);
+	let ctx = await WorkspaceContext.create(workspaceRoot, context);
 
 	// Register tasks and commands.
 	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(ctx));
