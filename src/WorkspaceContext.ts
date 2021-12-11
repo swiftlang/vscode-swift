@@ -60,7 +60,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.observers.forEach(fn => fn(context!, 'remove'));
         context.dispose();
         // remove context with root folder
-        this.folders = this.folders.filter((context: FolderContext, _) => { context.rootFolder !== folder; });
+        this.folders = this.folders.filter(context => context.rootFolder !== folder);
     }
 
     observerFolders(fn: (folder: FolderContext, operation: 'add'|'remove') => unknown): vscode.Disposable {
