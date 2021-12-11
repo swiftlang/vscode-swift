@@ -43,7 +43,6 @@ export interface Dependency {
     identity: string
     requirement?: object
     url?: string
-    path?: string
 }
 
 // Class holding Swift Package Manager Package
