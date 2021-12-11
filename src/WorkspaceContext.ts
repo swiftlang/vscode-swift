@@ -46,7 +46,7 @@ export class WorkspaceContext implements vscode.Disposable {
         const isRootFolder = this.folders.length === 0;
         let folderContext = await FolderContext.create(folder, isRootFolder);
         this.folders.push(folderContext);
-        this.observers.forEach(async fn => { await fn(folderContext, 'add') });
+        this.observers.forEach(async fn => { await fn(folderContext, 'add'); });
     }
 
     // remove folder from workspace
