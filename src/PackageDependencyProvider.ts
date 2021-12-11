@@ -17,6 +17,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import configuration from './configuration';
 import { exec, getRepositoryName, pathExists } from './utilities';
+import { SwiftContext } from './SwiftContext';
 
 /**
  * References:
@@ -73,11 +74,13 @@ class FileNode {
         );
         item.id = this.path;
         item.resourceUri = vscode.Uri.file(this.path);
-        item.command = {
-            command: 'vscode.open',
-            arguments: [item.resourceUri],
-            title: 'Open File'
-        };
+        if (!this.isDirectory) {
+            item.command = {
+                command: 'vscode.open',
+                arguments: [item.resourceUri],
+                title: 'Open File'
+            };
+        }
         return item;
     }
 }
@@ -97,7 +100,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
     private didChangeTreeDataEmitter = new vscode.EventEmitter<TreeNode | undefined | null | void>();
     onDidChangeTreeData = this.didChangeTreeDataEmitter.event;
 
-    constructor(private workspaceRoot: string) {
+    constructor(private ctx: SwiftContext) {
         // Refresh the tree when a package resolve or package update task completes.
         vscode.tasks.onDidEndTask((event) => {
             const definition = event.execution.task.definition;
@@ -116,14 +119,14 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
         if (!element) {
             // Build PackageNodes for all dependencies.
             return [
-                ...await this.getLocalDependencies(),
+                ...this.getLocalDependencies(),
                 ...await this.getRemoteDependencies()
             ].sort((first, second) => first.name.localeCompare(second.name));
         }
         if (element instanceof PackageNode) {
             // Read the contents of a package.
             const packagePath = element.type === 'remote' ?
-                path.join(this.workspaceRoot, '.build', 'checkouts', getRepositoryName(element.path)) :
+                path.join(this.ctx.workspaceRoot, '.build', 'checkouts', getRepositoryName(element.path)) :
                 element.path;
             return this.getNodesInDirectory(packagePath);
         } else {
@@ -136,30 +139,25 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
      * Returns a {@link PackageNode} for every local dependency
      * declared in **Package.swift**.
      */
-    private async getLocalDependencies(): Promise<PackageNode[]> {
-        const { stdout } = await exec('swift package dump-package', { cwd: this.workspaceRoot });
-        return JSON.parse(stdout).dependencies
-            // Find local dependencies.
-            .filter((dependency: any) => dependency.local)
-            // Map to contained object.
-            .map((dependency: any) => dependency.local[0])
-            // Map to PackageNode.
-            .map((dependency: any) => new PackageNode(
-                dependency.identity,
-                dependency.path,
-                'local',
-                'local'
-            ));
+    private getLocalDependencies(): PackageNode[] {
+        return this.ctx.swiftPackage.dependencies.filter(
+            dependency => !dependency.requirement && dependency.url 
+        ).map(dependency => new PackageNode(
+            dependency.identity,
+            dependency.url!,
+            'local',
+            'local'
+        ));
     }
 
     /**
      * Returns a {@link PackageNode} for every remote dependency.
      */
     private async getRemoteDependencies(): Promise<PackageNode[]> {
-        if (!await pathExists(this.workspaceRoot, 'Package.resolved')) {
+        if (!await pathExists(this.ctx.workspaceRoot, 'Package.resolved')) {
             return [];
         }
-        const data = await fs.readFile(path.join(this.workspaceRoot, 'Package.resolved'), 'utf8');
+        const data = await fs.readFile(path.join(this.ctx.workspaceRoot, 'Package.resolved'), 'utf8');
         return JSON.parse(data).object.pins.map((pin: any) => new PackageNode(
             pin.package,
             pin.repositoryURL,
