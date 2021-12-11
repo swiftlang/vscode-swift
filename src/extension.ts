@@ -14,6 +14,7 @@
 
 import * as vscode from 'vscode';
 import * as commands from './commands';
+import * as debug from './debug';
 import { PackageDependenciesProvider } from './PackageDependencyProvider';
 import { PackageWatcher } from './PackageWatcher';
 import { SwiftTaskProvider } from './SwiftTaskProvider';
@@ -55,6 +56,19 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
+	// observer that will resolve package for root folder
+	let resolvePackageObserver = workspaceContext.observerFolders(async (folder, operation) => {
+		if (folder.isRootFolder && operation === 'add') {
+			// resolve root package
+			if (folder.isRootFolder) {
+				// Create launch.json files based on package description. 
+				await debug.makeDebugConfigurations(folder);
+				await commands.resolveDependencies();
+			}
+		}
+	});
+
+	// add workspace folders, already loaded
 	if (vscode.workspace.workspaceFolders !== undefined) {
 		for (const folder of vscode.workspace.workspaceFolders) {
 			await workspaceContext.addFolder(folder);
@@ -62,7 +76,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	}
 
 	// Register any disposables for cleanup when the extension deactivates.
-	context.subscriptions.push(onWorkspaceChange, addDependencyViewObserver, logObserver, taskProvider, workspaceContext);
+	context.subscriptions.push(resolvePackageObserver, addDependencyViewObserver, logObserver, taskProvider, onWorkspaceChange, workspaceContext);
 }
 
 /**

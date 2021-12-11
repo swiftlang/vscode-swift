@@ -46,13 +46,7 @@ export class WorkspaceContext implements vscode.Disposable {
         const isRootFolder = this.folders.length === 0;
         let folderContext = await FolderContext.create(folder, isRootFolder);
         this.folders.push(folderContext);
-        this.observers.forEach(fn => fn(folderContext, 'add'));
-        // resolve root package
-        if (isRootFolder) {
-            // Create launch.json files based on package description. 
-            debug.makeDebugConfigurations(folderContext);
-            await commands.resolveDependencies();
-        }
+        this.observers.forEach(async fn => { await fn(folderContext, 'add') });
     }
 
     // remove folder from workspace
@@ -69,10 +63,10 @@ export class WorkspaceContext implements vscode.Disposable {
         this.folders = this.folders.filter((context: FolderContext, _) => { context.rootFolder !== folder; });
     }
 
-    observerFolders(fn: (folder: FolderContext, operation: 'add'|'remove') => void): vscode.Disposable {
+    observerFolders(fn: (folder: FolderContext, operation: 'add'|'remove') => unknown): vscode.Disposable {
         this.observers.add(fn);
         return { dispose: () => this.observers.delete(fn) };
     }
 
-    private observers: Set<(arg: FolderContext, operation: 'add'|'remove') => void> = new Set();
+    private observers: Set<(arg: FolderContext, operation: 'add'|'remove') => unknown> = new Set();
 }

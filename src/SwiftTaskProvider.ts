@@ -143,6 +143,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         ];
 
         for (const folder of this.workspaceContext.folders) {
+            if (!folder.isRootFolder) { continue; }
             const executables = folder.swiftPackage.executableProducts;
             for (const executable of executables) {
                 tasks.push(createBuildTask(executable));
