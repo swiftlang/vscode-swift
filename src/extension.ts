@@ -47,7 +47,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	commands.register(ctx);
 
 	// Create the Package Dependencies view.
-	const dependenciesProvider = new PackageDependenciesProvider(workspaceRoot);
+	const dependenciesProvider = new PackageDependenciesProvider(ctx);
 	const dependenciesView = vscode.window.createTreeView('packageDependencies', {
 		treeDataProvider: dependenciesProvider,
 		showCollapseAll: true

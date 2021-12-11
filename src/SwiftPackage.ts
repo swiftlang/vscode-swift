@@ -41,6 +41,7 @@ export interface Target {
 // Swift Package Manager dependency
 export interface Dependency {
     identity: string
+    requirement?: object
     url?: string
     path?: string
 }
