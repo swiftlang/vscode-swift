@@ -77,7 +77,7 @@ export class PackageWatcher {
      * launch configuration if required and then resolve the package
      * dependencies.
      */
-     async handlePackageSwiftChange() {
+    async handlePackageSwiftChange() {
         // Load SwiftPM Package.swift description 
         await this.ctx.reload();
         // Create launch.json files based on package description. Run this in parallel
@@ -94,7 +94,7 @@ export class PackageWatcher {
      * 
      * This will resolve any changes in the Package.resolved.
      */
-     async handlePackageResolvedChange() {
+    private async handlePackageResolvedChange() {
         if (this.ctx.isRootFolder && this.ctx.swiftPackage.foundPackage) {
             await commands.resolveDependencies();
         }
