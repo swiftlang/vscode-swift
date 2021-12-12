@@ -30,62 +30,54 @@ import { executeTaskAndWait } from './SwiftTaskProvider';
 var resolveRunning = false;
 var updateRunning = false;
 
- /**
- * Contains the commands defined in this extension.
- */ 
-const commands = {
+/**
+ * Executes a {@link vscode.Task task} to resolve this package's dependencies.
+ */
+export async function resolveDependencies() {
+    // return if running resolve or update already
+    if (resolveRunning || updateRunning) { return; }
+    resolveRunning = true;
 
-    /**
-     * Executes a {@link vscode.Task task} to resolve this package's dependencies.
-     */
-    async resolveDependencies() {
-        // return if running resolve or update already
-        if (resolveRunning || updateRunning) { return; }
-        resolveRunning = true;
+    let tasks = await vscode.tasks.fetchTasks();
+    let task = tasks.find(task =>
+        task.definition.command === 'swift' &&
+        task.definition.args[0] === 'package' &&
+        task.definition.args[1] === 'resolve'
+    )!;
+    await executeTaskAndWait(task);
 
-        let tasks = await vscode.tasks.fetchTasks();
-        let task = tasks.find(task =>
-            task.definition.command === 'swift' &&
-            task.definition.args[0] === 'package' &&
-            task.definition.args[1] === 'resolve'
-        )!;
-        await executeTaskAndWait(task);
+    resolveRunning = false;
+}
 
-        resolveRunning = false;
-    },
+async function generateLaunchConfig(ctx: SwiftContext) {
+    await debug.makeDebugConfigurations(ctx);
+}
 
-    async generateLaunchConfig(ctx: SwiftContext) {
-        await debug.makeDebugConfigurations(ctx);
-    },
+/**
+ * Executes a {@link vscode.Task task} to update this package's dependencies.
+ */
+export async function updateDependencies() {
+    if (updateRunning) { return; }
+    updateRunning = true;
 
-    /**
-     * Executes a {@link vscode.Task task} to update this package's dependencies.
-     */
-    async updateDependencies() {
-        if (updateRunning) { return; }
-        updateRunning = true;
+    let tasks = await vscode.tasks.fetchTasks();
+    let task = tasks.find(task =>
+        task.definition.command === 'swift' &&
+        task.definition.args[0] === 'package' &&
+        task.definition.args[1] === 'update'
+    )!;
+    await executeTaskAndWait(task);
 
-        let tasks = await vscode.tasks.fetchTasks();
-        let task = tasks.find(task =>
-            task.definition.command === 'swift' &&
-            task.definition.args[0] === 'package' &&
-            task.definition.args[1] === 'update'
-        )!;
-        await executeTaskAndWait(task);
+    updateRunning = false;
+}
 
-        updateRunning = false;
-    },
-
-    /**
-     * Registers this extension's commands in the given {@link vscode.ExtensionContext context}.
-     */
-    register(ctx: SwiftContext) {
-        ctx.extensionContext.subscriptions.push(
-            vscode.commands.registerCommand('swift.resolveDependencies', this.resolveDependencies),
-            vscode.commands.registerCommand('swift.updateDependencies', this.updateDependencies),
-            vscode.commands.registerCommand('swift.generateLaunchConfig', this.generateLaunchConfig.bind(this, ctx)),
-        );
-    }
-};
-
-export default commands;
+/**
+ * Registers this extension's commands in the given {@link vscode.ExtensionContext context}.
+ */
+export function register(ctx: SwiftContext) {
+    ctx.extensionContext.subscriptions.push(
+        vscode.commands.registerCommand('swift.resolveDependencies', resolveDependencies),
+        vscode.commands.registerCommand('swift.updateDependencies', updateDependencies),
+        vscode.commands.registerCommand('swift.generateLaunchConfig', generateLaunchConfig.bind(ctx)),
+    );
+}
