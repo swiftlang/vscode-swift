@@ -84,7 +84,7 @@ export class PackageWatcher {
         // with package resolution
         debug.makeDebugConfigurations(this.ctx);
         // if package has dependencies resolve them
-        if (this.ctx.isRootFolder && this.ctx.swiftPackage.dependencies.length > 0) {
+        if (this.ctx.isRootFolder && this.ctx.swiftPackage.foundPackage) {
             await commands.resolveDependencies();
         }
     }
@@ -95,7 +95,7 @@ export class PackageWatcher {
      * This will resolve any changes in the Package.resolved.
      */
      async handlePackageResolvedChange() {
-        if (this.ctx.isRootFolder && this.ctx.swiftPackage.dependencies.length > 0) {
+        if (this.ctx.isRootFolder && this.ctx.swiftPackage.foundPackage) {
             await commands.resolveDependencies();
         }
     }

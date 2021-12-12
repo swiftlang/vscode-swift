@@ -45,36 +45,52 @@ export interface Dependency {
     url?: string
 }
 
+// package we attempted to load but failed
+class NullPackage implements PackageContents {
+    get name(): string { return ""; }
+    get products(): Product[] { return []; }
+    get dependencies(): Dependency[] { return []; }
+    get targets(): Target[] { return []; }
+}
+
 // Class holding Swift Package Manager Package
 export class SwiftPackage implements PackageContents {
 	private constructor(
         readonly folder: vscode.WorkspaceFolder,
-        public contents?: PackageContents
+        public contents?: PackageContents|null
     ) {}
 
     public static async create(folder: vscode.WorkspaceFolder): Promise<SwiftPackage> {
-        try {
-            let contents = await SwiftPackage.loadPackage(folder);
-            return new SwiftPackage(folder, contents);
-        } catch(error) {
-            // TODO: output errors
-            return new SwiftPackage(folder, undefined);
-        }
+        let contents = await SwiftPackage.loadPackage(folder);
+        return new SwiftPackage(folder, undefined);
     }
 
-    public static async loadPackage(folder: vscode.WorkspaceFolder): Promise<PackageContents> {
-        const { stdout } = await exec('swift package describe --type json', { cwd: folder.uri.fsPath });
-        return JSON.parse(stdout);
+    public static async loadPackage(folder: vscode.WorkspaceFolder): Promise<PackageContents|null> {
+        try {
+            const { stdout } = await exec('swift package describe --type json', { cwd: folder.uri.fsPath });
+            return JSON.parse(stdout);
+        } catch(error) {
+            const execError = error as {stderr: string};
+            // if caught error and it begins with "error: root manifest" then there is no Package.swift
+            if (execError.stderr.startsWith("error: root manifest")) {
+                return null;
+            } else {
+                // otherwise it is an error loading the Package.swift so return a `NullPackage` indicating
+                // we have a package but we failed to load it
+                return new NullPackage();
+            }
+        }
     }
 
     public async reload() {
-        try {
-            this.contents = await SwiftPackage.loadPackage(this.folder);
-        } catch {
-            this.contents = undefined;
-        }
+        this.contents = await SwiftPackage.loadPackage(this.folder);
     }
 
+    // Did we find a Package.swift
+    public get foundPackage(): boolean {
+        return this.contents !== null;
+    }
+    
     get name(): string {
         return this.contents?.name ?? '';
     }
