@@ -16,7 +16,6 @@ import * as vscode from 'vscode';
 import * as commands from './commands';
 import * as debug from './debug';
 import { PackageDependenciesProvider } from './PackageDependencyProvider';
-import { PackageWatcher } from './PackageWatcher';
 import { SwiftTaskProvider } from './SwiftTaskProvider';
 import { WorkspaceContext } from './WorkspaceContext';
 import { activate as activateSourceKitLSP } from './sourcekit-lsp/extension';

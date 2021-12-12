@@ -14,8 +14,6 @@
 
 import * as vscode from 'vscode';
 import { FolderContext } from './FolderContext';
-import commands from './commands';
-import * as debug from './debug';
 
 // Context for whole workspace. Holds array of contexts for each workspace folder
 // and the ExtensionContext
