@@ -107,15 +107,16 @@ function createSwiftTask(command: string, args: string[], name: string, config?:
 /*
  * Execute shell command as task and wait until it is finished
  */
-export async function executeShellTaskAndWait(name: string, command: string, args: string[], problemMatchers: string|string[]) {
+export async function executeShellTaskAndWait(name: string, command: string, args: string[], config?: TaskConfig) {
     let task = new vscode.Task(
         { type: 'swift', command: command, args: args },
-        vscode.TaskScope.Workspace,
+        config?.scope ?? vscode.TaskScope.Workspace,
         name,
         'swift',
         new vscode.ShellExecution(command, args),
-        problemMatchers
+        config?.problemMatcher
     );
+    task.group = config?.group;
     executeTaskAndWait(task);
 }
 
