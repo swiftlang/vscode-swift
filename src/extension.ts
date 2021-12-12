@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from 'vscode';
-import commands from './commands';
+import * as commands from './commands';
 import { PackageDependenciesProvider } from './PackageDependencyProvider';
 import { PackageWatcher } from './PackageWatcher';
 import { SwiftTaskProvider } from './SwiftTaskProvider';

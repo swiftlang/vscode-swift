@@ -14,7 +14,7 @@
 
 import * as vscode from 'vscode';
 import * as debug from './debug';
-import commands from './commands';
+import * as commands from './commands';
 import { SwiftContext } from './SwiftContext';
 
 /**

@@ -81,6 +81,37 @@ function createSwiftTask(command: string, args: string[], name: string, group?: 
     return task;
 }
 
+/*
+ * Execute shell command as task and wait until it is finished
+ */
+export async function executeShellTaskAndWait(name: string, command: string, args: string[], problemMatchers: string|string[]) {
+    let task = new vscode.Task(
+        { type: 'swift', command: command, args: args },
+        vscode.TaskScope.Workspace,
+        name,
+        'swift',
+        new vscode.ShellExecution(command, args),
+        problemMatchers
+    );
+    executeTaskAndWait(task);
+}
+
+/*
+ * Execute task and wait until it is finished. This function assumes that no
+ * other tasks with the same name will be run at the same time
+ */
+export async function executeTaskAndWait(task: vscode.Task) {
+    return new Promise<void>(resolve => {
+        const disposable = vscode.tasks.onDidEndTask(({ execution }) => {
+            if (execution.task.name === task.name) {
+                disposable.dispose();
+                resolve();
+            }
+        });
+        vscode.tasks.executeTask(task);
+    });    
+} 
+
 /**
  * A {@link vscode.TaskProvider TaskProvider} for tasks that match the definition
  * in **package.json**: `{ type: 'swift'; command: string; args: string[] }`.
