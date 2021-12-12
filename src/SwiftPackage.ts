@@ -45,14 +45,6 @@ export interface Dependency {
     url?: string
 }
 
-// package we attempted to load but failed
-class InvalidPackage implements PackageContents {
-    get name(): string { return ""; }
-    get products(): Product[] { return []; }
-    get dependencies(): Dependency[] { return []; }
-    get targets(): Target[] { return []; }
-}
-
 // Class holding Swift Package Manager Package
 export class SwiftPackage implements PackageContents {
 	private constructor(
@@ -65,7 +57,7 @@ export class SwiftPackage implements PackageContents {
         return new SwiftPackage(folder, contents);
     }
 
-    public static async loadPackage(folder: vscode.WorkspaceFolder): Promise<PackageContents|null> {
+    public static async loadPackage(folder: vscode.WorkspaceFolder): Promise<PackageContents|null|undefined> {
         try {
             const { stdout } = await exec('swift package describe --type json', { cwd: folder.uri.fsPath });
             return JSON.parse(stdout);
@@ -73,11 +65,11 @@ export class SwiftPackage implements PackageContents {
             const execError = error as {stderr: string};
             // if caught error and it begins with "error: root manifest" then there is no Package.swift
             if (execError.stderr.startsWith("error: root manifest")) {
-                return null;
+                return undefined;
             } else {
-                // otherwise it is an error loading the Package.swift so return a `NullPackage` indicating
+                // otherwise it is an error loading the Package.swift so return `null` indicating
                 // we have a package but we failed to load it
-                return new InvalidPackage();
+                return null;
             }
         }
     }
@@ -88,7 +80,7 @@ export class SwiftPackage implements PackageContents {
 
     // Return if Package.swift is valid
     public get isValid(): boolean {
-        return !(this.contents === null || this.contents instanceof InvalidPackage);
+        return this.contents !== null && this.contents !== undefined;
     }
 
     // Did we find a Package.swift
