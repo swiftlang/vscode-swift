@@ -62,7 +62,7 @@ export class SwiftPackage implements PackageContents {
 
     public static async create(folder: vscode.WorkspaceFolder): Promise<SwiftPackage> {
         let contents = await SwiftPackage.loadPackage(folder);
-        return new SwiftPackage(folder, undefined);
+        return new SwiftPackage(folder, contents);
     }
 
     public static async loadPackage(folder: vscode.WorkspaceFolder): Promise<PackageContents|null> {
@@ -84,6 +84,11 @@ export class SwiftPackage implements PackageContents {
 
     public async reload() {
         this.contents = await SwiftPackage.loadPackage(this.folder);
+    }
+
+    // Return if Package.swift is valid
+    public get isValid(): boolean {
+        return !(this.contents === null || this.contents instanceof InvalidPackage);
     }
 
     // Did we find a Package.swift
