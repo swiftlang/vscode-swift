@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from 'vscode';
-import contextKeys from './contextKeys';
 import { exec } from './utilities';
 
 // Swift Package Manager contents
@@ -51,9 +50,7 @@ export class SwiftPackage implements PackageContents {
 	private constructor(
         readonly folder: vscode.WorkspaceFolder,
         public contents?: PackageContents
-    ) {
-        this.setContextKeys();
-    }
+    ) {}
 
     public static async create(folder: vscode.WorkspaceFolder): Promise<SwiftPackage> {
         try {
@@ -76,7 +73,6 @@ export class SwiftPackage implements PackageContents {
         } catch {
             this.contents = undefined;
         }
-        this.setContextKeys();
     }
 
     get name(): string {
@@ -107,14 +103,5 @@ export class SwiftPackage implements PackageContents {
         return this.targets.filter((target, index, array) => {
             return target.type === type;
         });    
-    }
-
-    private setContextKeys() {
-        if (this.contents === undefined) {
-            contextKeys.hasPackage = false;
-            contextKeys.packageHasDependencies = false;
-        }
-        contextKeys.hasPackage = true;
-        contextKeys.packageHasDependencies = this.dependencies.length > 0;  
     }
 }

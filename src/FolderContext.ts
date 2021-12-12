@@ -15,6 +15,7 @@
 import * as vscode from 'vscode';
 import { PackageWatcher } from './PackageWatcher';
 import { SwiftPackage } from './SwiftPackage';
+import contextKeys from './contextKeys';
 
 export class FolderContext implements vscode.Disposable {
     private packageWatcher?: PackageWatcher;
@@ -27,6 +28,7 @@ export class FolderContext implements vscode.Disposable {
         if (this.isRootFolder) {
             this.packageWatcher = new PackageWatcher(this);
             this.packageWatcher.install();
+            this.setContextKeys();
         }
     }
 
@@ -45,6 +47,22 @@ export class FolderContext implements vscode.Disposable {
     {
         let swiftPackage = await SwiftPackage.create(rootFolder);
         return new FolderContext(rootFolder, swiftPackage, isRootFolder);
+    }
+
+    async reload() {
+        this.swiftPackage.reload();
+        if (this.isRootFolder) {
+            this.setContextKeys();
+        }
+    }
+
+    private setContextKeys() {
+        if (this.swiftPackage.contents === undefined) {
+            contextKeys.hasPackage = false;
+            contextKeys.packageHasDependencies = false;
+        }
+        contextKeys.hasPackage = true;
+        contextKeys.packageHasDependencies = this.swiftPackage.dependencies.length > 0;  
     }
 }
 

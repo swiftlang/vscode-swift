@@ -79,7 +79,7 @@ export class PackageWatcher {
      */
      async handlePackageSwiftChange() {
         // Load SwiftPM Package.swift description 
-        await this.ctx.swiftPackage.reload();
+        await this.ctx.reload();
         // Create launch.json files based on package description. Run this in parallel
         // with package resolution
         debug.makeDebugConfigurations(this.ctx);
