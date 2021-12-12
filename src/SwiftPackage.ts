@@ -46,7 +46,7 @@ export interface Dependency {
 }
 
 // package we attempted to load but failed
-class NullPackage implements PackageContents {
+class InvalidPackage implements PackageContents {
     get name(): string { return ""; }
     get products(): Product[] { return []; }
     get dependencies(): Dependency[] { return []; }
@@ -77,7 +77,7 @@ export class SwiftPackage implements PackageContents {
             } else {
                 // otherwise it is an error loading the Package.swift so return a `NullPackage` indicating
                 // we have a package but we failed to load it
-                return new NullPackage();
+                return new InvalidPackage();
             }
         }
     }
