@@ -57,7 +57,10 @@ export class WorkspaceContext implements vscode.Disposable {
             console.error(`Trying to delete folder ${folder} which has no record`);
             return;
         }
-        this.observers.forEach(fn => fn(context!, 'remove'));
+        // run observer functions in reverse order when removing
+        let observersReversed = [...this.observers];
+        observersReversed.reverse();
+        observersReversed.forEach(fn => fn(context!, 'remove'));
         context.dispose();
         // remove context with root folder
         this.folders = this.folders.filter(context => context.rootFolder !== folder);
