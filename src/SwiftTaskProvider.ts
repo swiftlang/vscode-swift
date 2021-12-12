@@ -27,26 +27,48 @@ import { Product } from './SwiftPackage';
  *   https://code.visualstudio.com/api/extension-guides/task-provider
  */
 
+
+interface TaskConfig {
+    scope?: vscode.TaskScope
+    group?: vscode.TaskGroup
+    problemMatcher?: string|string[]
+}
+
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  * This excludes test targets.
  */
 function createBuildAllTask(): vscode.Task {
-    return createSwiftTask('swift', ['build'], 'Build All', vscode.TaskGroup.Build);
+    return createSwiftTask(
+        'swift', 
+        ['build'], 
+        'Build All', 
+        { group: vscode.TaskGroup.Build }
+    );
 }
 
 /**
  * Creates a {@link vscode.Task Task} to clean the build artifacts.
  */
 function createCleanTask(): vscode.Task {
-    return createSwiftTask('swift', ['package', 'clean'], 'Clean Build Artifacts', vscode.TaskGroup.Clean);
+    return createSwiftTask(
+        'swift', 
+        ['package', 'clean'], 
+        'Clean Build Artifacts', 
+        { group: vscode.TaskGroup.Clean }
+    );
 }
 
 /**
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
  function createBuildTask(product: Product): vscode.Task {
-    return createSwiftTask('swift', ['build', '--product', product.name], `Build ${product.name}`, vscode.TaskGroup.Build);
+    return createSwiftTask(
+        'swift', 
+        ['build', '--product', product.name], 
+        `Build ${product.name}`, 
+        { group: vscode.TaskGroup.Build }
+    );
 }
 
 /**
@@ -55,32 +77,41 @@ function createCleanTask(): vscode.Task {
 function createResolveTask(): vscode.Task {
     // note problem matchers need to be in the order "$package-swift-parse", "$package-swift" as the second matcher catches the cases from the
     // first one as well
-    return createSwiftTask('swift', ['package', 'resolve'], 'Resolve Package Dependencies', undefined, ["$package-swift-parse", "$package-swift"]);
+    return createSwiftTask(
+        'swift', 
+        ['package', 'resolve'], 
+        'Resolve Package Dependencies', 
+        { problemMatcher: ["$package-swift-parse", "$package-swift"] }
+    );
 }
 
 /**
  * Creates a {@link vscode.Task Task} to update the package dependencies.
  */
 function createUpdateTask(): vscode.Task {
-    return createSwiftTask('swift', ['package', 'update'], 'Update Package Dependencies');
+    return createSwiftTask(
+        'swift', 
+        ['package', 'update'], 
+        'Update Package Dependencies'
+    );
 }
 
 /**
  * Helper function to create a {@link vscode.Task Task} with the given parameters.
  */
-function createSwiftTask(command: string, args: string[], name: string, group?: vscode.TaskGroup, problemMatcher?: string|string[]): vscode.Task {
+function createSwiftTask(command: string, args: string[], name: string, config?: TaskConfig) {
     let task = new vscode.Task(
         { type: 'swift', command: command, args: args },
-        vscode.TaskScope.Workspace,
+        config?.scope ?? vscode.TaskScope.Workspace,
         name,
         'swift',
         new vscode.ShellExecution(command, args),
-        problemMatcher
+        config?.problemMatcher
     );
     // This doesn't include any quotes added by VS Code.
     // See also: https://github.com/microsoft/vscode/issues/137895
     task.detail = `${command} ${args.join(' ')}`;
-    task.group = group;
+    task.group = config?.group;
     return task;
 }
 
