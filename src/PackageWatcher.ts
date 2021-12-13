@@ -52,7 +52,7 @@ export class PackageWatcher {
 
     private createPackageFileWatcher(): vscode.FileSystemWatcher {
         const watcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(this.ctx.rootFolder, 'Package.swift')
+            new vscode.RelativePattern(this.ctx.folder, 'Package.swift')
         );
         watcher.onDidCreate(async () => await this.handlePackageSwiftChange());
         watcher.onDidChange(async () => await this.handlePackageSwiftChange());
@@ -62,7 +62,7 @@ export class PackageWatcher {
 
     private createResolvedFileWatcher(): vscode.FileSystemWatcher {
         const watcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(this.ctx.rootFolder, 'Package.resolved')
+            new vscode.RelativePattern(this.ctx.folder, 'Package.resolved')
         );
         watcher.onDidCreate(async () => await this.handlePackageResolvedChange());
         watcher.onDidChange(async () => await this.handlePackageResolvedChange());

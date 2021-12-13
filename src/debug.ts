@@ -18,7 +18,7 @@ import { FolderContext } from './FolderContext';
 // Edit launch.json based on contents of Swift Package
 // Adds launch configurations based on the executables in Package.swift
 export async function makeDebugConfigurations(ctx: FolderContext) {
-    const wsLaunchSection = vscode.workspace.getConfiguration("launch", ctx.rootFolder);
+    const wsLaunchSection = vscode.workspace.getConfiguration("launch", ctx.folder);
     const launchConfigs = wsLaunchSection.get<any[]>("configurations") || [];
 
     let configs = createDebugConfigurations(ctx);

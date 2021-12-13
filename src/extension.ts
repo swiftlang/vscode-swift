@@ -28,8 +28,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	await activateSourceKitLSP(context);
 
-	let workspaceContext = new WorkspaceContext(context);
-	let onWorkspaceChange = vscode.workspace.onDidChangeWorkspaceFolders((event) => {
+	const workspaceContext = new WorkspaceContext(context);
+	const onWorkspaceChange = vscode.workspace.onDidChangeWorkspaceFolders((event) => {
 		if (workspaceContext === undefined) { console.log("Trying to run onDidChangeWorkspaceFolders on deleted context"); return; }
 		workspaceContext.onDidChangeWorkspaceFolders(event);
 	});
@@ -39,12 +39,12 @@ export async function activate(context: vscode.ExtensionContext) {
 	commands.register(workspaceContext);
 
 	// observer for logging workspace folder addition/removal
-	let logObserver = workspaceContext.observerFolders((folder, operation) => {
-		console.log(`${operation}: ${folder.rootFolder.uri.fsPath}`);
+	const logObserver = workspaceContext.observerFolders((folder, operation) => {
+		console.log(`${operation}: ${folder.folder.uri.fsPath}`);
 	});
 
 	// observer that will add dependency view based on whether a root workspace folder has been added
-	let addDependencyViewObserver = workspaceContext.observerFolders((folder, operation) => {
+	const addDependencyViewObserver = workspaceContext.observerFolders((folder, operation) => {
 		if (folder.isRootFolder && operation === 'add') {
 			const dependenciesProvider = new PackageDependenciesProvider(folder);
 			const dependenciesView = vscode.window.createTreeView('packageDependencies', {
@@ -56,19 +56,16 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 
 	// observer that will resolve package for root folder
-	let resolvePackageObserver = workspaceContext.observerFolders(async (folder, operation) => {
+	const resolvePackageObserver = workspaceContext.observerFolders(async (folder, operation) => {
 		if (folder.isRootFolder && operation === 'add') {
-			// resolve root package
-			if (folder.isRootFolder) {
-				// Create launch.json files based on package description. 
-				await debug.makeDebugConfigurations(folder);
-				await commands.resolveDependencies();
-			}
+			// Create launch.json files based on package description. 
+			await debug.makeDebugConfigurations(folder);
+			await commands.resolveDependencies();
 		}
 	});
 
 	// add workspace folders, already loaded
-	if (vscode.workspace.workspaceFolders !== undefined) {
+	if (vscode.workspace.workspaceFolders) {
 		for (const folder of vscode.workspace.workspaceFolders) {
 			await workspaceContext.addFolder(folder);
 		}
