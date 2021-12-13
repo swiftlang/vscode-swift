@@ -32,6 +32,7 @@ interface TaskConfig {
     scope?: vscode.TaskScope
     group?: vscode.TaskGroup
     problemMatcher?: string|string[]
+    presentationOptions?: vscode.TaskPresentationOptions 
 }
 
 /**
@@ -101,6 +102,9 @@ function createSwiftTask(command: string, args: string[], name: string, config?:
     // See also: https://github.com/microsoft/vscode/issues/137895
     task.detail = `${command} ${args.join(' ')}`;
     task.group = config?.group;
+    if (config?.presentationOptions !== undefined) {
+        task.presentationOptions = config?.presentationOptions;
+    }
     return task;
 }
 
@@ -117,6 +121,9 @@ export async function executeShellTaskAndWait(name: string, command: string, arg
         config?.problemMatcher
     );
     task.group = config?.group;
+    if (config?.presentationOptions !== undefined) {
+        task.presentationOptions = config?.presentationOptions;
+    }
     executeTaskAndWait(task);
 }
 
