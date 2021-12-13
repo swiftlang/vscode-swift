@@ -16,6 +16,7 @@ import * as vscode from 'vscode';
 import * as debug from './debug';
 import * as commands from './commands';
 import { FolderContext } from './FolderContext';
+import { WorkspaceContext } from './WorkspaceContext';
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
@@ -29,7 +30,9 @@ export class PackageWatcher {
     private resolvedFileWatcher?: vscode.FileSystemWatcher;
 
     constructor(
-        private ctx: FolderContext) {
+        private folderContext: FolderContext,
+        private workspaceContext: WorkspaceContext
+    ) {
     }
 
     /**
@@ -52,7 +55,7 @@ export class PackageWatcher {
 
     private createPackageFileWatcher(): vscode.FileSystemWatcher {
         const watcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(this.ctx.folder, 'Package.swift')
+            new vscode.RelativePattern(this.folderContext.folder, 'Package.swift')
         );
         watcher.onDidCreate(async () => await this.handlePackageSwiftChange());
         watcher.onDidChange(async () => await this.handlePackageSwiftChange());
@@ -62,7 +65,7 @@ export class PackageWatcher {
 
     private createResolvedFileWatcher(): vscode.FileSystemWatcher {
         const watcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(this.ctx.folder, 'Package.resolved')
+            new vscode.RelativePattern(this.folderContext.folder, 'Package.resolved')
         );
         watcher.onDidCreate(async () => await this.handlePackageResolvedChange());
         watcher.onDidChange(async () => await this.handlePackageResolvedChange());
@@ -79,13 +82,13 @@ export class PackageWatcher {
      */
     async handlePackageSwiftChange() {
         // Load SwiftPM Package.swift description 
-        await this.ctx.reload();
+        await this.folderContext.reload();
         // Create launch.json files based on package description. Run this in parallel
         // with package resolution
-        debug.makeDebugConfigurations(this.ctx);
+        debug.makeDebugConfigurations(this.folderContext);
         // if package has dependencies resolve them
-        if (this.ctx.isRootFolder && this.ctx.swiftPackage.foundPackage) {
-            await commands.resolveDependencies();
+        if (this.folderContext.isRootFolder && this.folderContext.swiftPackage.foundPackage) {
+            await commands.resolveDependencies(this.workspaceContext);
         }
     }
 
@@ -95,8 +98,8 @@ export class PackageWatcher {
      * This will resolve any changes in the Package.resolved.
      */
     private async handlePackageResolvedChange() {
-        if (this.ctx.isRootFolder && this.ctx.swiftPackage.foundPackage) {
-            await commands.resolveDependencies();
+        if (this.folderContext.isRootFolder && this.folderContext.swiftPackage.foundPackage) {
+            await commands.resolveDependencies(this.workspaceContext);
         }
     }
 }

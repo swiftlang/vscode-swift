@@ -60,7 +60,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		if (folder.isRootFolder && operation === 'add') {
 			// Create launch.json files based on package description. 
 			await debug.makeDebugConfigurations(folder);
-			await commands.resolveDependencies();
+			await commands.resolveDependencies(workspaceContext);
 		}
 	});
 
