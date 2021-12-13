@@ -48,7 +48,7 @@ export class WorkspaceContext implements vscode.Disposable {
     }
 
     // remove folder from workspace
-    removeFolder(folder: vscode.WorkspaceFolder) {
+    private removeFolder(folder: vscode.WorkspaceFolder) {
         // find context with root folder
         let index = this.folders.findIndex((context: FolderContext, _) => { return context.folder === folder; });
         if (index === -1) {
