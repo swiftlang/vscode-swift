@@ -32,11 +32,6 @@
         "title": "Update Package Dependencies",
         "icon": "$(cloud-download)",
         "category": "Swift"
-      },
-      {
-        "command": "swift.generateLaunchConfig",
-        "title": "Generate Launch Configuration",
-        "category": "Swift"
       }
     ],
     "configuration": [
@@ -95,10 +90,6 @@
         {
           "command": "swift.updateDependencies",
           "when": "false"
-        },
-        {
-          "command": "swift.generateLaunchConfig",
-          "when": "swift.hasPackage"
         }
       ],
       "view/title": [

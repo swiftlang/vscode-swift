@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import contextKeys from './contextKeys';
+import * as vscode from 'vscode';
 import { exec } from './utilities';
 
 // Swift Package Manager contents
@@ -48,13 +48,11 @@ export interface Dependency {
 // Class holding Swift Package Manager Package
 export class SwiftPackage implements PackageContents {
 	private constructor(
-        readonly folder: string,
+        readonly folder: vscode.WorkspaceFolder,
         public contents?: PackageContents
-    ) {
-        this.setContextKeys();
-    }
+    ) {}
 
-    public static async create(folder: string): Promise<SwiftPackage> {
+    public static async create(folder: vscode.WorkspaceFolder): Promise<SwiftPackage> {
         try {
             let contents = await SwiftPackage.loadPackage(folder);
             return new SwiftPackage(folder, contents);
@@ -64,8 +62,8 @@ export class SwiftPackage implements PackageContents {
         }
     }
 
-    public static async loadPackage(folder: string): Promise<PackageContents> {
-        const { stdout } = await exec('swift package describe --type json', { cwd: folder });
+    public static async loadPackage(folder: vscode.WorkspaceFolder): Promise<PackageContents> {
+        const { stdout } = await exec('swift package describe --type json', { cwd: folder.uri.fsPath });
         return JSON.parse(stdout);
     }
 
@@ -75,7 +73,6 @@ export class SwiftPackage implements PackageContents {
         } catch {
             this.contents = undefined;
         }
-        this.setContextKeys();
     }
 
     get name(): string {
@@ -106,14 +103,5 @@ export class SwiftPackage implements PackageContents {
         return this.targets.filter((target, index, array) => {
             return target.type === type;
         });    
-    }
-
-    private setContextKeys() {
-        if (this.contents === undefined) {
-            contextKeys.hasPackage = false;
-            contextKeys.packageHasDependencies = false;
-        }
-        contextKeys.hasPackage = true;
-        contextKeys.packageHasDependencies = this.dependencies.length > 0;  
     }
 }

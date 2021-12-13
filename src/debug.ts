@@ -13,18 +13,18 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from 'vscode';
-import { SwiftContext } from './SwiftContext';
+import { FolderContext } from './FolderContext';
 
 // Edit launch.json based on contents of Swift Package
 // Adds launch configurations based on the executables in Package.swift
-export async function makeDebugConfigurations(ctx: SwiftContext) {
-    const wsLaunchSection = vscode.workspace.getConfiguration("launch", vscode.Uri.file(ctx.workspaceRoot));
+export async function makeDebugConfigurations(ctx: FolderContext) {
+    const wsLaunchSection = vscode.workspace.getConfiguration("launch", ctx.folder);
     const launchConfigs = wsLaunchSection.get<any[]>("configurations") || [];
 
     let configs = createDebugConfigurations(ctx);
     let edited = false;
     for (const config of configs) {
-        const index = launchConfigs.findIndex(c => (c.name === config.name));
+        const index = launchConfigs.findIndex(c => c.name === config.name);
         if (index !== -1) {
             if (launchConfigs[index].program !== config.program) {
                 const answer = await vscode.window.showErrorMessage(`Launch configuration '${config.name}' already exists. Do you want to update it?`, 'Cancel', 'Update');
@@ -44,7 +44,7 @@ export async function makeDebugConfigurations(ctx: SwiftContext) {
 }
 
 // Return array of DebugConfigurations based on what is in Package.swift
-function createDebugConfigurations(ctx: SwiftContext): vscode.DebugConfiguration[] {
+function createDebugConfigurations(ctx: FolderContext): vscode.DebugConfiguration[] {
     const executableProducts = ctx.swiftPackage.executableProducts;
 
     return executableProducts.map((product) => {

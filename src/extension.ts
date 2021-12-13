@@ -14,10 +14,10 @@
 
 import * as vscode from 'vscode';
 import * as commands from './commands';
+import * as debug from './debug';
 import { PackageDependenciesProvider } from './PackageDependencyProvider';
-import { PackageWatcher } from './PackageWatcher';
 import { SwiftTaskProvider } from './SwiftTaskProvider';
-import { SwiftContext } from './SwiftContext';
+import { WorkspaceContext } from './WorkspaceContext';
 import { activate as activateSourceKitLSP } from './sourcekit-lsp/extension';
 
 /**
@@ -28,40 +28,51 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	await activateSourceKitLSP(context);
 
-	// Check if we have a workspace folder open.
-	// This only supports single-root workspaces.
-	let workspaceRoot: string | undefined;
-	if (vscode.workspace.workspaceFolders) {
-		workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
-	}
-
-	// Features past this point require a workspace folder.
-	if (!workspaceRoot) {
-		return;
-	}
-
-	let ctx = await SwiftContext.create(workspaceRoot, context);
-
-	// Register tasks and commands.
-	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(ctx));
-	commands.register(ctx);
-
-	// Create the Package Dependencies view.
-	const dependenciesProvider = new PackageDependenciesProvider(ctx);
-	const dependenciesView = vscode.window.createTreeView('packageDependencies', {
-		treeDataProvider: dependenciesProvider,
-		showCollapseAll: true
+	const workspaceContext = new WorkspaceContext(context);
+	const onWorkspaceChange = vscode.workspace.onDidChangeWorkspaceFolders((event) => {
+		if (workspaceContext === undefined) { console.log("Trying to run onDidChangeWorkspaceFolders on deleted context"); return; }
+		workspaceContext.onDidChangeWorkspaceFolders(event);
 	});
 
-	// Watch for changes to Package.swift and Package.resolved.
-	const packageWatcher = new PackageWatcher(workspaceRoot, ctx);
-	packageWatcher.install();
+	// Register commands.
+	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(workspaceContext));
+	commands.register(workspaceContext);
 
-	// Initialize the context keys and trigger a resolve task if needed.
-	packageWatcher.handlePackageSwiftChange();
+	// observer for logging workspace folder addition/removal
+	const logObserver = workspaceContext.observerFolders((folder, operation) => {
+		console.log(`${operation}: ${folder.folder.uri.fsPath}`);
+	});
+
+	// observer that will add dependency view based on whether a root workspace folder has been added
+	const addDependencyViewObserver = workspaceContext.observerFolders((folder, operation) => {
+		if (folder.isRootFolder && operation === 'add') {
+			const dependenciesProvider = new PackageDependenciesProvider(folder);
+			const dependenciesView = vscode.window.createTreeView('packageDependencies', {
+				treeDataProvider: dependenciesProvider,
+				showCollapseAll: true
+			});
+			context.subscriptions.push(dependenciesView);
+		}
+	});
+
+	// observer that will resolve package for root folder
+	const resolvePackageObserver = workspaceContext.observerFolders(async (folder, operation) => {
+		if (folder.isRootFolder && operation === 'add') {
+			// Create launch.json files based on package description. 
+			await debug.makeDebugConfigurations(folder);
+			await commands.resolveDependencies();
+		}
+	});
+
+	// add workspace folders, already loaded
+	if (vscode.workspace.workspaceFolders) {
+		for (const folder of vscode.workspace.workspaceFolders) {
+			await workspaceContext.addFolder(folder);
+		}
+	}
 
 	// Register any disposables for cleanup when the extension deactivates.
-	context.subscriptions.push(taskProvider, dependenciesView, packageWatcher);
+	context.subscriptions.push(resolvePackageObserver, addDependencyViewObserver, logObserver, taskProvider, onWorkspaceChange, workspaceContext);
 }
 
 /**

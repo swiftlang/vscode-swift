@@ -16,8 +16,8 @@ import * as vscode from 'vscode';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import configuration from './configuration';
-import { exec, getRepositoryName, pathExists } from './utilities';
-import { SwiftContext } from './SwiftContext';
+import { getRepositoryName, pathExists } from './utilities';
+import { FolderContext } from './FolderContext';
 
 /**
  * References:
@@ -100,7 +100,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
     private didChangeTreeDataEmitter = new vscode.EventEmitter<TreeNode | undefined | null | void>();
     onDidChangeTreeData = this.didChangeTreeDataEmitter.event;
 
-    constructor(private ctx: SwiftContext) {
+    constructor(private ctx: FolderContext) {
         // Refresh the tree when a package resolve or package update task completes.
         vscode.tasks.onDidEndTask((event) => {
             const definition = event.execution.task.definition;
@@ -126,7 +126,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
         if (element instanceof PackageNode) {
             // Read the contents of a package.
             const packagePath = element.type === 'remote' ?
-                path.join(this.ctx.workspaceRoot, '.build', 'checkouts', getRepositoryName(element.path)) :
+                path.join(this.ctx.folder.uri.fsPath, '.build', 'checkouts', getRepositoryName(element.path)) :
                 element.path;
             return this.getNodesInDirectory(packagePath);
         } else {
@@ -154,10 +154,10 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
      * Returns a {@link PackageNode} for every remote dependency.
      */
     private async getRemoteDependencies(): Promise<PackageNode[]> {
-        if (!await pathExists(this.ctx.workspaceRoot, 'Package.resolved')) {
+        if (!await pathExists(this.ctx.folder.uri.fsPath, 'Package.resolved')) {
             return [];
         }
-        const data = await fs.readFile(path.join(this.ctx.workspaceRoot, 'Package.resolved'), 'utf8');
+        const data = await fs.readFile(path.join(this.ctx.folder.uri.fsPath, 'Package.resolved'), 'utf8');
         return JSON.parse(data).object.pins.map((pin: any) => new PackageNode(
             pin.package,
             pin.repositoryURL,

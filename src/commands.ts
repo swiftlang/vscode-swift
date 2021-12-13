@@ -14,7 +14,7 @@
 
 import * as vscode from 'vscode';
 import * as debug from './debug';
-import { SwiftContext } from './SwiftContext';
+import { WorkspaceContext } from './WorkspaceContext';
 import { executeTaskAndWait } from './SwiftTaskProvider';
 
 /**
@@ -49,10 +49,6 @@ export async function resolveDependencies() {
     resolveRunning = false;
 }
 
-async function generateLaunchConfig(ctx: SwiftContext) {
-    await debug.makeDebugConfigurations(ctx);
-}
-
 /**
  * Executes a {@link vscode.Task task} to update this package's dependencies.
  */
@@ -74,10 +70,9 @@ export async function updateDependencies() {
 /**
  * Registers this extension's commands in the given {@link vscode.ExtensionContext context}.
  */
-export function register(ctx: SwiftContext) {
+export function register(ctx: WorkspaceContext) {
     ctx.extensionContext.subscriptions.push(
         vscode.commands.registerCommand('swift.resolveDependencies', resolveDependencies),
         vscode.commands.registerCommand('swift.updateDependencies', updateDependencies),
-        vscode.commands.registerCommand('swift.generateLaunchConfig', generateLaunchConfig.bind(ctx)),
     );
 }
