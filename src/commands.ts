@@ -39,7 +39,7 @@ export async function resolveDependencies(ctx: WorkspaceContext) {
     resolveRunning = true;
 
     try {
-        ctx.outputChannel.append("Resolving Dependencies ... ");
+        ctx.outputChannel.logStart("Resolving Dependencies ... ");
         let tasks = await vscode.tasks.fetchTasks();
         let task = tasks.find(task =>
             task.definition.command === 'swift' &&
@@ -47,9 +47,9 @@ export async function resolveDependencies(ctx: WorkspaceContext) {
             task.definition.args[1] === 'resolve'
         )!;
         await executeTaskAndWait(task);
-        ctx.outputChannel.appendLine("done.");
+        ctx.outputChannel.logEnd("done.");
     } catch(error) {
-        ctx.outputChannel.appendLine(`${error}`);
+        ctx.outputChannel.logEnd(`${error}`);
     }
     resolveRunning = false;
 }
@@ -62,7 +62,7 @@ export async function updateDependencies(ctx: WorkspaceContext) {
     updateRunning = true;
 
     try {
-        ctx.outputChannel.append("Updating Dependencies ... ");
+        ctx.outputChannel.logStart("Updating Dependencies ... ");
         let tasks = await vscode.tasks.fetchTasks();
         let task = tasks.find(task =>
             task.definition.command === 'swift' &&
@@ -70,9 +70,9 @@ export async function updateDependencies(ctx: WorkspaceContext) {
             task.definition.args[1] === 'update'
         )!;
         await executeTaskAndWait(task);
-        ctx.outputChannel.appendLine("done.");
+        ctx.outputChannel.logEnd("done.");
     } catch(error) {
-        ctx.outputChannel.appendLine(`${error}`);
+        ctx.outputChannel.logEnd(`${error}`);
     }
     updateRunning = false;
 }
