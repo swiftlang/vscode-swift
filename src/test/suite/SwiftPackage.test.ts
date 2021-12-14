@@ -27,7 +27,7 @@ suite('SwiftPackage Test Suite', () => {
     });
 
 	test('Working package', async () => {
-        let spmPackage = await SwiftPackage.create('assets/test/working-package');
+        let spmPackage = await SwiftPackage.create('assets/test/package1');
         assert.strictEqual(spmPackage.targets.length, 2);
     });
 });
