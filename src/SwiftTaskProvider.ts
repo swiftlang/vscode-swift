@@ -68,13 +68,13 @@ function createCleanTask(): vscode.Task {
         createSwiftTask(
             'swift', 
             ['build', '--product', product.name], 
-            `Build ${product.name}`, 
+            `Build Debug ${product.name}`, 
             { group: vscode.TaskGroup.Build }
         ),
         createSwiftTask(
             'swift', 
             ['build', '-c', 'release', '--product', product.name], 
-            `Build ${product.name}`, 
+            `Build Release ${product.name}`, 
             { group: vscode.TaskGroup.Build }
         )
     ];
