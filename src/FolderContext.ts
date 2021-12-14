@@ -56,9 +56,10 @@ export class FolderContext implements vscode.Disposable {
         if (this.swiftPackage.isValid) {
             contextKeys.hasPackage = true;
             contextKeys.packageHasDependencies = this.swiftPackage.dependencies.length > 0;  
+        } else {
+            contextKeys.hasPackage = false;
+            contextKeys.packageHasDependencies = false;
         }
-        contextKeys.hasPackage = false;
-        contextKeys.packageHasDependencies = false;
-}
+    }
 }
 
