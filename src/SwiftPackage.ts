@@ -49,7 +49,7 @@ export interface Dependency {
 export class SwiftPackage implements PackageContents {
 	private constructor(
         readonly folder: vscode.WorkspaceFolder,
-        public contents?: PackageContents|null
+        private contents?: PackageContents|null
     ) {}
 
     public static async create(folder: vscode.WorkspaceFolder): Promise<SwiftPackage> {
