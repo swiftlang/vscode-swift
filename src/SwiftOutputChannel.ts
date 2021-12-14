@@ -13,9 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from 'vscode';
-import { Disposable } from 'vscode-jsonrpc';
 
-export class SwiftOutputChannel implements Disposable {
+export class SwiftOutputChannel {
     private channel: vscode.OutputChannel;
 
     constructor() {
@@ -26,18 +25,18 @@ export class SwiftOutputChannel implements Disposable {
         this.channel.dispose();
     }
 
-    log(message: string, folder?: string) {
-        if (folder) {
-            folder += ": ";
+    log(message: string, label?: string) {
+        if (label) {
+            label += ": ";
         }
-        this.channel.appendLine(`${this.nowFormatted}: ${folder ?? ""}${message}`);
+        this.channel.appendLine(`${this.nowFormatted}: ${label ?? ""}${message}`);
     }
 
-    logStart(message: string, folder?: string) {
-        if (folder !== undefined) {
-            folder += ": ";
+    logStart(message: string, label?: string) {
+        if (label !== undefined) {
+            label += ": ";
         }
-        this.channel.append(`${this.nowFormatted}: ${folder ?? ""}${message}`);
+        this.channel.append(`${this.nowFormatted}: ${label ?? ""}${message}`);
     }
 
     logEnd(message: string) {
