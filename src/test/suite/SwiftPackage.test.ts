@@ -28,6 +28,10 @@ suite('SwiftPackage Test Suite', () => {
 
 	test('Working package', async () => {
         let spmPackage = await SwiftPackage.create('assets/test/package1');
+        //assert.strictEqual(spmPackage.isValid, true)
+        assert.strictEqual(spmPackage.products.length, 1);
+        assert.strictEqual(spmPackage.products[0].name, "package1");
+        assert.strictEqual(spmPackage.dependencies.length, 1);
         assert.strictEqual(spmPackage.targets.length, 2);
     });
 });
