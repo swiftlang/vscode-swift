@@ -60,6 +60,6 @@ export class FolderContext implements vscode.Disposable {
             contextKeys.hasPackage = false;
             contextKeys.packageHasDependencies = false;
         }
-}
+    }
 }
 
