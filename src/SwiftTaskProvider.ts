@@ -102,9 +102,7 @@ function createSwiftTask(command: string, args: string[], name: string, config?:
     // See also: https://github.com/microsoft/vscode/issues/137895
     task.detail = `${command} ${args.join(' ')}`;
     task.group = config?.group;
-    if (config?.presentationOptions !== undefined) {
-        task.presentationOptions = config?.presentationOptions;
-    }
+    task.presentationOptions = config?.presentationOptions ?? {};
     return task;
 }
 
@@ -121,9 +119,8 @@ export async function executeShellTaskAndWait(name: string, command: string, arg
         config?.problemMatcher
     );
     task.group = config?.group;
-    if (config?.presentationOptions !== undefined) {
-        task.presentationOptions = config?.presentationOptions;
-    }
+    task.presentationOptions = config?.presentationOptions ?? {};
+
     executeTaskAndWait(task);
 }
 
@@ -194,13 +191,16 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         // Reusing the task parameter doesn't seem to work.
         let newTask = new vscode.Task(
             task.definition,
-            vscode.TaskScope.Workspace,
+            task.scope ?? vscode.TaskScope.Workspace,
             task.name || 'Custom Task',
             'swift',
-            new vscode.ShellExecution(task.definition.command, task.definition.args)
+            new vscode.ShellExecution(task.definition.command, task.definition.args),
+            task.problemMatchers
         );
         newTask.detail = task.detail ?? `${task.definition.command} ${task.definition.args.join(' ')}`;
         newTask.group = task.group;
+        newTask.presentationOptions = task.presentationOptions;
+
         return newTask;
     }
 }
