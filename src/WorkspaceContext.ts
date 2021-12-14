@@ -62,7 +62,7 @@ export class WorkspaceContext implements vscode.Disposable {
         let observersReversed = [...this.observers];
         observersReversed.reverse();
         for (const observer of observersReversed) {
-            await observer(context, 'add');
+            await observer(context, 'remove');
         }
         context.dispose();
         // remove context
