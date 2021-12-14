@@ -42,7 +42,7 @@ interface TaskConfig {
 function createBuildAllTask(): vscode.Task {
     return createSwiftTask(
         'swift', 
-        ['build'], 
+        ['build', '--build-tests'], 
         'Build All', 
         { group: vscode.TaskGroup.Build }
     );

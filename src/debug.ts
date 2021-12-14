@@ -14,6 +14,7 @@
 
 import * as vscode from 'vscode';
 import { FolderContext } from './FolderContext';
+import { getXcodePath } from './utilities';
 
 // Edit launch.json based on contents of Swift Package
 // Adds launch configurations based on the executables in Package.swift
@@ -22,8 +23,8 @@ export async function makeDebugConfigurations(ctx: FolderContext) {
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
 
     const configs = [
-        ...createDebugConfigurations(ctx),
-        ...createReleaseConfigurations(ctx)
+        ...createExecutableConfigurations(ctx),
+        ...await createTestConfigurations(ctx)
     ];
     let edited = false;
     for (const config of configs) {
@@ -46,38 +47,65 @@ export async function makeDebugConfigurations(ctx: FolderContext) {
     }
 }
 
-// Return array of DebugConfigurations based on what is in Package.swift
-function createDebugConfigurations(ctx: FolderContext): vscode.DebugConfiguration[] {
+// Return array of DebugConfigurations for executables based on what is in Package.swift
+function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfiguration[] {
     const executableProducts = ctx.swiftPackage.executableProducts;
 
-    return executableProducts.map((product) => {
-        return {
-            type: "lldb",
-            request: "launch",
-            name: `Debug ${product.name}`,
-            program: "${workspaceFolder}/.build/debug/" + product.name,
-            args: [],
-            cwd: `\${workspaceFolder:${ctx.folder.name}}`,
-            preLaunchTask: `swift: Build Debug ${product.name}`
-        };    
-    
+    return executableProducts.flatMap((product) => {
+        return [
+            {
+                type: "lldb",
+                request: "launch",
+                name: `Debug ${product.name}`,
+                program: "${workspaceFolder}/.build/debug/" + product.name,
+                args: [],
+                cwd: `\${workspaceFolder:${ctx.folder.name}}`,
+                preLaunchTask: `swift: Build Debug ${product.name}`
+            },
+            {
+                type: "lldb",
+                request: "launch",
+                name: `Release ${product.name}`,
+                program: "${workspaceFolder}/.build/release/" + product.name,
+                args: [],
+                cwd: `\${workspaceFolder:${ctx.folder.name}}`,
+                preLaunchTask: `swift: Build Release ${product.name}`
+            }
+        ];    
     });
 }
 
-// Return array of DebugConfigurations based on what is in Package.swift
-function createReleaseConfigurations(ctx: FolderContext): vscode.DebugConfiguration[] {
-    const executableProducts = ctx.swiftPackage.executableProducts;
+// Return array of DebugConfigurations for tests based on what is in Package.swift
+async function createTestConfigurations(ctx: FolderContext): Promise<vscode.DebugConfiguration[]> {
+    if (ctx.swiftPackage.getTargets('test').length === 0) { return []; }
+    try {
+        // If running on darwin. Find xctest exe and run pointing at xctest resources
+        if (process.platform === 'darwin') {
+            const xcodePath = await getXcodePath();
+            if (xcodePath === undefined) {
+                return [];
+            }
+            return [{
+                type: "lldb",
+                request: "launch",
+                name: `Test ${ctx.swiftPackage.name}`,
+                program: `${xcodePath}/usr/bin/xctest`,
+                args: [`.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`],
+                cwd: `\${workspaceFolder:${ctx.folder.name}}`,
+                preLaunchTask: `swift: Build All`
+            }];
+        } else {
+            // otherwise run xctest exe inside build folder
+            return [{
+                type: "lldb",
+                request: "launch",
+                name: `Test ${ctx.swiftPackage.name}`,
+                program: `./.build/x86_64-unknown-linux/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
+                cwd: `\${workspaceFolder:${ctx.folder.name}}`,
+                preLaunchTask: `swift: Build All`
+            }];
+        }
+    } catch {}
 
-    return executableProducts.map((product) => {
-        return {
-            type: "lldb",
-            request: "launch",
-            name: `Release ${product.name}`,
-            program: "${workspaceFolder}/.build/release/" + product.name,
-            args: [],
-            cwd: `\${workspaceFolder:${ctx.folder.name}}`,
-            preLaunchTask: `swift: Build Release ${product.name}`
-        };    
-    
-    });
+    return [];
 }
