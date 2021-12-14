@@ -21,45 +21,23 @@ import * as vscode from 'vscode';
 class StatusItem {
 
     private item: vscode.StatusBarItem;
-    private activeTask?: vscode.Task;
-
-    private taskStartedListener: vscode.Disposable;
-    private taskEndedListener: vscode.Disposable;
 
     constructor() {
         this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
         this.item.command = `terminal.focus`;
-
-        // We need to `bind(this)` here because the this-context is lost
-        // when assigning the methods as event handlers. 
-        this.taskStartedListener = vscode.tasks.onDidStartTask(this.onTaskStarted.bind(this));
-        this.taskEndedListener = vscode.tasks.onDidEndTask(this.onTaskEnded.bind(this));
     }
 
-    /**
-     * Display the progress of the given {@link vscode.Task Task} in the status bar.
-     */
-    monitor(task: vscode.Task) {
-        this.activeTask = task;
+    show(message: string, addProgressIndicator = true) {
+        this.item.text = `${addProgressIndicator ? '$(sync~spin) ' : ''}${message}`;
+        this.item.show();
     }
 
-    private onTaskStarted(event: vscode.TaskStartEvent) {
-        if (event.execution.task === this.activeTask) {
-            this.item.text = `$(sync~spin) ${this.activeTask.name}`;
-            this.item.show();
-        }
-    }
-
-    private onTaskEnded(event: vscode.TaskEndEvent) {
-        if (event.execution.task === this.activeTask) {
-            this.item.hide();
-        }
+    hide() {
+        this.item.hide();
     }
     
     dispose() {
         this.item.dispose();
-        this.taskStartedListener.dispose();
-        this.taskEndedListener.dispose();
     }
 }
 
