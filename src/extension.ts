@@ -40,7 +40,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// observer for logging workspace folder addition/removal
 	const logObserver = workspaceContext.observerFolders((folder, operation) => {
-		console.log(`${operation}: ${folder.folder.uri.fsPath}`);
+		workspaceContext.outputChannel.log(`${operation}: ${folder.folder.uri.fsPath}`, folder.folder.name);
 	});
 
 	// observer that will add dependency view based on whether a root workspace folder has been added

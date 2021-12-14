@@ -30,7 +30,7 @@ export class SwiftOutputChannel implements Disposable {
         if (folder !== undefined) {
             folder += ": ";
         }
-        this.channel.appendLine(`${this.nowFormatted}: ${folder ?? ""}: ${message}`);
+        this.channel.appendLine(`${this.nowFormatted}: ${folder ?? ""}${message}`);
     }
 
     logStart(message: string, folder?: string) {
