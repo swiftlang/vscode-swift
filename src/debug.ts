@@ -29,7 +29,7 @@ export async function makeDebugConfigurations(ctx: FolderContext) {
     for (const config of configs) {
         const index = launchConfigs.findIndex(c => c.name === config.name);
         if (index !== -1) {
-            if (launchConfigs[index].program !== config.program) {
+            if (launchConfigs[index].program !== config.program || launchConfigs[index].cwd !== config.cwd) {
                 const answer = await vscode.window.showErrorMessage(`Launch configuration '${config.name}' already exists. Do you want to update it?`, 'Cancel', 'Update');
                 if (answer === "Cancel") { continue; }
                 launchConfigs[index] = config;
@@ -57,7 +57,7 @@ function createDebugConfigurations(ctx: FolderContext): vscode.DebugConfiguratio
             name: `Debug ${product.name}`,
             program: "${workspaceFolder}/.build/debug/" + product.name,
             args: [],
-            cwd: "${workspaceFolder}",
+            cwd: `\${workspaceFolder:${ctx.folder.name}}`,
             preLaunchTask: `swift: Build Debug ${product.name}`
         };    
     
@@ -75,7 +75,7 @@ function createReleaseConfigurations(ctx: FolderContext): vscode.DebugConfigurat
             name: `Release ${product.name}`,
             program: "${workspaceFolder}/.build/release/" + product.name,
             args: [],
-            cwd: "${workspaceFolder}",
+            cwd: `\${workspaceFolder:${ctx.folder.name}}`,
             preLaunchTask: `swift: Build Release ${product.name}`
         };    
     
