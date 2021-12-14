@@ -21,7 +21,10 @@ export async function makeDebugConfigurations(ctx: FolderContext) {
     const wsLaunchSection = vscode.workspace.getConfiguration("launch", ctx.folder);
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
 
-    const configs = createDebugConfigurations(ctx);
+    const configs = [
+        ...createDebugConfigurations(ctx),
+        ...createReleaseConfigurations(ctx)
+    ];
     let edited = false;
     for (const config of configs) {
         const index = launchConfigs.findIndex(c => c.name === config.name);
@@ -51,11 +54,29 @@ function createDebugConfigurations(ctx: FolderContext): vscode.DebugConfiguratio
         return {
             type: "lldb",
             request: "launch",
-            name: `Run ${product.name}`,
+            name: `Debug ${product.name}`,
             program: "${workspaceFolder}/.build/debug/" + product.name,
             args: [],
             cwd: "${workspaceFolder}",
-            preLaunchTask: `swift: Build ${product.name}`
+            preLaunchTask: `swift: Build Debug ${product.name}`
+        };    
+    
+    });
+}
+
+// Return array of DebugConfigurations based on what is in Package.swift
+function createReleaseConfigurations(ctx: FolderContext): vscode.DebugConfiguration[] {
+    const executableProducts = ctx.swiftPackage.executableProducts;
+
+    return executableProducts.map((product) => {
+        return {
+            type: "lldb",
+            request: "launch",
+            name: `Release ${product.name}`,
+            program: "${workspaceFolder}/.build/release/" + product.name,
+            args: [],
+            cwd: "${workspaceFolder}",
+            preLaunchTask: `swift: Build Release ${product.name}`
         };    
     
     });
