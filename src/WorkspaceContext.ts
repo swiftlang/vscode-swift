@@ -35,7 +35,7 @@ export class WorkspaceContext implements vscode.Disposable {
         }
 
         for (const folder of event.removed) {
-            this.removeFolder(folder);
+            await this.removeFolder(folder);
         }
     } 
 
@@ -44,11 +44,13 @@ export class WorkspaceContext implements vscode.Disposable {
         const isRootFolder = this.folders.length === 0;
         let folderContext = await FolderContext.create(folder, isRootFolder);
         this.folders.push(folderContext);
-        this.observers.forEach(async fn => { await fn(folderContext, 'add'); });
+        for (const observer of this.observers) {
+            await observer(folderContext, 'add');
+        }
     }
 
     // remove folder from workspace
-    private removeFolder(folder: vscode.WorkspaceFolder) {
+    private async removeFolder(folder: vscode.WorkspaceFolder) {
         // find context with root folder
         let index = this.folders.findIndex((context: FolderContext, _) => { return context.folder === folder; });
         if (index === -1) {
@@ -59,7 +61,9 @@ export class WorkspaceContext implements vscode.Disposable {
         // run observer functions in reverse order when removing
         let observersReversed = [...this.observers];
         observersReversed.reverse();
-        observersReversed.forEach(fn => fn(context, 'remove'));
+        for (const observer of this.observersReversed) {
+            await observer(context, 'add');
+        }
         context.dispose();
         // remove context
         this.folders = this.folders.splice(index, 1);
