@@ -19,6 +19,7 @@ import { PackageDependenciesProvider } from './PackageDependencyProvider';
 import { SwiftTaskProvider } from './SwiftTaskProvider';
 import { WorkspaceContext } from './WorkspaceContext';
 import { activate as activateSourceKitLSP } from './sourcekit-lsp/extension';
+import statusItem from './statusItem';
 
 /**
  * Activate the extension. This is the main entry point.
@@ -79,7 +80,7 @@ export async function activate(context: vscode.ExtensionContext) {
  * Deactivate the extension.
  * 
  * Any disposables registered in `context.subscriptions` will be automatically
- * disposed of, so there's nothing left to do here.
+ * disposed of.
  */
 export function deactivate() {
 	return;

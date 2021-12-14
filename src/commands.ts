@@ -15,6 +15,7 @@
 import * as vscode from 'vscode';
 import { WorkspaceContext } from './WorkspaceContext';
 import { executeTaskAndWait } from './SwiftTaskProvider';
+import statusItem from './statusItem';
 
 /**
  * References:
@@ -50,6 +51,18 @@ export async function resolveDependencies(ctx: WorkspaceContext) {
     } catch(error) {
         ctx.outputChannel.logEnd(`${error}`);
     }
+    // let tasks = await vscode.tasks.fetchTasks();
+    // let task = tasks.find(task =>
+    //     task.definition.command === 'swift' &&
+    //     task.definition.args[0] === 'package' &&
+    //     task.definition.args[1] === 'resolve'
+    // )!;
+    // task.presentationOptions = {
+    //     reveal: vscode.TaskRevealKind.Silent
+    // };
+    // statusItem.monitor(task);
+    // await executeTaskAndWait(task);
+
     resolveRunning = false;
 }
 
