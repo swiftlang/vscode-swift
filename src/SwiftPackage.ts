@@ -85,7 +85,7 @@ export class SwiftPackage implements PackageContents {
 
     // Did we find a Package.swift
     public get foundPackage(): boolean {
-        return this.contents !== null;
+        return this.contents !== undefined;
     }
     
     get name(): string {
