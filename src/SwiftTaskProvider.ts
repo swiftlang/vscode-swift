@@ -109,7 +109,7 @@ function createSwiftTask(command: string, args: string[], name: string, config?:
     );
     // This doesn't include any quotes added by VS Code.
     // See also: https://github.com/microsoft/vscode/issues/137895
-    task.detail = `${command} ${args.join(' ')}`;
+    task.detail = `swift ${args.join(' ')}`;
     task.group = config?.group;
     task.presentationOptions = config?.presentationOptions ?? {};
     return task;
