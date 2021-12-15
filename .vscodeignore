@@ -1,8 +1,14 @@
+.github/
 .vscode/**
 .vscode-test/**
+out/test/**
 src/**
-.gitignore
+scripts/**
 **/tsconfig.json
+**/tslint.json
 **/.eslintrc.json
 **/*.map
 **/*.ts
+node_modules/**/README.md
+node_modules/**/CHANGELOG.md
+.gitignore
