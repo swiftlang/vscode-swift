@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -31,6 +32,25 @@ export async function exec(command: string, options: cp.ExecOptions): Promise<{ 
             resolve({ stdout, stderr });
         })
     );
+}
+
+/**
+ * Asynchronous wrapper around {@link cp.exec child_process.exec} running
+ * swift executable
+ * 
+ * Commands will be executed by the user's `$SHELL`, if configured.
+ */
+export async function execSwift(args: string, options: cp.ExecOptions): Promise<{ stdout: string; stderr: string }> {
+    const swift = getSwiftExecutable();
+    const commandline = `${swift} ${args}`;
+    return exec(commandline, options);
+}
+
+// Get path to swift executable
+export function getSwiftExecutable(exe: string = 'swift'): string {
+    const config = vscode.workspace.getConfiguration("swift");
+    const root = config.get<string>('path', '');
+    return path.join(root, exe);
 }
 
 /**

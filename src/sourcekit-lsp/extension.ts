@@ -15,13 +15,14 @@
 'use strict';
 import * as vscode from 'vscode';
 import * as langclient from 'vscode-languageclient/node';
+import { getSwiftExecutable } from '../utilities';
 import { activateInlayHints } from './inlayHints';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     const config = vscode.workspace.getConfiguration('sourcekit-lsp');
 
     const sourcekit: langclient.Executable = {
-        command: config.get<string>('serverPath', 'sourcekit-lsp'),
+        command: getSwiftExecutable('sourcekit-lsp'),
         args: config.get<string[]>('serverArguments', [])
     };
 

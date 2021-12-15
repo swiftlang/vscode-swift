@@ -118,7 +118,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
         // Refresh the tree when a package resolve or package update task completes.
         vscode.tasks.onDidEndTask((event) => {
             const definition = event.execution.task.definition;
-            if (definition.command === 'swift' && definition.args[0] === 'package' &&
+            if (definition.type === 'swift' && definition.args[0] === 'package' &&
                (definition.args[1] === 'resolve' || definition.args[1] === 'update')) {
                 this.didChangeTreeDataEmitter.fire();
             }

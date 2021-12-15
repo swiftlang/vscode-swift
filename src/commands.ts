@@ -39,7 +39,7 @@ export async function resolveDependencies(ctx: WorkspaceContext) {
 
     const tasks = await vscode.tasks.fetchTasks();
     const task = tasks.find(task =>
-        task.definition.command === 'swift' &&
+        task.definition.type === 'swift' &&
         task.definition.args[0] === 'package' &&
         task.definition.args[1] === 'resolve'
     )!;
@@ -67,7 +67,7 @@ export async function updateDependencies(ctx: WorkspaceContext) {
 
     const tasks = await vscode.tasks.fetchTasks();
     const task = tasks.find(task =>
-        task.definition.command === 'swift' &&
+        task.definition.type === 'swift' &&
         task.definition.args[0] === 'package' &&
         task.definition.args[1] === 'update'
     )!;

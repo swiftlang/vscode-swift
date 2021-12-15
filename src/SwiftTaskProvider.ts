@@ -15,6 +15,7 @@
 import * as vscode from 'vscode';
 import { WorkspaceContext } from  './WorkspaceContext';
 import { Product } from './SwiftPackage';
+import { getSwiftExecutable } from './utilities';
 
 /**
  * References:
@@ -42,7 +43,7 @@ interface TaskConfig {
 function createBuildAllTask(): vscode.Task {
     const additionalArgs = (process.platform !== 'darwin') ? ['--enable-test-discovery'] : [];
     return createSwiftTask(
-        'swift', 
+        getSwiftExecutable(), 
         ['build', '--build-tests', ...additionalArgs], 
         'Build All', 
         { group: vscode.TaskGroup.Build }
@@ -54,7 +55,7 @@ function createBuildAllTask(): vscode.Task {
  */
 function createCleanTask(): vscode.Task {
     return createSwiftTask(
-        'swift', 
+        getSwiftExecutable(), 
         ['package', 'clean'], 
         'Clean Build Artifacts', 
         { group: vscode.TaskGroup.Clean }
@@ -67,13 +68,13 @@ function createCleanTask(): vscode.Task {
  function createBuildTasks(product: Product): vscode.Task[] {
     return [
         createSwiftTask(
-            'swift', 
+            getSwiftExecutable(), 
             ['build', '--product', product.name], 
             `Build Debug ${product.name}`, 
             { group: vscode.TaskGroup.Build }
         ),
         createSwiftTask(
-            'swift', 
+            getSwiftExecutable(), 
             ['build', '-c', 'release', '--product', product.name], 
             `Build Release ${product.name}`, 
             { group: vscode.TaskGroup.Build }
@@ -85,14 +86,14 @@ function createCleanTask(): vscode.Task {
  * Creates a {@link vscode.Task Task} to resolve the package dependencies.
  */
 function createResolveTask(): vscode.Task {
-    return createSwiftTask('swift', ['package', 'resolve'], 'Resolve Package Dependencies');
+    return createSwiftTask(getSwiftExecutable(), ['package', 'resolve'], 'Resolve Package Dependencies');
 }
 
 /**
  * Creates a {@link vscode.Task Task} to update the package dependencies.
  */
 function createUpdateTask(): vscode.Task {
-    return createSwiftTask('swift', ['package', 'update'], 'Update Package Dependencies');
+    return createSwiftTask(getSwiftExecutable(), ['package', 'update'], 'Update Package Dependencies');
 }
 
 /**
