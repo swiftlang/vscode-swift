@@ -53,7 +53,7 @@ export class SwiftPackage implements PackageContents {
     ) {}
 
     public static async create(folder: vscode.WorkspaceFolder): Promise<SwiftPackage> {
-        let contents = await SwiftPackage.loadPackage(folder);
+        const contents = await SwiftPackage.loadPackage(folder);
         return new SwiftPackage(folder, contents);
     }
 
@@ -113,8 +113,6 @@ export class SwiftPackage implements PackageContents {
     }
 
     getTargets(type: 'executable'|'library'|'test'): Target[] {
-        return this.targets.filter((target, index, array) => {
-            return target.type === type;
-        });    
+        return this.targets.filter(target => target.type === type);    
     }
 }

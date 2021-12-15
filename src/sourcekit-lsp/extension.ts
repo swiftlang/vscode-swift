@@ -33,7 +33,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     const serverOptions: langclient.ServerOptions = sourcekit;
 
-    let clientOptions: langclient.LanguageClientOptions = {
+    const clientOptions: langclient.LanguageClientOptions = {
         documentSelector: [
             'swift',
             'cpp',

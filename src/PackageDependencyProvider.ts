@@ -43,7 +43,7 @@ class PackageNode {
     ) { }
 
     toTreeItem(): vscode.TreeItem {
-        let item = new vscode.TreeItem(
+        const item = new vscode.TreeItem(
             this.name,
             vscode.TreeItemCollapsibleState.Collapsed
         );
@@ -66,7 +66,7 @@ class FileNode {
     ) { }
 
     toTreeItem(): vscode.TreeItem {
-        let item = new vscode.TreeItem(
+        const item = new vscode.TreeItem(
             this.name,
             this.isDirectory ?
                 vscode.TreeItemCollapsibleState.Collapsed :
@@ -172,7 +172,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
      */
     private async getNodesInDirectory(directoryPath: string): Promise<FileNode[]> {
         const contents = await fs.readdir(directoryPath);
-        let results: FileNode[] = [];
+        const results: FileNode[] = [];
         const excludes = configuration.excludePathsFromPackageDependencies;
         for (const fileName of contents) {
             if (excludes.includes(fileName)) {

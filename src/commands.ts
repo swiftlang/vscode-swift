@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from 'vscode';
-import * as debug from './debug';
 import { WorkspaceContext } from './WorkspaceContext';
 import { executeTaskAndWait } from './SwiftTaskProvider';
 
@@ -27,8 +26,8 @@ import { executeTaskAndWait } from './SwiftTaskProvider';
  */
 
 // flags to indicating whether a resolve or update is in progress
-var resolveRunning = false;
-var updateRunning = false;
+let resolveRunning = false;
+let updateRunning = false;
 
 /**
  * Executes a {@link vscode.Task task} to resolve this package's dependencies.
@@ -40,8 +39,8 @@ export async function resolveDependencies(ctx: WorkspaceContext) {
 
     try {
         ctx.outputChannel.logStart("Resolving Dependencies ... ");
-        let tasks = await vscode.tasks.fetchTasks();
-        let task = tasks.find(task =>
+        const tasks = await vscode.tasks.fetchTasks();
+        const task = tasks.find(task =>
             task.definition.command === 'swift' &&
             task.definition.args[0] === 'package' &&
             task.definition.args[1] === 'resolve'
@@ -63,8 +62,8 @@ export async function updateDependencies(ctx: WorkspaceContext) {
 
     try {
         ctx.outputChannel.logStart("Updating Dependencies ... ");
-        let tasks = await vscode.tasks.fetchTasks();
-        let task = tasks.find(task =>
+        const tasks = await vscode.tasks.fetchTasks();
+        const task = tasks.find(task =>
             task.definition.command === 'swift' &&
             task.definition.args[0] === 'package' &&
             task.definition.args[1] === 'update'

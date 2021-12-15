@@ -81,5 +81,7 @@ export async function activate(context: vscode.ExtensionContext) {
  * Any disposables registered in `context.subscriptions` will be automatically
  * disposed of, so there's nothing left to do here.
  */
-export function deactivate() {}
+export function deactivate() {
+	return;
+}
 
