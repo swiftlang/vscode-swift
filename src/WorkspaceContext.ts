@@ -12,10 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+import { setFlagsFromString } from 'v8';
 import * as vscode from 'vscode';
 import { FolderContext } from './FolderContext';
 import { StatusItem } from './StatusItem';
 import { SwiftOutputChannel } from './SwiftOutputChannel';
+import { getSwiftExecutable } from './utilities';
 
 // Context for whole workspace. Holds array of contexts for each workspace folder
 // and the ExtensionContext
@@ -23,12 +25,16 @@ export class WorkspaceContext implements vscode.Disposable {
     public folders: FolderContext[] = [];
     public outputChannel: SwiftOutputChannel;
     public statusItem: StatusItem;
+    public config: vscode.WorkspaceConfiguration;
+    public swiftExe: string;
 
 	public constructor(
         public extensionContext: vscode.ExtensionContext
     ) {
         this.outputChannel = new SwiftOutputChannel();
         this.statusItem = new StatusItem();
+        this.config = vscode.workspace.getConfiguration('swift');
+        this.swiftExe = getSwiftExecutable('swift');
     }
 
     dispose() {

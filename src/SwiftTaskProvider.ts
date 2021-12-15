@@ -15,7 +15,6 @@
 import * as vscode from 'vscode';
 import { WorkspaceContext } from  './WorkspaceContext';
 import { Product } from './SwiftPackage';
-import { getSwiftExecutable } from './utilities';
 
 /**
  * References:
@@ -40,12 +39,11 @@ interface TaskConfig {
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  * This excludes test targets.
  */
-function createBuildAllTask(): vscode.Task {
-    const config = vscode.workspace.getConfiguration("swift");
+function createBuildAllTask(workspaceContext: WorkspaceContext): vscode.Task {
     const additionalArgs = (process.platform !== 'darwin') ? ['--enable-test-discovery'] : [];
     return createSwiftTask(
-        getSwiftExecutable(), 
-        ['build', '--build-tests', ...additionalArgs, ...config.get<string[]>('buildArguments', [])], 
+        workspaceContext.swiftExe, 
+        ['build', '--build-tests', ...additionalArgs, ...workspaceContext.config.get<string[]>('buildArguments', [])], 
         'Build All', 
         { group: vscode.TaskGroup.Build }
     );
@@ -54,9 +52,9 @@ function createBuildAllTask(): vscode.Task {
 /**
  * Creates a {@link vscode.Task Task} to clean the build artifacts.
  */
-function createCleanTask(): vscode.Task {
+function createCleanTask(workspaceContext: WorkspaceContext): vscode.Task {
     return createSwiftTask(
-        getSwiftExecutable(), 
+        workspaceContext.swiftExe, 
         ['package', 'clean'], 
         'Clean Build Artifacts', 
         { group: vscode.TaskGroup.Clean }
@@ -66,18 +64,17 @@ function createCleanTask(): vscode.Task {
 /**
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
- function createBuildTasks(product: Product): vscode.Task[] {
-    const config = vscode.workspace.getConfiguration("swift");
+ function createBuildTasks(product: Product,  workspaceContext: WorkspaceContext): vscode.Task[] {
     return [
         createSwiftTask(
-            getSwiftExecutable(), 
-            ['build', '--product', product.name, ...config.get<string[]>('buildArguments', [])], 
+            workspaceContext.swiftExe, 
+            ['build', '--product', product.name, ...workspaceContext.config.get<string[]>('buildArguments', [])], 
             `Build Debug ${product.name}`, 
             { group: vscode.TaskGroup.Build }
         ),
         createSwiftTask(
-            getSwiftExecutable(), 
-            ['build', '-c', 'release', '--product', product.name, ...config.get<string[]>('buildArguments', [])], 
+            workspaceContext.swiftExe, 
+            ['build', '-c', 'release', '--product', product.name, ...workspaceContext.config.get<string[]>('buildArguments', [])], 
             `Build Release ${product.name}`, 
             { group: vscode.TaskGroup.Build }
         )
@@ -87,15 +84,15 @@ function createCleanTask(): vscode.Task {
 /**
  * Creates a {@link vscode.Task Task} to resolve the package dependencies.
  */
-function createResolveTask(): vscode.Task {
-    return createSwiftTask(getSwiftExecutable(), ['package', 'resolve'], 'Resolve Package Dependencies');
+function createResolveTask(workspaceContext: WorkspaceContext): vscode.Task {
+    return createSwiftTask(workspaceContext.swiftExe, ['package', 'resolve'], 'Resolve Package Dependencies');
 }
 
 /**
  * Creates a {@link vscode.Task Task} to update the package dependencies.
  */
-function createUpdateTask(): vscode.Task {
-    return createSwiftTask(getSwiftExecutable(), ['package', 'update'], 'Update Package Dependencies');
+function createUpdateTask(workspaceContext: WorkspaceContext): vscode.Task {
+    return createSwiftTask(workspaceContext.swiftExe, ['package', 'update'], 'Update Package Dependencies');
 }
 
 /**
@@ -177,17 +174,17 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             return [];
         }
         const tasks = [
-            createBuildAllTask(),
-            createCleanTask(),
-            createResolveTask(),
-            createUpdateTask()
+            createBuildAllTask(this.workspaceContext),
+            createCleanTask(this.workspaceContext),
+            createResolveTask(this.workspaceContext),
+            createUpdateTask(this.workspaceContext)
         ];
 
         for (const folder of this.workspaceContext.folders) {
             if (!folder.isRootFolder) { continue; }
             const executables = folder.swiftPackage.executableProducts;
             for (const executable of executables) {
-                tasks.push(...createBuildTasks(executable));
+                tasks.push(...createBuildTasks(executable, this.workspaceContext));
             }
         }
         return tasks;
