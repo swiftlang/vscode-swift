@@ -14,30 +14,60 @@
 
 // Class to generate a weak reference to an object
 export class WeakReference<Ref> {
-    static referenceMap = Object();
-    static nextId = 0;
+    private static referenceMap = Object();
+    private static nextId = 0;
 
-    private id: number;
+    private id?: number;
 
-    public constructor(ref: Ref) {
-        this.id = WeakReference.nextId;
-        WeakReference.referenceMap[this.id] = ref;
-        WeakReference.nextId += 1;
+    constructor(value: Ref) {
+        this.id = this.newReference(value);
     }
 
-    public get value(): Ref|undefined {
+    private newReference(value: Ref): number {
+        const id = WeakReference.nextId;
+        WeakReference.referenceMap[id] = value;
+        WeakReference.nextId += 1;
+        return id;
+    }
+
+    get value(): Ref|undefined {
+        if (this.id === undefined) { return undefined; }
         return WeakReference.referenceMap[this.id];
     }
 
-    public set value(value: Ref|undefined) {
-        WeakReference.referenceMap[this.id] = value;
+    set value(value: Ref|undefined) {
+        if (this.id === undefined) {
+            if (value !== undefined) {
+                this.id = this.newReference(value);
+            } 
+        } else {
+            if (value === undefined) {
+                this.clear();
+            } else {
+                WeakReference.referenceMap[this.id] = value;
+            }
+        }
+    }
+
+    clear() {
+        if (this.id === undefined) { return undefined; }
+        delete WeakReference.referenceMap[this.id];
     }
 
     dispose() {
+        if (this.id === undefined) { return undefined; }
         let value = WeakReference.referenceMap[this.id];
         if (value as { dispose(): any }) {
             value.dispose();
         }
-        WeakReference.referenceMap[this.id] = undefined;
+        this.clear();
+    }
+
+    static get count() {
+        return Object.keys(this.referenceMap).length;
+    }
+
+    static clearAll() {
+        WeakReference.referenceMap = Object();
     }
 }

@@ -46,6 +46,7 @@ export class PackageWatcher {
     dispose() {
         this.packageFileWatcher?.dispose();
         this.resolvedFileWatcher?.dispose();
+        this.contextRef.clear();
     }
 
     private createPackageFileWatcher(ctx: FolderContext): vscode.FileSystemWatcher {
