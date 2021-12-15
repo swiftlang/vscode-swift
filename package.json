@@ -58,7 +58,7 @@
             "type": "array",
             "default": [],
             "items": {
-                "type": "string"
+              "type": "string"
             },
             "description": "Arguments to pass to sourcekit-lsp. Argument keys and values should be provided as separate entries in the array e.g. ['--log-level', 'debug']"
           },
@@ -76,13 +76,13 @@
             "type": "string",
             "default": "off",
             "enum": [
-                "off",
-                "messages",
-                "verbose"
+              "off",
+              "messages",
+              "verbose"
             ],
             "description": "Traces the communication between VS Code and the SourceKit-LSP language server."
+          }
         }
-}
       }
     ],
     "menus": {
@@ -149,6 +149,7 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
+    "format": "prettier --check src **/*.json",
     "test": "node ./out/test/runTest.js",
     "package": "vsce package"
   },
@@ -161,8 +162,10 @@
     "@typescript-eslint/parser": "^5.1.0",
     "@vscode/test-electron": "^1.6.2",
     "eslint": "^8.1.0",
+    "eslint-config-prettier": "^8.3.0",
     "glob": "^7.1.7",
     "mocha": "^9.1.3",
+    "prettier": "2.5.1",
     "typescript": "^4.4.4",
     "vsce": "^2.5.0"
   },

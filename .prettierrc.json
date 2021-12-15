@@ -1,0 +1,13 @@
+{
+  "printWidth": 100,
+  "tabWidth": 4,
+  "arrowParens": "avoid",
+  "overrides": [
+    {
+      "files": "*.json",
+      "options": {
+        "tabWidth": 2
+      }
+    }
+  ]
+}
