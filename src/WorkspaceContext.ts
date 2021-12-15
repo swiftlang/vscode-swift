@@ -22,9 +22,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public folders: FolderContext[] = [];
     public outputChannel: SwiftOutputChannel;
 
-	public constructor(
-        public extensionContext: vscode.ExtensionContext
-    ) {
+	public constructor() {
         this.outputChannel = new SwiftOutputChannel();
     }
 
@@ -50,7 +48,7 @@ export class WorkspaceContext implements vscode.Disposable {
         const folderContext = await FolderContext.create(folder, isRootFolder, this);
         this.folders.push(folderContext);
         for (const observer of this.observers) {
-            await observer(folderContext, 'add');
+            await observer(folderContext, 'add', this);
         }
     }
 
@@ -67,7 +65,7 @@ export class WorkspaceContext implements vscode.Disposable {
         const observersReversed = [...this.observers];
         observersReversed.reverse();
         for (const observer of observersReversed) {
-            await observer(context, 'remove');
+            await observer(context, 'remove', this);
         }
         context.dispose();
         // remove context
@@ -82,4 +80,4 @@ export class WorkspaceContext implements vscode.Disposable {
     private observers: Set<WorkspaceFoldersObserver> = new Set();
 }
 
-export type WorkspaceFoldersObserver = (folder: FolderContext, operation: 'add'|'remove') => unknown;
+export type WorkspaceFoldersObserver = (folder: FolderContext, operation: 'add'|'remove', workspace: WorkspaceContext) => unknown;

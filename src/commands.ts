@@ -79,8 +79,8 @@ export async function updateDependencies(ctx: WorkspaceContext) {
 /**
  * Registers this extension's commands in the given {@link vscode.ExtensionContext context}.
  */
-export function register(ctx: WorkspaceContext) {
-    ctx.extensionContext.subscriptions.push(
+export function register(extensionContext: vscode.ExtensionContext, ctx: WorkspaceContext) {
+    extensionContext.subscriptions.push(
         vscode.commands.registerCommand('swift.resolveDependencies', () => { resolveDependencies(ctx); }),
         vscode.commands.registerCommand('swift.updateDependencies', () => { updateDependencies(ctx); }),
     );

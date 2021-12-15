@@ -28,7 +28,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	await activateSourceKitLSP(context);
 
-	const workspaceContext = new WorkspaceContext(context);
+	const workspaceContext = new WorkspaceContext();
 	const onWorkspaceChange = vscode.workspace.onDidChangeWorkspaceFolders((event) => {
 		if (workspaceContext === undefined) { console.log("Trying to run onDidChangeWorkspaceFolders on deleted context"); return; }
 		workspaceContext.onDidChangeWorkspaceFolders(event);
@@ -36,7 +36,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Register commands.
 	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(workspaceContext));
-	commands.register(workspaceContext);
+	commands.register(context, workspaceContext);
 
 	// observer for logging workspace folder addition/removal
 	const logObserver = workspaceContext.observerFolders((folderContext, operation) => {
@@ -56,15 +56,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 
 	// observer that will resolve package for root folder
-	const resolvePackageObserver = workspaceContext.observerFolders(async (folder, operation) => {
+	const resolvePackageObserver = workspaceContext.observerFolders(async (folder, operation, workspace) => {
 		if (folder.isRootFolder && operation === 'add') {
 			// Create launch.json files based on package description. 
 			await debug.makeDebugConfigurations(folder);
-<<<<<<< HEAD
-			await commands.resolveDependencies(workspaceContext);
-=======
-			await commands.resolveDependencies();
->>>>>>> Added WeakReference.clear, count, clearAll
+			await commands.resolveDependencies(workspace);
 		}
 	});
 
