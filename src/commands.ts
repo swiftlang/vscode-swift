@@ -33,37 +33,47 @@ var updateRunning = false;
 /**
  * Executes a {@link vscode.Task task} to resolve this package's dependencies.
  */
-export async function resolveDependencies() {
+export async function resolveDependencies(ctx: WorkspaceContext) {
     // return if running resolve or update already
     if (resolveRunning || updateRunning) { return; }
     resolveRunning = true;
 
-    let tasks = await vscode.tasks.fetchTasks();
-    let task = tasks.find(task =>
-        task.definition.command === 'swift' &&
-        task.definition.args[0] === 'package' &&
-        task.definition.args[1] === 'resolve'
-    )!;
-    await executeTaskAndWait(task);
-
+    try {
+        ctx.outputChannel.logStart("Resolving Dependencies ... ");
+        let tasks = await vscode.tasks.fetchTasks();
+        let task = tasks.find(task =>
+            task.definition.command === 'swift' &&
+            task.definition.args[0] === 'package' &&
+            task.definition.args[1] === 'resolve'
+        )!;
+        await executeTaskAndWait(task);
+        ctx.outputChannel.logEnd("done.");
+    } catch(error) {
+        ctx.outputChannel.logEnd(`${error}`);
+    }
     resolveRunning = false;
 }
 
 /**
  * Executes a {@link vscode.Task task} to update this package's dependencies.
  */
-export async function updateDependencies() {
+export async function updateDependencies(ctx: WorkspaceContext) {
     if (updateRunning) { return; }
     updateRunning = true;
 
-    let tasks = await vscode.tasks.fetchTasks();
-    let task = tasks.find(task =>
-        task.definition.command === 'swift' &&
-        task.definition.args[0] === 'package' &&
-        task.definition.args[1] === 'update'
-    )!;
-    await executeTaskAndWait(task);
-
+    try {
+        ctx.outputChannel.logStart("Updating Dependencies ... ");
+        let tasks = await vscode.tasks.fetchTasks();
+        let task = tasks.find(task =>
+            task.definition.command === 'swift' &&
+            task.definition.args[0] === 'package' &&
+            task.definition.args[1] === 'update'
+        )!;
+        await executeTaskAndWait(task);
+        ctx.outputChannel.logEnd("done.");
+    } catch(error) {
+        ctx.outputChannel.logEnd(`${error}`);
+    }
     updateRunning = false;
 }
 
@@ -72,7 +82,7 @@ export async function updateDependencies() {
  */
 export function register(ctx: WorkspaceContext) {
     ctx.extensionContext.subscriptions.push(
-        vscode.commands.registerCommand('swift.resolveDependencies', resolveDependencies),
-        vscode.commands.registerCommand('swift.updateDependencies', updateDependencies),
+        vscode.commands.registerCommand('swift.resolveDependencies', () => { resolveDependencies(ctx); }),
+        vscode.commands.registerCommand('swift.updateDependencies', () => { updateDependencies(ctx); }),
     );
 }

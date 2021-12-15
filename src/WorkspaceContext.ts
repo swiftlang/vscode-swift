@@ -14,18 +14,23 @@
 
 import * as vscode from 'vscode';
 import { FolderContext } from './FolderContext';
+import { SwiftOutputChannel } from './SwiftOutputChannel';
 
 // Context for whole workspace. Holds array of contexts for each workspace folder
 // and the ExtensionContext
 export class WorkspaceContext implements vscode.Disposable {
     public folders: FolderContext[] = [];
+    public outputChannel: SwiftOutputChannel;
 
 	public constructor(
         public extensionContext: vscode.ExtensionContext
-    ) {}
+    ) {
+        this.outputChannel = new SwiftOutputChannel();
+    }
 
     dispose() {
         this.folders.forEach(f => f.dispose());
+        this.outputChannel.dispose();
     }
 
     // catch workspace folder changes and add/remove folders based on those changes
@@ -42,7 +47,7 @@ export class WorkspaceContext implements vscode.Disposable {
     // add folder to workspace
     public async addFolder(folder: vscode.WorkspaceFolder) {
         const isRootFolder = this.folders.length === 0;
-        let folderContext = await FolderContext.create(folder, isRootFolder);
+        let folderContext = await FolderContext.create(folder, isRootFolder, this);
         this.folders.push(folderContext);
         for (const observer of this.observers) {
             await observer(folderContext, 'add');
