@@ -17,6 +17,7 @@ import { PackageWatcher } from './PackageWatcher';
 import { SwiftPackage } from './SwiftPackage';
 import { WorkspaceContext } from './WorkspaceContext';
 import contextKeys from './contextKeys';
+import { WeakReference } from './utilities/WeakReference';
 
 export class FolderContext implements vscode.Disposable {
     private packageWatcher?: PackageWatcher;
@@ -29,7 +30,6 @@ export class FolderContext implements vscode.Disposable {
     ) {
         if (this.isRootFolder) {
             this.packageWatcher = new PackageWatcher(this, workspaceContext);
-            this.packageWatcher.install();
             this.setContextKeys();
         }
     }

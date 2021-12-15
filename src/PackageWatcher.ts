@@ -17,6 +17,7 @@ import * as debug from './debug';
 import * as commands from './commands';
 import { FolderContext } from './FolderContext';
 import { WorkspaceContext } from './WorkspaceContext';
+import { WeakReference } from './utilities/WeakReference';
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
@@ -28,20 +29,14 @@ export class PackageWatcher {
 
     private packageFileWatcher?: vscode.FileSystemWatcher;
     private resolvedFileWatcher?: vscode.FileSystemWatcher;
+    private contextRef: WeakReference<FolderContext>;
+    private workspaceContextRef: WeakReference<WorkspaceContext>;
 
-    constructor(
-        private folderContext: FolderContext,
-        private workspaceContext: WorkspaceContext
-    ) {
-    }
-
-    /**
-     * Creates and installs {@link vscode.FileSystemWatcher file system watchers} for
-     * **Package.swift** and **Package.resolved**.
-     */
-    install() {
-        this.packageFileWatcher = this.createPackageFileWatcher();
-        this.resolvedFileWatcher = this.createResolvedFileWatcher();
+    constructor(ctx: FolderContext, workspaceContext: WorkspaceContext) {
+        this.contextRef = new WeakReference(ctx);
+        this.workspaceContextRef = new WeakReference(workspaceContext);
+        this.packageFileWatcher = this.createPackageFileWatcher(ctx);
+        this.resolvedFileWatcher = this.createResolvedFileWatcher(ctx);
     }
 
     /**
@@ -53,9 +48,10 @@ export class PackageWatcher {
         this.resolvedFileWatcher?.dispose();
     }
 
-    private createPackageFileWatcher(): vscode.FileSystemWatcher {
+    private createPackageFileWatcher(ctx: FolderContext): vscode.FileSystemWatcher {
+        let folder = ctx.folder;
         const watcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(this.folderContext.folder, 'Package.swift')
+            new vscode.RelativePattern(folder, 'Package.swift')
         );
         watcher.onDidCreate(async () => await this.handlePackageSwiftChange());
         watcher.onDidChange(async () => await this.handlePackageSwiftChange());
@@ -63,9 +59,10 @@ export class PackageWatcher {
         return watcher;
     }
 
-    private createResolvedFileWatcher(): vscode.FileSystemWatcher {
+    private createResolvedFileWatcher(ctx: FolderContext): vscode.FileSystemWatcher {
+        let folder = ctx.folder;
         const watcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(this.folderContext.folder, 'Package.resolved')
+            new vscode.RelativePattern(folder, 'Package.resolved')
         );
         watcher.onDidCreate(async () => await this.handlePackageResolvedChange());
         watcher.onDidChange(async () => await this.handlePackageResolvedChange());
@@ -81,14 +78,19 @@ export class PackageWatcher {
      * dependencies.
      */
     async handlePackageSwiftChange() {
+        if (this.contextRef.value === undefined) { return; }
         // Load SwiftPM Package.swift description 
-        await this.folderContext.reload();
+        await this.contextRef.value.reload();
         // Create launch.json files based on package description. Run this in parallel
         // with package resolution
-        debug.makeDebugConfigurations(this.folderContext);
+        debug.makeDebugConfigurations(this.contextRef.value);
         // if package has dependencies resolve them
-        if (this.folderContext.isRootFolder && this.folderContext.swiftPackage.foundPackage) {
-            await commands.resolveDependencies(this.workspaceContext);
+        if (
+            this.contextRef.value.isRootFolder && 
+            this.contextRef.value.swiftPackage.foundPackage &&
+            this.workspaceContextRef.value
+        ) {
+            await commands.resolveDependencies(this.workspaceContextRef.value);
         }
     }
 
@@ -98,8 +100,13 @@ export class PackageWatcher {
      * This will resolve any changes in the Package.resolved.
      */
     private async handlePackageResolvedChange() {
-        if (this.folderContext.isRootFolder && this.folderContext.swiftPackage.foundPackage) {
-            await commands.resolveDependencies(this.workspaceContext);
+        if (this.contextRef.value === undefined) { return; }
+        if (
+            this.contextRef.value.isRootFolder && 
+            this.contextRef.value.swiftPackage.foundPackage &&
+            this.workspaceContextRef.value
+        ) {
+            await commands.resolveDependencies(this.workspaceContextRef.value);
         }
     }
 }
