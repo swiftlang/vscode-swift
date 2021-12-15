@@ -14,6 +14,7 @@
 
 import * as vscode from 'vscode';
 import { FolderContext } from './FolderContext';
+import { StatusItem } from './StatusItem';
 import { SwiftOutputChannel } from './SwiftOutputChannel';
 
 // Context for whole workspace. Holds array of contexts for each workspace folder
@@ -21,16 +22,19 @@ import { SwiftOutputChannel } from './SwiftOutputChannel';
 export class WorkspaceContext implements vscode.Disposable {
     public folders: FolderContext[] = [];
     public outputChannel: SwiftOutputChannel;
+    public statusItem: StatusItem;
 
 	public constructor(
         public extensionContext: vscode.ExtensionContext
     ) {
         this.outputChannel = new SwiftOutputChannel();
+        this.statusItem = new StatusItem();
     }
 
     dispose() {
         this.folders.forEach(f => f.dispose());
         this.outputChannel.dispose();
+        this.statusItem.dispose();
     }
 
     // catch workspace folder changes and add/remove folders based on those changes

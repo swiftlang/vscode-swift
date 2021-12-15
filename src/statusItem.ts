@@ -18,7 +18,7 @@ import * as vscode from 'vscode';
  * A {@link vscode.StatusBarItem StatusBarItem} to display the status
  * of tasks run by this extension.
  */
-class StatusItem {
+export class StatusItem {
 
     private item: vscode.StatusBarItem;
 
@@ -40,9 +40,3 @@ class StatusItem {
         this.item.dispose();
     }
 }
-
-/**
- * The global {@link StatusItem} object.
- */
- const statusItem = new StatusItem();
- export default statusItem;
