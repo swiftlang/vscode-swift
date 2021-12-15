@@ -17,7 +17,7 @@ import * as vscode from 'vscode';
 import { FolderContext } from './FolderContext';
 import { StatusItem } from './StatusItem';
 import { SwiftOutputChannel } from './SwiftOutputChannel';
-import { getSwiftExecutable } from './utilities';
+import { execSwift, getSwiftExecutable } from './utilities';
 
 // Context for whole workspace. Holds array of contexts for each workspace folder
 // and the ExtensionContext
@@ -61,6 +61,17 @@ export class WorkspaceContext implements vscode.Disposable {
         this.folders.push(folderContext);
         for (const observer of this.observers) {
             await observer(folderContext, 'add');
+        }
+    }
+
+    // report swift version and throw error if it failed to find swift
+    async reportSwiftVersion() {
+        try {
+            const { stdout } = await execSwift('--version', {});
+            const version = stdout.trimEnd();
+            this.outputChannel.log(version);
+        } catch(error) {
+            throw Error("Cannot find swift executable.");
         }
     }
 
