@@ -41,10 +41,11 @@ interface TaskConfig {
  * This excludes test targets.
  */
 function createBuildAllTask(): vscode.Task {
+    const config = vscode.workspace.getConfiguration("swift");
     const additionalArgs = (process.platform !== 'darwin') ? ['--enable-test-discovery'] : [];
     return createSwiftTask(
         getSwiftExecutable(), 
-        ['build', '--build-tests', ...additionalArgs], 
+        ['build', '--build-tests', ...additionalArgs, ...config.get<string[]>('buildArguments', [])], 
         'Build All', 
         { group: vscode.TaskGroup.Build }
     );
@@ -66,16 +67,17 @@ function createCleanTask(): vscode.Task {
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
  function createBuildTasks(product: Product): vscode.Task[] {
+    const config = vscode.workspace.getConfiguration("swift");
     return [
         createSwiftTask(
             getSwiftExecutable(), 
-            ['build', '--product', product.name], 
+            ['build', '--product', product.name, ...config.get<string[]>('buildArguments', [])], 
             `Build Debug ${product.name}`, 
             { group: vscode.TaskGroup.Build }
         ),
         createSwiftTask(
             getSwiftExecutable(), 
-            ['build', '-c', 'release', '--product', product.name], 
+            ['build', '-c', 'release', '--product', product.name, ...config.get<string[]>('buildArguments', [])], 
             `Build Release ${product.name}`, 
             { group: vscode.TaskGroup.Build }
         )

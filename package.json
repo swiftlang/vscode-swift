@@ -44,6 +44,15 @@
             "description": "The path of the folder containing swift executables. Default is to look in $PATH",
             "order": 1
           },
+          "swift.buildArguments": {
+            "type": "array",
+            "default": [],
+            "items": {
+                "type": "string"
+            },
+            "description": "Arguments to pass to swift build. Argument key and values should be provided as separate entries.",
+            "order": 2
+          },
           "swift.excludePathsFromPackageDependencies": {
             "description": "A list of paths to exclude from the Package Dependencies view.",
             "type": "array",
@@ -54,7 +63,7 @@
               ".git",
               ".github"
             ],
-            "order": 2
+            "order": 3
           }
         }
       },
