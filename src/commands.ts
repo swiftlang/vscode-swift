@@ -48,9 +48,9 @@ export async function resolveDependencies(ctx: WorkspaceContext) {
         task.presentationOptions = {
             reveal: vscode.TaskRevealKind.Silent
         };
-        ctx.statusItem.show(task.name);
+        ctx.statusItem.start(task);
         await executeTaskAndWait(task);
-        ctx.statusItem.hide();
+        ctx.statusItem.end(task);
         ctx.outputChannel.logEnd("done.");
     } catch(error) {
         ctx.outputChannel.logEnd(`${error}`);
