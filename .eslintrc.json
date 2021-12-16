@@ -7,7 +7,12 @@
   },
   "plugins": ["@typescript-eslint"],
   "rules": {
-    "@typescript-eslint/no-non-null-assertion": "off"
+    "curly": "error",
+    "eqeqeq": "warn",
+    "no-throw-literal": "warn",
+    "semi": "off",
+    "@typescript-eslint/no-non-null-assertion": "off",
+    "@typescript-eslint/semi": "error"
   },
   "extends": [
       "eslint:recommended",
