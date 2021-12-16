@@ -31,6 +31,20 @@ import { FolderContext } from './FolderContext';
  */
 
 /**
+ * The pinned state of a package, as parsed from **Package.resolved**.
+ */
+interface PinnedPackage {
+    
+    package: string;
+    repositoryURL: string;
+    state: {
+        branch?: string;
+        revision: string;
+        version?: string;
+    }
+}
+
+/**
  * A package in the Package Dependencies {@link vscode.TreeView TreeView}.
  */ 
 class PackageNode {
@@ -158,10 +172,10 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             return [];
         }
         const data = await fs.readFile(path.join(this.ctx.folder.uri.fsPath, 'Package.resolved'), 'utf8');
-        return JSON.parse(data).object.pins.map((pin: any) => new PackageNode(
+        return JSON.parse(data).object.pins.map((pin: PinnedPackage) => new PackageNode(
             pin.package,
             pin.repositoryURL,
-            pin.state.version ?? pin.state.branch,
+            pin.state.version ?? pin.state.branch ?? pin.state.revision.substring(0, 7),
             'remote'
         ));
     }
