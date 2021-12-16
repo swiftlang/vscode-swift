@@ -100,7 +100,7 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
                 type: "lldb",
                 request: "launch",
                 name: `Test ${ctx.swiftPackage.name}`,
-                program: `./.build/x86_64-unknown-linux/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
+                program: `./.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
                 cwd: `\${workspaceFolder:${ctx.folder.name}}`,
                 preLaunchTask: `swift: Build All`
             }];

@@ -40,9 +40,10 @@ interface TaskConfig {
  * This excludes test targets.
  */
 function createBuildAllTask(): vscode.Task {
+    const additionalArgs = (process.platform !== 'darwin') ? ['--enable-test-discovery'] : [];
     return createSwiftTask(
         'swift', 
-        ['build', '--build-tests'], 
+        ['build', '--build-tests', ...additionalArgs], 
         'Build All', 
         { group: vscode.TaskGroup.Build }
     );
