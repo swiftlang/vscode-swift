@@ -30,8 +30,13 @@ export async function makeDebugConfigurations(ctx: FolderContext) {
     for (const config of configs) {
         const index = launchConfigs.findIndex(c => c.name === config.name);
         if (index !== -1) {
-            if (launchConfigs[index].program !== config.program || launchConfigs[index].cwd !== config.cwd) {
-                const answer = await vscode.window.showErrorMessage(`Launch configuration '${config.name}' already exists. Do you want to update it?`, 'Cancel', 'Update');
+            if (launchConfigs[index].program !== config.program || 
+                launchConfigs[index].cwd !== config.cwd ||
+                launchConfigs[index].preLaunchTask !== config.preLaunchTask) {
+                const answer = await vscode.window.showErrorMessage(
+                    `Launch configuration '${config.name}' already exists. Do you want to update it?`, 
+                    'Cancel', 'Update'
+                );
                 if (answer === "Cancel") { continue; }
                 launchConfigs[index] = config;
                 edited = true;
