@@ -31,14 +31,15 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// report swift version and throw error 
 	await workspaceContext.reportSwiftVersion();
-
+	workspaceContext.setLLDBVersion();
+	
 	const onWorkspaceChange = vscode.workspace.onDidChangeWorkspaceFolders((event) => {
 		if (workspaceContext === undefined) { console.log("Trying to run onDidChangeWorkspaceFolders on deleted context"); return; }
 		workspaceContext.onDidChangeWorkspaceFolders(event);
 	});
 
 	await activateSourceKitLSP(context);
-
+	
 	// Register commands.
 	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(workspaceContext));
 	commands.register(workspaceContext);

@@ -59,7 +59,10 @@ export class SwiftPackage implements PackageContents {
 
     public static async loadPackage(folder: vscode.WorkspaceFolder): Promise<PackageContents|null|undefined> {
         try {
-            const { stdout } = await execSwift(['package', 'describe', '--type', 'json'], { cwd: folder.uri.fsPath });
+            const { stdout } = await execSwift(
+                ['package', 'describe', '--type', 'json'], 
+                { cwd: folder.uri.fsPath }
+            );
             return JSON.parse(stdout);
         } catch(error) {
             const execError = error as {stderr: string};

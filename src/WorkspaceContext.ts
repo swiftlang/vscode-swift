@@ -16,7 +16,8 @@ import * as vscode from 'vscode';
 import { FolderContext } from './FolderContext';
 import { StatusItem } from './StatusItem';
 import { SwiftOutputChannel } from './SwiftOutputChannel';
-import { execSwift, getXCTestPath } from './utilities';
+import { execSwift, getSwiftExecutable, getXCTestPath } from './utilities';
+import { getLLDBLibPath } from './lldb';
 
 // Context for whole workspace. Holds array of contexts for each workspace folder
 // and the ExtensionContext
@@ -71,19 +72,8 @@ export class WorkspaceContext implements vscode.Disposable {
         }
     }
 
-    // report swift version and throw error if it failed to find swift
-    async reportSwiftVersion() {
-        try {
-            const { stdout } = await execSwift(['--version'], {});
-            const version = stdout.trimEnd();
-            this.outputChannel.log(version);
-        } catch(error) {
-            throw Error("Cannot find swift executable.");
-        }
-    }
-
     // remove folder from workspace
-    private async removeFolder(folder: vscode.WorkspaceFolder) {
+    async removeFolder(folder: vscode.WorkspaceFolder) {
         // find context with root folder
         const index = this.folders.findIndex(context => context.folder === folder);
         if (index === -1) {
@@ -105,6 +95,45 @@ export class WorkspaceContext implements vscode.Disposable {
     observerFolders(fn: WorkspaceFoldersObserver): vscode.Disposable {
         this.observers.add(fn);
         return { dispose: () => this.observers.delete(fn) };
+    }
+
+    // report swift version and throw error if it failed to find swift
+    async reportSwiftVersion() {
+        try {
+            const { stdout } = await execSwift(['--version']);
+            const version = stdout.trimEnd();
+            this.outputChannel.log(version);
+        } catch(error) {
+            throw Error("Cannot find swift executable.");
+        }
+    }
+
+    // find LLDB version and setup path in CoreLLDB
+    async setLLDBVersion() {
+        // don't set LLDB on windows as swift version is not working at the moment
+        if (process.platform === 'win32') { return; }
+        const libPath = await getLLDBLibPath(getSwiftExecutable('lldb'));
+        if (!libPath) { return; }
+
+        const lldbConfig = vscode.workspace.getConfiguration('lldb');
+        const configLLDBPath = lldbConfig.get<string>('library');
+        if (configLLDBPath === libPath) { return; }
+
+        // show dialog for setting up LLDB
+        vscode.window.showInformationMessage(
+            "CoreLLDB requires the correct Swift version of LLDB for debugging. Do you want to set this up in your global settings or the workspace Settings?", 
+            'Cancel', 'Global', 'Workspace').then(result => {
+                switch (result) {
+                case 'Global':
+                    lldbConfig.update('library', libPath, vscode.ConfigurationTarget.Global);
+                    // clear workspace setting
+                    lldbConfig.update('library', undefined, vscode.ConfigurationTarget.Workspace);
+                    break;
+                case 'Workspace':
+                    lldbConfig.update('library', libPath, vscode.ConfigurationTarget.Workspace);
+                    break;
+                }
+        });
     }
 
     private observers: Set<WorkspaceFoldersObserver> = new Set();
