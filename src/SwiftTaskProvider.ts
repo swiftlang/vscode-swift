@@ -90,7 +90,7 @@ function createUpdateTask(): vscode.Task {
  * Helper function to create a {@link vscode.Task Task} with the given parameters.
  */
 function createSwiftTask(command: string, args: string[], name: string, config?: TaskConfig): vscode.Task {
-    let task = new vscode.Task(
+    const task = new vscode.Task(
         { type: 'swift', command: command, args: args },
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
@@ -110,7 +110,7 @@ function createSwiftTask(command: string, args: string[], name: string, config?:
  * Execute shell command as task and wait until it is finished
  */
 export async function executeShellTaskAndWait(name: string, command: string, args: string[], config?: TaskConfig) {
-    let task = new vscode.Task(
+    const task = new vscode.Task(
         { type: 'swift', command: command, args: args },
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
@@ -159,11 +159,12 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
      * - `swift package update`
      * - `swift run ${target}` for every executable target
      */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async provideTasks(token: vscode.CancellationToken): Promise<vscode.Task[]> {
         if (this.workspaceContext.folders.length === 0) {
             return [];
         }
-        let tasks = [
+        const tasks = [
             createBuildAllTask(),
             createCleanTask(),
             createResolveTask(),
@@ -186,10 +187,11 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
      * Other than its definition, this `Task` may be incomplete,
      * so this method should fill in the blanks.
      */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     resolveTask(task: vscode.Task, token: vscode.CancellationToken): vscode.Task {
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
-        let newTask = new vscode.Task(
+        const newTask = new vscode.Task(
             task.definition,
             task.scope ?? vscode.TaskScope.Workspace,
             task.name || 'Custom Task',

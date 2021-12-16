@@ -44,7 +44,7 @@ export class FolderContext implements vscode.Disposable {
         workspaceContext: WorkspaceContext
     ): Promise<FolderContext> 
     {
-        let swiftPackage = await SwiftPackage.create(rootFolder);
+        const swiftPackage = await SwiftPackage.create(rootFolder);
         return new FolderContext(rootFolder, swiftPackage, isRootFolder, workspaceContext);
     }
 
