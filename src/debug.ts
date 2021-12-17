@@ -110,7 +110,9 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
                 preLaunchTask: `swift: Build All`
             }];
         }
-    } catch {}
+    } catch {
+        // ignore error
+    }
 
     return [];
 }
