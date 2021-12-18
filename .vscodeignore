@@ -7,5 +7,7 @@ out/**
 scripts/**
 src/**
 **/.eslintrc.json
+**/.prettierignore
+**/.prettierrc.json
 **/tsconfig.json
 **/*.map
