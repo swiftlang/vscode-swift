@@ -25,7 +25,6 @@ export class StatusItem {
 
     constructor() {
         this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-        this.item.command = `terminal.focus`;
     }
 
     /**
@@ -55,15 +54,16 @@ export class StatusItem {
         this.runningTasks.splice(index, 1);
         if (this.runningTasks.length === 0) {
             this.hide();
+        } else {
+            const taskToDisplay = this.runningTasks[this.runningTasks.length - 1];
+            this.show(`$(sync~spin) ${taskToDisplay.name}`);
         }
-        const taskToDisplay = this.runningTasks[this.runningTasks.length - 1];
-        this.show(`$(sync~spin) ${taskToDisplay.name}`);
     }
 
     /**
      * Shows the {@link vscode.StatusBarItem StatusBarItem} with the provided message.
      */
-    show(message: string) {
+    private show(message: string) {
         this.item.text = message;
         this.item.show();
     }
@@ -71,7 +71,7 @@ export class StatusItem {
     /**
      * Hides the {@link vscode.StatusBarItem StatusBarItem}.
      */
-    hide() {
+    private hide() {
         this.item.hide();
     }
     

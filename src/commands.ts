@@ -37,25 +37,24 @@ export async function resolveDependencies(ctx: WorkspaceContext) {
     if (resolveRunning || updateRunning) { return; }
     resolveRunning = true;
 
+    const tasks = await vscode.tasks.fetchTasks();
+    const task = tasks.find(task =>
+        task.definition.command === 'swift' &&
+        task.definition.args[0] === 'package' &&
+        task.definition.args[1] === 'resolve'
+    )!;
+    task.presentationOptions = {
+        reveal: vscode.TaskRevealKind.Silent
+    };
+    ctx.outputChannel.logStart("Resolving Dependencies ... ");
+    ctx.statusItem.start(task);
     try {
-        ctx.outputChannel.logStart("Resolving Dependencies ... ");
-        const tasks = await vscode.tasks.fetchTasks();
-        const task = tasks.find(task =>
-            task.definition.command === 'swift' &&
-            task.definition.args[0] === 'package' &&
-            task.definition.args[1] === 'resolve'
-        )!;
-        task.presentationOptions = {
-            reveal: vscode.TaskRevealKind.Silent
-        };
-        ctx.statusItem.start(task);
         await executeTaskAndWait(task);
-        ctx.statusItem.end(task);
         ctx.outputChannel.logEnd("done.");
     } catch(error) {
         ctx.outputChannel.logEnd(`${error}`);
     }
-
+    ctx.statusItem.end(task);
     resolveRunning = false;
 }
 
@@ -66,19 +65,24 @@ export async function updateDependencies(ctx: WorkspaceContext) {
     if (updateRunning) { return; }
     updateRunning = true;
 
+    const tasks = await vscode.tasks.fetchTasks();
+    const task = tasks.find(task =>
+        task.definition.command === 'swift' &&
+        task.definition.args[0] === 'package' &&
+        task.definition.args[1] === 'update'
+    )!;
+    task.presentationOptions = {
+        reveal: vscode.TaskRevealKind.Silent
+    };
+    ctx.outputChannel.logStart("Updating Dependencies ... ");
+    ctx.statusItem.start(task);
     try {
-        ctx.outputChannel.logStart("Updating Dependencies ... ");
-        const tasks = await vscode.tasks.fetchTasks();
-        const task = tasks.find(task =>
-            task.definition.command === 'swift' &&
-            task.definition.args[0] === 'package' &&
-            task.definition.args[1] === 'update'
-        )!;
         await executeTaskAndWait(task);
         ctx.outputChannel.logEnd("done.");
     } catch(error) {
         ctx.outputChannel.logEnd(`${error}`);
     }
+    ctx.statusItem.end(task);
     updateRunning = false;
 }
 
