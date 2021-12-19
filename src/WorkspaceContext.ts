@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import { setFlagsFromString } from 'v8';
 import * as vscode from 'vscode';
 import { FolderContext } from './FolderContext';
 import { StatusItem } from './StatusItem';
@@ -67,7 +66,7 @@ export class WorkspaceContext implements vscode.Disposable {
     // report swift version and throw error if it failed to find swift
     async reportSwiftVersion() {
         try {
-            const { stdout } = await execSwift('--version', {});
+            const { stdout } = await execSwift(['--version'], {});
             const version = stdout.trimEnd();
             this.outputChannel.log(version);
         } catch(error) {
