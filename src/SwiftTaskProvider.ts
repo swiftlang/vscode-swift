@@ -16,6 +16,7 @@ import * as vscode from 'vscode';
 import { WorkspaceContext } from  './WorkspaceContext';
 import { Product } from './SwiftPackage';
 import configuration from './configuration';
+import { getSwiftExecutable } from './utilities';
 
 /**
  * References:
@@ -40,10 +41,9 @@ interface TaskConfig {
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  * This excludes test targets.
  */
-function createBuildAllTask(workspaceContext: WorkspaceContext): vscode.Task {
+function createBuildAllTask(): vscode.Task {
     const additionalArgs = (process.platform !== 'darwin') ? ['--enable-test-discovery'] : [];
     return createSwiftTask(
-        workspaceContext.swiftExe, 
         ['build', '--build-tests', ...additionalArgs, ...configuration.buildArguments], 
         'Build All', 
         { group: vscode.TaskGroup.Build }
@@ -53,9 +53,8 @@ function createBuildAllTask(workspaceContext: WorkspaceContext): vscode.Task {
 /**
  * Creates a {@link vscode.Task Task} to clean the build artifacts.
  */
-function createCleanTask(workspaceContext: WorkspaceContext): vscode.Task {
+function createCleanTask(): vscode.Task {
     return createSwiftTask(
-        workspaceContext.swiftExe, 
         ['package', 'clean'], 
         'Clean Build Artifacts', 
         { group: vscode.TaskGroup.Clean }
@@ -65,16 +64,14 @@ function createCleanTask(workspaceContext: WorkspaceContext): vscode.Task {
 /**
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
- function createBuildTasks(product: Product,  workspaceContext: WorkspaceContext): vscode.Task[] {
+ function createBuildTasks(product: Product): vscode.Task[] {
     return [
         createSwiftTask(
-            workspaceContext.swiftExe, 
             ['build', '--product', product.name, ...configuration.buildArguments], 
             `Build Debug ${product.name}`, 
             { group: vscode.TaskGroup.Build }
         ),
         createSwiftTask(
-            workspaceContext.swiftExe, 
             ['build', '-c', 'release', '--product', product.name, ...configuration.buildArguments], 
             `Build Release ${product.name}`, 
             { group: vscode.TaskGroup.Build }
@@ -85,27 +82,28 @@ function createCleanTask(workspaceContext: WorkspaceContext): vscode.Task {
 /**
  * Creates a {@link vscode.Task Task} to resolve the package dependencies.
  */
-function createResolveTask(workspaceContext: WorkspaceContext): vscode.Task {
-    return createSwiftTask(workspaceContext.swiftExe, ['package', 'resolve'], 'Resolve Package Dependencies');
+function createResolveTask(): vscode.Task {
+    return createSwiftTask(['package', 'resolve'], 'Resolve Package Dependencies');
 }
 
 /**
  * Creates a {@link vscode.Task Task} to update the package dependencies.
  */
-function createUpdateTask(workspaceContext: WorkspaceContext): vscode.Task {
-    return createSwiftTask(workspaceContext.swiftExe, ['package', 'update'], 'Update Package Dependencies');
+function createUpdateTask(): vscode.Task {
+    return createSwiftTask(['package', 'update'], 'Update Package Dependencies');
 }
 
 /**
  * Helper function to create a {@link vscode.Task Task} with the given parameters.
  */
-function createSwiftTask(command: string, args: string[], name: string, config?: TaskConfig): vscode.Task {
+function createSwiftTask(args: string[], name: string, config?: TaskConfig): vscode.Task {
+    const swift = getSwiftExecutable();
     const task = new vscode.Task(
-        { type: 'swift', command: command, args: args },
+        { type: 'swift', command: swift, args: args },
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
         'swift',
-        new vscode.ShellExecution(command, args),
+        new vscode.ShellExecution(swift, args),
         config?.problemMatcher
     );
     // This doesn't include any quotes added by VS Code.
@@ -175,17 +173,17 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             return [];
         }
         const tasks = [
-            createBuildAllTask(this.workspaceContext),
-            createCleanTask(this.workspaceContext),
-            createResolveTask(this.workspaceContext),
-            createUpdateTask(this.workspaceContext)
+            createBuildAllTask(),
+            createCleanTask(),
+            createResolveTask(),
+            createUpdateTask()
         ];
 
         for (const folder of this.workspaceContext.folders) {
             if (!folder.isRootFolder) { continue; }
             const executables = folder.swiftPackage.executableProducts;
             for (const executable of executables) {
-                tasks.push(...createBuildTasks(executable, this.workspaceContext));
+                tasks.push(...createBuildTasks(executable));
             }
         }
         return tasks;
