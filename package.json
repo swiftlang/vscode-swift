@@ -135,7 +135,8 @@
         "required": [
           "command",
           "args"
-        ]
+        ],
+        "when": "swift.hasPackage"
       }
     ],
     "views": {
