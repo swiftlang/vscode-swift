@@ -35,7 +35,7 @@ export async function exec(command: string, options: cp.ExecOptions): Promise<{ 
 }
 
 /**
- * Asynchronous wrapper around {@link cp.exec child_process.exec}.
+ * Asynchronous wrapper around {@link cp.execFile child_process.execFile}.
  * 
  * Assumes output will be a string
  * 
