@@ -50,7 +50,7 @@
             "items": {
                 "type": "string"
             },
-            "description": "Arguments to pass to swift build. Argument key and values should be provided as separate entries.",
+            "markdownDescription": "Arguments to pass to `swift build`. Keys and values should be provided as separate entries.",
             "order": 2
           },
           "swift.excludePathsFromPackageDependencies": {
