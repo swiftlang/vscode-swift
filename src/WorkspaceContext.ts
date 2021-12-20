@@ -24,7 +24,6 @@ export class WorkspaceContext implements vscode.Disposable {
     public folders: FolderContext[] = [];
     public outputChannel: SwiftOutputChannel;
     public statusItem: StatusItem;
-    public config: vscode.WorkspaceConfiguration;
     public swiftExe: string;
 
 	public constructor(
@@ -32,7 +31,6 @@ export class WorkspaceContext implements vscode.Disposable {
     ) {
         this.outputChannel = new SwiftOutputChannel();
         this.statusItem = new StatusItem();
-        this.config = vscode.workspace.getConfiguration('swift');
         this.swiftExe = getSwiftExecutable('swift');
     }
 
