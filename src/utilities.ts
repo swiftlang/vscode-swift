@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import configuration from './configuration';
 
 /**
  * Asynchronous wrapper around {@link cp.exec child_process.exec}.
@@ -76,9 +76,7 @@ export async function execSwift(args: string[], options: cp.ExecFileOptions = {}
  * @param exe name of executable to return
  */
 export function getSwiftExecutable(exe = 'swift'): string {
-    const config = vscode.workspace.getConfiguration("swift");
-    const root = config.get<string>('path', '');
-    return path.join(root, exe);
+    return path.join(configuration.path, exe);
 }
 
 /**

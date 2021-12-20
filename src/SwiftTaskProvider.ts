@@ -15,6 +15,7 @@
 import * as vscode from 'vscode';
 import { WorkspaceContext } from  './WorkspaceContext';
 import { Product } from './SwiftPackage';
+import configuration from './configuration';
 
 /**
  * References:
@@ -43,7 +44,7 @@ function createBuildAllTask(workspaceContext: WorkspaceContext): vscode.Task {
     const additionalArgs = (process.platform !== 'darwin') ? ['--enable-test-discovery'] : [];
     return createSwiftTask(
         workspaceContext.swiftExe, 
-        ['build', '--build-tests', ...additionalArgs, ...workspaceContext.config.get<string[]>('buildArguments', [])], 
+        ['build', '--build-tests', ...additionalArgs, ...configuration.buildArguments], 
         'Build All', 
         { group: vscode.TaskGroup.Build }
     );
@@ -68,13 +69,13 @@ function createCleanTask(workspaceContext: WorkspaceContext): vscode.Task {
     return [
         createSwiftTask(
             workspaceContext.swiftExe, 
-            ['build', '--product', product.name, ...workspaceContext.config.get<string[]>('buildArguments', [])], 
+            ['build', '--product', product.name, ...configuration.buildArguments], 
             `Build Debug ${product.name}`, 
             { group: vscode.TaskGroup.Build }
         ),
         createSwiftTask(
             workspaceContext.swiftExe, 
-            ['build', '-c', 'release', '--product', product.name, ...workspaceContext.config.get<string[]>('buildArguments', [])], 
+            ['build', '-c', 'release', '--product', product.name, ...configuration.buildArguments], 
             `Build Release ${product.name}`, 
             { group: vscode.TaskGroup.Build }
         )
