@@ -59,7 +59,7 @@ export async function exec(command: string, options: cp.ExecOptions): Promise<{ 
 }
 
 /**
- * Asynchronous wrapper around {@link cp.exec child_process.exec} running
+ * Asynchronous wrapper around {@link cp.execFile child_process.execFile} running
  * swift executable
  * 
  * @param args array of arguments to pass to swift executable
