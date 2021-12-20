@@ -16,7 +16,7 @@ import * as vscode from 'vscode';
 import { FolderContext } from './FolderContext';
 import { StatusItem } from './StatusItem';
 import { SwiftOutputChannel } from './SwiftOutputChannel';
-import { execSwift, getSwiftExecutable } from './utilities';
+import { execSwift } from './utilities';
 
 // Context for whole workspace. Holds array of contexts for each workspace folder
 // and the ExtensionContext
@@ -24,14 +24,12 @@ export class WorkspaceContext implements vscode.Disposable {
     public folders: FolderContext[] = [];
     public outputChannel: SwiftOutputChannel;
     public statusItem: StatusItem;
-    public swiftExe: string;
 
 	public constructor(
         public extensionContext: vscode.ExtensionContext
     ) {
         this.outputChannel = new SwiftOutputChannel();
         this.statusItem = new StatusItem();
-        this.swiftExe = getSwiftExecutable('swift');
     }
 
     dispose() {
