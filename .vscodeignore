@@ -1,8 +1,13 @@
+.github/**
+.gitignore
 .vscode/**
 .vscode-test/**
+node_modules/**
+out/**
+scripts/**
 src/**
-.gitignore
-**/tsconfig.json
 **/.eslintrc.json
+**/.prettierignore
+**/.prettierrc.json
+**/tsconfig.json
 **/*.map
-**/*.ts
