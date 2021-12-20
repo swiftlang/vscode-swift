@@ -16,8 +16,12 @@ import * as vscode from 'vscode';
 import { FolderContext } from './FolderContext';
 import { getXcodePath } from './utilities';
 
-// Edit launch.json based on contents of Swift Package
-// Adds launch configurations based on the executables in Package.swift
+/** 
+ * Edit launch.json based on contents of Swift Package.
+ * Adds launch configurations based on the executables in Package.swift.
+ * 
+ * @param ctx folder context to create launch configurations for
+ */
 export async function makeDebugConfigurations(ctx: FolderContext) {
     const wsLaunchSection = vscode.workspace.getConfiguration("launch", ctx.folder);
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
@@ -83,35 +87,35 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
 // Return array of DebugConfigurations for tests based on what is in Package.swift
 async function createTestConfigurations(ctx: FolderContext): Promise<vscode.DebugConfiguration[]> {
     if (ctx.swiftPackage.getTargets('test').length === 0) { return []; }
-    try {
-        // If running on darwin. Find xctest exe and run pointing at xctest resources
-        if (process.platform === 'darwin') {
-            const xcodePath = await getXcodePath();
-            if (xcodePath === undefined) {
-                return [];
-            }
-            return [{
-                type: "lldb",
-                request: "launch",
-                name: `Test ${ctx.swiftPackage.name}`,
-                program: `${xcodePath}/usr/bin/xctest`,
-                args: [`.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`],
-                cwd: `\${workspaceFolder:${ctx.folder.name}}`,
-                preLaunchTask: `swift: Build All`
-            }];
-        } else {
-            // otherwise run xctest exe inside build folder
-            return [{
-                type: "lldb",
-                request: "launch",
-                name: `Test ${ctx.swiftPackage.name}`,
-                program: `./.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
-                cwd: `\${workspaceFolder:${ctx.folder.name}}`,
-                preLaunchTask: `swift: Build All`
-            }];
+    // if platform is windows temporarily disable test launch config generation until we work
+    // out how to run the test executable on windows
+    if (process.platform === "win32") { return []; }
+
+    // If running on darwin. Find xctest exe and run pointing at xctest resources
+    if (process.platform === 'darwin') {
+        const xcodePath = await getXcodePath();
+        if (xcodePath === undefined) {
+            return [];
         }
-    } catch {
-        // ignore error
+        return [{
+            type: "lldb",
+            request: "launch",
+            name: `Test ${ctx.swiftPackage.name}`,
+            program: `${xcodePath}/usr/bin/xctest`,
+            args: [`.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`],
+            cwd: `\${workspaceFolder:${ctx.folder.name}}`,
+            preLaunchTask: `swift: Build All`
+        }];
+    } else {
+        // otherwise run xctest exe inside build folder
+        return [{
+            type: "lldb",
+            request: "launch",
+            name: `Test ${ctx.swiftPackage.name}`,
+            program: `./.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
+            cwd: `\${workspaceFolder:${ctx.folder.name}}`,
+            preLaunchTask: `swift: Build All`
+        }];
     }
 
     return [];
