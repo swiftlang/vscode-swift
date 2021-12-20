@@ -41,7 +41,7 @@
           "swift.path": {
             "type": "string",
             "default": "",
-            "description": "The path of the folder containing swift executables. Default is to look in $PATH",
+            "markdownDescription": "The path of the folder containing the Swift executables. The default is to look in **$PATH**.",
             "order": 1
           },
           "swift.buildArguments": {
