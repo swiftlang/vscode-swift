@@ -15,7 +15,8 @@ When you first open the project in VSCode you will be recommended to also instal
 To run your version of the Swift extension while in VSCode, press `F5`. This will open up another instance of VSCode with it running. You can use the original version of VSCode to debug it. 
 
 ## Submitting a bug or issue
-Please ensure to include the following in your bug report
+
+Please ensure to include the following in your bug report:
 - A consise description of the issue, what happened and what you expected.
 - Simple reproduction steps
 - Version of the extension you are using
