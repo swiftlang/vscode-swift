@@ -64,12 +64,7 @@
               ".github"
             ],
             "order": 3
-          }
-        }
-      },
-      {
-        "title": "SourceKit-LSP",
-        "properties": {
+          },
           "sourcekit-lsp.serverArguments": {
             "type": "array",
             "default": [],
