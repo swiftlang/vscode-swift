@@ -18,6 +18,7 @@ import * as path from 'path';
 import configuration from './configuration';
 import { getRepositoryName, pathExists } from './utilities';
 import { FolderContext } from './FolderContext';
+import { SwiftTaskProvider } from './SwiftTaskProvider';
 
 /**
  * References:
@@ -117,9 +118,8 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
     constructor(private ctx: FolderContext) {
         // Refresh the tree when a package resolve or package update task completes.
         vscode.tasks.onDidEndTask((event) => {
-            const definition = event.execution.task.definition;
-            if (definition.type === 'swift' && definition.args[0] === 'package' &&
-               (definition.args[1] === 'resolve' || definition.args[1] === 'update')) {
+            if (event.execution.task.name === SwiftTaskProvider.resolvePackageName ||
+                event.execution.task.name === SwiftTaskProvider.updatePackageName) {
                 this.didChangeTreeDataEmitter.fire();
             }
         });

@@ -14,7 +14,7 @@
 
 import * as vscode from 'vscode';
 import { WorkspaceContext } from './WorkspaceContext';
-import { executeTaskAndWait } from './SwiftTaskProvider';
+import { executeTaskAndWait, SwiftTaskProvider } from './SwiftTaskProvider';
 
 /**
  * References:
@@ -38,11 +38,7 @@ export async function resolveDependencies(ctx: WorkspaceContext) {
     resolveRunning = true;
 
     const tasks = await vscode.tasks.fetchTasks();
-    const task = tasks.find(task =>
-        task.definition.type === 'swift' &&
-        task.definition.args[0] === 'package' &&
-        task.definition.args[1] === 'resolve'
-    )!;
+    const task = tasks.find(task => task.name === SwiftTaskProvider.resolvePackageName)!;
     task.presentationOptions = {
         reveal: vscode.TaskRevealKind.Silent
     };
@@ -66,11 +62,7 @@ export async function updateDependencies(ctx: WorkspaceContext) {
     updateRunning = true;
 
     const tasks = await vscode.tasks.fetchTasks();
-    const task = tasks.find(task =>
-        task.definition.type === 'swift' &&
-        task.definition.args[0] === 'package' &&
-        task.definition.args[1] === 'update'
-    )!;
+    const task = tasks.find(task => task.name === SwiftTaskProvider.updatePackageName)!;
     task.presentationOptions = {
         reveal: vscode.TaskRevealKind.Silent
     };
