@@ -7,7 +7,7 @@ All contributors are expected to adhere to the project's [Code of Conduct](CODE_
 
 To begin development on the VSCode extension for Swift you will need to install [Node.js](https://nodejs.org). On Linux, make sure to install Node.js from its official website or from [NodeSource](https://github.com/nodesource/distributions/) as the version included with your Linux distribution may be outdated.
 
-Next, clone this repository, and run `npm install` to install all the dependencies.
+Next, clone this repository, enter the cloned folder and run `npm install` to install all the dependencies.
 
 When you first open the project in VSCode you will be recommended to also install `ESLint` and `Prettier - Code formatter`. Please do so. We use these to ensure a consistent style and expect everyone who contributes to follow this style as well. 
 
