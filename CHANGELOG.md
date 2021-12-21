@@ -19,3 +19,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Bundle using ESBuild.
 - Add configuration parameter `path` to define where swift is found.
 - Add configuration parameter `buildArguments` to add custom build arguments.
+- Configure CoreLLDB to work with Swift.
