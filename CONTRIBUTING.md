@@ -24,7 +24,7 @@ Please ensure to include the following in your bug report:
 
 ## Submitting a Pull Request
 
-Please ensure to include the following in your Pull Request
+Please ensure to include the following in your Pull Request:
 - A description of what you are trying to do. What the PR provides to the library, additional functionality, fixing a bug etc
 - A description of the code changes
 - Documentation on how these changes are being tested
