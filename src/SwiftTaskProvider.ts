@@ -45,7 +45,7 @@ function createBuildAllTask(): vscode.Task {
     const additionalArgs = (process.platform !== 'darwin') ? ['--enable-test-discovery'] : [];
     return createSwiftTask(
         ['build', '--build-tests', ...additionalArgs, ...configuration.buildArguments], 
-        'Build All', 
+        SwiftTaskProvider.buildAllName, 
         { group: vscode.TaskGroup.Build }
     );
 }
@@ -56,7 +56,7 @@ function createBuildAllTask(): vscode.Task {
 function createCleanTask(): vscode.Task {
     return createSwiftTask(
         ['package', 'clean'], 
-        'Clean Build Artifacts', 
+        SwiftTaskProvider.cleanBuildName, 
         { group: vscode.TaskGroup.Clean }
     );
 }
@@ -83,14 +83,14 @@ function createCleanTask(): vscode.Task {
  * Creates a {@link vscode.Task Task} to resolve the package dependencies.
  */
 function createResolveTask(): vscode.Task {
-    return createSwiftTask(['package', 'resolve'], 'Resolve Package Dependencies');
+    return createSwiftTask(['package', 'resolve'], SwiftTaskProvider.resolvePackageName);
 }
 
 /**
  * Creates a {@link vscode.Task Task} to update the package dependencies.
  */
 function createUpdateTask(): vscode.Task {
-    return createSwiftTask(['package', 'update'], 'Update Package Dependencies');
+    return createSwiftTask(['package', 'update'], SwiftTaskProvider.updatePackageName);
 }
 
 /**
@@ -156,6 +156,11 @@ export async function executeTaskAndWait(task: vscode.Task) {
  */
 export class SwiftTaskProvider implements vscode.TaskProvider {
 
+    static buildAllName = 'Build All';
+    static cleanBuildName = 'Clean Build Artifacts';
+    static resolvePackageName = 'Resolve Package Dependencies';
+    static updatePackageName = 'Update Package Dependencies';
+    
     constructor(private workspaceContext: WorkspaceContext) { }
 
     /**
