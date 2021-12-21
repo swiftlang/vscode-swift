@@ -28,7 +28,7 @@ Please ensure to include the following in your Pull Request
 - Documentation on how these changes are being tested
 - Additional tests to show your code working and to ensure future changes don't break your code.
 
-Please keep your PRs to a minimal number of changes. If a PR is large try to split it up into smaller PRs. Don't move code around unnecessarily it makes comparing old with new very hard. If you have plans for a large change please talk to the maintainers of the project beforehand.
+Please keep your PRs to a minimal number of changes. If a PR is large, try to split it up into smaller PRs. Don't move code around unnecessarily as it makes comparing old with new very hard. If you have plans for a large change please talk to the maintainers of the project beforehand. There is a `#vscode-swift` channel on the Swift Server Slack. You can [join here](https://join.slack.com/t/swift-server/shared_invite/zt-5jv0mzlu-1HnA~7cpjL6IfmZqd~yQ2A).
 
 ## Legal
 By submitting a pull request, you represent that you have the right to license your contribution to the community, and agree by submitting the patch that your contributions are licensed under the Apache 2.0 license (see [LICENSE](LICENSE)).
