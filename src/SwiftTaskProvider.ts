@@ -106,7 +106,7 @@ function createUpdateTask(): vscode.Task {
 /**
  * Helper function to create a {@link vscode.Task Task} with the given parameters.
  */
-function createSwiftTask(args: string[], name: string, config?: TaskConfig): vscode.Task {
+export function createSwiftTask(args: string[], name: string, config?: TaskConfig): vscode.Task {
     const swift = getSwiftExecutable();
     const task = new vscode.Task(
         { type: "swift", command: swift, args: args },
@@ -125,12 +125,31 @@ function createSwiftTask(args: string[], name: string, config?: TaskConfig): vsc
 }
 
 /*
+ * Execute swift command as task and wait until it is finished
+ */
+export async function executeSwiftTaskAndWait(args: string[], name: string, config?: TaskConfig) {
+    const swift = getSwiftExecutable();
+    const task = new vscode.Task(
+        { type: "swift", command: "swift", args: args },
+        config?.scope ?? vscode.TaskScope.Workspace,
+        name,
+        "swift",
+        new vscode.ShellExecution(swift, args),
+        config?.problemMatcher
+    );
+    task.group = config?.group;
+    task.presentationOptions = config?.presentationOptions ?? {};
+
+    executeTaskAndWait(task);
+}
+
+/*
  * Execute shell command as task and wait until it is finished
  */
 export async function executeShellTaskAndWait(
-    name: string,
     command: string,
     args: string[],
+    name: string,
     config?: TaskConfig
 ) {
     const task = new vscode.Task(

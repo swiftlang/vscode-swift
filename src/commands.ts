@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import { WorkspaceContext } from "./WorkspaceContext";
-import { executeTaskAndWait, SwiftTaskProvider } from "./SwiftTaskProvider";
+import { executeTaskAndWait, createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
 
 /**
  * References:
@@ -39,15 +39,13 @@ export async function resolveDependencies(ctx: WorkspaceContext) {
     }
     resolveRunning = true;
 
-    const tasks = await vscode.tasks.fetchTasks();
-    const task = tasks.find(task => task.name === SwiftTaskProvider.resolvePackageName)!;
-    task.presentationOptions = {
-        reveal: vscode.TaskRevealKind.Silent,
-    };
     ctx.outputChannel.logStart("Resolving Dependencies ... ");
+    const task = createSwiftTask(["package", "resolve"], SwiftTaskProvider.resolvePackageName, {
+        presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+    });
     ctx.statusItem.start(task);
     try {
-        await executeTaskAndWait(task);
+        executeTaskAndWait(task);
         ctx.outputChannel.logEnd("done.");
     } catch (error) {
         ctx.outputChannel.logEnd(`${error}`);
@@ -65,11 +63,9 @@ export async function updateDependencies(ctx: WorkspaceContext) {
     }
     updateRunning = true;
 
-    const tasks = await vscode.tasks.fetchTasks();
-    const task = tasks.find(task => task.name === SwiftTaskProvider.updatePackageName)!;
-    task.presentationOptions = {
-        reveal: vscode.TaskRevealKind.Silent,
-    };
+    const task = createSwiftTask(["package", "update"], SwiftTaskProvider.updatePackageName, {
+        presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+    });
     ctx.outputChannel.logStart("Updating Dependencies ... ");
     ctx.statusItem.start(task);
     try {
