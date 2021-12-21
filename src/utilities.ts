@@ -67,3 +67,13 @@ export async function pathExists(...pathComponents: string[]): Promise<boolean> 
         return false;
     }
 }
+
+// Return path to Xcode developer folder
+export async function getXcodePath(): Promise<string|undefined> {
+    try {
+        const { stdout } = await exec('xcode-select -p', {});
+        return stdout.trimEnd();
+    } catch {
+        return undefined;
+    }
+}
