@@ -23,6 +23,7 @@ import { getLLDBLibPath } from "./lldb";
 // and the ExtensionContext
 export class WorkspaceContext implements vscode.Disposable {
     public folders: FolderContext[] = [];
+    public currentFolder?: FolderContext;
     public outputChannel: SwiftOutputChannel;
     public statusItem: StatusItem;
     public xcTestPath?: string;
@@ -36,6 +37,54 @@ export class WorkspaceContext implements vscode.Disposable {
         this.folders.forEach(f => f.dispose());
         this.outputChannel.dispose();
         this.statusItem.dispose();
+    }
+
+    setupEventListeners() {
+        // add event listener for when a workspace folder is added/removed
+        const onWorkspaceChange = vscode.workspace.onDidChangeWorkspaceFolders(event => {
+            if (this === undefined) {
+                console.log("Trying to run onDidChangeWorkspaceFolders on deleted context");
+                return;
+            }
+            this.onDidChangeWorkspaceFolders(event);
+        });
+        // add event listener for when the active edited text document changes
+        const onDidChangeActiveWindow = vscode.window.onDidChangeActiveTextEditor(editor => {
+            if (this === undefined) {
+                console.log("Trying to run onDidChangeWorkspaceFolders on deleted context");
+                return;
+            }
+
+            const workspaceFolder = this.getWorkspaceFolder(editor);
+            if (workspaceFolder) {
+                this.focusFolder(workspaceFolder);
+            }
+        });
+        this.extensionContext.subscriptions.push(onWorkspaceChange, onDidChangeActiveWindow);
+    }
+
+    // set folder focus
+    public async focusFolder(folder: vscode.WorkspaceFolder) {
+        const folderContext = this.folders.find(context => context.folder === folder);
+        if (folderContext === this.currentFolder) {
+            return;
+        }
+
+        // send unfocus event for previous folder observers
+        if (this.currentFolder) {
+            for (const observer of this.observers) {
+                await observer(this.currentFolder, "unfocus", this);
+            }
+        }
+        this.currentFolder = folderContext;
+        if (!folderContext) {
+            return;
+        }
+
+        // send focus event to all observers
+        for (const observer of this.observers) {
+            await observer(folderContext, "focus", this);
+        }
     }
 
     // catch workspace folder changes and add/remove folders based on those changes
@@ -66,7 +115,16 @@ export class WorkspaceContext implements vscode.Disposable {
             }
         }
         for (const observer of this.observers) {
-            await observer(folderContext, "add");
+            await observer(folderContext, "add", this);
+        }
+        // is this the first folder then set a focus event
+        if (
+            this.folders.length === 1 ||
+            this.getWorkspaceFolder(vscode.window.activeTextEditor) === folder
+        ) {
+            for (const observer of this.observers) {
+                await observer(folderContext, "focus", this);
+            }
         }
     }
 
@@ -83,7 +141,7 @@ export class WorkspaceContext implements vscode.Disposable {
         const observersReversed = [...this.observers];
         observersReversed.reverse();
         for (const observer of observersReversed) {
-            await observer(context, "remove");
+            await observer(context, "remove", this);
         }
         context.dispose();
         // remove context
@@ -149,10 +207,19 @@ export class WorkspaceContext implements vscode.Disposable {
             });
     }
 
+    // return workspace folder from text editor
+    private getWorkspaceFolder(editor?: vscode.TextEditor): vscode.WorkspaceFolder | undefined {
+        if (!editor || !editor.document) {
+            return;
+        }
+        return vscode.workspace.getWorkspaceFolder(editor.document.uri);
+    }
+
     private observers: Set<WorkspaceFoldersObserver> = new Set();
 }
 
 export type WorkspaceFoldersObserver = (
     folder: FolderContext,
-    operation: "add" | "remove"
+    operation: "add" | "remove" | "focus" | "unfocus",
+    workspace: WorkspaceContext
 ) => unknown;

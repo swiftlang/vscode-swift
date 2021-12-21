@@ -31,15 +31,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // report swift version and throw error
     await workspaceContext.reportSwiftVersion();
+
+    // setup swift version of LLDB. Don't await on this as it can run in the background
     workspaceContext.setLLDBVersion();
 
-    const onWorkspaceChange = vscode.workspace.onDidChangeWorkspaceFolders(event => {
-        if (workspaceContext === undefined) {
-            console.log("Trying to run onDidChangeWorkspaceFolders on deleted context");
-            return;
-        }
-        workspaceContext.onDidChangeWorkspaceFolders(event);
-    });
+    // listen for workspace folder changes and active text editor changes
+    workspaceContext.setupEventListeners();
 
     await activateSourceKitLSP(context);
 
@@ -76,7 +73,7 @@ export async function activate(context: vscode.ExtensionContext) {
             // Create launch.json files based on package description.
             await debug.makeDebugConfigurations(folder);
             if (folder.isRootFolder) {
-                await commands.resolveDependencies(workspaceContext);
+                commands.resolveDependencies(workspaceContext);
             }
         }
     });
@@ -93,8 +90,7 @@ export async function activate(context: vscode.ExtensionContext) {
         resolvePackageObserver,
         addDependencyViewObserver,
         logObserver,
-        taskProvider,
-        onWorkspaceChange
+        taskProvider
     );
 }
 
