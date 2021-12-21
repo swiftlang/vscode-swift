@@ -68,8 +68,8 @@ export async function activate(context: vscode.ExtensionContext) {
     });
 
     // observer that will resolve package for root folder
-    const resolvePackageObserver = workspaceContext.observeFolders(async (folder, operation) => {
-        if (operation === FolderEvent.add && folder.swiftPackage.foundPackage) {
+    const resolvePackageObserver = workspaceContext.observeFolders(async (folder, event) => {
+        if (event === FolderEvent.add && folder.swiftPackage.foundPackage) {
             // Create launch.json files based on package description.
             await debug.makeDebugConfigurations(folder);
             if (folder.isRootFolder) {
