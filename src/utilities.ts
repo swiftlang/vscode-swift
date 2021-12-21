@@ -15,6 +15,7 @@
 import * as cp from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import configuration from './configuration';
 
 /**
  * Asynchronous wrapper around {@link cp.exec child_process.exec}.
@@ -31,6 +32,51 @@ export async function exec(command: string, options: cp.ExecOptions): Promise<{ 
             resolve({ stdout, stderr });
         })
     );
+}
+
+/**
+ * Asynchronous wrapper around {@link cp.execFile child_process.execFile}.
+ * 
+ * Assumes output will be a string
+ * 
+ * @param executable name of executable to run
+ * @param args arguments to be passed to executable
+ * @param options execution options
+ */
+ export async function execFile(
+    executable: string, 
+    args: string[], 
+    options: cp.ExecFileOptions = {}
+): Promise<{ stdout: string; stderr: string }> {
+    return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => 
+        cp.execFile(executable, args, options, (error, stdout, stderr) => {
+            if (error) {
+                reject({ error, stdout, stderr });
+            }
+            resolve({ stdout, stderr });
+        })
+    );
+}
+
+/**
+ * Asynchronous wrapper around {@link cp.execFile child_process.execFile} running
+ * swift executable
+ * 
+ * @param args array of arguments to pass to swift executable
+ * @param options execution options
+ */
+export async function execSwift(args: string[], options: cp.ExecFileOptions = {}): Promise<{ stdout: string; stderr: string }> {
+    const swift = getSwiftExecutable();
+    return await execFile(swift, args, options);
+}
+
+/**
+ * Get path to swift executable, or executable in swift bin folder
+ * 
+ * @param exe name of executable to return
+ */
+export function getSwiftExecutable(exe = 'swift'): string {
+    return path.join(configuration.path, exe);
 }
 
 /**

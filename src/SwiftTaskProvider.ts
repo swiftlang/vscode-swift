@@ -15,6 +15,8 @@
 import * as vscode from 'vscode';
 import { WorkspaceContext } from  './WorkspaceContext';
 import { Product } from './SwiftPackage';
+import configuration from './configuration';
+import { getSwiftExecutable } from './utilities';
 
 /**
  * References:
@@ -42,8 +44,7 @@ interface TaskConfig {
 function createBuildAllTask(): vscode.Task {
     const additionalArgs = (process.platform !== 'darwin') ? ['--enable-test-discovery'] : [];
     return createSwiftTask(
-        'swift', 
-        ['build', '--build-tests', ...additionalArgs], 
+        ['build', '--build-tests', ...additionalArgs, ...configuration.buildArguments], 
         'Build All', 
         { group: vscode.TaskGroup.Build }
     );
@@ -54,7 +55,6 @@ function createBuildAllTask(): vscode.Task {
  */
 function createCleanTask(): vscode.Task {
     return createSwiftTask(
-        'swift', 
         ['package', 'clean'], 
         'Clean Build Artifacts', 
         { group: vscode.TaskGroup.Clean }
@@ -67,14 +67,12 @@ function createCleanTask(): vscode.Task {
  function createBuildTasks(product: Product): vscode.Task[] {
     return [
         createSwiftTask(
-            'swift', 
-            ['build', '--product', product.name], 
+            ['build', '--product', product.name, ...configuration.buildArguments], 
             `Build Debug ${product.name}`, 
             { group: vscode.TaskGroup.Build }
         ),
         createSwiftTask(
-            'swift', 
-            ['build', '-c', 'release', '--product', product.name], 
+            ['build', '-c', 'release', '--product', product.name, ...configuration.buildArguments], 
             `Build Release ${product.name}`, 
             { group: vscode.TaskGroup.Build }
         )
@@ -85,31 +83,32 @@ function createCleanTask(): vscode.Task {
  * Creates a {@link vscode.Task Task} to resolve the package dependencies.
  */
 function createResolveTask(): vscode.Task {
-    return createSwiftTask('swift', ['package', 'resolve'], 'Resolve Package Dependencies');
+    return createSwiftTask(['package', 'resolve'], 'Resolve Package Dependencies');
 }
 
 /**
  * Creates a {@link vscode.Task Task} to update the package dependencies.
  */
 function createUpdateTask(): vscode.Task {
-    return createSwiftTask('swift', ['package', 'update'], 'Update Package Dependencies');
+    return createSwiftTask(['package', 'update'], 'Update Package Dependencies');
 }
 
 /**
  * Helper function to create a {@link vscode.Task Task} with the given parameters.
  */
-function createSwiftTask(command: string, args: string[], name: string, config?: TaskConfig): vscode.Task {
+function createSwiftTask(args: string[], name: string, config?: TaskConfig): vscode.Task {
+    const swift = getSwiftExecutable();
     const task = new vscode.Task(
-        { type: 'swift', command: command, args: args },
+        { type: 'swift', command: swift, args: args },
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
         'swift',
-        new vscode.ShellExecution(command, args),
+        new vscode.ShellExecution(swift, args),
         config?.problemMatcher
     );
     // This doesn't include any quotes added by VS Code.
     // See also: https://github.com/microsoft/vscode/issues/137895
-    task.detail = `${command} ${args.join(' ')}`;
+    task.detail = `swift ${args.join(' ')}`;
     task.group = config?.group;
     task.presentationOptions = config?.presentationOptions ?? {};
     return task;

@@ -26,13 +26,18 @@ import { activate as activateSourceKitLSP } from './sourcekit-lsp/extension';
 export async function activate(context: vscode.ExtensionContext) {
 	console.debug('Activating Swift for Visual Studio Code...');
 
-	await activateSourceKitLSP(context);
-
 	const workspaceContext = new WorkspaceContext(context);
+	context.subscriptions.push(workspaceContext);
+
+	// report swift version and throw error 
+	await workspaceContext.reportSwiftVersion();
+
 	const onWorkspaceChange = vscode.workspace.onDidChangeWorkspaceFolders((event) => {
 		if (workspaceContext === undefined) { console.log("Trying to run onDidChangeWorkspaceFolders on deleted context"); return; }
 		workspaceContext.onDidChangeWorkspaceFolders(event);
 	});
+
+	await activateSourceKitLSP(context);
 
 	// Register commands.
 	const taskProvider = vscode.tasks.registerTaskProvider('swift', new SwiftTaskProvider(workspaceContext));
@@ -57,7 +62,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// observer that will resolve package for root folder
 	const resolvePackageObserver = workspaceContext.observerFolders(async (folder, operation) => {
-		if (folder.isRootFolder && operation === 'add') {
+		if (folder.isRootFolder && operation === 'add' && folder.swiftPackage.foundPackage) {
 			// Create launch.json files based on package description. 
 			await debug.makeDebugConfigurations(folder);
 			await commands.resolveDependencies(workspaceContext);
@@ -72,7 +77,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	}
 
 	// Register any disposables for cleanup when the extension deactivates.
-	context.subscriptions.push(resolvePackageObserver, addDependencyViewObserver, logObserver, taskProvider, onWorkspaceChange, workspaceContext);
+	context.subscriptions.push(resolvePackageObserver, addDependencyViewObserver, logObserver, taskProvider, onWorkspaceChange);
 }
 
 /**

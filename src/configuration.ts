@@ -23,10 +23,16 @@ const configuration = {
      * Files and directories to exclude from the Package Dependencies view.
      */
     get excludePathsFromPackageDependencies(): string[] {
-        return vscode.workspace.getConfiguration('swift').get<string[]>('excludePathsFromPackageDependencies') ?? [];
+        return vscode.workspace.getConfiguration('swift').get<string[]>('excludePathsFromPackageDependencies', []);
     },
     set excludePathsFromPackageDependencies(value: string[]) {
         vscode.workspace.getConfiguration('swift').update('excludePathsFromPackageDependencies', value);
+    },
+    get path(): string {
+        return vscode.workspace.getConfiguration('swift').get<string>('path', '');
+    },
+    get buildArguments(): string[] {
+        return vscode.workspace.getConfiguration('swift').get<string[]>('buildArguments', []);
     }
 };
 

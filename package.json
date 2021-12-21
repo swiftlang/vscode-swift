@@ -38,6 +38,21 @@
       {
         "title": "Swift",
         "properties": {
+          "swift.path": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "The path of the folder containing the Swift executables. The default is to look in **$PATH**.",
+            "order": 1
+          },
+          "swift.buildArguments": {
+            "type": "array",
+            "default": [],
+            "items": {
+                "type": "string"
+            },
+            "markdownDescription": "Arguments to pass to `swift build`. Keys and values should be provided as separate entries.",
+            "order": 2
+          },
           "swift.excludePathsFromPackageDependencies": {
             "description": "A list of paths to exclude from the Package Dependencies view.",
             "type": "array",
@@ -47,12 +62,8 @@
             "default": [
               ".git",
               ".github"
-            ]
-          },
-          "sourcekit-lsp.serverPath": {
-            "type": "string",
-            "default": "sourcekit-lsp",
-            "description": "The path of the sourcekit-lsp executable"
+            ],
+            "order": 3
           },
           "sourcekit-lsp.serverArguments": {
             "type": "array",

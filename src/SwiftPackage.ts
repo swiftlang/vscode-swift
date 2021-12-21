@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from 'vscode';
-import { exec } from './utilities';
+import { execSwift } from './utilities';
 
 // Swift Package Manager contents
 export interface PackageContents {
@@ -59,7 +59,7 @@ export class SwiftPackage implements PackageContents {
 
     public static async loadPackage(folder: vscode.WorkspaceFolder): Promise<PackageContents|null|undefined> {
         try {
-            const { stdout } = await exec('swift package describe --type json', { cwd: folder.uri.fsPath });
+            const { stdout } = await execSwift(['package', 'describe', '--type', 'json'], { cwd: folder.uri.fsPath });
             return JSON.parse(stdout);
         } catch(error) {
             const execError = error as {stderr: string};
