@@ -1,6 +1,7 @@
 # Contributing
 
 ## Conduct
+
 All contributors are expected to adhere to the project's [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Development
