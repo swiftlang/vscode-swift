@@ -23,7 +23,7 @@ import configuration from './configuration';
  * 
  * Commands will be executed by the user's `$SHELL`, if configured.
  */
- export async function exec(command: string, options: cp.ExecOptions): Promise<{ stdout: string; stderr: string }> {
+export async function exec(command: string, options: cp.ExecOptions): Promise<{ stdout: string; stderr: string }> {
     options.shell = process.env.SHELL;
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => 
         cp.exec(command, options, (error, stdout, stderr) => {
@@ -44,7 +44,7 @@ import configuration from './configuration';
  * @param args arguments to be passed to executable
  * @param options execution options
  */
- export async function execFile(
+export async function execFile(
     executable: string, 
     args: string[], 
     options: cp.ExecFileOptions = {}
@@ -115,10 +115,12 @@ export async function pathExists(...pathComponents: string[]): Promise<boolean> 
     }
 }
 
-// Return path to Xcode developer folder
+/**
+ * @returns path to Xcode developer folder
+ */
 export async function getXcodePath(): Promise<string|undefined> {
     try {
-        const { stdout } = await exec('xcode-select -p', {});
+        const { stdout } = await execFile('xcode-select', ['-p']);
         return stdout.trimEnd();
     } catch {
         return undefined;
