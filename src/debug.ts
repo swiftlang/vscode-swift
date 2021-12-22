@@ -14,7 +14,7 @@
 
 import * as vscode from 'vscode';
 import { FolderContext } from './FolderContext';
-import { getXCTestDLLPath, getXcodePath } from './utilities';
+import { getXcodePath } from './utilities';
 
 /** 
  * Edit launch.json based on contents of Swift Package.
@@ -89,7 +89,7 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
     if (ctx.swiftPackage.getTargets('test').length === 0) { return []; }
 
     if (process.platform === 'darwin') {
-        // On Apple platforms, find the path to xctest
+        // On macOS, find the path to xctest
         // and point it at the .xctest bundle from the .build directory.
         const xcodePath = await getXcodePath();
         if (xcodePath === undefined) {
@@ -107,14 +107,7 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
     } else if (process.platform === 'win32') {
         // On Windows, add XCTest.dll to the PATH,
         // and then run the .xctest bundle from the .build directory.
-        let xctestPath: string;
-        try {
-            xctestPath = await getXCTestDLLPath();
-        } catch (error) {
-            vscode.window.showErrorMessage(
-                `I was unable to create a debug configuration for testing ` + 
-                `because I cannot find XCTest.dll. ${error}` 
-            );
+        if (!ctx.workspaceContext.xcTestPath) {
             return [];
         }
         return [{
@@ -124,7 +117,7 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
             program: `./.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
             cwd: `\${workspaceFolder:${ctx.folder.name}}`,
             env: {
-                'path': `${xctestPath};\${env:PATH}`
+                'path': `${ctx.workspaceContext.xcTestPath};\${env:PATH}`
             },
             preLaunchTask: `swift: Build All`
         }]; 
@@ -139,6 +132,4 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
             preLaunchTask: `swift: Build All`
         }]; 
     }
-
-    return [];
 }

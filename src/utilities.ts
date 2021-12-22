@@ -129,7 +129,6 @@ export async function getXcodePath(): Promise<string|undefined> {
  * Contents of **Info.plist** on Windows.
  */
 interface InfoPlist {
-
     DefaultProperties: {
         XCTEST_VERSION: string | undefined
     }
@@ -140,7 +139,7 @@ interface InfoPlist {
  * 
  * @throws when unable to find this path.
  */
-export async function getXCTestDLLPath(): Promise<string> {
+export async function getXCTestPath(): Promise<string> {
     const developerPath = process.env.DEVELOPER_DIR;
     if (!developerPath) {
         throw Error('Environment variable DEVELOPER_DIR is not set.');

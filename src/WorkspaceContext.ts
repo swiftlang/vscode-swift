@@ -16,7 +16,7 @@ import * as vscode from 'vscode';
 import { FolderContext } from './FolderContext';
 import { StatusItem } from './StatusItem';
 import { SwiftOutputChannel } from './SwiftOutputChannel';
-import { execSwift } from './utilities';
+import { execSwift, getXCTestPath } from './utilities';
 
 // Context for whole workspace. Holds array of contexts for each workspace folder
 // and the ExtensionContext
@@ -24,6 +24,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public folders: FolderContext[] = [];
     public outputChannel: SwiftOutputChannel;
     public statusItem: StatusItem;
+    public xcTestPath?: string;
 
 	public constructor(
         public extensionContext: vscode.ExtensionContext
@@ -54,6 +55,17 @@ export class WorkspaceContext implements vscode.Disposable {
         const isRootFolder = this.folders.length === 0;
         const folderContext = await FolderContext.create(folder, isRootFolder, this);
         this.folders.push(folderContext);
+        // On Windows, locate XCTest.dll the first time we add a folder.
+        if (process.platform === 'win32' && this.folders.length === 1) {
+            try {
+                this.xcTestPath = await getXCTestPath();
+            } catch (error) {
+                vscode.window.showErrorMessage(
+                    `Unable to create a debug configuration for testing ` + 
+                    `because XCTest.dll cannot be found. ${error}` 
+                );
+            }
+        }
         for (const observer of this.observers) {
             await observer(folderContext, 'add');
         }
