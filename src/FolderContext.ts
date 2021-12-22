@@ -21,6 +21,13 @@ import contextKeys from "./contextKeys";
 export class FolderContext implements vscode.Disposable {
     private packageWatcher?: PackageWatcher;
 
+    /**
+     * FolderContext constructor
+     * @param folder Workspace Folder
+     * @param swiftPackage Swift Package inside the folder
+     * @param isRootFolder Is this a root folder
+     * @param workspaceContext Workspace context
+     */
     private constructor(
         public folder: vscode.WorkspaceFolder,
         public swiftPackage: SwiftPackage,
@@ -34,24 +41,38 @@ export class FolderContext implements vscode.Disposable {
         }
     }
 
+    /** dispose of any thing FolderContext holds */
     dispose() {
         this.packageWatcher?.dispose();
     }
 
+    /**
+     * Create FolderContext
+     * @param folder Folder that Folder Context is being created for
+     * @param isRootFolder Is this a root folder
+     * @param workspaceContext Workspace context for extension
+     * @returns a new FolderContext
+     */
     static async create(
-        rootFolder: vscode.WorkspaceFolder,
+        folder: vscode.WorkspaceFolder,
         isRootFolder: boolean,
         workspaceContext: WorkspaceContext
     ): Promise<FolderContext> {
-        const swiftPackage = await SwiftPackage.create(rootFolder);
-        return new FolderContext(rootFolder, swiftPackage, isRootFolder, workspaceContext);
+        const swiftPackage = await SwiftPackage.create(folder);
+        return new FolderContext(folder, swiftPackage, isRootFolder, workspaceContext);
     }
 
+    /** reload swift package for this folder */
     async reload() {
         await this.swiftPackage.reload();
         if (this.isRootFolder) {
             this.setContextKeys();
         }
+    }
+
+    /** reload Package.resolved for this folder */
+    async reloadPackageResolved() {
+        await this.swiftPackage.reloadPackageResolved();
     }
 
     private setContextKeys() {

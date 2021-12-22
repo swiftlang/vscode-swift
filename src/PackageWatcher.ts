@@ -93,6 +93,7 @@ export class PackageWatcher {
      * This will resolve any changes in the Package.resolved.
      */
     private async handlePackageResolvedChange() {
+        await this.folderContext.reloadPackageResolved();
         if (this.folderContext.isRootFolder && this.folderContext.swiftPackage.foundPackage) {
             await commands.resolveDependencies(this.workspaceContext);
         }
