@@ -87,12 +87,10 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
 // Return array of DebugConfigurations for tests based on what is in Package.swift
 async function createTestConfigurations(ctx: FolderContext): Promise<vscode.DebugConfiguration[]> {
     if (ctx.swiftPackage.getTargets('test').length === 0) { return []; }
-    // if platform is windows temporarily disable test launch config generation until we work
-    // out how to run the test executable on windows
-    if (process.platform === "win32") { return []; }
 
-    // If running on darwin. Find xctest exe and run pointing at xctest resources
     if (process.platform === 'darwin') {
+        // On macOS, find the path to xctest
+        // and point it at the .xctest bundle from the .build directory.
         const xcodePath = await getXcodePath();
         if (xcodePath === undefined) {
             return [];
@@ -106,8 +104,25 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
             cwd: `\${workspaceFolder:${ctx.folder.name}}`,
             preLaunchTask: `swift: Build All`
         }];
+    } else if (process.platform === 'win32') {
+        // On Windows, add XCTest.dll to the PATH,
+        // and then run the .xctest bundle from the .build directory.
+        if (!ctx.workspaceContext.xcTestPath) {
+            return [];
+        }
+        return [{
+            type: "lldb",
+            request: "launch",
+            name: `Test ${ctx.swiftPackage.name}`,
+            program: `./.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
+            cwd: `\${workspaceFolder:${ctx.folder.name}}`,
+            env: {
+                'path': `${ctx.workspaceContext.xcTestPath};\${env:PATH}`
+            },
+            preLaunchTask: `swift: Build All`
+        }]; 
     } else {
-        // otherwise run xctest exe inside build folder
+        // On Linux, just run the .xctest bundle from the .build directory.
         return [{
             type: "lldb",
             request: "launch",
@@ -115,8 +130,6 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
             program: `./.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
             cwd: `\${workspaceFolder:${ctx.folder.name}}`,
             preLaunchTask: `swift: Build All`
-        }];
+        }]; 
     }
-
-    return [];
 }

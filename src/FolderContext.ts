@@ -25,7 +25,7 @@ export class FolderContext implements vscode.Disposable {
         public folder: vscode.WorkspaceFolder,
         public swiftPackage: SwiftPackage,
         readonly isRootFolder: boolean,
-        workspaceContext: WorkspaceContext
+        public workspaceContext: WorkspaceContext
     ) {
         if (this.isRootFolder) {
             this.packageWatcher = new PackageWatcher(this, workspaceContext);

@@ -48,7 +48,7 @@
             "type": "array",
             "default": [],
             "items": {
-                "type": "string"
+              "type": "string"
             },
             "markdownDescription": "Arguments to pass to `swift build`. Keys and values should be provided as separate entries.",
             "order": 2
@@ -185,6 +185,8 @@
     "vsce": "^2.5.3"
   },
   "dependencies": {
+    "@types/plist": "^3.0.2",
+    "plist": "^3.0.4",
     "vscode-languageclient": "^7.0.0"
   }
 }
