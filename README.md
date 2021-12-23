@@ -33,7 +33,6 @@ For workspaces that contain a **Package.swift** file, this extension will create
 - **Clean Build Artifacts** (`swift package clean`)
 - **Resolve Package Dependencies** (`swift package resolve`)
 - **Update Package Dependencies** (`swift package update`)
-- **Run** (`swift run`), for every executable target in the package.
 
 These tasks are available via **Terminal ▸ Run Task...** and **Terminal ▸ Run Build Task...**.
 
