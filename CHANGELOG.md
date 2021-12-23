@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Add button to package dependencies view to update packages.
 - Resolve dependencies when **Package.swift** or **Package.resolved** changes.
 - Integrated with Soucekit-LSP.
-- Generate launch configurations for each executable and tests in Package.swift.
+- Generate launch configurations for each executable and tests in **Package.swift**.
 - Added "Swift" output channel providing a history of all actions.
 - Add status bar item for when swift resolve or updates are running.
 - Bundle using ESBuild.
