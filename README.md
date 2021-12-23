@@ -1,21 +1,34 @@
 # Swift for Visual Studio Code
 
+This extension adds language support for Swift to Visual Studio Code. It supports:
+
+* Automatic task creation
+* Package dependency view
+* Code completion
+* Jump to definition, peek definition, find all references, symbol search
+* Error annotations and apply suggestions from errors
+
+Swift support uses [SourceKit LSP](https://github.com/apple/sourcekit-lsp) for the [language server](https://microsoft.github.io/language-server-protocol/overviews/lsp/overview/) to power code completion and [LLDB](https://github.com/vadimcn/vscode-lldb) to enable debugging. 
+
+The extension is developed by members of the Swift Community and maintained by the [SSWG](https://www.swift.org/sswg/). The aim is to provide a first-class, feature complete extension to make developing Swift applications on all platforms a seamless experience.
+
+If you experience any issues or want to propose new features please [create an issue](https://github.com/swift-server/swift-vscode/issues/new) or post on the `#vscode-swift` channel on [Slack](https://swift-server.slack.com).
+
+## Contributing
+
+The Swift for Visual Studio Code extension is a community driven project, developed by the amazing Swift community. Any kind of contribution is appreciated, including code, tests and documentation. For more details see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Installation
 
-Currently, the only way to install this extension is to build it from source. To do this, you'll need to have [Node.js](https://nodejs.org) installed. On Linux, make sure to install Node.js from its official website or from [NodeSource](https://github.com/nodesource/distributions/) as the version included with your distribution may be outdated.
+For the extension to work, you must have Swift installed on your system. Please see the [Getting Started Guide on Swift.org](https://www.swift.org/getting-started/) for details on how to install Swift on your system. Install the extension from [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=sswg.swift) and open a Swift project!
 
-Next, clone this repository, and run the following commands:
+## Configuration
 
-```
-npm install
-npm run package
-```
+You can find the settings for this extension in **Preferences ▸ Settings** under **Extensions ▸ Swift** or by searching for the prefix `swift`.
 
-This will generate a file with the **vsix** extension. To install this file, select **View ▸ Extensions** from the menu bar, click the triple dots, then select **Install from VSIX...**:
+The following settings are available:
 
-![](images/install-extension.png)
-
-Alternatively, if you just want to try this extension without installing it, open this project in Visual Studio Code and press **F5** to launch an instance of Visual Studio Code with the extension enabled.
+- **excludePathsFromPackageDependencies**: A list of paths to exclude from the Package Dependencies view.
 
 ## Features
 
@@ -71,11 +84,3 @@ If your workspace contains a package that has dependencies, this extension will 
 Additionally, the extension will monitor **Package.swift** and **Package.resolved** for changes, resolve any changes to the dependencies, and update the view as needed.
 
 > **Note**: When browsing the files in a package, Visual Studio Code may also open these files in the Explorer. If this is undesirable, open **Preferences ▸ Settings** and set **Explorer: Auto Reveal** to `false`.
-
-## Configuration
-
-You can find the settings for this extension in **Preferences ▸ Settings** under **Extensions ▸ Swift** or by searching for the prefix `swift`.
-
-The following settings are available:
-
-- **excludePathsFromPackageDependencies**: A list of paths to exclude from the Package Dependencies view.
