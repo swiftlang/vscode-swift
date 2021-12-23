@@ -55,14 +55,14 @@ export class WorkspaceContext implements vscode.Disposable {
         const isRootFolder = this.folders.length === 0;
         const folderContext = await FolderContext.create(folder, isRootFolder, this);
         this.folders.push(folderContext);
-        // On Windows, locate XCTest.dll the first time we add a folder.
+        // On Windows, locate XCTest.dll the first time a folder is added.
         if (process.platform === 'win32' && this.folders.length === 1) {
             try {
                 this.xcTestPath = await getXCTestPath();
             } catch (error) {
                 vscode.window.showErrorMessage(
-                    `Unable to create a debug configuration for testing ` + 
-                    `because XCTest.dll cannot be found. ${error}` 
+                    `Unable to create a debug configuration for testing. ` + 
+                    `Your installation may be corrupt. ${error}` 
                 );
             }
         }
