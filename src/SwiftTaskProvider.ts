@@ -39,10 +39,15 @@ interface TaskConfig {
 
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
- * This excludes test targets.
  */
 function createBuildAllTask(): vscode.Task {
-    const additionalArgs = (process.platform !== 'darwin') ? ['--enable-test-discovery'] : [];
+    const additionalArgs: string[] = [];
+    if (process.platform !== 'darwin') {
+        additionalArgs.push('--enable-test-discovery');
+    }
+    if (process.platform === 'win32') {
+        additionalArgs.push('-Xlinker', '-debug:dwarf');
+    }
     return createSwiftTask(
         ['build', '--build-tests', ...additionalArgs, ...configuration.buildArguments], 
         SwiftTaskProvider.buildAllName, 
@@ -65,9 +70,10 @@ function createCleanTask(): vscode.Task {
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
  function createBuildTasks(product: Product): vscode.Task[] {
+    const debugArguments = process.platform === 'win32' ? ['-Xlinker', '-debug:dwarf'] : [];
     return [
         createSwiftTask(
-            ['build', '--product', product.name, ...configuration.buildArguments], 
+            ['build', '--product', product.name, ...debugArguments, ...configuration.buildArguments], 
             `Build Debug ${product.name}`, 
             { group: vscode.TaskGroup.Build }
         ),
