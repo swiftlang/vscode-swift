@@ -54,4 +54,4 @@ When you open a folder containing a **Package.swift** build tasks and launch con
 
 Press `F5` to start debugging. If you have multiple launch configurations you can choose which launch configuration to use in the debugger view. 
 
-CoreLLDB has a version of `lldb` packaged with it and by default this is the version it uses for debugging. This version of `lldb` does not work with Swift. CoreLLDB allows you to choose an alternate version though. The Swift extension will attempt to ascertain which version is required and give you the option to update the CoreLLDB configuration. 
+CoreLLDB has a version of `lldb` packaged with it and by default this is the version it uses for debugging. However, this version of `lldb` does not work with Swift. Fortunately, CoreLLDB allows you to choose an alternate version. The Swift extension will attempt to ascertain which version is required and give you the option to update the CoreLLDB configuration. 
