@@ -29,3 +29,11 @@ This product contains source code from Apple's SourceKit LSP project
     * https://www.apache.org/licenses/LICENSE-2.0
   * HOMEPAGE:
     * https://github.com/apple/sourcekit-lsp
+---
+
+This product contains source code from CoreLLDB vscode LLDB extension
+
+  * LICENSE (MIT):
+    * https://github.com/vadimcn/vscode-lldb/blob/master/LICENSE
+  * HOMEPAGE:
+    * https://github.com/vadimcn/vscode-lldb
