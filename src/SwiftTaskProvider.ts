@@ -12,15 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as vscode from 'vscode';
-import { WorkspaceContext } from  './WorkspaceContext';
-import { Product } from './SwiftPackage';
-import configuration from './configuration';
-import { getSwiftExecutable } from './utilities';
+import * as vscode from "vscode";
+import { WorkspaceContext } from "./WorkspaceContext";
+import { Product } from "./SwiftPackage";
+import configuration from "./configuration";
+import { getSwiftExecutable } from "./utilities";
 
 /**
  * References:
- * 
+ *
  * - General information on tasks:
  *   https://code.visualstudio.com/docs/editor/tasks
  * - Contributing task definitions:
@@ -31,10 +31,10 @@ import { getSwiftExecutable } from './utilities';
 
 // Interface class for defining task configuration
 interface TaskConfig {
-    scope?: vscode.TaskScope
-    group?: vscode.TaskGroup
-    problemMatcher?: string|string[]
-    presentationOptions?: vscode.TaskPresentationOptions 
+    scope?: vscode.TaskScope;
+    group?: vscode.TaskGroup;
+    problemMatcher?: string | string[];
+    presentationOptions?: vscode.TaskPresentationOptions;
 }
 
 /**
@@ -42,15 +42,15 @@ interface TaskConfig {
  */
 function createBuildAllTask(): vscode.Task {
     const additionalArgs: string[] = [];
-    if (process.platform !== 'darwin') {
-        additionalArgs.push('--enable-test-discovery');
+    if (process.platform !== "darwin") {
+        additionalArgs.push("--enable-test-discovery");
     }
-    if (process.platform === 'win32') {
-        additionalArgs.push('-Xlinker', '-debug:dwarf');
+    if (process.platform === "win32") {
+        additionalArgs.push("-Xlinker", "-debug:dwarf");
     }
     return createSwiftTask(
-        ['build', '--build-tests', ...additionalArgs, ...configuration.buildArguments], 
-        SwiftTaskProvider.buildAllName, 
+        ["build", "--build-tests", ...additionalArgs, ...configuration.buildArguments],
+        SwiftTaskProvider.buildAllName,
         { group: vscode.TaskGroup.Build }
     );
 }
@@ -59,29 +59,33 @@ function createBuildAllTask(): vscode.Task {
  * Creates a {@link vscode.Task Task} to clean the build artifacts.
  */
 function createCleanTask(): vscode.Task {
-    return createSwiftTask(
-        ['package', 'clean'], 
-        SwiftTaskProvider.cleanBuildName, 
-        { group: vscode.TaskGroup.Clean }
-    );
+    return createSwiftTask(["package", "clean"], SwiftTaskProvider.cleanBuildName, {
+        group: vscode.TaskGroup.Clean,
+    });
 }
 
 /**
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
- function createBuildTasks(product: Product): vscode.Task[] {
-    const debugArguments = process.platform === 'win32' ? ['-Xlinker', '-debug:dwarf'] : [];
+function createBuildTasks(product: Product): vscode.Task[] {
+    const debugArguments = process.platform === "win32" ? ["-Xlinker", "-debug:dwarf"] : [];
     return [
         createSwiftTask(
-            ['build', '--product', product.name, ...debugArguments, ...configuration.buildArguments], 
-            `Build Debug ${product.name}`, 
+            [
+                "build",
+                "--product",
+                product.name,
+                ...debugArguments,
+                ...configuration.buildArguments,
+            ],
+            `Build Debug ${product.name}`,
             { group: vscode.TaskGroup.Build }
         ),
         createSwiftTask(
-            ['build', '-c', 'release', '--product', product.name, ...configuration.buildArguments], 
-            `Build Release ${product.name}`, 
+            ["build", "-c", "release", "--product", product.name, ...configuration.buildArguments],
+            `Build Release ${product.name}`,
             { group: vscode.TaskGroup.Build }
-        )
+        ),
     ];
 }
 
@@ -89,14 +93,14 @@ function createCleanTask(): vscode.Task {
  * Creates a {@link vscode.Task Task} to resolve the package dependencies.
  */
 function createResolveTask(): vscode.Task {
-    return createSwiftTask(['package', 'resolve'], SwiftTaskProvider.resolvePackageName);
+    return createSwiftTask(["package", "resolve"], SwiftTaskProvider.resolvePackageName);
 }
 
 /**
  * Creates a {@link vscode.Task Task} to update the package dependencies.
  */
 function createUpdateTask(): vscode.Task {
-    return createSwiftTask(['package', 'update'], SwiftTaskProvider.updatePackageName);
+    return createSwiftTask(["package", "update"], SwiftTaskProvider.updatePackageName);
 }
 
 /**
@@ -105,16 +109,16 @@ function createUpdateTask(): vscode.Task {
 function createSwiftTask(args: string[], name: string, config?: TaskConfig): vscode.Task {
     const swift = getSwiftExecutable();
     const task = new vscode.Task(
-        { type: 'swift', command: swift, args: args },
+        { type: "swift", command: swift, args: args },
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
-        'swift',
+        "swift",
         new vscode.ShellExecution(swift, args),
         config?.problemMatcher
     );
     // This doesn't include any quotes added by VS Code.
     // See also: https://github.com/microsoft/vscode/issues/137895
-    task.detail = `swift ${args.join(' ')}`;
+    task.detail = `swift ${args.join(" ")}`;
     task.group = config?.group;
     task.presentationOptions = config?.presentationOptions ?? {};
     return task;
@@ -123,12 +127,17 @@ function createSwiftTask(args: string[], name: string, config?: TaskConfig): vsc
 /*
  * Execute shell command as task and wait until it is finished
  */
-export async function executeShellTaskAndWait(name: string, command: string, args: string[], config?: TaskConfig) {
+export async function executeShellTaskAndWait(
+    name: string,
+    command: string,
+    args: string[],
+    config?: TaskConfig
+) {
     const task = new vscode.Task(
-        { type: 'swift', command: command, args: args },
+        { type: "swift", command: command, args: args },
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
-        'swift',
+        "swift",
         new vscode.ShellExecution(command, args),
         config?.problemMatcher
     );
@@ -151,27 +160,26 @@ export async function executeTaskAndWait(task: vscode.Task) {
             }
         });
         vscode.tasks.executeTask(task);
-    });    
-} 
+    });
+}
 
 /**
  * A {@link vscode.TaskProvider TaskProvider} for tasks that match the definition
  * in **package.json**: `{ type: 'swift'; command: string; args: string[] }`.
- * 
+ *
  * See {@link SwiftTaskProvider.provideTasks provideTasks} for a list of provided tasks.
  */
 export class SwiftTaskProvider implements vscode.TaskProvider {
+    static buildAllName = "Build All";
+    static cleanBuildName = "Clean Build Artifacts";
+    static resolvePackageName = "Resolve Package Dependencies";
+    static updatePackageName = "Update Package Dependencies";
 
-    static buildAllName = 'Build All';
-    static cleanBuildName = 'Clean Build Artifacts';
-    static resolvePackageName = 'Resolve Package Dependencies';
-    static updatePackageName = 'Update Package Dependencies';
-    
-    constructor(private workspaceContext: WorkspaceContext) { }
+    constructor(private workspaceContext: WorkspaceContext) {}
 
     /**
      * Provides tasks to run the following commands:
-     * 
+     *
      * - `swift build`
      * - `swift package clean`
      * - `swift package resolve`
@@ -187,11 +195,13 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             createBuildAllTask(),
             createCleanTask(),
             createResolveTask(),
-            createUpdateTask()
+            createUpdateTask(),
         ];
 
         for (const folder of this.workspaceContext.folders) {
-            if (!folder.isRootFolder) { continue; }
+            if (!folder.isRootFolder) {
+                continue;
+            }
             const executables = folder.swiftPackage.executableProducts;
             for (const executable of executables) {
                 tasks.push(...createBuildTasks(executable));
@@ -202,7 +212,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
 
     /**
      * Resolves a {@link vscode.Task Task} specified in **tasks.json**.
-     * 
+     *
      * Other than its definition, this `Task` may be incomplete,
      * so this method should fill in the blanks.
      */
@@ -213,12 +223,13 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         const newTask = new vscode.Task(
             task.definition,
             task.scope ?? vscode.TaskScope.Workspace,
-            task.name || 'Custom Task',
-            'swift',
+            task.name || "Custom Task",
+            "swift",
             new vscode.ShellExecution(task.definition.command, task.definition.args),
             task.problemMatchers
         );
-        newTask.detail = task.detail ?? `${task.definition.command} ${task.definition.args.join(' ')}`;
+        newTask.detail =
+            task.detail ?? `${task.definition.command} ${task.definition.args.join(" ")}`;
         newTask.group = task.group;
         newTask.presentationOptions = task.presentationOptions;
 

@@ -12,14 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
 /**
  * Manages a {@link vscode.StatusBarItem StatusBarItem} to display the status
  * of tasks run by this extension.
  */
 export class StatusItem {
-
     private item: vscode.StatusBarItem;
     private runningTasks: vscode.Task[] = [];
 
@@ -29,7 +28,7 @@ export class StatusItem {
 
     /**
      * Signals the start of a {@link vscode.Task Task}.
-     * 
+     *
      * This will display the name of the task, preceded by a spinner animation.
      */
     start(task: vscode.Task) {
@@ -42,7 +41,7 @@ export class StatusItem {
 
     /**
      * Signals the end of a {@link vscode.Task Task}.
-     * 
+     *
      * If no other tasks are in progress, this will hide the {@link vscode.StatusBarItem StatusBarItem}.
      * Otherwise, the most recently added task will be shown instead.
      */
@@ -74,7 +73,7 @@ export class StatusItem {
     private hide() {
         this.item.hide();
     }
-    
+
     dispose() {
         this.item.dispose();
     }

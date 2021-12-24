@@ -12,17 +12,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as vscode from 'vscode';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import configuration from './configuration';
-import { getRepositoryName, pathExists } from './utilities';
-import { FolderContext } from './FolderContext';
-import { SwiftTaskProvider } from './SwiftTaskProvider';
+import * as vscode from "vscode";
+import * as fs from "fs/promises";
+import * as path from "path";
+import configuration from "./configuration";
+import { getRepositoryName, pathExists } from "./utilities";
+import { FolderContext } from "./FolderContext";
+import { SwiftTaskProvider } from "./SwiftTaskProvider";
 
 /**
  * References:
- * 
+ *
  * - Contributing views:
  *   https://code.visualstudio.com/api/references/contribution-points#contributes.views
  * - Contributing welcome views:
@@ -35,36 +35,31 @@ import { SwiftTaskProvider } from './SwiftTaskProvider';
  * The pinned state of a package, as parsed from **Package.resolved**.
  */
 interface PinnedPackage {
-    
     package: string;
     repositoryURL: string;
     state: {
         branch?: string;
         revision: string;
         version?: string;
-    }
+    };
 }
 
 /**
  * A package in the Package Dependencies {@link vscode.TreeView TreeView}.
- */ 
+ */
 class PackageNode {
-
     constructor(
         public name: string,
         public path: string,
         public version: string,
-        public type: 'local' | 'remote'
-    ) { }
+        public type: "local" | "remote"
+    ) {}
 
     toTreeItem(): vscode.TreeItem {
-        const item = new vscode.TreeItem(
-            this.name,
-            vscode.TreeItemCollapsibleState.Collapsed
-        );
+        const item = new vscode.TreeItem(this.name, vscode.TreeItemCollapsibleState.Collapsed);
         item.id = this.path;
         item.description = this.version;
-        item.iconPath = new vscode.ThemeIcon('archive');
+        item.iconPath = new vscode.ThemeIcon("archive");
         return item;
     }
 }
@@ -73,27 +68,22 @@ class PackageNode {
  * A file or directory in the Package Dependencies {@link vscode.TreeView TreeView}.
  */
 class FileNode {
-
-    constructor(
-        public name: string,
-        public path: string,
-        public isDirectory: boolean
-    ) { }
+    constructor(public name: string, public path: string, public isDirectory: boolean) {}
 
     toTreeItem(): vscode.TreeItem {
         const item = new vscode.TreeItem(
             this.name,
-            this.isDirectory ?
-                vscode.TreeItemCollapsibleState.Collapsed :
-                vscode.TreeItemCollapsibleState.None
+            this.isDirectory
+                ? vscode.TreeItemCollapsibleState.Collapsed
+                : vscode.TreeItemCollapsibleState.None
         );
         item.id = this.path;
         item.resourceUri = vscode.Uri.file(this.path);
         if (!this.isDirectory) {
             item.command = {
-                command: 'vscode.open',
+                command: "vscode.open",
                 arguments: [item.resourceUri],
-                title: 'Open File'
+                title: "Open File",
             };
         }
         return item;
@@ -102,7 +92,7 @@ class FileNode {
 
 /**
  * A node in the Package Dependencies {@link vscode.TreeView TreeView}.
- * 
+ *
  * Can be either a {@link PackageNode} or a {@link FileNode}.
  */
 type TreeNode = PackageNode | FileNode;
@@ -111,15 +101,18 @@ type TreeNode = PackageNode | FileNode;
  * A {@link vscode.TreeDataProvider TreeDataProvider} for the Package Dependencies {@link vscode.TreeView TreeView}.
  */
 export class PackageDependenciesProvider implements vscode.TreeDataProvider<TreeNode> {
-
-    private didChangeTreeDataEmitter = new vscode.EventEmitter<TreeNode | undefined | null | void>();
+    private didChangeTreeDataEmitter = new vscode.EventEmitter<
+        TreeNode | undefined | null | void
+    >();
     onDidChangeTreeData = this.didChangeTreeDataEmitter.event;
 
     constructor(private ctx: FolderContext) {
         // Refresh the tree when a package resolve or package update task completes.
-        vscode.tasks.onDidEndTask((event) => {
-            if (event.execution.task.name === SwiftTaskProvider.resolvePackageName ||
-                event.execution.task.name === SwiftTaskProvider.updatePackageName) {
+        vscode.tasks.onDidEndTask(event => {
+            if (
+                event.execution.task.name === SwiftTaskProvider.resolvePackageName ||
+                event.execution.task.name === SwiftTaskProvider.updatePackageName
+            ) {
                 this.didChangeTreeDataEmitter.fire();
             }
         });
@@ -132,16 +125,21 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
     async getChildren(element?: TreeNode): Promise<TreeNode[]> {
         if (!element) {
             // Build PackageNodes for all dependencies.
-            return [
-                ...this.getLocalDependencies(),
-                ...await this.getRemoteDependencies()
-            ].sort((first, second) => first.name.localeCompare(second.name));
+            return [...this.getLocalDependencies(), ...(await this.getRemoteDependencies())].sort(
+                (first, second) => first.name.localeCompare(second.name)
+            );
         }
         if (element instanceof PackageNode) {
             // Read the contents of a package.
-            const packagePath = element.type === 'remote' ?
-                path.join(this.ctx.folder.uri.fsPath, '.build', 'checkouts', getRepositoryName(element.path)) :
-                element.path;
+            const packagePath =
+                element.type === "remote"
+                    ? path.join(
+                          this.ctx.folder.uri.fsPath,
+                          ".build",
+                          "checkouts",
+                          getRepositoryName(element.path)
+                      )
+                    : element.path;
             return this.getNodesInDirectory(packagePath);
         } else {
             // Read the contents of a directory within a package.
@@ -154,30 +152,34 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
      * declared in **Package.swift**.
      */
     private getLocalDependencies(): PackageNode[] {
-        return this.ctx.swiftPackage.dependencies.filter(
-            dependency => !dependency.requirement && dependency.url 
-        ).map(dependency => new PackageNode(
-            dependency.identity,
-            dependency.url!,
-            'local',
-            'local'
-        ));
+        return this.ctx.swiftPackage.dependencies
+            .filter(dependency => !dependency.requirement && dependency.url)
+            .map(
+                dependency =>
+                    new PackageNode(dependency.identity, dependency.url!, "local", "local")
+            );
     }
 
     /**
      * Returns a {@link PackageNode} for every remote dependency.
      */
     private async getRemoteDependencies(): Promise<PackageNode[]> {
-        if (!await pathExists(this.ctx.folder.uri.fsPath, 'Package.resolved')) {
+        if (!(await pathExists(this.ctx.folder.uri.fsPath, "Package.resolved"))) {
             return [];
         }
-        const data = await fs.readFile(path.join(this.ctx.folder.uri.fsPath, 'Package.resolved'), 'utf8');
-        return JSON.parse(data).object.pins.map((pin: PinnedPackage) => new PackageNode(
-            pin.package,
-            pin.repositoryURL,
-            pin.state.version ?? pin.state.branch ?? pin.state.revision.substring(0, 7),
-            'remote'
-        ));
+        const data = await fs.readFile(
+            path.join(this.ctx.folder.uri.fsPath, "Package.resolved"),
+            "utf8"
+        );
+        return JSON.parse(data).object.pins.map(
+            (pin: PinnedPackage) =>
+                new PackageNode(
+                    pin.package,
+                    pin.repositoryURL,
+                    pin.state.version ?? pin.state.branch ?? pin.state.revision.substring(0, 7),
+                    "remote"
+                )
+        );
     }
 
     /**
@@ -194,11 +196,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             }
             const filePath = path.join(directoryPath, fileName);
             const stats = await fs.stat(filePath);
-            results.push(new FileNode(
-                fileName,
-                filePath,
-                stats.isDirectory()
-            ));
+            results.push(new FileNode(fileName, filePath, stats.isDirectory()));
         }
         return results.sort((first, second) => {
             if (first.isDirectory === second.isDirectory) {
