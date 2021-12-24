@@ -21,7 +21,7 @@ The Swift for Visual Studio Code extension is a community driven project, develo
 
 ## Installation
 
-For the extension to work, you must have Swift installed on your system. Please see the [Getting Started Guide on Swift.org](https://www.swift.org/getting-started/) for details on how to install Swift on your system. Install the extension from [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=sswg.swift) and open a Swift package! You'll be prompted to install and configure the CoreLLDB extension, which you should do so.
+For the extension to work, you must have Swift installed on your system. Please see the [Getting Started Guide on Swift.org](https://www.swift.org/getting-started/) for details on how to install Swift on your system. Install the extension from [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=sswg.swift-lang) and open a Swift package! You'll be prompted to install and configure the CoreLLDB extension, which you should do so.
 
 ## Features
 
