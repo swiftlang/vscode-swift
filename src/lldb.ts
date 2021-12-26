@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-// Based on code taken from CoreLLDB https://github.com/vadimcn/vscode-lldb/
+// Based on code taken from CodeLLDB https://github.com/vadimcn/vscode-lldb/
 // LICENSED with MIT License
 
 import { execFile } from './utilities';
