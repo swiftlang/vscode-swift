@@ -19,8 +19,10 @@ import { SwiftOutputChannel } from "./SwiftOutputChannel";
 import { execSwift, getSwiftExecutable, getXCTestPath } from "./utilities";
 import { getLLDBLibPath } from "./lldb";
 
-// Context for whole workspace. Holds array of contexts for each workspace folder
-// and the ExtensionContext
+/**
+ * Context for whole workspace. Holds array of contexts for each workspace folder
+ * and the ExtensionContext
+ */
 export class WorkspaceContext implements vscode.Disposable {
     public folders: FolderContext[] = [];
     public currentFolder?: FolderContext;
@@ -39,6 +41,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.statusItem.dispose();
     }
 
+    /** Setup the vscode event listeners to catch folder changes and active window changes */
     setupEventListeners() {
         // add event listener for when a workspace folder is added/removed
         const onWorkspaceChange = vscode.workspace.onDidChangeWorkspaceFolders(event => {
@@ -63,8 +66,22 @@ export class WorkspaceContext implements vscode.Disposable {
         this.extensionContext.subscriptions.push(onWorkspaceChange, onDidChangeActiveWindow);
     }
 
-    // set folder focus
-    public async focusFolder(folder: vscode.WorkspaceFolder) {
+    /**
+     * Fire an event to all folder observers
+     * @param folder folder to fire event for
+     * @param event event type
+     */
+    async fireEvent(folder: FolderContext, event: FolderEvent) {
+        for (const observer of this.observers) {
+            await observer(folder, event, this);
+        }
+    }
+
+    /**
+     * set the focus folder
+     * @param folder folder that has gained focus
+     */
+    async focusFolder(folder: vscode.WorkspaceFolder) {
         const folderContext = this.folders.find(context => context.folder === folder);
         if (folderContext === this.currentFolder) {
             return;
@@ -72,9 +89,7 @@ export class WorkspaceContext implements vscode.Disposable {
 
         // send unfocus event for previous folder observers
         if (this.currentFolder) {
-            for (const observer of this.observers) {
-                await observer(this.currentFolder, "unfocus", this);
-            }
+            await this.fireEvent(this.currentFolder, "unfocus");
         }
         this.currentFolder = folderContext;
         if (!folderContext) {
@@ -82,13 +97,14 @@ export class WorkspaceContext implements vscode.Disposable {
         }
 
         // send focus event to all observers
-        for (const observer of this.observers) {
-            await observer(folderContext, "focus", this);
-        }
+        await this.fireEvent(folderContext, "focus");
     }
 
-    // catch workspace folder changes and add/remove folders based on those changes
-    public async onDidChangeWorkspaceFolders(event: vscode.WorkspaceFoldersChangeEvent) {
+    /**
+     * catch workspace folder changes and add or remove folders based on those changes
+     * @param event workspace folder event
+     */
+    async onDidChangeWorkspaceFolders(event: vscode.WorkspaceFoldersChangeEvent) {
         for (const folder of event.added) {
             await this.addFolder(folder);
         }
@@ -98,8 +114,11 @@ export class WorkspaceContext implements vscode.Disposable {
         }
     }
 
-    // add folder to workspace
-    public async addFolder(folder: vscode.WorkspaceFolder) {
+    /**
+     * Called whenever a folder is added to the workspace
+     * @param folder folder being added
+     */
+    async addFolder(folder: vscode.WorkspaceFolder) {
         const isRootFolder = this.folders.length === 0;
         const folderContext = await FolderContext.create(folder, isRootFolder, this);
         this.folders.push(folderContext);
@@ -114,21 +133,21 @@ export class WorkspaceContext implements vscode.Disposable {
                 );
             }
         }
-        for (const observer of this.observers) {
-            await observer(folderContext, "add", this);
-        }
+        this.fireEvent(folderContext, "add");
+
         // is this the first folder then set a focus event
         if (
             this.folders.length === 1 ||
             this.getWorkspaceFolder(vscode.window.activeTextEditor) === folder
         ) {
-            for (const observer of this.observers) {
-                await observer(folderContext, "focus", this);
-            }
+            this.fireEvent(folderContext, "focus");
         }
     }
 
-    // remove folder from workspace
+    /**
+     * called when a folder is removed from workspace
+     * @param folder folder being removed
+     */
     async removeFolder(folder: vscode.WorkspaceFolder) {
         // find context with root folder
         const index = this.folders.findIndex(context => context.folder === folder);
@@ -148,12 +167,17 @@ export class WorkspaceContext implements vscode.Disposable {
         this.folders.splice(index, 1);
     }
 
-    observerFolders(fn: WorkspaceFoldersObserver): vscode.Disposable {
+    /**
+     * Add workspace folder event observer
+     * @param fn observer function to be called when event occurs
+     * @returns disposable object
+     */
+    observeFolders(fn: WorkspaceFoldersObserver): vscode.Disposable {
         this.observers.add(fn);
         return { dispose: () => this.observers.delete(fn) };
     }
 
-    // report swift version and throw error if it failed to find swift
+    /** report swift version and throw error if it failed to find swift */
     async reportSwiftVersion() {
         try {
             const { stdout } = await execSwift(["--version"]);
@@ -164,7 +188,7 @@ export class WorkspaceContext implements vscode.Disposable {
         }
     }
 
-    // find LLDB version and setup path in CodeLLDB
+    /** find LLDB version and setup path in CodeLLDB */
     async setLLDBVersion() {
         // don't set LLDB on windows as swift version is not working at the moment
         if (process.platform === "win32") {
@@ -218,8 +242,12 @@ export class WorkspaceContext implements vscode.Disposable {
     private observers: Set<WorkspaceFoldersObserver> = new Set();
 }
 
+/** Workspace Folder events */
+export type FolderEvent = "add" | "remove" | "focus" | "unfocus";
+
+/** Workspace Folder observer function */
 export type WorkspaceFoldersObserver = (
     folder: FolderContext,
-    operation: "add" | "remove" | "focus" | "unfocus",
+    operation: FolderEvent,
     workspace: WorkspaceContext
 ) => unknown;
