@@ -5,7 +5,7 @@ This extension adds language support for Swift to Visual Studio Code. It support
 * Code completion
 * Jump to definition, peek definition, find all references, symbol search
 * Error annotations and apply suggestions from errors
-* Automatic generation of launch configurations for debugging with [CoreLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)
+* Automatic generation of launch configurations for debugging with [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)
 * Automatic task creation
 * Package dependency view
 
@@ -21,7 +21,7 @@ The Swift for Visual Studio Code extension is a community driven project, develo
 
 ## Installation
 
-For the extension to work, you must have Swift installed on your system. Please see the [Getting Started Guide on Swift.org](https://www.swift.org/getting-started/) for details on how to install Swift on your system. Install the extension from [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=sswg.swift-lang) and open a Swift package! You'll be prompted to install and configure the CoreLLDB extension, which you should do so.
+For the extension to work, you must have Swift installed on your system. Please see the [Getting Started Guide on Swift.org](https://www.swift.org/getting-started/) for details on how to install Swift on your system. Install the extension from [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=sswg.swift-lang) and open a Swift package! You'll be prompted to install and configure the CodeLLDB extension, which you should do so.
 
 ## Features
 
@@ -48,10 +48,10 @@ Additionally, the extension will monitor **Package.swift** and **Package.resolve
 
 ### Debugging
 
-The Swift extension uses the [CoreLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb) extension for debugging.
+The Swift extension uses the [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb) extension for debugging.
 
-When you open a Swift package (a directory containing a **Package.swift**) the extension creates build tasks and launch configurations for each executable. If the package contains tests, the extension creates a configuration to run the tests. These all use the CoreLLDB extension as a debugger. 
+When you open a Swift package (a directory containing a **Package.swift**) the extension creates build tasks and launch configurations for each executable. If the package contains tests, the extension creates a configuration to run the tests. These all use the CodeLLDB extension as a debugger. 
 
 Press `F5` to run an executable and start debugging. If you have multiple launch configurations you can choose which launch configuration to use in the debugger view. 
 
-CoreLLDB has a version of `lldb` packaged with it and by default this is the version it uses for debugging. However, this version of `lldb` does not work with Swift. Fortunately, CoreLLDB allows you to choose an alternate version. The Swift extension will attempt to ascertain which version is required and give you the option to update the CoreLLDB configuration. 
+CodeLLDB has a version of `lldb` packaged with it and by default this is the version it uses for debugging. However, this version of `lldb` does not work with Swift. Fortunately, CodeLLDB allows you to choose an alternate version. The Swift extension will attempt to ascertain which version is required and give you the option to update the CodeLLDB configuration. 

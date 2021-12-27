@@ -108,7 +108,7 @@ export class WorkspaceContext implements vscode.Disposable {
         }
     }
 
-    // find LLDB version and setup path in CoreLLDB
+    // find LLDB version and setup path in CodeLLDB
     async setLLDBVersion() {
         // don't set LLDB on windows as swift version is not working at the moment
         if (process.platform === 'win32') { return; }
@@ -121,7 +121,7 @@ export class WorkspaceContext implements vscode.Disposable {
 
         // show dialog for setting up LLDB
         vscode.window.showInformationMessage(
-            "CoreLLDB requires the correct Swift version of LLDB for debugging. Do you want to set this up in your global settings or the workspace settings?", 
+            "CodeLLDB requires the correct Swift version of LLDB for debugging. Do you want to set this up in your global settings or the workspace settings?", 
             'Cancel', 'Global', 'Workspace').then(result => {
                 switch (result) {
                 case 'Global':
