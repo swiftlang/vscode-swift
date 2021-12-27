@@ -12,44 +12,44 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as vscode from 'vscode';
-import { execSwift } from './utilities';
+import * as vscode from "vscode";
+import { execSwift } from "./utilities";
 
 // Swift Package Manager contents
 export interface PackageContents {
-    name: string
-    products: Product[]
-    dependencies: Dependency[]
-    targets: Target[]
+    name: string;
+    products: Product[];
+    dependencies: Dependency[];
+    targets: Target[];
 }
 
 // Swift Package Manager product
 export interface Product {
-    name: string
-    targets: string[]
-    type: {executable?: null, library?: string[]}
+    name: string;
+    targets: string[];
+    type: { executable?: null; library?: string[] };
 }
 
 // Swift Package Manager target
 export interface Target {
-    name: string
-    path: string
-    sources: string[]
-    type: 'executable'|'test'|'library'
+    name: string;
+    path: string;
+    sources: string[];
+    type: "executable" | "test" | "library";
 }
 
 // Swift Package Manager dependency
 export interface Dependency {
-    identity: string
-    requirement?: object
-    url?: string
+    identity: string;
+    requirement?: object;
+    url?: string;
 }
 
 // Class holding Swift Package Manager Package
 export class SwiftPackage implements PackageContents {
-	private constructor(
+    private constructor(
         readonly folder: vscode.WorkspaceFolder,
-        private contents?: PackageContents|null
+        private contents?: PackageContents | null
     ) {}
 
     public static async create(folder: vscode.WorkspaceFolder): Promise<SwiftPackage> {
@@ -57,15 +57,16 @@ export class SwiftPackage implements PackageContents {
         return new SwiftPackage(folder, contents);
     }
 
-    public static async loadPackage(folder: vscode.WorkspaceFolder): Promise<PackageContents|null|undefined> {
+    public static async loadPackage(
+        folder: vscode.WorkspaceFolder
+    ): Promise<PackageContents | null | undefined> {
         try {
-            const { stdout } = await execSwift(
-                ['package', 'describe', '--type', 'json'], 
-                { cwd: folder.uri.fsPath }
-            );
+            const { stdout } = await execSwift(["package", "describe", "--type", "json"], {
+                cwd: folder.uri.fsPath,
+            });
             return JSON.parse(stdout);
-        } catch(error) {
-            const execError = error as {stderr: string};
+        } catch (error) {
+            const execError = error as { stderr: string };
             // if caught error and it begins with "error: root manifest" then there is no Package.swift
             if (execError.stderr.startsWith("error: root manifest")) {
                 return undefined;
@@ -90,9 +91,9 @@ export class SwiftPackage implements PackageContents {
     public get foundPackage(): boolean {
         return this.contents !== undefined;
     }
-    
+
     get name(): string {
-        return this.contents?.name ?? '';
+        return this.contents?.name ?? "";
     }
 
     get products(): Product[] {
@@ -115,7 +116,7 @@ export class SwiftPackage implements PackageContents {
         return this.products.filter(product => product.type.library !== undefined);
     }
 
-    getTargets(type: 'executable'|'library'|'test'): Target[] {
-        return this.targets.filter(target => target.type === type);    
+    getTargets(type: "executable" | "library" | "test"): Target[] {
+        return this.targets.filter(target => target.type === type);
     }
 }

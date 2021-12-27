@@ -12,28 +12,23 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as vscode from 'vscode';
-import * as debug from './debug';
-import * as commands from './commands';
-import { FolderContext } from './FolderContext';
-import { WorkspaceContext } from './WorkspaceContext';
+import * as vscode from "vscode";
+import * as debug from "./debug";
+import * as commands from "./commands";
+import { FolderContext } from "./FolderContext";
+import { WorkspaceContext } from "./WorkspaceContext";
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
- * 
+ *
  * Any changes to these files will update the context keys, trigger a `resolve` task,
  * and update the Package Dependencies view.
  */
 export class PackageWatcher {
-
     private packageFileWatcher?: vscode.FileSystemWatcher;
     private resolvedFileWatcher?: vscode.FileSystemWatcher;
 
-    constructor(
-        private folderContext: FolderContext,
-        private workspaceContext: WorkspaceContext
-    ) {
-    }
+    constructor(private folderContext: FolderContext, private workspaceContext: WorkspaceContext) {}
 
     /**
      * Creates and installs {@link vscode.FileSystemWatcher file system watchers} for
@@ -55,7 +50,7 @@ export class PackageWatcher {
 
     private createPackageFileWatcher(): vscode.FileSystemWatcher {
         const watcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(this.folderContext.folder, 'Package.swift')
+            new vscode.RelativePattern(this.folderContext.folder, "Package.swift")
         );
         watcher.onDidCreate(async () => await this.handlePackageSwiftChange());
         watcher.onDidChange(async () => await this.handlePackageSwiftChange());
@@ -65,7 +60,7 @@ export class PackageWatcher {
 
     private createResolvedFileWatcher(): vscode.FileSystemWatcher {
         const watcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(this.folderContext.folder, 'Package.resolved')
+            new vscode.RelativePattern(this.folderContext.folder, "Package.resolved")
         );
         watcher.onDidCreate(async () => await this.handlePackageResolvedChange());
         watcher.onDidChange(async () => await this.handlePackageResolvedChange());
@@ -75,13 +70,13 @@ export class PackageWatcher {
 
     /**
      * Handles a create or change event for **Package.swift**.
-     * 
-     * This will reload the swift package description, update the 
+     *
+     * This will reload the swift package description, update the
      * launch configuration if required and then resolve the package
      * dependencies.
      */
     async handlePackageSwiftChange() {
-        // Load SwiftPM Package.swift description 
+        // Load SwiftPM Package.swift description
         await this.folderContext.reload();
         // Create launch.json files based on package description. Run this in parallel
         // with package resolution
@@ -94,7 +89,7 @@ export class PackageWatcher {
 
     /**
      * Handles a create or change event for **Package.resolved**.
-     * 
+     *
      * This will resolve any changes in the Package.resolved.
      */
     private async handlePackageResolvedChange() {

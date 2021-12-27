@@ -12,9 +12,9 @@
     // Configure Prettier
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "[json]": {
-        "editor.formatOnSave": false
+        "editor.formatOnSave": true
     },
     "[typescript]": {
-        "editor.formatOnSave": false
+        "editor.formatOnSave": true
     }
 }

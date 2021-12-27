@@ -12,16 +12,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as vscode from 'vscode';
-import { PackageWatcher } from './PackageWatcher';
-import { SwiftPackage } from './SwiftPackage';
-import { WorkspaceContext } from './WorkspaceContext';
-import contextKeys from './contextKeys';
+import * as vscode from "vscode";
+import { PackageWatcher } from "./PackageWatcher";
+import { SwiftPackage } from "./SwiftPackage";
+import { WorkspaceContext } from "./WorkspaceContext";
+import contextKeys from "./contextKeys";
 
 export class FolderContext implements vscode.Disposable {
     private packageWatcher?: PackageWatcher;
 
-	private constructor(
+    private constructor(
         public folder: vscode.WorkspaceFolder,
         public swiftPackage: SwiftPackage,
         readonly isRootFolder: boolean,
@@ -42,8 +42,7 @@ export class FolderContext implements vscode.Disposable {
         rootFolder: vscode.WorkspaceFolder,
         isRootFolder: boolean,
         workspaceContext: WorkspaceContext
-    ): Promise<FolderContext> 
-    {
+    ): Promise<FolderContext> {
         const swiftPackage = await SwiftPackage.create(rootFolder);
         return new FolderContext(rootFolder, swiftPackage, isRootFolder, workspaceContext);
     }
@@ -58,11 +57,10 @@ export class FolderContext implements vscode.Disposable {
     private setContextKeys() {
         if (this.swiftPackage.foundPackage) {
             contextKeys.hasPackage = true;
-            contextKeys.packageHasDependencies = this.swiftPackage.dependencies.length > 0;  
+            contextKeys.packageHasDependencies = this.swiftPackage.dependencies.length > 0;
         } else {
             contextKeys.hasPackage = false;
             contextKeys.packageHasDependencies = false;
         }
     }
 }
-

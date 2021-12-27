@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
 export class SwiftOutputChannel {
     private channel: vscode.OutputChannel;
@@ -44,6 +44,11 @@ export class SwiftOutputChannel {
     }
 
     get nowFormatted(): string {
-        return new Date().toLocaleString('en-US', {hourCycle: 'h23', hour: '2-digit', minute: 'numeric', second: 'numeric'});
+        return new Date().toLocaleString("en-US", {
+            hourCycle: "h23",
+            hour: "2-digit",
+            minute: "numeric",
+            second: "numeric",
+        });
     }
 }
