@@ -90,20 +90,6 @@ function createBuildTasks(product: Product, folder: vscode.WorkspaceFolder): vsc
 }
 
 /**
- * Creates a {@link vscode.Task Task} to resolve the package dependencies.
- */
-function createResolveTask(): vscode.Task {
-    return createSwiftTask(["package", "resolve"], SwiftTaskProvider.resolvePackageName);
-}
-
-/**
- * Creates a {@link vscode.Task Task} to update the package dependencies.
- */
-function createUpdateTask(): vscode.Task {
-    return createSwiftTask(["package", "update"], SwiftTaskProvider.updatePackageName);
-}
-
-/**
  * Helper function to create a {@link vscode.Task Task} with the given parameters.
  */
 export function createSwiftTask(args: string[], name: string, config?: TaskConfig): vscode.Task {
@@ -210,7 +196,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         if (this.workspaceContext.folders.length === 0) {
             return [];
         }
-        const tasks = [createCleanTask(), createResolveTask(), createUpdateTask()];
+        const tasks = [createCleanTask()];
 
         for (const folderContext of this.workspaceContext.folders) {
             if (!folderContext.swiftPackage.foundPackage) {
