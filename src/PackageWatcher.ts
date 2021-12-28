@@ -82,8 +82,8 @@ export class PackageWatcher {
         // with package resolution
         debug.makeDebugConfigurations(this.folderContext);
         // if package has dependencies resolve them
-        if (this.folderContext.isRootFolder && this.folderContext.swiftPackage.foundPackage) {
-            await commands.resolveDependencies(this.workspaceContext);
+        if (this.folderContext.swiftPackage.foundPackage) {
+            await commands.resolveFolderDependencies(this.folderContext);
         }
     }
 
@@ -94,8 +94,8 @@ export class PackageWatcher {
      */
     private async handlePackageResolvedChange() {
         await this.folderContext.reloadPackageResolved();
-        if (this.folderContext.isRootFolder && this.folderContext.swiftPackage.foundPackage) {
-            await commands.resolveDependencies(this.workspaceContext);
+        if (this.folderContext.swiftPackage.foundPackage) {
+            await commands.resolveFolderDependencies(this.folderContext);
         }
     }
 }
