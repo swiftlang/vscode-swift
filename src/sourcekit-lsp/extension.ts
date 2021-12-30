@@ -12,46 +12,80 @@
 //
 //===----------------------------------------------------------------------===//
 
-'use strict';
-import * as vscode from 'vscode';
-import * as langclient from 'vscode-languageclient/node';
-import { getSwiftExecutable } from '../utilities';
-import { activateInlayHints } from './inlayHints';
+"use strict";
+import * as vscode from "vscode";
+import * as langclient from "vscode-languageclient/node";
+import { getSwiftExecutable } from "../utilities";
+import { WorkspaceContext } from "../WorkspaceContext";
+//import { activateInlayHints } from "./inlayHints";
 
-export async function activate(context: vscode.ExtensionContext): Promise<void> {
-    const config = vscode.workspace.getConfiguration('sourcekit-lsp');
+/** Manages the creation and destruction of Language clients as we move between
+ * workspace folders
+ */
+export class LanguageClientManager {
+    private observeFoldersDisposable: vscode.Disposable;
+    /** current running client */
+    private languageClient?: langclient.LanguageClient;
 
-    const sourcekit: langclient.Executable = {
-        command: getSwiftExecutable('sourcekit-lsp'),
-        args: config.get<string[]>('serverArguments', [])
-    };
-
-    const toolchain = config.get<string>('toolchainPath', '');
-    if (toolchain) {
-        // eslint-disable-next-line @typescript-eslint/naming-convention
-        sourcekit.options = { env: { ...process.env, SOURCEKIT_TOOLCHAIN_PATH: toolchain } };
+    constructor(workspaceContext: WorkspaceContext) {
+        // stop and start server for each folder based on which file I am looking at
+        this.observeFoldersDisposable = workspaceContext.observeFolders(
+            async (folderContext, event) => {
+                switch (event) {
+                    case "focus":
+                        this.languageClient = await this.setupLanguageClient(folderContext.folder);
+                        break;
+                    case "unfocus":
+                        await this.languageClient?.stop();
+                        this.languageClient = undefined;
+                        break;
+                }
+            }
+        );
     }
 
-    const serverOptions: langclient.ServerOptions = sourcekit;
+    dispose() {
+        this.observeFoldersDisposable.dispose();
+        this.languageClient?.stop();
+    }
 
-    const clientOptions: langclient.LanguageClientOptions = {
-        documentSelector: [
-            'swift',
-            'cpp',
-            'c',
-            'objective-c',
-            'objective-cpp'
-        ],
-        synchronize: undefined,
-        revealOutputChannelOn: langclient.RevealOutputChannelOn.Never
-    };
+    async setupLanguageClient(folder: vscode.WorkspaceFolder): Promise<langclient.LanguageClient> {
+        const client = await this.createLSPClient(folder);
+        client.start();
 
-    const client = new langclient.LanguageClient('sourcekit-lsp', 'SourceKit Language Server', serverOptions, clientOptions);
+        console.log(`SourceKit-LSP setup for ${folder.name}`);
 
-    context.subscriptions.push(client.start());
+        return client;
+    }
 
-    console.log('SourceKit-LSP is now active!');
+    async createLSPClient(folder: vscode.WorkspaceFolder): Promise<langclient.LanguageClient> {
+        const config = vscode.workspace.getConfiguration("sourcekit-lsp");
 
-    await client.onReady();
-    activateInlayHints(context, client);
+        const sourcekit: langclient.Executable = {
+            command: getSwiftExecutable("sourcekit-lsp"),
+            args: config.get<string[]>("serverArguments", []),
+        };
+
+        const toolchain = config.get<string>("toolchainPath", "");
+        if (toolchain) {
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            sourcekit.options = { env: { ...process.env, SOURCEKIT_TOOLCHAIN_PATH: toolchain } };
+        }
+
+        const serverOptions: langclient.ServerOptions = sourcekit;
+
+        const clientOptions: langclient.LanguageClientOptions = {
+            documentSelector: ["swift", "cpp", "c", "objective-c", "objective-cpp"],
+            synchronize: undefined,
+            revealOutputChannelOn: langclient.RevealOutputChannelOn.Never,
+            workspaceFolder: folder,
+        };
+
+        return new langclient.LanguageClient(
+            "sourcekit-lsp",
+            "SourceKit Language Server",
+            serverOptions,
+            clientOptions
+        );
+    }
 }

@@ -18,7 +18,7 @@ import * as debug from "./debug";
 import { PackageDependenciesProvider } from "./PackageDependencyProvider";
 import { SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
-import { activate as activateSourceKitLSP } from "./sourcekit-lsp/extension";
+import { LanguageClientManager } from "./sourcekit-lsp/extension";
 
 /**
  * Activate the extension. This is the main entry point.
@@ -38,7 +38,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // listen for workspace folder changes and active text editor changes
     workspaceContext.setupEventListeners();
 
-    await activateSourceKitLSP(context);
+    const languageClient = new LanguageClientManager(workspaceContext);
 
     // Register commands.
     const taskProvider = vscode.tasks.registerTaskProvider(
@@ -90,7 +90,8 @@ export async function activate(context: vscode.ExtensionContext) {
         resolvePackageObserver,
         addDependencyViewObserver,
         logObserver,
-        taskProvider
+        taskProvider,
+        languageClient
     );
 }
 
