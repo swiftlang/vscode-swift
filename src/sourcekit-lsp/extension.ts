@@ -75,8 +75,16 @@ export class LanguageClientManager {
         const serverOptions: langclient.ServerOptions = sourcekit;
 
         const clientOptions: langclient.LanguageClientOptions = {
+            // all the other LSP extensions have this in the form
+            // {scheme: "file", language: "swift"}. Need to work out how this
+            // is meant to work
             documentSelector: ["swift", "cpp", "c", "objective-c", "objective-cpp"],
-            synchronize: undefined,
+            synchronize: {
+                // Notify the server about file changes in the workspace
+                fileEvents: vscode.workspace.createFileSystemWatcher(
+                    new vscode.RelativePattern(folder, "**/*.swift")
+                ),
+            },
             revealOutputChannelOn: langclient.RevealOutputChannelOn.Never,
             workspaceFolder: folder,
         };
