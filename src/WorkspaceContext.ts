@@ -81,7 +81,7 @@ export class WorkspaceContext implements vscode.Disposable {
      * set the focus folder
      * @param folder folder that has gained focus
      */
-    async focusFolder(folder: vscode.WorkspaceFolder) {
+    async focusFolder(folder?: vscode.WorkspaceFolder) {
         const folderContext = this.folders.find(context => context.folder === folder);
         if (folderContext === this.currentFolder) {
             return;
@@ -140,7 +140,7 @@ export class WorkspaceContext implements vscode.Disposable {
             this.folders.length === 1 ||
             this.getWorkspaceFolder(vscode.window.activeTextEditor) === folder
         ) {
-            this.fireEvent(folderContext, "focus");
+            this.focusFolder(folder);
         }
     }
 
@@ -156,6 +156,11 @@ export class WorkspaceContext implements vscode.Disposable {
             return;
         }
         const context = this.folders[index];
+        // if current folder is this folder send unfocus event by setting
+        // current folder to undefined
+        if (this.currentFolder === context) {
+            this.focusFolder(undefined);
+        }
         // run observer functions in reverse order when removing
         const observersReversed = [...this.observers];
         observersReversed.reverse();
