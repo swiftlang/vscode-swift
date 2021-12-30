@@ -65,6 +65,10 @@
             ],
             "order": 3
           },
+          "sourcekit-lsp.serverPath": {
+            "type": "string",
+            "description": "The path of the sourcekit-lsp executable. The default is to look in the path where swift is found."
+          },
           "sourcekit-lsp.serverArguments": {
             "type": "array",
             "default": [],

@@ -61,8 +61,11 @@ export class LanguageClientManager {
     async createLSPClient(folder: vscode.WorkspaceFolder): Promise<langclient.LanguageClient> {
         const config = vscode.workspace.getConfiguration("sourcekit-lsp");
 
+        const serverPathConfig = config.get<string>("serverPath", "");
+        const serverPath =
+            serverPathConfig.length > 0 ? serverPathConfig : getSwiftExecutable("sourcekit-lsp");
         const sourcekit: langclient.Executable = {
-            command: getSwiftExecutable("sourcekit-lsp"),
+            command: serverPath,
             args: config.get<string[]>("serverArguments", []),
         };
 
