@@ -17,7 +17,7 @@ import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 import { getSwiftExecutable } from "../utilities";
 import { WorkspaceContext } from "../WorkspaceContext";
-//import { activateInlayHints } from "./inlayHints";
+import { activateInlayHints } from "./inlayHints";
 
 /** Manages the creation and destruction of Language clients as we move between
  * workspace folders
@@ -26,6 +26,7 @@ export class LanguageClientManager {
     private observeFoldersDisposable: vscode.Disposable;
     /** current running client */
     private languageClient?: langclient.LanguageClient;
+    private inlayHints?: vscode.Disposable;
 
     constructor(workspaceContext: WorkspaceContext) {
         // stop and start server for each folder based on which file I am looking at
@@ -33,11 +34,16 @@ export class LanguageClientManager {
             async (folderContext, event) => {
                 switch (event) {
                     case "focus":
-                        this.languageClient = await this.setupLanguageClient(folderContext.folder);
+                        await this.setupLanguageClient(folderContext.folder);
                         break;
                     case "unfocus":
-                        await this.languageClient?.stop();
-                        this.languageClient = undefined;
+                        this.inlayHints?.dispose();
+                        this.inlayHints = undefined;
+                        if (this.languageClient) {
+                            const client = this.languageClient;
+                            this.languageClient = undefined;
+                            client.stop();
+                        }
                         break;
                 }
             }
@@ -46,19 +52,26 @@ export class LanguageClientManager {
 
     dispose() {
         this.observeFoldersDisposable.dispose();
+        this.inlayHints?.dispose();
         this.languageClient?.stop();
     }
 
-    async setupLanguageClient(folder: vscode.WorkspaceFolder): Promise<langclient.LanguageClient> {
+    private async setupLanguageClient(folder: vscode.WorkspaceFolder) {
         const client = await this.createLSPClient(folder);
         client.start();
 
         console.log(`SourceKit-LSP setup for ${folder.name}`);
 
-        return client;
+        this.languageClient = client;
+
+        client.onReady().then(() => {
+            this.inlayHints = activateInlayHints(client);
+        });
     }
 
-    async createLSPClient(folder: vscode.WorkspaceFolder): Promise<langclient.LanguageClient> {
+    private async createLSPClient(
+        folder: vscode.WorkspaceFolder
+    ): Promise<langclient.LanguageClient> {
         const config = vscode.workspace.getConfiguration("sourcekit-lsp");
 
         const serverPathConfig = config.get<string>("serverPath", "");
