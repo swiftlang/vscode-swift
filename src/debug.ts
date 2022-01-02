@@ -57,7 +57,11 @@ export async function makeDebugConfigurations(ctx: FolderContext) {
     }
 
     if (edited) {
-        await wsLaunchSection.update("configurations", launchConfigs);
+        await wsLaunchSection.update(
+            "configurations",
+            launchConfigs,
+            vscode.ConfigurationTarget.WorkspaceFolder
+        );
     }
 }
 
