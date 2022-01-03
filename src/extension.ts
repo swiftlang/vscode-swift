@@ -18,7 +18,7 @@ import * as debug from "./debug";
 import { PackageDependenciesProvider } from "./PackageDependencyProvider";
 import { SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
-import { LanguageClientManager } from "./sourcekit-lsp/extension";
+import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 
 /**
  * Activate the extension. This is the main entry point.
