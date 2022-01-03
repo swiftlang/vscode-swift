@@ -133,7 +133,7 @@ export class WorkspaceContext implements vscode.Disposable {
                 );
             }
         }
-        this.fireEvent(folderContext, "add");
+        await this.fireEvent(folderContext, "add");
 
         // is this the first folder then set a focus event
         if (
