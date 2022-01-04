@@ -12,8 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as fs from "fs/promises";
-import * as path from "path";
 import * as vscode from "vscode";
 import { execSwift } from "./utilities";
 
@@ -124,9 +122,9 @@ export class SwiftPackage implements PackageContents {
         folder: vscode.WorkspaceFolder
     ): Promise<PackageResolved | undefined> {
         try {
-            const resolvedPath = path.join(folder.uri.fsPath, "Package.resolved");
-            const data = await fs.readFile(resolvedPath, "utf8");
-            return JSON.parse(data);
+            const uri = vscode.Uri.joinPath(folder.uri, "Package.resolved");
+            const document = await vscode.workspace.openTextDocument(uri);
+            return JSON.parse(document.getText());
         } catch {
             // failed to load resolved file return undefined
             return undefined;
