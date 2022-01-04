@@ -30,17 +30,17 @@ export class WorkspaceContext implements vscode.Disposable {
     public outputChannel: SwiftOutputChannel;
     public statusItem: StatusItem;
     public xcTestPath?: string;
-    public languageClient: LanguageClientManager;
+    public languageClientManager: LanguageClientManager;
 
     public constructor(public extensionContext: vscode.ExtensionContext) {
         this.outputChannel = new SwiftOutputChannel();
         this.statusItem = new StatusItem();
-        this.languageClient = new LanguageClientManager(this);
+        this.languageClientManager = new LanguageClientManager(this);
     }
 
     dispose() {
         this.folders.forEach(f => f.dispose());
-        this.languageClient.dispose();
+        this.languageClientManager.dispose();
         this.outputChannel.dispose();
         this.statusItem.dispose();
     }

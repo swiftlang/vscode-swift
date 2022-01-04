@@ -25,7 +25,7 @@ import { activateInlayHints } from "./inlayHints";
 export class LanguageClientManager {
     private observeFoldersDisposable: vscode.Disposable;
     /** current running client */
-    private languageClient?: langclient.LanguageClient;
+    public languageClient?: langclient.LanguageClient;
     private inlayHints?: vscode.Disposable;
 
     constructor(workspaceContext: WorkspaceContext) {
