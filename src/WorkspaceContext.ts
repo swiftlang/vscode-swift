@@ -135,7 +135,7 @@ export class WorkspaceContext implements vscode.Disposable {
         }
         await this.fireEvent(folderContext, "add");
 
-        // is this the first folder then set a focus event
+        // if this is the first folder then set a focus event
         if (
             this.folders.length === 1 ||
             this.getWorkspaceFolder(vscode.window.activeTextEditor) === folder
