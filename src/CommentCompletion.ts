@@ -78,6 +78,9 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
         // is it above function definition
         const details = this.getFunctionDetails(document, position);
         if (details) {
+            if (details.parameters.length === 0 && details.returns === false) {
+                return undefined;
+            }
             const snippetString = this.constructSnippetString(details);
             const snippet = new vscode.SnippetString(snippetString);
             const completion = new CommentCompletion(
