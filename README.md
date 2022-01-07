@@ -55,3 +55,7 @@ When you open a Swift package (a directory containing a **Package.swift**) the e
 Press `F5` to run an executable and start debugging. If you have multiple launch configurations you can choose which launch configuration to use in the debugger view. 
 
 CodeLLDB has a version of `lldb` packaged with it and by default this is the version it uses for debugging. However, this version of `lldb` does not work with Swift. Fortunately, CodeLLDB allows you to choose an alternate version. The Swift extension will attempt to ascertain which version is required and give you the option to update the CodeLLDB configuration. 
+
+### Documentation
+
+For docs on how to configure the extension or use it with the Remote Development extension, see the [Documentation](Documentation/README.md).
