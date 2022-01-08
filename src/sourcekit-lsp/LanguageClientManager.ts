@@ -95,12 +95,6 @@ export class LanguageClientManager {
             // {scheme: "file", language: "swift"}. Need to work out how this
             // is meant to work
             documentSelector: ["swift", "cpp", "c", "objective-c", "objective-cpp"],
-            synchronize: {
-                // Notify the server about file changes in the workspace
-                fileEvents: vscode.workspace.createFileSystemWatcher(
-                    new vscode.RelativePattern(folder, "**/*.swift")
-                ),
-            },
             revealOutputChannelOn: langclient.RevealOutputChannelOn.Never,
             workspaceFolder: folder,
         };
