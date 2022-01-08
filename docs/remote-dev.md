@@ -12,7 +12,7 @@ Next, install the [Remote Development extension pack](https://marketplace.visual
 
 ### Manual Setup
 
-VSCode requires a `.devcontainer` directory which defines the settings in `devcontainer.json` and a `Dockerfile` defining the container to run in.
+VSCode requires a `.devcontainer` directory which defines the settings in `devcontainer.json` and optionally a `Dockerfile` defining the container to run in.
 
 First create the directory. Next, create `devcontainer.json` and insert the following:
 
