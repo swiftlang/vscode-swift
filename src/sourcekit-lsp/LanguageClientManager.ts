@@ -27,6 +27,7 @@ export class LanguageClientManager {
     /** current running client */
     public languageClient?: langclient.LanguageClient;
     private inlayHints?: vscode.Disposable;
+    private supportsDidChangedWatchedFiles: boolean;
 
     constructor(workspaceContext: WorkspaceContext) {
         // stop and start server for each folder based on which file I am looking at
@@ -48,6 +49,7 @@ export class LanguageClientManager {
                 }
             }
         );
+        this.supportsDidChangedWatchedFiles = false;
     }
 
     dispose() {
@@ -62,10 +64,20 @@ export class LanguageClientManager {
 
         console.log(`SourceKit-LSP setup for ${folder.name}`);
 
+        this.supportsDidChangedWatchedFiles = false;
         this.languageClient = client;
 
         client.onReady().then(() => {
             this.inlayHints = activateInlayHints(client);
+            client.onRequest(langclient.RegistrationRequest.type, request => {
+                const index = request.registrations.findIndex(
+                    value => value.method === "workspace/didChangeWatchedFiles"
+                );
+                if (index !== -1) {
+                    console.log("LSP Server supports workspace/didChangeWatchedFiles");
+                    this.supportsDidChangedWatchedFiles = true;
+                }
+            });
         });
     }
 
