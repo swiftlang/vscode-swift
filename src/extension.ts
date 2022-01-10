@@ -64,14 +64,26 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    // observer that will resolve package for root folder
-    const resolvePackageObserver = workspaceContext.observeFolders(async (folder, event) => {
-        if (event === FolderEvent.add && folder.swiftPackage.foundPackage) {
-            // Create launch.json files based on package description.
-            await debug.makeDebugConfigurations(folder);
-            commands.resolveFolderDependencies(folder);
+    // observer that will resolve package and build launch configurations
+    const resolvePackageObserver = workspaceContext.observeFolders(
+        async (folder, event, workspace) => {
+            switch (event) {
+                case FolderEvent.add:
+                case FolderEvent.packageUpdated:
+                    // Create launch.json files based on package description.
+                    debug.makeDebugConfigurations(folder);
+                    if (folder.isRootFolder && folder.swiftPackage.foundPackage) {
+                        commands.resolveDependencies(workspaceContext);
+                    }
+                    break;
+
+                case FolderEvent.resolvedUpdated:
+                    if (folder.isRootFolder && folder.swiftPackage.foundPackage) {
+                        commands.resolveDependencies(workspace);
+                    }
+            }
         }
-    });
+    );
 
     // add workspace folders, already loaded
     if (vscode.workspace.workspaceFolders) {
