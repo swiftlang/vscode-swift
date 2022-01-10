@@ -24,11 +24,15 @@ import { activateInlayHints } from "./inlayHints";
  * workspace folders
  */
 export class LanguageClientManager {
-    private observeFoldersDisposable: vscode.Disposable;
     /** current running client */
     public languageClient?: langclient.LanguageClient;
+    private observeFoldersDisposable: vscode.Disposable;
+    private onDidCreateFileDisposable?: vscode.Disposable;
+    private onDidDeleteFileDisposable?: vscode.Disposable;
     private inlayHints?: vscode.Disposable;
     private supportsDidChangedWatchedFiles: boolean;
+    private startedPromise?: Promise<void>;
+    private restartPromise?: Promise<void>;
 
     constructor(workspaceContext: WorkspaceContext) {
         // stop and start server for each folder based on which file I am looking at
@@ -39,24 +43,76 @@ export class LanguageClientManager {
                         await this.setupLanguageClient(folderContext.folder);
                         break;
                     case FolderEvent.unfocus:
-                        this.inlayHints?.dispose();
-                        this.inlayHints = undefined;
+                        // if in the middle of a restart then we have to wait until that
+                        // restart has finished
+                        if (this.restartPromise) {
+                            await this.restartPromise;
+                        }
                         if (this.languageClient) {
                             const client = this.languageClient;
                             this.languageClient = undefined;
-                            client.stop();
+                            this.inlayHints?.dispose();
+                            this.inlayHints = undefined;
+                            // wait for client to start before stopping it
+                            if (this.startedPromise) {
+                                await this.startedPromise;
+                            }
+                            await client.stop();
                         }
                         break;
                 }
             }
         );
+        // restart LSP server on creation of a new file
+        this.onDidCreateFileDisposable = vscode.workspace.onDidCreateFiles(() => {
+            this.restartLanguageClient();
+        });
+        // restart LSP server on deletion of a file
+        this.onDidDeleteFileDisposable = vscode.workspace.onDidDeleteFiles(() => {
+            this.restartLanguageClient();
+        });
         this.supportsDidChangedWatchedFiles = false;
     }
 
     dispose() {
         this.observeFoldersDisposable.dispose();
+        this.onDidCreateFileDisposable?.dispose();
+        this.onDidDeleteFileDisposable?.dispose();
         this.inlayHints?.dispose();
         this.languageClient?.stop();
+    }
+
+    /** Restart language client */
+    async restartLanguageClient() {
+        // if language client is nil or workspace/didChangeWatchedFiles message is supported
+        // then don't need to restart
+        if (!this.languageClient || this.supportsDidChangedWatchedFiles) {
+            return;
+        }
+
+        const client = this.languageClient;
+        this.languageClient = undefined;
+        // get rid of inlay hints
+        this.inlayHints?.dispose();
+        this.inlayHints = undefined;
+        // wait for client to start before stopping it
+        if (this.startedPromise) {
+            await this.startedPromise;
+        }
+        // create promise that is resolved once restart is finished
+        this.restartPromise = client
+            .stop()
+            .then(async () => {
+                if (client.clientOptions.workspaceFolder === undefined) {
+                    return;
+                }
+                await new Promise(resolve => setTimeout(resolve, 10000));
+                await this.setupLanguageClient(client.clientOptions.workspaceFolder);
+            })
+            .then(() => {
+                this.restartPromise = undefined;
+            });
+        return this.restartPromise;
     }
 
     private async setupLanguageClient(folder: vscode.WorkspaceFolder) {
