@@ -89,7 +89,7 @@ export class WorkspaceContext implements vscode.Disposable {
 
         // send unfocus event for previous folder observers
         if (this.currentFolder) {
-            await this.fireEvent(this.currentFolder, "unfocus");
+            await this.fireEvent(this.currentFolder, FolderEvent.unfocus);
         }
         this.currentFolder = folderContext;
         if (!folderContext) {
@@ -97,7 +97,7 @@ export class WorkspaceContext implements vscode.Disposable {
         }
 
         // send focus event to all observers
-        await this.fireEvent(folderContext, "focus");
+        await this.fireEvent(folderContext, FolderEvent.focus);
     }
 
     /**
@@ -133,7 +133,7 @@ export class WorkspaceContext implements vscode.Disposable {
                 );
             }
         }
-        await this.fireEvent(folderContext, "add");
+        await this.fireEvent(folderContext, FolderEvent.add);
 
         // if this is the first folder then set a focus event
         if (
@@ -165,7 +165,7 @@ export class WorkspaceContext implements vscode.Disposable {
         const observersReversed = [...this.observers];
         observersReversed.reverse();
         for (const observer of observersReversed) {
-            await observer(context, "remove", this);
+            await observer(context, FolderEvent.remove, this);
         }
         context.dispose();
         // remove context
@@ -248,7 +248,24 @@ export class WorkspaceContext implements vscode.Disposable {
 }
 
 /** Workspace Folder events */
-export type FolderEvent = "add" | "remove" | "focus" | "unfocus";
+export class FolderEvent {
+    /** Workspace folder has been added */
+    static add = new FolderEvent("add");
+    /** Workspace folder has been removed */
+    static remove = new FolderEvent("remove");
+    /** Workspace folder has gained focus via a file inside the folder becoming the actively edited file */
+    static focus = new FolderEvent("focus");
+    /** Workspace folder loses focus because another workspace folder gained it */
+    static unfocus = new FolderEvent("unfocus");
+
+    constructor(private readonly name: string) {
+        this.name = name;
+    }
+
+    toString() {
+        return this.name;
+    }
+}
 
 /** Workspace Folder observer function */
 export type WorkspaceFoldersObserver = (

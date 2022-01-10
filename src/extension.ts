@@ -17,7 +17,7 @@ import * as commands from "./commands";
 import * as debug from "./debug";
 import { PackageDependenciesProvider } from "./PackageDependencyProvider";
 import { SwiftTaskProvider } from "./SwiftTaskProvider";
-import { WorkspaceContext } from "./WorkspaceContext";
+import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
 import { activate as activateSourceKitLSP } from "./sourcekit-lsp/extension";
 
 /**
@@ -57,7 +57,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // observer that will add dependency view based on whether a root workspace folder has been added
     const addDependencyViewObserver = workspaceContext.observeFolders((folder, event) => {
-        if (folder.isRootFolder && event === "add") {
+        if (folder.isRootFolder && event === FolderEvent.add) {
             const dependenciesProvider = new PackageDependenciesProvider(folder);
             const dependenciesView = vscode.window.createTreeView("packageDependencies", {
                 treeDataProvider: dependenciesProvider,
@@ -68,8 +68,8 @@ export async function activate(context: vscode.ExtensionContext) {
     });
 
     // observer that will resolve package for root folder
-    const resolvePackageObserver = workspaceContext.observerFolders(async (folder, operation) => {
-        if (operation === "add" && folder.swiftPackage.foundPackage) {
+    const resolvePackageObserver = workspaceContext.observeFolders(async (folder, operation) => {
+        if (operation === FolderEvent.add && folder.swiftPackage.foundPackage) {
             // Create launch.json files based on package description.
             await debug.makeDebugConfigurations(folder);
             if (folder.isRootFolder) {
