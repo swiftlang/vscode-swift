@@ -16,7 +16,7 @@
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 import { getSwiftExecutable } from "../utilities";
-import { WorkspaceContext } from "../WorkspaceContext";
+import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { activateInlayHints } from "./inlayHints";
 
 /** Manages the creation and destruction of Language clients as we move between
@@ -34,10 +34,10 @@ export class LanguageClientManager {
         this.observeFoldersDisposable = workspaceContext.observeFolders(
             async (folderContext, event) => {
                 switch (event) {
-                    case "focus":
+                    case FolderEvent.focus:
                         await this.setupLanguageClient(folderContext.folder);
                         break;
-                    case "unfocus":
+                    case FolderEvent.unfocus:
                         this.inlayHints?.dispose();
                         this.inlayHints = undefined;
                         if (this.languageClient) {
