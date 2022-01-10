@@ -15,6 +15,7 @@
 "use strict";
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
+import configuration from "../configuration";
 import { getSwiftExecutable } from "../utilities";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { activateInlayHints } from "./inlayHints";
@@ -84,18 +85,16 @@ export class LanguageClientManager {
     private async createLSPClient(
         folder: vscode.WorkspaceFolder
     ): Promise<langclient.LanguageClient> {
-        const config = vscode.workspace.getConfiguration("sourcekit-lsp");
-
-        const serverPathConfig = config.get<string>("serverPath", "");
+        const serverPathConfig = configuration.lsp.serverPath;
         const serverPath =
             serverPathConfig.length > 0 ? serverPathConfig : getSwiftExecutable("sourcekit-lsp");
         const sourcekit: langclient.Executable = {
             command: serverPath,
-            args: config.get<string[]>("serverArguments", []),
+            args: configuration.lsp.serverArguments,
         };
 
-        const toolchain = config.get<string>("toolchainPath", "");
-        if (toolchain) {
+        const toolchain = configuration.lsp.toolchainPath;
+        if (toolchain.length > 0) {
             // eslint-disable-next-line @typescript-eslint/naming-convention
             sourcekit.options = { env: { ...process.env, SOURCEKIT_TOOLCHAIN_PATH: toolchain } };
         }
