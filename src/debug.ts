@@ -57,7 +57,11 @@ export async function makeDebugConfigurations(ctx: FolderContext) {
     }
 
     if (edited) {
-        await wsLaunchSection.update("configurations", launchConfigs);
+        await wsLaunchSection.update(
+            "configurations",
+            launchConfigs,
+            vscode.ConfigurationTarget.WorkspaceFolder
+        );
     }
 }
 
@@ -71,7 +75,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
                 type: "lldb",
                 request: "launch",
                 name: `Debug ${product.name}`,
-                program: "${workspaceFolder}/.build/debug/" + product.name,
+                program: `.build/debug/` + product.name,
                 args: [],
                 cwd: `\${workspaceFolder:${ctx.folder.name}}`,
                 preLaunchTask: `swift: Build Debug ${product.name}`,
@@ -80,7 +84,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
                 type: "lldb",
                 request: "launch",
                 name: `Release ${product.name}`,
-                program: "${workspaceFolder}/.build/release/" + product.name,
+                program: `.build/release/` + product.name,
                 args: [],
                 cwd: `\${workspaceFolder:${ctx.folder.name}}`,
                 preLaunchTask: `swift: Build Release ${product.name}`,

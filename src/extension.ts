@@ -72,10 +72,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // observer that will resolve package for root folder
     const resolvePackageObserver = workspaceContext.observerFolders(async (folder, operation) => {
-        if (folder.isRootFolder && operation === "add" && folder.swiftPackage.foundPackage) {
+        if (operation === "add" && folder.swiftPackage.foundPackage) {
             // Create launch.json files based on package description.
             await debug.makeDebugConfigurations(folder);
-            await commands.resolveDependencies(workspaceContext);
+            if (folder.isRootFolder) {
+                await commands.resolveDependencies(workspaceContext);
+            }
         }
     });
 

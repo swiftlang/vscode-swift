@@ -87,7 +87,7 @@ export class WorkspaceContext implements vscode.Disposable {
         }
         context.dispose();
         // remove context
-        this.folders = this.folders.splice(index, 1);
+        this.folders.splice(index, 1);
     }
 
     observerFolders(fn: WorkspaceFoldersObserver): vscode.Disposable {
