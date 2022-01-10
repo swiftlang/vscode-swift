@@ -40,7 +40,7 @@ export async function makeDebugConfigurations(ctx: FolderContext) {
                 launchConfigs[index].preLaunchTask !== config.preLaunchTask
             ) {
                 const answer = await vscode.window.showErrorMessage(
-                    `Launch configuration '${config.name}' already exists. Do you want to update it?`,
+                    `${ctx.folder.name}: Launch configuration '${config.name}' already exists. Do you want to update it?`,
                     "Cancel",
                     "Update"
                 );
@@ -75,7 +75,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
                 type: "lldb",
                 request: "launch",
                 name: `Debug ${product.name}`,
-                program: `.build/debug/` + product.name,
+                program: `\${workspaceFolder:${ctx.folder.name}}/.build/debug/` + product.name,
                 args: [],
                 cwd: `\${workspaceFolder:${ctx.folder.name}}`,
                 preLaunchTask: `swift: Build Debug ${product.name}`,
@@ -84,7 +84,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
                 type: "lldb",
                 request: "launch",
                 name: `Release ${product.name}`,
-                program: `.build/release/` + product.name,
+                program: `\${workspaceFolder:${ctx.folder.name}}/.build/release/` + product.name,
                 args: [],
                 cwd: `\${workspaceFolder:${ctx.folder.name}}`,
                 preLaunchTask: `swift: Build Release ${product.name}`,
@@ -128,7 +128,7 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
                 type: "lldb",
                 request: "launch",
                 name: `Test ${ctx.swiftPackage.name}`,
-                program: `./.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
+                program: `\${workspaceFolder:${ctx.folder.name}}/.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
                 cwd: `\${workspaceFolder:${ctx.folder.name}}`,
                 env: {
                     path: `${ctx.workspaceContext.xcTestPath};\${env:PATH}`,
@@ -143,7 +143,7 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
                 type: "lldb",
                 request: "launch",
                 name: `Test ${ctx.swiftPackage.name}`,
-                program: `./.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
+                program: `\${workspaceFolder:${ctx.folder.name}}/.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
                 cwd: `\${workspaceFolder:${ctx.folder.name}}`,
                 preLaunchTask: `swift: Build All`,
             },
