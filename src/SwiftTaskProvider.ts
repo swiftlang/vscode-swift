@@ -140,7 +140,7 @@ export async function executeShellTaskAndWait(
     task.group = config?.group;
     task.presentationOptions = config?.presentationOptions ?? {};
 
-    executeTaskAndWait(task);
+    await executeTaskAndWait(task);
 }
 
 /*

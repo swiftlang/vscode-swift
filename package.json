@@ -49,6 +49,11 @@
         "title": "Reset Package Dependencies",
         "icon": "$(clear-all)",
         "category": "Swift"
+      },
+      {
+        "command": "swift.editDependency",
+        "title": "Edit Dependency",
+        "category": "Swift"
       }
     ],
     "configuration": [
@@ -151,6 +156,12 @@
           "command": "swift.resetPackage",
           "when": "view == packageDependencies",
           "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "swift.editDependency",
+          "when": "view == packageDependencies && viewItem == package"
         }
       ]
     },

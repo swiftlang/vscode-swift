@@ -16,6 +16,8 @@ import * as vscode from "vscode";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { executeTaskAndWait, createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderContext } from "./FolderContext";
+import { PackageNode } from "./ui/PackageDependencyProvider";
+import { execSwift } from "./utilities/utilities";
 
 /**
  * References:
@@ -193,6 +195,54 @@ export async function folderResetPackage(folderContext: FolderContext) {
     workspaceContext.statusItem.end(task);
 }
 
+export async function editDependency(identifier: string, ctx: WorkspaceContext) {
+    const currentFolder = ctx.currentFolder;
+    if (!currentFolder) {
+        return;
+    }
+    vscode.window
+        .showOpenDialog({
+            canSelectFiles: false,
+            canSelectFolders: true,
+            canSelectMany: false,
+            defaultUri: currentFolder.folder.uri,
+            openLabel: "Select",
+            title: "Select folder",
+        })
+        .then(async value => {
+            if (!value) {
+                return;
+            }
+            const folder = value[0];
+            ctx.outputChannel.log(
+                `Edit dependency ${identifier} from ${folder.fsPath}`,
+                currentFolder.folder.name
+            );
+            const index = vscode.workspace.workspaceFolders?.length ?? 0;
+            try {
+                const { stdout } = await execSwift(
+                    ["package", "edit", "--path", value[0].fsPath, identifier],
+                    {
+                        cwd: currentFolder.folder.uri.fsPath,
+                    }
+                );
+                await updateDependencies(ctx);
+                const existingFolder = ctx.folders.findIndex(item => item.folder.uri === folder);
+                if (existingFolder !== -1) {
+                    return;
+                }
+                vscode.workspace.updateWorkspaceFolders(index, 0, {
+                    uri: folder,
+                    name: identifier,
+                });
+            } catch (error) {
+                const execError = error as { stderr: string };
+                ctx.outputChannel.log(execError.stderr, currentFolder.folder.name);
+                vscode.window.showErrorMessage(`${execError.stderr}`);
+            }
+        });
+}
+
 /**
  * Registers this extension's commands in the given {@link vscode.ExtensionContext context}.
  */
@@ -209,6 +259,11 @@ export function register(ctx: WorkspaceContext) {
         }),
         vscode.commands.registerCommand("swift.resetPackage", () => {
             resetPackage(ctx);
+        }),
+        vscode.commands.registerCommand("swift.editDependency", item => {
+            if (item instanceof PackageNode) {
+                editDependency(item.name, ctx);
+            }
         })
     );
 }

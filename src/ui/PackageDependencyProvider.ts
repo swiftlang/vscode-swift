@@ -36,7 +36,7 @@ import contextKeys from "../contextKeys";
 /**
  * A package in the Package Dependencies {@link vscode.TreeView TreeView}.
  */
-class PackageNode {
+export class PackageNode {
     constructor(
         public name: string,
         public path: string,
@@ -49,6 +49,7 @@ class PackageNode {
         item.id = this.path;
         item.description = this.version;
         item.iconPath = new vscode.ThemeIcon("archive");
+        item.contextValue = "package";
         return item;
     }
 }
