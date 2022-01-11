@@ -70,7 +70,8 @@ export class LanguageClientManager {
 
         client.onReady().then(() => {
             this.inlayHints = activateInlayHints(client);
-            client.onRequest(langclient.RegistrationRequest.type, request => {
+            /*            client.onRequest(langclient.RegistrationRequest.type, request => {
+                console.log(p);
                 const index = request.registrations.findIndex(
                     value => value.method === "workspace/didChangeWatchedFiles"
                 );
@@ -78,7 +79,7 @@ export class LanguageClientManager {
                     console.log("LSP Server supports workspace/didChangeWatchedFiles");
                     this.supportsDidChangedWatchedFiles = true;
                 }
-            });
+            });*/
         });
     }
 
