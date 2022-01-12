@@ -18,7 +18,6 @@ import * as debug from "./debug";
 import { PackageDependenciesProvider } from "./PackageDependencyProvider";
 import { SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
-import { activate as activateSourceKitLSP } from "./sourcekit-lsp/extension";
 
 /**
  * Activate the extension. This is the main entry point.
@@ -37,8 +36,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // listen for workspace folder changes and active text editor changes
     workspaceContext.setupEventListeners();
-
-    await activateSourceKitLSP(context);
 
     // Register commands.
     const taskProvider = vscode.tasks.registerTaskProvider(
@@ -68,8 +65,8 @@ export async function activate(context: vscode.ExtensionContext) {
     });
 
     // observer that will resolve package for root folder
-    const resolvePackageObserver = workspaceContext.observeFolders(async (folder, operation) => {
-        if (operation === FolderEvent.add && folder.swiftPackage.foundPackage) {
+    const resolvePackageObserver = workspaceContext.observeFolders(async (folder, event) => {
+        if (event === FolderEvent.add && folder.swiftPackage.foundPackage) {
             // Create launch.json files based on package description.
             await debug.makeDebugConfigurations(folder);
             if (folder.isRootFolder) {

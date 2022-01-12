@@ -18,6 +18,7 @@ import { StatusItem } from "./StatusItem";
 import { SwiftOutputChannel } from "./SwiftOutputChannel";
 import { execSwift, getSwiftExecutable, getXCTestPath } from "./utilities";
 import { getLLDBLibPath } from "./lldb";
+import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -29,14 +30,17 @@ export class WorkspaceContext implements vscode.Disposable {
     public outputChannel: SwiftOutputChannel;
     public statusItem: StatusItem;
     public xcTestPath?: string;
+    public languageClientManager: LanguageClientManager;
 
     public constructor(public extensionContext: vscode.ExtensionContext) {
         this.outputChannel = new SwiftOutputChannel();
         this.statusItem = new StatusItem();
+        this.languageClientManager = new LanguageClientManager(this);
     }
 
     dispose() {
         this.folders.forEach(f => f.dispose());
+        this.languageClientManager.dispose();
         this.outputChannel.dispose();
         this.statusItem.dispose();
     }

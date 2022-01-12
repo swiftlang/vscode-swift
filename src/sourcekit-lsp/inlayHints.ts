@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-'use strict';
-import * as vscode from 'vscode';
-import * as langclient from 'vscode-languageclient/node';
-import { InlayHint, InlayHintsParams, inlayHintsRequest } from './lspExtensions';
+"use strict";
+import * as vscode from "vscode";
+import * as langclient from "vscode-languageclient/node";
+import { InlayHint, InlayHintsParams, inlayHintsRequest } from "./lspExtensions";
 
 // The implementation is loosely based on the rust-analyzer implementation
 // of inlay hints: https://github.com/rust-analyzer/rust-analyzer/blob/master/editors/code/src/inlay_hints.ts
@@ -23,16 +23,13 @@ import { InlayHint, InlayHintsParams, inlayHintsRequest } from './lspExtensions'
 // Note that once support for inlay hints is officially added to LSP/VSCode,
 // this module providing custom decorations will no longer be needed!
 
-export async function activateInlayHints(
-    context: vscode.ExtensionContext,
-    client: langclient.LanguageClient
-): Promise<void> {
+export function activateInlayHints(client: langclient.LanguageClient): vscode.Disposable {
     let updater: HintsUpdater | null = null;
 
     const onConfigChange = async () => {
-        const config = vscode.workspace.getConfiguration('sourcekit-lsp');
+        const config = vscode.workspace.getConfiguration("sourcekit-lsp");
         const wasEnabled = updater !== null;
-        const isEnabled = config.get<boolean>('inlayHints.enabled', false);
+        const isEnabled = config.get<boolean>("inlayHints.enabled", false);
 
         if (wasEnabled !== isEnabled) {
             updater?.dispose();
@@ -44,40 +41,49 @@ export async function activateInlayHints(
         }
     };
 
-    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(onConfigChange));
-    context.subscriptions.push({ dispose: () => updater?.dispose() });
+    const onDidChangeConfig = vscode.workspace.onDidChangeConfiguration(onConfigChange);
 
     onConfigChange().catch(console.error);
+
+    return {
+        dispose: () => {
+            updater?.dispose();
+            onDidChangeConfig.dispose();
+        },
+    };
 }
 
 interface InlayHintStyle {
     decorationType: vscode.TextEditorDecorationType;
 
-    makeDecoration(hint: InlayHint, converter: langclient.Protocol2CodeConverter): vscode.DecorationOptions;
+    makeDecoration(
+        hint: InlayHint,
+        converter: langclient.Protocol2CodeConverter
+    ): vscode.DecorationOptions;
 }
 
 const hintStyle: InlayHintStyle = {
     decorationType: vscode.window.createTextEditorDecorationType({
         after: {
-            color: new vscode.ThemeColor('editorCodeLens.foreground'),
-            fontStyle: 'normal',
-            fontWeight: 'normal'
-        }
+            color: new vscode.ThemeColor("editorCodeLens.foreground"),
+            fontStyle: "normal",
+            fontWeight: "normal",
+        },
     }),
 
     makeDecoration: (hint, converter) => ({
         range: converter.asRange({
             start: { ...hint.position, character: hint.position.character - 1 },
-            end: hint.position
+            end: hint.position,
         }),
         renderOptions: {
             after: {
                 // U+200C is a zero-width non-joiner to prevent the editor from
                 // forming a ligature between the code and an inlay hint.
-                contentText: `\u{200c}: ${hint.label}`
-            }
-        }
-    })
+                contentText: `\u{200c}: ${hint.label}`,
+            },
+        },
+    }),
 };
 
 interface SourceFile {
@@ -97,18 +103,25 @@ class HintsUpdater implements vscode.Disposable {
 
     constructor(private readonly client: langclient.LanguageClient) {
         // Register listeners
-        vscode.window.onDidChangeVisibleTextEditors(this.onDidChangeVisibleTextEditors, this, this.disposables);
-        vscode.workspace.onDidChangeTextDocument(this.onDidChangeTextDocument, this, this.disposables);
+        vscode.window.onDidChangeVisibleTextEditors(
+            this.onDidChangeVisibleTextEditors,
+            this,
+            this.disposables
+        );
+        vscode.workspace.onDidChangeTextDocument(
+            this.onDidChangeTextDocument,
+            this,
+            this.disposables
+        );
 
         // Set up initial cache
-        this.visibleSourceKitLSPEditors.forEach(editor => this.sourceFiles.set(
-            editor.document.uri.toString(),
-            {
+        this.visibleSourceKitLSPEditors.forEach(editor =>
+            this.sourceFiles.set(editor.document.uri.toString(), {
                 document: editor.document,
                 inFlightInlayHints: null,
-                cachedDecorations: null
-            }
-        ));
+                cachedDecorations: null,
+            })
+        );
 
         this.syncCacheAndRenderHints();
     }
@@ -122,7 +135,7 @@ class HintsUpdater implements vscode.Disposable {
             const file = this.sourceFiles.get(uri) ?? {
                 document: editor.document,
                 inFlightInlayHints: null,
-                cachedDecorations: null
+                cachedDecorations: null,
             };
             newSourceFiles.set(uri, file);
 
@@ -167,16 +180,21 @@ class HintsUpdater implements vscode.Disposable {
     }
 
     private get visibleSourceKitLSPEditors(): vscode.TextEditor[] {
-        return vscode.window.visibleTextEditors.filter(e => this.isSourceKitLSPDocument(e.document));
+        return vscode.window.visibleTextEditors.filter(e =>
+            this.isSourceKitLSPDocument(e.document)
+        );
     }
 
     private isSourceKitLSPDocument(document: vscode.TextDocument): boolean {
         // TODO: Add other SourceKit-LSP languages if/once we forward inlay
         // hint requests to clangd.
-        return document.languageId === 'swift' && document.uri.scheme === 'file';
+        return document.languageId === "swift" && document.uri.scheme === "file";
     }
 
-    private renderDecorations(editor: vscode.TextEditor, decorations: vscode.DecorationOptions[]): void {
+    private renderDecorations(
+        editor: vscode.TextEditor,
+        decorations: vscode.DecorationOptions[]
+    ): void {
         editor.setDecorations(hintStyle.decorationType, decorations);
     }
 
@@ -193,7 +211,7 @@ class HintsUpdater implements vscode.Disposable {
 
         // TODO: Specify a range
         const params: InlayHintsParams = {
-            textDocument: { uri: file.document.uri.toString() }
+            textDocument: { uri: file.document.uri.toString() },
         };
 
         try {

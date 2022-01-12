@@ -29,18 +29,23 @@ export class SwiftOutputChannel {
         if (label) {
             label += ": ";
         }
-        this.channel.appendLine(`${this.nowFormatted}: ${label ?? ""}${message}`);
+        const line = `${this.nowFormatted}: ${label ?? ""}${message}`;
+        this.channel.appendLine(line);
+        console.log(line);
     }
 
     logStart(message: string, label?: string) {
         if (label !== undefined) {
             label += ": ";
         }
-        this.channel.append(`${this.nowFormatted}: ${label ?? ""}${message}`);
+        const line = `${this.nowFormatted}: ${label ?? ""}${message}`;
+        this.channel.append(line);
+        console.log(line);
     }
 
     logEnd(message: string) {
         this.channel.appendLine(message);
+        console.log(message);
     }
 
     get nowFormatted(): string {
