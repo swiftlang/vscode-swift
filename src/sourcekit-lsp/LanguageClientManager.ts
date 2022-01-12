@@ -103,10 +103,18 @@ export class LanguageClientManager {
         const serverOptions: langclient.ServerOptions = sourcekit;
 
         const clientOptions: langclient.LanguageClientOptions = {
-            // all the other LSP extensions have this in the form
-            // {scheme: "file", language: "swift"}. Need to work out how this
-            // is meant to work
-            documentSelector: ["swift", "cpp", "c", "objective-c", "objective-cpp"],
+            documentSelector: [
+                { scheme: "file", language: "swift" },
+                { scheme: "untitled", language: "swift" },
+                { scheme: "file", language: "c" },
+                { scheme: "untitled", language: "c" },
+                { scheme: "file", language: "cpp" },
+                { scheme: "untitled", language: "cpp" },
+                { scheme: "file", language: "objective-c" },
+                { scheme: "untitled", language: "objective-c" },
+                { scheme: "file", language: "objective-cpp" },
+                { scheme: "untitled", language: "objective-cpp" },
+            ],
             revealOutputChannelOn: langclient.RevealOutputChannelOn.Never,
             workspaceFolder: folder,
         };
