@@ -1,6 +1,6 @@
 # Visual Studio Code Remote Development
 
-[VSCode Remote Development](https://code.visualstudio.com/docs/remote/containers) allows you to run your code and environment in a container. This is especially useful for Swift when developing on macOS and deploying to Linux. You can ensure there are no compatibility issues in Foundation when running your code.
+[VSCode Remote Development](https://code.visualstudio.com/docs/remote/containers) allows you to run your code and environment in a container. This is especially useful for Swift when developing on macOS and deploying to Linux. You can ensure there are no compatibility issues in Foundation when running your code. The extension also works with [GitHub Codespaces](https://github.com/features/codespaces) to allow you to write your code on the web.
 
 ## Requirements
 
@@ -57,9 +57,9 @@ This will use the `Dockerfile` provided in `.devcontainer`. Create that file and
 FROM swift:5.5
 ```
 
-<!-- ### Automatic Setup
+### Automatic Setup
 
-VSCode allows you to automatically configure your project with a dev container. In the command palette (`F1`) choose **Remote-Containers: Add Development Container Configuration Files...** and choose Swift. -->
+VSCode allows you to automatically configure your project with a dev container. In the command palette (`F1`) choose **Remote-Containers: Add Development Container Configuration Files...** and choose Swift.
 
 ### Running in a container
 
