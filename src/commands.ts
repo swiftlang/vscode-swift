@@ -42,12 +42,11 @@ export async function resolveDependencies(ctx: WorkspaceContext) {
  * @param folderContext folder to run resolve for
  */
 export async function resolveFolderDependencies(folderContext: FolderContext) {
-    const taskName = SwiftTaskProvider.resolvePackageName(folderContext);
     // Is an update or resolve task already running for this folder
     const index = vscode.tasks.taskExecutions.findIndex(
         exe =>
-            (exe.task.name === taskName ||
-                exe.task.name === SwiftTaskProvider.updatePackageName(folderContext)) &&
+            (exe.task.name === SwiftTaskProvider.resolvePackageName ||
+                exe.task.name === SwiftTaskProvider.updatePackageName) &&
             exe.task.scope === folderContext.folder
     );
     if (index !== -1) {
@@ -55,8 +54,11 @@ export async function resolveFolderDependencies(folderContext: FolderContext) {
     }
 
     const workspaceContext = folderContext.workspaceContext;
-    workspaceContext.outputChannel.logStart("Resolving Dependencies ... ");
-    const task = createSwiftTask(["package", "resolve"], taskName, {
+    workspaceContext.outputChannel.logStart(
+        "Resolving Dependencies ... ",
+        folderContext.folder.name
+    );
+    const task = createSwiftTask(["package", "resolve"], SwiftTaskProvider.resolvePackageName, {
         scope: folderContext.folder,
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
     });
@@ -87,21 +89,25 @@ export async function updateDependencies(ctx: WorkspaceContext) {
  * @returns
  */
 export async function updateFolderDependencies(folderContext: FolderContext) {
-    const taskName = SwiftTaskProvider.updatePackageName(folderContext);
     // Is an update task already running for this folder
     const index = vscode.tasks.taskExecutions.findIndex(
-        exe => exe.task.name === taskName && exe.task.scope === folderContext.folder
+        exe =>
+            exe.task.name === SwiftTaskProvider.updatePackageName &&
+            exe.task.scope === folderContext.folder
     );
     if (index !== -1) {
         return;
     }
 
     const workspaceContext = folderContext.workspaceContext;
-    const task = createSwiftTask(["package", "update"], taskName, {
+    const task = createSwiftTask(["package", "update"], SwiftTaskProvider.updatePackageName, {
         scope: folderContext.folder,
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
     });
-    workspaceContext.outputChannel.logStart("Updating Dependencies ... ");
+    workspaceContext.outputChannel.logStart(
+        "Updating Dependencies ... ",
+        folderContext.folder.name
+    );
     workspaceContext.statusItem.start(task);
     try {
         await executeTaskAndWait(task);

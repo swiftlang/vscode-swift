@@ -17,7 +17,6 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
 import { getSwiftExecutable } from "./utilities";
-import { FolderContext } from "./FolderContext";
 
 /**
  * References:
@@ -178,13 +177,8 @@ export async function executeTaskAndWait(task: vscode.Task) {
 export class SwiftTaskProvider implements vscode.TaskProvider {
     static buildAllName = "Build All";
     static cleanBuildName = "Clean Build Artifacts";
-
-    static resolvePackageName(folder: FolderContext) {
-        return `Resolve Package Dependencies (${folder.folder.name})`;
-    }
-    static updatePackageName(folder: FolderContext) {
-        return `Update Package Dependencies (${folder.folder.name})`;
-    }
+    static resolvePackageName = "Resolve Package Dependencies";
+    static updatePackageName = "Update Package Dependencies";
 
     constructor(private workspaceContext: WorkspaceContext) {}
 

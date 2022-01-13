@@ -18,7 +18,12 @@ class RunningTask {
     constructor(public task: vscode.Task | string) {}
     get name(): string {
         if (this.task instanceof vscode.Task) {
-            return this.task.name;
+            const folder = this.task.scope as vscode.WorkspaceFolder;
+            if (folder) {
+                return `${this.task.name} (${folder.name})`;
+            } else {
+                return this.task.name;
+            }
         } else {
             return this.task;
         }
