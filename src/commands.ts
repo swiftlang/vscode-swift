@@ -177,6 +177,15 @@ export async function folderResetPackage(folderContext: FolderContext) {
     workspaceContext.statusItem.start(task);
     try {
         await executeTaskAndWait(task);
+        const resolveTask = createSwiftTask(
+            ["package", "resolve"],
+            SwiftTaskProvider.resolvePackageName,
+            {
+                scope: folderContext.folder,
+                presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+            }
+        );
+        await executeTaskAndWait(resolveTask);
         workspaceContext.outputChannel.logEnd("done.");
     } catch (error) {
         workspaceContext.outputChannel.logEnd(`${error}`);
