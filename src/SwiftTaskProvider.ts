@@ -17,6 +17,7 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
 import { getSwiftExecutable } from "./utilities";
+import { FolderContext } from "./FolderContext";
 
 /**
  * References:
@@ -159,7 +160,7 @@ export async function executeShellTaskAndWait(
 export async function executeTaskAndWait(task: vscode.Task) {
     return new Promise<void>(resolve => {
         const disposable = vscode.tasks.onDidEndTask(({ execution }) => {
-            if (execution.task.name === task.name) {
+            if (execution.task.name === task.name && execution.task.scope === task.scope) {
                 disposable.dispose();
                 resolve();
             }
@@ -177,8 +178,13 @@ export async function executeTaskAndWait(task: vscode.Task) {
 export class SwiftTaskProvider implements vscode.TaskProvider {
     static buildAllName = "Build All";
     static cleanBuildName = "Clean Build Artifacts";
-    static resolvePackageName = "Resolve Package Dependencies";
-    static updatePackageName = "Update Package Dependencies";
+
+    static resolvePackageName(folder: FolderContext) {
+        return `Resolve Package Dependencies (${folder.folder.name})`;
+    }
+    static updatePackageName(folder: FolderContext) {
+        return `Update Package Dependencies (${folder.folder.name})`;
+    }
 
     constructor(private workspaceContext: WorkspaceContext) {}
 

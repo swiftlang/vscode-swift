@@ -14,13 +14,24 @@
 
 import * as vscode from "vscode";
 
+class RunningTask {
+    constructor(public task: vscode.Task | string) {}
+    get name(): string {
+        if (this.task instanceof vscode.Task) {
+            return this.task.name;
+        } else {
+            return this.task;
+        }
+    }
+}
+
 /**
  * Manages a {@link vscode.StatusBarItem StatusBarItem} to display the status
  * of tasks run by this extension.
  */
 export class StatusItem {
     private item: vscode.StatusBarItem;
-    private runningTasks: vscode.Task[] = [];
+    private runningTasks: RunningTask[] = [];
 
     constructor() {
         this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
@@ -31,12 +42,13 @@ export class StatusItem {
      *
      * This will display the name of the task, preceded by a spinner animation.
      */
-    start(task: vscode.Task) {
-        if (this.runningTasks.indexOf(task) !== -1) {
+    start(task: vscode.Task | string) {
+        if (this.runningTasks.findIndex(element => element.task === task) !== -1) {
             return; // This task is already running.
         }
-        this.runningTasks.push(task);
-        this.show(`$(sync~spin) ${task.name}`);
+        const runningTask = new RunningTask(task);
+        this.runningTasks.push(runningTask);
+        this.show(`$(sync~spin) ${runningTask.name}`);
     }
 
     /**
@@ -45,8 +57,8 @@ export class StatusItem {
      * If no other tasks are in progress, this will hide the {@link vscode.StatusBarItem StatusBarItem}.
      * Otherwise, the most recently added task will be shown instead.
      */
-    end(task: vscode.Task) {
-        const index = this.runningTasks.indexOf(task);
+    end(task: vscode.Task | string) {
+        const index = this.runningTasks.findIndex(element => element.task === task);
         if (index === -1) {
             return; // Unknown task.
         }
