@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import { DocumentParser } from "./Parser";
 
 /** CompletionItem for Swift Comments */
 class CommentCompletion extends vscode.CompletionItem {
@@ -106,6 +107,10 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
         document: vscode.TextDocument,
         position: vscode.Position
     ): FunctionDetails | null {
+        const parser = new DocumentParser(document, new vscode.Position(position.line + 1, 0));
+        parser.match(/func/);
+        const funcName = parser.match(/^(\S*)\s*\(/);
+        console.log(funcName);
         const nextLineIndex = position.line + 1;
         if (nextLineIndex > document.lineCount) {
             return null;

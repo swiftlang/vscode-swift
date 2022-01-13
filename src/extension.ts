@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import * as commands from "./commands";
 import * as debug from "./debugger/launch";
 import { PackageDependenciesProvider } from "./ui/PackageDependencyProvider";
-import * as commentCompletion from "./CommentCompletion";
+import * as commentCompletion from "./editor/CommentCompletion";
 import { SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
 
