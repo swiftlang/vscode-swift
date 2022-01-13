@@ -30,7 +30,11 @@ import { FolderContext } from "./FolderContext";
  * Executes a {@link vscode.Task task} to resolve this package's dependencies.
  */
 export async function resolveDependencies(ctx: WorkspaceContext) {
-    await resolveFolderDependencies(ctx.folders[0]);
+    const current = ctx.currentFolder;
+    if (!current) {
+        return;
+    }
+    await resolveFolderDependencies(current);
 }
 
 /**
@@ -69,7 +73,11 @@ export async function resolveFolderDependencies(folderContext: FolderContext) {
  * Executes a {@link vscode.Task task} to update this package's dependencies.
  */
 export async function updateDependencies(ctx: WorkspaceContext) {
-    await updateFolderDependencies(ctx.folders[0]);
+    const current = ctx.currentFolder;
+    if (!current) {
+        return;
+    }
+    await updateFolderDependencies(current);
 }
 
 /**
