@@ -67,13 +67,13 @@ export async function activate(context: vscode.ExtensionContext) {
                 // Create launch.json files based on package description.
                 debug.makeDebugConfigurations(folder);
                 if (folder.swiftPackage.foundPackage) {
-                    commands.resolveFolderDependencies(folder);
+                    await commands.resolveFolderDependencies(folder);
                 }
                 break;
 
             case FolderEvent.resolvedUpdated:
                 if (folder.swiftPackage.foundPackage) {
-                    commands.resolveFolderDependencies(folder);
+                    await commands.resolveFolderDependencies(folder);
                 }
         }
     });

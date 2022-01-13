@@ -54,7 +54,13 @@ export class FolderContext implements vscode.Disposable {
         isRootFolder: boolean,
         workspaceContext: WorkspaceContext
     ): Promise<FolderContext> {
+        const statusItemText = `Loading Package (${folder.name})`;
+        workspaceContext.statusItem.start(statusItemText);
+
         const swiftPackage = await SwiftPackage.create(folder);
+
+        workspaceContext.statusItem.end(statusItemText);
+
         return new FolderContext(folder, swiftPackage, isRootFolder, workspaceContext);
     }
 

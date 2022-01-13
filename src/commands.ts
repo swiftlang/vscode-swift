@@ -54,14 +54,17 @@ export async function resolveFolderDependencies(folderContext: FolderContext) {
     }
 
     const workspaceContext = folderContext.workspaceContext;
-    workspaceContext.outputChannel.logStart("Resolving Dependencies ... ");
+    workspaceContext.outputChannel.logStart(
+        "Resolving Dependencies ... ",
+        folderContext.folder.name
+    );
     const task = createSwiftTask(["package", "resolve"], SwiftTaskProvider.resolvePackageName, {
         scope: folderContext.folder,
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
     });
     workspaceContext.statusItem.start(task);
     try {
-        executeTaskAndWait(task);
+        await executeTaskAndWait(task);
         workspaceContext.outputChannel.logEnd("done.");
     } catch (error) {
         workspaceContext.outputChannel.logEnd(`${error}`);
@@ -101,7 +104,10 @@ export async function updateFolderDependencies(folderContext: FolderContext) {
         scope: folderContext.folder,
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
     });
-    workspaceContext.outputChannel.logStart("Updating Dependencies ... ");
+    workspaceContext.outputChannel.logStart(
+        "Updating Dependencies ... ",
+        folderContext.folder.name
+    );
     workspaceContext.statusItem.start(task);
     try {
         await executeTaskAndWait(task);
