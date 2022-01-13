@@ -13,10 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as debug from "./debug";
-import * as commands from "./commands";
 import { FolderContext } from "./FolderContext";
-import { WorkspaceContext } from "./WorkspaceContext";
+import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
@@ -78,13 +76,7 @@ export class PackageWatcher {
     async handlePackageSwiftChange() {
         // Load SwiftPM Package.swift description
         await this.folderContext.reload();
-        // Create launch.json files based on package description. Run this in parallel
-        // with package resolution
-        debug.makeDebugConfigurations(this.folderContext);
-        // if package has dependencies resolve them
-        if (this.folderContext.swiftPackage.foundPackage) {
-            await commands.resolveFolderDependencies(this.folderContext);
-        }
+        this.workspaceContext.fireEvent(this.folderContext, FolderEvent.packageUpdated);
     }
 
     /**
@@ -94,8 +86,6 @@ export class PackageWatcher {
      */
     private async handlePackageResolvedChange() {
         await this.folderContext.reloadPackageResolved();
-        if (this.folderContext.swiftPackage.foundPackage) {
-            await commands.resolveFolderDependencies(this.folderContext);
-        }
+        this.workspaceContext.fireEvent(this.folderContext, FolderEvent.resolvedUpdated);
     }
 }

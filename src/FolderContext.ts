@@ -16,7 +16,6 @@ import * as vscode from "vscode";
 import { PackageWatcher } from "./PackageWatcher";
 import { SwiftPackage } from "./SwiftPackage";
 import { WorkspaceContext } from "./WorkspaceContext";
-import contextKeys from "./contextKeys";
 
 export class FolderContext implements vscode.Disposable {
     private packageWatcher?: PackageWatcher;
@@ -36,9 +35,6 @@ export class FolderContext implements vscode.Disposable {
     ) {
         this.packageWatcher = new PackageWatcher(this, workspaceContext);
         this.packageWatcher.install();
-        if (this.isRootFolder) {
-            this.setContextKeys();
-        }
     }
 
     /** dispose of any thing FolderContext holds */
@@ -65,23 +61,10 @@ export class FolderContext implements vscode.Disposable {
     /** reload swift package for this folder */
     async reload() {
         await this.swiftPackage.reload();
-        if (this.isRootFolder) {
-            this.setContextKeys();
-        }
     }
 
     /** reload Package.resolved for this folder */
     async reloadPackageResolved() {
         await this.swiftPackage.reloadPackageResolved();
-    }
-
-    private setContextKeys() {
-        if (this.swiftPackage.foundPackage) {
-            contextKeys.hasPackage = true;
-            contextKeys.packageHasDependencies = this.swiftPackage.dependencies.length > 0;
-        } else {
-            contextKeys.hasPackage = false;
-            contextKeys.packageHasDependencies = false;
-        }
     }
 }

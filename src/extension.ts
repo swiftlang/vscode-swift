@@ -52,24 +52,29 @@ export async function activate(context: vscode.ExtensionContext) {
         );
     });
 
-    // observer that will add dependency view based on whether a root workspace folder has been added
-    const addDependencyViewObserver = workspaceContext.observeFolders((folder, event) => {
-        if (folder.isRootFolder && event === FolderEvent.add) {
-            const dependenciesProvider = new PackageDependenciesProvider(folder);
-            const dependenciesView = vscode.window.createTreeView("packageDependencies", {
-                treeDataProvider: dependenciesProvider,
-                showCollapseAll: true,
-            });
-            context.subscriptions.push(dependenciesView);
-        }
+    // dependency view
+    const dependenciesProvider = new PackageDependenciesProvider(workspaceContext);
+    const dependenciesView = vscode.window.createTreeView("packageDependencies", {
+        treeDataProvider: dependenciesProvider,
+        showCollapseAll: true,
     });
 
-    // observer that will resolve package for root folder
+    // observer that will resolve package and build launch configurations
     const resolvePackageObserver = workspaceContext.observeFolders(async (folder, event) => {
-        if (event === FolderEvent.add && folder.swiftPackage.foundPackage) {
-            // Create launch.json files based on package description.
-            await debug.makeDebugConfigurations(folder);
-            commands.resolveFolderDependencies(folder);
+        switch (event) {
+            case FolderEvent.add:
+            case FolderEvent.packageUpdated:
+                // Create launch.json files based on package description.
+                debug.makeDebugConfigurations(folder);
+                if (folder.swiftPackage.foundPackage) {
+                    commands.resolveFolderDependencies(folder);
+                }
+                break;
+
+            case FolderEvent.resolvedUpdated:
+                if (folder.swiftPackage.foundPackage) {
+                    commands.resolveFolderDependencies(folder);
+                }
         }
     });
 
@@ -83,7 +88,8 @@ export async function activate(context: vscode.ExtensionContext) {
     // Register any disposables for cleanup when the extension deactivates.
     context.subscriptions.push(
         resolvePackageObserver,
-        addDependencyViewObserver,
+        dependenciesView,
+        dependenciesProvider,
         logObserver,
         taskProvider
     );

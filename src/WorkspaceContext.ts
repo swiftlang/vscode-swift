@@ -261,6 +261,10 @@ export class FolderEvent {
     static focus = new FolderEvent("focus");
     /** Workspace folder loses focus because another workspace folder gained it */
     static unfocus = new FolderEvent("unfocus");
+    /** Package.swift has been updated */
+    static packageUpdated = new FolderEvent("packageUpdated");
+    /** Package.resolved has been updated */
+    static resolvedUpdated = new FolderEvent("resolvedUpdated");
 
     constructor(private readonly name: string) {
         this.name = name;

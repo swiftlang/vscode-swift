@@ -17,8 +17,10 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import configuration from "./configuration";
 import { getRepositoryName } from "./utilities";
+import { WorkspaceContext } from "./WorkspaceContext";
+import { FolderEvent } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
-import { SwiftTaskProvider } from "./SwiftTaskProvider";
+import contextKeys from "./contextKeys";
 
 /**
  * References:
@@ -91,18 +93,40 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
     private didChangeTreeDataEmitter = new vscode.EventEmitter<
         TreeNode | undefined | null | void
     >();
+    private workspaceObserver: vscode.Disposable;
+
     onDidChangeTreeData = this.didChangeTreeDataEmitter.event;
 
-    constructor(private ctx: FolderContext) {
-        // Refresh the tree when a package resolve or package update task completes.
-        vscode.tasks.onDidEndTask(event => {
-            if (
-                event.execution.task.name === SwiftTaskProvider.resolvePackageName ||
-                event.execution.task.name === SwiftTaskProvider.updatePackageName
-            ) {
-                this.didChangeTreeDataEmitter.fire();
+    constructor(private workspaceContext: WorkspaceContext) {
+        this.workspaceObserver = this.workspaceContext.observeFolders((folder, event) => {
+            switch (event) {
+                case FolderEvent.focus:
+                    this.updateView(folder);
+                    break;
+                case FolderEvent.unfocus:
+                    this.updateView(undefined);
+                    break;
+                case FolderEvent.resolvedUpdated:
+                    if (folder === this.workspaceContext.currentFolder) {
+                        this.updateView(folder);
+                    }
             }
         });
+    }
+
+    dispose() {
+        this.workspaceObserver.dispose();
+    }
+
+    updateView(folderContext?: FolderContext) {
+        if (!folderContext || !folderContext.swiftPackage.foundPackage) {
+            contextKeys.hasPackage = false;
+            contextKeys.packageHasDependencies = false;
+            return;
+        }
+        contextKeys.hasPackage = true;
+        contextKeys.packageHasDependencies = folderContext.swiftPackage.dependencies.length > 0;
+        this.didChangeTreeDataEmitter.fire();
     }
 
     getTreeItem(element: TreeNode): vscode.TreeItem {
@@ -110,18 +134,23 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
     }
 
     async getChildren(element?: TreeNode): Promise<TreeNode[]> {
+        const folderContext = this.workspaceContext.currentFolder;
+        if (!folderContext) {
+            return [];
+        }
         if (!element) {
             // Build PackageNodes for all dependencies.
-            return [...this.getLocalDependencies(), ...(await this.getRemoteDependencies())].sort(
-                (first, second) => first.name.localeCompare(second.name)
-            );
+            return [
+                ...this.getLocalDependencies(folderContext),
+                ...(await this.getRemoteDependencies(folderContext)),
+            ].sort((first, second) => first.name.localeCompare(second.name));
         }
         if (element instanceof PackageNode) {
             // Read the contents of a package.
             const packagePath =
                 element.type === "remote"
                     ? path.join(
-                          this.ctx.folder.uri.fsPath,
+                          folderContext.folder.uri.fsPath,
                           ".build",
                           "checkouts",
                           getRepositoryName(element.path)
@@ -138,8 +167,8 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
      * Returns a {@link PackageNode} for every local dependency
      * declared in **Package.swift**.
      */
-    private getLocalDependencies(): PackageNode[] {
-        return this.ctx.swiftPackage.dependencies
+    private getLocalDependencies(folderContext: FolderContext): PackageNode[] {
+        return folderContext.swiftPackage.dependencies
             .filter(dependency => !dependency.requirement && dependency.url)
             .map(
                 dependency =>
@@ -150,9 +179,9 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
     /**
      * Returns a {@link PackageNode} for every remote dependency.
      */
-    private getRemoteDependencies(): PackageNode[] {
+    private getRemoteDependencies(folderContext: FolderContext): PackageNode[] {
         return (
-            this.ctx.swiftPackage.resolved?.object.pins.map(
+            folderContext.swiftPackage.resolved?.object.pins.map(
                 pin =>
                     new PackageNode(
                         pin.package,
