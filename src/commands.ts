@@ -140,7 +140,7 @@ export async function folderCleanBuild(folderContext: FolderContext) {
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
         group: vscode.TaskGroup.Clean,
     });
-    workspaceContext.outputChannel.logStart("Clean Build ... ");
+    workspaceContext.outputChannel.logStart("Clean Build ... ", folderContext.folder.name);
     workspaceContext.statusItem.start(task);
     try {
         await executeTaskAndWait(task);
@@ -168,12 +168,12 @@ export async function resetPackage(ctx: WorkspaceContext) {
  */
 export async function folderResetPackage(folderContext: FolderContext) {
     const workspaceContext = folderContext.workspaceContext;
-    const task = createSwiftTask(["package", "reset"], SwiftTaskProvider.cleanBuildName, {
+    const task = createSwiftTask(["package", "reset"], "Reset Package Dependencies", {
         scope: folderContext.folder,
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
         group: vscode.TaskGroup.Clean,
     });
-    workspaceContext.outputChannel.logStart("Clean Build ... ");
+    workspaceContext.outputChannel.logStart("Reset Package ... ", folderContext.folder.name);
     workspaceContext.statusItem.start(task);
     try {
         await executeTaskAndWait(task);
