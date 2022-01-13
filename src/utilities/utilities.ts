@@ -16,7 +16,7 @@ import * as cp from "child_process";
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as plist from "plist";
-import configuration from "./configuration";
+import configuration from "../configuration";
 
 /**
  * Asynchronous wrapper around {@link cp.exec child_process.exec}.
