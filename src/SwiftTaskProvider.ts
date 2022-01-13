@@ -56,15 +56,6 @@ function createBuildAllTask(folder: vscode.WorkspaceFolder): vscode.Task {
 }
 
 /**
- * Creates a {@link vscode.Task Task} to clean the build artifacts.
- */
-function createCleanTask(): vscode.Task {
-    return createSwiftTask(["package", "clean"], SwiftTaskProvider.cleanBuildName, {
-        group: vscode.TaskGroup.Clean,
-    });
-}
-
-/**
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
 function createBuildTasks(product: Product, folder: vscode.WorkspaceFolder): vscode.Task[] {
@@ -196,7 +187,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         if (this.workspaceContext.folders.length === 0) {
             return [];
         }
-        const tasks = [createCleanTask()];
+        const tasks = [];
 
         for (const folderContext of this.workspaceContext.folders) {
             if (!folderContext.swiftPackage.foundPackage) {
