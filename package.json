@@ -38,6 +38,17 @@
         "title": "Resolve Package Dependencies",
         "icon": "$(refresh)",
         "category": "Swift"
+      },
+      {
+        "command": "swift.cleanBuild",
+        "title": "Clean Build",
+        "category": "Swift"
+      },
+      {
+        "command": "swift.resetPackage",
+        "title": "Reset Package Dependencies",
+        "icon": "$(clear-all)",
+        "category": "Swift"
       }
     ],
     "configuration": [
@@ -115,11 +126,29 @@
         {
           "command": "swift.resolveDependencies",
           "when": "swift.hasPackage"
+        },
+        {
+          "command": "swift.cleanBuild",
+          "when": "swift.hasPackage"
+        },
+        {
+          "command": "swift.resetPackage",
+          "when": "swift.hasPackage"
         }
       ],
       "view/title": [
         {
           "command": "swift.updateDependencies",
+          "when": "view == packageDependencies",
+          "group": "navigation"
+        },
+        {
+          "command": "swift.resolveDependencies",
+          "when": "view == packageDependencies",
+          "group": "navigation"
+        },
+        {
+          "command": "swift.resetPackage",
           "when": "view == packageDependencies",
           "group": "navigation"
         }
