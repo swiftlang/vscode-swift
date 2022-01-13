@@ -32,6 +32,12 @@
         "title": "Update Package Dependencies",
         "icon": "$(cloud-download)",
         "category": "Swift"
+      },
+      {
+        "command": "swift.resolveDependencies",
+        "title": "Resolve Package Dependencies",
+        "icon": "$(refresh)",
+        "category": "Swift"
       }
     ],
     "configuration": [
@@ -104,7 +110,11 @@
       "commandPalette": [
         {
           "command": "swift.updateDependencies",
-          "when": "false"
+          "when": "swift.hasPackage"
+        },
+        {
+          "command": "swift.resolveDependencies",
+          "when": "swift.hasPackage"
         }
       ],
       "view/title": [

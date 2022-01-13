@@ -90,23 +90,9 @@ function createBuildTasks(product: Product, folder: vscode.WorkspaceFolder): vsc
 }
 
 /**
- * Creates a {@link vscode.Task Task} to resolve the package dependencies.
- */
-function createResolveTask(): vscode.Task {
-    return createSwiftTask(["package", "resolve"], SwiftTaskProvider.resolvePackageName);
-}
-
-/**
- * Creates a {@link vscode.Task Task} to update the package dependencies.
- */
-function createUpdateTask(): vscode.Task {
-    return createSwiftTask(["package", "update"], SwiftTaskProvider.updatePackageName);
-}
-
-/**
  * Helper function to create a {@link vscode.Task Task} with the given parameters.
  */
-function createSwiftTask(args: string[], name: string, config?: TaskConfig): vscode.Task {
+export function createSwiftTask(args: string[], name: string, config?: TaskConfig): vscode.Task {
     const swift = getSwiftExecutable();
     const task = new vscode.Task(
         { type: "swift", command: swift, args: args },
@@ -125,12 +111,31 @@ function createSwiftTask(args: string[], name: string, config?: TaskConfig): vsc
 }
 
 /*
+ * Execute swift command as task and wait until it is finished
+ */
+export async function executeSwiftTaskAndWait(args: string[], name: string, config?: TaskConfig) {
+    const swift = getSwiftExecutable();
+    const task = new vscode.Task(
+        { type: "swift", command: "swift", args: args },
+        config?.scope ?? vscode.TaskScope.Workspace,
+        name,
+        "swift",
+        new vscode.ShellExecution(swift, args),
+        config?.problemMatcher
+    );
+    task.group = config?.group;
+    task.presentationOptions = config?.presentationOptions ?? {};
+
+    executeTaskAndWait(task);
+}
+
+/*
  * Execute shell command as task and wait until it is finished
  */
 export async function executeShellTaskAndWait(
-    name: string,
     command: string,
     args: string[],
+    name: string,
     config?: TaskConfig
 ) {
     const task = new vscode.Task(
@@ -191,7 +196,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         if (this.workspaceContext.folders.length === 0) {
             return [];
         }
-        const tasks = [createCleanTask(), createResolveTask(), createUpdateTask()];
+        const tasks = [createCleanTask()];
 
         for (const folderContext of this.workspaceContext.folders) {
             if (!folderContext.swiftPackage.foundPackage) {

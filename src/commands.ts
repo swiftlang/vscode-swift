@@ -14,7 +14,8 @@
 
 import * as vscode from "vscode";
 import { WorkspaceContext } from "./WorkspaceContext";
-import { executeTaskAndWait, SwiftTaskProvider } from "./SwiftTaskProvider";
+import { executeTaskAndWait, createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
+import { FolderContext } from "./FolderContext";
 
 /**
  * References:
@@ -25,61 +26,82 @@ import { executeTaskAndWait, SwiftTaskProvider } from "./SwiftTaskProvider";
  *   https://code.visualstudio.com/api/extension-guides/command
  */
 
-// flags to indicating whether a resolve or update is in progress
-let resolveRunning = false;
-let updateRunning = false;
-
 /**
  * Executes a {@link vscode.Task task} to resolve this package's dependencies.
  */
 export async function resolveDependencies(ctx: WorkspaceContext) {
-    // return if running resolve or update already
-    if (resolveRunning || updateRunning) {
+    await resolveFolderDependencies(ctx.folders[0]);
+}
+
+/**
+ * Run `swift package resolve` inside a folder
+ * @param folderContext folder to run resolve for
+ */
+export async function resolveFolderDependencies(folderContext: FolderContext) {
+    // Is an update or resolve task already running for this folder
+    const index = vscode.tasks.taskExecutions.findIndex(
+        exe =>
+            (exe.task.name === SwiftTaskProvider.resolvePackageName ||
+                exe.task.name === SwiftTaskProvider.updatePackageName) &&
+            exe.task.scope === folderContext.folder
+    );
+    if (index !== -1) {
         return;
     }
-    resolveRunning = true;
 
-    const tasks = await vscode.tasks.fetchTasks();
-    const task = tasks.find(task => task.name === SwiftTaskProvider.resolvePackageName)!;
-    task.presentationOptions = {
-        reveal: vscode.TaskRevealKind.Silent,
-    };
-    ctx.outputChannel.logStart("Resolving Dependencies ... ");
-    ctx.statusItem.start(task);
+    const workspaceContext = folderContext.workspaceContext;
+    workspaceContext.outputChannel.logStart("Resolving Dependencies ... ");
+    const task = createSwiftTask(["package", "resolve"], SwiftTaskProvider.resolvePackageName, {
+        scope: folderContext.folder,
+        presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+    });
+    workspaceContext.statusItem.start(task);
     try {
-        await executeTaskAndWait(task);
-        ctx.outputChannel.logEnd("done.");
+        executeTaskAndWait(task);
+        workspaceContext.outputChannel.logEnd("done.");
     } catch (error) {
-        ctx.outputChannel.logEnd(`${error}`);
+        workspaceContext.outputChannel.logEnd(`${error}`);
     }
-    ctx.statusItem.end(task);
-    resolveRunning = false;
+    workspaceContext.statusItem.end(task);
 }
 
 /**
  * Executes a {@link vscode.Task task} to update this package's dependencies.
  */
 export async function updateDependencies(ctx: WorkspaceContext) {
-    if (updateRunning) {
+    await updateFolderDependencies(ctx.folders[0]);
+}
+
+/**
+ * Run `swift package update` inside a folder
+ * @param folderContext folder to run update inside
+ * @returns
+ */
+export async function updateFolderDependencies(folderContext: FolderContext) {
+    // Is an update task already running for this folder
+    const index = vscode.tasks.taskExecutions.findIndex(
+        exe =>
+            exe.task.name === SwiftTaskProvider.updatePackageName &&
+            exe.task.scope === folderContext.folder
+    );
+    if (index !== -1) {
         return;
     }
-    updateRunning = true;
 
-    const tasks = await vscode.tasks.fetchTasks();
-    const task = tasks.find(task => task.name === SwiftTaskProvider.updatePackageName)!;
-    task.presentationOptions = {
-        reveal: vscode.TaskRevealKind.Silent,
-    };
-    ctx.outputChannel.logStart("Updating Dependencies ... ");
-    ctx.statusItem.start(task);
+    const workspaceContext = folderContext.workspaceContext;
+    const task = createSwiftTask(["package", "update"], SwiftTaskProvider.updatePackageName, {
+        scope: folderContext.folder,
+        presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+    });
+    workspaceContext.outputChannel.logStart("Updating Dependencies ... ");
+    workspaceContext.statusItem.start(task);
     try {
         await executeTaskAndWait(task);
-        ctx.outputChannel.logEnd("done.");
+        workspaceContext.outputChannel.logEnd("done.");
     } catch (error) {
-        ctx.outputChannel.logEnd(`${error}`);
+        workspaceContext.outputChannel.logEnd(`${error}`);
     }
-    ctx.statusItem.end(task);
-    updateRunning = false;
+    workspaceContext.statusItem.end(task);
 }
 
 /**
