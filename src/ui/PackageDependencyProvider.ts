@@ -15,12 +15,12 @@
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
-import configuration from "./configuration";
-import { getRepositoryName } from "./utilities";
-import { WorkspaceContext } from "./WorkspaceContext";
-import { FolderEvent } from "./WorkspaceContext";
-import { FolderContext } from "./FolderContext";
-import contextKeys from "./contextKeys";
+import configuration from "../configuration";
+import { getRepositoryName } from "../utilities/utilities";
+import { WorkspaceContext } from "../WorkspaceContext";
+import { FolderEvent } from "../WorkspaceContext";
+import { FolderContext } from "../FolderContext";
+import contextKeys from "../contextKeys";
 
 /**
  * References:

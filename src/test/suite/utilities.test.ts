@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as assert from "assert";
-import { getRepositoryName } from "../../utilities";
+import { getRepositoryName } from "../../utilities/utilities";
 
 suite("Utilities Test Suite", () => {
     test("getRepositoryName", () => {

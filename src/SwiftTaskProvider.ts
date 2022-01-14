@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
-import { getSwiftExecutable } from "./utilities";
+import { getSwiftExecutable } from "./utilities/utilities";
 
 /**
  * References:

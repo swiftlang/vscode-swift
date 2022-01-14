@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { execSwift } from "./utilities";
+import { execSwift } from "./utilities/utilities";
 
 /** Swift Package Manager contents */
 export interface PackageContents {
