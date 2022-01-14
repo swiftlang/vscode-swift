@@ -16,7 +16,7 @@
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 import configuration from "../configuration";
-import { getSwiftExecutable } from "../utilities";
+import { getSwiftExecutable } from "../utilities/utilities";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { activateInlayHints } from "./inlayHints";
 

@@ -17,7 +17,7 @@
 
 import * as path from "path";
 import * as fs from "fs/promises";
-import { execFile } from "./utilities";
+import { execFile } from "../utilities/utilities";
 
 /**
  * Get LLDB library for given LLDB executable

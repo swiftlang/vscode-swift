@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { FolderContext } from "./FolderContext";
-import { getXcodePath } from "./utilities";
+import { FolderContext } from "../FolderContext";
+import { getXcodePath } from "../utilities/utilities";
 
 /**
  * Edit launch.json based on contents of Swift Package.

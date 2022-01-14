@@ -14,10 +14,10 @@
 
 import * as vscode from "vscode";
 import { FolderContext } from "./FolderContext";
-import { StatusItem } from "./StatusItem";
-import { SwiftOutputChannel } from "./SwiftOutputChannel";
-import { execSwift, getSwiftExecutable, getXCTestPath } from "./utilities";
-import { getLLDBLibPath } from "./lldb";
+import { StatusItem } from "./ui/StatusItem";
+import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
+import { execSwift, getSwiftExecutable, getXCTestPath } from "./utilities/utilities";
+import { getLLDBLibPath } from "./debugger/lldb";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 
 /**
