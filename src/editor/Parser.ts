@@ -17,26 +17,93 @@ import * as vscode from "vscode";
 export class DocumentParser {
     constructor(readonly document: vscode.TextDocument, private position: vscode.Position) {}
 
+    /**
+     * Match regular expression at current position in document. Move position to just
+     * after the match
+     * @param expression Regular expression
+     * @returns returns groups matched
+     */
     match(expression: RegExp): string[] | null {
-        const line = this.document.lineAt(this.position.line).text;
-        const remainsOfLine = line.substring(this.position.character);
-        // skip whitespace
-        const whitespace = /^\s*/.exec(remainsOfLine);
-        let whitespaceCount = 0;
-        if (whitespace) {
-            whitespaceCount = whitespace[0].length;
+        const text = this.getLine();
+        if (!text) {
+            return null;
         }
-        const text = remainsOfLine.substring(whitespaceCount);
         // match expression
-        const result = expression.exec(text);
+        const result = expression.exec(text.text);
         if (result) {
             const offset = result.index + result[0].length;
-            this.position = this.position.translate(undefined, offset + whitespaceCount);
+            this.position = this.position.translate(undefined, offset + text.whitespace);
 
-            console.log(this.position);
             const results = result.map(match => match);
             results.shift();
             return results;
+        }
+        return null;
+    }
+
+    /**
+     * Skip through document lines until you hit a character. Don't return when inside delimiters "({[<"
+     * @param characters skip until you find one of these characters
+     * @returns character you hit
+     */
+    skipUntil(characters: string): string | undefined {
+        const openDelimiters = "{([<";
+        const closeDelimiters = "})]>";
+        const closeDelimitersFailure = "})]";
+        for (let text = this.getLine(); text; text = this.getLine()) {
+            let delimiterIndex = -1;
+            let index = 0;
+            while (index < text.text.length) {
+                const character = text.text[index];
+                // is this one of the expected characters then return
+                if (characters.indexOf(character) !== -1) {
+                    this.position = this.position.translate(undefined, index + text.whitespace + 1);
+                    return text.text[index];
+                }
+                // is this an open delimiter character
+                else if ((delimiterIndex = openDelimiters.indexOf(character)) !== -1) {
+                    this.position = this.position.translate(undefined, index + text.whitespace + 1);
+                    const result = this.skipUntil(closeDelimiters[delimiterIndex]);
+                    if (!result) {
+                        return undefined;
+                    }
+                    // break out of loop so getLine can be called again
+                    break;
+                }
+                // if you find a close delimiter then we got the wrong delimiter and should fail
+                else if (closeDelimitersFailure.indexOf(character) !== -1) {
+                    return undefined;
+                }
+                index += 1;
+            }
+            if (index === text.text.length) {
+                this.position = this.position.translate(1, -this.position.character);
+            }
+        }
+        return undefined;
+    }
+
+    /**
+     * Get line, skipping whitespace
+     * @returns return text, whitespace skipped
+     */
+    private getLine(): { text: string; whitespace: number } | null {
+        while (this.position.line < this.document.lineCount) {
+            const line = this.document.lineAt(this.position.line).text;
+            const remainsOfLine = line.substring(this.position.character);
+            // skip whitespace
+            const whitespace = /^\s*/.exec(remainsOfLine);
+            let whitespaceCount = 0;
+            if (whitespace) {
+                whitespaceCount = whitespace[0].length;
+            }
+            if (remainsOfLine.length > whitespaceCount) {
+                return {
+                    text: remainsOfLine.substring(whitespaceCount),
+                    whitespace: whitespaceCount,
+                };
+            }
+            this.position = this.position.translate(1, -this.position.character);
         }
         return null;
     }
