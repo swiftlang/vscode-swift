@@ -47,8 +47,8 @@ export class DocumentParser {
      * @returns character you hit
      */
     skipUntil(characters: string): string | undefined {
-        const openDelimiters = "{([<";
-        const closeDelimiters = "})]>";
+        const openDelimiters = '{([<"';
+        const closeDelimiters = '})]>"';
         // list of delimiters that if you reach and were not expect then the swift code is not valid
         // this does not include `>` because you can find this in `->`.
         const closeDelimitersFailure = "})]";
@@ -78,7 +78,7 @@ export class DocumentParser {
                     characters = closeDelimiters[delimiterIndex];
                 }
                 // if you find a close delimiter then we got the wrong delimiter and should fail
-                else if (closeDelimitersFailure.indexOf(character) !== -1) {
+                else if (closeDelimitersFailure.indexOf(character) !== -1 && characters !== '"') {
                     return undefined;
                 }
                 index += 1;
