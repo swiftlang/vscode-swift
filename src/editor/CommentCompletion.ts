@@ -169,7 +169,10 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
     private constructSnippetString(details: FunctionDetails): string {
         let string = " $1";
         let snippetIndex = 2;
-        if (details.parameters.length > 0) {
+        if (details.parameters.length === 1) {
+            string += `\n/// - Parameter ${details.parameters[0]}: $${snippetIndex}`;
+            snippetIndex++;
+        } else if (details.parameters.length > 0) {
             string += "\n/// - Parameters:";
             for (const parameter of details.parameters) {
                 string += `\n///   - ${parameter}: $${snippetIndex}`;
