@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { DocumentParser } from "./Parser";
+import { DocumentParser } from "./DocumentParser";
 
 /** CompletionItem for Swift Comments */
 class CommentCompletion extends vscode.CompletionItem {
@@ -109,16 +109,20 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
         position: vscode.Position
     ): FunctionDetails | null {
         const parser = new DocumentParser(document, new vscode.Position(position.line + 1, 0));
-        if (!parser.match(/func/)) {
+        if (!parser.match(/(?:func|init)/)) {
             return null;
         }
-        const funcName = parser.match(/^(\S*)\s*([(<])/);
+        const funcName = parser.match(/^([^(<]*)\s*(\(|<)/);
         if (!funcName) {
             return null;
         }
         // if we catch "<" then we have generic arguments
         if (funcName[1] === "<") {
             parser.skipUntil(">");
+            // match open bracket
+            if (!parser.match(/^\(/)) {
+                return null;
+            }
         }
         // extract parameters
         const parameters: string[] = [];
@@ -141,7 +145,7 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
         let throws = false;
         // eslint-disable-next-line no-constant-condition
         while (true) {
-            const mark = parser.match(/([a-z]+)\s/);
+            const mark = parser.match(/^\s*([a-z]+)/);
             if (!mark || mark.length === 0) {
                 break;
             }
@@ -149,7 +153,8 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
                 throws = true;
             }
         }
-        const returns = parser.match(/->/) !== null;
+        // if we find a `->` then function returns a value
+        const returns = parser.match(/^\s*->/) !== null;
         // read function
         return {
             parameters: parameters,

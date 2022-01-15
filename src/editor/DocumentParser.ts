@@ -49,26 +49,33 @@ export class DocumentParser {
     skipUntil(characters: string): string | undefined {
         const openDelimiters = "{([<";
         const closeDelimiters = "})]>";
+        // list of delimiters that if you reach and were not expect then the swift code is not valid
+        // this does not include `>` because you can find this in `->`.
         const closeDelimitersFailure = "})]";
+        const stack: string[] = [];
         for (let text = this.getLine(); text; text = this.getLine()) {
             let delimiterIndex = -1;
             let index = 0;
             while (index < text.text.length) {
                 const character = text.text[index];
-                // is this one of the expected characters then return
+                // is this one of the expected characters
                 if (characters.indexOf(character) !== -1) {
-                    this.position = this.position.translate(undefined, index + text.whitespace + 1);
-                    return text.text[index];
+                    // pop previous expected characters off stack and if there isn't one then
+                    // set the position and return
+                    const value = stack.pop();
+                    if (!value) {
+                        this.position = this.position.translate(
+                            undefined,
+                            index + text.whitespace + 1
+                        );
+                        return text.text[index];
+                    }
+                    characters = value;
                 }
                 // is this an open delimiter character
                 else if ((delimiterIndex = openDelimiters.indexOf(character)) !== -1) {
-                    this.position = this.position.translate(undefined, index + text.whitespace + 1);
-                    const result = this.skipUntil(closeDelimiters[delimiterIndex]);
-                    if (!result) {
-                        return undefined;
-                    }
-                    // break out of loop so getLine can be called again
-                    break;
+                    stack.push(characters);
+                    characters = closeDelimiters[delimiterIndex];
                 }
                 // if you find a close delimiter then we got the wrong delimiter and should fail
                 else if (closeDelimitersFailure.indexOf(character) !== -1) {
@@ -76,9 +83,7 @@ export class DocumentParser {
                 }
                 index += 1;
             }
-            if (index === text.text.length) {
-                this.position = this.position.translate(1, -this.position.character);
-            }
+            this.position = this.position.translate(1, -this.position.character);
         }
         return undefined;
     }
