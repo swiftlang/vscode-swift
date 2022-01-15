@@ -14,6 +14,10 @@
 
 import * as vscode from "vscode";
 
+/**
+ * Parse VSCode TextDocuments using regular expressions.
+ * Inspiration for this code came from https://github.com/fappelman/swift-add-documentation
+ */
 export class DocumentParser {
     constructor(readonly document: vscode.TextDocument, private position: vscode.Position) {}
 

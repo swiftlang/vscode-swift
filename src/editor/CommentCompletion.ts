@@ -88,8 +88,7 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
             const completion = new CommentCompletion(
                 snippet,
                 "/// - parameters:",
-                "Function documentation comment",
-                "\0"
+                "Function documentation comment"
             );
             return [completion];
         }
@@ -105,6 +104,10 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
         return false;
     }
 
+    /**
+     * Extract function details from line below. Inspiration for this code can be found
+     * here https://github.com/fappelman/swift-add-documentation
+     */
     private getFunctionDetails(
         document: vscode.TextDocument,
         position: vscode.Position
