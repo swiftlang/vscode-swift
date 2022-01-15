@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.2.0 - 2022-01-20
+
+### Added
+- Build tasks for all folders in the workspace
+- Resolve and update commands which update current folder
+- Reset and clean commands
+- Restart language client in correct folder when moving between folders in the workspace
+- "sourcekit-lsp.serverPath" configuration option for path to sourcekit-lsp executable
+- Status item when loading packages
+- Resolve and reset package buttons to dependency view
+- Cache contents of Package.resolved for use across different systems
+
+### Changed
+- Cleanup Language client code
+- Package dependency view updates based on current folder
+
+### Fixed
+- Use correct workspace folder in launch.json program name
+
 ## 0.1.1 - 2021-12-27
 
 ### Fixed
