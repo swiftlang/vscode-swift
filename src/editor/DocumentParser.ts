@@ -61,7 +61,7 @@ export class DocumentParser {
                 // is this one of the expected characters
                 if (characters.indexOf(character) !== -1) {
                     // pop previous expected characters off stack and if there isn't one then
-                    // set the position and return
+                    // we have found the character we were looking for. Set the position and return
                     const value = stack.pop();
                     if (!value) {
                         this.position = this.position.translate(

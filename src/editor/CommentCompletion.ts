@@ -126,19 +126,22 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
         }
         // extract parameters
         const parameters: string[] = [];
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-            const parameter = parser.match(/(\S*)(?:\s*)?:/);
-            if (!parameter) {
-                return null;
-            }
-            parameters.push(...parameter);
-            const nextChar = parser.skipUntil(",)");
-            if (!nextChar) {
-                return null;
-            }
-            if (nextChar === ")") {
-                break;
+        // if next character is ")" skip parameter parsing
+        if (!parser.match(/^\)/)) {
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+                const parameter = parser.match(/(\S*)(?:\s*)?:/);
+                if (!parameter) {
+                    return null;
+                }
+                parameters.push(...parameter);
+                const nextChar = parser.skipUntil(",)");
+                if (!nextChar) {
+                    return null;
+                }
+                if (nextChar === ")") {
+                    break;
+                }
             }
         }
         // go through function markers
