@@ -21,12 +21,12 @@ class CommentCompletion extends vscode.CompletionItem {
         insertText: vscode.SnippetString | string,
         label: string,
         detail: string,
-        range?: vscode.Range
+        sortText?: string
     ) {
         super(label, vscode.CompletionItemKind.Text);
         this.detail = detail;
         this.insertText = insertText;
-        this.range = range;
+        this.sortText = sortText;
     }
 }
 
@@ -88,7 +88,8 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
             const completion = new CommentCompletion(
                 snippet,
                 "/// - parameters:",
-                "Function documentation comment"
+                "Function documentation comment",
+                "\0"
             );
             return [completion];
         }
