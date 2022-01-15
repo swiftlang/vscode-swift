@@ -80,6 +80,8 @@ export class DocumentParser {
                 // if you find a close delimiter then we got the wrong delimiter and should fail
                 else if (closeDelimitersFailure.indexOf(character) !== -1 && characters !== '"') {
                     return undefined;
+                } else if (character === "\\" && characters === '"') {
+                    index += 1;
                 }
                 index += 1;
             }
