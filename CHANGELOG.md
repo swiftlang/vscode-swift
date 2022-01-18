@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unknown]
+
+### Added
+- Function documentation comment completion. Type "///" on line above function to activate. 
+
 ## 0.2.0 - 2022-01-20
 
 ### Added
@@ -15,7 +20,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Status item when loading packages.
 - Resolve and reset package buttons to dependency view.
 - Cache contents of Package.resolved for use across different systems.
-- Function documentation comment completion. Type "///" on line above function to activate. 
 
 ### Changed
 - Cleanup Language client code
