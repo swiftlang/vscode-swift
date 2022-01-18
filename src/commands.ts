@@ -277,8 +277,8 @@ async function uneditDependency(identifier: string, ctx: WorkspaceContext) {
     if (!currentFolder) {
         return;
     }
-    ctx.outputChannel.log(`Unedit dependency ${identifier}}`, currentFolder.folder.name);
-    const status = `Unedit dependency ${identifier} (${currentFolder.folder.name})`;
+    ctx.outputChannel.log(`unedit dependency ${identifier}`, currentFolder.folder.name);
+    const status = `Reverting edited dependency ${identifier} (${currentFolder.folder.name})`;
     ctx.statusItem.start(status);
     await uneditFolderDependency(currentFolder, identifier, ctx);
     ctx.statusItem.end(status);
@@ -318,6 +318,7 @@ async function uneditFolderDependency(
                 )
                 .then(async result => {
                     if (result === "No") {
+                        ctx.outputChannel.log(execError.stderr, folder.folder.name);
                         return;
                     }
                     await uneditFolderDependency(folder, identifier, ctx, ["--force"]);
