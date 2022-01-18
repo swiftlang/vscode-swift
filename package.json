@@ -51,13 +51,18 @@
         "category": "Swift"
       },
       {
+        "command": "swift.useLocalDependency",
+        "title": "Use Local Version",
+        "category": "Swift"
+      },
+      {
         "command": "swift.editDependency",
-        "title": "Edit Dependency",
+        "title": "Edit Locally",
         "category": "Swift"
       },
       {
         "command": "swift.uneditDependency",
-        "title": "Unedit Dependency",
+        "title": "Revert To Original Version",
         "category": "Swift"
       },
       {
@@ -174,12 +179,20 @@
           "when": "view == packageDependencies && viewItem == remote"
         },
         {
+          "command": "swift.useLocalDependency",
+          "when": "view == packageDependencies && viewItem == remote"
+        },
+        {
           "command": "swift.uneditDependency",
-          "when": "view == packageDependencies && viewItem == edited"
+          "when": "view == packageDependencies && viewItem == editing"
         },
         {
           "command": "swift.openInWorkspace",
-          "when": "view == packageDependencies && viewItem == edited"
+          "when": "view == packageDependencies && viewItem == editing"
+        },
+        {
+          "command": "swift.openInWorkspace",
+          "when": "view == packageDependencies && viewItem == local"
         }
       ]
     },

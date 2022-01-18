@@ -41,14 +41,17 @@ export class PackageNode {
         public name: string,
         public path: string,
         public version: string,
-        public type: "local" | "remote" | "edited"
+        public type: "local" | "remote" | "editing"
     ) {}
 
     toTreeItem(): vscode.TreeItem {
         const item = new vscode.TreeItem(this.name, vscode.TreeItemCollapsibleState.Collapsed);
         item.id = this.path;
         item.description = this.version;
-        item.iconPath = new vscode.ThemeIcon("archive");
+        item.iconPath =
+            this.type === "editing"
+                ? new vscode.ThemeIcon("edit")
+                : new vscode.ThemeIcon("archive");
         item.contextValue = this.type;
         return item;
     }
@@ -213,11 +216,11 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                         if (item.isSymbolicLink()) {
                             folder = await fs.readlink(folder, "utf8");
                         }
-                        return new PackageNode(item.name, folder, "edited", "edited");
+                        return new PackageNode(item.name, folder, "local", "editing");
                     })
             );
         } catch {
-            // ignore errors
+            // ignore errors. They basically mean there was no Packages folder
         }
         return [];
     }
