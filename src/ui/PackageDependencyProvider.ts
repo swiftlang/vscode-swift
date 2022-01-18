@@ -205,8 +205,11 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
      * @returns Array of packages
      */
     private async getEditedDependencies(folderContext: FolderContext): Promise<PackageNode[]> {
-        try {
-            const packagePath = path.join(folderContext.folder.uri.fsPath, "Packages");
+        return (await folderContext.getEditedPackages()).map(
+            item => new PackageNode(item.name, item.folder, "local", "editing")
+        );
+        /*        try {
+            const packagePath = folderContext.editedPackagesFolder();
             const packagePathContents = await fs.readdir(packagePath, { withFileTypes: true });
             return Promise.all(
                 await packagePathContents
@@ -222,7 +225,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
         } catch {
             // ignore errors. They basically mean there was no Packages folder
         }
-        return [];
+        return [];*/
     }
 
     /**

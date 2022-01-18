@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import * as fs from "fs/promises";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { executeTaskAndWait, createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderContext } from "./FolderContext";
@@ -279,10 +280,32 @@ async function uneditDependency(identifier: string, ctx: WorkspaceContext) {
     ctx.outputChannel.log(`Unedit dependency ${identifier}}`, currentFolder.folder.name);
     const status = `Unedit dependency ${identifier} (${currentFolder.folder.name})`;
     ctx.statusItem.start(status);
+    await uneditFolderDependency(currentFolder, identifier, ctx);
+    ctx.statusItem.end(status);
+}
+
+async function uneditFolderDependency(
+    folder: FolderContext,
+    identifier: string,
+    ctx: WorkspaceContext,
+    args: string[] = []
+) {
     try {
-        await execSwift(["package", "unedit", identifier], {
-            cwd: currentFolder.folder.uri.fsPath,
+        await execSwift(["package", "unedit", ...args, identifier], {
+            cwd: folder.folder.uri.fsPath,
         });
+        // find workspace folder, and check folder still exists
+        const folderIndex = vscode.workspace.workspaceFolders?.findIndex(
+            item => item.name === identifier
+        );
+        if (folderIndex) {
+            try {
+                // check folder exists. if error thrown remove folder
+                await fs.stat(vscode.workspace.workspaceFolders![folderIndex].uri.fsPath);
+            } catch {
+                vscode.workspace.updateWorkspaceFolders(folderIndex, 1);
+            }
+        }
     } catch (error) {
         const execError = error as { stderr: string };
         // if error contains "has uncommited changes" then ask if user wants to force the unedit
@@ -297,22 +320,13 @@ async function uneditDependency(identifier: string, ctx: WorkspaceContext) {
                     if (result === "No") {
                         return;
                     }
-                    try {
-                        await execSwift(["package", "unedit", "--force", identifier], {
-                            cwd: currentFolder.folder.uri.fsPath,
-                        });
-                    } catch (error) {
-                        const execError = error as { stderr: string };
-                        ctx.outputChannel.log(execError.stderr, currentFolder.folder.name);
-                        vscode.window.showErrorMessage(`${execError.stderr}`);
-                    }
+                    await uneditFolderDependency(folder, identifier, ctx, ["--force"]);
                 });
         } else {
-            ctx.outputChannel.log(execError.stderr, currentFolder.folder.name);
+            ctx.outputChannel.log(execError.stderr, folder.folder.name);
             vscode.window.showErrorMessage(`${execError.stderr}`);
         }
     }
-    ctx.statusItem.end(status);
 }
 
 /**
