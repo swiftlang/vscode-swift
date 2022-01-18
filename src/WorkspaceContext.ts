@@ -123,8 +123,7 @@ export class WorkspaceContext implements vscode.Disposable {
      * @param folder folder being added
      */
     async addFolder(folder: vscode.WorkspaceFolder) {
-        const isRootFolder = this.folders.length === 0;
-        const folderContext = await FolderContext.create(folder, isRootFolder, this);
+        const folderContext = await FolderContext.create(folder, this);
         this.folders.push(folderContext);
         // On Windows, locate XCTest.dll the first time a folder is added.
         if (process.platform === "win32" && this.folders.length === 1) {
