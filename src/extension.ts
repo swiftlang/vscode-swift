@@ -16,6 +16,7 @@ import * as vscode from "vscode";
 import * as commands from "./commands";
 import * as debug from "./debugger/launch";
 import { PackageDependenciesProvider } from "./ui/PackageDependencyProvider";
+import * as commentCompletion from "./editor/CommentCompletion";
 import { SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
 
@@ -43,6 +44,8 @@ export async function activate(context: vscode.ExtensionContext) {
         new SwiftTaskProvider(workspaceContext)
     );
     commands.register(workspaceContext);
+
+    const commentCompletionProvider = commentCompletion.register();
 
     // observer for logging workspace folder addition/removal
     const logObserver = workspaceContext.observeFolders((folderContext, event) => {
@@ -91,6 +94,7 @@ export async function activate(context: vscode.ExtensionContext) {
         dependenciesView,
         dependenciesProvider,
         logObserver,
+        commentCompletionProvider,
         taskProvider
     );
 }
