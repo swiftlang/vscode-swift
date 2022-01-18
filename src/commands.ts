@@ -225,10 +225,6 @@ export async function editDependency(identifier: string, ctx: WorkspaceContext) 
                     cwd: currentFolder.folder.uri.fsPath,
                 });
                 await updateDependencies(ctx);
-                const existingFolder = ctx.folders.findIndex(item => item.folder.uri === folder);
-                if (existingFolder !== -1) {
-                    return;
-                }
             } catch (error) {
                 const execError = error as { stderr: string };
                 ctx.outputChannel.log(execError.stderr, currentFolder.folder.name);
