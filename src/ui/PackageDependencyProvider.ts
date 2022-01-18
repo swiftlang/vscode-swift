@@ -41,7 +41,7 @@ export class PackageNode {
         public name: string,
         public path: string,
         public version: string,
-        public type: "local" | "remote"
+        public type: "local" | "remote" | "edited"
     ) {}
 
     toTreeItem(): vscode.TreeItem {
@@ -49,7 +49,7 @@ export class PackageNode {
         item.id = this.path;
         item.description = this.version;
         item.iconPath = new vscode.ThemeIcon("archive");
-        item.contextValue = "package";
+        item.contextValue = this.type;
         return item;
     }
 }
@@ -141,10 +141,12 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
         }
         if (!element) {
             // Build PackageNodes for all dependencies.
-            return [
+            const children = [
                 ...this.getLocalDependencies(folderContext),
-                ...(await this.getRemoteDependencies(folderContext)),
+                ...this.getRemoteDependencies(folderContext),
+                ...(await this.getEditedDependencies(folderContext)),
             ].sort((first, second) => first.name.localeCompare(second.name));
+            return children;
         }
         if (element instanceof PackageNode) {
             // Read the contents of a package.
@@ -192,6 +194,32 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                     )
             ) ?? []
         );
+    }
+
+    /**
+     * Return list of package dependencies in edit mode
+     * @param folderContext Folder to get edited dependencies for
+     * @returns Array of packages
+     */
+    private async getEditedDependencies(folderContext: FolderContext): Promise<PackageNode[]> {
+        try {
+            const packagePath = path.join(folderContext.folder.uri.fsPath, "Packages");
+            const packagePathContents = await fs.readdir(packagePath, { withFileTypes: true });
+            return Promise.all(
+                await packagePathContents
+                    .filter(item => item.isDirectory() || item.isSymbolicLink())
+                    .map(async item => {
+                        let folder = path.join(packagePath, item.name);
+                        if (item.isSymbolicLink()) {
+                            folder = await fs.readlink(folder, "utf8");
+                        }
+                        return new PackageNode(item.name, folder, "edited", "edited");
+                    })
+            );
+        } catch {
+            // ignore errors
+        }
+        return [];
     }
 
     /**

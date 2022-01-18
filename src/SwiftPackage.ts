@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import * as fs from "fs/promises";
 import { execSwift } from "./utilities/utilities";
 
 /** Swift Package Manager contents */
@@ -123,8 +124,8 @@ export class SwiftPackage implements PackageContents {
     ): Promise<PackageResolved | undefined> {
         try {
             const uri = vscode.Uri.joinPath(folder.uri, "Package.resolved");
-            const document = await vscode.workspace.openTextDocument(uri);
-            return JSON.parse(document.getText());
+            const contents = await fs.readFile(uri.fsPath, "utf8");
+            return JSON.parse(contents);
         } catch {
             // failed to load resolved file return undefined
             return undefined;

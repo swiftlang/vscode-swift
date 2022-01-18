@@ -54,6 +54,16 @@
         "command": "swift.editDependency",
         "title": "Edit Dependency",
         "category": "Swift"
+      },
+      {
+        "command": "swift.uneditDependency",
+        "title": "Unedit Dependency",
+        "category": "Swift"
+      },
+      {
+        "command": "swift.openInWorkspace",
+        "title": "Open In Workspace",
+        "category": "Swift"
       }
     ],
     "configuration": [
@@ -161,7 +171,15 @@
       "view/item/context": [
         {
           "command": "swift.editDependency",
-          "when": "view == packageDependencies && viewItem == package"
+          "when": "view == packageDependencies && viewItem == remote"
+        },
+        {
+          "command": "swift.uneditDependency",
+          "when": "view == packageDependencies && viewItem == edited"
+        },
+        {
+          "command": "swift.openInWorkspace",
+          "when": "view == packageDependencies && viewItem == edited"
         }
       ]
     },

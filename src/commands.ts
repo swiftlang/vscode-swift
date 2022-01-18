@@ -218,29 +218,56 @@ export async function editDependency(identifier: string, ctx: WorkspaceContext) 
                 `Edit dependency ${identifier} from ${folder.fsPath}`,
                 currentFolder.folder.name
             );
-            const index = vscode.workspace.workspaceFolders?.length ?? 0;
+            const status = `Edit dependency ${identifier} (${currentFolder.folder.name})`;
+            ctx.statusItem.start(status);
             try {
-                const { stdout } = await execSwift(
-                    ["package", "edit", "--path", value[0].fsPath, identifier],
-                    {
-                        cwd: currentFolder.folder.uri.fsPath,
-                    }
-                );
+                await execSwift(["package", "edit", "--path", value[0].fsPath, identifier], {
+                    cwd: currentFolder.folder.uri.fsPath,
+                });
                 await updateDependencies(ctx);
                 const existingFolder = ctx.folders.findIndex(item => item.folder.uri === folder);
                 if (existingFolder !== -1) {
                     return;
                 }
-                vscode.workspace.updateWorkspaceFolders(index, 0, {
-                    uri: folder,
-                    name: identifier,
-                });
             } catch (error) {
                 const execError = error as { stderr: string };
                 ctx.outputChannel.log(execError.stderr, currentFolder.folder.name);
                 vscode.window.showErrorMessage(`${execError.stderr}`);
             }
+            ctx.statusItem.end(status);
         });
+}
+
+export async function uneditDependency(identifier: string, ctx: WorkspaceContext) {
+    const currentFolder = ctx.currentFolder;
+    if (!currentFolder) {
+        return;
+    }
+    ctx.outputChannel.log(`Unedit dependency ${identifier}}`, currentFolder.folder.name);
+    const status = `Unedit dependency ${identifier} (${currentFolder.folder.name})`;
+    ctx.statusItem.start(status);
+    try {
+        await execSwift(["package", "unedit", identifier], {
+            cwd: currentFolder.folder.uri.fsPath,
+        });
+    } catch (error) {
+        const execError = error as { stderr: string };
+        ctx.outputChannel.log(execError.stderr, currentFolder.folder.name);
+        vscode.window.showErrorMessage(`${execError.stderr}`);
+    }
+    ctx.statusItem.end(status);
+}
+
+async function openInWorkspace(packageNode: PackageNode, ctx: WorkspaceContext) {
+    const currentFolder = ctx.currentFolder;
+    if (!currentFolder) {
+        return;
+    }
+    const index = vscode.workspace.workspaceFolders?.length ?? 0;
+    vscode.workspace.updateWorkspaceFolders(index, 0, {
+        uri: vscode.Uri.file(packageNode.path),
+        name: packageNode.name,
+    });
 }
 
 /**
@@ -263,6 +290,16 @@ export function register(ctx: WorkspaceContext) {
         vscode.commands.registerCommand("swift.editDependency", item => {
             if (item instanceof PackageNode) {
                 editDependency(item.name, ctx);
+            }
+        }),
+        vscode.commands.registerCommand("swift.uneditDependency", item => {
+            if (item instanceof PackageNode) {
+                uneditDependency(item.name, ctx);
+            }
+        }),
+        vscode.commands.registerCommand("swift.openInWorkspace", item => {
+            if (item instanceof PackageNode) {
+                openInWorkspace(item, ctx);
             }
         })
     );
