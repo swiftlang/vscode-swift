@@ -143,13 +143,24 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             return [];
         }
         if (!element) {
-            // Build PackageNodes for all dependencies.
+            // Build PackageNodes for all dependencies. Because Package.resolved might not
+            // be up to date with edited dependency list, we need to remove the edited
+            // dependencies from the list before adding in the edit version
             const children = [
                 ...this.getLocalDependencies(folderContext),
                 ...this.getRemoteDependencies(folderContext),
-                ...(await this.getEditedDependencies(folderContext)),
-            ].sort((first, second) => first.name.localeCompare(second.name));
-            return children;
+            ];
+            const editedChildren = await this.getEditedDependencies(folderContext);
+            const uneditedChildren: PackageNode[] = [];
+            for (const child of children) {
+                const editedVersion = editedChildren.find(item => item.name === child.name);
+                if (!editedVersion) {
+                    uneditedChildren.push(child);
+                }
+            }
+            return [...uneditedChildren, ...editedChildren].sort((first, second) =>
+                first.name.localeCompare(second.name)
+            );
         }
         if (element instanceof PackageNode) {
             // Read the contents of a package.

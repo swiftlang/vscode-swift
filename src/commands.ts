@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
-import { WorkspaceContext } from "./WorkspaceContext";
+import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
 import { executeTaskAndWait, createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderContext } from "./FolderContext";
 import { PackageNode } from "./ui/PackageDependencyProvider";
@@ -232,7 +232,7 @@ async function useLocalDependency(identifier: string, ctx: WorkspaceContext) {
                 await execSwift(["package", "edit", "--path", value[0].fsPath, identifier], {
                     cwd: currentFolder.folder.uri.fsPath,
                 });
-                await updateDependencies(ctx);
+                ctx.fireEvent(currentFolder, FolderEvent.resolvedUpdated);
             } catch (error) {
                 const execError = error as { stderr: string };
                 ctx.outputChannel.log(execError.stderr, currentFolder.folder.name);
@@ -258,7 +258,7 @@ async function editDependency(identifier: string, ctx: WorkspaceContext) {
         await execSwift(["package", "edit", identifier], {
             cwd: currentFolder.folder.uri.fsPath,
         });
-        await updateDependencies(ctx);
+        ctx.fireEvent(currentFolder, FolderEvent.resolvedUpdated);
     } catch (error) {
         const execError = error as { stderr: string };
         ctx.outputChannel.log(execError.stderr, currentFolder.folder.name);
@@ -294,6 +294,7 @@ async function uneditFolderDependency(
         await execSwift(["package", "unedit", ...args, identifier], {
             cwd: folder.folder.uri.fsPath,
         });
+        ctx.fireEvent(folder, FolderEvent.resolvedUpdated);
         // find workspace folder, and check folder still exists
         const folderIndex = vscode.workspace.workspaceFolders?.findIndex(
             item => item.name === identifier
