@@ -259,6 +259,11 @@ async function editDependency(identifier: string, ctx: WorkspaceContext) {
             cwd: currentFolder.folder.uri.fsPath,
         });
         ctx.fireEvent(currentFolder, FolderEvent.resolvedUpdated);
+        const index = vscode.workspace.workspaceFolders?.length ?? 0;
+        vscode.workspace.updateWorkspaceFolders(index, 0, {
+            uri: vscode.Uri.file(currentFolder.editedPackageFolder(identifier)),
+            name: identifier,
+        });
     } catch (error) {
         const execError = error as { stderr: string };
         ctx.outputChannel.log(execError.stderr, currentFolder.folder.name);
@@ -336,11 +341,7 @@ async function uneditFolderDependency(
  * @param packageNode PackageNode attached to dependency tree item
  * @param ctx workspace context
  */
-async function openInWorkspace(packageNode: PackageNode, ctx: WorkspaceContext) {
-    const currentFolder = ctx.currentFolder;
-    if (!currentFolder) {
-        return;
-    }
+async function openInWorkspace(packageNode: PackageNode) {
     const index = vscode.workspace.workspaceFolders?.length ?? 0;
     vscode.workspace.updateWorkspaceFolders(index, 0, {
         uri: vscode.Uri.file(packageNode.path),
@@ -382,7 +383,7 @@ export function register(ctx: WorkspaceContext) {
         }),
         vscode.commands.registerCommand("swift.openInWorkspace", item => {
             if (item instanceof PackageNode) {
-                openInWorkspace(item, ctx);
+                openInWorkspace(item);
             }
         })
     );
