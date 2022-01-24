@@ -201,7 +201,7 @@ export class WorkspaceContext implements vscode.Disposable {
             const version = stdout.trimEnd();
             this.outputChannel.log(version);
             // extract version
-            const match = version.match(/Apple Swift version ([\S]+)/);
+            const match = version.match(/Swift version ([\S]+)/);
             if (match) {
                 this.swiftVersion = Version.fromString(match[1]) ?? this.swiftVersion;
             }
