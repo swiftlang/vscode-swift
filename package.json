@@ -208,7 +208,8 @@
     "format": "prettier --check src **/*.json",
     "pretest": "npm run compile && npm run lint",
     "test": "node ./out/test/runTest.js",
-    "package": "vsce package"
+    "package": "vsce package",
+    "dev-package": "vsce package -o swift-lang-development.vsix"
   },
   "devDependencies": {
     "@types/glob": "^7.1.4",
