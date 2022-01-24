@@ -19,6 +19,7 @@ import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
 import { execSwift, getSwiftExecutable, getXCTestPath } from "./utilities/utilities";
 import { getLLDBLibPath } from "./debugger/lldb";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
+import { Version } from "./utilities/version";
 
 export interface SwiftExtensionContext {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,11 +37,14 @@ export class WorkspaceContext implements vscode.Disposable {
     public statusItem: StatusItem;
     public xcTestPath?: string;
     public languageClientManager: LanguageClientManager;
+    public swiftVersion: Version;
 
     public constructor(public extensionContext: SwiftExtensionContext) {
         this.outputChannel = new SwiftOutputChannel();
         this.statusItem = new StatusItem();
         this.languageClientManager = new LanguageClientManager(this);
+        // initialize swift version to 0.0.1. Will be updated in `reportSwiftVersion`.
+        this.swiftVersion = new Version(0, 0, 1);
     }
 
     dispose() {
@@ -196,6 +200,11 @@ export class WorkspaceContext implements vscode.Disposable {
             const { stdout } = await execSwift(["--version"]);
             const version = stdout.trimEnd();
             this.outputChannel.log(version);
+            // extract version
+            const match = version.match(/Apple Swift version ([\S]+)/);
+            if (match) {
+                this.swiftVersion = Version.fromString(match[1]) ?? this.swiftVersion;
+            }
         } catch (error) {
             throw Error("Cannot find swift executable.");
         }
