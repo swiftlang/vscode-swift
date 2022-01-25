@@ -58,6 +58,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.statusItem.dispose();
     }
 
+    /** Get swift version and create WorkspaceContext */
     static async create(extensionContext: vscode.ExtensionContext): Promise<WorkspaceContext> {
         // get swift version and then create
         const version = await WorkspaceContext.getSwiftVersion();
@@ -223,22 +224,6 @@ export class WorkspaceContext implements vscode.Disposable {
             return Version.fromString(match[1]);
         }
         return undefined;
-    }
-
-    /** report swift version and throw error if it failed to find swift */
-    async reportSwiftVersion() {
-        try {
-            const { stdout } = await execSwift(["--version"]);
-            const version = stdout.trimEnd();
-            this.outputChannel.log(version);
-            // extract version
-            const match = version.match(/Swift version ([\S]+)/);
-            if (match) {
-                this.swiftVersion = Version.fromString(match[1]) ?? this.swiftVersion;
-            }
-        } catch (error) {
-            throw Error("Cannot find swift executable.");
-        }
     }
 
     /** find LLDB version and setup path in CodeLLDB */
