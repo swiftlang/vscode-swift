@@ -17,6 +17,7 @@ import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 import configuration from "../configuration";
 import { getSwiftExecutable } from "../utilities/utilities";
+import { Version } from "../utilities/version";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { activateInlayHints } from "./inlayHints";
 
@@ -71,7 +72,11 @@ export class LanguageClientManager {
         this.onDidDeleteFileDisposable = vscode.workspace.onDidDeleteFiles(() => {
             this.restartLanguageClient();
         });
-        this.supportsDidChangedWatchedFiles = false;
+
+        // if we are running swift 5.6 or greater then LSP supports `didChangeWatchedFiles` message
+        this.supportsDidChangedWatchedFiles = workspaceContext.swiftVersion.isGreaterThanOrEqual(
+            new Version(5, 6, 0)
+        );
     }
 
     dispose() {
