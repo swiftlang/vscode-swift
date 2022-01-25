@@ -175,10 +175,6 @@
       ],
       "view/item/context": [
         {
-          "command": "swift.editDependency",
-          "when": "view == packageDependencies && viewItem == remote"
-        },
-        {
           "command": "swift.useLocalDependency",
           "when": "view == packageDependencies && viewItem == remote"
         },
