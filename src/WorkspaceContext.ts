@@ -39,12 +39,16 @@ export class WorkspaceContext implements vscode.Disposable {
     public languageClientManager: LanguageClientManager;
     public swiftVersion: Version;
 
-    public constructor(public extensionContext: SwiftExtensionContext) {
+    public constructor(
+        public extensionContext: SwiftExtensionContext,
+        swiftVersion = "Swift version 0.0.0"
+    ) {
         this.outputChannel = new SwiftOutputChannel();
         this.statusItem = new StatusItem();
+        this.swiftVersion =
+            WorkspaceContext.extractSwiftVersion(swiftVersion) ?? new Version(0, 0, 0);
         this.languageClientManager = new LanguageClientManager(this);
-        // initialize swift version to 0.0.1. Will be updated in `reportSwiftVersion`.
-        this.swiftVersion = new Version(0, 0, 1);
+        this.outputChannel.log(swiftVersion);
     }
 
     dispose() {
@@ -52,6 +56,12 @@ export class WorkspaceContext implements vscode.Disposable {
         this.languageClientManager.dispose();
         this.outputChannel.dispose();
         this.statusItem.dispose();
+    }
+
+    static async create(extensionContext: vscode.ExtensionContext): Promise<WorkspaceContext> {
+        // get swift version and then create
+        const version = await WorkspaceContext.getSwiftVersion();
+        return new WorkspaceContext(extensionContext, version);
     }
 
     /** Setup the vscode event listeners to catch folder changes and active window changes */
@@ -192,6 +202,27 @@ export class WorkspaceContext implements vscode.Disposable {
     observeFolders(fn: WorkspaceFoldersObserver): vscode.Disposable {
         this.observers.add(fn);
         return { dispose: () => this.observers.delete(fn) };
+    }
+
+    /** Return swift version string returned by `swift --version` */
+    private static async getSwiftVersion(): Promise<string> {
+        try {
+            const { stdout } = await execSwift(["--version"]);
+            const version = stdout.split("\n", 1)[0];
+            return version;
+        } catch {
+            throw Error("Cannot find swift executable.");
+        }
+    }
+
+    /** extract Swift version from Version string returned by `swift --version` */
+    private static extractSwiftVersion(versionString: string): Version | undefined {
+        // extract version
+        const match = versionString.match(/Swift version ([\S]+)/);
+        if (match) {
+            return Version.fromString(match[1]);
+        }
+        return undefined;
     }
 
     /** report swift version and throw error if it failed to find swift */
