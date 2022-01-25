@@ -82,7 +82,18 @@ export class FolderContext implements vscode.Disposable {
             const packagePathContents = await fs.readdir(packagePath, { withFileTypes: true });
             return Promise.all(
                 await packagePathContents
-                    .filter(item => item.isDirectory() || item.isSymbolicLink())
+                    .filter(async item => {
+                        if (item.isDirectory()) {
+                            const itemPath = path.join(packagePath, item.name);
+                            const contents = await fs.readdir(itemPath);
+                            if (contents.length > 0) {
+                                return true;
+                            }
+                        } else if (item.isSymbolicLink()) {
+                            return true;
+                        }
+                        return false;
+                    })
                     .map(async item => {
                         let folder = path.join(packagePath, item.name);
                         if (item.isSymbolicLink()) {
