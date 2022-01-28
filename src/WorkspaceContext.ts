@@ -20,6 +20,11 @@ import { execSwift, getSwiftExecutable, getXCTestPath } from "./utilities/utilit
 import { getLLDBLibPath } from "./debugger/lldb";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 
+export interface SwiftExtensionContext {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    readonly subscriptions: { dispose(): any }[];
+}
+
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
  * and the ExtensionContext
@@ -32,7 +37,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public xcTestPath?: string;
     public languageClientManager: LanguageClientManager;
 
-    public constructor(public extensionContext: vscode.ExtensionContext) {
+    public constructor(public extensionContext: SwiftExtensionContext) {
         this.outputChannel = new SwiftOutputChannel();
         this.statusItem = new StatusItem();
         this.languageClientManager = new LanguageClientManager(this);
