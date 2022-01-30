@@ -19,6 +19,7 @@ import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
 import { execSwift, getSwiftExecutable, getXCTestPath } from "./utilities/utilities";
 import { getLLDBLibPath } from "./debugger/lldb";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
+import { Version } from "./utilities/version";
 
 export interface SwiftExtensionContext {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,11 +37,18 @@ export class WorkspaceContext implements vscode.Disposable {
     public statusItem: StatusItem;
     public xcTestPath?: string;
     public languageClientManager: LanguageClientManager;
+    public swiftVersion: Version;
 
-    public constructor(public extensionContext: SwiftExtensionContext) {
+    public constructor(
+        public extensionContext: SwiftExtensionContext,
+        swiftVersion = "Swift version 0.0.0"
+    ) {
         this.outputChannel = new SwiftOutputChannel();
         this.statusItem = new StatusItem();
+        this.swiftVersion =
+            WorkspaceContext.extractSwiftVersion(swiftVersion) ?? new Version(0, 0, 0);
         this.languageClientManager = new LanguageClientManager(this);
+        this.outputChannel.log(swiftVersion);
     }
 
     dispose() {
@@ -48,6 +56,13 @@ export class WorkspaceContext implements vscode.Disposable {
         this.languageClientManager.dispose();
         this.outputChannel.dispose();
         this.statusItem.dispose();
+    }
+
+    /** Get swift version and create WorkspaceContext */
+    static async create(extensionContext: vscode.ExtensionContext): Promise<WorkspaceContext> {
+        // get swift version and then create
+        const version = await WorkspaceContext.getSwiftVersion();
+        return new WorkspaceContext(extensionContext, version);
     }
 
     /** Setup the vscode event listeners to catch folder changes and active window changes */
@@ -190,15 +205,25 @@ export class WorkspaceContext implements vscode.Disposable {
         return { dispose: () => this.observers.delete(fn) };
     }
 
-    /** report swift version and throw error if it failed to find swift */
-    async reportSwiftVersion() {
+    /** Return swift version string returned by `swift --version` */
+    private static async getSwiftVersion(): Promise<string> {
         try {
             const { stdout } = await execSwift(["--version"]);
-            const version = stdout.trimEnd();
-            this.outputChannel.log(version);
-        } catch (error) {
+            const version = stdout.split("\n", 1)[0];
+            return version;
+        } catch {
             throw Error("Cannot find swift executable.");
         }
+    }
+
+    /** extract Swift version from Version string returned by `swift --version` */
+    private static extractSwiftVersion(versionString: string): Version | undefined {
+        // extract version
+        const match = versionString.match(/Swift version ([\S]+)/);
+        if (match) {
+            return Version.fromString(match[1]);
+        }
+        return undefined;
     }
 
     /** find LLDB version and setup path in CodeLLDB */

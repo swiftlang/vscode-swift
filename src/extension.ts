@@ -26,11 +26,9 @@ import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
 export async function activate(context: vscode.ExtensionContext) {
     console.debug("Activating Swift for Visual Studio Code...");
 
-    const workspaceContext = new WorkspaceContext(context);
-    context.subscriptions.push(workspaceContext);
+    const workspaceContext = await WorkspaceContext.create(context);
 
-    // report swift version and throw error
-    await workspaceContext.reportSwiftVersion();
+    context.subscriptions.push(workspaceContext);
 
     // setup swift version of LLDB. Don't await on this as it can run in the background
     workspaceContext.setLLDBVersion();
