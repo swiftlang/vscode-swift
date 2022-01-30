@@ -49,6 +49,26 @@
         "title": "Reset Package Dependencies",
         "icon": "$(clear-all)",
         "category": "Swift"
+      },
+      {
+        "command": "swift.useLocalDependency",
+        "title": "Use Local Version",
+        "category": "Swift"
+      },
+      {
+        "command": "swift.editDependency",
+        "title": "Edit Locally",
+        "category": "Swift"
+      },
+      {
+        "command": "swift.uneditDependency",
+        "title": "Revert To Original Version",
+        "category": "Swift"
+      },
+      {
+        "command": "swift.openInWorkspace",
+        "title": "Open In Workspace",
+        "category": "Swift"
       }
     ],
     "configuration": [
@@ -151,6 +171,24 @@
           "command": "swift.resetPackage",
           "when": "view == packageDependencies",
           "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "swift.useLocalDependency",
+          "when": "view == packageDependencies && viewItem == remote"
+        },
+        {
+          "command": "swift.uneditDependency",
+          "when": "view == packageDependencies && viewItem == editing"
+        },
+        {
+          "command": "swift.openInWorkspace",
+          "when": "view == packageDependencies && viewItem == editing"
+        },
+        {
+          "command": "swift.openInWorkspace",
+          "when": "view == packageDependencies && viewItem == local"
         }
       ]
     },

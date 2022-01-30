@@ -13,9 +13,12 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { WorkspaceContext } from "./WorkspaceContext";
+import * as fs from "fs/promises";
+import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
 import { executeTaskAndWait, createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderContext } from "./FolderContext";
+import { PackageNode } from "./ui/PackageDependencyProvider";
+import { execSwift } from "./utilities/utilities";
 
 /**
  * References:
@@ -194,6 +197,159 @@ export async function folderResetPackage(folderContext: FolderContext) {
 }
 
 /**
+ * Use local version of package dependency
+ *
+ * equivalent of `swift package edit --path <localpath> identifier
+ * @param identifier Identifier for dependency
+ * @param ctx workspace context
+ */
+async function useLocalDependency(identifier: string, ctx: WorkspaceContext) {
+    const currentFolder = ctx.currentFolder;
+    if (!currentFolder) {
+        return;
+    }
+    vscode.window
+        .showOpenDialog({
+            canSelectFiles: false,
+            canSelectFolders: true,
+            canSelectMany: false,
+            defaultUri: currentFolder.folder.uri,
+            openLabel: "Select",
+            title: "Select folder",
+        })
+        .then(async value => {
+            if (!value) {
+                return;
+            }
+            const folder = value[0];
+            ctx.outputChannel.log(
+                `Edit dependency ${identifier} from ${folder.fsPath}`,
+                currentFolder.folder.name
+            );
+            const status = `Edit dependency ${identifier} (${currentFolder.folder.name})`;
+            ctx.statusItem.start(status);
+            try {
+                await execSwift(["package", "edit", "--path", value[0].fsPath, identifier], {
+                    cwd: currentFolder.folder.uri.fsPath,
+                });
+                ctx.fireEvent(currentFolder, FolderEvent.resolvedUpdated);
+            } catch (error) {
+                const execError = error as { stderr: string };
+                ctx.outputChannel.log(execError.stderr, currentFolder.folder.name);
+                vscode.window.showErrorMessage(`${execError.stderr}`);
+            }
+            ctx.statusItem.end(status);
+        });
+}
+
+/**
+ * Setup package dependency to be edited
+ * @param identifier Identifier of dependency we want to edit
+ * @param ctx workspace context
+ */
+async function editDependency(identifier: string, ctx: WorkspaceContext) {
+    const currentFolder = ctx.currentFolder;
+    if (!currentFolder) {
+        return;
+    }
+    const status = `Edit dependency ${identifier} (${currentFolder.folder.name})`;
+    ctx.statusItem.start(status);
+    try {
+        await execSwift(["package", "edit", identifier], {
+            cwd: currentFolder.folder.uri.fsPath,
+        });
+        ctx.fireEvent(currentFolder, FolderEvent.resolvedUpdated);
+        const index = vscode.workspace.workspaceFolders?.length ?? 0;
+        vscode.workspace.updateWorkspaceFolders(index, 0, {
+            uri: vscode.Uri.file(currentFolder.editedPackageFolder(identifier)),
+            name: identifier,
+        });
+    } catch (error) {
+        const execError = error as { stderr: string };
+        ctx.outputChannel.log(execError.stderr, currentFolder.folder.name);
+        vscode.window.showErrorMessage(`${execError.stderr}`);
+    }
+    ctx.statusItem.end(status);
+}
+
+/**
+ * Stop local editing of package dependency
+ * @param identifier Identifier of dependency
+ * @param ctx workspace context
+ */
+async function uneditDependency(identifier: string, ctx: WorkspaceContext) {
+    const currentFolder = ctx.currentFolder;
+    if (!currentFolder) {
+        return;
+    }
+    ctx.outputChannel.log(`unedit dependency ${identifier}`, currentFolder.folder.name);
+    const status = `Reverting edited dependency ${identifier} (${currentFolder.folder.name})`;
+    ctx.statusItem.start(status);
+    await uneditFolderDependency(currentFolder, identifier, ctx);
+    ctx.statusItem.end(status);
+}
+
+async function uneditFolderDependency(
+    folder: FolderContext,
+    identifier: string,
+    ctx: WorkspaceContext,
+    args: string[] = []
+) {
+    try {
+        await execSwift(["package", "unedit", ...args, identifier], {
+            cwd: folder.folder.uri.fsPath,
+        });
+        ctx.fireEvent(folder, FolderEvent.resolvedUpdated);
+        // find workspace folder, and check folder still exists
+        const folderIndex = vscode.workspace.workspaceFolders?.findIndex(
+            item => item.name === identifier
+        );
+        if (folderIndex) {
+            try {
+                // check folder exists. if error thrown remove folder
+                await fs.stat(vscode.workspace.workspaceFolders![folderIndex].uri.fsPath);
+            } catch {
+                vscode.workspace.updateWorkspaceFolders(folderIndex, 1);
+            }
+        }
+    } catch (error) {
+        const execError = error as { stderr: string };
+        // if error contains "has uncommited changes" then ask if user wants to force the unedit
+        if (execError.stderr.match(/has uncommited changes/)) {
+            vscode.window
+                .showWarningMessage(
+                    `${identifier} has uncommitted changes. Are you sure you want to continue?`,
+                    "Yes",
+                    "No"
+                )
+                .then(async result => {
+                    if (result === "No") {
+                        ctx.outputChannel.log(execError.stderr, folder.folder.name);
+                        return;
+                    }
+                    await uneditFolderDependency(folder, identifier, ctx, ["--force"]);
+                });
+        } else {
+            ctx.outputChannel.log(execError.stderr, folder.folder.name);
+            vscode.window.showErrorMessage(`${execError.stderr}`);
+        }
+    }
+}
+
+/**
+ * Open local package in workspace
+ * @param packageNode PackageNode attached to dependency tree item
+ * @param ctx workspace context
+ */
+async function openInWorkspace(packageNode: PackageNode) {
+    const index = vscode.workspace.workspaceFolders?.length ?? 0;
+    vscode.workspace.updateWorkspaceFolders(index, 0, {
+        uri: vscode.Uri.file(packageNode.path),
+        name: packageNode.name,
+    });
+}
+
+/**
  * Registers this extension's commands in the given {@link vscode.ExtensionContext context}.
  */
 export function register(ctx: WorkspaceContext) {
@@ -209,6 +365,26 @@ export function register(ctx: WorkspaceContext) {
         }),
         vscode.commands.registerCommand("swift.resetPackage", () => {
             resetPackage(ctx);
+        }),
+        vscode.commands.registerCommand("swift.useLocalDependency", item => {
+            if (item instanceof PackageNode) {
+                useLocalDependency(item.name, ctx);
+            }
+        }),
+        vscode.commands.registerCommand("swift.editDependency", item => {
+            if (item instanceof PackageNode) {
+                editDependency(item.name, ctx);
+            }
+        }),
+        vscode.commands.registerCommand("swift.uneditDependency", item => {
+            if (item instanceof PackageNode) {
+                uneditDependency(item.name, ctx);
+            }
+        }),
+        vscode.commands.registerCommand("swift.openInWorkspace", item => {
+            if (item instanceof PackageNode) {
+                openInWorkspace(item);
+            }
         })
     );
 }

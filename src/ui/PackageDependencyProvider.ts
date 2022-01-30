@@ -36,19 +36,23 @@ import contextKeys from "../contextKeys";
 /**
  * A package in the Package Dependencies {@link vscode.TreeView TreeView}.
  */
-class PackageNode {
+export class PackageNode {
     constructor(
         public name: string,
         public path: string,
         public version: string,
-        public type: "local" | "remote"
+        public type: "local" | "remote" | "editing"
     ) {}
 
     toTreeItem(): vscode.TreeItem {
         const item = new vscode.TreeItem(this.name, vscode.TreeItemCollapsibleState.Collapsed);
         item.id = this.path;
         item.description = this.version;
-        item.iconPath = new vscode.ThemeIcon("archive");
+        item.iconPath =
+            this.type === "editing"
+                ? new vscode.ThemeIcon("edit")
+                : new vscode.ThemeIcon("archive");
+        item.contextValue = this.type;
         return item;
     }
 }
@@ -139,11 +143,24 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             return [];
         }
         if (!element) {
-            // Build PackageNodes for all dependencies.
-            return [
+            // Build PackageNodes for all dependencies. Because Package.resolved might not
+            // be up to date with edited dependency list, we need to remove the edited
+            // dependencies from the list before adding in the edit version
+            const children = [
                 ...this.getLocalDependencies(folderContext),
-                ...(await this.getRemoteDependencies(folderContext)),
-            ].sort((first, second) => first.name.localeCompare(second.name));
+                ...this.getRemoteDependencies(folderContext),
+            ];
+            const editedChildren = await this.getEditedDependencies(folderContext);
+            const uneditedChildren: PackageNode[] = [];
+            for (const child of children) {
+                const editedVersion = editedChildren.find(item => item.name === child.name);
+                if (!editedVersion) {
+                    uneditedChildren.push(child);
+                }
+            }
+            return [...uneditedChildren, ...editedChildren].sort((first, second) =>
+                first.name.localeCompare(second.name)
+            );
         }
         if (element instanceof PackageNode) {
             // Read the contents of a package.
@@ -190,6 +207,17 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                         "remote"
                     )
             ) ?? []
+        );
+    }
+
+    /**
+     * Return list of package dependencies in edit mode
+     * @param folderContext Folder to get edited dependencies for
+     * @returns Array of packages
+     */
+    private async getEditedDependencies(folderContext: FolderContext): Promise<PackageNode[]> {
+        return (await folderContext.getEditedPackages()).map(
+            item => new PackageNode(item.name, item.folder, "local", "editing")
         );
     }
 

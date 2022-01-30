@@ -140,7 +140,7 @@ export async function executeShellTaskAndWait(
     task.group = config?.group;
     task.presentationOptions = config?.presentationOptions ?? {};
 
-    executeTaskAndWait(task);
+    await executeTaskAndWait(task);
 }
 
 /*
@@ -149,7 +149,7 @@ export async function executeShellTaskAndWait(
  */
 export async function executeTaskAndWait(task: vscode.Task) {
     return new Promise<void>(resolve => {
-        const disposable = vscode.tasks.onDidEndTask(({ execution }) => {
+        const disposable = vscode.tasks.onDidEndTaskProcess(({ execution }) => {
             if (execution.task.name === task.name && execution.task.scope === task.scope) {
                 disposable.dispose();
                 resolve();

@@ -13,6 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import * as path from "path";
+import * as fs from "fs/promises";
 import { PackageWatcher } from "./PackageWatcher";
 import { SwiftPackage } from "./SwiftPackage";
 import { WorkspaceContext } from "./WorkspaceContext";
@@ -69,4 +71,47 @@ export class FolderContext implements vscode.Disposable {
     async reloadPackageResolved() {
         await this.swiftPackage.reloadPackageResolved();
     }
+
+    editedPackageFolder(identifier: string) {
+        return path.join(this.folder.uri.fsPath, "Packages", identifier);
+    }
+
+    async getEditedPackages(): Promise<EditedPackage[]> {
+        try {
+            const packagePath = path.join(this.folder.uri.fsPath, "Packages");
+            const packagePathContents = await fs.readdir(packagePath, { withFileTypes: true });
+            return Promise.all(
+                await packagePathContents
+                    .filter(async item => {
+                        if (item.isDirectory()) {
+                            const itemPath = path.join(packagePath, item.name);
+                            const contents = await fs.readdir(itemPath);
+                            if (contents.length > 0) {
+                                return true;
+                            }
+                        } else if (item.isSymbolicLink()) {
+                            return true;
+                        }
+                        return false;
+                    })
+                    .map(async item => {
+                        let folder = path.join(packagePath, item.name);
+                        if (item.isSymbolicLink()) {
+                            folder = await fs.readlink(folder, "utf8");
+                            return { name: item.name, folder: folder, isSymbolicLink: true };
+                        }
+                        return { name: item.name, folder: folder, isSymbolicLink: false };
+                    })
+            );
+        } catch {
+            // ignore errors. They basically mean there was no Packages folder
+        }
+        return [];
+    }
+}
+
+export interface EditedPackage {
+    name: string;
+    folder: string;
+    isSymbolicLink: boolean;
 }
