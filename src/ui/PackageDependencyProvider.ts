@@ -102,15 +102,25 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
     onDidChangeTreeData = this.didChangeTreeDataEmitter.event;
 
     constructor(private workspaceContext: WorkspaceContext) {
+        // default context key to false. These will be updated as folders are given focus
+        contextKeys.hasPackage = false;
+        contextKeys.packageHasDependencies = false;
+
         this.workspaceObserver = this.workspaceContext.observeFolders((folder, event) => {
             switch (event) {
                 case FolderEvent.focus:
+                    if (!folder) {
+                        return;
+                    }
                     this.updateView(folder);
                     break;
                 case FolderEvent.unfocus:
                     this.updateView(undefined);
                     break;
                 case FolderEvent.resolvedUpdated:
+                    if (!folder) {
+                        return;
+                    }
                     if (folder === this.workspaceContext.currentFolder) {
                         this.updateView(folder);
                     }

@@ -32,7 +32,7 @@ export interface SwiftExtensionContext {
  */
 export class WorkspaceContext implements vscode.Disposable {
     public folders: FolderContext[] = [];
-    public currentFolder?: FolderContext;
+    public currentFolder: FolderContext | null | undefined;
     public outputChannel: SwiftOutputChannel;
     public statusItem: StatusItem;
     public xcTestPath?: string;
@@ -95,7 +95,7 @@ export class WorkspaceContext implements vscode.Disposable {
      * @param folder folder to fire event for
      * @param event event type
      */
-    async fireEvent(folder: FolderContext, event: FolderEvent) {
+    async fireEvent(folder: FolderContext | null, event: FolderEvent) {
         for (const observer of this.observers) {
             await observer(folder, event, this);
         }
@@ -103,16 +103,24 @@ export class WorkspaceContext implements vscode.Disposable {
 
     /**
      * set the focus folder
-     * @param folder folder that has gained focus
+     * @param folder folder that has gained focus, you can have a null folder
      */
-    async focusFolder(folder?: vscode.WorkspaceFolder) {
-        const folderContext = this.folders.find(context => context.folder === folder);
+    async focusFolder(folder: vscode.WorkspaceFolder | null) {
+        // null and undefined mean different things here. Undefined means nothing
+        // has been setup, null means we want to send focus events but for a null
+        // folder
+        let folderContext: FolderContext | null | undefined;
+        if (!folder) {
+            folderContext = null;
+        } else {
+            folderContext = this.folders.find(context => context.folder === folder);
+        }
         if (folderContext === this.currentFolder) {
             return;
         }
 
         // send unfocus event for previous folder observers
-        if (this.currentFolder) {
+        if (this.currentFolder !== undefined) {
             await this.fireEvent(this.currentFolder, FolderEvent.unfocus);
         }
         this.currentFolder = folderContext;
@@ -182,7 +190,7 @@ export class WorkspaceContext implements vscode.Disposable {
         // if current folder is this folder send unfocus event by setting
         // current folder to undefined
         if (this.currentFolder === context) {
-            this.focusFolder(undefined);
+            this.focusFolder(null);
         }
         // run observer functions in reverse order when removing
         const observersReversed = [...this.observers];
@@ -306,7 +314,7 @@ export class FolderEvent {
 
 /** Workspace Folder observer function */
 export type WorkspaceFoldersObserver = (
-    folder: FolderContext,
+    folder: FolderContext | null,
     operation: FolderEvent,
     workspace: WorkspaceContext
 ) => unknown;

@@ -41,7 +41,7 @@ export class LanguageClientManager {
             async (folderContext, event) => {
                 switch (event) {
                     case FolderEvent.focus:
-                        await this.setupLanguageClient(folderContext.folder);
+                        await this.setupLanguageClient(folderContext?.folder);
                         break;
                     case FolderEvent.unfocus:
                         // if in the middle of a restart then we have to wait until that
@@ -120,32 +120,22 @@ export class LanguageClientManager {
         return this.restartPromise;
     }
 
-    private async setupLanguageClient(folder: vscode.WorkspaceFolder) {
+    private async setupLanguageClient(folder?: vscode.WorkspaceFolder) {
         const client = await this.createLSPClient(folder);
         client.start();
 
-        console.log(`SourceKit-LSP setup for ${folder.name}`);
+        console.log(`SourceKit-LSP setup for ${folder?.name}`);
 
         this.supportsDidChangedWatchedFiles = false;
         this.languageClient = client;
 
         client.onReady().then(() => {
             this.inlayHints = activateInlayHints(client);
-            /*            client.onRequest(langclient.RegistrationRequest.type, request => {
-                console.log(p);
-                const index = request.registrations.findIndex(
-                    value => value.method === "workspace/didChangeWatchedFiles"
-                );
-                if (index !== -1) {
-                    console.log("LSP Server supports workspace/didChangeWatchedFiles");
-                    this.supportsDidChangedWatchedFiles = true;
-                }
-            });*/
         });
     }
 
     private async createLSPClient(
-        folder: vscode.WorkspaceFolder
+        folder?: vscode.WorkspaceFolder
     ): Promise<langclient.LanguageClient> {
         const serverPathConfig = configuration.lsp.serverPath;
         const serverPath =
