@@ -105,7 +105,7 @@ export class WorkspaceContext implements vscode.Disposable {
      * set the focus folder
      * @param folder folder that has gained focus, you can have a null folder
      */
-    async focusFolder(folder: vscode.WorkspaceFolder | null) {
+    async focusFolder(folder?: vscode.WorkspaceFolder | null) {
         // null and undefined mean different things here. Undefined means nothing
         // has been setup, null means we want to send focus events but for a null
         // folder
@@ -113,7 +113,7 @@ export class WorkspaceContext implements vscode.Disposable {
         if (!folder) {
             folderContext = null;
         } else {
-            folderContext = this.folders.find(context => context.folder === folder);
+            folderContext = this.folders.find(context => context.workspaceFolder === folder);
         }
         if (folderContext === this.currentFolder) {
             return;
@@ -151,7 +151,7 @@ export class WorkspaceContext implements vscode.Disposable {
      * @param folder folder being added
      */
     async addFolder(folder: vscode.WorkspaceFolder) {
-        const folderContext = await FolderContext.create(folder, this);
+        const folderContext = await FolderContext.create(folder.uri, folder, this);
         this.folders.push(folderContext);
         // On Windows, locate XCTest.dll the first time a folder is added.
         if (process.platform === "win32" && this.folders.length === 1) {
@@ -181,7 +181,7 @@ export class WorkspaceContext implements vscode.Disposable {
      */
     async removeFolder(folder: vscode.WorkspaceFolder) {
         // find context with root folder
-        const index = this.folders.findIndex(context => context.folder === folder);
+        const index = this.folders.findIndex(context => context.workspaceFolder === folder);
         if (index === -1) {
             console.error(`Trying to delete folder ${folder} which has no record`);
             return;

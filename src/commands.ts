@@ -50,19 +50,16 @@ export async function resolveFolderDependencies(folderContext: FolderContext) {
         exe =>
             (exe.task.name === SwiftTaskProvider.resolvePackageName ||
                 exe.task.name === SwiftTaskProvider.updatePackageName) &&
-            exe.task.scope === folderContext.folder
+            exe.task.definition.cwd === folderContext.folder.fsPath
     );
     if (index !== -1) {
         return;
     }
 
     const workspaceContext = folderContext.workspaceContext;
-    workspaceContext.outputChannel.logStart(
-        "Resolving Dependencies ... ",
-        folderContext.folder.name
-    );
+    workspaceContext.outputChannel.logStart("Resolving Dependencies ... ", folderContext.name);
     const task = createSwiftTask(["package", "resolve"], SwiftTaskProvider.resolvePackageName, {
-        scope: folderContext.folder,
+        cwd: folderContext.folder,
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
     });
     workspaceContext.statusItem.start(task);
@@ -96,7 +93,7 @@ export async function updateFolderDependencies(folderContext: FolderContext) {
     const index = vscode.tasks.taskExecutions.findIndex(
         exe =>
             exe.task.name === SwiftTaskProvider.updatePackageName &&
-            exe.task.scope === folderContext.folder
+            exe.task.definition.cwd === folderContext.folder.fsPath
     );
     if (index !== -1) {
         return;
@@ -104,13 +101,10 @@ export async function updateFolderDependencies(folderContext: FolderContext) {
 
     const workspaceContext = folderContext.workspaceContext;
     const task = createSwiftTask(["package", "update"], SwiftTaskProvider.updatePackageName, {
-        scope: folderContext.folder,
+        cwd: folderContext.folder,
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
     });
-    workspaceContext.outputChannel.logStart(
-        "Updating Dependencies ... ",
-        folderContext.folder.name
-    );
+    workspaceContext.outputChannel.logStart("Updating Dependencies ... ", folderContext.name);
     workspaceContext.statusItem.start(task);
     try {
         await executeTaskAndWait(task);
@@ -139,11 +133,11 @@ export async function cleanBuild(ctx: WorkspaceContext) {
 export async function folderCleanBuild(folderContext: FolderContext) {
     const workspaceContext = folderContext.workspaceContext;
     const task = createSwiftTask(["package", "clean"], SwiftTaskProvider.cleanBuildName, {
-        scope: folderContext.folder,
+        cwd: folderContext.folder,
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
         group: vscode.TaskGroup.Clean,
     });
-    workspaceContext.outputChannel.logStart("Clean Build ... ", folderContext.folder.name);
+    workspaceContext.outputChannel.logStart("Clean Build ... ", folderContext.name);
     workspaceContext.statusItem.start(task);
     try {
         await executeTaskAndWait(task);
@@ -172,11 +166,11 @@ export async function resetPackage(ctx: WorkspaceContext) {
 export async function folderResetPackage(folderContext: FolderContext) {
     const workspaceContext = folderContext.workspaceContext;
     const task = createSwiftTask(["package", "reset"], "Reset Package Dependencies", {
-        scope: folderContext.folder,
+        cwd: folderContext.folder,
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
         group: vscode.TaskGroup.Clean,
     });
-    workspaceContext.outputChannel.logStart("Reset Package ... ", folderContext.folder.name);
+    workspaceContext.outputChannel.logStart("Reset Package ... ", folderContext.name);
     workspaceContext.statusItem.start(task);
     try {
         await executeTaskAndWait(task);
@@ -184,7 +178,7 @@ export async function folderResetPackage(folderContext: FolderContext) {
             ["package", "resolve"],
             SwiftTaskProvider.resolvePackageName,
             {
-                scope: folderContext.folder,
+                cwd: folderContext.folder,
                 presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
             }
         );
@@ -213,7 +207,7 @@ async function useLocalDependency(identifier: string, ctx: WorkspaceContext) {
             canSelectFiles: false,
             canSelectFolders: true,
             canSelectMany: false,
-            defaultUri: currentFolder.folder.uri,
+            defaultUri: currentFolder.folder,
             openLabel: "Select",
             title: "Select folder",
         })
@@ -224,18 +218,18 @@ async function useLocalDependency(identifier: string, ctx: WorkspaceContext) {
             const folder = value[0];
             ctx.outputChannel.log(
                 `Edit dependency ${identifier} from ${folder.fsPath}`,
-                currentFolder.folder.name
+                currentFolder.name
             );
-            const status = `Edit dependency ${identifier} (${currentFolder.folder.name})`;
+            const status = `Edit dependency ${identifier} (${currentFolder.name})`;
             ctx.statusItem.start(status);
             try {
                 await execSwift(["package", "edit", "--path", value[0].fsPath, identifier], {
-                    cwd: currentFolder.folder.uri.fsPath,
+                    cwd: currentFolder.folder.fsPath,
                 });
                 ctx.fireEvent(currentFolder, FolderEvent.resolvedUpdated);
             } catch (error) {
                 const execError = error as { stderr: string };
-                ctx.outputChannel.log(execError.stderr, currentFolder.folder.name);
+                ctx.outputChannel.log(execError.stderr, currentFolder.name);
                 vscode.window.showErrorMessage(`${execError.stderr}`);
             }
             ctx.statusItem.end(status);
@@ -252,11 +246,11 @@ async function editDependency(identifier: string, ctx: WorkspaceContext) {
     if (!currentFolder) {
         return;
     }
-    const status = `Edit dependency ${identifier} (${currentFolder.folder.name})`;
+    const status = `Edit dependency ${identifier} (${currentFolder.name})`;
     ctx.statusItem.start(status);
     try {
         await execSwift(["package", "edit", identifier], {
-            cwd: currentFolder.folder.uri.fsPath,
+            cwd: currentFolder.folder.fsPath,
         });
         ctx.fireEvent(currentFolder, FolderEvent.resolvedUpdated);
         const index = vscode.workspace.workspaceFolders?.length ?? 0;
@@ -266,7 +260,7 @@ async function editDependency(identifier: string, ctx: WorkspaceContext) {
         });
     } catch (error) {
         const execError = error as { stderr: string };
-        ctx.outputChannel.log(execError.stderr, currentFolder.folder.name);
+        ctx.outputChannel.log(execError.stderr, currentFolder.name);
         vscode.window.showErrorMessage(`${execError.stderr}`);
     }
     ctx.statusItem.end(status);
@@ -282,8 +276,8 @@ async function uneditDependency(identifier: string, ctx: WorkspaceContext) {
     if (!currentFolder) {
         return;
     }
-    ctx.outputChannel.log(`unedit dependency ${identifier}`, currentFolder.folder.name);
-    const status = `Reverting edited dependency ${identifier} (${currentFolder.folder.name})`;
+    ctx.outputChannel.log(`unedit dependency ${identifier}`, currentFolder.name);
+    const status = `Reverting edited dependency ${identifier} (${currentFolder.name})`;
     ctx.statusItem.start(status);
     await uneditFolderDependency(currentFolder, identifier, ctx);
     ctx.statusItem.end(status);
@@ -297,7 +291,7 @@ async function uneditFolderDependency(
 ) {
     try {
         await execSwift(["package", "unedit", ...args, identifier], {
-            cwd: folder.folder.uri.fsPath,
+            cwd: folder.folder.fsPath,
         });
         ctx.fireEvent(folder, FolderEvent.resolvedUpdated);
         // find workspace folder, and check folder still exists
@@ -324,13 +318,13 @@ async function uneditFolderDependency(
                 )
                 .then(async result => {
                     if (result === "No") {
-                        ctx.outputChannel.log(execError.stderr, folder.folder.name);
+                        ctx.outputChannel.log(execError.stderr, folder.name);
                         return;
                     }
                     await uneditFolderDependency(folder, identifier, ctx, ["--force"]);
                 });
         } else {
-            ctx.outputChannel.log(execError.stderr, folder.folder.name);
+            ctx.outputChannel.log(execError.stderr, folder.name);
             vscode.window.showErrorMessage(`${execError.stderr}`);
         }
     }

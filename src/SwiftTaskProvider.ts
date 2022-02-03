@@ -31,6 +31,7 @@ import { getSwiftExecutable } from "./utilities/utilities";
 
 // Interface class for defining task configuration
 interface TaskConfig {
+    cwd?: vscode.Uri;
     scope?: vscode.TaskScope | vscode.WorkspaceFolder;
     group?: vscode.TaskGroup;
     problemMatcher?: string | string[];
@@ -40,7 +41,7 @@ interface TaskConfig {
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
-function createBuildAllTask(folder: vscode.WorkspaceFolder): vscode.Task {
+function createBuildAllTask(folder: vscode.Uri): vscode.Task {
     const additionalArgs: string[] = [];
     if (process.platform !== "darwin") {
         additionalArgs.push("--enable-test-discovery");
@@ -51,14 +52,14 @@ function createBuildAllTask(folder: vscode.WorkspaceFolder): vscode.Task {
     return createSwiftTask(
         ["build", "--build-tests", ...additionalArgs, ...configuration.buildArguments],
         SwiftTaskProvider.buildAllName,
-        { group: vscode.TaskGroup.Build, scope: folder }
+        { group: vscode.TaskGroup.Build, cwd: folder }
     );
 }
 
 /**
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
-function createBuildTasks(product: Product, folder: vscode.WorkspaceFolder): vscode.Task[] {
+function createBuildTasks(product: Product, folder: vscode.Uri): vscode.Task[] {
     const debugArguments = process.platform === "win32" ? ["-Xlinker", "-debug:dwarf"] : [];
     return [
         createSwiftTask(
@@ -70,12 +71,12 @@ function createBuildTasks(product: Product, folder: vscode.WorkspaceFolder): vsc
                 ...configuration.buildArguments,
             ],
             `Build Debug ${product.name}`,
-            { group: vscode.TaskGroup.Build, scope: folder }
+            { group: vscode.TaskGroup.Build, cwd: folder }
         ),
         createSwiftTask(
             ["build", "-c", "release", "--product", product.name, ...configuration.buildArguments],
             `Build Release ${product.name}`,
-            { group: vscode.TaskGroup.Build, scope: folder }
+            { group: vscode.TaskGroup.Build, cwd: folder }
         ),
     ];
 }
@@ -86,11 +87,11 @@ function createBuildTasks(product: Product, folder: vscode.WorkspaceFolder): vsc
 export function createSwiftTask(args: string[], name: string, config?: TaskConfig): vscode.Task {
     const swift = getSwiftExecutable();
     const task = new vscode.Task(
-        { type: "swift", command: swift, args: args },
+        { type: "swift", command: swift, args: args, cwd: config?.cwd?.fsPath },
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
         "swift",
-        new vscode.ShellExecution(swift, args),
+        new vscode.ShellExecution(swift, args, { cwd: config?.cwd?.fsPath }),
         config?.problemMatcher
     );
     // This doesn't include any quotes added by VS Code.
@@ -99,48 +100,6 @@ export function createSwiftTask(args: string[], name: string, config?: TaskConfi
     task.group = config?.group;
     task.presentationOptions = config?.presentationOptions ?? {};
     return task;
-}
-
-/*
- * Execute swift command as task and wait until it is finished
- */
-export async function executeSwiftTaskAndWait(args: string[], name: string, config?: TaskConfig) {
-    const swift = getSwiftExecutable();
-    const task = new vscode.Task(
-        { type: "swift", command: "swift", args: args },
-        config?.scope ?? vscode.TaskScope.Workspace,
-        name,
-        "swift",
-        new vscode.ShellExecution(swift, args),
-        config?.problemMatcher
-    );
-    task.group = config?.group;
-    task.presentationOptions = config?.presentationOptions ?? {};
-
-    executeTaskAndWait(task);
-}
-
-/*
- * Execute shell command as task and wait until it is finished
- */
-export async function executeShellTaskAndWait(
-    command: string,
-    args: string[],
-    name: string,
-    config?: TaskConfig
-) {
-    const task = new vscode.Task(
-        { type: "swift", command: command, args: args },
-        config?.scope ?? vscode.TaskScope.Workspace,
-        name,
-        "swift",
-        new vscode.ShellExecution(command, args),
-        config?.problemMatcher
-    );
-    task.group = config?.group;
-    task.presentationOptions = config?.presentationOptions ?? {};
-
-    await executeTaskAndWait(task);
 }
 
 /*

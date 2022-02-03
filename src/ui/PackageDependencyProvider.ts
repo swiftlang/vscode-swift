@@ -177,7 +177,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             const packagePath =
                 element.type === "remote"
                     ? path.join(
-                          folderContext.folder.uri.fsPath,
+                          folderContext.folder.fsPath,
                           ".build",
                           "checkouts",
                           getRepositoryName(element.path)

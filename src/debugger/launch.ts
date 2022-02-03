@@ -40,7 +40,7 @@ export async function makeDebugConfigurations(ctx: FolderContext) {
                 launchConfigs[index].preLaunchTask !== config.preLaunchTask
             ) {
                 const answer = await vscode.window.showErrorMessage(
-                    `${ctx.folder.name}: Launch configuration '${config.name}' already exists. Do you want to update it?`,
+                    `${ctx.name}: Launch configuration '${config.name}' already exists. Do you want to update it?`,
                     "Cancel",
                     "Update"
                 );
@@ -68,25 +68,25 @@ export async function makeDebugConfigurations(ctx: FolderContext) {
 // Return array of DebugConfigurations for executables based on what is in Package.swift
 function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfiguration[] {
     const executableProducts = ctx.swiftPackage.executableProducts;
-
+    const folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}${ctx.relativePath}`;
     return executableProducts.flatMap(product => {
         return [
             {
                 type: "lldb",
                 request: "launch",
                 name: `Debug ${product.name}`,
-                program: `\${workspaceFolder:${ctx.folder.name}}/.build/debug/` + product.name,
+                program: `${folder}/.build/debug/` + product.name,
                 args: [],
-                cwd: `\${workspaceFolder:${ctx.folder.name}}`,
+                cwd: folder,
                 preLaunchTask: `swift: Build Debug ${product.name}`,
             },
             {
                 type: "lldb",
                 request: "launch",
                 name: `Release ${product.name}`,
-                program: `\${workspaceFolder:${ctx.folder.name}}/.build/release/` + product.name,
+                program: `${folder}/.build/release/` + product.name,
                 args: [],
-                cwd: `\${workspaceFolder:${ctx.folder.name}}`,
+                cwd: folder,
                 preLaunchTask: `swift: Build Release ${product.name}`,
             },
         ];
@@ -99,6 +99,7 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
         return [];
     }
 
+    const folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}${ctx.relativePath}`;
     if (process.platform === "darwin") {
         // On macOS, find the path to xctest
         // and point it at the .xctest bundle from the .build directory.
@@ -113,7 +114,7 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
                 name: `Test ${ctx.swiftPackage.name}`,
                 program: `${xcodePath}/usr/bin/xctest`,
                 args: [`.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`],
-                cwd: `\${workspaceFolder:${ctx.folder.name}}`,
+                cwd: folder,
                 preLaunchTask: `swift: Build All`,
             },
         ];
@@ -128,8 +129,8 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
                 type: "lldb",
                 request: "launch",
                 name: `Test ${ctx.swiftPackage.name}`,
-                program: `\${workspaceFolder:${ctx.folder.name}}/.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
-                cwd: `\${workspaceFolder:${ctx.folder.name}}`,
+                program: `${folder}/.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
+                cwd: folder,
                 env: {
                     path: `${ctx.workspaceContext.xcTestPath};\${env:PATH}`,
                 },
@@ -143,8 +144,8 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
                 type: "lldb",
                 request: "launch",
                 name: `Test ${ctx.swiftPackage.name}`,
-                program: `\${workspaceFolder:${ctx.folder.name}}/.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
-                cwd: `\${workspaceFolder:${ctx.folder.name}}`,
+                program: `${folder}/.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
+                cwd: folder,
                 preLaunchTask: `swift: Build All`,
             },
         ];

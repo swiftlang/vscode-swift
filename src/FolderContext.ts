@@ -28,8 +28,9 @@ export class FolderContext implements vscode.Disposable {
      * @param workspaceContext Workspace context
      */
     private constructor(
-        public folder: vscode.WorkspaceFolder,
+        public folder: vscode.Uri,
         public swiftPackage: SwiftPackage,
+        public workspaceFolder: vscode.WorkspaceFolder,
         public workspaceContext: WorkspaceContext
     ) {
         this.packageWatcher = new PackageWatcher(this, workspaceContext);
@@ -48,17 +49,26 @@ export class FolderContext implements vscode.Disposable {
      * @returns a new FolderContext
      */
     static async create(
-        folder: vscode.WorkspaceFolder,
+        folder: vscode.Uri,
+        workspaceFolder: vscode.WorkspaceFolder,
         workspaceContext: WorkspaceContext
     ): Promise<FolderContext> {
-        const statusItemText = `Loading Package (${folder.name})`;
+        const statusItemText = `Loading Package (${FolderContext.uriName(folder)})`;
         workspaceContext.statusItem.start(statusItemText);
 
         const swiftPackage = await SwiftPackage.create(folder);
 
         workspaceContext.statusItem.end(statusItemText);
 
-        return new FolderContext(folder, swiftPackage, workspaceContext);
+        return new FolderContext(folder, swiftPackage, workspaceFolder, workspaceContext);
+    }
+
+    get name(): string {
+        return `${this.workspaceFolder.name}${this.relativePath}`;
+    }
+
+    get relativePath(): string {
+        return path.relative(this.workspaceFolder.uri.fsPath, this.folder.fsPath);
     }
 
     /** reload swift package for this folder */
@@ -72,7 +82,7 @@ export class FolderContext implements vscode.Disposable {
     }
 
     editedPackageFolder(identifier: string) {
-        return path.join(this.folder.uri.fsPath, "Packages", identifier);
+        return path.join(this.folder.fsPath, "Packages", identifier);
     }
 
     async getEditedPackages(): Promise<EditedPackage[]> {
@@ -86,6 +96,10 @@ export class FolderContext implements vscode.Disposable {
                     return { name: item.packageRef.identity, folder: item.state.path! };
                 }) ?? []
         );
+    }
+
+    static uriName(uri: vscode.Uri): string {
+        return path.basename(uri.fsPath);
     }
 }
 

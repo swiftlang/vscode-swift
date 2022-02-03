@@ -13,23 +13,23 @@
 //===----------------------------------------------------------------------===//
 
 import * as assert from "assert";
-import { testAssetWorkspaceFolder } from "../fixtures";
+import { testAssetUri } from "../fixtures";
 import { SwiftPackage } from "../../SwiftPackage";
 
 suite("SwiftPackage Test Suite", () => {
     test("No package", async () => {
-        const spmPackage = await SwiftPackage.create(testAssetWorkspaceFolder("empty-folder"));
+        const spmPackage = await SwiftPackage.create(testAssetUri("empty-folder"));
         assert.strictEqual(spmPackage.foundPackage, false);
     }).timeout(5000);
 
     test("Invalid package", async () => {
-        const spmPackage = await SwiftPackage.create(testAssetWorkspaceFolder("invalid-package"));
+        const spmPackage = await SwiftPackage.create(testAssetUri("invalid-package"));
         assert.strictEqual(spmPackage.foundPackage, true);
         assert.strictEqual(spmPackage.isValid, false);
     }).timeout(5000);
 
     test("Executable package", async () => {
-        const spmPackage = await SwiftPackage.create(testAssetWorkspaceFolder("package1"));
+        const spmPackage = await SwiftPackage.create(testAssetUri("package1"));
         assert.strictEqual(spmPackage.isValid, true);
         assert.strictEqual(spmPackage.executableProducts.length, 1);
         assert.strictEqual(spmPackage.executableProducts[0].name, "package1");
@@ -38,7 +38,7 @@ suite("SwiftPackage Test Suite", () => {
     }).timeout(5000);
 
     test("Library package", async () => {
-        const spmPackage = await SwiftPackage.create(testAssetWorkspaceFolder("package2"));
+        const spmPackage = await SwiftPackage.create(testAssetUri("package2"));
         assert.strictEqual(spmPackage.isValid, true);
         assert.strictEqual(spmPackage.libraryProducts.length, 1);
         assert.strictEqual(spmPackage.libraryProducts[0].name, "package2");
