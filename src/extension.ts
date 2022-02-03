@@ -48,8 +48,8 @@ export async function activate(context: vscode.ExtensionContext) {
     // observer for logging workspace folder addition/removal
     const logObserver = workspaceContext.observeFolders((folderContext, event) => {
         workspaceContext.outputChannel.log(
-            `${event}: ${folderContext.folder.uri.fsPath}`,
-            folderContext.folder.name
+            `${event}: ${folderContext?.folder.uri.fsPath}`,
+            folderContext?.folder.name
         );
     });
 
@@ -62,6 +62,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // observer that will resolve package and build launch configurations
     const resolvePackageObserver = workspaceContext.observeFolders(async (folder, event) => {
+        if (!folder) {
+            return;
+        }
         switch (event) {
             case FolderEvent.add:
             case FolderEvent.packageUpdated:
@@ -80,10 +83,13 @@ export async function activate(context: vscode.ExtensionContext) {
     });
 
     // add workspace folders, already loaded
-    if (vscode.workspace.workspaceFolders) {
+    if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
         for (const folder of vscode.workspace.workspaceFolders) {
             await workspaceContext.addFolder(folder);
         }
+    } else {
+        // fire focus event on null folder to startup language server
+        await workspaceContext.fireEvent(null, FolderEvent.focus);
     }
 
     // Register any disposables for cleanup when the extension deactivates.
