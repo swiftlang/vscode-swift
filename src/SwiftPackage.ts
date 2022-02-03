@@ -118,7 +118,10 @@ export class SwiftPackage implements PackageContents {
         } catch (error) {
             const execError = error as { stderr: string };
             // if caught error and it begins with "error: root manifest" then there is no Package.swift
-            if (execError.stderr.startsWith("error: root manifest")) {
+            if (
+                execError.stderr !== undefined &&
+                execError.stderr.startsWith("error: root manifest")
+            ) {
                 return undefined;
             } else {
                 // otherwise it is an error loading the Package.swift so return `null` indicating

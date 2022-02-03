@@ -13,10 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import * as path from "path";
 import { FolderContext } from "./FolderContext";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
-import { execSwift, getSwiftExecutable, getXCTestPath } from "./utilities/utilities";
+import { execSwift, getSwiftExecutable, getXCTestPath, pathExists } from "./utilities/utilities";
 import { getLLDBLibPath } from "./debugger/lldb";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 import { Version } from "./utilities/version";
@@ -76,15 +77,22 @@ export class WorkspaceContext implements vscode.Disposable {
             this.onDidChangeWorkspaceFolders(event);
         });
         // add event listener for when the active edited text document changes
-        const onDidChangeActiveWindow = vscode.window.onDidChangeActiveTextEditor(editor => {
+        const onDidChangeActiveWindow = vscode.window.onDidChangeActiveTextEditor(async editor => {
             if (this === undefined) {
                 console.log("Trying to run onDidChangeWorkspaceFolders on deleted context");
                 return;
             }
 
-            const workspaceFolder = this.getWorkspaceFolder(editor);
-            if (workspaceFolder) {
-                this.focusFolder(workspaceFolder);
+            const packageFolder = await this.getPackageFolder(editor);
+            if (packageFolder instanceof FolderContext) {
+                this.focusFolder(packageFolder);
+            } else if (packageFolder instanceof vscode.Uri) {
+                const workspaceFolder = vscode.workspace.getWorkspaceFolder(packageFolder);
+                if (!workspaceFolder) {
+                    return;
+                }
+                const folderContext = await this.addPackageFolder(packageFolder, workspaceFolder);
+                this.focusFolder(folderContext);
             }
         });
         this.extensionContext.subscriptions.push(onWorkspaceChange, onDidChangeActiveWindow);
@@ -105,16 +113,10 @@ export class WorkspaceContext implements vscode.Disposable {
      * set the focus folder
      * @param folder folder that has gained focus, you can have a null folder
      */
-    async focusFolder(folder?: vscode.WorkspaceFolder | null) {
+    async focusFolder(folderContext?: FolderContext | null) {
         // null and undefined mean different things here. Undefined means nothing
         // has been setup, null means we want to send focus events but for a null
         // folder
-        let folderContext: FolderContext | null | undefined;
-        if (!folder) {
-            folderContext = null;
-        } else {
-            folderContext = this.folders.find(context => context.folder === folder?.uri);
-        }
         if (folderContext === this.currentFolder) {
             return;
         }
@@ -151,8 +153,6 @@ export class WorkspaceContext implements vscode.Disposable {
      * @param folder folder being added
      */
     async addFolder(folder: vscode.WorkspaceFolder) {
-        const folderContext = await FolderContext.create(folder.uri, folder, this);
-        this.folders.push(folderContext);
         // On Windows, locate XCTest.dll the first time a folder is added.
         if (process.platform === "win32" && this.folders.length === 1) {
             try {
@@ -164,15 +164,29 @@ export class WorkspaceContext implements vscode.Disposable {
                 );
             }
         }
+        // add folder if Package.swift exists
+        if (await pathExists(folder.uri.fsPath, "Package.swift")) {
+            await this.addPackageFolder(folder.uri, folder);
+        }
+    }
+
+    async addPackageFolder(
+        folder: vscode.Uri,
+        workspaceFolder: vscode.WorkspaceFolder
+    ): Promise<FolderContext> {
+        const folderContext = await FolderContext.create(folder, workspaceFolder, this);
+        this.folders.push(folderContext);
+
         await this.fireEvent(folderContext, FolderEvent.add);
 
         // if this is the first folder then set a focus event
         if (
             this.folders.length === 1 ||
-            this.getWorkspaceFolder(vscode.window.activeTextEditor) === folder
+            this.getWorkspaceFolder(vscode.window.activeTextEditor) === workspaceFolder
         ) {
-            this.focusFolder(folder);
+            this.focusFolder(folderContext);
         }
+        return folderContext;
     }
 
     /**
@@ -283,6 +297,43 @@ export class WorkspaceContext implements vscode.Disposable {
             return;
         }
         return vscode.workspace.getWorkspaceFolder(editor.document.uri);
+    }
+
+    private async getPackageFolder(
+        editor?: vscode.TextEditor
+    ): Promise<FolderContext | vscode.Uri | undefined> {
+        if (!editor || !editor.document) {
+            return;
+        }
+        const documentUrl = editor.document.uri;
+        // is editor document in any of the current FolderContexts
+        const folder = this.folders.find(context => {
+            return path.relative(context.folder.fsPath, documentUrl.fsPath)[0] !== ".";
+        });
+        if (folder) {
+            return folder;
+        }
+
+        // if not search directory tree for 'Package.swift' files
+        const workspaceFolder = this.getWorkspaceFolder(editor);
+        if (!workspaceFolder) {
+            return;
+        }
+        const workspacePath = workspaceFolder.uri.fsPath;
+        let packagePath: string | undefined = undefined;
+        let currentFolder = documentUrl.fsPath;
+        do {
+            if (await pathExists(currentFolder, "Package.swift")) {
+                packagePath = currentFolder;
+            }
+            currentFolder = path.dirname(currentFolder);
+        } while (currentFolder !== workspacePath);
+
+        if (packagePath) {
+            return vscode.Uri.file(packagePath);
+        } else {
+            return;
+        }
     }
 
     private observers: Set<WorkspaceFoldersObserver> = new Set();
