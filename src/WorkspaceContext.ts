@@ -113,7 +113,7 @@ export class WorkspaceContext implements vscode.Disposable {
         if (!folder) {
             folderContext = null;
         } else {
-            folderContext = this.folders.find(context => context.workspaceFolder === folder);
+            folderContext = this.folders.find(context => context.folder === folder?.uri);
         }
         if (folderContext === this.currentFolder) {
             return;
