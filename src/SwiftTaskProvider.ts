@@ -198,9 +198,11 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         const newTask = new vscode.Task(
             task.definition,
             task.scope ?? vscode.TaskScope.Workspace,
-            task.name || "Custom Task",
+            task.name ?? "Custom Task",
             "swift",
-            new vscode.ShellExecution(task.definition.command, task.definition.args),
+            new vscode.ShellExecution(task.definition.command, task.definition.args, {
+                cwd: task.definition.cwd,
+            }),
             task.problemMatchers
         );
         newTask.detail =
