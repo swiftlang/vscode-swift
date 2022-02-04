@@ -82,8 +82,12 @@ export class WorkspaceContext implements vscode.Disposable {
                 console.log("Trying to run onDidChangeWorkspaceFolders on deleted context");
                 return;
             }
+            if (!editor || !editor.document) {
+                return;
+            }
+            const url = editor.document.uri;
 
-            const packageFolder = await this.getPackageFolder(editor);
+            const packageFolder = await this.getPackageFolder(url);
             if (packageFolder instanceof FolderContext) {
                 this.focusFolder(packageFolder);
             } else if (packageFolder instanceof vscode.Uri) {
@@ -93,6 +97,8 @@ export class WorkspaceContext implements vscode.Disposable {
                 }
                 const folderContext = await this.addPackageFolder(packageFolder, workspaceFolder);
                 this.focusFolder(folderContext);
+            } else {
+                this.focusFolder(null);
             }
         });
         this.extensionContext.subscriptions.push(onWorkspaceChange, onDidChangeActiveWindow);
@@ -182,7 +188,7 @@ export class WorkspaceContext implements vscode.Disposable {
         // if this is the first folder then set a focus event
         if (
             this.folders.length === 1 ||
-            this.getWorkspaceFolder(vscode.window.activeTextEditor) === workspaceFolder
+            this.getActiveWorkspaceFolder(vscode.window.activeTextEditor) === workspaceFolder
         ) {
             this.focusFolder(folderContext);
         }
@@ -291,37 +297,46 @@ export class WorkspaceContext implements vscode.Disposable {
             });
     }
 
-    // return workspace folder from text editor
-    private getWorkspaceFolder(editor?: vscode.TextEditor): vscode.WorkspaceFolder | undefined {
+    /** return workspace folder from text editor */
+    private getWorkspaceFolder(url: vscode.Uri): vscode.WorkspaceFolder | undefined {
+        return vscode.workspace.getWorkspaceFolder(url);
+    }
+
+    /** return workspace folder from text editor */
+    private getActiveWorkspaceFolder(
+        editor?: vscode.TextEditor
+    ): vscode.WorkspaceFolder | undefined {
         if (!editor || !editor.document) {
             return;
         }
         return vscode.workspace.getWorkspaceFolder(editor.document.uri);
     }
 
+    /** Return Package folder for url.
+     *
+     * First the functions checks in the currently loaded folders to see if it exists inside
+     * one of those. If not then it searches up the tree to find the uppermost folder in the
+     * workspace that contains a Package.swift
+     */
     private async getPackageFolder(
-        editor?: vscode.TextEditor
+        url: vscode.Uri
     ): Promise<FolderContext | vscode.Uri | undefined> {
-        if (!editor || !editor.document) {
-            return;
-        }
-        const documentUrl = editor.document.uri;
         // is editor document in any of the current FolderContexts
         const folder = this.folders.find(context => {
-            return path.relative(context.folder.fsPath, documentUrl.fsPath)[0] !== ".";
+            return path.relative(context.folder.fsPath, url.fsPath)[0] !== ".";
         });
         if (folder) {
             return folder;
         }
 
         // if not search directory tree for 'Package.swift' files
-        const workspaceFolder = this.getWorkspaceFolder(editor);
+        const workspaceFolder = this.getWorkspaceFolder(url);
         if (!workspaceFolder) {
             return;
         }
         const workspacePath = workspaceFolder.uri.fsPath;
         let packagePath: string | undefined = undefined;
-        let currentFolder = documentUrl.fsPath;
+        let currentFolder = path.dirname(url.fsPath);
         do {
             if (await pathExists(currentFolder, "Package.swift")) {
                 packagePath = currentFolder;
