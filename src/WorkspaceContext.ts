@@ -82,24 +82,7 @@ export class WorkspaceContext implements vscode.Disposable {
                 console.log("Trying to run onDidChangeWorkspaceFolders on deleted context");
                 return;
             }
-            if (!editor || !editor.document) {
-                return;
-            }
-            const url = editor.document.uri;
-
-            const packageFolder = await this.getPackageFolder(url);
-            if (packageFolder instanceof FolderContext) {
-                this.focusFolder(packageFolder);
-            } else if (packageFolder instanceof vscode.Uri) {
-                const workspaceFolder = vscode.workspace.getWorkspaceFolder(packageFolder);
-                if (!workspaceFolder) {
-                    return;
-                }
-                const folderContext = await this.addPackageFolder(packageFolder, workspaceFolder);
-                this.focusFolder(folderContext);
-            } else {
-                this.focusFolder(null);
-            }
+            await this.focusTextEditor(editor);
         });
         this.extensionContext.subscriptions.push(onWorkspaceChange, onDidChangeActiveWindow);
     }
@@ -174,6 +157,10 @@ export class WorkspaceContext implements vscode.Disposable {
         if (await pathExists(folder.uri.fsPath, "Package.swift")) {
             await this.addPackageFolder(folder.uri, folder);
         }
+
+        if (this.getActiveWorkspaceFolder(vscode.window.activeTextEditor) === folder) {
+            this.focusTextEditor(vscode.window.activeTextEditor);
+        }
     }
 
     async addPackageFolder(
@@ -186,12 +173,12 @@ export class WorkspaceContext implements vscode.Disposable {
         await this.fireEvent(folderContext, FolderEvent.add);
 
         // if this is the first folder then set a focus event
-        if (
+        /*if (
             this.folders.length === 1 ||
             this.getActiveWorkspaceFolder(vscode.window.activeTextEditor) === workspaceFolder
         ) {
             this.focusFolder(folderContext);
-        }
+        }*/
         return folderContext;
     }
 
@@ -295,6 +282,27 @@ export class WorkspaceContext implements vscode.Disposable {
                         break;
                 }
             });
+    }
+
+    async focusTextEditor(editor?: vscode.TextEditor) {
+        if (!editor || !editor.document) {
+            return;
+        }
+        const url = editor.document.uri;
+
+        const packageFolder = await this.getPackageFolder(url);
+        if (packageFolder instanceof FolderContext) {
+            this.focusFolder(packageFolder);
+        } else if (packageFolder instanceof vscode.Uri) {
+            const workspaceFolder = vscode.workspace.getWorkspaceFolder(packageFolder);
+            if (!workspaceFolder) {
+                return;
+            }
+            const folderContext = await this.addPackageFolder(packageFolder, workspaceFolder);
+            this.focusFolder(folderContext);
+        } else {
+            this.focusFolder(null);
+        }
     }
 
     /** return workspace folder from text editor */
