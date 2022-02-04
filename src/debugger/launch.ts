@@ -68,7 +68,12 @@ export async function makeDebugConfigurations(ctx: FolderContext) {
 // Return array of DebugConfigurations for executables based on what is in Package.swift
 function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfiguration[] {
     const executableProducts = ctx.swiftPackage.executableProducts;
-    const folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}${ctx.relativePath}`;
+    let folder: string;
+    if (ctx.relativePath.length === 0) {
+        folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}`;
+    } else {
+        folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}/${ctx.relativePath}`;
+    }
     return executableProducts.flatMap(product => {
         return [
             {
@@ -99,7 +104,12 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
         return [];
     }
 
-    const folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}${ctx.relativePath}`;
+    let folder: string;
+    if (ctx.relativePath.length === 0) {
+        folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}`;
+    } else {
+        folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}/${ctx.relativePath}`;
+    }
     if (process.platform === "darwin") {
         // On macOS, find the path to xctest
         // and point it at the .xctest bundle from the .build directory.
