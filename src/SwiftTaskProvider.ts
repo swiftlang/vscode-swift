@@ -14,6 +14,7 @@
 
 import * as vscode from "vscode";
 import { WorkspaceContext } from "./WorkspaceContext";
+import { FolderContext } from "./FolderContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
 import { getSwiftExecutable } from "./utilities/utilities";
@@ -36,12 +37,13 @@ interface TaskConfig {
     group?: vscode.TaskGroup;
     problemMatcher?: string | string[];
     presentationOptions?: vscode.TaskPresentationOptions;
+    prefix?: string;
 }
 
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
-function createBuildAllTask(folder: vscode.Uri): vscode.Task {
+function createBuildAllTask(folderContext: FolderContext): vscode.Task {
     const additionalArgs: string[] = [];
     if (process.platform !== "darwin") {
         additionalArgs.push("--enable-test-discovery");
@@ -52,14 +54,14 @@ function createBuildAllTask(folder: vscode.Uri): vscode.Task {
     return createSwiftTask(
         ["build", "--build-tests", ...additionalArgs, ...configuration.buildArguments],
         SwiftTaskProvider.buildAllName,
-        { group: vscode.TaskGroup.Build, cwd: folder }
+        { group: vscode.TaskGroup.Build, cwd: folderContext.folder, prefix: folderContext.name }
     );
 }
 
 /**
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
-function createBuildTasks(product: Product, folder: vscode.Uri): vscode.Task[] {
+function createBuildTasks(product: Product, folderContext: FolderContext): vscode.Task[] {
     const debugArguments = process.platform === "win32" ? ["-Xlinker", "-debug:dwarf"] : [];
     return [
         createSwiftTask(
@@ -71,12 +73,12 @@ function createBuildTasks(product: Product, folder: vscode.Uri): vscode.Task[] {
                 ...configuration.buildArguments,
             ],
             `Build Debug ${product.name}`,
-            { group: vscode.TaskGroup.Build, cwd: folder }
+            { group: vscode.TaskGroup.Build, cwd: folderContext.folder, prefix: folderContext.name }
         ),
         createSwiftTask(
             ["build", "-c", "release", "--product", product.name, ...configuration.buildArguments],
             `Build Release ${product.name}`,
-            { group: vscode.TaskGroup.Build, cwd: folder }
+            { group: vscode.TaskGroup.Build, cwd: folderContext.folder, prefix: folderContext.name }
         ),
     ];
 }
@@ -96,7 +98,14 @@ export function createSwiftTask(args: string[], name: string, config?: TaskConfi
     );
     // This doesn't include any quotes added by VS Code.
     // See also: https://github.com/microsoft/vscode/issues/137895
-    task.detail = `swift ${args.join(" ")}`;
+
+    let prefix: string;
+    if (config?.prefix) {
+        prefix = `(${config.prefix}) `;
+    } else {
+        prefix = "";
+    }
+    task.detail = `${prefix}swift ${args.join(" ")}`;
     task.group = config?.group;
     task.presentationOptions = config?.presentationOptions ?? {};
     return task;
@@ -152,10 +161,10 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             if (!folderContext.swiftPackage.foundPackage) {
                 continue;
             }
-            tasks.push(createBuildAllTask(folderContext.folder));
+            tasks.push(createBuildAllTask(folderContext));
             const executables = folderContext.swiftPackage.executableProducts;
             for (const executable of executables) {
-                tasks.push(...createBuildTasks(executable, folderContext.folder));
+                tasks.push(...createBuildTasks(executable, folderContext));
             }
         }
         return tasks;

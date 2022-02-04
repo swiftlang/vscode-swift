@@ -64,7 +64,12 @@ export class FolderContext implements vscode.Disposable {
     }
 
     get name(): string {
-        return `${this.workspaceFolder.name}${this.relativePath}`;
+        const relativePath = this.relativePath;
+        if (relativePath.length === 0) {
+            return this.workspaceFolder.name;
+        } else {
+            return `${this.workspaceFolder.name}/${this.relativePath}`;
+        }
     }
 
     get relativePath(): string {
