@@ -154,20 +154,23 @@ export async function folderResetPackage(folderContext: FolderContext) {
         group: vscode.TaskGroup.Clean,
     });
 
-    await executeTaskWithUI(task, "Reset Package", folderContext);
-
-    const resolveTask = createSwiftTask(
-        ["package", "resolve"],
-        SwiftTaskProvider.resolvePackageName,
-        {
-            cwd: folderContext.folder,
-            scope: folderContext.workspaceFolder,
-            prefix: folderContext.name,
-            presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+    await executeTaskWithUI(task, "Reset Package", folderContext).then(async success => {
+        if (!success) {
+            return;
         }
-    );
+        const resolveTask = createSwiftTask(
+            ["package", "resolve"],
+            SwiftTaskProvider.resolvePackageName,
+            {
+                cwd: folderContext.folder,
+                scope: folderContext.workspaceFolder,
+                prefix: folderContext.name,
+                presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+            }
+        );
 
-    await executeTaskWithUI(resolveTask, "Resolving Dependencies", folderContext);
+        await executeTaskWithUI(resolveTask, "Resolving Dependencies", folderContext);
+    });
 }
 
 /**
@@ -328,21 +331,25 @@ async function executeTaskWithUI(
     task: vscode.Task,
     description: string,
     folderContext: FolderContext
-) {
+): Promise<boolean> {
     const workspaceContext = folderContext.workspaceContext;
     workspaceContext.outputChannel.logStart(`${description} ... `, folderContext.name);
     workspaceContext.statusItem.start(task);
     try {
         const exitCode = await executeTaskAndWait(task);
+        workspaceContext.statusItem.end(task);
         if (exitCode === 0) {
             workspaceContext.outputChannel.logEnd("done.");
+            return true;
         } else {
             workspaceContext.outputChannel.logEnd("failed.");
+            return false;
         }
     } catch (error) {
         workspaceContext.outputChannel.logEnd(`${error}`);
+        workspaceContext.statusItem.end(task);
+        return false;
     }
-    workspaceContext.statusItem.end(task);
 }
 
 /**
