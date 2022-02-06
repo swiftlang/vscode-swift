@@ -54,7 +54,12 @@ function createBuildAllTask(folderContext: FolderContext): vscode.Task {
     return createSwiftTask(
         ["build", "--build-tests", ...additionalArgs, ...configuration.buildArguments],
         SwiftTaskProvider.buildAllName,
-        { group: vscode.TaskGroup.Build, cwd: folderContext.folder, prefix: folderContext.name }
+        {
+            group: vscode.TaskGroup.Build,
+            cwd: folderContext.folder,
+            scope: folderContext.workspaceFolder,
+            prefix: folderContext.name,
+        }
     );
 }
 
@@ -73,12 +78,22 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 ...configuration.buildArguments,
             ],
             `Build Debug ${product.name}`,
-            { group: vscode.TaskGroup.Build, cwd: folderContext.folder, prefix: folderContext.name }
+            {
+                group: vscode.TaskGroup.Build,
+                cwd: folderContext.folder,
+                scope: folderContext.workspaceFolder,
+                prefix: folderContext.name,
+            }
         ),
         createSwiftTask(
             ["build", "-c", "release", "--product", product.name, ...configuration.buildArguments],
             `Build Release ${product.name}`,
-            { group: vscode.TaskGroup.Build, cwd: folderContext.folder, prefix: folderContext.name }
+            {
+                group: vscode.TaskGroup.Build,
+                cwd: folderContext.folder,
+                scope: folderContext.workspaceFolder,
+                prefix: folderContext.name,
+            }
         ),
     ];
 }
@@ -117,8 +132,8 @@ export function createSwiftTask(args: string[], name: string, config?: TaskConfi
  */
 export async function executeTaskAndWait(task: vscode.Task) {
     return new Promise<void>(resolve => {
-        const disposable = vscode.tasks.onDidEndTaskProcess(({ execution }) => {
-            if (execution.task.name === task.name && execution.task.scope === task.scope) {
+        const disposable = vscode.tasks.onDidEndTaskProcess(event => {
+            if (event.execution.task.definition === task.definition) {
                 disposable.dispose();
                 resolve();
             }

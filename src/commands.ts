@@ -60,6 +60,8 @@ export async function resolveFolderDependencies(folderContext: FolderContext) {
     workspaceContext.outputChannel.logStart("Resolving Dependencies ... ", folderContext.name);
     const task = createSwiftTask(["package", "resolve"], SwiftTaskProvider.resolvePackageName, {
         cwd: folderContext.folder,
+        scope: folderContext.workspaceFolder,
+        prefix: folderContext.name,
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
     });
     workspaceContext.statusItem.start(task);
@@ -102,6 +104,8 @@ export async function updateFolderDependencies(folderContext: FolderContext) {
     const workspaceContext = folderContext.workspaceContext;
     const task = createSwiftTask(["package", "update"], SwiftTaskProvider.updatePackageName, {
         cwd: folderContext.folder,
+        scope: folderContext.workspaceFolder,
+        prefix: folderContext.name,
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
     });
     workspaceContext.outputChannel.logStart("Updating Dependencies ... ", folderContext.name);
@@ -134,6 +138,8 @@ export async function folderCleanBuild(folderContext: FolderContext) {
     const workspaceContext = folderContext.workspaceContext;
     const task = createSwiftTask(["package", "clean"], SwiftTaskProvider.cleanBuildName, {
         cwd: folderContext.folder,
+        scope: folderContext.workspaceFolder,
+        prefix: folderContext.name,
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
         group: vscode.TaskGroup.Clean,
     });
@@ -167,6 +173,8 @@ export async function folderResetPackage(folderContext: FolderContext) {
     const workspaceContext = folderContext.workspaceContext;
     const task = createSwiftTask(["package", "reset"], "Reset Package Dependencies", {
         cwd: folderContext.folder,
+        scope: folderContext.workspaceFolder,
+        prefix: folderContext.name,
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
         group: vscode.TaskGroup.Clean,
     });
@@ -179,6 +187,8 @@ export async function folderResetPackage(folderContext: FolderContext) {
             SwiftTaskProvider.resolvePackageName,
             {
                 cwd: folderContext.folder,
+                scope: folderContext.workspaceFolder,
+                prefix: folderContext.name,
                 presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
             }
         );
