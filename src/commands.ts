@@ -56,22 +56,14 @@ export async function resolveFolderDependencies(folderContext: FolderContext) {
         return;
     }
 
-    const workspaceContext = folderContext.workspaceContext;
-    workspaceContext.outputChannel.logStart("Resolving Dependencies ... ", folderContext.name);
     const task = createSwiftTask(["package", "resolve"], SwiftTaskProvider.resolvePackageName, {
         cwd: folderContext.folder,
         scope: folderContext.workspaceFolder,
         prefix: folderContext.name,
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
     });
-    workspaceContext.statusItem.start(task);
-    try {
-        await executeTaskAndWait(task);
-        workspaceContext.outputChannel.logEnd("done.");
-    } catch (error) {
-        workspaceContext.outputChannel.logEnd(`${error}`);
-    }
-    workspaceContext.statusItem.end(task);
+
+    await executeTaskWithUI(task, "Resolving Dependencies", folderContext);
 }
 
 /**
@@ -101,22 +93,14 @@ export async function updateFolderDependencies(folderContext: FolderContext) {
         return;
     }
 
-    const workspaceContext = folderContext.workspaceContext;
     const task = createSwiftTask(["package", "update"], SwiftTaskProvider.updatePackageName, {
         cwd: folderContext.folder,
         scope: folderContext.workspaceFolder,
         prefix: folderContext.name,
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
     });
-    workspaceContext.outputChannel.logStart("Updating Dependencies ... ", folderContext.name);
-    workspaceContext.statusItem.start(task);
-    try {
-        await executeTaskAndWait(task);
-        workspaceContext.outputChannel.logEnd("done.");
-    } catch (error) {
-        workspaceContext.outputChannel.logEnd(`${error}`);
-    }
-    workspaceContext.statusItem.end(task);
+
+    await executeTaskWithUI(task, "Updating Dependencies", folderContext);
 }
 
 /**
@@ -135,7 +119,6 @@ export async function cleanBuild(ctx: WorkspaceContext) {
  * @param folderContext folder to run update inside
  */
 export async function folderCleanBuild(folderContext: FolderContext) {
-    const workspaceContext = folderContext.workspaceContext;
     const task = createSwiftTask(["package", "clean"], SwiftTaskProvider.cleanBuildName, {
         cwd: folderContext.folder,
         scope: folderContext.workspaceFolder,
@@ -143,15 +126,8 @@ export async function folderCleanBuild(folderContext: FolderContext) {
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
         group: vscode.TaskGroup.Clean,
     });
-    workspaceContext.outputChannel.logStart("Clean Build ... ", folderContext.name);
-    workspaceContext.statusItem.start(task);
-    try {
-        await executeTaskAndWait(task);
-        workspaceContext.outputChannel.logEnd("done.");
-    } catch (error) {
-        workspaceContext.outputChannel.logEnd(`${error}`);
-    }
-    workspaceContext.statusItem.end(task);
+
+    await executeTaskWithUI(task, "Clean Build", folderContext);
 }
 
 /**
@@ -170,7 +146,6 @@ export async function resetPackage(ctx: WorkspaceContext) {
  * @param folderContext folder to run update inside
  */
 export async function folderResetPackage(folderContext: FolderContext) {
-    const workspaceContext = folderContext.workspaceContext;
     const task = createSwiftTask(["package", "reset"], "Reset Package Dependencies", {
         cwd: folderContext.folder,
         scope: folderContext.workspaceFolder,
@@ -178,26 +153,21 @@ export async function folderResetPackage(folderContext: FolderContext) {
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
         group: vscode.TaskGroup.Clean,
     });
-    workspaceContext.outputChannel.logStart("Reset Package ... ", folderContext.name);
-    workspaceContext.statusItem.start(task);
-    try {
-        await executeTaskAndWait(task);
-        const resolveTask = createSwiftTask(
-            ["package", "resolve"],
-            SwiftTaskProvider.resolvePackageName,
-            {
-                cwd: folderContext.folder,
-                scope: folderContext.workspaceFolder,
-                prefix: folderContext.name,
-                presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
-            }
-        );
-        await executeTaskAndWait(resolveTask);
-        workspaceContext.outputChannel.logEnd("done.");
-    } catch (error) {
-        workspaceContext.outputChannel.logEnd(`${error}`);
-    }
-    workspaceContext.statusItem.end(task);
+
+    await executeTaskWithUI(task, "Reset Package", folderContext);
+
+    const resolveTask = createSwiftTask(
+        ["package", "resolve"],
+        SwiftTaskProvider.resolvePackageName,
+        {
+            cwd: folderContext.folder,
+            scope: folderContext.workspaceFolder,
+            prefix: folderContext.name,
+            presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+        }
+    );
+
+    await executeTaskWithUI(resolveTask, "Resolving Dependencies", folderContext);
 }
 
 /**
@@ -351,6 +321,28 @@ async function openInWorkspace(packageNode: PackageNode) {
         uri: vscode.Uri.file(packageNode.path),
         name: packageNode.name,
     });
+}
+
+/** Execute task and show UI while running */
+async function executeTaskWithUI(
+    task: vscode.Task,
+    description: string,
+    folderContext: FolderContext
+) {
+    const workspaceContext = folderContext.workspaceContext;
+    workspaceContext.outputChannel.logStart(`${description} ... `, folderContext.name);
+    workspaceContext.statusItem.start(task);
+    try {
+        const exitCode = await executeTaskAndWait(task);
+        if (exitCode === 0) {
+            workspaceContext.outputChannel.logEnd("done.");
+        } else {
+            workspaceContext.outputChannel.logEnd("failed.");
+        }
+    } catch (error) {
+        workspaceContext.outputChannel.logEnd(`${error}`);
+    }
+    workspaceContext.statusItem.end(task);
 }
 
 /**
