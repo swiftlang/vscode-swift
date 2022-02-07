@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-"use strict";
 import * as vscode from "vscode";
+import * as path from "path";
 import * as langclient from "vscode-languageclient/node";
 import configuration from "../configuration";
 import { getSwiftExecutable } from "../utilities/utilities";
@@ -41,7 +41,25 @@ export class LanguageClientManager {
         this.observeFoldersDisposable = workspaceContext.observeFolders(
             async (folderContext, event) => {
                 switch (event) {
+                    case FolderEvent.add:
+                        if (
+                            vscode.window.activeTextEditor &&
+                            vscode.window.activeTextEditor.document &&
+                            folderContext &&
+                            folderContext.folder &&
+                            path.relative(
+                                folderContext.folder.fsPath,
+                                vscode.window.activeTextEditor.document.uri.fsPath
+                            )
+                        ) {
+                            await this.setupLanguageClient(folderContext.folder);
+                        }
+                        break;
                     case FolderEvent.focus:
+                        // if language client already setup in add
+                        if (this.languageClient) {
+                            return;
+                        }
                         await this.setupLanguageClient(folderContext?.folder);
                         break;
                     case FolderEvent.unfocus:
