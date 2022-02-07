@@ -331,7 +331,9 @@ export class WorkspaceContext implements vscode.Disposable {
     ): Promise<FolderContext | vscode.Uri | undefined> {
         // is editor document in any of the current FolderContexts
         const folder = this.folders.find(context => {
-            return path.relative(context.folder.fsPath, url.fsPath)[0] !== ".";
+            const relativePath = path.relative(context.folder.fsPath, url.fsPath);
+            // return true if path doesnt start with '..'
+            return relativePath[0] !== "." || relativePath[1] !== ".";
         });
         if (folder) {
             return folder;

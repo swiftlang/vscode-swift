@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as path from "path";
 import * as langclient from "vscode-languageclient/node";
 import configuration from "../configuration";
 import { getSwiftExecutable } from "../utilities/utilities";
@@ -46,13 +45,14 @@ export class LanguageClientManager {
                             vscode.window.activeTextEditor &&
                             vscode.window.activeTextEditor.document &&
                             folderContext &&
-                            folderContext.folder &&
-                            path.relative(
-                                folderContext.folder.fsPath,
-                                vscode.window.activeTextEditor.document.uri.fsPath
-                            )
+                            folderContext.folder
                         ) {
-                            await this.setupLanguageClient(folderContext.folder);
+                            // if active document is inside folder then setup language client
+                            const activeDocPath =
+                                vscode.window.activeTextEditor.document.uri.fsPath;
+                            if (activeDocPath[0] !== "." || activeDocPath[1] !== ".") {
+                                await this.setupLanguageClient(folderContext.folder);
+                            }
                         }
                         break;
                     case FolderEvent.focus:
