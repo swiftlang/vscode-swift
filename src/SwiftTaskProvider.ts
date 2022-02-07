@@ -51,14 +51,17 @@ function createBuildAllTask(folderContext: FolderContext): vscode.Task {
     if (process.platform === "win32") {
         additionalArgs.push("-Xlinker", "-debug:dwarf");
     }
+    let buildTaskName = SwiftTaskProvider.buildAllName;
+    if (folderContext.relativePath.length > 0) {
+        buildTaskName += ` (${folderContext.relativePath})`;
+    }
     return createSwiftTask(
         ["build", "--build-tests", ...additionalArgs, ...configuration.buildArguments],
-        SwiftTaskProvider.buildAllName,
+        buildTaskName,
         {
             group: vscode.TaskGroup.Build,
             cwd: folderContext.folder,
             scope: folderContext.workspaceFolder,
-            prefix: folderContext.name,
         }
     );
 }
@@ -68,6 +71,10 @@ function createBuildAllTask(folderContext: FolderContext): vscode.Task {
  */
 function createBuildTasks(product: Product, folderContext: FolderContext): vscode.Task[] {
     const debugArguments = process.platform === "win32" ? ["-Xlinker", "-debug:dwarf"] : [];
+    let buildTaskNameSuffix = "";
+    if (folderContext.relativePath.length > 0) {
+        buildTaskNameSuffix = ` (${folderContext.relativePath})`;
+    }
     return [
         createSwiftTask(
             [
@@ -77,7 +84,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 ...debugArguments,
                 ...configuration.buildArguments,
             ],
-            `Build Debug ${product.name}`,
+            `Build Debug ${product.name}${buildTaskNameSuffix}`,
             {
                 group: vscode.TaskGroup.Build,
                 cwd: folderContext.folder,
@@ -87,12 +94,11 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
         ),
         createSwiftTask(
             ["build", "-c", "release", "--product", product.name, ...configuration.buildArguments],
-            `Build Release ${product.name}`,
+            `Build Release ${product.name}${buildTaskNameSuffix}`,
             {
                 group: vscode.TaskGroup.Build,
                 cwd: folderContext.folder,
                 scope: folderContext.workspaceFolder,
-                prefix: folderContext.name,
             }
         ),
     ];
