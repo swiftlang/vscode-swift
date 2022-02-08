@@ -67,7 +67,7 @@
       },
       {
         "command": "swift.openInWorkspace",
-        "title": "Open In Workspace",
+        "title": "Add to Workspace",
         "category": "Swift"
       }
     ],
