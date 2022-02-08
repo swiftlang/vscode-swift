@@ -66,6 +66,17 @@ export interface PackageResolvedPinState {
     version: string | null;
 }
 
+/** workspace-state.json file */
+export interface WorkspaceState {
+    object: { dependencies: WorkspaceStateDependency[] };
+    version: number;
+}
+
+export interface WorkspaceStateDependency {
+    packageRef: { identity: string; kind: string; location: string; name: string };
+    state: { name: string; path?: string };
+}
+
 /**
  * Class holding Swift Package Manager Package
  */
@@ -124,6 +135,21 @@ export class SwiftPackage implements PackageContents {
     ): Promise<PackageResolved | undefined> {
         try {
             const uri = vscode.Uri.joinPath(folder.uri, "Package.resolved");
+            const contents = await fs.readFile(uri.fsPath, "utf8");
+            return JSON.parse(contents);
+        } catch {
+            // failed to load resolved file return undefined
+            return undefined;
+        }
+    }
+
+    /**
+     * Load workspace-state.json file for swift package
+     * @returns Workspace state
+     */
+    public async loadWorkspaceState(): Promise<WorkspaceState | undefined> {
+        try {
+            const uri = vscode.Uri.joinPath(this.folder.uri, ".build", "workspace-state.json");
             const contents = await fs.readFile(uri.fsPath, "utf8");
             return JSON.parse(contents);
         } catch {
