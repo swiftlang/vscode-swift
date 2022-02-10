@@ -199,23 +199,25 @@ async function useLocalDependency(identifier: string, ctx: WorkspaceContext) {
                 return;
             }
             const folder = value[0];
-            ctx.outputChannel.log(
-                `Edit dependency ${identifier} from ${folder.fsPath}`,
-                currentFolder.name
+            const task = createSwiftTask(
+                ["package", "edit", "--path", folder.fsPath, identifier],
+                "Edit Package Dependency",
+                {
+                    scope: currentFolder.workspaceFolder,
+                    cwd: currentFolder.folder,
+                    prefix: currentFolder.name,
+                }
             );
-            const status = `Edit dependency ${identifier} (${currentFolder.name})`;
-            ctx.statusItem.start(status);
-            try {
-                await execSwift(["package", "edit", "--path", value[0].fsPath, identifier], {
-                    cwd: currentFolder.folder.fsPath,
-                });
-                ctx.fireEvent(currentFolder, FolderEvent.resolvedUpdated);
-            } catch (error) {
-                const execError = error as { stderr: string };
-                ctx.outputChannel.log(execError.stderr, currentFolder.name);
-                vscode.window.showErrorMessage(`${execError.stderr}`);
-            }
-            ctx.statusItem.end(status);
+            await executeTaskWithUI(
+                task,
+                `Use local version of ${identifier}`,
+                currentFolder,
+                true
+            ).then(result => {
+                if (result) {
+                    ctx.fireEvent(currentFolder, FolderEvent.resolvedUpdated);
+                }
+            });
         });
 }
 
@@ -229,24 +231,24 @@ async function editDependency(identifier: string, ctx: WorkspaceContext) {
     if (!currentFolder) {
         return;
     }
-    const status = `Edit dependency ${identifier} (${currentFolder.name})`;
-    ctx.statusItem.start(status);
-    try {
-        await execSwift(["package", "edit", identifier], {
-            cwd: currentFolder.folder.fsPath,
-        });
-        ctx.fireEvent(currentFolder, FolderEvent.resolvedUpdated);
-        const index = vscode.workspace.workspaceFolders?.length ?? 0;
-        vscode.workspace.updateWorkspaceFolders(index, 0, {
-            uri: vscode.Uri.file(currentFolder.editedPackageFolder(identifier)),
-            name: identifier,
-        });
-    } catch (error) {
-        const execError = error as { stderr: string };
-        ctx.outputChannel.log(execError.stderr, currentFolder.name);
-        vscode.window.showErrorMessage(`${execError.stderr}`);
-    }
-    ctx.statusItem.end(status);
+    const task = createSwiftTask(["package", "edit", identifier], "Edit Package Dependency", {
+        scope: currentFolder.workspaceFolder,
+        cwd: currentFolder.folder,
+        prefix: currentFolder.name,
+    });
+    await executeTaskWithUI(task, `edit locally ${identifier}`, currentFolder, true).then(
+        result => {
+            if (result) {
+                ctx.fireEvent(currentFolder, FolderEvent.resolvedUpdated);
+                // add folder to workspace
+                const index = vscode.workspace.workspaceFolders?.length ?? 0;
+                vscode.workspace.updateWorkspaceFolders(index, 0, {
+                    uri: vscode.Uri.file(currentFolder.editedPackageFolder(identifier)),
+                    name: identifier,
+                });
+            }
+        }
+    );
 }
 
 /**
@@ -330,7 +332,8 @@ async function openInWorkspace(packageNode: PackageNode) {
 async function executeTaskWithUI(
     task: vscode.Task,
     description: string,
-    folderContext: FolderContext
+    folderContext: FolderContext,
+    showErrors = false
 ): Promise<boolean> {
     const workspaceContext = folderContext.workspaceContext;
     workspaceContext.outputChannel.logStart(`${description} ... `, folderContext.name);
@@ -343,11 +346,17 @@ async function executeTaskWithUI(
             return true;
         } else {
             workspaceContext.outputChannel.logEnd("failed.");
+            if (showErrors) {
+                vscode.window.showErrorMessage(`${description} failed`);
+            }
             return false;
         }
     } catch (error) {
         workspaceContext.outputChannel.logEnd(`${error}`);
         workspaceContext.statusItem.end(task);
+        if (showErrors) {
+            vscode.window.showErrorMessage(`${description} failed: ${error}`);
+        }
         return false;
     }
 }
