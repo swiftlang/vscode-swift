@@ -89,7 +89,6 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 group: vscode.TaskGroup.Build,
                 cwd: folderContext.folder,
                 scope: folderContext.workspaceFolder,
-                prefix: folderContext.name,
             }
         ),
         createSwiftTask(

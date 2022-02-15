@@ -42,6 +42,7 @@ export class LanguageClientManager {
                 switch (event) {
                     case FolderEvent.add:
                         if (
+                            this.languageClient === undefined &&
                             vscode.window.activeTextEditor &&
                             vscode.window.activeTextEditor.document &&
                             folderContext &&

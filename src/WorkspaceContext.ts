@@ -298,6 +298,7 @@ export class WorkspaceContext implements vscode.Disposable {
             if (!workspaceFolder) {
                 return;
             }
+            await this.unfocusCurrentFolder();
             const folderContext = await this.addPackageFolder(packageFolder, workspaceFolder);
             this.focusFolder(folderContext);
         } else {
@@ -359,6 +360,15 @@ export class WorkspaceContext implements vscode.Disposable {
         } else {
             return;
         }
+    }
+
+    /** send unfocus event to current focussed folder and clear current folder */
+    private async unfocusCurrentFolder() {
+        // send unfocus event for previous folder observers
+        if (this.currentFolder !== undefined) {
+            await this.fireEvent(this.currentFolder, FolderEvent.unfocus);
+        }
+        this.currentFolder = undefined;
     }
 
     private observers: Set<WorkspaceFoldersObserver> = new Set();
