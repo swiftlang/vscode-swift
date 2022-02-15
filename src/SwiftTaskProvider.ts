@@ -14,6 +14,7 @@
 
 import * as vscode from "vscode";
 import { WorkspaceContext } from "./WorkspaceContext";
+import { FolderContext } from "./FolderContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
 import { getSwiftExecutable } from "./utilities/utilities";
@@ -31,16 +32,18 @@ import { getSwiftExecutable } from "./utilities/utilities";
 
 // Interface class for defining task configuration
 interface TaskConfig {
+    cwd?: vscode.Uri;
     scope?: vscode.TaskScope | vscode.WorkspaceFolder;
     group?: vscode.TaskGroup;
     problemMatcher?: string | string[];
     presentationOptions?: vscode.TaskPresentationOptions;
+    prefix?: string;
 }
 
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
-function createBuildAllTask(folder: vscode.WorkspaceFolder): vscode.Task {
+function createBuildAllTask(folderContext: FolderContext): vscode.Task {
     const additionalArgs: string[] = [];
     if (process.platform !== "darwin") {
         additionalArgs.push("--enable-test-discovery");
@@ -51,14 +54,19 @@ function createBuildAllTask(folder: vscode.WorkspaceFolder): vscode.Task {
     return createSwiftTask(
         ["build", "--build-tests", ...additionalArgs, ...configuration.buildArguments],
         SwiftTaskProvider.buildAllName,
-        { group: vscode.TaskGroup.Build, scope: folder }
+        {
+            group: vscode.TaskGroup.Build,
+            cwd: folderContext.folder,
+            scope: folderContext.workspaceFolder,
+            prefix: folderContext.name,
+        }
     );
 }
 
 /**
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
-function createBuildTasks(product: Product, folder: vscode.WorkspaceFolder): vscode.Task[] {
+function createBuildTasks(product: Product, folderContext: FolderContext): vscode.Task[] {
     const debugArguments = process.platform === "win32" ? ["-Xlinker", "-debug:dwarf"] : [];
     return [
         createSwiftTask(
@@ -70,12 +78,22 @@ function createBuildTasks(product: Product, folder: vscode.WorkspaceFolder): vsc
                 ...configuration.buildArguments,
             ],
             `Build Debug ${product.name}`,
-            { group: vscode.TaskGroup.Build, scope: folder }
+            {
+                group: vscode.TaskGroup.Build,
+                cwd: folderContext.folder,
+                scope: folderContext.workspaceFolder,
+                prefix: folderContext.name,
+            }
         ),
         createSwiftTask(
             ["build", "-c", "release", "--product", product.name, ...configuration.buildArguments],
             `Build Release ${product.name}`,
-            { group: vscode.TaskGroup.Build, scope: folder }
+            {
+                group: vscode.TaskGroup.Build,
+                cwd: folderContext.folder,
+                scope: folderContext.workspaceFolder,
+                prefix: folderContext.name,
+            }
         ),
     ];
 }
@@ -86,61 +104,26 @@ function createBuildTasks(product: Product, folder: vscode.WorkspaceFolder): vsc
 export function createSwiftTask(args: string[], name: string, config?: TaskConfig): vscode.Task {
     const swift = getSwiftExecutable();
     const task = new vscode.Task(
-        { type: "swift", command: swift, args: args },
+        { type: "swift", command: swift, args: args, cwd: config?.cwd?.fsPath },
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
         "swift",
-        new vscode.ShellExecution(swift, args),
+        new vscode.ShellExecution(swift, args, { cwd: config?.cwd?.fsPath }),
         config?.problemMatcher
     );
     // This doesn't include any quotes added by VS Code.
     // See also: https://github.com/microsoft/vscode/issues/137895
-    task.detail = `swift ${args.join(" ")}`;
+
+    let prefix: string;
+    if (config?.prefix) {
+        prefix = `(${config.prefix}) `;
+    } else {
+        prefix = "";
+    }
+    task.detail = `${prefix}swift ${args.join(" ")}`;
     task.group = config?.group;
     task.presentationOptions = config?.presentationOptions ?? {};
     return task;
-}
-
-/*
- * Execute swift command as task and wait until it is finished
- */
-export async function executeSwiftTaskAndWait(args: string[], name: string, config?: TaskConfig) {
-    const swift = getSwiftExecutable();
-    const task = new vscode.Task(
-        { type: "swift", command: "swift", args: args },
-        config?.scope ?? vscode.TaskScope.Workspace,
-        name,
-        "swift",
-        new vscode.ShellExecution(swift, args),
-        config?.problemMatcher
-    );
-    task.group = config?.group;
-    task.presentationOptions = config?.presentationOptions ?? {};
-
-    executeTaskAndWait(task);
-}
-
-/*
- * Execute shell command as task and wait until it is finished
- */
-export async function executeShellTaskAndWait(
-    command: string,
-    args: string[],
-    name: string,
-    config?: TaskConfig
-) {
-    const task = new vscode.Task(
-        { type: "swift", command: command, args: args },
-        config?.scope ?? vscode.TaskScope.Workspace,
-        name,
-        "swift",
-        new vscode.ShellExecution(command, args),
-        config?.problemMatcher
-    );
-    task.group = config?.group;
-    task.presentationOptions = config?.presentationOptions ?? {};
-
-    await executeTaskAndWait(task);
 }
 
 /*
@@ -149,8 +132,8 @@ export async function executeShellTaskAndWait(
  */
 export async function executeTaskAndWait(task: vscode.Task) {
     return new Promise<void>(resolve => {
-        const disposable = vscode.tasks.onDidEndTaskProcess(({ execution }) => {
-            if (execution.task.name === task.name && execution.task.scope === task.scope) {
+        const disposable = vscode.tasks.onDidEndTaskProcess(event => {
+            if (event.execution.task.definition === task.definition) {
                 disposable.dispose();
                 resolve();
             }
@@ -193,10 +176,10 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             if (!folderContext.swiftPackage.foundPackage) {
                 continue;
             }
-            tasks.push(createBuildAllTask(folderContext.folder));
+            tasks.push(createBuildAllTask(folderContext));
             const executables = folderContext.swiftPackage.executableProducts;
             for (const executable of executables) {
-                tasks.push(...createBuildTasks(executable, folderContext.folder));
+                tasks.push(...createBuildTasks(executable, folderContext));
             }
         }
         return tasks;

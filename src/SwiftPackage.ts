@@ -88,7 +88,7 @@ export class SwiftPackage implements PackageContents {
      * @param resolved contents of Package.resolved
      */
     private constructor(
-        readonly folder: vscode.WorkspaceFolder,
+        readonly folder: vscode.Uri,
         private contents?: PackageContents | null,
         public resolved?: PackageResolved
     ) {}
@@ -98,7 +98,7 @@ export class SwiftPackage implements PackageContents {
      * @param folder folder package is in
      * @returns new SwiftPackage
      */
-    static async create(folder: vscode.WorkspaceFolder): Promise<SwiftPackage> {
+    static async create(folder: vscode.Uri): Promise<SwiftPackage> {
         const contents = await SwiftPackage.loadPackage(folder);
         const resolved = await SwiftPackage.loadPackageResolved(folder);
         return new SwiftPackage(folder, contents, resolved);
@@ -109,12 +109,10 @@ export class SwiftPackage implements PackageContents {
      * @param folder folder package is in
      * @returns results of `swift package describe`
      */
-    static async loadPackage(
-        folder: vscode.WorkspaceFolder
-    ): Promise<PackageContents | null | undefined> {
+    static async loadPackage(folder: vscode.Uri): Promise<PackageContents | null | undefined> {
         try {
             const { stdout } = await execSwift(["package", "describe", "--type", "json"], {
-                cwd: folder.uri.fsPath,
+                cwd: folder.fsPath,
             });
             return JSON.parse(stdout);
         } catch (error) {
@@ -130,11 +128,9 @@ export class SwiftPackage implements PackageContents {
         }
     }
 
-    static async loadPackageResolved(
-        folder: vscode.WorkspaceFolder
-    ): Promise<PackageResolved | undefined> {
+    static async loadPackageResolved(folder: vscode.Uri): Promise<PackageResolved | undefined> {
         try {
-            const uri = vscode.Uri.joinPath(folder.uri, "Package.resolved");
+            const uri = vscode.Uri.joinPath(folder, "Package.resolved");
             const contents = await fs.readFile(uri.fsPath, "utf8");
             return JSON.parse(contents);
         } catch {
@@ -149,7 +145,7 @@ export class SwiftPackage implements PackageContents {
      */
     public async loadWorkspaceState(): Promise<WorkspaceState | undefined> {
         try {
-            const uri = vscode.Uri.joinPath(this.folder.uri, ".build", "workspace-state.json");
+            const uri = vscode.Uri.joinPath(this.folder, ".build", "workspace-state.json");
             const contents = await fs.readFile(uri.fsPath, "utf8");
             return JSON.parse(contents);
         } catch {

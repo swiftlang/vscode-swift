@@ -48,8 +48,8 @@ export async function activate(context: vscode.ExtensionContext) {
     // observer for logging workspace folder addition/removal
     const logObserver = workspaceContext.observeFolders((folderContext, event) => {
         workspaceContext.outputChannel.log(
-            `${event}: ${folderContext?.folder.uri.fsPath}`,
-            folderContext?.folder.name
+            `${event}: ${folderContext?.folder.fsPath}`,
+            folderContext?.name
         );
     });
 

@@ -20,6 +20,7 @@ import { getSwiftExecutable } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { activateInlayHints } from "./inlayHints";
+import { FolderContext } from "../FolderContext";
 
 /** Manages the creation and destruction of Language clients as we move between
  * workspace folders
@@ -112,7 +113,7 @@ export class LanguageClientManager {
                     return;
                 }
                 await new Promise(resolve => setTimeout(resolve, 10000));
-                await this.setupLanguageClient(client.clientOptions.workspaceFolder);
+                await this.setupLanguageClient(client.clientOptions.workspaceFolder.uri);
             })
             .then(() => {
                 this.restartPromise = undefined;
@@ -120,11 +121,15 @@ export class LanguageClientManager {
         return this.restartPromise;
     }
 
-    private async setupLanguageClient(folder?: vscode.WorkspaceFolder) {
+    private async setupLanguageClient(folder?: vscode.Uri) {
         const client = await this.createLSPClient(folder);
         client.start();
 
-        console.log(`SourceKit-LSP setup for ${folder?.name}`);
+        if (folder) {
+            console.log(`SourceKit-LSP setup for ${FolderContext.uriName(folder)}`);
+        } else {
+            console.log(`SourceKit-LSP setup`);
+        }
 
         this.supportsDidChangedWatchedFiles = false;
         this.languageClient = client;
@@ -134,9 +139,7 @@ export class LanguageClientManager {
         });
     }
 
-    private async createLSPClient(
-        folder?: vscode.WorkspaceFolder
-    ): Promise<langclient.LanguageClient> {
+    private async createLSPClient(folder?: vscode.Uri): Promise<langclient.LanguageClient> {
         const serverPathConfig = configuration.lsp.serverPath;
         const serverPath =
             serverPathConfig.length > 0 ? serverPathConfig : getSwiftExecutable("sourcekit-lsp");
@@ -152,7 +155,10 @@ export class LanguageClientManager {
         }
 
         const serverOptions: langclient.ServerOptions = sourcekit;
-
+        let workspaceFolder = undefined;
+        if (folder) {
+            workspaceFolder = { uri: folder, name: FolderContext.uriName(folder), index: 0 };
+        }
         const clientOptions: langclient.LanguageClientOptions = {
             documentSelector: [
                 { scheme: "file", language: "swift" },
@@ -167,7 +173,7 @@ export class LanguageClientManager {
                 { scheme: "untitled", language: "objective-cpp" },
             ],
             revealOutputChannelOn: langclient.RevealOutputChannelOn.Never,
-            workspaceFolder: folder,
+            workspaceFolder: workspaceFolder,
         };
 
         return new langclient.LanguageClient(

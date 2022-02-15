@@ -206,6 +206,10 @@
             "items": {
               "type": "string"
             }
+          },
+          "cwd": {
+            "description": "The folder to run the task in.",
+            "type": "string"
           }
         },
         "required": [

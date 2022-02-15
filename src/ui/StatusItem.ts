@@ -13,14 +13,15 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import * as path from "path";
 
 class RunningTask {
     constructor(public task: vscode.Task | string) {}
     get name(): string {
         if (this.task instanceof vscode.Task) {
-            const folder = this.task.scope as vscode.WorkspaceFolder;
+            const folder = this.task.definition.cwd as string;
             if (folder) {
-                return `${this.task.name} (${folder.name})`;
+                return `${this.task.name} (${path.basename(folder)})`;
             } else {
                 return this.task.name;
             }
