@@ -26,13 +26,14 @@ import { FolderContext } from "../FolderContext";
  */
 export class LanguageClientManager {
     /** current running client */
-    public languageClient?: langclient.LanguageClient;
+    public languageClient: langclient.LanguageClient | null | undefined;
     private observeFoldersDisposable: vscode.Disposable;
     private onDidCreateFileDisposable?: vscode.Disposable;
     private onDidDeleteFileDisposable?: vscode.Disposable;
     private inlayHints?: vscode.Disposable;
     private supportsDidChangedWatchedFiles: boolean;
     private startedPromise?: Promise<void>;
+    private waitingOnRestartCount: number;
 
     constructor(public workspaceContext: WorkspaceContext) {
         // stop and start server for each folder based on which file I am looking at
@@ -55,7 +56,7 @@ export class LanguageClientManager {
         );
         // restart LSP server on creation of a new file
         this.onDidCreateFileDisposable = vscode.workspace.onDidCreateFiles(() => {
-            this.setLanguageClientFolder();
+            this.restartLanguageClient();
         });
         // restart LSP server on deletion of a file
         this.onDidDeleteFileDisposable = vscode.workspace.onDidDeleteFiles(() => {
@@ -66,6 +67,8 @@ export class LanguageClientManager {
         this.supportsDidChangedWatchedFiles = workspaceContext.swiftVersion.isGreaterThanOrEqual(
             new Version(5, 6, 0)
         );
+
+        this.waitingOnRestartCount = 0;
     }
 
     dispose() {
@@ -82,27 +85,43 @@ export class LanguageClientManager {
      * it isn't then restart the server using the new workspace folder.
      */
     async setLanguageClientFolder(uri?: vscode.Uri, forceRestart = false) {
-        if (!this.languageClient) {
+        if (this.languageClient === undefined) {
             this.startedPromise = this.setupLanguageClient(uri);
             return;
         } else {
             if (
                 uri === undefined ||
-                (this.languageClient.clientOptions.workspaceFolder?.uri === uri && !forceRestart)
+                (this.languageClient &&
+                    this.languageClient.clientOptions.workspaceFolder?.uri === uri &&
+                    !forceRestart)
             ) {
                 return;
             }
+            // count number of setLanguageClientFolder calls waiting on startedPromise
+            this.waitingOnRestartCount += 1;
             // if in the middle of a restart then we have to wait until that
             // restart has finished
             if (this.startedPromise) {
-                await this.startedPromise;
+                try {
+                    await this.startedPromise;
+                } catch (error) {
+                    this.workspaceContext.outputChannel.log(`${error}`);
+                }
             }
-            // if the active file is no longer in this folder then don't start language client
-            if (!this.isActiveFileInFolder(uri)) {
+            this.waitingOnRestartCount -= 1;
+            // only continue if no more calls are waiting on startedPromise
+            if (this.waitingOnRestartCount !== 0) {
                 return;
             }
+
             const client = this.languageClient;
-            this.languageClient = undefined;
+            if (!client) {
+                // shouldn't get here as the language client is only null while the
+                // startedPromise is not fulfilled
+                return;
+            }
+            // language client is set to null while it is in the process of restarting
+            this.languageClient = null;
             this.inlayHints?.dispose();
             this.inlayHints = undefined;
             this.startedPromise = client.stop().then(async () => this.setupLanguageClient(uri));
@@ -114,6 +133,7 @@ export class LanguageClientManager {
         if (!this.languageClient || this.supportsDidChangedWatchedFiles) {
             return;
         }
+        // force restart of language client
         await this.setLanguageClientFolder(
             this.languageClient.clientOptions.workspaceFolder?.uri,
             true
@@ -146,11 +166,17 @@ export class LanguageClientManager {
         this.supportsDidChangedWatchedFiles = false;
         this.languageClient = client;
 
-        return new Promise<void>(resolve => {
-            client.onReady().then(() => {
-                this.inlayHints = activateInlayHints(client);
-                resolve();
-            });
+        return new Promise<void>((resolve, reject) => {
+            client
+                .onReady()
+                .catch(reason => {
+                    this.workspaceContext.outputChannel.log(`${reason}`);
+                    reject(reason);
+                })
+                .then(() => {
+                    this.inlayHints = activateInlayHints(client);
+                    resolve();
+                });
         });
     }
 
