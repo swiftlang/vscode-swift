@@ -38,7 +38,7 @@ suite("WorkspaceContext Test Suite", () => {
             }
         });
         const packageFolder = testAssetWorkspaceFolder("package1");
-        await workspaceContext.addFolder(packageFolder);
+        await workspaceContext.addWorkspaceFolder(packageFolder);
         await workspaceContext.removeFolder(packageFolder);
         assert.strictEqual(count, 0);
     }).timeout(5000);

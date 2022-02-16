@@ -82,15 +82,8 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    // add workspace folders, already loaded
-    if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
-        for (const folder of vscode.workspace.workspaceFolders) {
-            await workspaceContext.addFolder(folder);
-        }
-    } else {
-        // fire focus event on null folder to startup language server
-        await workspaceContext.fireEvent(null, FolderEvent.focus);
-    }
+    // setup workspace context with initial workspace folders
+    workspaceContext.addWorkspaceFolders();
 
     // Register any disposables for cleanup when the extension deactivates.
     context.subscriptions.push(

@@ -87,6 +87,20 @@ export class WorkspaceContext implements vscode.Disposable {
         this.extensionContext.subscriptions.push(onWorkspaceChange, onDidChangeActiveWindow);
     }
 
+    /** Add workspace folders at initialisation */
+    async addWorkspaceFolders() {
+        // add workspace folders, already loaded
+        if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+            for (const folder of vscode.workspace.workspaceFolders) {
+                await this.addWorkspaceFolder(folder);
+            }
+        }
+        // fire focus event on null folder to startup language server if we don't have a currently focus folder
+        if (this.currentFolder === undefined) {
+            await this.fireEvent(null, FolderEvent.focus);
+        }
+    }
+
     /**
      * Fire an event to all folder observers
      * @param folder folder to fire event for
@@ -102,7 +116,7 @@ export class WorkspaceContext implements vscode.Disposable {
      * set the focus folder
      * @param folder folder that has gained focus, you can have a null folder
      */
-    async focusFolder(folderContext?: FolderContext | null) {
+    async focusFolder(folderContext: FolderContext | null) {
         // null and undefined mean different things here. Undefined means nothing
         // has been setup, null means we want to send focus events but for a null
         // folder
@@ -115,9 +129,6 @@ export class WorkspaceContext implements vscode.Disposable {
             await this.fireEvent(this.currentFolder, FolderEvent.unfocus);
         }
         this.currentFolder = folderContext;
-        if (!folderContext) {
-            return;
-        }
 
         // send focus event to all observers
         await this.fireEvent(folderContext, FolderEvent.focus);
@@ -129,7 +140,7 @@ export class WorkspaceContext implements vscode.Disposable {
      */
     async onDidChangeWorkspaceFolders(event: vscode.WorkspaceFoldersChangeEvent) {
         for (const folder of event.added) {
-            await this.addFolder(folder);
+            await this.addWorkspaceFolder(folder);
         }
 
         for (const folder of event.removed) {
@@ -141,7 +152,7 @@ export class WorkspaceContext implements vscode.Disposable {
      * Called whenever a folder is added to the workspace
      * @param folder folder being added
      */
-    async addFolder(folder: vscode.WorkspaceFolder) {
+    async addWorkspaceFolder(folder: vscode.WorkspaceFolder) {
         // On Windows, locate XCTest.dll the first time a folder is added.
         if (process.platform === "win32" && this.folders.length === 1) {
             try {
@@ -172,13 +183,6 @@ export class WorkspaceContext implements vscode.Disposable {
 
         await this.fireEvent(folderContext, FolderEvent.add);
 
-        // if this is the first folder then set a focus event
-        /*if (
-            this.folders.length === 1 ||
-            this.getActiveWorkspaceFolder(vscode.window.activeTextEditor) === workspaceFolder
-        ) {
-            this.focusFolder(folderContext);
-        }*/
         return folderContext;
     }
 
