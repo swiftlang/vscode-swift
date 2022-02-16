@@ -29,12 +29,20 @@ For the extension to work, you must have Swift installed on your system. Please 
 
 For workspaces that contain a **Package.swift** file, this extension will create the following tasks:
 
-- **Build All Targets** (`swift build` - both debug and release)
-- **Clean Build Artifacts** (`swift package clean`)
-- **Resolve Package Dependencies** (`swift package resolve`)
-- **Update Package Dependencies** (`swift package update`)
+- **Build All**: Build all targets in the Package
+- **Build Debug <Executable>**: Each executable in a Package.swift get a task for building a debug build
+- **Build Release <Executable>**: Each executable in a Package.swift get a task for building a release build 
 
 These tasks are available via **Terminal ▸ Run Task...** and **Terminal ▸ Run Build Task...**.
+
+### Commands
+
+The extension adds commands, available via the command palette, for the following operations applied to the package associated with the currently open file.
+
+- **Resolve Package Dependencies**: Run `swift package resolve`
+- **Update Package Dependencies**: Run `swift package update`
+- **Reset Package Dependencies**: Run `swift package reset`
+- **Clean Build**: Run `swift package clean`
 
 ### Package dependencies
 
