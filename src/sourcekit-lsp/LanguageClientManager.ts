@@ -28,11 +28,13 @@ export class LanguageClientManager {
     /** current running client */
     public languageClient: langclient.LanguageClient | null | undefined;
     private observeFoldersDisposable: vscode.Disposable;
-    private onDidCreateFileDisposable?: vscode.Disposable;
-    private onDidDeleteFileDisposable?: vscode.Disposable;
+    private onDidCreateFileDisposable: vscode.Disposable;
+    private onDidDeleteFileDisposable: vscode.Disposable;
+    private onChangeConfig: vscode.Disposable;
     private inlayHints?: vscode.Disposable;
     private supportsDidChangedWatchedFiles: boolean;
     private startedPromise?: Promise<void>;
+    private currentWorkspaceFolder?: vscode.Uri;
     private waitingOnRestartCount: number;
 
     constructor(public workspaceContext: WorkspaceContext) {
@@ -56,11 +58,30 @@ export class LanguageClientManager {
         );
         // restart LSP server on creation of a new file
         this.onDidCreateFileDisposable = vscode.workspace.onDidCreateFiles(() => {
-            this.restartLanguageClient();
+            if (!this.supportsDidChangedWatchedFiles) {
+                this.restartLanguageClient();
+            }
         });
         // restart LSP server on deletion of a file
         this.onDidDeleteFileDisposable = vscode.workspace.onDidDeleteFiles(() => {
-            this.restartLanguageClient();
+            if (!this.supportsDidChangedWatchedFiles) {
+                this.restartLanguageClient();
+            }
+        });
+        // on change config restart server
+        this.onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
+            if (event.affectsConfiguration("sourcekit-lsp.serverPath")) {
+                vscode.window
+                    .showInformationMessage(
+                        "Changing LSP server path requires the language server be restarted.",
+                        "Ok"
+                    )
+                    .then(selected => {
+                        if (selected === "Ok") {
+                            this.restartLanguageClient();
+                        }
+                    });
+            }
         });
 
         // if we are running swift 5.6 or greater then LSP supports `didChangeWatchedFiles` message
@@ -75,6 +96,7 @@ export class LanguageClientManager {
         this.observeFoldersDisposable.dispose();
         this.onDidCreateFileDisposable?.dispose();
         this.onDidDeleteFileDisposable?.dispose();
+        this.onChangeConfig.dispose();
         this.inlayHints?.dispose();
         this.languageClient?.stop();
     }
@@ -86,15 +108,11 @@ export class LanguageClientManager {
      */
     async setLanguageClientFolder(uri?: vscode.Uri, forceRestart = false) {
         if (this.languageClient === undefined) {
+            this.currentWorkspaceFolder = uri;
             this.startedPromise = this.setupLanguageClient(uri);
             return;
         } else {
-            if (
-                uri === undefined ||
-                (this.languageClient &&
-                    this.languageClient.clientOptions.workspaceFolder?.uri === uri &&
-                    !forceRestart)
-            ) {
+            if (uri === undefined || (this.currentWorkspaceFolder === uri && !forceRestart)) {
                 return;
             }
             // count number of setLanguageClientFolder calls waiting on startedPromise
@@ -105,7 +123,7 @@ export class LanguageClientManager {
                 try {
                     await this.startedPromise;
                 } catch (error) {
-                    this.workspaceContext.outputChannel.log(`${error}`);
+                    //ignore error
                 }
             }
             this.waitingOnRestartCount -= 1;
@@ -115,29 +133,25 @@ export class LanguageClientManager {
             }
 
             const client = this.languageClient;
-            if (!client) {
-                // shouldn't get here as the language client is only null while the
-                // startedPromise is not fulfilled
-                return;
-            }
             // language client is set to null while it is in the process of restarting
             this.languageClient = null;
+            this.currentWorkspaceFolder = uri;
             this.inlayHints?.dispose();
             this.inlayHints = undefined;
-            this.startedPromise = client.stop().then(async () => this.setupLanguageClient(uri));
+            if (!client) {
+                this.startedPromise = this.setupLanguageClient(uri);
+            } else {
+                this.startedPromise = client
+                    .stop()
+                    .then(async () => await this.setupLanguageClient(uri));
+            }
         }
     }
 
     /** Restart language client */
     async restartLanguageClient() {
-        if (!this.languageClient || this.supportsDidChangedWatchedFiles) {
-            return;
-        }
         // force restart of language client
-        await this.setLanguageClientFolder(
-            this.languageClient.clientOptions.workspaceFolder?.uri,
-            true
-        );
+        await this.setLanguageClientFolder(this.currentWorkspaceFolder, true);
     }
 
     private isActiveFileInFolder(uri: vscode.Uri): boolean {
@@ -169,13 +183,16 @@ export class LanguageClientManager {
         return new Promise<void>((resolve, reject) => {
             client
                 .onReady()
-                .catch(reason => {
-                    this.workspaceContext.outputChannel.log(`${reason}`);
-                    reject(reason);
-                })
                 .then(() => {
                     this.inlayHints = activateInlayHints(client);
                     resolve();
+                })
+                .catch(reason => {
+                    this.workspaceContext.outputChannel.log(`${reason}`);
+                    // if language client failed to initialise then shutdown and set to undefined
+                    this.languageClient?.stop();
+                    this.languageClient = undefined;
+                    reject(reason);
                 });
         });
     }
