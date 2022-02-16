@@ -39,6 +39,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public xcTestPath?: string;
     public languageClientManager: LanguageClientManager;
     public swiftVersion: Version;
+    private onChangeConfig: vscode.Disposable;
 
     public constructor(
         public extensionContext: SwiftExtensionContext,
@@ -50,10 +51,26 @@ export class WorkspaceContext implements vscode.Disposable {
             WorkspaceContext.extractSwiftVersion(swiftVersion) ?? new Version(0, 0, 0);
         this.languageClientManager = new LanguageClientManager(this);
         this.outputChannel.log(swiftVersion);
+        // on change config restart server
+        this.onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
+            if (event.affectsConfiguration("swift.path")) {
+                vscode.window
+                    .showInformationMessage(
+                        "Changing the Swift path requires the project be reloaded.",
+                        "Ok"
+                    )
+                    .then(selected => {
+                        if (selected === "Ok") {
+                            vscode.commands.executeCommand("workbench.action.reloadWindow");
+                        }
+                    });
+            }
+        });
     }
 
     dispose() {
         this.folders.forEach(f => f.dispose());
+        this.onChangeConfig.dispose();
         this.languageClientManager.dispose();
         this.outputChannel.dispose();
         this.statusItem.dispose();
