@@ -17,7 +17,13 @@ import * as path from "path";
 import { FolderContext } from "./FolderContext";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
-import { execSwift, getSwiftExecutable, getXCTestPath, pathExists } from "./utilities/utilities";
+import {
+    execSwift,
+    getSwiftExecutable,
+    getXCTestPath,
+    pathExists,
+    isPathInsidePath,
+} from "./utilities/utilities";
 import { getLLDBLibPath } from "./debugger/lldb";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 import { Version } from "./utilities/version";
@@ -336,9 +342,7 @@ export class WorkspaceContext implements vscode.Disposable {
     ): Promise<FolderContext | vscode.Uri | undefined> {
         // is editor document in any of the current FolderContexts
         const folder = this.folders.find(context => {
-            const relativePath = path.relative(context.folder.fsPath, url.fsPath);
-            // return true if path doesnt start with '..'
-            return relativePath[0] !== "." || relativePath[1] !== ".";
+            return isPathInsidePath(url.fsPath, context.folder.fsPath);
         });
         if (folder) {
             return folder;

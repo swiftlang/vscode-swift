@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 import configuration from "../configuration";
-import { getSwiftExecutable } from "../utilities/utilities";
+import { getSwiftExecutable, isPathInsidePath } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { activateInlayHints } from "./inlayHints";
@@ -33,60 +33,29 @@ export class LanguageClientManager {
     private inlayHints?: vscode.Disposable;
     private supportsDidChangedWatchedFiles: boolean;
     private startedPromise?: Promise<void>;
-    private restartPromise?: Promise<void>;
 
-    constructor(workspaceContext: WorkspaceContext) {
+    constructor(public workspaceContext: WorkspaceContext) {
         // stop and start server for each folder based on which file I am looking at
         this.observeFoldersDisposable = workspaceContext.observeFolders(
             async (folderContext, event) => {
                 switch (event) {
                     case FolderEvent.add:
-                        if (
-                            this.languageClient === undefined &&
-                            vscode.window.activeTextEditor &&
-                            vscode.window.activeTextEditor.document &&
-                            folderContext &&
-                            folderContext.folder
-                        ) {
+                        if (folderContext && folderContext.folder) {
                             // if active document is inside folder then setup language client
-                            const activeDocPath =
-                                vscode.window.activeTextEditor.document.uri.fsPath;
-                            if (activeDocPath[0] !== "." || activeDocPath[1] !== ".") {
-                                await this.setupLanguageClient(folderContext.folder);
+                            if (this.isActiveFileInFolder(folderContext.folder)) {
+                                await this.setLanguageClientFolder(folderContext.folder);
                             }
                         }
                         break;
                     case FolderEvent.focus:
-                        // if language client already setup in add
-                        if (this.languageClient) {
-                            return;
-                        }
-                        await this.setupLanguageClient(folderContext?.folder);
-                        break;
-                    case FolderEvent.unfocus:
-                        // if in the middle of a restart then we have to wait until that
-                        // restart has finished
-                        if (this.restartPromise) {
-                            await this.restartPromise;
-                        }
-                        if (this.languageClient) {
-                            const client = this.languageClient;
-                            this.languageClient = undefined;
-                            this.inlayHints?.dispose();
-                            this.inlayHints = undefined;
-                            // wait for client to start before stopping it
-                            if (this.startedPromise) {
-                                await this.startedPromise;
-                            }
-                            await client.stop();
-                        }
+                        await this.setLanguageClientFolder(folderContext?.folder);
                         break;
                 }
             }
         );
         // restart LSP server on creation of a new file
         this.onDidCreateFileDisposable = vscode.workspace.onDidCreateFiles(() => {
-            this.restartLanguageClient();
+            this.setLanguageClientFolder();
         });
         // restart LSP server on deletion of a file
         this.onDidDeleteFileDisposable = vscode.workspace.onDidDeleteFiles(() => {
@@ -107,54 +76,81 @@ export class LanguageClientManager {
         this.languageClient?.stop();
     }
 
+    /** Set folder for LSP server
+     *
+     * If server is already running then check if the workspace folder is the same if
+     * it isn't then restart the server using the new workspace folder.
+     */
+    async setLanguageClientFolder(uri?: vscode.Uri, forceRestart = false) {
+        if (!this.languageClient) {
+            this.startedPromise = this.setupLanguageClient(uri);
+            return;
+        } else {
+            if (
+                uri === undefined ||
+                (this.languageClient.clientOptions.workspaceFolder?.uri === uri && !forceRestart)
+            ) {
+                return;
+            }
+            // if in the middle of a restart then we have to wait until that
+            // restart has finished
+            if (this.startedPromise) {
+                await this.startedPromise;
+            }
+            // if the active file is no longer in this folder then don't start language client
+            if (!this.isActiveFileInFolder(uri)) {
+                return;
+            }
+            const client = this.languageClient;
+            this.languageClient = undefined;
+            this.inlayHints?.dispose();
+            this.inlayHints = undefined;
+            this.startedPromise = client.stop().then(async () => this.setupLanguageClient(uri));
+        }
+    }
+
     /** Restart language client */
     async restartLanguageClient() {
-        // if language client is nil or workspace/didChangeWatchedFiles message is supported
-        // then don't need to restart
         if (!this.languageClient || this.supportsDidChangedWatchedFiles) {
             return;
         }
-
-        const client = this.languageClient;
-        this.languageClient = undefined;
-        // get rid of inlay hints
-        this.inlayHints?.dispose();
-        this.inlayHints = undefined;
-        // wait for client to start before stopping it
-        if (this.startedPromise) {
-            await this.startedPromise;
-        }
-        // create promise that is resolved once restart is finished
-        this.restartPromise = client
-            .stop()
-            .then(async () => {
-                if (client.clientOptions.workspaceFolder === undefined) {
-                    return;
-                }
-                await new Promise(resolve => setTimeout(resolve, 10000));
-                await this.setupLanguageClient(client.clientOptions.workspaceFolder.uri);
-            })
-            .then(() => {
-                this.restartPromise = undefined;
-            });
-        return this.restartPromise;
+        await this.setLanguageClientFolder(
+            this.languageClient.clientOptions.workspaceFolder?.uri,
+            true
+        );
     }
 
-    private async setupLanguageClient(folder?: vscode.Uri) {
+    private isActiveFileInFolder(uri: vscode.Uri): boolean {
+        if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document) {
+            // if active document is inside folder then setup language client
+            const activeDocPath = vscode.window.activeTextEditor.document.uri.fsPath;
+            if (isPathInsidePath(activeDocPath, uri.fsPath)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private async setupLanguageClient(folder?: vscode.Uri): Promise<void> {
         const client = await this.createLSPClient(folder);
         client.start();
 
         if (folder) {
-            console.log(`SourceKit-LSP setup for ${FolderContext.uriName(folder)}`);
+            this.workspaceContext.outputChannel.log(
+                `SourceKit-LSP setup for ${FolderContext.uriName(folder)}`
+            );
         } else {
-            console.log(`SourceKit-LSP setup`);
+            this.workspaceContext.outputChannel.log(`SourceKit-LSP setup`);
         }
 
         this.supportsDidChangedWatchedFiles = false;
         this.languageClient = client;
 
-        client.onReady().then(() => {
-            this.inlayHints = activateInlayHints(client);
+        return new Promise<void>(resolve => {
+            client.onReady().then(() => {
+                this.inlayHints = activateInlayHints(client);
+                resolve();
+            });
         });
     }
 

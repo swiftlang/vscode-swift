@@ -122,6 +122,18 @@ export async function pathExists(...pathComponents: string[]): Promise<boolean> 
 }
 
 /**
+ * Return whether a file is inside a folder
+ * @param subfolder child file/folder
+ * @param folder parent folder
+ * @returns if child file is inside parent folder
+ */
+export function isPathInsidePath(subfolder: string, folder: string): boolean {
+    const relativePath = path.relative(folder, subfolder);
+    // return true if path doesnt start with '..'
+    return relativePath[0] !== "." || relativePath[1] !== ".";
+}
+
+/**
  * @returns path to Xcode developer folder
  */
 export async function getXcodePath(): Promise<string | undefined> {
