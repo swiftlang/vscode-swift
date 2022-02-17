@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-"use strict";
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 import configuration from "../configuration";
@@ -41,7 +40,27 @@ export class LanguageClientManager {
         this.observeFoldersDisposable = workspaceContext.observeFolders(
             async (folderContext, event) => {
                 switch (event) {
+                    case FolderEvent.add:
+                        if (
+                            this.languageClient === undefined &&
+                            vscode.window.activeTextEditor &&
+                            vscode.window.activeTextEditor.document &&
+                            folderContext &&
+                            folderContext.folder
+                        ) {
+                            // if active document is inside folder then setup language client
+                            const activeDocPath =
+                                vscode.window.activeTextEditor.document.uri.fsPath;
+                            if (activeDocPath[0] !== "." || activeDocPath[1] !== ".") {
+                                await this.setupLanguageClient(folderContext.folder);
+                            }
+                        }
+                        break;
                     case FolderEvent.focus:
+                        // if language client already setup in add
+                        if (this.languageClient) {
+                            return;
+                        }
                         await this.setupLanguageClient(folderContext?.folder);
                         break;
                     case FolderEvent.unfocus:

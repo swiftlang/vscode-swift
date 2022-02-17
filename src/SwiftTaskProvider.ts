@@ -51,14 +51,17 @@ function createBuildAllTask(folderContext: FolderContext): vscode.Task {
     if (process.platform === "win32") {
         additionalArgs.push("-Xlinker", "-debug:dwarf");
     }
+    let buildTaskName = SwiftTaskProvider.buildAllName;
+    if (folderContext.relativePath.length > 0) {
+        buildTaskName += ` (${folderContext.relativePath})`;
+    }
     return createSwiftTask(
         ["build", "--build-tests", ...additionalArgs, ...configuration.buildArguments],
-        SwiftTaskProvider.buildAllName,
+        buildTaskName,
         {
             group: vscode.TaskGroup.Build,
             cwd: folderContext.folder,
             scope: folderContext.workspaceFolder,
-            prefix: folderContext.name,
         }
     );
 }
@@ -68,6 +71,10 @@ function createBuildAllTask(folderContext: FolderContext): vscode.Task {
  */
 function createBuildTasks(product: Product, folderContext: FolderContext): vscode.Task[] {
     const debugArguments = process.platform === "win32" ? ["-Xlinker", "-debug:dwarf"] : [];
+    let buildTaskNameSuffix = "";
+    if (folderContext.relativePath.length > 0) {
+        buildTaskNameSuffix = ` (${folderContext.relativePath})`;
+    }
     return [
         createSwiftTask(
             [
@@ -77,22 +84,20 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 ...debugArguments,
                 ...configuration.buildArguments,
             ],
-            `Build Debug ${product.name}`,
+            `Build Debug ${product.name}${buildTaskNameSuffix}`,
             {
                 group: vscode.TaskGroup.Build,
                 cwd: folderContext.folder,
                 scope: folderContext.workspaceFolder,
-                prefix: folderContext.name,
             }
         ),
         createSwiftTask(
             ["build", "-c", "release", "--product", product.name, ...configuration.buildArguments],
-            `Build Release ${product.name}`,
+            `Build Release ${product.name}${buildTaskNameSuffix}`,
             {
                 group: vscode.TaskGroup.Build,
                 cwd: folderContext.folder,
                 scope: folderContext.workspaceFolder,
-                prefix: folderContext.name,
             }
         ),
     ];
@@ -198,9 +203,11 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         const newTask = new vscode.Task(
             task.definition,
             task.scope ?? vscode.TaskScope.Workspace,
-            task.name || "Custom Task",
+            task.name ?? "Custom Task",
             "swift",
-            new vscode.ShellExecution(task.definition.command, task.definition.args),
+            new vscode.ShellExecution(task.definition.command, task.definition.args, {
+                cwd: task.definition.cwd,
+            }),
             task.problemMatchers
         );
         newTask.detail =

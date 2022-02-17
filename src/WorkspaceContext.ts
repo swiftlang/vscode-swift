@@ -13,10 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import * as path from "path";
 import { FolderContext } from "./FolderContext";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
-import { execSwift, getSwiftExecutable, getXCTestPath } from "./utilities/utilities";
+import { execSwift, getSwiftExecutable, getXCTestPath, pathExists } from "./utilities/utilities";
 import { getLLDBLibPath } from "./debugger/lldb";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 import { Version } from "./utilities/version";
@@ -76,18 +77,28 @@ export class WorkspaceContext implements vscode.Disposable {
             this.onDidChangeWorkspaceFolders(event);
         });
         // add event listener for when the active edited text document changes
-        const onDidChangeActiveWindow = vscode.window.onDidChangeActiveTextEditor(editor => {
+        const onDidChangeActiveWindow = vscode.window.onDidChangeActiveTextEditor(async editor => {
             if (this === undefined) {
                 console.log("Trying to run onDidChangeWorkspaceFolders on deleted context");
                 return;
             }
-
-            const workspaceFolder = this.getWorkspaceFolder(editor);
-            if (workspaceFolder) {
-                this.focusFolder(workspaceFolder);
-            }
+            await this.focusTextEditor(editor);
         });
         this.extensionContext.subscriptions.push(onWorkspaceChange, onDidChangeActiveWindow);
+    }
+
+    /** Add workspace folders at initialisation */
+    async addWorkspaceFolders() {
+        // add workspace folders, already loaded
+        if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+            for (const folder of vscode.workspace.workspaceFolders) {
+                await this.addWorkspaceFolder(folder);
+            }
+        }
+        // fire focus event on null folder to startup language server if we don't have a currently focused folder
+        if (this.currentFolder === undefined) {
+            await this.fireEvent(null, FolderEvent.focus);
+        }
     }
 
     /**
@@ -105,16 +116,10 @@ export class WorkspaceContext implements vscode.Disposable {
      * set the focus folder
      * @param folder folder that has gained focus, you can have a null folder
      */
-    async focusFolder(folder?: vscode.WorkspaceFolder | null) {
+    async focusFolder(folderContext: FolderContext | null) {
         // null and undefined mean different things here. Undefined means nothing
         // has been setup, null means we want to send focus events but for a null
         // folder
-        let folderContext: FolderContext | null | undefined;
-        if (!folder) {
-            folderContext = null;
-        } else {
-            folderContext = this.folders.find(context => context.folder === folder?.uri);
-        }
         if (folderContext === this.currentFolder) {
             return;
         }
@@ -124,9 +129,6 @@ export class WorkspaceContext implements vscode.Disposable {
             await this.fireEvent(this.currentFolder, FolderEvent.unfocus);
         }
         this.currentFolder = folderContext;
-        if (!folderContext) {
-            return;
-        }
 
         // send focus event to all observers
         await this.fireEvent(folderContext, FolderEvent.focus);
@@ -138,7 +140,7 @@ export class WorkspaceContext implements vscode.Disposable {
      */
     async onDidChangeWorkspaceFolders(event: vscode.WorkspaceFoldersChangeEvent) {
         for (const folder of event.added) {
-            await this.addFolder(folder);
+            await this.addWorkspaceFolder(folder);
         }
 
         for (const folder of event.removed) {
@@ -150,9 +152,7 @@ export class WorkspaceContext implements vscode.Disposable {
      * Called whenever a folder is added to the workspace
      * @param folder folder being added
      */
-    async addFolder(folder: vscode.WorkspaceFolder) {
-        const folderContext = await FolderContext.create(folder.uri, folder, this);
-        this.folders.push(folderContext);
+    async addWorkspaceFolder(folder: vscode.WorkspaceFolder) {
         // On Windows, locate XCTest.dll the first time a folder is added.
         if (process.platform === "win32" && this.folders.length === 1) {
             try {
@@ -164,15 +164,26 @@ export class WorkspaceContext implements vscode.Disposable {
                 );
             }
         }
+        // add folder if Package.swift exists
+        if (await pathExists(folder.uri.fsPath, "Package.swift")) {
+            await this.addPackageFolder(folder.uri, folder);
+        }
+
+        if (this.getActiveWorkspaceFolder(vscode.window.activeTextEditor) === folder) {
+            this.focusTextEditor(vscode.window.activeTextEditor);
+        }
+    }
+
+    async addPackageFolder(
+        folder: vscode.Uri,
+        workspaceFolder: vscode.WorkspaceFolder
+    ): Promise<FolderContext> {
+        const folderContext = await FolderContext.create(folder, workspaceFolder, this);
+        this.folders.push(folderContext);
+
         await this.fireEvent(folderContext, FolderEvent.add);
 
-        // if this is the first folder then set a focus event
-        if (
-            this.folders.length === 1 ||
-            this.getWorkspaceFolder(vscode.window.activeTextEditor) === folder
-        ) {
-            this.focusFolder(folder);
-        }
+        return folderContext;
     }
 
     /**
@@ -277,12 +288,91 @@ export class WorkspaceContext implements vscode.Disposable {
             });
     }
 
-    // return workspace folder from text editor
-    private getWorkspaceFolder(editor?: vscode.TextEditor): vscode.WorkspaceFolder | undefined {
+    async focusTextEditor(editor?: vscode.TextEditor) {
+        if (!editor || !editor.document) {
+            return;
+        }
+        const url = editor.document.uri;
+
+        const packageFolder = await this.getPackageFolder(url);
+        if (packageFolder instanceof FolderContext) {
+            this.focusFolder(packageFolder);
+        } else if (packageFolder instanceof vscode.Uri) {
+            const workspaceFolder = vscode.workspace.getWorkspaceFolder(packageFolder);
+            if (!workspaceFolder) {
+                return;
+            }
+            await this.unfocusCurrentFolder();
+            const folderContext = await this.addPackageFolder(packageFolder, workspaceFolder);
+            this.focusFolder(folderContext);
+        } else {
+            this.focusFolder(null);
+        }
+    }
+
+    /** return workspace folder from text editor */
+    private getWorkspaceFolder(url: vscode.Uri): vscode.WorkspaceFolder | undefined {
+        return vscode.workspace.getWorkspaceFolder(url);
+    }
+
+    /** return workspace folder from text editor */
+    private getActiveWorkspaceFolder(
+        editor?: vscode.TextEditor
+    ): vscode.WorkspaceFolder | undefined {
         if (!editor || !editor.document) {
             return;
         }
         return vscode.workspace.getWorkspaceFolder(editor.document.uri);
+    }
+
+    /** Return Package folder for url.
+     *
+     * First the functions checks in the currently loaded folders to see if it exists inside
+     * one of those. If not then it searches up the tree to find the uppermost folder in the
+     * workspace that contains a Package.swift
+     */
+    private async getPackageFolder(
+        url: vscode.Uri
+    ): Promise<FolderContext | vscode.Uri | undefined> {
+        // is editor document in any of the current FolderContexts
+        const folder = this.folders.find(context => {
+            const relativePath = path.relative(context.folder.fsPath, url.fsPath);
+            // return true if path doesnt start with '..'
+            return relativePath[0] !== "." || relativePath[1] !== ".";
+        });
+        if (folder) {
+            return folder;
+        }
+
+        // if not search directory tree for 'Package.swift' files
+        const workspaceFolder = this.getWorkspaceFolder(url);
+        if (!workspaceFolder) {
+            return;
+        }
+        const workspacePath = workspaceFolder.uri.fsPath;
+        let packagePath: string | undefined = undefined;
+        let currentFolder = path.dirname(url.fsPath);
+        do {
+            if (await pathExists(currentFolder, "Package.swift")) {
+                packagePath = currentFolder;
+            }
+            currentFolder = path.dirname(currentFolder);
+        } while (currentFolder !== workspacePath);
+
+        if (packagePath) {
+            return vscode.Uri.file(packagePath);
+        } else {
+            return;
+        }
+    }
+
+    /** send unfocus event to current focussed folder and clear current folder */
+    private async unfocusCurrentFolder() {
+        // send unfocus event for previous folder observers
+        if (this.currentFolder !== undefined) {
+            await this.fireEvent(this.currentFolder, FolderEvent.unfocus);
+        }
+        this.currentFolder = undefined;
     }
 
     private observers: Set<WorkspaceFoldersObserver> = new Set();

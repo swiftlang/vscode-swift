@@ -69,30 +69,33 @@ export async function makeDebugConfigurations(ctx: FolderContext) {
 function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfiguration[] {
     const executableProducts = ctx.swiftPackage.executableProducts;
     let folder: string;
+    let nameSuffix: string;
     if (ctx.relativePath.length === 0) {
         folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}`;
+        nameSuffix = "";
     } else {
         folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}/${ctx.relativePath}`;
+        nameSuffix = ` (${ctx.relativePath})`;
     }
     return executableProducts.flatMap(product => {
         return [
             {
                 type: "lldb",
                 request: "launch",
-                name: `Debug ${product.name}`,
+                name: `Debug ${product.name}${nameSuffix}`,
                 program: `${folder}/.build/debug/` + product.name,
                 args: [],
                 cwd: folder,
-                preLaunchTask: `swift: Build Debug ${product.name}`,
+                preLaunchTask: `swift: Build Debug ${product.name}${nameSuffix}`,
             },
             {
                 type: "lldb",
                 request: "launch",
-                name: `Release ${product.name}`,
+                name: `Release ${product.name}${nameSuffix}`,
                 program: `${folder}/.build/release/` + product.name,
                 args: [],
                 cwd: folder,
-                preLaunchTask: `swift: Build Release ${product.name}`,
+                preLaunchTask: `swift: Build Release ${product.name}${nameSuffix}`,
             },
         ];
     });
@@ -105,10 +108,13 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
     }
 
     let folder: string;
+    let nameSuffix: string;
     if (ctx.relativePath.length === 0) {
         folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}`;
+        nameSuffix = "";
     } else {
         folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}/${ctx.relativePath}`;
+        nameSuffix = ` (${ctx.relativePath})`;
     }
     if (process.platform === "darwin") {
         // On macOS, find the path to xctest
@@ -125,7 +131,7 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
                 program: `${xcodePath}/usr/bin/xctest`,
                 args: [`.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`],
                 cwd: folder,
-                preLaunchTask: `swift: Build All`,
+                preLaunchTask: `swift: Build All${nameSuffix}`,
             },
         ];
     } else if (process.platform === "win32") {
@@ -144,7 +150,7 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
                 env: {
                     path: `${ctx.workspaceContext.xcTestPath};\${env:PATH}`,
                 },
-                preLaunchTask: `swift: Build All`,
+                preLaunchTask: `swift: Build All${nameSuffix}`,
             },
         ];
     } else {
@@ -156,7 +162,7 @@ async function createTestConfigurations(ctx: FolderContext): Promise<vscode.Debu
                 name: `Test ${ctx.swiftPackage.name}`,
                 program: `${folder}/.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
                 cwd: folder,
-                preLaunchTask: `swift: Build All`,
+                preLaunchTask: `swift: Build All${nameSuffix}`,
             },
         ];
     }
