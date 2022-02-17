@@ -95,7 +95,7 @@ export class WorkspaceContext implements vscode.Disposable {
                 await this.addWorkspaceFolder(folder);
             }
         }
-        // fire focus event on null folder to startup language server if we don't have a currently focus folder
+        // fire focus event on null folder to startup language server if we don't have a currently focused folder
         if (this.currentFolder === undefined) {
             await this.fireEvent(null, FolderEvent.focus);
         }
