@@ -161,6 +161,22 @@
           "when": "swift.hasPackage"
         },
         {
+          "command": "swift.useLocalDependency",
+          "when": "false"
+        },
+        {
+          "command": "swift.editDependency",
+          "when": "false"
+        },
+        {
+          "command": "swift.openInWorkspace",
+          "when": "false"
+        },
+        {
+          "command": "swift.uneditDependency",
+          "when": "false"
+        },
+        {
           "command": "swift.openExternal",
           "when": "false"
         }
