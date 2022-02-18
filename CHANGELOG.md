@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - Function documentation comment completion. Type "///" on line above function to activate. 
 - Right click menu to package dependency view. Entries include
-  - Use Local Version: Use local version of package dependency
+  - Use Local Version: Use local version of package dependency.
   - Add To Workspace: Add a locally edited dependency to your VSCode Workspace
   - Revert To Original Version: Revert locally edited dependency to the version in the Package.swift
   - View Repository: Open the repository web page for the dependency.
