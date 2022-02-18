@@ -69,6 +69,11 @@
         "command": "swift.openInWorkspace",
         "title": "Add to Workspace",
         "category": "Swift"
+      },
+      {
+        "command": "swift.openExternal",
+        "title": "View Repository",
+        "category": "Swift"
       }
     ],
     "configuration": [
@@ -154,6 +159,10 @@
         {
           "command": "swift.resetPackage",
           "when": "swift.hasPackage"
+        },
+        {
+          "command": "swift.openExternal",
+          "when": "false"
         }
       ],
       "view/title": [
@@ -189,6 +198,10 @@
         {
           "command": "swift.openInWorkspace",
           "when": "view == packageDependencies && viewItem == local"
+        },
+        {
+          "command": "swift.openExternal",
+          "when": "view == packageDependencies && viewItem == remote"
         }
       ]
     },
