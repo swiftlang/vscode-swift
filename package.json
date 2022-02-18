@@ -122,7 +122,7 @@
           "sourcekit-lsp.inlayHints.enabled": {
             "type": "boolean",
             "default": false,
-            "description": "(experimental) Render inlay type annotations in the editor."
+            "description": "Render inlay type annotations in the editor. Inlay hints require Swift 5.6 or later."
           },
           "sourcekit-lsp.trace.server": {
             "type": "string",
