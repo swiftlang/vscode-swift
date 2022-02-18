@@ -343,7 +343,6 @@ async function uneditFolderDependency(
 /**
  * Open local package in workspace
  * @param packageNode PackageNode attached to dependency tree item
- * @param ctx workspace context
  */
 async function openInWorkspace(packageNode: PackageNode) {
     const index = vscode.workspace.workspaceFolders?.length ?? 0;
@@ -351,6 +350,19 @@ async function openInWorkspace(packageNode: PackageNode) {
         uri: vscode.Uri.file(packageNode.path),
         name: packageNode.name,
     });
+}
+
+/**
+ *
+ * @param packageNode PackageNode attached to dependency tree item
+ */
+function openInExternalEditor(packageNode: PackageNode) {
+    try {
+        const uri = vscode.Uri.parse(packageNode.path, true);
+        vscode.env.openExternal(uri);
+    } catch {
+        // ignore error
+    }
 }
 
 /**
@@ -388,6 +400,11 @@ export function register(ctx: WorkspaceContext) {
         vscode.commands.registerCommand("swift.openInWorkspace", item => {
             if (item instanceof PackageNode) {
                 openInWorkspace(item);
+            }
+        }),
+        vscode.commands.registerCommand("swift.openExternal", item => {
+            if (item instanceof PackageNode) {
+                openInExternalEditor(item);
             }
         })
     );
