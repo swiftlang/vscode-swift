@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 - Function documentation comment completion. Type "///" on line above function to activate. 
-- Right click menu to package dependency view. Entries include
+- Package dependency view has new right click menu. Menu entries include
   - Use Local Version: Use local version of package dependency.
   - Add To Workspace: Add a locally edited dependency to your VSCode Workspace.
   - Revert To Original Version: Revert locally edited dependency to the version in the Package.swift.
@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 - Swift 5.6 will fix the issue of the LSP server not working with new files. If the Swift version is previous to 5.6 then the VSCode extension will restart the LSP server whenever a new file is added.
-- The LSP server works on single Swift files outside of a Package.swift
+- The LSP server works on single Swift files outside of a Package.swift.
 
 ## 0.2.0 - 2022-01-20
 
