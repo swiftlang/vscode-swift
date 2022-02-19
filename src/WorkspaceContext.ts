@@ -27,6 +27,7 @@ import {
 import { getLLDBLibPath } from "./debugger/lldb";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 import { Version } from "./utilities/version";
+import { TemporaryFolder } from "./utilities/tempFolder";
 
 export interface SwiftExtensionContext {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,8 +48,9 @@ export class WorkspaceContext implements vscode.Disposable {
     public swiftVersion: Version;
     private onChangeConfig: vscode.Disposable;
 
-    public constructor(
+    private constructor(
         public extensionContext: SwiftExtensionContext,
+        public tempFolder: TemporaryFolder,
         swiftVersion = "Swift version 0.0.0"
     ) {
         this.outputChannel = new SwiftOutputChannel();
@@ -75,6 +77,7 @@ export class WorkspaceContext implements vscode.Disposable {
     }
 
     dispose() {
+        this.tempFolder.dispose();
         this.folders.forEach(f => f.dispose());
         this.onChangeConfig.dispose();
         this.languageClientManager.dispose();
@@ -86,7 +89,8 @@ export class WorkspaceContext implements vscode.Disposable {
     static async create(extensionContext: vscode.ExtensionContext): Promise<WorkspaceContext> {
         // get swift version and then create
         const version = await WorkspaceContext.getSwiftVersion();
-        return new WorkspaceContext(extensionContext, version);
+        const tempFolder = await TemporaryFolder.create();
+        return new WorkspaceContext(extensionContext, tempFolder, version);
     }
 
     /** Setup the vscode event listeners to catch folder changes and active window changes */

@@ -51,6 +51,11 @@
         "category": "Swift"
       },
       {
+        "command": "swift.runSingle",
+        "title": "Run Swift File",
+        "category": "Swift"
+      },
+      {
         "command": "swift.useLocalDependency",
         "title": "Use Local Version",
         "category": "Swift"
@@ -244,8 +249,7 @@
         "required": [
           "command",
           "args"
-        ],
-        "when": "swift.hasPackage"
+        ]
       }
     ],
     "views": {

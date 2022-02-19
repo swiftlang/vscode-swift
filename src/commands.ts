@@ -14,6 +14,7 @@
 
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
+import * as path from "path";
 import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
 import { executeTaskAndWait, createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderContext } from "./FolderContext";
@@ -171,6 +172,41 @@ export async function folderResetPackage(folderContext: FolderContext) {
 
         await executeTaskWithUI(resolveTask, "Resolving Dependencies", folderContext);
     });
+}
+
+/**
+ * Run single Swift file through Swift REPL
+ */
+async function runSingleFile(ctx: WorkspaceContext) {
+    const document = vscode.window.activeTextEditor?.document;
+    if (!document) {
+        return;
+    }
+
+    let filename = document.fileName;
+    let isTempFile = false;
+    if (document.isUntitled) {
+        // if document hasn't been saved, save it to a temporary file
+        isTempFile = true;
+        filename = path.join(ctx.tempFolder.path, document.fileName);
+        const text = document.getText();
+        await fs.writeFile(filename, text);
+    } else {
+        // otherwise save document
+        await document.save();
+    }
+
+    const runTask = createSwiftTask([filename], `Run ${filename}`, {
+        scope: vscode.TaskScope.Global,
+        cwd: vscode.Uri.file(path.dirname(filename)),
+        presentationOptions: { reveal: vscode.TaskRevealKind.Always },
+    });
+    await executeTaskAndWait(runTask);
+
+    // delete file after running swift
+    if (isTempFile) {
+        await fs.rm(filename);
+    }
 }
 
 /**
@@ -378,18 +414,13 @@ function openInExternalEditor(packageNode: PackageNode) {
  */
 export function register(ctx: WorkspaceContext) {
     ctx.extensionContext.subscriptions.push(
-        vscode.commands.registerCommand("swift.resolveDependencies", () => {
-            resolveDependencies(ctx);
-        }),
-        vscode.commands.registerCommand("swift.updateDependencies", () => {
-            updateDependencies(ctx);
-        }),
-        vscode.commands.registerCommand("swift.cleanBuild", () => {
-            cleanBuild(ctx);
-        }),
-        vscode.commands.registerCommand("swift.resetPackage", () => {
-            resetPackage(ctx);
-        }),
+        vscode.commands.registerCommand("swift.resolveDependencies", () =>
+            resolveDependencies(ctx)
+        ),
+        vscode.commands.registerCommand("swift.updateDependencies", () => updateDependencies(ctx)),
+        vscode.commands.registerCommand("swift.cleanBuild", () => cleanBuild(ctx)),
+        vscode.commands.registerCommand("swift.resetPackage", () => resetPackage(ctx)),
+        vscode.commands.registerCommand("swift.runSingle", () => runSingleFile(ctx)),
         vscode.commands.registerCommand("swift.useLocalDependency", item => {
             if (item instanceof PackageNode) {
                 useLocalDependency(item.name, ctx);
