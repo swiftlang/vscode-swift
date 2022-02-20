@@ -63,7 +63,9 @@ export async function resolveFolderDependencies(folderContext: FolderContext) {
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
     });
 
-    await executeTaskWithUI(task, "Resolving Dependencies", folderContext);
+    await executeTaskWithUI(task, "Resolving Dependencies", folderContext).then(result => {
+        updateAfterError(result, folderContext);
+    });
 }
 
 /**
@@ -100,7 +102,9 @@ export async function updateFolderDependencies(folderContext: FolderContext) {
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
     });
 
-    await executeTaskWithUI(task, "Updating Dependencies", folderContext);
+    await executeTaskWithUI(task, "Updating Dependencies", folderContext).then(result => {
+        updateAfterError(result, folderContext);
+    });
 }
 
 /**
@@ -370,6 +374,18 @@ function openInExternalEditor(packageNode: PackageNode) {
         vscode.env.openExternal(uri);
     } catch {
         // ignore error
+    }
+}
+
+function updateAfterError(result: boolean, folderContext: FolderContext) {
+    const triggerResolvedUpdatedEvent = folderContext.hasResolveErrors;
+    // set has resolve errors flag
+    folderContext.hasResolveErrors = !result;
+    // if previous folder state was with resolve errors, and now it is without then
+    // send Package.resolved updated event to trigger display of package dependencies
+    // view
+    if (triggerResolvedUpdatedEvent && !folderContext.hasResolveErrors) {
+        folderContext.fireEvent(FolderEvent.resolvedUpdated);
     }
 }
 

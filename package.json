@@ -261,7 +261,7 @@
     "viewsWelcome": [
       {
         "view": "packageDependencies",
-        "contents": "Resolving dependencies..."
+        "contents": "..."
       }
     ]
   },
