@@ -40,6 +40,11 @@ interface TaskConfig {
     prefix?: string;
 }
 
+/** arguments for generating windows debug builds */
+function win32BuildOptions(): string[] {
+    return ["-Xswiftc", "-g", "-Xswiftc", "-use-ld=lld", "-Xlinker", "-debug:dwarf"];
+}
+
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
@@ -49,7 +54,7 @@ function createBuildAllTask(folderContext: FolderContext): vscode.Task {
         additionalArgs.push("--enable-test-discovery");
     }
     if (process.platform === "win32") {
-        additionalArgs.push("-Xlinker", "-debug:dwarf");
+        additionalArgs.push(...win32BuildOptions());
     }
     let buildTaskName = SwiftTaskProvider.buildAllName;
     if (folderContext.relativePath.length > 0) {
@@ -70,7 +75,7 @@ function createBuildAllTask(folderContext: FolderContext): vscode.Task {
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
 function createBuildTasks(product: Product, folderContext: FolderContext): vscode.Task[] {
-    const debugArguments = process.platform === "win32" ? ["-Xlinker", "-debug:dwarf"] : [];
+    const debugArguments = process.platform === "win32" ? win32BuildOptions() : [];
     let buildTaskNameSuffix = "";
     if (folderContext.relativePath.length > 0) {
         buildTaskNameSuffix = ` (${folderContext.relativePath})`;
