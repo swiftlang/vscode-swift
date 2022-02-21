@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Revert To Original Version: Revert locally edited dependency to the version in the Package.swift.
   - View Repository: Open the repository web page for the dependency.
 - Support for Swift packages that are in a sub-folder of your workspace.
+- New command `Run Swift Script` which will run the currently open file as a Swift script.
 - Support for building development version of package via `npm run dev-package`.
 
 ### Fixed

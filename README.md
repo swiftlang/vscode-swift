@@ -37,14 +37,13 @@ These tasks are available via **Terminal ▸ Run Task...** and **Terminal ▸ Ru
 
 ### Commands
 
-The extension adds commands, available via the command palette, for the following operations. 
+The extension adds commands, available via the command palette. The following operations are applied to the package associated with the currently open file.
 
-- **Resolve Package Dependencies**: Run `swift package resolve`
-- **Update Package Dependencies**: Run `swift package update`
-- **Reset Package Dependencies**: Run `swift package reset`
-- **Clean Build**: Run `swift package clean`
-
-These are applied to the package associated with the currently open file.
+- **Resolve Package Dependencies**: Run `swift package resolve` on package associated with open file.
+- **Update Package Dependencies**: Run `swift package update` on package associated with open file.
+- **Reset Package Dependencies**: Run `swift package reset` on package associated with open file.
+- **Clean Build**: Run `swift package clean` on package associated with open file.
+- **Run Swift Script**: Run the currently open file, as a Swift script. If the file has not been saved it will save it to a temporary file so it can be run.
 
 ### Package dependencies
 
