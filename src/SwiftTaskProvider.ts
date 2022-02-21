@@ -62,6 +62,7 @@ function createBuildAllTask(folderContext: FolderContext): vscode.Task {
             group: vscode.TaskGroup.Build,
             cwd: folderContext.folder,
             scope: folderContext.workspaceFolder,
+            presentationOptions: { clear: true },
         }
     );
 }
@@ -89,6 +90,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 group: vscode.TaskGroup.Build,
                 cwd: folderContext.folder,
                 scope: folderContext.workspaceFolder,
+                presentationOptions: { clear: true },
             }
         ),
         createSwiftTask(
@@ -98,6 +100,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 group: vscode.TaskGroup.Build,
                 cwd: folderContext.folder,
                 scope: folderContext.workspaceFolder,
+                presentationOptions: { clear: true },
             }
         ),
     ];
