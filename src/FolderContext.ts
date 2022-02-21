@@ -16,10 +16,11 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { PackageWatcher } from "./PackageWatcher";
 import { SwiftPackage } from "./SwiftPackage";
-import { WorkspaceContext } from "./WorkspaceContext";
+import { WorkspaceContext, FolderEvent } from "./WorkspaceContext";
 
 export class FolderContext implements vscode.Disposable {
     private packageWatcher?: PackageWatcher;
+    public hasResolveErrors = false;
 
     /**
      * FolderContext constructor
@@ -86,10 +87,20 @@ export class FolderContext implements vscode.Disposable {
         await this.swiftPackage.reloadPackageResolved();
     }
 
+    /**
+     * Fire an event to all folder observers
+     * @param event event type
+     */
+    async fireEvent(event: FolderEvent) {
+        this.workspaceContext.fireEvent(this, event);
+    }
+
+    /** Return edited Packages folder */
     editedPackageFolder(identifier: string) {
         return path.join(this.folder.fsPath, "Packages", identifier);
     }
 
+    /** Get list of edited packages */
     async getEditedPackages(): Promise<EditedPackage[]> {
         const workspaceState = await this.swiftPackage.loadWorkspaceState();
         return (
