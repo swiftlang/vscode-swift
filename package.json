@@ -52,7 +52,7 @@
       },
       {
         "command": "swift.runSingle",
-        "title": "Run Swift File",
+        "title": "Run Swift Script",
         "category": "Swift"
       },
       {
