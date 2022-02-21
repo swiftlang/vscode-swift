@@ -111,9 +111,14 @@ export class SwiftPackage implements PackageContents {
      */
     static async loadPackage(folder: vscode.Uri): Promise<PackageContents | null | undefined> {
         try {
-            const { stdout } = await execSwift(["package", "describe", "--type", "json"], {
+            let { stdout } = await execSwift(["package", "describe", "--type", "json"], {
                 cwd: folder.fsPath,
             });
+            // remove warning output by `swift package describe`
+            if (stdout.startsWith("warning:")) {
+                const firstNewLine = stdout.indexOf("\n");
+                stdout = stdout.slice(firstNewLine + 1);
+            }
             return JSON.parse(stdout);
         } catch (error) {
             const execError = error as { stderr: string };
