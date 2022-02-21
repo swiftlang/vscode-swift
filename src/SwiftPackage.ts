@@ -114,8 +114,8 @@ export class SwiftPackage implements PackageContents {
             let { stdout } = await execSwift(["package", "describe", "--type", "json"], {
                 cwd: folder.fsPath,
             });
-            // remove warning output by `swift package describe`
-            if (stdout.startsWith("warning:")) {
+            // remove lines from `swift package describe` until we find a "{"
+            while (!stdout.startsWith("{")) {
                 const firstNewLine = stdout.indexOf("\n");
                 stdout = stdout.slice(firstNewLine + 1);
             }
