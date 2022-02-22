@@ -2,7 +2,7 @@
   "name": "swift-lang",
   "displayName": "Swift",
   "description": "Swift Language Support for Visual Studio Code.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "sswg",
   "icon": "icon.png",
   "repository": {

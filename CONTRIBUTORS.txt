@@ -9,6 +9,7 @@ needs to be listed here.
 - Adam Fowler <adamfowler71@gmail.com>
 - Kenta Kubo <601636+kkk669@users.noreply.github.com>
 - Kim de Vos <kimdevos12@hotmail.com>
+- Saleem Abdulrasool <compnerd@compnerd.org>
 - Steven Van Impe <steven.vanimpe@icloud.com>
 - Tim <0xtimc@gmail.com>
 **Updating this list**
