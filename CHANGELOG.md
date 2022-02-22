@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 - Build terminal window is cleared before a build
+- When the Swift path or SourceKit-LSP path are changed the extension will restart to ensure the correct versions are used.
 
 ### Fixed
 - Swift 5.6 will fix the issue of the LSP server not working with new files. If the Swift version is previous to 5.6 then the VSCode extension will restart the LSP server whenever a new file is added.

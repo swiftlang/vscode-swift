@@ -37,7 +37,7 @@ These tasks are available via **Terminal ▸ Run Task...** and **Terminal ▸ Ru
 
 ### Commands
 
-The extension adds commands, available via the command palette. The following operations are applied to the package associated with the currently open file.
+The extension adds commands, available via the command palette.
 
 - **Resolve Package Dependencies**: Run `swift package resolve` on package associated with open file.
 - **Update Package Dependencies**: Run `swift package update` on package associated with open file.
@@ -52,8 +52,6 @@ If your workspace contains a package that has dependencies, this extension will 
 ![](images/package-dependencies.png)
 
 Additionally, the extension will monitor **Package.swift** and **Package.resolved** for changes, resolve any changes to the dependencies, and update the view as needed.
-
-> **Note**: When browsing the files in a package, Visual Studio Code may also open these files in the Explorer. If this is undesirable, open **Preferences ▸ Settings** and set **Explorer: Auto Reveal** to `false`.
 
 ### Debugging
 
