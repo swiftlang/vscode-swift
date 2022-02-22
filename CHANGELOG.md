@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## 0.3.0
+## 0.3.0 - 2022-02-22
 
 ### Added
 - Function documentation comment completion. Type "///" on line above function to activate. 
@@ -17,9 +17,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - New command `Run Swift Script` which will run the currently open file as a Swift script.
 - Support for building development version of package via `npm run dev-package`.
 
+### Changed
+- Build terminal window is cleared before a build
+
 ### Fixed
 - Swift 5.6 will fix the issue of the LSP server not working with new files. If the Swift version is previous to 5.6 then the VSCode extension will restart the LSP server whenever a new file is added.
 - The LSP server works on single Swift files outside of a Package.swift.
+- Windows debug build options for generating dwarf debug output.
 
 ## 0.2.0 - 2022-01-20
 
