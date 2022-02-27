@@ -19,6 +19,7 @@ import { PackageDependenciesProvider } from "./ui/PackageDependencyProvider";
 import * as commentCompletion from "./editor/CommentCompletion";
 import { SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
+import { TestExplorer } from "./TestExplorer/TestExplorer";
 
 /**
  * Activate the extension. This is the main entry point.
@@ -82,12 +83,15 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     });
 
+    const testExplorerObserver = TestExplorer.observeFolders(workspaceContext);
+
     // setup workspace context with initial workspace folders
     workspaceContext.addWorkspaceFolders();
 
     // Register any disposables for cleanup when the extension deactivates.
     context.subscriptions.push(
         resolvePackageObserver,
+        testExplorerObserver,
         dependenciesView,
         dependenciesProvider,
         logObserver,
