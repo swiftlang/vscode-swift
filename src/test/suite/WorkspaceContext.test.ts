@@ -24,7 +24,7 @@ class TestExtensionContext implements SwiftExtensionContext {
 suite("WorkspaceContext Test Suite", () => {
     test("Add/Remove", async () => {
         let count = 0;
-        const workspaceContext = new WorkspaceContext(new TestExtensionContext());
+        const workspaceContext = await WorkspaceContext.create(new TestExtensionContext());
         workspaceContext.observeFolders((folder, operation) => {
             assert(folder !== null);
             assert.strictEqual(folder.swiftPackage.name, "package1");
@@ -41,5 +41,6 @@ suite("WorkspaceContext Test Suite", () => {
         await workspaceContext.addWorkspaceFolder(packageFolder);
         await workspaceContext.removeFolder(packageFolder);
         assert.strictEqual(count, 0);
+        workspaceContext.dispose();
     }).timeout(5000);
 });
