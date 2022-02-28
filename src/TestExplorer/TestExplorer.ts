@@ -110,7 +110,7 @@ export class TestExplorer {
             });
 
             for (const result of results) {
-                // match <testTarget>.<class>/<function> from line
+                // Regex "<testTarget>.<class>/<function>"
                 const groups = /^([\w\d_]*)\.([\w\d_]*)\/([\w\d_]*)/.exec(result);
                 if (!groups) {
                     continue;

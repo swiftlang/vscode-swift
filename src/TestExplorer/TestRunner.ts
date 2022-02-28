@@ -195,7 +195,8 @@ export class TestRunner {
         const lines = output.split("\n").map(item => item.trim());
 
         for (const line of lines) {
-            const passedMatch = /Test Case '-\[(\S+)\s(.*)\]' passed/.exec(line);
+            // Regex "Test Case '-[<test target> <class.function>]' passed"
+            const passedMatch = /^Test Case '-\[(\S+)\s(.*)\]' passed/.exec(line);
             if (passedMatch) {
                 const testId = `${passedMatch[1]}/${passedMatch[2]}`;
                 const passedTestIndex = this.testItems.findIndex(item => item.id === testId);
@@ -205,6 +206,7 @@ export class TestRunner {
                 }
                 continue;
             }
+            // Regex "<path/to/test>:<line number>: error: -[<test target> <class.function>] : <error>"
             const failedMatch = /^(.+):(\d+):\serror:\s-\[(\S+)\s(.*)\] : (.*)$/.exec(line);
             if (failedMatch) {
                 const testId = `${failedMatch[3]}/${failedMatch[4]}`;
@@ -233,25 +235,43 @@ export class TestRunner {
     private parseResultNonDarwin(output: string) {
         const lines = output.split("\n").map(item => item.trim());
 
+        // Non-Darwin test output does not include the test target name. The only way to find out
+        // the target for a test is when it fails and returns a file name. If we find failed tests
+        // first and then remove them from the list we cannot set them to passed by mistake.
+        // We extract the file name from the error and use that to check whether the file belongs
+        // to the target associated with the TestItem. This does not work 100% as the error could
+        // occur in another target, so we revert to just searching for class and function name if
+        // the above method is unsuccessful.
         for (const line of lines) {
-            const passedMatch = /Test Case '(.*)\.(.*)' passed/.exec(line);
-            if (passedMatch) {
-                const testName = `${passedMatch[1]}/${passedMatch[2]}`;
-                const passedTestIndex = this.testItems.findIndex(item =>
-                    item.id.endsWith(testName)
-                );
-                if (passedTestIndex !== -1) {
-                    this.testRun.passed(this.testItems[passedTestIndex]);
-                    this.testItems.splice(passedTestIndex, 1);
-                }
-                continue;
-            }
+            // Regex "<path/to/test>:<line number>: error: <class>.<function> : <error>"
             const failedMatch = /^(.+):(\d+):\serror:\s*(.*)\.(.*) : (.*)/.exec(line);
             if (failedMatch) {
                 const testName = `${failedMatch[3]}/${failedMatch[4]}`;
-                const failedTestIndex = this.testItems.findIndex(item =>
-                    item.id.endsWith(testName)
-                );
+                let failedTestIndex = this.testItems.findIndex(item => {
+                    if (!item.id.endsWith(testName)) {
+                        return false;
+                    }
+                    // get target test item
+                    const targetTestItem = item.parent?.parent;
+                    if (!targetTestItem) {
+                        return false;
+                    }
+                    // get target from Package
+                    const target = this.folderContext.swiftPackage.targets.find(
+                        item => targetTestItem.label === item.name
+                    );
+                    if (target) {
+                        const fileErrorIsIn = failedMatch[1];
+                        const targetPath = path.join(this.folderContext.folder.fsPath, target.path);
+                        const relativePath = path.relative(targetPath, fileErrorIsIn);
+                        return target.sources.find(source => source === relativePath) !== undefined;
+                    }
+                    return false;
+                });
+                // didn't find failed test so just search using class name and test function name
+                if (failedTestIndex === -1) {
+                    failedTestIndex = this.testItems.findIndex(item => item.id.endsWith(testName));
+                }
                 if (failedTestIndex !== -1) {
                     const message = new vscode.TestMessage(failedMatch[5]);
                     message.location = new vscode.Location(
@@ -259,7 +279,25 @@ export class TestRunner {
                         new vscode.Position(parseInt(failedMatch[2]), 0)
                     );
                     this.testRun.failed(this.testItems[failedTestIndex], message);
+                    // remove from test item list as its status has been set
                     this.testItems.splice(failedTestIndex, 1);
+                }
+                continue;
+            }
+        }
+
+        for (const line of lines) {
+            // Regex "Test Case '<class>.<function>' passed"
+            const passedMatch = /^Test Case '(.*)\.(.*)' passed/.exec(line);
+            if (passedMatch) {
+                const testName = `${passedMatch[1]}/${passedMatch[2]}`;
+                const passedTestIndex = this.testItems.findIndex(item =>
+                    item.id.endsWith(testName)
+                );
+                if (passedTestIndex !== -1) {
+                    this.testRun.passed(this.testItems[passedTestIndex]);
+                    // remove from test item list as its status has been set
+                    this.testItems.splice(passedTestIndex, 1);
                 }
                 continue;
             }
