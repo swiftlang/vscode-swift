@@ -17,10 +17,12 @@ import * as path from "path";
 import { PackageWatcher } from "./PackageWatcher";
 import { SwiftPackage } from "./SwiftPackage";
 import { WorkspaceContext, FolderEvent } from "./WorkspaceContext";
+import { TestExplorer } from "./TestExplorer/TestExplorer";
 
 export class FolderContext implements vscode.Disposable {
     private packageWatcher?: PackageWatcher;
     public hasResolveErrors = false;
+    public testExplorer?: TestExplorer;
 
     /**
      * FolderContext constructor
@@ -41,6 +43,7 @@ export class FolderContext implements vscode.Disposable {
     /** dispose of any thing FolderContext holds */
     dispose() {
         this.packageWatcher?.dispose();
+        this.testExplorer?.dispose();
     }
 
     /**
@@ -98,6 +101,11 @@ export class FolderContext implements vscode.Disposable {
     /** Return edited Packages folder */
     editedPackageFolder(identifier: string) {
         return path.join(this.folder.fsPath, "Packages", identifier);
+    }
+
+    /** Create Test explorer for this folder */
+    addTestExplorer() {
+        this.testExplorer = new TestExplorer(this);
     }
 
     /** Get list of edited packages */

@@ -26,19 +26,42 @@ export class SwiftOutputChannel {
     }
 
     log(message: string, label?: string) {
-        if (label) {
-            label += ": ";
+        let fullMessage: string;
+        if (label !== undefined) {
+            fullMessage = `${label}: ${message}`;
+        } else {
+            fullMessage = message;
         }
-        const line = `${this.nowFormatted}: ${label ?? ""}${message}`;
+        const line = `${this.nowFormatted}: ${fullMessage}`;
         this.channel.appendLine(line);
         console.log(line);
     }
 
-    logStart(message: string, label?: string) {
-        if (label !== undefined) {
-            label += ": ";
+    error(error: unknown, message?: string, label?: string) {
+        const stdError = error as { stderr: string };
+        let prefix: string;
+        if (message !== undefined) {
+            prefix = `${message}: `;
+        } else {
+            prefix = "";
         }
-        const line = `${this.nowFormatted}: ${label ?? ""}${message}`;
+        if (stdError) {
+            this.log(`${prefix}${stdError.stderr}`, label);
+        } else if (error instanceof Error) {
+            this.log(`${prefix}${error.toString()}`, label);
+        } else {
+            this.log(`${prefix}${JSON.stringify(error)}`, label);
+        }
+    }
+
+    logStart(message: string, label?: string) {
+        let fullMessage: string;
+        if (label !== undefined) {
+            fullMessage = `${label}: ${message}`;
+        } else {
+            fullMessage = message;
+        }
+        const line = `${this.nowFormatted}: ${fullMessage}`;
         this.channel.append(line);
         console.log(line);
     }
