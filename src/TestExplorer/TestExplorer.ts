@@ -44,7 +44,8 @@ export class TestExplorer {
             if (
                 task.scope === this.folderContext.workspaceFolder &&
                 task.group === vscode.TaskGroup.Build &&
-                execution?.options?.cwd === this.folderContext.folder.fsPath
+                execution?.options?.cwd === this.folderContext.folder.fsPath &&
+                event.exitCode === 0
             ) {
                 this.discoverTestsInWorkspace();
             }
@@ -68,9 +69,6 @@ export class TestExplorer {
             switch (event) {
                 case FolderEvent.add:
                     folder?.addTestExplorer();
-                    break;
-
-                case FolderEvent.focus:
                     folder?.testExplorer?.discoverTestsInWorkspace();
                     break;
             }
@@ -131,8 +129,11 @@ export class TestExplorer {
                 classItem.children.add(item);
             }
         } catch (error) {
-            // ignore errors
-            console.log(error);
+            this.folderContext.workspaceContext.outputChannel.error(
+                error,
+                "Test Discovery Failed",
+                this.folderContext.name
+            );
         }
     }
 }
