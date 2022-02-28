@@ -16,6 +16,7 @@ import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import { execSwift } from "../utilities/utilities";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
+import { TestRunner } from "./TestRunner";
 
 /** Build test explorer UI */
 export class TestExplorer {
@@ -35,6 +36,8 @@ export class TestExplorer {
                 //
             }
         };
+
+        TestRunner.setupProfiles(this.controller, this.folderContext);
 
         // add end of task handler to be called whenever a build task has finished. If
         // it is the build task for this folder then update the tests
