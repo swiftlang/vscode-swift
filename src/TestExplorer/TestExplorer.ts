@@ -14,13 +14,15 @@
 
 import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
-import { execSwift } from "../utilities/utilities";
+import { execSwift, isPathInsidePath } from "../utilities/utilities";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { TestRunner } from "./TestRunner";
+import { LSPTestDiscovery } from "./LSPTestDiscovery";
 
 /** Build test explorer UI */
 export class TestExplorer {
     public controller: vscode.TestController;
+    private lspFunctionParser?: LSPTestDiscovery;
     private subscriptions: { dispose(): unknown }[];
 
     constructor(public folderContext: FolderContext) {
@@ -54,7 +56,30 @@ export class TestExplorer {
             }
         });
 
-        this.subscriptions = [onDidEndTask, this.controller];
+        const onDidSaveDocument = vscode.workspace.onDidSaveTextDocument(event => {
+            this.lspFunctionParser?.onDidSave(event.uri);
+        });
+        const onDidChangeActiveWindow = vscode.window.onDidChangeActiveTextEditor(async editor => {
+            const uri = editor?.document?.uri;
+            if (!uri || this.lspFunctionParser?.uri === uri) {
+                return;
+            }
+            if (isPathInsidePath(uri.fsPath, this.folderContext.folder.fsPath)) {
+                this.lspFunctionParser = new LSPTestDiscovery(
+                    uri,
+                    this.folderContext,
+                    this.controller
+                );
+                await this.lspFunctionParser.setActive();
+            }
+        });
+
+        this.subscriptions = [
+            onDidSaveDocument,
+            onDidChangeActiveWindow,
+            onDidEndTask,
+            this.controller,
+        ];
     }
 
     dispose() {
@@ -87,6 +112,15 @@ export class TestExplorer {
             const { stdout } = await execSwift(["test", "--skip-build", "--list-tests"], {
                 cwd: this.folderContext.folder.fsPath,
             });
+            const uri = vscode.window.activeTextEditor?.document.uri;
+            if (uri) {
+                this.lspFunctionParser = new LSPTestDiscovery(
+                    uri,
+                    this.folderContext,
+                    this.controller
+                );
+                await this.lspFunctionParser.setActive();
+            }
             // get list of tests
             const results = stdout.match(/^.*\.[a-zA-Z0-9_]*\/[a-zA-Z0-9_]*$/gm);
             if (!results) {
@@ -98,7 +132,14 @@ export class TestExplorer {
                 targetItem.children.forEach(classItem => {
                     classItem.children.forEach(funcItem => {
                         const testName = `${targetItem.label}.${classItem.label}/${funcItem.label}`;
-                        if (!results.find(item => item === testName)) {
+                        if (
+                            !results.find(item => item === testName) &&
+                            !this.lspFunctionParser?.includesFunction(
+                                targetItem.label,
+                                classItem.label,
+                                funcItem.label
+                            )
+                        ) {
                             classItem.children.delete(funcItem.id);
                         }
                     });
