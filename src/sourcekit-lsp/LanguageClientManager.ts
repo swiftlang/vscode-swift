@@ -26,7 +26,8 @@ import { FolderContext } from "../FolderContext";
  */
 export class LanguageClientManager {
     /** current running client */
-    public languageClient: langclient.LanguageClient | null | undefined;
+    private languageClient: langclient.LanguageClient | null | undefined;
+    private cancellationToken?: vscode.CancellationTokenSource;
     private observeFoldersDisposable: vscode.Disposable;
     private onDidCreateFileDisposable: vscode.Disposable;
     private onDidDeleteFileDisposable: vscode.Disposable;
@@ -90,9 +91,12 @@ export class LanguageClientManager {
         );
 
         this.waitingOnRestartCount = 0;
+        this.cancellationToken = new vscode.CancellationTokenSource();
     }
 
     dispose() {
+        this.cancellationToken?.cancel();
+        this.cancellationToken?.dispose();
         this.observeFoldersDisposable.dispose();
         this.onDidCreateFileDisposable?.dispose();
         this.onDidDeleteFileDisposable?.dispose();
@@ -141,11 +145,34 @@ export class LanguageClientManager {
             if (!client) {
                 this.startedPromise = this.setupLanguageClient(uri);
             } else {
+                this.cancellationToken?.cancel();
+                this.cancellationToken?.dispose();
                 this.startedPromise = client
                     .stop()
                     .then(async () => await this.setupLanguageClient(uri));
             }
         }
+    }
+
+    /**
+     * Use language client safely. Provides a cancellation token to the function
+     * which can be used to safely ensure language client request are cancelled
+     * if the language is shutdown.
+     * @param process process using language client
+     * @returns result of process
+     */
+    async useLanguageClient<Return>(process: {
+        (client: langclient.LanguageClient, cancellationToken: vscode.CancellationToken): Return;
+    }) {
+        if (!this.languageClient) {
+            throw LanguageClientError.LanguageClientUnavailable;
+        }
+        return await this.languageClient.onReady().then(() => {
+            if (!this.languageClient || !this.cancellationToken) {
+                throw LanguageClientError.LanguageClientUnavailable;
+            }
+            return process(this.languageClient, this.cancellationToken.token);
+        });
     }
 
     /** Restart language client */
@@ -179,6 +206,7 @@ export class LanguageClientManager {
 
         this.supportsDidChangedWatchedFiles = false;
         this.languageClient = client;
+        this.cancellationToken = new vscode.CancellationTokenSource();
 
         return new Promise<void>((resolve, reject) => {
             client
@@ -241,4 +269,9 @@ export class LanguageClientManager {
             clientOptions
         );
     }
+}
+
+/** Language client errors */
+export enum LanguageClientError {
+    LanguageClientUnavailable,
 }
