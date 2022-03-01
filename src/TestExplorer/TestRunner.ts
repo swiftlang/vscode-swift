@@ -161,7 +161,7 @@ export class TestRunner {
     }
 
     /**
-     *
+     * Edit launch configuration to run tests
      * @param config Launch configuration
      * @param outputFile Debug output file
      * @returns
