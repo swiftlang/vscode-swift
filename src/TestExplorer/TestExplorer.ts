@@ -110,9 +110,16 @@ export class TestExplorer {
      */
     async discoverTestsInWorkspace() {
         try {
+            // get list of tests from `swift test --list-tests`
             const { stdout } = await execSwift(["test", "--skip-build", "--list-tests"], {
                 cwd: this.folderContext.folder.fsPath,
             });
+            const results = stdout.match(/^.*\.[a-zA-Z0-9_]*\/[a-zA-Z0-9_]*$/gm);
+            if (!results) {
+                return;
+            }
+
+            // get list of possible tests from the currently active file
             const uri = vscode.window.activeTextEditor?.document.uri;
             if (uri) {
                 this.lspFunctionParser = new LSPTestDiscovery(
@@ -122,13 +129,8 @@ export class TestExplorer {
                 );
                 await this.lspFunctionParser.setActive();
             }
-            // get list of tests
-            const results = stdout.match(/^.*\.[a-zA-Z0-9_]*\/[a-zA-Z0-9_]*$/gm);
-            if (!results) {
-                return;
-            }
 
-            // remove item that aren't in result list
+            // remove TestItems that aren't in either of the above lists
             this.controller.items.forEach(targetItem => {
                 targetItem.children.forEach(classItem => {
                     classItem.children.forEach(funcItem => {
@@ -190,10 +192,15 @@ export class TestExplorer {
         }
     }
 
+    /** Delete TestItem with error id */
     private deleteErrorTestItem() {
         this.controller.items.delete(TestExplorer.errorTestItemId);
     }
 
+    /**
+     * Add/replace a TestItem with an error, if test controller currently has no TestItems
+     * @param errorDescription Error description to display
+     */
     private setErrorTestItem(errorDescription: string) {
         this.deleteErrorTestItem();
         if (this.controller.items.size === 0) {
