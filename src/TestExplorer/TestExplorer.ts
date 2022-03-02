@@ -192,7 +192,7 @@ export class TestExplorer {
                 (process.platform !== "darwin" &&
                     errorDescription.match(/No such file or directory/))
             ) {
-                this.setErrorTestItem("Test Discovery requires that you build your project");
+                this.setErrorTestItem("Build the project to enable test discovery.");
             } else {
                 this.setErrorTestItem(errorDescription);
             }
