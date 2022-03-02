@@ -14,13 +14,14 @@
 
 import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
-import { execSwift, isPathInsidePath } from "../utilities/utilities";
+import { execSwift, getErrorDescription, isPathInsidePath } from "../utilities/utilities";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { TestRunner } from "./TestRunner";
 import { LSPTestDiscovery } from "./LSPTestDiscovery";
 
 /** Build test explorer UI */
 export class TestExplorer {
+    static errorTestItemId = "#Error#";
     public controller: vscode.TestController;
     private lspFunctionParser?: LSPTestDiscovery;
     private subscriptions: { dispose(): unknown }[];
@@ -150,6 +151,9 @@ export class TestExplorer {
                 });
             });
 
+            // if we got to this point we can get rid of any error test item
+            this.deleteErrorTestItem();
+
             for (const result of results) {
                 // Regex "<testTarget>.<class>/<function>"
                 const groups = /^([\w\d_]*)\.([\w\d_]*)\/([\w\d_]*)/.exec(result);
@@ -177,11 +181,28 @@ export class TestExplorer {
             // because the test target item did not exist when it was called
             this.lspFunctionParser?.addTestItems();
         } catch (error) {
-            this.folderContext.workspaceContext.outputChannel.error(
-                error,
-                "Test Discovery Failed",
+            const errorDescription = getErrorDescription(error);
+            this.setErrorTestItem(errorDescription);
+            this.folderContext.workspaceContext.outputChannel.log(
+                `Test Discovery Failed: ${errorDescription}`,
                 this.folderContext.name
             );
+        }
+    }
+
+    private deleteErrorTestItem() {
+        this.controller.items.delete(TestExplorer.errorTestItemId);
+    }
+
+    private setErrorTestItem(errorDescription: string) {
+        this.deleteErrorTestItem();
+        if (this.controller.items.size === 0) {
+            const errorItem = this.controller.createTestItem(
+                TestExplorer.errorTestItemId,
+                "Test Discovery Error"
+            );
+            errorItem.error = errorDescription;
+            this.controller.items.add(errorItem);
         }
     }
 }

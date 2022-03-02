@@ -37,23 +37,6 @@ export class SwiftOutputChannel {
         console.log(line);
     }
 
-    error(error: unknown, message?: string, label?: string) {
-        const stdError = error as { stderr: string };
-        let prefix: string;
-        if (message !== undefined) {
-            prefix = `${message}: `;
-        } else {
-            prefix = "";
-        }
-        if (stdError) {
-            this.log(`${prefix}${stdError.stderr}`, label);
-        } else if (error instanceof Error) {
-            this.log(`${prefix}${error.toString()}`, label);
-        } else {
-            this.log(`${prefix}${JSON.stringify(error)}`, label);
-        }
-    }
-
     logStart(message: string, label?: string) {
         let fullMessage: string;
         if (label !== undefined) {

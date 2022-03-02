@@ -108,19 +108,6 @@ export class LSPTestDiscovery {
         this.functions = functions;
 
         this.addTestItemsToTarget(targetItem);
-        // add functions that didn't exist before
-        /*for (const f of functions) {
-            const classId = `${this.targetName}.${f.className}`;
-            const classItem = targetItem.children.get(classId);
-            if (!classItem) {
-                continue;
-            }
-            const funcId = `${this.targetName}.${f.className}/${f.funcName}`;
-            if (!classItem.children.get(funcId)) {
-                const item = this.controller.createTestItem(funcId, f.funcName);
-                classItem.children.add(item);
-            }
-        }*/
 
         // delete functions that are no longer here
         for (const f of deletedFunctions) {
