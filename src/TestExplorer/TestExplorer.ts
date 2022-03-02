@@ -114,10 +114,6 @@ export class TestExplorer {
             const { stdout } = await execSwift(["test", "--skip-build", "--list-tests"], {
                 cwd: this.folderContext.folder.fsPath,
             });
-            const results = stdout.match(/^.*\.[a-zA-Z0-9_]*\/[a-zA-Z0-9_]*$/gm);
-            if (!results) {
-                return;
-            }
 
             // get list of possible tests from the currently active file
             const uri = vscode.window.activeTextEditor?.document.uri;
@@ -128,6 +124,15 @@ export class TestExplorer {
                     this.controller
                 );
                 await this.lspFunctionParser.setActive();
+            }
+
+            // if we got to this point we can get rid of any error test item
+            this.deleteErrorTestItem();
+
+            // extract tests from `swift test --list-tests` output
+            const results = stdout.match(/^.*\.[a-zA-Z0-9_]*\/[a-zA-Z0-9_]*$/gm);
+            if (!results) {
+                return;
             }
 
             // remove TestItems that aren't in either of the above lists
@@ -152,9 +157,6 @@ export class TestExplorer {
                     }
                 });
             });
-
-            // if we got to this point we can get rid of any error test item
-            this.deleteErrorTestItem();
 
             for (const result of results) {
                 // Regex "<testTarget>.<class>/<function>"
@@ -184,7 +186,16 @@ export class TestExplorer {
             this.lspFunctionParser?.addTestItems();
         } catch (error) {
             const errorDescription = getErrorDescription(error);
-            this.setErrorTestItem(errorDescription);
+            if (
+                (process.platform === "darwin" &&
+                    errorDescription.match(/error: unableToLoadBundle/)) ||
+                (process.platform !== "darwin" &&
+                    errorDescription.match(/No such file or directory/))
+            ) {
+                this.setErrorTestItem("Test Discovery requires that you build your project");
+            } else {
+                this.setErrorTestItem(errorDescription);
+            }
             this.folderContext.workspaceContext.outputChannel.log(
                 `Test Discovery Failed: ${errorDescription}`,
                 this.folderContext.name
@@ -201,13 +212,10 @@ export class TestExplorer {
      * Add/replace a TestItem with an error, if test controller currently has no TestItems
      * @param errorDescription Error description to display
      */
-    private setErrorTestItem(errorDescription: string) {
+    private setErrorTestItem(errorDescription: string, title = "Test Discovery Error") {
         this.deleteErrorTestItem();
         if (this.controller.items.size === 0) {
-            const errorItem = this.controller.createTestItem(
-                TestExplorer.errorTestItemId,
-                "Test Discovery Error"
-            );
+            const errorItem = this.controller.createTestItem(TestExplorer.errorTestItemId, title);
             errorItem.error = errorDescription;
             this.controller.items.add(errorItem);
         }
