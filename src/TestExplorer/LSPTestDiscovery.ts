@@ -156,25 +156,30 @@ export class LSPTestDiscovery {
     async lspGetFunctionList(uri: vscode.Uri): Promise<LSPFunction[]> {
         const results: LSPFunction[] = [];
 
-        const symbols = await getFileSymbols(
-            uri,
-            this.folderContext.workspaceContext.languageClientManager
-        );
-        if (!symbols) {
+        try {
+            const symbols = await getFileSymbols(
+                uri,
+                this.folderContext.workspaceContext.languageClientManager
+            );
+            if (!symbols) {
+                return [];
+            }
+            const classes = symbols.filter(item => item.kind === langclient.SymbolKind.Class);
+            classes.forEach(c => {
+                const testFunctions = c.children?.filter(
+                    child =>
+                        child.kind === langclient.SymbolKind.Method &&
+                        child.name.match(/^test.*\(\)/)
+                );
+                testFunctions?.forEach(func => {
+                    // drop "()" from function name
+                    results.push({ className: c.name, funcName: func.name.slice(0, -2) });
+                });
+            });
+            return results;
+        } catch {
             return [];
         }
-        const classes = symbols.filter(item => item.kind === langclient.SymbolKind.Class);
-        classes.forEach(c => {
-            const testFunctions = c.children?.filter(
-                child =>
-                    child.kind === langclient.SymbolKind.Method && child.name.match(/^test.*\(\)/)
-            );
-            testFunctions?.forEach(func => {
-                // drop "()" from function name
-                results.push({ className: c.name, funcName: func.name.slice(0, -2) });
-            });
-        });
-        return results;
     }
 
     /**
