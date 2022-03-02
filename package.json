@@ -143,6 +143,11 @@
               "verbose"
             ],
             "description": "Traces the communication between VS Code and the SourceKit-LSP language server."
+          },
+          "swiftpm.testDiscovery.always": {
+            "type": "boolean",
+            "default": true,
+            "description": "Always enable test discovery for Swift packages on non-Darwin platforms."
           }
         }
       }

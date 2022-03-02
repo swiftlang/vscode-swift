@@ -17,7 +17,7 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
-import { getSwiftExecutable } from "./utilities/utilities";
+import { getSwiftExecutable, testDiscoveryFlag } from "./utilities/utilities";
 
 /**
  * References:
@@ -48,11 +48,8 @@ function win32BuildOptions(): string[] {
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
-function createBuildAllTask(folderContext: FolderContext): vscode.Task {
-    const additionalArgs: string[] = [];
-    if (process.platform !== "darwin") {
-        additionalArgs.push("--enable-test-discovery");
-    }
+async function createBuildAllTask(folderContext: FolderContext): Promise<vscode.Task> {
+    const additionalArgs: string[] = await testDiscoveryFlag(folderContext);
     if (process.platform === "win32") {
         additionalArgs.push(...win32BuildOptions());
     }
@@ -192,7 +189,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             if (!folderContext.swiftPackage.foundPackage) {
                 continue;
             }
-            tasks.push(createBuildAllTask(folderContext));
+            tasks.push(await createBuildAllTask(folderContext));
             const executables = folderContext.swiftPackage.executableProducts;
             for (const executable of executables) {
                 tasks.push(...createBuildTasks(executable, folderContext));

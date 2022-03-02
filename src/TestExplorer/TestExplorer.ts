@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
-import { execSwift } from "../utilities/utilities";
+import { execSwift, testDiscoveryFlag } from "../utilities/utilities";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { TestRunner } from "./TestRunner";
 
@@ -84,9 +84,13 @@ export class TestExplorer {
      */
     async discoverTestsInWorkspace() {
         try {
-            const { stdout } = await execSwift(["test", "--skip-build", "--list-tests"], {
-                cwd: this.folderContext.folder.fsPath,
-            });
+            const enableTestDiscovery = await testDiscoveryFlag(this.folderContext);
+            const { stdout } = await execSwift(
+                ["test", "--skip-build", "--list-tests", ...enableTestDiscovery],
+                {
+                    cwd: this.folderContext.folder.fsPath,
+                }
+            );
             // get list of tests
             const results = stdout.match(/^.*\.[a-zA-Z0-9_]*\/[a-zA-Z0-9_]*$/gm);
             if (!results) {
