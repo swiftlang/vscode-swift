@@ -181,6 +181,11 @@ export async function getXCTestPath(): Promise<string> {
  * @returns SwiftPM flag for enabling test discovery
  */
 export async function testDiscoveryFlag(ctx: FolderContext): Promise<string[]> {
+    // Test discovery is only available in SwiftPM 5.1 and later.
+    if (ctx.workspaceContext.swiftVersion.isLessThan(new Version(5, 1, 0))) {
+        return [];
+    }
+    // Test discovery is always enabled on Darwin.
     if (process.platform !== "darwin" && ctx.swiftPackage.getTargets("test").length > 0) {
         const alwaysDiscoverTests = vscode.workspace
             .getConfiguration("swiftpm")

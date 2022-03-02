@@ -147,7 +147,7 @@
           "swiftpm.testDiscovery.always": {
             "type": "boolean",
             "default": true,
-            "description": "Always enable test discovery for Swift packages on non-Darwin platforms."
+            "description": "Always enable test discovery for Swift packages on non-Darwin platforms.  Requires Swift 5.1 or later."
           }
         }
       }
