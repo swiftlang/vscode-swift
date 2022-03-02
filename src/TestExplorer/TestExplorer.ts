@@ -172,6 +172,10 @@ export class TestExplorer {
                 const item = this.controller.createTestItem(result, groups[3]);
                 classItem.children.add(item);
             }
+
+            // add items to target test item as the setActive call above may not have done this
+            // because the test target item did not exist when it was called
+            this.lspFunctionParser?.addTestItems();
         } catch (error) {
             this.folderContext.workspaceContext.outputChannel.error(
                 error,

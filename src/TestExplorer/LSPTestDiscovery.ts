@@ -72,25 +72,10 @@ export class LSPTestDiscovery {
         if (!this.targetName) {
             return;
         }
-        const targetItem = this.controller.items.get(this.targetName);
-        if (!targetItem) {
-            return;
-        }
         this.functions = await this.lspGetFunctionList(this.uri);
 
-        // add functions that didn't exist before
-        for (const f of this.functions) {
-            const classId = `${this.targetName}.${f.className}`;
-            const classItem = targetItem.children.get(classId);
-            if (!classItem) {
-                continue;
-            }
-            const funcId = `${this.targetName}.${f.className}/${f.funcName}`;
-            if (!classItem.children.get(funcId)) {
-                const item = this.controller.createTestItem(funcId, f.funcName);
-                classItem.children.add(item);
-            }
-        }
+        // add functions to target test item if it exists
+        this.addTestItems();
     }
 
     /**
@@ -122,8 +107,9 @@ export class LSPTestDiscovery {
         });
         this.functions = functions;
 
+        this.addTestItemsToTarget(targetItem);
         // add functions that didn't exist before
-        for (const f of functions) {
+        /*for (const f of functions) {
             const classId = `${this.targetName}.${f.className}`;
             const classItem = targetItem.children.get(classId);
             if (!classItem) {
@@ -134,7 +120,7 @@ export class LSPTestDiscovery {
                 const item = this.controller.createTestItem(funcId, f.funcName);
                 classItem.children.add(item);
             }
-        }
+        }*/
 
         // delete functions that are no longer here
         for (const f of deletedFunctions) {
@@ -145,6 +131,34 @@ export class LSPTestDiscovery {
             }
             const funcId = `${this.targetName}.${f.className}/${f.funcName}`;
             classItem.children.delete(funcId);
+        }
+    }
+
+    addTestItems() {
+        if (!this.targetName) {
+            return;
+        }
+        const targetItem = this.controller.items.get(this.targetName);
+        if (!targetItem) {
+            return;
+        }
+        this.addTestItemsToTarget(targetItem);
+    }
+
+    private addTestItemsToTarget(targetItem: vscode.TestItem) {
+        const targetName = targetItem.id;
+        // add functions that didn't exist before
+        for (const f of this.functions) {
+            const classId = `${targetName}.${f.className}`;
+            const classItem = targetItem.children.get(classId);
+            if (!classItem) {
+                continue;
+            }
+            const funcId = `${targetName}.${f.className}/${f.funcName}`;
+            if (!classItem.children.get(funcId)) {
+                const item = this.controller.createTestItem(funcId, f.funcName);
+                classItem.children.add(item);
+            }
         }
     }
 
@@ -166,7 +180,7 @@ export class LSPTestDiscovery {
         classes.forEach(c => {
             const testFunctions = c.children?.filter(
                 child =>
-                    child.kind === langclient.SymbolKind.Method && child.name.match(/^test.*\(\)$/)
+                    child.kind === langclient.SymbolKind.Method && child.name.match(/^test.*\(\)/)
             );
             testFunctions?.forEach(func => {
                 // drop "()" from function name
