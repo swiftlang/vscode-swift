@@ -60,6 +60,7 @@ export async function activate(context: vscode.ExtensionContext) {
         treeDataProvider: dependenciesProvider,
         showCollapseAll: true,
     });
+    dependenciesProvider.observeFolders(dependenciesView);
 
     // observer that will resolve package and build launch configurations
     const resolvePackageObserver = workspaceContext.observeFolders(async (folder, event) => {
