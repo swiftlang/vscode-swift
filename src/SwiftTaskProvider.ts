@@ -17,7 +17,7 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
-import { getSwiftExecutable, pathExists } from "./utilities/utilities";
+import { getSwiftExecutable } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 
 /**
@@ -41,23 +41,18 @@ interface TaskConfig {
     prefix?: string;
 }
 
-/** arguments for generating windows debug builds */
-function win32BuildOptions(): string[] {
-    return ["-Xswiftc", "-g", "-Xswiftc", "-use-ld=lld", "-Xlinker", "-debug:dwarf"];
-}
-
-/** SwiftPM flag for enabling test discovery */
-export async function testDiscoveryFlag(ctx: FolderContext): Promise<string[]> {
+/** flag for enabling test discovery */
+function testDiscoveryFlag(ctx: FolderContext): string[] {
     // Test discovery is only available in SwiftPM 5.1 and later.
     if (ctx.workspaceContext.swiftVersion.isLessThan(new Version(5, 1, 0))) {
         return [];
     }
     // Test discovery is always enabled on Darwin.
-    if (process.platform !== "darwin" && ctx.swiftPackage.getTargets("test").length > 0) {
+    if (process.platform !== "darwin") {
         const alwaysDiscoverTests = vscode.workspace
             .getConfiguration("swiftpm")
             .get<boolean>("testDiscovery.always", true);
-        const hasLinuxMain = await pathExists(ctx.folder.fsPath, "Tests", "LinuxMain.swift");
+        const hasLinuxMain = ctx.hasLinuxMain;
         const testDiscoveryByDefault = ctx.workspaceContext.swiftVersion.isGreaterThanOrEqual(
             new Version(5, 4, 0)
         );
@@ -68,11 +63,19 @@ export async function testDiscoveryFlag(ctx: FolderContext): Promise<string[]> {
     return [];
 }
 
+/** arguments for generating windows debug builds */
+function win32BuildOptions(): string[] {
+    return ["-Xswiftc", "-g", "-Xswiftc", "-use-ld=lld", "-Xlinker", "-debug:dwarf"];
+}
+
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
-async function createBuildAllTask(folderContext: FolderContext): Promise<vscode.Task> {
-    const additionalArgs: string[] = await testDiscoveryFlag(folderContext);
+function createBuildAllTask(folderContext: FolderContext): vscode.Task {
+    const additionalArgs: string[] = [];
+    if (folderContext.swiftPackage.getTargets("test").length > 0) {
+        additionalArgs.push(...testDiscoveryFlag(folderContext));
+    }
     if (process.platform === "win32") {
         additionalArgs.push(...win32BuildOptions());
     }
@@ -212,7 +215,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             if (!folderContext.swiftPackage.foundPackage) {
                 continue;
             }
-            tasks.push(await createBuildAllTask(folderContext));
+            tasks.push(createBuildAllTask(folderContext));
             const executables = folderContext.swiftPackage.executableProducts;
             for (const executable of executables) {
                 tasks.push(...createBuildTasks(executable, folderContext));

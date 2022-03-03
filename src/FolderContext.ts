@@ -14,12 +14,14 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
+import { LinuxMain } from "./LinuxMain";
 import { PackageWatcher } from "./PackageWatcher";
 import { SwiftPackage } from "./SwiftPackage";
-import { WorkspaceContext, FolderEvent } from "./WorkspaceContext";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
+import { WorkspaceContext, FolderEvent } from "./WorkspaceContext";
 
 export class FolderContext implements vscode.Disposable {
+    private linuxMain?: LinuxMain;
     private packageWatcher?: PackageWatcher;
     public hasResolveErrors = false;
     public testExplorer?: TestExplorer;
@@ -36,12 +38,14 @@ export class FolderContext implements vscode.Disposable {
         public workspaceFolder: vscode.WorkspaceFolder,
         public workspaceContext: WorkspaceContext
     ) {
+        this.linuxMain = new LinuxMain(this);
         this.packageWatcher = new PackageWatcher(this, workspaceContext);
         this.packageWatcher.install();
     }
 
     /** dispose of any thing FolderContext holds */
     dispose() {
+        this.linuxMain?.dispose();
         this.packageWatcher?.dispose();
         this.testExplorer?.dispose();
     }
@@ -78,6 +82,10 @@ export class FolderContext implements vscode.Disposable {
 
     get relativePath(): string {
         return path.relative(this.workspaceFolder.uri.fsPath, this.folder.fsPath);
+    }
+
+    get hasLinuxMain(): boolean {
+        return this.linuxMain?.exists ?? false;
     }
 
     /** reload swift package for this folder */
