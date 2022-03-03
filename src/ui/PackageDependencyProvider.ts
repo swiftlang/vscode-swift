@@ -97,7 +97,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
     private didChangeTreeDataEmitter = new vscode.EventEmitter<
         TreeNode | undefined | null | void
     >();
-    private workspaceObserver: vscode.Disposable;
+    private workspaceObserver?: vscode.Disposable;
 
     onDidChangeTreeData = this.didChangeTreeDataEmitter.event;
 
@@ -105,16 +105,24 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
         // default context key to false. These will be updated as folders are given focus
         contextKeys.hasPackage = false;
         contextKeys.packageHasDependencies = false;
+    }
 
+    dispose() {
+        this.workspaceObserver?.dispose();
+    }
+
+    observeFolders(treeView: vscode.TreeView<TreeNode>) {
         this.workspaceObserver = this.workspaceContext.observeFolders((folder, event) => {
             switch (event) {
                 case FolderEvent.focus:
                     if (!folder) {
                         return;
                     }
+                    treeView.title = `Package Dependencies (${folder.name})`;
                     this.updateView(folder);
                     break;
                 case FolderEvent.unfocus:
+                    treeView.title = `Package Dependencies`;
                     this.updateView(undefined);
                     break;
                 case FolderEvent.resolvedUpdated:
@@ -126,10 +134,6 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                     }
             }
         });
-    }
-
-    dispose() {
-        this.workspaceObserver.dispose();
     }
 
     updateView(folderContext?: FolderContext) {
