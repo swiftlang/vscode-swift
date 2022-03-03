@@ -258,16 +258,10 @@
           "id": "packageDependencies",
           "name": "Package Dependencies",
           "icon": "$(archive)",
-          "when": "swift.packageHasDependencies"
+          "when": "swift.hasPackage"
         }
       ]
-    },
-    "viewsWelcome": [
-      {
-        "view": "packageDependencies",
-        "contents": "..."
-      }
-    ]
+    }
   },
   "extensionDependencies": [
     "vadimcn.vscode-lldb"
