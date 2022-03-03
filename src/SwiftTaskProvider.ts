@@ -17,7 +17,8 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
-import { getSwiftExecutable, testDiscoveryFlag } from "./utilities/utilities";
+import { getSwiftExecutable, pathExists } from "./utilities/utilities";
+import { Version } from "./utilities/version";
 
 /**
  * References:
@@ -43,6 +44,28 @@ interface TaskConfig {
 /** arguments for generating windows debug builds */
 function win32BuildOptions(): string[] {
     return ["-Xswiftc", "-g", "-Xswiftc", "-use-ld=lld", "-Xlinker", "-debug:dwarf"];
+}
+
+/** SwiftPM flag for enabling test discovery */
+export async function testDiscoveryFlag(ctx: FolderContext): Promise<string[]> {
+    // Test discovery is only available in SwiftPM 5.1 and later.
+    if (ctx.workspaceContext.swiftVersion.isLessThan(new Version(5, 1, 0))) {
+        return [];
+    }
+    // Test discovery is always enabled on Darwin.
+    if (process.platform !== "darwin" && ctx.swiftPackage.getTargets("test").length > 0) {
+        const alwaysDiscoverTests = vscode.workspace
+            .getConfiguration("swiftpm")
+            .get<boolean>("testDiscovery.always", true);
+        const hasLinuxMain = await pathExists(ctx.folder.fsPath, "Tests", "LinuxMain.swift");
+        const testDiscoveryByDefault = ctx.workspaceContext.swiftVersion.isGreaterThanOrEqual(
+            new Version(5, 4, 0)
+        );
+        if ((hasLinuxMain && alwaysDiscoverTests) || (!hasLinuxMain && !testDiscoveryByDefault)) {
+            return ["--enable-test-discovery"];
+        }
+    }
+    return [];
 }
 
 /**

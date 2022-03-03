@@ -16,10 +16,7 @@ import * as cp from "child_process";
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as plist from "plist";
-import * as vscode from "vscode";
 import configuration from "../configuration";
-import { FolderContext } from "../FolderContext";
-import { Version } from "./version";
 
 /**
  * Asynchronous wrapper around {@link cp.exec child_process.exec}.
@@ -175,28 +172,4 @@ export async function getXCTestPath(): Promise<string> {
         throw Error("Info.plist is missing the XCTEST_VERSION key.");
     }
     return path.join(platformPath, "Developer", "Library", `XCTest-${version}`, "usr", "bin");
-}
-
-/**
- * @returns SwiftPM flag for enabling test discovery
- */
-export async function testDiscoveryFlag(ctx: FolderContext): Promise<string[]> {
-    // Test discovery is only available in SwiftPM 5.1 and later.
-    if (ctx.workspaceContext.swiftVersion.isLessThan(new Version(5, 1, 0))) {
-        return [];
-    }
-    // Test discovery is always enabled on Darwin.
-    if (process.platform !== "darwin" && ctx.swiftPackage.getTargets("test").length > 0) {
-        const alwaysDiscoverTests = vscode.workspace
-            .getConfiguration("swiftpm")
-            .get<boolean>("testDiscovery.always", true);
-        const hasLinuxMain = await pathExists(ctx.folder.fsPath, "Tests", "LinuxMain.swift");
-        const testDiscoveryByDefault = ctx.workspaceContext.swiftVersion.isGreaterThanOrEqual(
-            new Version(5, 4, 0)
-        );
-        if ((hasLinuxMain && alwaysDiscoverTests) || (!hasLinuxMain && !testDiscoveryByDefault)) {
-            return ["--enable-test-discovery"];
-        }
-    }
-    return [];
 }
