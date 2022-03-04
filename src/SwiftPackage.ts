@@ -125,7 +125,8 @@ export class SwiftPackage implements PackageContents {
             // if caught error and it begins with "error: root manifest" then there is no Package.swift
             if (
                 execError.stderr !== undefined &&
-                execError.stderr.startsWith("error: root manifest")
+                (execError.stderr.startsWith("error: root manifest") ||
+                    execError.stderr.startsWith("error: Could not find Package.swift"))
             ) {
                 return undefined;
             } else {
