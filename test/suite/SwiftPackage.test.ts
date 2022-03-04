@@ -14,7 +14,7 @@
 
 import * as assert from "assert";
 import { testAssetUri } from "../fixtures";
-import { SwiftPackage } from "../../SwiftPackage";
+import { SwiftPackage } from "../../src/SwiftPackage";
 
 suite("SwiftPackage Test Suite", () => {
     test("No package", async () => {

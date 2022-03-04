@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as assert from "assert";
-import { Version } from "../../utilities/version";
+import { Version } from "../../src/utilities/version";
 
 suite("Version Test Suite", () => {
     test("parseVersion", () => {
