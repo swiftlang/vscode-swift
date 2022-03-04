@@ -274,7 +274,7 @@
     "compile": "tsc",
     "watch": "tsc --watch",
     "lint": "eslint ./ --ext ts && tsc --noEmit",
-    "format": "prettier --check ./ **/*.json",
+    "format": "prettier --check src test",
     "pretest": "npm run compile && npm run lint",
     "test": "tsc -p ./ && node ./out/test/runTest.js",
     "package": "vsce package",
