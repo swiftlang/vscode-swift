@@ -12,8 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-'use strict';
-import * as langclient from 'vscode-languageclient/node';
+import * as langclient from "vscode-languageclient/node";
 
 // Definitions for non-standard requests used by sourcekit-lsp
 
@@ -56,4 +55,6 @@ export interface InlayHint {
     label: string;
 }
 
-export const inlayHintsRequest = new langclient.RequestType<InlayHintsParams, InlayHint[], unknown>('sourcekit-lsp/inlayHints');
+export const inlayHintsRequest = new langclient.RequestType<InlayHintsParams, InlayHint[], unknown>(
+    "sourcekit-lsp/inlayHints"
+);
