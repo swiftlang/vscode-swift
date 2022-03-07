@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-"use strict";
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 import { InlayHint, InlayHintsParams, inlayHintsRequest } from "./lspExtensions";

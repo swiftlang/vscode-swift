@@ -273,10 +273,10 @@
     "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
     "compile": "tsc",
     "watch": "tsc --watch",
-    "lint": "eslint src --ext ts && tsc --noEmit",
-    "format": "prettier --check src **/*.json",
+    "lint": "eslint ./ --ext ts && tsc --noEmit",
+    "format": "prettier --check src test",
     "pretest": "npm run compile && npm run lint",
-    "test": "node ./out/test/runTest.js",
+    "test": "tsc -p ./ && node ./out/test/runTest.js",
     "package": "vsce package",
     "dev-package": "vsce package -o swift-lang-development.vsix"
   },
