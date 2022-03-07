@@ -30,6 +30,10 @@ export class Version {
         return undefined;
     }
 
+    toString(): string {
+        return `${this.major}.${this.minor}.${this.patch}`;
+    }
+
     isLessThan(rhs: Version): boolean {
         if (this.major < rhs.major) {
             return true;
