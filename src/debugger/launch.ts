@@ -27,10 +27,6 @@ export async function makeDebugConfigurations(ctx: FolderContext) {
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
 
     const configs = createExecutableConfigurations(ctx);
-    const testConfig = await createTestConfiguration(ctx);
-    if (testConfig) {
-        configs.push(testConfig);
-    }
     let edited = false;
     for (const config of configs) {
         const index = launchConfigs.findIndex(c => c.name === config.name);
