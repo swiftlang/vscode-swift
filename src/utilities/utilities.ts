@@ -134,6 +134,22 @@ export function isPathInsidePath(subfolder: string, folder: string): boolean {
 }
 
 /**
+ * Return string description of Error object
+ * @param error Error object
+ * @returns String description of error
+ */
+export function getErrorDescription(error: unknown): string {
+    const stdError = error as { stderr: string };
+    if (stdError) {
+        return stdError.stderr;
+    } else if (error instanceof Error) {
+        return error.toString();
+    } else {
+        return JSON.stringify(error);
+    }
+}
+
+/**
  * @returns path to Xcode developer folder
  */
 export async function getXcodePath(): Promise<string | undefined> {

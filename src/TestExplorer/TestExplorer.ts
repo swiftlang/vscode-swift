@@ -14,13 +14,16 @@
 
 import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
-import { execSwift } from "../utilities/utilities";
+import { execSwift, getErrorDescription, isPathInsidePath } from "../utilities/utilities";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { TestRunner } from "./TestRunner";
+import { LSPTestDiscovery } from "./LSPTestDiscovery";
 
 /** Build test explorer UI */
 export class TestExplorer {
+    static errorTestItemId = "#Error#";
     public controller: vscode.TestController;
+    private lspFunctionParser?: LSPTestDiscovery;
     private subscriptions: { dispose(): unknown }[];
 
     constructor(public folderContext: FolderContext) {
@@ -54,7 +57,30 @@ export class TestExplorer {
             }
         });
 
-        this.subscriptions = [onDidEndTask, this.controller];
+        const onDidSaveDocument = vscode.workspace.onDidSaveTextDocument(event => {
+            this.lspFunctionParser?.onDidSave(event.uri);
+        });
+        const onDidChangeActiveWindow = vscode.window.onDidChangeActiveTextEditor(async editor => {
+            const uri = editor?.document?.uri;
+            if (!uri || this.lspFunctionParser?.uri === uri) {
+                return;
+            }
+            if (isPathInsidePath(uri.fsPath, this.folderContext.folder.fsPath)) {
+                this.lspFunctionParser = new LSPTestDiscovery(
+                    uri,
+                    this.folderContext,
+                    this.controller
+                );
+                await this.lspFunctionParser.setActive();
+            }
+        });
+
+        this.subscriptions = [
+            onDidSaveDocument,
+            onDidChangeActiveWindow,
+            onDidEndTask,
+            this.controller,
+        ];
     }
 
     dispose() {
@@ -84,21 +110,44 @@ export class TestExplorer {
      */
     async discoverTestsInWorkspace() {
         try {
+            // get list of tests from `swift test --list-tests`
             const { stdout } = await execSwift(["test", "--skip-build", "--list-tests"], {
                 cwd: this.folderContext.folder.fsPath,
             });
-            // get list of tests
+
+            // get list of possible tests from the currently active file
+            const uri = vscode.window.activeTextEditor?.document.uri;
+            if (uri) {
+                this.lspFunctionParser = new LSPTestDiscovery(
+                    uri,
+                    this.folderContext,
+                    this.controller
+                );
+                await this.lspFunctionParser.setActive();
+            }
+
+            // if we got to this point we can get rid of any error test item
+            this.deleteErrorTestItem();
+
+            // extract tests from `swift test --list-tests` output
             const results = stdout.match(/^.*\.[a-zA-Z0-9_]*\/[a-zA-Z0-9_]*$/gm);
             if (!results) {
                 return;
             }
 
-            // remove item that aren't in result list
+            // remove TestItems that aren't in either of the above lists
             this.controller.items.forEach(targetItem => {
                 targetItem.children.forEach(classItem => {
                     classItem.children.forEach(funcItem => {
                         const testName = `${targetItem.label}.${classItem.label}/${funcItem.label}`;
-                        if (!results.find(item => item === testName)) {
+                        if (
+                            !results.find(item => item === testName) &&
+                            !this.lspFunctionParser?.includesFunction(
+                                targetItem.label,
+                                classItem.label,
+                                funcItem.label
+                            )
+                        ) {
                             classItem.children.delete(funcItem.id);
                         }
                     });
@@ -131,12 +180,44 @@ export class TestExplorer {
                 const item = this.controller.createTestItem(result, groups[3]);
                 classItem.children.add(item);
             }
+
+            // add items to target test item as the setActive call above may not have done this
+            // because the test target item did not exist when it was called
+            this.lspFunctionParser?.addTestItems();
         } catch (error) {
-            this.folderContext.workspaceContext.outputChannel.error(
-                error,
-                "Test Discovery Failed",
+            const errorDescription = getErrorDescription(error);
+            if (
+                (process.platform === "darwin" &&
+                    errorDescription.match(/error: unableToLoadBundle/)) ||
+                (process.platform !== "darwin" &&
+                    errorDescription.match(/No such file or directory/))
+            ) {
+                this.setErrorTestItem("Build the project to enable test discovery.");
+            } else {
+                this.setErrorTestItem(errorDescription);
+            }
+            this.folderContext.workspaceContext.outputChannel.log(
+                `Test Discovery Failed: ${errorDescription}`,
                 this.folderContext.name
             );
+        }
+    }
+
+    /** Delete TestItem with error id */
+    private deleteErrorTestItem() {
+        this.controller.items.delete(TestExplorer.errorTestItemId);
+    }
+
+    /**
+     * Add/replace a TestItem with an error, if test controller currently has no TestItems
+     * @param errorDescription Error description to display
+     */
+    private setErrorTestItem(errorDescription: string, title = "Test Discovery Error") {
+        this.deleteErrorTestItem();
+        if (this.controller.items.size === 0) {
+            const errorItem = this.controller.createTestItem(TestExplorer.errorTestItemId, title);
+            errorItem.error = errorDescription;
+            this.controller.items.add(errorItem);
         }
     }
 }
