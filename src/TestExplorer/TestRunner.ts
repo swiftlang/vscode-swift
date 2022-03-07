@@ -132,23 +132,27 @@ export class TestRunner {
             .then(
                 started => {
                     if (started) {
-                        vscode.debug.onDidTerminateDebugSession(async () => {
-                            try {
-                                const debugOutput = await fs.readFile(testOutputPath, {
-                                    encoding: "utf8",
-                                });
-                                this.testRun.appendOutput(debugOutput.replace(/\n/g, "\r\n"));
-                                if (process.platform === "darwin") {
-                                    this.parseResultDarwin(debugOutput);
-                                } else {
-                                    this.parseResultNonDarwin(debugOutput);
+                        const terminateSession = vscode.debug.onDidTerminateDebugSession(
+                            async () => {
+                                try {
+                                    const debugOutput = await fs.readFile(testOutputPath, {
+                                        encoding: "utf8",
+                                    });
+                                    this.testRun.appendOutput(debugOutput.replace(/\n/g, "\r\n"));
+                                    if (process.platform === "darwin") {
+                                        this.parseResultDarwin(debugOutput);
+                                    } else {
+                                        this.parseResultNonDarwin(debugOutput);
+                                    }
+                                    await fs.rm(testOutputPath);
+                                } catch {
+                                    // ignore error
                                 }
-                                await fs.rm(testOutputPath);
-                            } catch {
-                                // ignore error
+                                this.testRun.end();
+                                // dispose terminate debug handler
+                                terminateSession.dispose();
                             }
-                            this.testRun.end();
-                        });
+                        );
                     } else {
                         this.testRun.end();
                     }
