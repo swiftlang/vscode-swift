@@ -142,14 +142,19 @@ export class LanguageClientManager {
             this.currentWorkspaceFolder = uri;
             this.inlayHints?.dispose();
             this.inlayHints = undefined;
-            if (!client) {
-                this.startedPromise = this.setupLanguageClient(uri);
-            } else {
+            if (client) {
                 this.cancellationToken?.cancel();
                 this.cancellationToken?.dispose();
-                this.startedPromise = client
-                    .stop()
-                    .then(async () => await this.setupLanguageClient(uri));
+                this.startedPromise = client.stop().then(async () => {
+                    // change workspace folder and restart
+                    const workspaceFolder = {
+                        uri: uri,
+                        name: FolderContext.uriName(uri),
+                        index: 0,
+                    };
+                    client.clientOptions.workspaceFolder = workspaceFolder;
+                    await this.startClient(client);
+                });
             }
         }
     }
@@ -194,35 +199,7 @@ export class LanguageClientManager {
 
     private async setupLanguageClient(folder?: vscode.Uri): Promise<void> {
         const client = await this.createLSPClient(folder);
-        client.start();
-
-        if (folder) {
-            this.workspaceContext.outputChannel.log(
-                `SourceKit-LSP setup for ${FolderContext.uriName(folder)}`
-            );
-        } else {
-            this.workspaceContext.outputChannel.log(`SourceKit-LSP setup`);
-        }
-
-        this.supportsDidChangedWatchedFiles = false;
-        this.languageClient = client;
-        this.cancellationToken = new vscode.CancellationTokenSource();
-
-        return new Promise<void>((resolve, reject) => {
-            client
-                .onReady()
-                .then(() => {
-                    this.inlayHints = activateInlayHints(client);
-                    resolve();
-                })
-                .catch(reason => {
-                    this.workspaceContext.outputChannel.log(`${reason}`);
-                    // if language client failed to initialise then shutdown and set to undefined
-                    this.languageClient?.stop();
-                    this.languageClient = undefined;
-                    reject(reason);
-                });
-        });
+        await this.startClient(client);
     }
 
     private async createLSPClient(folder?: vscode.Uri): Promise<langclient.LanguageClient> {
@@ -268,6 +245,39 @@ export class LanguageClientManager {
             serverOptions,
             clientOptions
         );
+    }
+
+    private async startClient(client: langclient.LanguageClient) {
+        client.start();
+
+        if (client.clientOptions.workspaceFolder) {
+            this.workspaceContext.outputChannel.log(
+                `SourceKit-LSP setup for ${FolderContext.uriName(
+                    client.clientOptions.workspaceFolder.uri
+                )}`
+            );
+        } else {
+            this.workspaceContext.outputChannel.log(`SourceKit-LSP setup`);
+        }
+
+        this.languageClient = client;
+        this.cancellationToken = new vscode.CancellationTokenSource();
+
+        return new Promise<void>((resolve, reject) => {
+            client
+                .onReady()
+                .then(() => {
+                    this.inlayHints = activateInlayHints(client);
+                    resolve();
+                })
+                .catch(reason => {
+                    this.workspaceContext.outputChannel.log(`${reason}`);
+                    // if language client failed to initialise then shutdown and set to undefined
+                    this.languageClient?.stop();
+                    this.languageClient = undefined;
+                    reject(reason);
+                });
+        });
     }
 }
 
