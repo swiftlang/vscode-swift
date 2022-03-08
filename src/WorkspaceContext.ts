@@ -77,7 +77,6 @@ export class WorkspaceContext implements vscode.Disposable {
     }
 
     dispose() {
-        this.tempFolder.dispose();
         this.folders.forEach(f => f.dispose());
         this.onChangeConfig.dispose();
         this.languageClientManager.dispose();

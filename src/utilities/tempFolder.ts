@@ -20,10 +20,6 @@ import { randomString } from "./utilities";
 export class TemporaryFolder {
     private constructor(public path: string) {}
 
-    dispose() {
-        fs.rmdir(this.path, { recursive: true });
-    }
-
     /**
      * Return random filename inside temporary folder
      * @param prefix Prefix of file
