@@ -28,7 +28,7 @@ services:
 
   test:
     <<: *common
-    command: /bin/bash -xcl "npm install && npm run test"
+    command: /bin/bash -xcl "npm ci && xvfb-run -a npm test"
 
   # util
 
