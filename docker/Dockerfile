@@ -13,8 +13,18 @@ ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US.UTF-8
 
 # dependencies
-RUN apt-get update && apt-get install -y wget curl
+RUN apt-get update && apt-get install -y curl
 
 # install NodeJS 17
-RUN curl -fsSL https://deb.nodesource.com/setup_17.x | bash -
-RUN apt-get install -y nodejs
+# Add the NodeSource package signing key
+ENV KEYRING /usr/share/keyrings/nodesource.gpg
+RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | gpg --dearmor | tee "$KEYRING" >/dev/null
+RUN gpg --no-default-keyring --keyring "$KEYRING" --list-keys
+# Add the desired NodeSource repository
+ENV VERSION node_17.x
+ENV DISTRO $ubuntu_version
+RUN echo "deb [signed-by=$KEYRING] https://deb.nodesource.com/$VERSION $DISTRO main" | tee /etc/apt/sources.list.d/nodesource.list
+RUN echo "deb-src [signed-by=$KEYRING] https://deb.nodesource.com/$VERSION $DISTRO main" | tee -a /etc/apt/sources.list.d/nodesource.list
+# Update package lists and install Node.js
+RUN apt-get update && apt-get install -y nodejs
+RUN npm --version
