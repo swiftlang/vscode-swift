@@ -192,7 +192,7 @@ async function runSingleFile(ctx: WorkspaceContext) {
     if (document.isUntitled) {
         // if document hasn't been saved, save it to a temporary file
         isTempFile = true;
-        filename = path.join(ctx.tempFolder.path, document.fileName);
+        filename = ctx.tempFolder.filename(document.fileName, "swift");
         const text = document.getText();
         await fs.writeFile(filename, text);
     } else {

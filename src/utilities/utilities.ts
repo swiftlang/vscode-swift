@@ -134,6 +134,15 @@ export function isPathInsidePath(subfolder: string, folder: string): boolean {
 }
 
 /**
+ * Return random string
+ * @param length Length of string to return (max 16)
+ * @returns Random string
+ */
+export function randomString(length = 8): string {
+    return Math.random().toString(16).substring(2, length);
+}
+
+/**
  * Return string description of Error object
  * @param error Error object
  * @returns String description of error

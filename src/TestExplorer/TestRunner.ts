@@ -106,18 +106,10 @@ export class TestRunner {
             return;
         }
 
-        // setup test output file
-        const testResultFile = "testOutput.txt";
-        const testOutputPath = path.join(
-            this.folderContext.workspaceContext.tempFolder.path,
-            testResultFile
+        const testOutputPath = this.folderContext.workspaceContext.tempFolder.filename(
+            "TestOutput",
+            "txt"
         );
-        try {
-            await fs.rm(testOutputPath);
-        } catch {
-            // ignore
-        }
-
         // create launch config for testing
         const testBuildConfig = await createTestConfiguration(this.folderContext);
         if (testBuildConfig === null) {
@@ -154,10 +146,12 @@ export class TestRunner {
                             }
                         );
                     } else {
+                        fs.rm(testOutputPath);
                         this.testRun.end();
                     }
                 },
                 reason => {
+                    fs.rm(testOutputPath);
                     this.testRun.appendOutput(reason);
                     this.testRun.end();
                 }
