@@ -49,14 +49,10 @@ async function testDiscoveryFlag(ctx: FolderContext): Promise<string[]> {
     }
     // Test discovery is always enabled on Darwin.
     if (process.platform !== "darwin") {
-        const alwaysDiscoverTests = vscode.workspace
-            .getConfiguration("swiftpm")
-            .get<boolean>("testDiscovery.always", true);
-        const hasLinuxMain = await ctx.hasLinuxMain;
         const testDiscoveryByDefault = ctx.workspaceContext.swiftVersion.isGreaterThanOrEqual(
             new Version(5, 4, 0)
         );
-        if ((hasLinuxMain && alwaysDiscoverTests) || (!hasLinuxMain && !testDiscoveryByDefault)) {
+        if (!testDiscoveryByDefault || (await ctx.hasLinuxMain)) {
             return ["--enable-test-discovery"];
         }
     }
