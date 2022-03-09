@@ -28,7 +28,7 @@ services:
 
   test:
     <<: *common
-    command: /bin/bash -xcl "mkdir /tmp/code && cp -r /* /tmp/code/ && cd /tmp/code && npm ci && npm run format && npm run compile && npm run package"
+    command: /bin/bash -xcl "mkdir /tmp/code && cp -r /code/* /tmp/code/ && cd /tmp/code && npm ci && npm run format && npm run compile && npm run package"
     #command: /bin/bash -xcl "npm ci && npm run format && npm run compile && npm run package"
 
   shell:
