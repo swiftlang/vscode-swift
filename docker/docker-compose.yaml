@@ -18,6 +18,8 @@ services:
       - ~/.ssh:/root/.ssh
       - ..:/code:z
     working_dir: /code
+    environment:
+      - NPM_CONFIG_PREFIX=/tmp/node_modules
     cap_drop:
       - CAP_NET_RAW
       - CAP_NET_BIND_SERVICE
