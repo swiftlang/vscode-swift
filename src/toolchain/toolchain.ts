@@ -33,14 +33,25 @@ export class SwiftToolchain {
         public swiftVersionString: string,
         public swiftVersion: Version,
         public toolchainPath?: string,
-        public developerDir?: string
+        public developerDir?: string,
+        public xcTestPath?: string
     ) {}
 
     static async create(): Promise<SwiftToolchain> {
         const version = await this.getSwiftVersion();
         const toolchainPath = await this.getToolchainPath();
         const developerDir = await this.getDeveloperDir();
-        return new SwiftToolchain(version.name, version.version, toolchainPath, developerDir);
+        let xcTestPath: string | undefined;
+        if (developerDir) {
+            xcTestPath = await this.getXCTestPath(developerDir);
+        }
+        return new SwiftToolchain(
+            version.name,
+            version.version,
+            toolchainPath,
+            developerDir,
+            xcTestPath
+        );
     }
 
     /**
@@ -77,31 +88,47 @@ export class SwiftToolchain {
                 }
 
                 case "win32": {
-                    const developerPath = process.env.DEVELOPER_DIR;
-                    if (!developerPath) {
+                    const developerDir = process.env.DEVELOPER_DIR;
+                    if (!developerDir) {
                         throw Error("Environment variable DEVELOPER_DIR is not set.");
                     }
-                    const platformPath = path.join(developerPath, "Platforms", "Windows.platform");
-                    const data = await fs.readFile(path.join(platformPath, "Info.plist"), "utf8");
-                    const infoPlist = plist.parse(data) as unknown as InfoPlist;
-                    const version = infoPlist.DefaultProperties.XCTEST_VERSION;
-                    if (!version) {
-                        throw Error("Info.plist is missing the XCTEST_VERSION key.");
-                    }
-                    return path.join(
-                        platformPath,
-                        "Developer",
-                        "Library",
-                        `XCTest-${version}`,
-                        "usr",
-                        "bin"
-                    );
+                    return developerDir;
                 }
             }
             return undefined;
         } catch {
             return undefined;
         }
+    }
+
+    /**
+     * @param developerDir Developer directory
+     * @returns Path to folder where xctest can be found
+     */
+    private static async getXCTestPath(developerDir: string): Promise<string | undefined> {
+        switch (process.platform) {
+            case "darwin":
+                return path.join(developerDir, "usr", "bin");
+
+            case "win32": {
+                const platformPath = path.join(developerDir, "Platforms", "Windows.platform");
+                const data = await fs.readFile(path.join(platformPath, "Info.plist"), "utf8");
+                const infoPlist = plist.parse(data) as unknown as InfoPlist;
+                const version = infoPlist.DefaultProperties.XCTEST_VERSION;
+                if (!version) {
+                    throw Error("Info.plist is missing the XCTEST_VERSION key.");
+                }
+                return path.join(
+                    platformPath,
+                    "Developer",
+                    "Library",
+                    `XCTest-${version}`,
+                    "usr",
+                    "bin"
+                );
+            }
+        }
+        return undefined;
     }
 
     /** Return swift version string returned by `swift --version` */

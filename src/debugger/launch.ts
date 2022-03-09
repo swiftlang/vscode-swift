@@ -117,15 +117,15 @@ export async function createTestConfiguration(
     if (process.platform === "darwin") {
         // On macOS, find the path to xctest
         // and point it at the .xctest bundle from the .build directory.
-        const xcodePath = ctx.workspaceContext.toolchain.developerDir;
-        if (xcodePath === undefined) {
+        const xctestPath = ctx.workspaceContext.toolchain.xcTestPath;
+        if (xctestPath === undefined) {
             return null;
         }
         return {
             type: "lldb",
             request: "launch",
             name: `Test ${ctx.swiftPackage.name}`,
-            program: `${xcodePath}/usr/bin/xctest`,
+            program: `${xctestPath}/xctest`,
             args: [`.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`],
             cwd: folder,
             preLaunchTask: `swift: Build All${nameSuffix}`,
@@ -143,7 +143,7 @@ export async function createTestConfiguration(
             program: `${folder}/.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
             cwd: folder,
             env: {
-                path: `${ctx.workspaceContext.toolchain.developerDir};\${env:PATH}`,
+                path: `${ctx.workspaceContext.toolchain.xcTestPath};\${env:PATH}`,
             },
             preLaunchTask: `swift: Build All${nameSuffix}`,
         };
