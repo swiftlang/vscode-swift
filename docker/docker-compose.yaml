@@ -28,9 +28,7 @@ services:
 
   test:
     <<: *common
-    environment:
-      - NODE_PATH=/tmp/node_modules
-    command: /bin/bash -xcl "npm ci && npm run format && npm run compile && npm run package"
+    command: /bin/bash -xcl "mkdir /tmp/node_modules && ln -s /tmp/node_modules node_modules && npm install && npm run format && npm run compile && npm run package"
 
 #command: /bin/bash -xcl "mkdir /tmp/node_modules && ln -s /tmp/node_modules node_modules && npm ci && npm run format && npm run compile && npm run package"
 
