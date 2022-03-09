@@ -28,9 +28,9 @@ services:
 
   test:
     <<: *common
-    command: /bin/bash -xcl "mkdir /tmp/node_modules && ln -s /tmp/node_modules node_modules && npm install && npm run format && npm run compile && npm run package"
-
-#command: /bin/bash -xcl "mkdir /tmp/node_modules && ln -s /tmp/node_modules node_modules && npm ci && npm run format && npm run compile && npm run package"
+    command: /bin/bash -xcl "mkdir /tmp/code && cp -r /* /tmp/code/ && cd /tmp/code && npm ci && npm run format && npm run compile && npm run package
+    
+#command: /bin/bash -xcl "npm ci && npm run format && npm run compile && npm run package"
 
   shell:
     <<: *common
