@@ -27,8 +27,10 @@ services:
     command: /bin/bash -xcl "./scripts/soundness.sh"
 
   test:
-    <<: *common  
-    command: /bin/bash -xcl "mkdir /tmp/node_modules && ln -s /tmp/node_modules node_modules"
+    <<: *common 
+    environment:
+      - NODE_PATH: /tmp/node_modules
+    command: /bin/bash -xcl "npm ci && npm run format && npm run compile && npm run package"
 
 #command: /bin/bash -xcl "mkdir /tmp/node_modules && ln -s /tmp/node_modules node_modules && npm ci && npm run format && npm run compile && npm run package"
 
