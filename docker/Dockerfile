@@ -13,7 +13,7 @@ ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US.UTF-8
 
 # dependencies
-RUN apt-get update && apt-get install -y curl gpg
+RUN apt-get update && apt-get install -y curl wget
 
 # install NodeJS 16
 # Add the NodeSource package signing key
