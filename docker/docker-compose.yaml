@@ -30,6 +30,8 @@ services:
 
   test:
     <<: *common
+    environment:
+      - NPM_CONFIG_PREFIX=/tmp/node_modules    
     command: /bin/bash -xcl "npm ci && npm run format && npm run compile && npm run package"
 
   shell:
