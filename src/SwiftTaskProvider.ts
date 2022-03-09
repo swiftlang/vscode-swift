@@ -42,7 +42,7 @@ interface TaskConfig {
 }
 
 /** flag for enabling test discovery */
-function testDiscoveryFlag(ctx: FolderContext): string[] {
+async function testDiscoveryFlag(ctx: FolderContext): Promise<string[]> {
     // Test discovery is only available in SwiftPM 5.1 and later.
     if (ctx.workspaceContext.swiftVersion.isLessThan(new Version(5, 1, 0))) {
         return [];
@@ -52,7 +52,7 @@ function testDiscoveryFlag(ctx: FolderContext): string[] {
         const alwaysDiscoverTests = vscode.workspace
             .getConfiguration("swiftpm")
             .get<boolean>("testDiscovery.always", true);
-        const hasLinuxMain = ctx.hasLinuxMain;
+        const hasLinuxMain = await ctx.hasLinuxMain;
         const testDiscoveryByDefault = ctx.workspaceContext.swiftVersion.isGreaterThanOrEqual(
             new Version(5, 4, 0)
         );
@@ -71,10 +71,10 @@ function win32BuildOptions(): string[] {
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
-function createBuildAllTask(folderContext: FolderContext): vscode.Task {
+async function createBuildAllTask(folderContext: FolderContext): Promise<vscode.Task> {
     const additionalArgs: string[] = [];
     if (folderContext.swiftPackage.getTargets("test").length > 0) {
-        additionalArgs.push(...testDiscoveryFlag(folderContext));
+        additionalArgs.push(...(await testDiscoveryFlag(folderContext)));
     }
     if (process.platform === "win32") {
         additionalArgs.push(...win32BuildOptions());
@@ -215,7 +215,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             if (!folderContext.swiftPackage.foundPackage) {
                 continue;
             }
-            tasks.push(createBuildAllTask(folderContext));
+            tasks.push(await createBuildAllTask(folderContext));
             const executables = folderContext.swiftPackage.executableProducts;
             for (const executable of executables) {
                 tasks.push(...createBuildTasks(executable, folderContext));

@@ -84,8 +84,16 @@ export class FolderContext implements vscode.Disposable {
         return path.relative(this.workspaceFolder.uri.fsPath, this.folder.fsPath);
     }
 
-    get hasLinuxMain(): boolean {
-        return this.linuxMain?.exists ?? false;
+    get hasLinuxMain(): Promise<boolean> {
+        const linuxMainExists = this.linuxMain?.exists;
+        if (linuxMainExists === undefined) {
+            // ugly workaround to guard linuxMain initialization
+            return new Promise(resolve =>
+                setTimeout(() => this.hasLinuxMain.then(result => resolve(result)), 10)
+            );
+        } else {
+            return new Promise(resolve => resolve(linuxMainExists));
+        }
     }
 
     /** reload swift package for this folder */
