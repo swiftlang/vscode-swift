@@ -22,6 +22,8 @@ export interface LSPConfiguration {
     readonly serverArguments: string[];
     /** Toolchain to use with sourcekit-lsp */
     readonly toolchainPath: string;
+    /** Are inlay hints enabled */
+    readonly inlayHintsEnabled: boolean;
 }
 
 /**
@@ -45,6 +47,11 @@ const configuration = {
                 return vscode.workspace
                     .getConfiguration("sourcekit-lsp")
                     .get<string>("toolchainPath", "");
+            },
+            get inlayHintsEnabled(): boolean {
+                return vscode.workspace
+                    .getConfiguration("sourcekit-lsp")
+                    .get<boolean>("inlayHints.enabled", true);
             },
         };
     },

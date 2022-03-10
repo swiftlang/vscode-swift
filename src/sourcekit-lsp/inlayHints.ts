@@ -14,6 +14,7 @@
 
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
+import configuration from "../configuration";
 import { LanguageClientManager } from "./LanguageClientManager";
 import { inlayHintsRequest } from "./lspExtensions";
 
@@ -27,7 +28,11 @@ class SwiftInlayHintsProvider implements vscode.InlayHintsProvider {
         document: vscode.TextDocument,
         range: vscode.Range,
         token: vscode.CancellationToken
-    ): Thenable<vscode.InlayHint[]> {
+    ): vscode.ProviderResult<vscode.InlayHint[]> {
+        // check configuration to see if inlay hints should be displayed
+        if (!configuration.lsp.inlayHintsEnabled) {
+            return null;
+        }
         const params = {
             textDocument: langclient.TextDocumentIdentifier.create(document.uri.toString(true)),
             range: { start: range.start, end: range.end },
@@ -66,5 +71,6 @@ export function activateInlayHints(client: langclient.LanguageClient): vscode.Di
         LanguageClientManager.documentSelector,
         new SwiftInlayHintsProvider(client)
     );
+
     return inlayHint;
 }
