@@ -10,7 +10,7 @@
     "url": "https://github.com/swift-server/vscode-swift"
   },
   "engines": {
-    "vscode": "^1.62.0"
+    "vscode": "^1.65.0"
   },
   "categories": [
     "Programming Languages"
@@ -78,6 +78,11 @@
       {
         "command": "swift.openExternal",
         "title": "View Repository",
+        "category": "Swift"
+      },
+      {
+        "command": "swift.openPackage",
+        "title": "Open Package.swift",
         "category": "Swift"
       }
     ],
@@ -175,6 +180,10 @@
         },
         {
           "command": "swift.resetPackage",
+          "when": "swift.hasPackage"
+        },
+        {
+          "command": "swift.openPackage",
           "when": "swift.hasPackage"
         },
         {
@@ -316,7 +325,7 @@
     "@types/glob": "^7.1.4",
     "@types/mocha": "^9.0.0",
     "@types/node": "14.x",
-    "@types/vscode": "^1.62.0",
+    "@types/vscode": "^1.65.0",
     "@typescript-eslint/eslint-plugin": "^5.1.0",
     "@typescript-eslint/parser": "^5.1.0",
     "@vscode/test-electron": "^1.6.2",

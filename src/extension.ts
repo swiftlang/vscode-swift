@@ -20,6 +20,7 @@ import * as commentCompletion from "./editor/CommentCompletion";
 import { SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
+import { LanguageStatusItems } from "./ui/LanguageStatusItems";
 
 /**
  * Activate the extension. This is the main entry point.
@@ -45,6 +46,8 @@ export async function activate(context: vscode.ExtensionContext) {
     commands.register(workspaceContext);
 
     const commentCompletionProvider = commentCompletion.register();
+
+    const languageStatusItem = new LanguageStatusItems(workspaceContext);
 
     // observer for logging workspace folder addition/removal
     const logObserver = workspaceContext.observeFolders((folderContext, event) => {
@@ -96,6 +99,7 @@ export async function activate(context: vscode.ExtensionContext) {
         dependenciesView,
         dependenciesProvider,
         logObserver,
+        languageStatusItem,
         commentCompletionProvider,
         taskProvider
     );

@@ -367,6 +367,21 @@ async function openInWorkspace(packageNode: PackageNode) {
     });
 }
 
+/**
+ * Open Package.swift for in focus project
+ * @param workspaceContext Workspace context, required to get current project
+ */
+async function openPackage(workspaceContext: WorkspaceContext) {
+    if (workspaceContext.currentFolder) {
+        const packagePath = vscode.Uri.joinPath(
+            workspaceContext.currentFolder.folder,
+            "Package.swift"
+        );
+        const document = await vscode.workspace.openTextDocument(packagePath);
+        vscode.window.showTextDocument(document);
+    }
+}
+
 /** Execute task and show UI while running */
 async function executeTaskWithUI(
     task: vscode.Task,
@@ -437,6 +452,7 @@ export function register(ctx: WorkspaceContext) {
         vscode.commands.registerCommand("swift.cleanBuild", () => cleanBuild(ctx)),
         vscode.commands.registerCommand("swift.resetPackage", () => resetPackage(ctx)),
         vscode.commands.registerCommand("swift.runSingle", () => runSingleFile(ctx)),
+        vscode.commands.registerCommand("swift.openPackage", () => openPackage(ctx)),
         vscode.commands.registerCommand("swift.useLocalDependency", item => {
             if (item instanceof PackageNode) {
                 useLocalDependency(item.name, ctx);
