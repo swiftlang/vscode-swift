@@ -35,7 +35,7 @@ class SwiftInlayHintsProvider implements vscode.InlayHintsProvider {
     ): Thenable<vscode.InlayHint[]> {
         const params = {
             textDocument: langclient.TextDocumentIdentifier.create(document.uri.toString(true)),
-            // range: range,
+            range: { start: range.start, end: range.end },
         };
         const result = this.client.sendRequest(inlayHintsRequest, params, token);
         return result.then(
