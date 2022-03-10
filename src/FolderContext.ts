@@ -21,7 +21,6 @@ import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { WorkspaceContext, FolderEvent } from "./WorkspaceContext";
 
 export class FolderContext implements vscode.Disposable {
-    private linuxMain?: LinuxMain;
     private packageWatcher?: PackageWatcher;
     public hasResolveErrors = false;
     public testExplorer?: TestExplorer;
@@ -34,11 +33,11 @@ export class FolderContext implements vscode.Disposable {
      */
     private constructor(
         public folder: vscode.Uri,
+        public linuxMain: LinuxMain,
         public swiftPackage: SwiftPackage,
         public workspaceFolder: vscode.WorkspaceFolder,
         public workspaceContext: WorkspaceContext
     ) {
-        this.linuxMain = new LinuxMain(this);
         this.packageWatcher = new PackageWatcher(this, workspaceContext);
         this.packageWatcher.install();
     }
@@ -64,11 +63,18 @@ export class FolderContext implements vscode.Disposable {
         const statusItemText = `Loading Package (${FolderContext.uriName(folder)})`;
         workspaceContext.statusItem.start(statusItemText);
 
+        const linuxMain = await LinuxMain.create(folder);
         const swiftPackage = await SwiftPackage.create(folder);
 
         workspaceContext.statusItem.end(statusItemText);
 
-        return new FolderContext(folder, swiftPackage, workspaceFolder, workspaceContext);
+        return new FolderContext(
+            folder,
+            linuxMain,
+            swiftPackage,
+            workspaceFolder,
+            workspaceContext
+        );
     }
 
     get name(): string {
@@ -82,18 +88,6 @@ export class FolderContext implements vscode.Disposable {
 
     get relativePath(): string {
         return path.relative(this.workspaceFolder.uri.fsPath, this.folder.fsPath);
-    }
-
-    get hasLinuxMain(): Promise<boolean> {
-        const linuxMainExists = this.linuxMain?.exists;
-        if (linuxMainExists === undefined) {
-            // ugly workaround to guard linuxMain initialization
-            return new Promise(resolve =>
-                setTimeout(() => this.hasLinuxMain.then(result => resolve(result)), 10)
-            );
-        } else {
-            return new Promise(resolve => resolve(linuxMainExists));
-        }
     }
 
     /** reload swift package for this folder */

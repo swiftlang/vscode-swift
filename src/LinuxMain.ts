@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { FolderContext } from "./FolderContext";
 import { pathExists } from "./utilities/utilities";
 
 /**
@@ -21,20 +20,20 @@ import { pathExists } from "./utilities/utilities";
  */
 export class LinuxMain {
     private fileWatcher: vscode.FileSystemWatcher;
-    public exists?: boolean;
 
-    constructor(private folderContext: FolderContext) {
-        pathExists(this.folderContext.folder.fsPath, "Tests", "LinuxMain.swift").then(
-            exists => (this.exists = exists)
-        );
-
+    constructor(folder: vscode.Uri, public exists: boolean) {
         this.fileWatcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(this.folderContext.folder, "Tests/LinuxMain.swift"),
+            new vscode.RelativePattern(folder, "Tests/LinuxMain.swift"),
             false,
             true
         );
         this.fileWatcher.onDidCreate(() => (this.exists = true));
         this.fileWatcher.onDidDelete(() => (this.exists = false));
+    }
+
+    static async create(folder: vscode.Uri): Promise<LinuxMain> {
+        const hasLinuxMain = await pathExists(folder.fsPath, "Tests", "LinuxMain.swift");
+        return new LinuxMain(folder, hasLinuxMain);
     }
 
     /**

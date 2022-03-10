@@ -42,17 +42,18 @@ interface TaskConfig {
 }
 
 /** flag for enabling test discovery */
-async function testDiscoveryFlag(ctx: FolderContext): Promise<string[]> {
+function testDiscoveryFlag(ctx: FolderContext): string[] {
     // Test discovery is only available in SwiftPM 5.1 and later.
     if (ctx.workspaceContext.swiftVersion.isLessThan(new Version(5, 1, 0))) {
         return [];
     }
     // Test discovery is always enabled on Darwin.
     if (process.platform !== "darwin") {
+        const hasLinuxMain = ctx.linuxMain.exists;
         const testDiscoveryByDefault = ctx.workspaceContext.swiftVersion.isGreaterThanOrEqual(
             new Version(5, 4, 0)
         );
-        if (!testDiscoveryByDefault || (await ctx.hasLinuxMain)) {
+        if (hasLinuxMain || !testDiscoveryByDefault) {
             return ["--enable-test-discovery"];
         }
     }
@@ -67,10 +68,10 @@ function win32BuildOptions(): string[] {
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
-async function createBuildAllTask(folderContext: FolderContext): Promise<vscode.Task> {
+function createBuildAllTask(folderContext: FolderContext): vscode.Task {
     const additionalArgs: string[] = [];
     if (folderContext.swiftPackage.getTargets("test").length > 0) {
-        additionalArgs.push(...(await testDiscoveryFlag(folderContext)));
+        additionalArgs.push(...testDiscoveryFlag(folderContext));
     }
     if (process.platform === "win32") {
         additionalArgs.push(...win32BuildOptions());
@@ -211,7 +212,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             if (!folderContext.swiftPackage.foundPackage) {
                 continue;
             }
-            tasks.push(await createBuildAllTask(folderContext));
+            tasks.push(createBuildAllTask(folderContext));
             const executables = folderContext.swiftPackage.executableProducts;
             for (const executable of executables) {
                 tasks.push(...createBuildTasks(executable, folderContext));
