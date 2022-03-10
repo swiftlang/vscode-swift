@@ -39,27 +39,27 @@ export class LanguageStatusItems implements vscode.Disposable {
             "swiftlang-version",
             LanguageStatusItems.documentSelector
         );
-        swiftVersionItem.detail = `Swift Version ${workspaceContext.swiftVersion.major}.${workspaceContext.swiftVersion.minor}.${workspaceContext.swiftVersion.patch}`;
+        swiftVersionItem.text = `Swift Version ${workspaceContext.swiftVersion.major}.${workspaceContext.swiftVersion.minor}.${workspaceContext.swiftVersion.patch}`;
 
         // Package.swift item
         this.packageSwiftItem = vscode.languages.createLanguageStatusItem(
             "swiftlang-package",
             LanguageStatusItems.documentSelector
         );
-        this.packageSwiftItem.detail = "No Package.swift";
+        this.packageSwiftItem.text = "No Package.swift";
 
         // Update Package.swift item based on current focus
         const onFocus = workspaceContext.observeFolders(async (folder, event) => {
             switch (event) {
                 case FolderEvent.focus:
                     if (folder) {
-                        this.packageSwiftItem.detail = "Package.swift";
+                        this.packageSwiftItem.text = "Package.swift";
                         this.packageSwiftItem.command = Command.create(
                             "Open Package",
                             "swift.openPackage"
                         );
                     } else {
-                        this.packageSwiftItem.detail = "No Package.swift";
+                        this.packageSwiftItem.text = "No Package.swift";
                         this.packageSwiftItem.command = undefined;
                     }
             }
