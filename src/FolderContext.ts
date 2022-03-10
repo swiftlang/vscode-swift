@@ -14,10 +14,11 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
+import { LinuxMain } from "./LinuxMain";
 import { PackageWatcher } from "./PackageWatcher";
 import { SwiftPackage } from "./SwiftPackage";
-import { WorkspaceContext, FolderEvent } from "./WorkspaceContext";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
+import { WorkspaceContext, FolderEvent } from "./WorkspaceContext";
 
 export class FolderContext implements vscode.Disposable {
     private packageWatcher?: PackageWatcher;
@@ -32,6 +33,7 @@ export class FolderContext implements vscode.Disposable {
      */
     private constructor(
         public folder: vscode.Uri,
+        public linuxMain: LinuxMain,
         public swiftPackage: SwiftPackage,
         public workspaceFolder: vscode.WorkspaceFolder,
         public workspaceContext: WorkspaceContext
@@ -42,6 +44,7 @@ export class FolderContext implements vscode.Disposable {
 
     /** dispose of any thing FolderContext holds */
     dispose() {
+        this.linuxMain?.dispose();
         this.packageWatcher?.dispose();
         this.testExplorer?.dispose();
     }
@@ -60,11 +63,18 @@ export class FolderContext implements vscode.Disposable {
         const statusItemText = `Loading Package (${FolderContext.uriName(folder)})`;
         workspaceContext.statusItem.start(statusItemText);
 
+        const linuxMain = await LinuxMain.create(folder);
         const swiftPackage = await SwiftPackage.create(folder);
 
         workspaceContext.statusItem.end(statusItemText);
 
-        return new FolderContext(folder, swiftPackage, workspaceFolder, workspaceContext);
+        return new FolderContext(
+            folder,
+            linuxMain,
+            swiftPackage,
+            workspaceFolder,
+            workspaceContext
+        );
     }
 
     get name(): string {

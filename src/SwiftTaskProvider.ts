@@ -18,6 +18,7 @@ import { FolderContext } from "./FolderContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
 import { getSwiftExecutable } from "./utilities/utilities";
+import { Version } from "./utilities/version";
 
 /**
  * References:
@@ -40,6 +41,25 @@ interface TaskConfig {
     prefix?: string;
 }
 
+/** flag for enabling test discovery */
+function testDiscoveryFlag(ctx: FolderContext): string[] {
+    // Test discovery is only available in SwiftPM 5.1 and later.
+    if (ctx.workspaceContext.swiftVersion.isLessThan(new Version(5, 1, 0))) {
+        return [];
+    }
+    // Test discovery is always enabled on Darwin.
+    if (process.platform !== "darwin") {
+        const hasLinuxMain = ctx.linuxMain.exists;
+        const testDiscoveryByDefault = ctx.workspaceContext.swiftVersion.isGreaterThanOrEqual(
+            new Version(5, 4, 0)
+        );
+        if (hasLinuxMain || !testDiscoveryByDefault) {
+            return ["--enable-test-discovery"];
+        }
+    }
+    return [];
+}
+
 /** arguments for generating windows debug builds */
 function win32BuildOptions(): string[] {
     return ["-Xswiftc", "-g", "-Xswiftc", "-use-ld=lld", "-Xlinker", "-debug:dwarf"];
@@ -50,8 +70,8 @@ function win32BuildOptions(): string[] {
  */
 function createBuildAllTask(folderContext: FolderContext): vscode.Task {
     const additionalArgs: string[] = [];
-    if (process.platform !== "darwin") {
-        additionalArgs.push("--enable-test-discovery");
+    if (folderContext.swiftPackage.getTargets("test").length > 0) {
+        additionalArgs.push(...testDiscoveryFlag(folderContext));
     }
     if (process.platform === "win32") {
         additionalArgs.push(...win32BuildOptions());
