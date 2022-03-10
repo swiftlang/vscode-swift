@@ -17,12 +17,7 @@ import * as langclient from "vscode-languageclient/node";
 import { LanguageClientManager } from "./LanguageClientManager";
 import { inlayHintsRequest } from "./lspExtensions";
 
-// The implementation is loosely based on the rust-analyzer implementation
-// of inlay hints: https://github.com/rust-analyzer/rust-analyzer/blob/master/editors/code/src/inlay_hints.ts
-
-// Note that once support for inlay hints is officially added to LSP/VSCode,
-// this module providing custom decorations will no longer be needed!
-
+/** Provide Inlay Hints using sourcekit-lsp */
 class SwiftInlayHintsProvider implements vscode.InlayHintsProvider {
     onDidChangeInlayHints?: vscode.Event<void> | undefined;
 
@@ -65,6 +60,7 @@ class SwiftInlayHintsProvider implements vscode.InlayHintsProvider {
     }
 }
 
+/** activate the inlay hints */
 export function activateInlayHints(client: langclient.LanguageClient): vscode.Disposable {
     const inlayHint = vscode.languages.registerInlayHintsProvider(
         LanguageClientManager.documentSelector,
