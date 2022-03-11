@@ -28,7 +28,7 @@ services:
 
   test:
     <<: *common
-    command: /bin/bash -xcl "npm ci && npm run format && npm run compile && npm run package"
+    command: /bin/bash -xcl "npm ci && chmod -R a+rw node_modules && npm run format && npm run compile && npm run package"
 
   shell:
     <<: *common
