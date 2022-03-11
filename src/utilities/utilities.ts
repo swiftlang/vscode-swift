@@ -15,7 +15,6 @@
 import * as cp from "child_process";
 import * as fs from "fs/promises";
 import * as path from "path";
-import * as plist from "plist";
 import configuration from "../configuration";
 
 /**
@@ -147,45 +146,4 @@ export function getErrorDescription(error: unknown): string {
     } else {
         return JSON.stringify(error);
     }
-}
-
-/**
- * @returns path to Xcode developer folder
- */
-export async function getXcodePath(): Promise<string | undefined> {
-    try {
-        const { stdout } = await execFile("xcode-select", ["-p"]);
-        return stdout.trimEnd();
-    } catch {
-        return undefined;
-    }
-}
-
-/**
- * Contents of **Info.plist** on Windows.
- */
-interface InfoPlist {
-    DefaultProperties: {
-        XCTEST_VERSION: string | undefined;
-    };
-}
-
-/**
- * Finds and returns the path to **XCTest.dll** on Windows.
- *
- * @throws when unable to find this path.
- */
-export async function getXCTestPath(): Promise<string> {
-    const developerPath = process.env.DEVELOPER_DIR;
-    if (!developerPath) {
-        throw Error("Environment variable DEVELOPER_DIR is not set.");
-    }
-    const platformPath = path.join(developerPath, "Platforms", "Windows.platform");
-    const data = await fs.readFile(path.join(platformPath, "Info.plist"), "utf8");
-    const infoPlist = plist.parse(data) as unknown as InfoPlist;
-    const version = infoPlist.DefaultProperties.XCTEST_VERSION;
-    if (!version) {
-        throw Error("Info.plist is missing the XCTEST_VERSION key.");
-    }
-    return path.join(platformPath, "Developer", "Library", `XCTest-${version}`, "usr", "bin");
 }

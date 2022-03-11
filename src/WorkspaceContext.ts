@@ -17,17 +17,11 @@ import * as path from "path";
 import { FolderContext } from "./FolderContext";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
-import {
-    execSwift,
-    getSwiftExecutable,
-    getXCTestPath,
-    pathExists,
-    isPathInsidePath,
-} from "./utilities/utilities";
+import { getSwiftExecutable, pathExists, isPathInsidePath } from "./utilities/utilities";
 import { getLLDBLibPath } from "./debugger/lldb";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
-import { Version } from "./utilities/version";
 import { TemporaryFolder } from "./utilities/tempFolder";
+import { SwiftToolchain } from "./toolchain/toolchain";
 
 export interface SwiftExtensionContext {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -43,22 +37,18 @@ export class WorkspaceContext implements vscode.Disposable {
     public currentFolder: FolderContext | null | undefined;
     public outputChannel: SwiftOutputChannel;
     public statusItem: StatusItem;
-    public xcTestPath?: string;
     public languageClientManager: LanguageClientManager;
-    public swiftVersion: Version;
     private onChangeConfig: vscode.Disposable;
 
     private constructor(
         public extensionContext: SwiftExtensionContext,
         public tempFolder: TemporaryFolder,
-        swiftVersion = "Swift version 0.0.0"
+        public toolchain: SwiftToolchain
     ) {
         this.outputChannel = new SwiftOutputChannel();
         this.statusItem = new StatusItem();
-        this.swiftVersion =
-            WorkspaceContext.extractSwiftVersion(swiftVersion) ?? new Version(0, 0, 0);
         this.languageClientManager = new LanguageClientManager(this);
-        this.outputChannel.log(swiftVersion);
+        this.outputChannel.log(this.toolchain.swiftVersionString);
         // on change config restart server
         this.onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
             if (event.affectsConfiguration("swift.path")) {
@@ -85,12 +75,15 @@ export class WorkspaceContext implements vscode.Disposable {
         this.statusItem.dispose();
     }
 
+    get swiftVersion() {
+        return this.toolchain.swiftVersion;
+    }
+
     /** Get swift version and create WorkspaceContext */
     static async create(extensionContext: SwiftExtensionContext): Promise<WorkspaceContext> {
-        // get swift version and then create
-        const version = await WorkspaceContext.getSwiftVersion();
         const tempFolder = await TemporaryFolder.create();
-        return new WorkspaceContext(extensionContext, tempFolder, version);
+        const toolchain = await SwiftToolchain.create();
+        return new WorkspaceContext(extensionContext, tempFolder, toolchain);
     }
 
     /** Setup the vscode event listeners to catch folder changes and active window changes */
@@ -180,17 +173,6 @@ export class WorkspaceContext implements vscode.Disposable {
      * @param folder folder being added
      */
     async addWorkspaceFolder(folder: vscode.WorkspaceFolder) {
-        // On Windows, locate XCTest.dll the first time a folder is added.
-        if (process.platform === "win32" && this.folders.length === 1) {
-            try {
-                this.xcTestPath = await getXCTestPath();
-            } catch (error) {
-                vscode.window.showErrorMessage(
-                    `Unable to create a debug configuration for testing. ` +
-                        `Your installation may be corrupt. ${error}`
-                );
-            }
-        }
         // add folder if Package.swift exists
         if (await pathExists(folder.uri.fsPath, "Package.swift")) {
             await this.addPackageFolder(folder.uri, folder);
@@ -249,27 +231,6 @@ export class WorkspaceContext implements vscode.Disposable {
     observeFolders(fn: WorkspaceFoldersObserver): vscode.Disposable {
         this.observers.add(fn);
         return { dispose: () => this.observers.delete(fn) };
-    }
-
-    /** Return swift version string returned by `swift --version` */
-    private static async getSwiftVersion(): Promise<string> {
-        try {
-            const { stdout } = await execSwift(["--version"]);
-            const version = stdout.split("\n", 1)[0];
-            return version;
-        } catch {
-            throw Error("Cannot find swift executable.");
-        }
-    }
-
-    /** extract Swift version from Version string returned by `swift --version` */
-    private static extractSwiftVersion(versionString: string): Version | undefined {
-        // extract version
-        const match = versionString.match(/Swift version ([\S]+)/);
-        if (match) {
-            return Version.fromString(match[1]);
-        }
-        return undefined;
     }
 
     /** find LLDB version and setup path in CodeLLDB */
