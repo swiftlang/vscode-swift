@@ -39,7 +39,7 @@ export class LanguageStatusItems implements vscode.Disposable {
             "swiftlang-version",
             LanguageStatusItems.documentSelector
         );
-        swiftVersionItem.text = `Swift Version ${workspaceContext.swiftVersion.major}.${workspaceContext.swiftVersion.minor}.${workspaceContext.swiftVersion.patch}`;
+        swiftVersionItem.text = workspaceContext.toolchain.swiftVersionString;
 
         // Package.swift item
         this.packageSwiftItem = vscode.languages.createLanguageStatusItem(
