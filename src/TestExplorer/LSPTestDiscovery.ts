@@ -21,7 +21,7 @@ import { getFileSymbols } from "../sourcekit-lsp/DocumentSymbols";
 import { Target } from "../SwiftPackage";
 
 class LSPFunction {
-    constructor(public className: string, public funcName: string) {}
+    constructor(public className: string, public funcName: string, public range?: vscode.Range) {}
 }
 
 /**
@@ -142,9 +142,23 @@ export class LSPTestDiscovery {
                 continue;
             }
             const funcId = `${targetName}.${f.className}/${f.funcName}`;
-            if (!classItem.children.get(funcId)) {
-                const item = this.controller.createTestItem(funcId, f.funcName);
+            const funcItem = classItem.children.get(funcId);
+            if (!funcItem) {
+                const item = this.controller.createTestItem(funcId, f.funcName, this.uri);
+                item.range = f.range;
                 classItem.children.add(item);
+            } else {
+                // set function item uri and location
+                if (!funcItem.uri) {
+                    // Unfortunately TestItem.uri is readonly so have to create a new TestItem
+                    // if we want to set the uri.
+                    classItem.children.delete(funcId);
+                    const newItem = this.controller.createTestItem(funcId, f.funcName, this.uri);
+                    newItem.range = f.range;
+                    classItem.children.add(newItem);
+                } else {
+                    funcItem.range = f.range;
+                }
             }
         }
     }
@@ -173,7 +187,17 @@ export class LSPTestDiscovery {
                 );
                 testFunctions?.forEach(func => {
                     // drop "()" from function name
-                    results.push({ className: c.name, funcName: func.name.slice(0, -2) });
+                    const range = new vscode.Range(
+                        func.range.start.line,
+                        func.range.start.character,
+                        func.range.end.line,
+                        func.range.end.character
+                    );
+                    results.push({
+                        className: c.name,
+                        funcName: func.name.slice(0, -2),
+                        range: range,
+                    });
                 });
             });
             return results;
