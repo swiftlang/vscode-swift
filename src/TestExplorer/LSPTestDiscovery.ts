@@ -148,9 +148,10 @@ export class LSPTestDiscovery {
                 item.range = f.range;
                 classItem.children.add(item);
             } else {
-                // if function item already exist, check it has a uri. If not then create
-                // a new item, with the correct uri. Also set item range
+                // set function item uri and location
                 if (!funcItem.uri) {
+                    // Unfortunately TestItem.uri is readonly so have to create a new TestItem
+                    // if we want to set the uri.
                     classItem.children.delete(funcId);
                     const newItem = this.controller.createTestItem(funcId, f.funcName, this.uri);
                     newItem.range = f.range;
