@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.4.0 - 2022-03
+
+### Added
+
+- Test Explorer view: List, run and debug tests.
+  - Test list is built when project is compiled.
+  - Use LSP server to update test list when you save a file, also use these results to set location data for tests.
+- Package dependency view includes project name in title.
+
+### Changed
+
+- The package dependency view is always visible if your project has a Package.swift regardless of whether it has any dependencies.
+- Don't completely desstroy the Language client when changing LSP server workspace folder. 
+- Conditionally add `--enable-test-discovery` based on Swift version and existence of `LinuxMain.swift`.
+
+### Fixed
+
+- Parsing no package error message from Swift 5.6.
+- Leaving a temporary vscode-swift folder after every session. There is now one temp folder and files written into it are deleted as soon as they are no longer needed.
+
+### Removed
+
+- Automatic generation of launch target for running tests. This is no longer needed now we have the test explorer.
+
+
 ## 0.3.0 - 2022-02-22
 
 ### Added
