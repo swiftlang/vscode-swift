@@ -69,7 +69,7 @@ If your package contains tests then they can be viewed, run and debugged in the 
 
 ![](images/test-explorer.png)
 
-Once your project has been built the Test Explorer will be able to list all your tests. These are grouped by package, then test target and finally XCTestCase class. From the Test Explorer you can initiate a test run, debugging a test run and if a file has already been opened you can jump to the source for a test.
+Once your project has been built the Test Explorer will be able to list all your tests. These are grouped by package, then test target and finally XCTestCase class. From the Test Explorer you can initiate a test run, debug a test run and if a file has already been opened you can jump to the source for a test.
 
 ### Documentation
 
