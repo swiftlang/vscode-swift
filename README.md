@@ -8,6 +8,7 @@ This extension adds language support for Swift to Visual Studio Code. It support
 * Automatic generation of launch configurations for debugging with [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)
 * Automatic task creation
 * Package dependency view
+* Test Explorer view
 
 Swift support uses [SourceKit LSP](https://github.com/apple/sourcekit-lsp) for the [language server](https://microsoft.github.io/language-server-protocol/overviews/lsp/overview/) to power code completion and [LLDB](https://github.com/vadimcn/vscode-lldb) to enable debugging. 
 
