@@ -8,6 +8,7 @@ This extension adds language support for Swift to Visual Studio Code. It support
 * Automatic generation of launch configurations for debugging with [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)
 * Automatic task creation
 * Package dependency view
+* Test Explorer view
 
 Swift support uses [SourceKit LSP](https://github.com/apple/sourcekit-lsp) for the [language server](https://microsoft.github.io/language-server-protocol/overviews/lsp/overview/) to power code completion and [LLDB](https://github.com/vadimcn/vscode-lldb) to enable debugging. 
 
@@ -62,6 +63,14 @@ When you open a Swift package (a directory containing a **Package.swift**) the e
 Press `F5` to run an executable and start debugging. If you have multiple launch configurations you can choose which launch configuration to use in the debugger view. 
 
 CodeLLDB has a version of `lldb` packaged with it and by default this is the version it uses for debugging. However, this version of `lldb` does not work with Swift. Fortunately, CodeLLDB allows you to choose an alternate version. The Swift extension will attempt to ascertain which version is required and give you the option to update the CodeLLDB configuration. 
+
+### Test Explorer
+
+If your package contains tests then they can be viewed, run and debugged in the Test Explorer.
+
+![](images/test-explorer.png)
+
+Once your project has been built the Test Explorer will be able to list all your tests. These are grouped by package, then test target and finally XCTestCase class. From the Test Explorer you can initiate a test run, debug a test run and if a file has already been opened you can jump to the source for a test.
 
 ### Documentation
 
