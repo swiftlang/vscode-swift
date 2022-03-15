@@ -16,7 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Changed
 
 - The package dependency view is always visible if your project has a Package.swift regardless of whether it has any dependencies.
-- Don't completely desstroy the Language client when changing LSP server workspace folder. 
+- Don't completely destroy the Language client when changing LSP server workspace folder. 
 - Conditionally add `--enable-test-discovery` based on Swift version and existence of `LinuxMain.swift`.
 
 ### Fixed
