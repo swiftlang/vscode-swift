@@ -63,6 +63,14 @@ Press `F5` to run an executable and start debugging. If you have multiple launch
 
 CodeLLDB has a version of `lldb` packaged with it and by default this is the version it uses for debugging. However, this version of `lldb` does not work with Swift. Fortunately, CodeLLDB allows you to choose an alternate version. The Swift extension will attempt to ascertain which version is required and give you the option to update the CodeLLDB configuration. 
 
+### Test Explorer
+
+If your package contains tests then they can be viewed, run and debugged in the Test Explorer.
+
+![](images/test-explorer.png)
+
+Once your project has been built the Test Explorer will be able to list all your tests. These are grouped by package, then test target and finally XCTestCase class. From the Test Explorer you can initiate a test run, debugging a test run and if a file has already been opened you can jump to the source for a test.
+
 ### Documentation
 
 * [Visual Studio Code Remote Development](docs/remote-dev.md)
