@@ -213,7 +213,7 @@ export class TestRunner {
                     const message = new vscode.TestMessage(failedMatch[5]);
                     message.location = new vscode.Location(
                         vscode.Uri.file(failedMatch[1]),
-                        new vscode.Position(parseInt(failedMatch[2]), 0)
+                        new vscode.Position(parseInt(failedMatch[2]) - 1, 0)
                     );
                     this.testRun.failed(this.testItems[failedTestIndex], message);
                     this.testItems.splice(failedTestIndex, 1);
