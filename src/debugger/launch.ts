@@ -159,7 +159,7 @@ export function createTestConfiguration(ctx: FolderContext): vscode.DebugConfigu
     }
 }
 
-// Return array of DebugConfigurations for tests based on what is in Package.swift
+/** Return custom Darwin test configuration that works with Swift 5.6 */
 export function createDarwinTestConfiguration(
     ctx: FolderContext,
     args: string,
