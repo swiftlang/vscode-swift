@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { createTestConfiguration } from "../debugger/launch";
+import { createTestConfiguration, createDarwinTestConfiguration } from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
 
 /** Class used to run tests */
@@ -111,11 +111,10 @@ export class TestRunner {
             "txt"
         );
         // create launch config for testing
-        const testBuildConfig = await createTestConfiguration(this.folderContext);
+        const testBuildConfig = this.createLaunchConfigurationForTesting(testOutputPath);
         if (testBuildConfig === null) {
             return;
         }
-        this.editLaunchConfigurationForTesting(testBuildConfig, testOutputPath);
 
         vscode.debug
             .startDebugging(this.folderContext.workspaceFolder, testBuildConfig, {
@@ -164,22 +163,32 @@ export class TestRunner {
      * @param outputFile Debug output file
      * @returns
      */
-    private editLaunchConfigurationForTesting(
-        config: vscode.DebugConfiguration,
+    private createLaunchConfigurationForTesting(
         outputFile: string
-    ) {
+    ): vscode.DebugConfiguration | null {
         const testList = this.testItems.map(item => item.id).join(",");
 
         if (process.platform === "darwin") {
-            config.args = ["-XCTest", testList, ...config.args];
-            // send stderr to testOutputPath. Cannot send both stdout and stderr to same file as it
-            // doesn't come out in the correct order
-            config.stdio = [null, null, outputFile];
+            const testBuildConfig = createDarwinTestConfiguration(
+                this.folderContext,
+                `-XCTest ${testList}`,
+                outputFile
+            );
+            if (testBuildConfig === null) {
+                return null;
+            }
+            return testBuildConfig;
         } else {
-            config.args = [testList];
+            const testBuildConfig = createTestConfiguration(this.folderContext);
+            if (testBuildConfig === null) {
+                return null;
+            }
+
+            testBuildConfig.args = [testList];
             // send stdout to testOutputPath. Cannot send both stdout and stderr to same file as it
             // doesn't come out in the correct order
-            config.stdio = [null, outputFile, null];
+            testBuildConfig.stdio = [null, outputFile, null];
+            return testBuildConfig;
         }
     }
 

@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import * as os from "os";
 import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 
@@ -98,9 +99,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
 }
 
 // Return array of DebugConfigurations for tests based on what is in Package.swift
-export async function createTestConfiguration(
-    ctx: FolderContext
-): Promise<vscode.DebugConfiguration | null> {
+export function createTestConfiguration(ctx: FolderContext): vscode.DebugConfiguration | null {
     if (ctx.swiftPackage.getTargets("test").length === 0) {
         return null;
     }
@@ -158,4 +157,56 @@ export async function createTestConfiguration(
             preLaunchTask: `swift: Build All${nameSuffix}`,
         };
     }
+}
+
+// Return array of DebugConfigurations for tests based on what is in Package.swift
+export function createDarwinTestConfiguration(
+    ctx: FolderContext,
+    args: string,
+    outputFile: string
+): vscode.DebugConfiguration | null {
+    if (ctx.swiftPackage.getTargets("test").length === 0) {
+        return null;
+    }
+    if (process.platform !== "darwin") {
+        return null;
+    }
+
+    let folder: string;
+    let nameSuffix: string;
+    if (ctx.relativePath.length === 0) {
+        folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}`;
+        nameSuffix = "";
+    } else {
+        folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}/${ctx.relativePath}`;
+        nameSuffix = ` (${ctx.relativePath})`;
+    }
+    // On macOS, find the path to xctest
+    // and point it at the .xctest bundle from the .build directory.
+    const xctestPath = ctx.workspaceContext.toolchain.xcTestPath;
+    if (xctestPath === undefined) {
+        return null;
+    }
+    let arch: string;
+    switch (os.arch()) {
+        case "x64":
+            arch = "x86_64";
+            break;
+        case "arm64":
+            arch = "arm64e";
+            break;
+        default:
+            return null;
+    }
+    return {
+        type: "lldb",
+        request: "custom",
+        name: `Test ${ctx.swiftPackage.name}`,
+        targetCreateCommands: [`file -a ${arch} ${xctestPath}/xctest`],
+        processCreateCommands: [
+            `process launch -o ${outputFile} -e ${outputFile} -- ${args} .build/debug/hummingbirdPackageTests.xctest`,
+        ],
+        cwd: folder,
+        preLaunchTask: `swift: Build All${nameSuffix}`,
+    };
 }
