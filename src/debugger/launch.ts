@@ -204,9 +204,8 @@ export function createDarwinTestConfiguration(
         name: `Test ${ctx.swiftPackage.name}`,
         targetCreateCommands: [`file -a ${arch} ${xctestPath}/xctest`],
         processCreateCommands: [
-            `process launch -o ${outputFile} -e ${outputFile} -- ${args} .build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
+            `process launch -o ${outputFile} -e ${outputFile} -w ${folder} -- ${args} .build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
         ],
-        cwd: folder,
         preLaunchTask: `swift: Build All${nameSuffix}`,
     };
 }
