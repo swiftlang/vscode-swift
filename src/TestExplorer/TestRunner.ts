@@ -123,6 +123,9 @@ export class TestRunner {
             .then(
                 started => {
                     if (started) {
+                        vscode.debug.activeDebugConsole.appendLine(
+                            `Testing ${this.testItems.map(item => item.id)}`
+                        );
                         const terminateSession = vscode.debug.onDidTerminateDebugSession(
                             async () => {
                                 try {
