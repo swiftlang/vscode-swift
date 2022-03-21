@@ -47,16 +47,33 @@ export interface Dependency {
 }
 
 /** Swift Package.resolved file */
-export interface PackageResolved {
-    object: { pins: PackageResolvedPin[] };
-    version: number;
+export class PackageResolved {
+    constructor(readonly pins: PackageResolvedPin[], readonly version: number) {}
+
+    static fromV1JSON(json: PackageResolvedFileV1): PackageResolved {
+        return new PackageResolved(
+            json.object.pins.map(
+                pin => new PackageResolvedPin(pin.package, pin.repositoryURL, pin.state)
+            ),
+            json.version
+        );
+    }
+
+    static fromV2JSON(json: PackageResolvedFileV2): PackageResolved {
+        return new PackageResolved(
+            json.pins.map(pin => new PackageResolvedPin(pin.identity, pin.location, pin.state)),
+            json.version
+        );
+    }
 }
 
 /** Swift Package.resolved file */
-export interface PackageResolvedPin {
-    package: string;
-    repositoryURL: string;
-    state: PackageResolvedPinState;
+export class PackageResolvedPin {
+    constructor(
+        readonly identity: string,
+        readonly location: string,
+        readonly state: PackageResolvedPinState
+    ) {}
 }
 
 /** Swift Package.resolved file */
@@ -64,6 +81,28 @@ export interface PackageResolvedPinState {
     branch: string | null;
     revision: string;
     version: string | null;
+}
+
+interface PackageResolvedFileV1 {
+    object: { pins: PackageResolvedPinFileV1[] };
+    version: number;
+}
+
+interface PackageResolvedPinFileV1 {
+    package: string;
+    repositoryURL: string;
+    state: PackageResolvedPinState;
+}
+
+interface PackageResolvedFileV2 {
+    pins: PackageResolvedPinFileV2[];
+    version: number;
+}
+
+interface PackageResolvedPinFileV2 {
+    identity: string;
+    location: string;
+    state: PackageResolvedPinState;
 }
 
 /** workspace-state.json file */
@@ -141,7 +180,15 @@ export class SwiftPackage implements PackageContents {
         try {
             const uri = vscode.Uri.joinPath(folder, "Package.resolved");
             const contents = await fs.readFile(uri.fsPath, "utf8");
-            return JSON.parse(contents);
+            const json = JSON.parse(contents);
+            const version = <{ version: number }>json;
+            if (version.version === 1) {
+                return PackageResolved.fromV1JSON(json);
+            } else if (version.version === 2) {
+                return PackageResolved.fromV2JSON(json);
+            } else {
+                return undefined;
+            }
         } catch {
             // failed to load resolved file return undefined
             return undefined;

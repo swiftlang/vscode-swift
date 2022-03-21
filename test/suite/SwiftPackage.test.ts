@@ -35,6 +35,7 @@ suite("SwiftPackage Test Suite", () => {
         assert.strictEqual(spmPackage.executableProducts[0].name, "package1");
         assert.strictEqual(spmPackage.dependencies.length, 1);
         assert.strictEqual(spmPackage.targets.length, 2);
+        assert(spmPackage.resolved !== undefined);
     }).timeout(5000);
 
     test("Library package", async () => {
@@ -44,5 +45,11 @@ suite("SwiftPackage Test Suite", () => {
         assert.strictEqual(spmPackage.libraryProducts[0].name, "package2");
         assert.strictEqual(spmPackage.dependencies.length, 0);
         assert.strictEqual(spmPackage.targets.length, 2);
+    }).timeout(5000);
+
+    test("Package resolve v2", async () => {
+        const spmPackage = await SwiftPackage.create(testAssetUri("package5.6"));
+        assert.strictEqual(spmPackage.isValid, true);
+        assert(spmPackage.resolved !== undefined);
     }).timeout(5000);
 });
