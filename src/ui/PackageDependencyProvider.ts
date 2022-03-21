@@ -212,11 +212,11 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
      */
     private getRemoteDependencies(folderContext: FolderContext): PackageNode[] {
         return (
-            folderContext.swiftPackage.resolved?.object.pins.map(
+            folderContext.swiftPackage.resolved?.pins.map(
                 pin =>
                     new PackageNode(
-                        pin.package,
-                        pin.repositoryURL,
+                        pin.identity,
+                        pin.location,
                         pin.state.version ?? pin.state.branch ?? pin.state.revision.substring(0, 7),
                         "remote"
                     )
