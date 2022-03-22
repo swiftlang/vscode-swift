@@ -138,6 +138,8 @@ export class TestRunner {
         const testList = this.testItems.map(item => item.id).join(",");
 
         if (process.platform === "darwin") {
+            // if debugging on macOS need to create a custom profile so we can set the system
+            // architecture
             if (debugging && outputFile) {
                 const testBuildConfig = createDarwinTestConfiguration(
                     this.folderContext,
