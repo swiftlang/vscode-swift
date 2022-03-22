@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import * as vscode from "vscode";
 import * as cp from "child_process";
 import * as fs from "fs/promises";
 import * as path from "path";
@@ -67,6 +68,7 @@ export async function execFileStreamOutput(
     args: string[],
     stdout: Stream.Writable | null,
     stderr: Stream.Writable | null,
+    token: vscode.CancellationToken,
     options: cp.ExecFileOptions = {}
 ): Promise<{ stdout: string; stderr: string }> {
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
@@ -82,6 +84,10 @@ export async function execFileStreamOutput(
         if (stderr) {
             p.stderr?.pipe(stderr);
         }
+        const cancellation = token.onCancellationRequested(() => {
+            p.kill();
+            cancellation.dispose();
+        });
     });
 }
 

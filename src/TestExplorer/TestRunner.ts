@@ -112,7 +112,7 @@ export class TestRunner {
             if (shouldDebug) {
                 await this.debugSession(token);
             } else {
-                await this.runSession();
+                await this.runSession(token);
             }
         } catch (error) {
             const reason = error as string;
@@ -175,7 +175,7 @@ export class TestRunner {
     }
 
     /** Run test session without attaching to a debugger */
-    async runSession() {
+    async runSession(token: vscode.CancellationToken) {
         // create launch config for testing
         const testBuildConfig = this.createLaunchConfigurationForTesting(false);
         if (testBuildConfig === null) {
@@ -210,9 +210,21 @@ export class TestRunner {
             stdout = writeStream;
         }
 
-        await execFileStreamOutput(testBuildConfig.program, testBuildConfig.args, stdout, stderr, {
-            cwd: testBuildConfig.cwd,
-        });
+        if (token.isCancellationRequested) {
+            writeStream.end();
+            return;
+        }
+
+        await execFileStreamOutput(
+            testBuildConfig.program,
+            testBuildConfig.args,
+            stdout,
+            stderr,
+            token,
+            {
+                cwd: testBuildConfig.cwd,
+            }
+        );
     }
 
     /** Run test session inside debugger */
