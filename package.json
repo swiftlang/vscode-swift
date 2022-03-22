@@ -100,6 +100,11 @@
             "markdownDescription": "Arguments to pass to `swift build`. Keys and values should be provided as separate entries.",
             "order": 2
           },
+          "swift.autoGenerateLaunchConfigurations": {
+            "type": "boolean",
+            "default": true,
+            "description": "When loading a `Package.swift` auto-generate `launch.json` configurations for running any executables."
+          },
           "swift.excludePathsFromPackageDependencies": {
             "description": "A list of paths to exclude from the Package Dependencies view.",
             "type": "array",

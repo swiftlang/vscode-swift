@@ -69,6 +69,12 @@ const configuration = {
     get buildArguments(): string[] {
         return vscode.workspace.getConfiguration("swift").get<string[]>("buildArguments", []);
     },
+    /** auto-generate launch.json configurations */
+    get autoGenerateLaunchConfigurations(): boolean {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<boolean>("autoGenerateLaunchConfigurations", true);
+    },
 };
 
 export default configuration;
