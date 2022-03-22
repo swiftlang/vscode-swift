@@ -14,6 +14,7 @@
 
 import * as os from "os";
 import * as vscode from "vscode";
+import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
 
 /**
@@ -23,6 +24,9 @@ import { FolderContext } from "../FolderContext";
  * @param ctx folder context to create launch configurations for
  */
 export async function makeDebugConfigurations(ctx: FolderContext) {
+    if (!configuration.autoGenerateLaunchConfigurations) {
+        return;
+    }
     const wsLaunchSection = vscode.workspace.getConfiguration("launch", ctx.folder);
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
 
