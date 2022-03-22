@@ -110,7 +110,7 @@ export class TestRunner {
 
         try {
             if (shouldDebug) {
-                await this.debugSession();
+                await this.debugSession(token);
             } else {
                 await this.runSession();
             }
@@ -216,7 +216,7 @@ export class TestRunner {
     }
 
     /** Run test session inside debugger */
-    async debugSession() {
+    async debugSession(token: vscode.CancellationToken) {
         const testOutputPath = this.folderContext.workspaceContext.tempFolder.filename(
             "TestOutput",
             "txt"
@@ -226,6 +226,16 @@ export class TestRunner {
         if (testBuildConfig === null) {
             return;
         }
+
+        const subscriptions: vscode.Disposable[] = [];
+        // add cancelation
+        const startSession = vscode.debug.onDidStartDebugSession(session => {
+            const cancellation = token.onCancellationRequested(() => {
+                vscode.debug.stopDebugging(session);
+            });
+            subscriptions.push(cancellation);
+        });
+        subscriptions.push(startSession);
 
         return new Promise<void>((resolve, reject) => {
             vscode.debug.startDebugging(this.folderContext.workspaceFolder, testBuildConfig).then(
@@ -237,31 +247,38 @@ export class TestRunner {
                         const terminateSession = vscode.debug.onDidTerminateDebugSession(
                             async () => {
                                 try {
-                                    const debugOutput = await asyncfs.readFile(testOutputPath, {
-                                        encoding: "utf8",
-                                    });
-                                    this.testRun.appendOutput(debugOutput.replace(/\n/g, "\r\n"));
-                                    if (process.platform === "darwin") {
-                                        this.parseResultDarwin(debugOutput);
-                                    } else {
-                                        this.parseResultNonDarwin(debugOutput);
+                                    if (!token.isCancellationRequested) {
+                                        const debugOutput = await asyncfs.readFile(testOutputPath, {
+                                            encoding: "utf8",
+                                        });
+                                        this.testRun.appendOutput(
+                                            debugOutput.replace(/\n/g, "\r\n")
+                                        );
+                                        if (process.platform === "darwin") {
+                                            this.parseResultDarwin(debugOutput);
+                                        } else {
+                                            this.parseResultNonDarwin(debugOutput);
+                                        }
                                     }
                                     asyncfs.rm(testOutputPath);
                                 } catch {
                                     // ignore error
                                 }
                                 // dispose terminate debug handler
-                                terminateSession.dispose();
+                                subscriptions.forEach(sub => sub.dispose());
                                 resolve();
                             }
                         );
+                        subscriptions.push(terminateSession);
                     } else {
                         asyncfs.rm(testOutputPath);
+                        subscriptions.forEach(sub => sub.dispose());
                         reject();
                     }
                 },
                 reason => {
                     asyncfs.rm(testOutputPath);
+                    subscriptions.forEach(sub => sub.dispose());
                     reject(reason);
                 }
             );
