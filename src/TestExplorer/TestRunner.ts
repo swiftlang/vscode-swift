@@ -217,6 +217,10 @@ export class TestRunner {
             return;
         }
 
+        this.testRun.appendOutput(`> Test run started at ${new Date().toLocaleString()} <\r\n\r\n`);
+        // show test results pane
+        vscode.commands.executeCommand("testing.showMostRecentOutput");
+
         await execFileStreamOutput(
             testBuildConfig.program,
             testBuildConfig.args,
@@ -255,9 +259,12 @@ export class TestRunner {
             vscode.debug.startDebugging(this.folderContext.workspaceFolder, testBuildConfig).then(
                 started => {
                     if (started) {
-                        vscode.debug.activeDebugConsole.appendLine(
-                            `Testing ${this.testItems.map(item => item.id)}`
+                        this.testRun.appendOutput(
+                            `> Test run started at ${new Date().toLocaleString()} <\r\n\r\n`
                         );
+                        // show test results pane
+                        vscode.commands.executeCommand("testing.showMostRecentOutput");
+
                         const terminateSession = vscode.debug.onDidTerminateDebugSession(
                             async () => {
                                 try {
