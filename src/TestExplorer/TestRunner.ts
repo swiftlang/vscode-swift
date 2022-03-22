@@ -17,6 +17,8 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { createTestConfiguration, createDarwinTestConfiguration } from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
+import { execFile } from "../utilities/utilities";
+import { createBuildAllTask, executeTaskAndWait } from "../SwiftTaskProvider";
 
 /** Class used to run tests */
 export class TestRunner {
@@ -106,21 +108,110 @@ export class TestRunner {
             return;
         }
 
+        try {
+            if (shouldDebug) {
+                await this.debugSession();
+            } else {
+                await this.runSession();
+            }
+        } catch (error) {
+            const reason = error as string;
+            if (reason) {
+                this.testRun.appendOutput(reason);
+            }
+            console.log(error);
+        }
+
+        this.testRun.end();
+    }
+
+    /**
+     * Edit launch configuration to run tests
+     * @param config Launch configuration
+     * @param outputFile Debug output file
+     * @returns
+     */
+    private createLaunchConfigurationForTesting(
+        debugging: boolean,
+        outputFile?: string
+    ): vscode.DebugConfiguration | null {
+        const testList = this.testItems.map(item => item.id).join(",");
+
+        if (process.platform === "darwin") {
+            if (debugging && outputFile) {
+                const testBuildConfig = createDarwinTestConfiguration(
+                    this.folderContext,
+                    `-XCTest ${testList}`,
+                    outputFile
+                );
+                if (testBuildConfig === null) {
+                    return null;
+                }
+                return testBuildConfig;
+            } else {
+                const testBuildConfig = createTestConfiguration(this.folderContext);
+                if (testBuildConfig === null) {
+                    return null;
+                }
+
+                testBuildConfig.args = ["-XCTest", testList, ...testBuildConfig.args];
+                // send stdout to testOutputPath. Cannot send both stdout and stderr to same file as it
+                // doesn't come out in the correct order
+                testBuildConfig.stdio = [null, null, outputFile];
+                return testBuildConfig;
+            }
+        } else {
+            const testBuildConfig = createTestConfiguration(this.folderContext);
+            if (testBuildConfig === null) {
+                return null;
+            }
+
+            testBuildConfig.args = [testList];
+            // send stdout to testOutputPath. Cannot send both stdout and stderr to same file as it
+            // doesn't come out in the correct order
+            testBuildConfig.stdio = [null, outputFile, null];
+            return testBuildConfig;
+        }
+    }
+
+    /** Run test session without attaching to a debugger */
+    async runSession() {
+        // create launch config for testing
+        const testBuildConfig = this.createLaunchConfigurationForTesting(false);
+        if (testBuildConfig === null) {
+            return;
+        }
+
+        // run associated build task
+        const task = createBuildAllTask(this.folderContext);
+        await executeTaskAndWait(task);
+
+        const { stderr } = await execFile(testBuildConfig.program, testBuildConfig.args, {
+            cwd: this.folderContext.workspaceFolder.uri.fsPath,
+        });
+
+        this.testRun.appendOutput(stderr.replace(/\n/g, "\r\n"));
+        if (process.platform === "darwin") {
+            this.parseResultDarwin(stderr);
+        } else {
+            this.parseResultNonDarwin(stderr);
+        }
+    }
+
+    /** Run test session inside debugger */
+    async debugSession() {
         const testOutputPath = this.folderContext.workspaceContext.tempFolder.filename(
             "TestOutput",
             "txt"
         );
         // create launch config for testing
-        const testBuildConfig = this.createLaunchConfigurationForTesting(testOutputPath);
+        const testBuildConfig = this.createLaunchConfigurationForTesting(true, testOutputPath);
         if (testBuildConfig === null) {
             return;
         }
 
-        vscode.debug
-            .startDebugging(this.folderContext.workspaceFolder, testBuildConfig, {
-                noDebug: !shouldDebug,
-            })
-            .then(
+        return new Promise<void>((resolve, reject) => {
+            vscode.debug.startDebugging(this.folderContext.workspaceFolder, testBuildConfig).then(
                 started => {
                     if (started) {
                         vscode.debug.activeDebugConsole.appendLine(
@@ -138,61 +229,26 @@ export class TestRunner {
                                     } else {
                                         this.parseResultNonDarwin(debugOutput);
                                     }
-                                    await fs.rm(testOutputPath);
+                                    fs.rm(testOutputPath);
                                 } catch {
                                     // ignore error
                                 }
-                                this.testRun.end();
                                 // dispose terminate debug handler
                                 terminateSession.dispose();
+                                resolve();
                             }
                         );
                     } else {
                         fs.rm(testOutputPath);
-                        this.testRun.end();
+                        reject();
                     }
                 },
                 reason => {
                     fs.rm(testOutputPath);
-                    this.testRun.appendOutput(reason);
-                    this.testRun.end();
+                    reject(reason);
                 }
             );
-    }
-
-    /**
-     * Edit launch configuration to run tests
-     * @param config Launch configuration
-     * @param outputFile Debug output file
-     * @returns
-     */
-    private createLaunchConfigurationForTesting(
-        outputFile: string
-    ): vscode.DebugConfiguration | null {
-        const testList = this.testItems.map(item => item.id).join(",");
-
-        if (process.platform === "darwin") {
-            const testBuildConfig = createDarwinTestConfiguration(
-                this.folderContext,
-                `-XCTest ${testList}`,
-                outputFile
-            );
-            if (testBuildConfig === null) {
-                return null;
-            }
-            return testBuildConfig;
-        } else {
-            const testBuildConfig = createTestConfiguration(this.folderContext);
-            if (testBuildConfig === null) {
-                return null;
-            }
-
-            testBuildConfig.args = [testList];
-            // send stdout to testOutputPath. Cannot send both stdout and stderr to same file as it
-            // doesn't come out in the correct order
-            testBuildConfig.stdio = [null, outputFile, null];
-            return testBuildConfig;
-        }
+        });
     }
 
     /**
