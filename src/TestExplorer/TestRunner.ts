@@ -100,7 +100,6 @@ export class TestRunner {
     /**
      * Test run handler. Run a series of tests and extracts the results from the output
      * @param shouldDebug Should we run the debugger
-     * @param request The test run request, includes list of tests to execute
      * @param token Cancellation token
      * @returns When complete
      */
@@ -118,7 +117,7 @@ export class TestRunner {
         } catch (error) {
             const reason = error as string;
             if (reason) {
-                this.testRun.appendOutput(reason);
+                this.testRun.appendOutput(reason.toString());
             }
             console.log(error);
         }
@@ -128,7 +127,7 @@ export class TestRunner {
 
     /**
      * Edit launch configuration to run tests
-     * @param config Launch configuration
+     * @param debugging Do we need this configuration for debugging
      * @param outputFile Debug output file
      * @returns
      */
@@ -150,7 +149,7 @@ export class TestRunner {
                 }
                 return testBuildConfig;
             } else {
-                const testBuildConfig = createTestConfiguration(this.folderContext);
+                const testBuildConfig = createTestConfiguration(this.folderContext, true);
                 if (testBuildConfig === null) {
                     return null;
                 }
@@ -162,7 +161,7 @@ export class TestRunner {
                 return testBuildConfig;
             }
         } else {
-            const testBuildConfig = createTestConfiguration(this.folderContext);
+            const testBuildConfig = createTestConfiguration(this.folderContext, true);
             if (testBuildConfig === null) {
                 return null;
             }
@@ -212,7 +211,7 @@ export class TestRunner {
         }
 
         await execFileStreamOutput(testBuildConfig.program, testBuildConfig.args, stdout, stderr, {
-            cwd: this.folderContext.workspaceFolder.uri.fsPath,
+            cwd: testBuildConfig.cwd,
         });
     }
 
@@ -272,8 +271,6 @@ export class TestRunner {
     /**
      * Parse results from `swift test` and update tests accordingly for Darwin platforms
      * @param output Output from `swift test`
-     * @param testRun Associated test run
-     * @param tests List of test items being tested
      */
     private parseResultDarwin(output: string) {
         const lines = output.split("\n").map(item => item.trim());
@@ -313,8 +310,6 @@ export class TestRunner {
      * Parse results from `swift test` and update tests accordingly for non Darwin
      * platforms eg Linux and Windows
      * @param output Output from `swift test`
-     * @param testRun Associated test run
-     * @param tests List of test items being tested
      */
     private parseResultNonDarwin(output: string) {
         const lines = output.split("\n").map(item => item.trim());
