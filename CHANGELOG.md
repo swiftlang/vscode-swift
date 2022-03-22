@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## 0.4.0 - 2022-03-21
+## 0.4.0 - 2022-03-22
 
 ### Added
 
@@ -23,7 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Parsing no package error message from Swift 5.6.
 - Leaving a temporary vscode-swift folder after every session. There is now one temp folder and files written into it are deleted as soon as they are no longer needed.
-- Loading of Package.resolved from Swift 5.6 projects
+- Loading of Packages from Swift 5.6 projects
 
 ### Removed
 
