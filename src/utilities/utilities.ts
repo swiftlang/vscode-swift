@@ -15,6 +15,7 @@
 import * as cp from "child_process";
 import * as fs from "fs/promises";
 import * as path from "path";
+import * as Stream from "stream";
 import configuration from "../configuration";
 
 /**
@@ -59,6 +60,29 @@ export async function execFile(
             resolve({ stdout, stderr });
         })
     );
+}
+
+export async function execFileStreamOutput(
+    executable: string,
+    args: string[],
+    stdout: Stream.Writable | null,
+    stderr: Stream.Writable | null,
+    options: cp.ExecFileOptions = {}
+): Promise<{ stdout: string; stderr: string }> {
+    return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+        const p = cp.execFile(executable, args, options, (error, stdout, stderr) => {
+            if (error) {
+                reject({ error, stdout, stderr });
+            }
+            resolve({ stdout, stderr });
+        });
+        if (stdout) {
+            p.stdout?.pipe(stdout);
+        }
+        if (stderr) {
+            p.stderr?.pipe(stderr);
+        }
+    });
 }
 
 /**

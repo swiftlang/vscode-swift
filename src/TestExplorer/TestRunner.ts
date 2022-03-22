@@ -13,12 +13,13 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
+import * as asyncfs from "fs/promises";
 import * as path from "path";
 import { createTestConfiguration, createDarwinTestConfiguration } from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
-import { execFile } from "../utilities/utilities";
+import { execFileStreamOutput } from "../utilities/utilities";
 import { createBuildAllTask, executeTaskAndWait } from "../SwiftTaskProvider";
+import * as Stream from "stream";
 
 /** Class used to run tests */
 export class TestRunner {
@@ -133,7 +134,7 @@ export class TestRunner {
      */
     private createLaunchConfigurationForTesting(
         debugging: boolean,
-        outputFile?: string
+        outputFile: string | null = null
     ): vscode.DebugConfiguration | null {
         const testList = this.testItems.map(item => item.id).join(",");
 
@@ -186,16 +187,33 @@ export class TestRunner {
         const task = createBuildAllTask(this.folderContext);
         await executeTaskAndWait(task);
 
-        const { stderr } = await execFile(testBuildConfig.program, testBuildConfig.args, {
-            cwd: this.folderContext.workspaceFolder.uri.fsPath,
+        // Use WriteStream to log results
+        const writeStream = new Stream.Writable();
+        writeStream._write = (chunk, encoding, next) => {
+            const text = chunk.toString("utf8");
+            this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
+            if (process.platform === "darwin") {
+                this.parseResultDarwin(text);
+            } else {
+                this.parseResultNonDarwin(text);
+            }
+            next();
+        };
+        writeStream.on("close", () => {
+            writeStream.end();
         });
 
-        this.testRun.appendOutput(stderr.replace(/\n/g, "\r\n"));
+        let stdout: Stream.Writable | null = null;
+        let stderr: Stream.Writable | null = null;
         if (process.platform === "darwin") {
-            this.parseResultDarwin(stderr);
+            stderr = writeStream;
         } else {
-            this.parseResultNonDarwin(stderr);
+            stdout = writeStream;
         }
+
+        await execFileStreamOutput(testBuildConfig.program, testBuildConfig.args, stdout, stderr, {
+            cwd: this.folderContext.workspaceFolder.uri.fsPath,
+        });
     }
 
     /** Run test session inside debugger */
@@ -220,7 +238,7 @@ export class TestRunner {
                         const terminateSession = vscode.debug.onDidTerminateDebugSession(
                             async () => {
                                 try {
-                                    const debugOutput = await fs.readFile(testOutputPath, {
+                                    const debugOutput = await asyncfs.readFile(testOutputPath, {
                                         encoding: "utf8",
                                     });
                                     this.testRun.appendOutput(debugOutput.replace(/\n/g, "\r\n"));
@@ -229,7 +247,7 @@ export class TestRunner {
                                     } else {
                                         this.parseResultNonDarwin(debugOutput);
                                     }
-                                    fs.rm(testOutputPath);
+                                    asyncfs.rm(testOutputPath);
                                 } catch {
                                     // ignore error
                                 }
@@ -239,12 +257,12 @@ export class TestRunner {
                             }
                         );
                     } else {
-                        fs.rm(testOutputPath);
+                        asyncfs.rm(testOutputPath);
                         reject();
                     }
                 },
                 reason => {
-                    fs.rm(testOutputPath);
+                    asyncfs.rm(testOutputPath);
                     reject(reason);
                 }
             );
