@@ -232,6 +232,17 @@ export class TestRunner {
                 }
                 continue;
             }
+            // Regex "<path/to/test>:<line number>: -[<test target> <class.function>] : Test skipped"
+            const skippedMatch = /^(.+):(\d+):\s-\[(\S+)\s(.*)\] : Test skipped/.exec(line);
+            if (skippedMatch) {
+                const testId = `${skippedMatch[3]}/${skippedMatch[4]}`;
+                const skippedTestIndex = this.testItems.findIndex(item => item.id === testId);
+                if (skippedTestIndex !== -1) {
+                    this.testRun.skipped(this.testItems[skippedTestIndex]);
+                    this.testItems.splice(skippedTestIndex, 1);
+                }
+                continue;
+            }
         }
     }
 
@@ -291,6 +302,20 @@ export class TestRunner {
                     this.testRun.failed(this.testItems[failedTestIndex], message);
                     // remove from test item list as its status has been set
                     this.testItems.splice(failedTestIndex, 1);
+                }
+                continue;
+            }
+            // Regex "<path/to/test>:<line number>: <class>.<function> : Test skipped:"
+            const skippedMatch = /^(.+):(\d+):\s*(.*)\.(.*) : Test skipped:/.exec(line);
+            if (skippedMatch) {
+                const testName = `${skippedMatch[3]}/${skippedMatch[4]}`;
+                const skippedTestIndex = this.testItems.findIndex(item =>
+                    item.id.endsWith(testName)
+                );
+                if (skippedTestIndex !== -1) {
+                    this.testRun.skipped(this.testItems[skippedTestIndex]);
+                    // remove from test item list as its status has been set
+                    this.testItems.splice(skippedTestIndex, 1);
                 }
                 continue;
             }
