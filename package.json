@@ -103,7 +103,14 @@
           "swift.autoGenerateLaunchConfigurations": {
             "type": "boolean",
             "default": true,
-            "description": "When loading a `Package.swift` auto-generate `launch.json` configurations for running any executables."
+            "description": "When loading a `Package.swift` auto-generate `launch.json` configurations for running any executables.",
+            "order": 3
+          },
+          "swift.problemMatchCompileErrors": {
+            "type": "boolean",
+            "default": true,
+            "description": "List compile errors in the Problems View.",
+            "order": 4
           },
           "swift.excludePathsFromPackageDependencies": {
             "description": "A list of paths to exclude from the Package Dependencies view.",
@@ -115,7 +122,7 @@
               ".git",
               ".github"
             ],
-            "order": 3
+            "order": 5
           },
           "sourcekit-lsp.serverPath": {
             "type": "string",
@@ -231,6 +238,26 @@
         }
       ]
     },
+    "problemMatchers": [
+      {
+        "name": "swiftc",
+        "owner": "swift",
+        "source": "swiftc",
+        "fileLocation": [
+          "absolute"
+        ],
+        "pattern": [
+          {
+            "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error|note):\\s+(.*)$",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "severity": 4,
+            "message": 5
+          }
+        ]
+      }
+    ],
     "taskDefinitions": [
       {
         "type": "swift",

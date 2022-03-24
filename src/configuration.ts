@@ -69,6 +69,12 @@ const configuration = {
     get buildArguments(): string[] {
         return vscode.workspace.getConfiguration("swift").get<string[]>("buildArguments", []);
     },
+    /** include build errors in problems view */
+    get problemMatchCompileErrors(): boolean {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<boolean>("problemMatchCompileErrors", true);
+    },
     /** auto-generate launch.json configurations */
     get autoGenerateLaunchConfigurations(): boolean {
         return vscode.workspace
