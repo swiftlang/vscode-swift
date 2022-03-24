@@ -102,19 +102,30 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
     });
 }
 
-// Return array of DebugConfigurations for tests based on what is in Package.swift
-export function createTestConfiguration(ctx: FolderContext): vscode.DebugConfiguration | null {
+/**
+ * Return array of DebugConfigurations for tests based on what is in Package.swift
+ * @param ctx Folder context
+ * @param fullPath should we return configuration with full paths instead of environment vars
+ * @returns debug configuration
+ */
+export function createTestConfiguration(
+    ctx: FolderContext,
+    fullPath = false
+): vscode.DebugConfiguration | null {
     if (ctx.swiftPackage.getTargets("test").length === 0) {
         return null;
     }
+    const workspaceFolder = fullPath
+        ? ctx.workspaceFolder.uri.fsPath
+        : `\${workspaceFolder:${ctx.workspaceFolder.name}}`;
 
     let folder: string;
     let nameSuffix: string;
     if (ctx.relativePath.length === 0) {
-        folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}`;
+        folder = workspaceFolder;
         nameSuffix = "";
     } else {
-        folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}/${ctx.relativePath}`;
+        folder = `${workspaceFolder}}/${ctx.relativePath}`;
         nameSuffix = ` (${ctx.relativePath})`;
     }
     if (process.platform === "darwin") {

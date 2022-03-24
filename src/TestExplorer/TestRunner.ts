@@ -13,10 +13,13 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
+import * as asyncfs from "fs/promises";
 import * as path from "path";
 import { createTestConfiguration, createDarwinTestConfiguration } from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
+import { execFileStreamOutput } from "../utilities/utilities";
+import { createBuildAllTask, executeTaskAndWait } from "../SwiftTaskProvider";
+import * as Stream from "stream";
 
 /** Class used to run tests */
 export class TestRunner {
@@ -97,7 +100,6 @@ export class TestRunner {
     /**
      * Test run handler. Run a series of tests and extracts the results from the output
      * @param shouldDebug Should we run the debugger
-     * @param request The test run request, includes list of tests to execute
      * @param token Cancellation token
      * @returns When complete
      */
@@ -106,83 +108,62 @@ export class TestRunner {
             return;
         }
 
-        const testOutputPath = this.folderContext.workspaceContext.tempFolder.filename(
-            "TestOutput",
-            "txt"
-        );
-        // create launch config for testing
-        const testBuildConfig = this.createLaunchConfigurationForTesting(testOutputPath);
-        if (testBuildConfig === null) {
-            return;
+        try {
+            if (shouldDebug) {
+                await this.debugSession(token);
+            } else {
+                await this.runSession(token);
+            }
+        } catch (error) {
+            const reason = error as string;
+            if (reason) {
+                this.testRun.appendOutput(reason.toString());
+            }
+            console.log(error);
         }
 
-        vscode.debug
-            .startDebugging(this.folderContext.workspaceFolder, testBuildConfig, {
-                noDebug: !shouldDebug,
-            })
-            .then(
-                started => {
-                    if (started) {
-                        vscode.debug.activeDebugConsole.appendLine(
-                            `Testing ${this.testItems.map(item => item.id)}`
-                        );
-                        const terminateSession = vscode.debug.onDidTerminateDebugSession(
-                            async () => {
-                                try {
-                                    const debugOutput = await fs.readFile(testOutputPath, {
-                                        encoding: "utf8",
-                                    });
-                                    this.testRun.appendOutput(debugOutput.replace(/\n/g, "\r\n"));
-                                    if (process.platform === "darwin") {
-                                        this.parseResultDarwin(debugOutput);
-                                    } else {
-                                        this.parseResultNonDarwin(debugOutput);
-                                    }
-                                    await fs.rm(testOutputPath);
-                                } catch {
-                                    // ignore error
-                                }
-                                this.testRun.end();
-                                // dispose terminate debug handler
-                                terminateSession.dispose();
-                            }
-                        );
-                    } else {
-                        fs.rm(testOutputPath);
-                        this.testRun.end();
-                    }
-                },
-                reason => {
-                    fs.rm(testOutputPath);
-                    this.testRun.appendOutput(reason);
-                    this.testRun.end();
-                }
-            );
+        this.testRun.end();
     }
 
     /**
      * Edit launch configuration to run tests
-     * @param config Launch configuration
+     * @param debugging Do we need this configuration for debugging
      * @param outputFile Debug output file
      * @returns
      */
     private createLaunchConfigurationForTesting(
-        outputFile: string
+        debugging: boolean,
+        outputFile: string | null = null
     ): vscode.DebugConfiguration | null {
         const testList = this.testItems.map(item => item.id).join(",");
 
         if (process.platform === "darwin") {
-            const testBuildConfig = createDarwinTestConfiguration(
-                this.folderContext,
-                `-XCTest ${testList}`,
-                outputFile
-            );
-            if (testBuildConfig === null) {
-                return null;
+            // if debugging on macOS need to create a custom launch configuration so we can set the
+            // the system architecture
+            if (debugging && outputFile) {
+                const testBuildConfig = createDarwinTestConfiguration(
+                    this.folderContext,
+                    `-XCTest ${testList}`,
+                    outputFile
+                );
+                if (testBuildConfig === null) {
+                    return null;
+                }
+                return testBuildConfig;
+            } else {
+                const testBuildConfig = createTestConfiguration(this.folderContext, true);
+                if (testBuildConfig === null) {
+                    return null;
+                }
+
+                testBuildConfig.args = ["-XCTest", testList, ...testBuildConfig.args];
+                // send stdout to testOutputPath. Cannot send both stdout and stderr to same file as it
+                // doesn't come out in the correct order
+                testBuildConfig.stdio = [null, null, outputFile];
+                return testBuildConfig;
             }
-            return testBuildConfig;
         } else {
-            const testBuildConfig = createTestConfiguration(this.folderContext);
+            const testBuildConfig = createTestConfiguration(this.folderContext, true);
             if (testBuildConfig === null) {
                 return null;
             }
@@ -195,11 +176,139 @@ export class TestRunner {
         }
     }
 
+    /** Run test session without attaching to a debugger */
+    async runSession(token: vscode.CancellationToken) {
+        // create launch config for testing
+        const testBuildConfig = this.createLaunchConfigurationForTesting(false);
+        if (testBuildConfig === null) {
+            return;
+        }
+
+        // run associated build task
+        const task = createBuildAllTask(this.folderContext);
+        await executeTaskAndWait(task);
+
+        // Use WriteStream to log results
+        const writeStream = new Stream.Writable();
+        writeStream._write = (chunk, encoding, next) => {
+            const text = chunk.toString("utf8");
+            this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
+            if (process.platform === "darwin") {
+                this.parseResultDarwin(text);
+            } else {
+                this.parseResultNonDarwin(text);
+            }
+            next();
+        };
+        writeStream.on("close", () => {
+            writeStream.end();
+        });
+
+        let stdout: Stream.Writable | null = null;
+        let stderr: Stream.Writable | null = null;
+        if (process.platform === "darwin") {
+            stderr = writeStream;
+        } else {
+            stdout = writeStream;
+        }
+
+        if (token.isCancellationRequested) {
+            writeStream.end();
+            return;
+        }
+
+        this.testRun.appendOutput(`> Test run started at ${new Date().toLocaleString()} <\r\n\r\n`);
+        // show test results pane
+        vscode.commands.executeCommand("testing.showMostRecentOutput");
+
+        await execFileStreamOutput(
+            testBuildConfig.program,
+            testBuildConfig.args,
+            stdout,
+            stderr,
+            token,
+            {
+                cwd: testBuildConfig.cwd,
+            }
+        );
+    }
+
+    /** Run test session inside debugger */
+    async debugSession(token: vscode.CancellationToken) {
+        const testOutputPath = this.folderContext.workspaceContext.tempFolder.filename(
+            "TestOutput",
+            "txt"
+        );
+        // create launch config for testing
+        const testBuildConfig = this.createLaunchConfigurationForTesting(true, testOutputPath);
+        if (testBuildConfig === null) {
+            return;
+        }
+
+        const subscriptions: vscode.Disposable[] = [];
+        // add cancelation
+        const startSession = vscode.debug.onDidStartDebugSession(session => {
+            const cancellation = token.onCancellationRequested(() => {
+                vscode.debug.stopDebugging(session);
+            });
+            subscriptions.push(cancellation);
+        });
+        subscriptions.push(startSession);
+
+        return new Promise<void>((resolve, reject) => {
+            vscode.debug.startDebugging(this.folderContext.workspaceFolder, testBuildConfig).then(
+                started => {
+                    if (started) {
+                        this.testRun.appendOutput(
+                            `> Test run started at ${new Date().toLocaleString()} <\r\n\r\n`
+                        );
+                        // show test results pane
+                        vscode.commands.executeCommand("testing.showMostRecentOutput");
+
+                        const terminateSession = vscode.debug.onDidTerminateDebugSession(
+                            async () => {
+                                try {
+                                    if (!token.isCancellationRequested) {
+                                        const debugOutput = await asyncfs.readFile(testOutputPath, {
+                                            encoding: "utf8",
+                                        });
+                                        this.testRun.appendOutput(
+                                            debugOutput.replace(/\n/g, "\r\n")
+                                        );
+                                        if (process.platform === "darwin") {
+                                            this.parseResultDarwin(debugOutput);
+                                        } else {
+                                            this.parseResultNonDarwin(debugOutput);
+                                        }
+                                    }
+                                    asyncfs.rm(testOutputPath);
+                                } catch {
+                                    // ignore error
+                                }
+                                // dispose terminate debug handler
+                                subscriptions.forEach(sub => sub.dispose());
+                                resolve();
+                            }
+                        );
+                        subscriptions.push(terminateSession);
+                    } else {
+                        asyncfs.rm(testOutputPath);
+                        subscriptions.forEach(sub => sub.dispose());
+                        reject();
+                    }
+                },
+                reason => {
+                    asyncfs.rm(testOutputPath);
+                    subscriptions.forEach(sub => sub.dispose());
+                    reject(reason);
+                }
+            );
+        });
+    }
+
     /**
      * Parse results from `swift test` and update tests accordingly for Darwin platforms
      * @param output Output from `swift test`
-     * @param testRun Associated test run
-     * @param tests List of test items being tested
      */
     private parseResultDarwin(output: string) {
         const lines = output.split("\n").map(item => item.trim());
@@ -239,8 +348,6 @@ export class TestRunner {
      * Parse results from `swift test` and update tests accordingly for non Darwin
      * platforms eg Linux and Windows
      * @param output Output from `swift test`
-     * @param testRun Associated test run
-     * @param tests List of test items being tested
      */
     private parseResultNonDarwin(output: string) {
         const lines = output.split("\n").map(item => item.trim());
