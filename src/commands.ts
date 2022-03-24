@@ -203,7 +203,7 @@ async function runSingleFile(ctx: WorkspaceContext) {
     const runTask = createSwiftTask([filename], `Run ${filename}`, {
         scope: vscode.TaskScope.Global,
         cwd: vscode.Uri.file(path.dirname(filename)),
-        presentationOptions: { reveal: vscode.TaskRevealKind.Always },
+        presentationOptions: { reveal: vscode.TaskRevealKind.Always, clear: true },
     });
     await executeTaskAndWait(runTask);
 
