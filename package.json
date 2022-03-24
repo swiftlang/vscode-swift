@@ -304,7 +304,7 @@
   },
   "dependencies": {
     "@types/plist": "^3.0.2",
-    "plist": "^3.0.4",
+    "plist": "^3.0.5",
     "vscode-languageclient": "^7.0.0"
   }
 }
