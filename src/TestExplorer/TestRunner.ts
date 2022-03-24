@@ -375,27 +375,9 @@ export class TestRunner {
             const failedMatch = /^(.+):(\d+):\serror:\s*(.*)\.(.*) : (.*)/.exec(line);
             if (failedMatch) {
                 const testName = `${failedMatch[3]}/${failedMatch[4]}`;
-                let failedTestIndex = this.testItems.findIndex(item => {
-                    if (!item.id.endsWith(testName)) {
-                        return false;
-                    }
-                    // get target test item
-                    const targetTestItem = item.parent?.parent;
-                    if (!targetTestItem) {
-                        return false;
-                    }
-                    // get target from Package
-                    const target = this.folderContext.swiftPackage.targets.find(
-                        item => targetTestItem.label === item.name
-                    );
-                    if (target) {
-                        const fileErrorIsIn = failedMatch[1];
-                        const targetPath = path.join(this.folderContext.folder.fsPath, target.path);
-                        const relativePath = path.relative(targetPath, fileErrorIsIn);
-                        return target.sources.find(source => source === relativePath) !== undefined;
-                    }
-                    return false;
-                });
+                let failedTestIndex = this.testItems.findIndex(item =>
+                    this.isTestWithFilenameInTarget(testName, failedMatch[1], item)
+                );
                 // didn't find failed test so just search using class name and test function name
                 if (failedTestIndex === -1) {
                     failedTestIndex = this.testItems.findIndex(item => item.id.endsWith(testName));
@@ -416,9 +398,12 @@ export class TestRunner {
             const skippedMatch = /^(.+):(\d+):\s*(.*)\.(.*) : Test skipped:/.exec(line);
             if (skippedMatch) {
                 const testName = `${skippedMatch[3]}/${skippedMatch[4]}`;
-                const skippedTestIndex = this.testItems.findIndex(item =>
-                    item.id.endsWith(testName)
+                let skippedTestIndex = this.testItems.findIndex(item =>
+                    this.isTestWithFilenameInTarget(testName, skippedMatch[1], item)
                 );
+                if (skippedTestIndex === -1) {
+                    skippedTestIndex = this.testItems.findIndex(item => item.id.endsWith(testName));
+                }
                 if (skippedTestIndex !== -1) {
                     this.testRun.skipped(this.testItems[skippedTestIndex]);
                     // remove from test item list as its status has been set
@@ -444,5 +429,41 @@ export class TestRunner {
                 continue;
             }
         }
+    }
+
+    /**
+     * Linux test output does not include the target name. So I have to work out which target
+     * the test is in via the test name and if it failed the filename from the error. In theory
+     * If a test fails the filename for where it failed should indicate which target it is in.
+     *
+     * @param testName Test name
+     * @param filename File name of where test failed
+     * @param item TestItem
+     * @returns Is it this TestItem
+     */
+    private isTestWithFilenameInTarget(
+        testName: string,
+        filename: string,
+        item: vscode.TestItem
+    ): boolean {
+        if (!item.id.endsWith(testName)) {
+            return false;
+        }
+        // get target test item
+        const targetTestItem = item.parent?.parent;
+        if (!targetTestItem) {
+            return false;
+        }
+        // get target from Package
+        const target = this.folderContext.swiftPackage.targets.find(
+            item => targetTestItem.label === item.name
+        );
+        if (target) {
+            const fileErrorIsIn = filename;
+            const targetPath = path.join(this.folderContext.folder.fsPath, target.path);
+            const relativePath = path.relative(targetPath, fileErrorIsIn);
+            return target.sources.find(source => source === relativePath) !== undefined;
+        }
+        return false;
     }
 }
