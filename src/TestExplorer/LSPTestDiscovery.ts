@@ -20,6 +20,10 @@ import { isPathInsidePath } from "../utilities/utilities";
 import { getFileSymbols } from "../sourcekit-lsp/DocumentSymbols";
 import { Target } from "../SwiftPackage";
 
+class LSPClass {
+    constructor(public className: string, public range?: vscode.Range) {}
+}
+
 class LSPFunction {
     constructor(public className: string, public funcName: string, public range?: vscode.Range) {}
 }
@@ -33,6 +37,7 @@ class LSPFunction {
  * these results.
  */
 export class LSPTestDiscovery {
+    private classes: LSPClass[];
     private functions: LSPFunction[];
     private targetName?: string;
 
@@ -41,6 +46,7 @@ export class LSPTestDiscovery {
         private folderContext: FolderContext,
         private controller: vscode.TestController
     ) {
+        this.classes = [];
         this.functions = [];
         this.targetName = this.getTarget(uri)?.name;
     }
@@ -72,7 +78,9 @@ export class LSPTestDiscovery {
         if (!this.targetName) {
             return;
         }
-        this.functions = await this.lspGetFunctionList(this.uri);
+        const results = await this.lspGetFunctionList(this.uri);
+        this.classes = results.classes;
+        this.functions = results.functions;
 
         // add functions to target test item if it exists
         this.addTestItems();
@@ -92,7 +100,8 @@ export class LSPTestDiscovery {
         if (!targetItem) {
             return;
         }
-        const functions = await this.lspGetFunctionList(uri);
+        const results = await this.lspGetFunctionList(uri);
+        const functions = results.functions;
         const deletedFunctions: LSPFunction[] = [];
         this.functions.forEach(element => {
             if (
@@ -106,6 +115,7 @@ export class LSPTestDiscovery {
             }
         });
         this.functions = functions;
+        this.classes = results.classes;
 
         this.addTestItemsToTarget(targetItem);
 
@@ -134,6 +144,26 @@ export class LSPTestDiscovery {
 
     private addTestItemsToTarget(targetItem: vscode.TestItem) {
         const targetName = targetItem.id;
+        // set class positions
+        for (const c of this.classes) {
+            const classId = `${targetName}.${c.className}`;
+            const classItem = targetItem.children.get(classId);
+            if (!classItem) {
+                continue;
+            }
+            if (!classItem.uri) {
+                // Unfortunately TestItem.uri is readonly so have to create a new TestItem
+                const children = classItem.children;
+                targetItem.children.delete(classId);
+                const newItem = this.controller.createTestItem(classId, c.className, this.uri);
+                children.forEach(child => newItem.children.add(child));
+                newItem.range = c.range;
+                targetItem.children.add(newItem);
+            } else {
+                classItem.range = c.range;
+            }
+        }
+
         // add functions that didn't exist before
         for (const f of this.functions) {
             const classId = `${targetName}.${f.className}`;
@@ -167,7 +197,10 @@ export class LSPTestDiscovery {
      * Get list of class methods that start with the prefix "test" and have no parameters
      * ie possible test functions
      */
-    async lspGetFunctionList(uri: vscode.Uri): Promise<LSPFunction[]> {
+    async lspGetFunctionList(
+        uri: vscode.Uri
+    ): Promise<{ classes: LSPClass[]; functions: LSPFunction[] }> {
+        const resultClasses: LSPClass[] = [];
         const results: LSPFunction[] = [];
 
         try {
@@ -176,10 +209,29 @@ export class LSPTestDiscovery {
                 this.folderContext.workspaceContext.languageClientManager
             );
             if (!symbols) {
-                return [];
+                return { classes: [], functions: [] };
             }
-            const classes = symbols.filter(item => item.kind === langclient.SymbolKind.Class);
+            // filter is class or extension
+            const classes = symbols.filter(
+                item =>
+                    item.kind === langclient.SymbolKind.Class ||
+                    item.kind === langclient.SymbolKind.Namespace
+            );
             classes.forEach(c => {
+                // add class with position
+                if (c.kind === langclient.SymbolKind.Class) {
+                    const range = new vscode.Range(
+                        c.range.start.line,
+                        c.range.start.character,
+                        c.range.end.line,
+                        c.range.end.character
+                    );
+                    resultClasses.push({
+                        className: c.name,
+                        range: range,
+                    });
+                }
+                // filter test methods
                 const testFunctions = c.children?.filter(
                     child =>
                         child.kind === langclient.SymbolKind.Method &&
@@ -200,9 +252,9 @@ export class LSPTestDiscovery {
                     });
                 });
             });
-            return results;
+            return { classes: resultClasses, functions: results };
         } catch {
-            return [];
+            return { classes: [], functions: [] };
         }
     }
 
