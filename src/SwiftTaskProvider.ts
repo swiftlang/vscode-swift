@@ -88,6 +88,7 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
             cwd: folderContext.folder,
             scope: folderContext.workspaceFolder,
             presentationOptions: { clear: true },
+            problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
         }
     );
 }
@@ -116,6 +117,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 cwd: folderContext.folder,
                 scope: folderContext.workspaceFolder,
                 presentationOptions: { clear: true },
+                problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
             }
         ),
         createSwiftTask(
@@ -126,6 +128,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 cwd: folderContext.folder,
                 scope: folderContext.workspaceFolder,
                 presentationOptions: { clear: true },
+                problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
             }
         ),
     ];
