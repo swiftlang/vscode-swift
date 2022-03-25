@@ -434,7 +434,7 @@ export class TestRunner {
     /**
      * Linux test output does not include the target name. So I have to work out which target
      * the test is in via the test name and if it failed the filename from the error. In theory
-     * If a test fails the filename for where it failed should indicate which target it is in.
+     * if a test fails the filename for where it failed should indicate which target it is in.
      *
      * @param testName Test name
      * @param filename File name of where test failed
