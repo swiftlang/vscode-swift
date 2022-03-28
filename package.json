@@ -103,7 +103,7 @@
           "swift.autoGenerateLaunchConfigurations": {
             "type": "boolean",
             "default": true,
-            "description": "When loading a `Package.swift` auto-generate `launch.json` configurations for running any executables.",
+            "markdownDescription": "When loading a `Package.swift`, auto-generate `launch.json` configurations for running any executables.",
             "order": 3
           },
           "swift.problemMatchCompileErrors": {
@@ -126,7 +126,7 @@
           },
           "sourcekit-lsp.serverPath": {
             "type": "string",
-            "description": "The path of the sourcekit-lsp executable. The default is to look in the path where swift is found."
+            "markdownDescription": "The path of the `sourcekit-lsp` executable. The default is to look in the path where `swift` is found."
           },
           "sourcekit-lsp.serverArguments": {
             "type": "array",
@@ -134,12 +134,12 @@
             "items": {
               "type": "string"
             },
-            "description": "Arguments to pass to sourcekit-lsp. Argument keys and values should be provided as separate entries in the array e.g. ['--log-level', 'debug']"
+            "description": "Arguments to pass to Sourcekit-LSP. Argument keys and values should be provided as separate entries in the array e.g. ['--log-level', 'debug']"
           },
           "sourcekit-lsp.toolchainPath": {
             "type": "string",
             "default": "",
-            "description": "(optional) The path of the swift toolchain. By default, sourcekit-lsp uses the toolchain it is installed in."
+            "description": "(optional) The path of the Swift toolchain. By default, Sourcekit-LSP uses the toolchain it is installed in."
           },
           "sourcekit-lsp.inlayHints.enabled": {
             "type": "boolean",
