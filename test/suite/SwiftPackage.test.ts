@@ -15,8 +15,16 @@
 import * as assert from "assert";
 import { testAssetUri } from "../fixtures";
 import { SwiftPackage } from "../../src/SwiftPackage";
+import { SwiftToolchain } from "../../src/toolchain/toolchain";
+import { Version } from "../../src/utilities/version";
+
+let toolchain: SwiftToolchain | undefined;
 
 suite("SwiftPackage Test Suite", () => {
+    setup(async () => {
+        toolchain = await SwiftToolchain.create();
+    });
+
     test("No package", async () => {
         const spmPackage = await SwiftPackage.create(testAssetUri("empty-folder"));
         assert.strictEqual(spmPackage.foundPackage, false);
@@ -48,6 +56,9 @@ suite("SwiftPackage Test Suite", () => {
     }).timeout(5000);
 
     test("Package resolve v2", async () => {
+        if (toolchain && toolchain.swiftVersion < new Version(5, 6, 0)) {
+            return;
+        }
         const spmPackage = await SwiftPackage.create(testAssetUri("package5.6"));
         assert.strictEqual(spmPackage.isValid, true);
         assert(spmPackage.resolved !== undefined);
