@@ -115,7 +115,8 @@ export class TestRunner {
                 await this.runSession(token);
             }
         } catch (error) {
-            const reason = error as string;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const reason = error as any;
             if (reason) {
                 this.testRun.appendOutput(reason.toString());
             }
@@ -186,7 +187,12 @@ export class TestRunner {
 
         // run associated build task
         const task = createBuildAllTask(this.folderContext);
-        await executeTaskAndWait(task);
+        const exitCode = await executeTaskAndWait(task);
+
+        // if build failed then exit
+        if (exitCode !== 0) {
+            return;
+        }
 
         // Use WriteStream to log results
         const writeStream = new Stream.Writable();
@@ -207,9 +213,11 @@ export class TestRunner {
         let stdout: Stream.Writable | null = null;
         let stderr: Stream.Writable | null = null;
         if (process.platform === "darwin") {
+            stdout = writeStream;
             stderr = writeStream;
         } else {
             stdout = writeStream;
+            stderr = writeStream;
         }
 
         if (token.isCancellationRequested) {
@@ -221,16 +229,20 @@ export class TestRunner {
         // show test results pane
         vscode.commands.executeCommand("testing.showMostRecentOutput");
 
-        await execFileStreamOutput(
-            testBuildConfig.program,
-            testBuildConfig.args,
-            stdout,
-            stderr,
-            token,
-            {
-                cwd: testBuildConfig.cwd,
-            }
-        );
+        try {
+            await execFileStreamOutput(
+                testBuildConfig.program,
+                testBuildConfig.args,
+                stdout,
+                stderr,
+                token,
+                {
+                    cwd: testBuildConfig.cwd,
+                }
+            );
+        } catch {
+            // ignore errors from execFileStreamOutput. As stderr output is already parsed
+        }
     }
 
     /** Run test session inside debugger */
