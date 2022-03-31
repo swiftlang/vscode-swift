@@ -79,6 +79,11 @@
         "command": "swift.openExternal",
         "title": "View Repository",
         "category": "Swift"
+      },
+      {
+        "command": "swift.openPackage",
+        "title": "Open Package.swift",
+        "category": "Swift"
       }
     ],
     "configuration": [
@@ -175,6 +180,10 @@
         },
         {
           "command": "swift.resetPackage",
+          "when": "swift.hasPackage"
+        },
+        {
+          "command": "swift.openPackage",
           "when": "swift.hasPackage"
         },
         {
