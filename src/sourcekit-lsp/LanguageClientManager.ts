@@ -25,6 +25,20 @@ import { FolderContext } from "../FolderContext";
  * workspace folders
  */
 export class LanguageClientManager {
+    // document selector used by language client
+    static documentSelector = [
+        { scheme: "file", language: "swift" },
+        { scheme: "untitled", language: "swift" },
+        { scheme: "file", language: "c" },
+        { scheme: "untitled", language: "c" },
+        { scheme: "file", language: "cpp" },
+        { scheme: "untitled", language: "cpp" },
+        { scheme: "file", language: "objective-c" },
+        { scheme: "untitled", language: "objective-c" },
+        { scheme: "file", language: "objective-cpp" },
+        { scheme: "untitled", language: "objective-cpp" },
+    ];
+
     /** current running client */
     private languageClient: langclient.LanguageClient | null | undefined;
     private cancellationToken?: vscode.CancellationTokenSource;
@@ -223,18 +237,7 @@ export class LanguageClientManager {
             workspaceFolder = { uri: folder, name: FolderContext.uriName(folder), index: 0 };
         }
         const clientOptions: langclient.LanguageClientOptions = {
-            documentSelector: [
-                { scheme: "file", language: "swift" },
-                { scheme: "untitled", language: "swift" },
-                { scheme: "file", language: "c" },
-                { scheme: "untitled", language: "c" },
-                { scheme: "file", language: "cpp" },
-                { scheme: "untitled", language: "cpp" },
-                { scheme: "file", language: "objective-c" },
-                { scheme: "untitled", language: "objective-c" },
-                { scheme: "file", language: "objective-cpp" },
-                { scheme: "untitled", language: "objective-cpp" },
-            ],
+            documentSelector: LanguageClientManager.documentSelector,
             revealOutputChannelOn: langclient.RevealOutputChannelOn.Never,
             workspaceFolder: workspaceFolder,
         };
