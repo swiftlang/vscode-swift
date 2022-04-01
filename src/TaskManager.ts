@@ -64,11 +64,11 @@ export class TaskManager implements vscode.Disposable {
                     resolve(event.exitCode);
                 }
             });
-            token?.onCancellationRequested(() => {
-                disposable.dispose();
-                resolve(undefined);
+            vscode.tasks.executeTask(task).then(execution => {
+                token?.onCancellationRequested(() => {
+                    execution.terminate();
+                });
             });
-            vscode.tasks.executeTask(task);
         });
     }
 
