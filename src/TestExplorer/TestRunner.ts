@@ -18,7 +18,7 @@ import * as path from "path";
 import { createTestConfiguration, createDarwinTestConfiguration } from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
 import { execFileStreamOutput } from "../utilities/utilities";
-import { createBuildAllTask, executeTaskAndWait } from "../SwiftTaskProvider";
+import { createBuildAllTask } from "../SwiftTaskProvider";
 import * as Stream from "stream";
 
 /** Class used to run tests */
@@ -187,7 +187,10 @@ export class TestRunner {
 
         // run associated build task
         const task = createBuildAllTask(this.folderContext);
-        const exitCode = await executeTaskAndWait(task, this.folderContext.workspaceContext, token);
+        const exitCode = await this.folderContext.workspaceContext.tasks.executeTaskAndWait(
+            task,
+            token
+        );
 
         // if build failed then exit
         if (exitCode === undefined || exitCode !== 0) {

@@ -163,33 +163,6 @@ export function createSwiftTask(args: string[], name: string, config?: TaskConfi
 }
 
 /**
- * Execute task and wait until it is finished. This function assumes that no
- * other tasks with the same name will be run at the same time
- *
- * @param task task to execute
- * @returns exit code from executable
- */
-export async function executeTaskAndWait(
-    task: vscode.Task,
-    workspaceContext: WorkspaceContext,
-    token?: vscode.CancellationToken
-): Promise<number | undefined> {
-    return new Promise<number | undefined>(resolve => {
-        const disposable = workspaceContext.tasks.onDidEndTaskProcess(event => {
-            if (event.execution.task.definition === task.definition) {
-                disposable.dispose();
-                resolve(event.exitCode);
-            }
-        });
-        token?.onCancellationRequested(() => {
-            disposable.dispose();
-            resolve(undefined);
-        });
-        vscode.tasks.executeTask(task);
-    });
-}
-
-/**
  * A {@link vscode.TaskProvider TaskProvider} for tasks that match the definition
  * in **package.json**: `{ type: 'swift'; command: string; args: string[] }`.
  *
