@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021 the VSCode Swift project authors
+// Copyright (c) 2021-2022 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -169,9 +169,12 @@ export function createSwiftTask(args: string[], name: string, config?: TaskConfi
  * @param task task to execute
  * @returns exit code from executable
  */
-export async function executeTaskAndWait(task: vscode.Task): Promise<number | undefined> {
+export async function executeTaskAndWait(
+    task: vscode.Task,
+    workspaceContext: WorkspaceContext
+): Promise<number | undefined> {
     return new Promise<number | undefined>(resolve => {
-        const disposable = vscode.tasks.onDidEndTaskProcess(event => {
+        const disposable = workspaceContext.tasks.onDidEndTaskProcess(event => {
             if (event.execution.task.definition === task.definition) {
                 disposable.dispose();
                 resolve(event.exitCode);

@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021 the VSCode Swift project authors
+// Copyright (c) 2021-2022 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -187,10 +187,10 @@ export class TestRunner {
 
         // run associated build task
         const task = createBuildAllTask(this.folderContext);
-        const exitCode = await executeTaskAndWait(task);
+        const exitCode = await executeTaskAndWait(task, this.folderContext.workspaceContext);
 
         // if build failed then exit
-        if (exitCode !== 0) {
+        if (exitCode === undefined || exitCode !== 0) {
             return;
         }
 
