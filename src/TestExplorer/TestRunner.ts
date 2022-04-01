@@ -187,7 +187,7 @@ export class TestRunner {
 
         // run associated build task
         const task = createBuildAllTask(this.folderContext);
-        const exitCode = await executeTaskAndWait(task, this.folderContext.workspaceContext);
+        const exitCode = await executeTaskAndWait(task, this.folderContext.workspaceContext, token);
 
         // if build failed then exit
         if (exitCode === undefined || exitCode !== 0) {

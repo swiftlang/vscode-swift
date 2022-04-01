@@ -171,7 +171,8 @@ export function createSwiftTask(args: string[], name: string, config?: TaskConfi
  */
 export async function executeTaskAndWait(
     task: vscode.Task,
-    workspaceContext: WorkspaceContext
+    workspaceContext: WorkspaceContext,
+    token?: vscode.CancellationToken
 ): Promise<number | undefined> {
     return new Promise<number | undefined>(resolve => {
         const disposable = workspaceContext.tasks.onDidEndTaskProcess(event => {
@@ -179,6 +180,10 @@ export async function executeTaskAndWait(
                 disposable.dispose();
                 resolve(event.exitCode);
             }
+        });
+        token?.onCancellationRequested(() => {
+            disposable.dispose();
+            resolve(undefined);
         });
         vscode.tasks.executeTask(task);
     });
