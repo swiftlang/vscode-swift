@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021 the VSCode Swift project authors
+// Copyright (c) 2021-2022 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -44,7 +44,7 @@ export class TestExplorer {
 
         // add end of task handler to be called whenever a build task has finished. If
         // it is the build task for this folder then update the tests
-        const onDidEndTask = vscode.tasks.onDidEndTaskProcess(event => {
+        const onDidEndTask = folderContext.workspaceContext.tasks.onDidEndTaskProcess(event => {
             const task = event.execution.task;
             const execution = task.execution as vscode.ShellExecution;
             if (

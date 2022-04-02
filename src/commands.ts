@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
-import { executeTaskAndWait, createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
+import { createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderContext } from "./FolderContext";
 import { PackageNode } from "./ui/PackageDependencyProvider";
 import { execSwift } from "./utilities/utilities";
@@ -205,7 +205,7 @@ async function runSingleFile(ctx: WorkspaceContext) {
         cwd: vscode.Uri.file(path.dirname(filename)),
         presentationOptions: { reveal: vscode.TaskRevealKind.Always, clear: true },
     });
-    await executeTaskAndWait(runTask);
+    await ctx.tasks.executeTaskAndWait(runTask);
 
     // delete file after running swift
     if (isTempFile) {
@@ -393,7 +393,7 @@ async function executeTaskWithUI(
     workspaceContext.outputChannel.logStart(`${description} ... `, folderContext.name);
     workspaceContext.statusItem.start(task);
     try {
-        const exitCode = await executeTaskAndWait(task);
+        const exitCode = await workspaceContext.tasks.executeTaskAndWait(task);
         workspaceContext.statusItem.end(task);
         if (exitCode === 0) {
             workspaceContext.outputChannel.logEnd("done.");

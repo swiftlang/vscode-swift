@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021 the VSCode Swift project authors
+// Copyright (c) 2021-2022 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -22,6 +22,7 @@ import { getLLDBLibPath } from "./debugger/lldb";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 import { TemporaryFolder } from "./utilities/tempFolder";
 import { SwiftToolchain } from "./toolchain/toolchain";
+import { TaskManager } from "./TaskManager";
 
 export interface SwiftExtensionContext {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,6 +39,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public outputChannel: SwiftOutputChannel;
     public statusItem: StatusItem;
     public languageClientManager: LanguageClientManager;
+    public tasks: TaskManager;
     private onChangeConfig: vscode.Disposable;
 
     private constructor(
@@ -49,6 +51,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.statusItem = new StatusItem();
         this.languageClientManager = new LanguageClientManager(this);
         this.outputChannel.log(this.toolchain.swiftVersionString);
+        this.tasks = new TaskManager();
         // on change config restart server
         this.onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
             if (event.affectsConfiguration("swift.path")) {

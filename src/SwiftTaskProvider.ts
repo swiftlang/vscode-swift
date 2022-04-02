@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021 the VSCode Swift project authors
+// Copyright (c) 2021-2022 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -160,25 +160,6 @@ export function createSwiftTask(args: string[], name: string, config?: TaskConfi
     task.group = config?.group;
     task.presentationOptions = config?.presentationOptions ?? {};
     return task;
-}
-
-/**
- * Execute task and wait until it is finished. This function assumes that no
- * other tasks with the same name will be run at the same time
- *
- * @param task task to execute
- * @returns exit code from executable
- */
-export async function executeTaskAndWait(task: vscode.Task): Promise<number | undefined> {
-    return new Promise<number | undefined>(resolve => {
-        const disposable = vscode.tasks.onDidEndTaskProcess(event => {
-            if (event.execution.task.definition === task.definition) {
-                disposable.dispose();
-                resolve(event.exitCode);
-            }
-        });
-        vscode.tasks.executeTask(task);
-    });
 }
 
 /**
