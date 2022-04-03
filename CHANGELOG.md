@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.4.2 - 2022-04-04
+
+### Changed
+
+- Build operations triggered by TestExplorer can be cancelled by TestExplorer.
+
+### Fixed
+
+- Centralize task tracking to fix issues with missing task completions.
+- Issue with LSP server not starting on Linux.
+
 ## 0.4.1 - 2022-03-28
 
 ### Added
