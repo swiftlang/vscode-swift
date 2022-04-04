@@ -104,11 +104,20 @@ export class TestRunner {
      * @returns When complete
      */
     async runHandler(shouldDebug: boolean, token: vscode.CancellationToken) {
-        if (token.isCancellationRequested) {
-            return;
-        }
-
         try {
+            // run associated build task
+            const task = createBuildAllTask(this.folderContext);
+            const exitCode = await this.folderContext.workspaceContext.tasks.executeTaskAndWait(
+                task,
+                token
+            );
+
+            // if build failed then exit
+            if (exitCode === undefined || exitCode !== 0) {
+                this.testRun.end();
+                return;
+            }
+
             if (shouldDebug) {
                 await this.debugSession(token);
             } else {
@@ -185,18 +194,6 @@ export class TestRunner {
             return;
         }
 
-        // run associated build task
-        const task = createBuildAllTask(this.folderContext);
-        const exitCode = await this.folderContext.workspaceContext.tasks.executeTaskAndWait(
-            task,
-            token
-        );
-
-        // if build failed then exit
-        if (exitCode === undefined || exitCode !== 0) {
-            return;
-        }
-
         // Use WriteStream to log results
         const writeStream = new Stream.Writable();
         writeStream._write = (chunk, encoding, next) => {
@@ -259,6 +256,10 @@ export class TestRunner {
         if (testBuildConfig === null) {
             return;
         }
+
+        // given we have already run a build task there is no need to have a pre launch task
+        // to build the tests
+        testBuildConfig.preLaunchTask = undefined;
 
         const subscriptions: vscode.Disposable[] = [];
         // add cancelation

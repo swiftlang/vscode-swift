@@ -79,7 +79,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
             case FolderEvent.resolvedUpdated:
                 if (folder.swiftPackage.foundPackage) {
-                    commands.resolveFolderDependencies(folder);
+                    await commands.resolveFolderDependencies(folder);
                 }
         }
     });
