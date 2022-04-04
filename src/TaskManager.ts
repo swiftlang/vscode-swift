@@ -67,6 +67,8 @@ export class TaskManager implements vscode.Disposable {
             vscode.tasks.executeTask(task).then(execution => {
                 token?.onCancellationRequested(() => {
                     execution.terminate();
+                    disposable.dispose();
+                    resolve(undefined);
                 });
             });
         });
