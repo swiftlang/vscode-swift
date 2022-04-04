@@ -145,16 +145,21 @@ export class LanguageClientManager {
             if (client) {
                 this.cancellationToken?.cancel();
                 this.cancellationToken?.dispose();
-                this.startedPromise = client.stop().then(async () => {
-                    // change workspace folder and restart
-                    const workspaceFolder = {
-                        uri: uri,
-                        name: FolderContext.uriName(uri),
-                        index: 0,
-                    };
-                    client.clientOptions.workspaceFolder = workspaceFolder;
-                    await this.startClient(client);
-                });
+                this.startedPromise = client
+                    .stop()
+                    .then(async () => {
+                        // change workspace folder and restart
+                        const workspaceFolder = {
+                            uri: uri,
+                            name: FolderContext.uriName(uri),
+                            index: 0,
+                        };
+                        client.clientOptions.workspaceFolder = workspaceFolder;
+                        await this.startClient(client);
+                    })
+                    .catch(reason => {
+                        this.workspaceContext.outputChannel.log(`${reason}`);
+                    });
             }
         }
     }
