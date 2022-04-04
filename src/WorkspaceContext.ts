@@ -117,9 +117,14 @@ export class WorkspaceContext implements vscode.Disposable {
                 await this.addWorkspaceFolder(folder);
             }
         }
-        // fire focus event on null folder to startup language server if we don't have a currently focused folder
+        // If we don't have a current selected folder Start up language server by firing focus event
+        // on either null folder, first folder if there is only one or folder active file is part of
         if (this.currentFolder === undefined) {
-            await this.fireEvent(null, FolderEvent.focus);
+            if (this.folders.length === 1) {
+                await this.fireEvent(this.folders[0], FolderEvent.focus);
+            } else {
+                await this.fireEvent(null, FolderEvent.focus);
+            }
         }
     }
 
@@ -181,7 +186,7 @@ export class WorkspaceContext implements vscode.Disposable {
         }
 
         if (this.getActiveWorkspaceFolder(vscode.window.activeTextEditor) === folder) {
-            this.focusTextEditor(vscode.window.activeTextEditor);
+            await this.focusTextEditor(vscode.window.activeTextEditor);
         }
     }
 
