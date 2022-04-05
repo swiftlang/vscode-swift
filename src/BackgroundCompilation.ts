@@ -10,6 +10,37 @@ export class BackgroundCompilation {
 
     constructor(private folderContext: FolderContext) {}
 
+    /**
+     * Start onDidSave handler which will kick off compilation tasks
+     *
+     * The task works out which folder the saved file is in and then
+     * will call `runTask` on the background compilation attached to
+     * that folder.
+     * */
+    static start(workspaceContext: WorkspaceContext): vscode.Disposable {
+        const onDidSaveDocument = vscode.workspace.onDidSaveTextDocument(event => {
+            if (configuration.backgroundCompilation === false) {
+                return;
+            }
+
+            // is editor document in any of the current FolderContexts
+            const folderContext = workspaceContext.folders.find(context => {
+                return isPathInsidePath(event.uri.fsPath, context.folder.fsPath);
+            });
+
+            // run background compilation task
+            folderContext?.backgroundCompilation.runTask();
+        });
+        return { dispose: () => onDidSaveDocument.dispose() };
+    }
+
+    /**
+     * Run background compilation task
+     *
+     * If task is already running and nobody else is waiting for a build task
+     * then wait for the current build task to complete and then run another
+     * after. Otherwise just return
+     */
     runTask() {
         // create compile task and execute it
         const task = createBuildAllTask(this.folderContext);
@@ -30,40 +61,25 @@ export class BackgroundCompilation {
             this.waitingToRun = true;
             // if we found a task then wait until no tasks are running on this folder and then run
             // the build task
-            const disposable = vscode.tasks.onDidEndTaskProcess(event => {
-                // find running task, that is running on current folder and is not the one that
-                // just ended
-                const index2 = vscode.tasks.taskExecutions.findIndex(
-                    exe =>
-                        exe.task.definition.cwd === this.folderContext.folder.fsPath &&
-                        exe !== event.execution
-                );
-                if (index2 === -1) {
-                    disposable.dispose();
-                    vscode.tasks.executeTask(task);
-                    this.waitingToRun = false;
+            const disposable = this.folderContext.workspaceContext.tasks.onDidEndTaskProcess(
+                event => {
+                    // find running task, that is running on current folder and is not the one that
+                    // just ended
+                    const index2 = vscode.tasks.taskExecutions.findIndex(
+                        exe =>
+                            exe.task.definition.cwd === this.folderContext.folder.fsPath &&
+                            exe !== event.execution
+                    );
+                    if (index2 === -1) {
+                        disposable.dispose();
+                        vscode.tasks.executeTask(task);
+                        this.waitingToRun = false;
+                    }
                 }
-            });
+            );
             return;
         }
 
         vscode.tasks.executeTask(task);
-    }
-
-    static start(workspaceContext: WorkspaceContext): vscode.Disposable {
-        const onDidSaveDocument = vscode.workspace.onDidSaveTextDocument(event => {
-            if (configuration.backgroundCompilation === false) {
-                return;
-            }
-
-            // is editor document in any of the current FolderContexts
-            const folderContext = workspaceContext.folders.find(context => {
-                return isPathInsidePath(event.uri.fsPath, context.folder.fsPath);
-            });
-
-            // run background compilation task
-            folderContext?.backgroundCompilation.runTask();
-        });
-        return { dispose: () => onDidSaveDocument.dispose() };
     }
 }
