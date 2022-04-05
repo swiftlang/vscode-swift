@@ -72,6 +72,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.subscriptions = [
             backgroundCompilationOnDidSave,
             onChangeConfig,
+            this.tasks,
             this.languageClientManager,
             this.outputChannel,
             this.statusItem,
