@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as langclient from "vscode-languageclient/node";
 import * as path from "path";
 import { FolderContext } from "../FolderContext";
 import { isPathInsidePath } from "../utilities/utilities";
@@ -200,9 +199,6 @@ export class LSPTestDiscovery {
     async lspGetFunctionList(
         uri: vscode.Uri
     ): Promise<{ classes: LSPClass[]; functions: LSPFunction[] }> {
-        const resultClasses: LSPClass[] = [];
-        const results: LSPFunction[] = [];
-
         try {
             const symbols = await getFileSymbols(
                 uri,
@@ -211,51 +207,50 @@ export class LSPTestDiscovery {
             if (!symbols) {
                 return { classes: [], functions: [] };
             }
-            // filter is class or extension
-            const classes = symbols.filter(
-                item =>
-                    item.kind === langclient.SymbolKind.Class ||
-                    item.kind === langclient.SymbolKind.Namespace
-            );
-            classes.forEach(c => {
-                // add class with position
-                if (c.kind === langclient.SymbolKind.Class) {
-                    const range = new vscode.Range(
-                        c.range.start.line,
-                        c.range.start.character,
-                        c.range.end.line,
-                        c.range.end.character
-                    );
-                    resultClasses.push({
-                        className: c.name,
-                        range: range,
-                    });
-                }
-                // filter test methods
-                const testFunctions = c.children?.filter(
-                    child =>
-                        child.kind === langclient.SymbolKind.Method &&
-                        child.name.match(/^test.*\(\)/)
-                );
-                testFunctions?.forEach(func => {
-                    // drop "()" from function name
-                    const range = new vscode.Range(
-                        func.range.start.line,
-                        func.range.start.character,
-                        func.range.end.line,
-                        func.range.end.character
-                    );
-                    results.push({
-                        className: c.name,
-                        funcName: func.name.slice(0, -2),
-                        range: range,
-                    });
-                });
-            });
-            return { classes: resultClasses, functions: results };
+            return this.parseSymbolList(symbols);
         } catch {
             return { classes: [], functions: [] };
         }
+    }
+
+    /**
+     * Get list of class methods that start with the prefix "test" and have no parameters
+     * ie possible test functions
+     */
+    parseSymbolList(symbols: vscode.DocumentSymbol[]): {
+        classes: LSPClass[];
+        functions: LSPFunction[];
+    } {
+        const resultClasses: LSPClass[] = [];
+        const results: LSPFunction[] = [];
+
+        // filter is class or extension
+        const classes = symbols.filter(
+            item =>
+                item.kind === vscode.SymbolKind.Class || item.kind === vscode.SymbolKind.Namespace
+        );
+        classes.forEach(c => {
+            // add class with position
+            if (c.kind === vscode.SymbolKind.Class) {
+                resultClasses.push({
+                    className: c.name,
+                    range: c.range,
+                });
+            }
+            // filter test methods
+            const testFunctions = c.children?.filter(
+                child => child.kind === vscode.SymbolKind.Method && child.name.match(/^test.*\(\)/)
+            );
+            testFunctions?.forEach(func => {
+                // drop "()" from function name
+                results.push({
+                    className: c.name,
+                    funcName: func.name.slice(0, -2),
+                    range: c.range,
+                });
+            });
+        });
+        return { classes: resultClasses, functions: results };
     }
 
     /**
