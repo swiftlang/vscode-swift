@@ -16,7 +16,6 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { FolderContext } from "../FolderContext";
 import { isPathInsidePath } from "../utilities/utilities";
-import { getFileSymbols } from "../sourcekit-lsp/DocumentSymbols";
 import { Target } from "../SwiftPackage";
 
 class LSPClass {
@@ -45,9 +44,9 @@ export class LSPTestDiscovery {
         private folderContext: FolderContext,
         private controller: vscode.TestController
     ) {
+        this.targetName = this.getTarget(uri)?.name;
         this.classes = [];
         this.functions = [];
-        this.targetName = this.getTarget(uri)?.name;
     }
 
     /**
@@ -69,37 +68,38 @@ export class LSPTestDiscovery {
     }
 
     /**
-     * Called whenever a document becomes active. It stores a record of all the functions
-     * in the file so it can be compared against in the onSave function
-     * @param uri Uri of document just made active
+     * Add test items for the symbols we have found so far
      */
-    async setActive() {
+    addTestItems() {
         if (!this.targetName) {
-            return;
-        }
-        const results = await this.lspGetFunctionList(this.uri);
-        this.classes = results.classes;
-        this.functions = results.functions;
-
-        // add functions to target test item if it exists
-        this.addTestItems();
-    }
-
-    /**
-     * Called whenever a file is saved. If it is a test file it will add any new tests it finds
-     * and will compare against the list stored when the file was first made active to decide
-     * on what tests should be removed
-     * @param uri Uri of file being saved
-     */
-    async onDidSave(uri: vscode.Uri) {
-        if (!this.targetName || this.uri !== uri) {
             return;
         }
         const targetItem = this.controller.items.get(this.targetName);
         if (!targetItem) {
             return;
         }
-        const results = await this.lspGetFunctionList(uri);
+        this.addTestItemsToTarget(targetItem);
+    }
+
+    /**
+     * Update test items based on document symbols returned from LSP server
+     * @param symbols Document symbols returned from LSP server
+     */
+    updateTestItems(symbols: vscode.DocumentSymbol[]) {
+        if (!this.targetName) {
+            return;
+        }
+
+        const results = this.parseSymbolList(symbols);
+
+        const targetItem = this.controller.items.get(this.targetName);
+        if (!targetItem) {
+            // if didn't find target item it probably hasn't been constructed yet
+            // store the results for later use and return
+            this.functions = results.functions;
+            this.classes = results.classes;
+            return;
+        }
         const functions = results.functions;
         const deletedFunctions: LSPFunction[] = [];
         this.functions.forEach(element => {
@@ -130,17 +130,7 @@ export class LSPTestDiscovery {
         }
     }
 
-    addTestItems() {
-        if (!this.targetName) {
-            return;
-        }
-        const targetItem = this.controller.items.get(this.targetName);
-        if (!targetItem) {
-            return;
-        }
-        this.addTestItemsToTarget(targetItem);
-    }
-
+    /** Add test items for LSP server results */
     private addTestItemsToTarget(targetItem: vscode.TestItem) {
         const targetName = targetItem.id;
         // set class positions
@@ -196,27 +186,6 @@ export class LSPTestDiscovery {
      * Get list of class methods that start with the prefix "test" and have no parameters
      * ie possible test functions
      */
-    async lspGetFunctionList(
-        uri: vscode.Uri
-    ): Promise<{ classes: LSPClass[]; functions: LSPFunction[] }> {
-        try {
-            const symbols = await getFileSymbols(
-                uri,
-                this.folderContext.workspaceContext.languageClientManager
-            );
-            if (!symbols) {
-                return { classes: [], functions: [] };
-            }
-            return this.parseSymbolList(symbols);
-        } catch {
-            return { classes: [], functions: [] };
-        }
-    }
-
-    /**
-     * Get list of class methods that start with the prefix "test" and have no parameters
-     * ie possible test functions
-     */
     parseSymbolList(symbols: vscode.DocumentSymbol[]): {
         classes: LSPClass[];
         functions: LSPFunction[];
@@ -246,7 +215,7 @@ export class LSPTestDiscovery {
                 results.push({
                     className: c.name,
                     funcName: func.name.slice(0, -2),
-                    range: c.range,
+                    range: func.range,
                 });
             });
         });

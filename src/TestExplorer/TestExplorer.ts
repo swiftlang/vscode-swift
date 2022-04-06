@@ -57,30 +57,7 @@ export class TestExplorer {
             }
         });
 
-        const onDidSaveDocument = vscode.workspace.onDidSaveTextDocument(event => {
-            this.lspFunctionParser?.onDidSave(event.uri);
-        });
-        const onDidChangeActiveWindow = vscode.window.onDidChangeActiveTextEditor(async editor => {
-            const uri = editor?.document?.uri;
-            if (!uri || this.lspFunctionParser?.uri === uri) {
-                return;
-            }
-            if (isPathInsidePath(uri.fsPath, this.folderContext.folder.fsPath)) {
-                this.lspFunctionParser = new LSPTestDiscovery(
-                    uri,
-                    this.folderContext,
-                    this.controller
-                );
-                await this.lspFunctionParser.setActive();
-            }
-        });
-
-        this.subscriptions = [
-            onDidSaveDocument,
-            onDidChangeActiveWindow,
-            onDidEndTask,
-            this.controller,
-        ];
+        this.subscriptions = [onDidEndTask, this.controller];
     }
 
     dispose() {
@@ -94,14 +71,45 @@ export class TestExplorer {
      * @returns Observer disposable
      */
     static observeFolders(workspaceContext: WorkspaceContext): vscode.Disposable {
-        return workspaceContext.observeFolders((folder, event) => {
+        return workspaceContext.observeFolders((folder, event, workspace) => {
             switch (event) {
                 case FolderEvent.add:
                     folder?.addTestExplorer();
                     folder?.testExplorer?.discoverTestsInWorkspace();
                     break;
+                case FolderEvent.focus:
+                    if (folder) {
+                        workspace.languageClientManager.documentSymbolWatcher = (
+                            document,
+                            symbols
+                        ) => TestExplorer.onDocumentSymbols(folder, document, symbols);
+                    }
             }
         });
+    }
+
+    /** Called whenever we have new document symbols */
+    private static onDocumentSymbols(
+        folder: FolderContext,
+        document: vscode.TextDocument,
+        symbols: vscode.DocumentSymbol[] | null | undefined
+    ) {
+        const uri = document?.uri;
+        const testExplorer = folder?.testExplorer;
+        if (testExplorer && symbols && uri && uri.scheme === "file") {
+            if (isPathInsidePath(uri.fsPath, folder.folder.fsPath)) {
+                if (testExplorer.lspFunctionParser?.uri === uri) {
+                    testExplorer.lspFunctionParser.updateTestItems(symbols);
+                } else {
+                    testExplorer.lspFunctionParser = new LSPTestDiscovery(
+                        uri,
+                        folder,
+                        testExplorer.controller
+                    );
+                    testExplorer.lspFunctionParser.updateTestItems(symbols);
+                }
+            }
+        }
     }
 
     /**
@@ -115,17 +123,6 @@ export class TestExplorer {
                 cwd: this.folderContext.folder.fsPath,
             });
 
-            // get list of possible tests from the currently active file
-            const uri = vscode.window.activeTextEditor?.document.uri;
-            if (uri) {
-                this.lspFunctionParser = new LSPTestDiscovery(
-                    uri,
-                    this.folderContext,
-                    this.controller
-                );
-                await this.lspFunctionParser.setActive();
-            }
-
             // if we got to this point we can get rid of any error test item
             this.deleteErrorTestItem();
 
@@ -135,7 +132,7 @@ export class TestExplorer {
                 return;
             }
 
-            // remove TestItems that aren't in either of the above lists
+            // remove TestItems that aren't in either the swift test output or the LSP symbol list
             this.controller.items.forEach(targetItem => {
                 targetItem.children.forEach(classItem => {
                     classItem.children.forEach(funcItem => {

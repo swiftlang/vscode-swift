@@ -53,7 +53,7 @@ export class LanguageClientManager {
     private waitingOnRestartCount: number;
     public documentSymbolWatcher?: (
         document: vscode.TextDocument,
-        symbols: vscode.SymbolInformation[] | vscode.DocumentSymbol[] | null | undefined
+        symbols: vscode.DocumentSymbol[] | null | undefined
     ) => void;
 
     constructor(public workspaceContext: WorkspaceContext) {
@@ -253,8 +253,9 @@ export class LanguageClientManager {
             middleware: {
                 provideDocumentSymbols: async (document, token, next) => {
                     const result = await next(document, token);
-                    if (this.documentSymbolWatcher) {
-                        this.documentSymbolWatcher(document, result);
+                    const documentSymbols = result as vscode.DocumentSymbol[];
+                    if (this.documentSymbolWatcher && documentSymbols) {
+                        this.documentSymbolWatcher(document, documentSymbols);
                     }
                     return result;
                 },
