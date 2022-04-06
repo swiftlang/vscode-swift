@@ -51,6 +51,10 @@ export class LanguageClientManager {
     private startedPromise?: Promise<void>;
     private currentWorkspaceFolder?: vscode.Uri;
     private waitingOnRestartCount: number;
+    public documentSymbolWatcher?: (
+        document: vscode.TextDocument,
+        symbols: vscode.SymbolInformation[] | vscode.DocumentSymbol[] | null | undefined
+    ) => void;
 
     constructor(public workspaceContext: WorkspaceContext) {
         // stop and start server for each folder based on which file I am looking at
@@ -105,6 +109,7 @@ export class LanguageClientManager {
         );
 
         this.waitingOnRestartCount = 0;
+        this.documentSymbolWatcher = undefined;
         this.cancellationToken = new vscode.CancellationTokenSource();
     }
 
@@ -245,6 +250,15 @@ export class LanguageClientManager {
             documentSelector: LanguageClientManager.documentSelector,
             revealOutputChannelOn: langclient.RevealOutputChannelOn.Never,
             workspaceFolder: workspaceFolder,
+            middleware: {
+                provideDocumentSymbols: async (document, token, next) => {
+                    const result = await next(document, token);
+                    if (this.documentSymbolWatcher) {
+                        this.documentSymbolWatcher(document, result);
+                    }
+                    return result;
+                },
+            },
         };
 
         return new langclient.LanguageClient(
