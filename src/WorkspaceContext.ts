@@ -284,7 +284,7 @@ export class WorkspaceContext implements vscode.Disposable {
     }
 
     async focusTextEditor(editor?: vscode.TextEditor) {
-        if (!editor || !editor.document) {
+        if (!editor || !editor.document || editor.document.uri.scheme !== "file") {
             return;
         }
         const url = editor.document.uri;
