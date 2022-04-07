@@ -19,7 +19,7 @@ import { LanguageClientManager } from "./LanguageClientManager";
 export async function getFileSymbols(
     uri: vscode.Uri,
     languageClientManager: LanguageClientManager
-): Promise<langclient.DocumentSymbol[] | undefined> {
+): Promise<vscode.DocumentSymbol[] | undefined> {
     return await languageClientManager.useLanguageClient(async (client, cancellationToken) => {
         const params = {
             textDocument: langclient.TextDocumentIdentifier.create(uri.toString(true)),
@@ -35,8 +35,9 @@ export async function getFileSymbols(
         if (response.length === 0) {
             return [];
         }
-        if (langclient.DocumentSymbol.is(response[0])) {
-            return response.map(item => item as langclient.DocumentSymbol);
+        const symbols = response as langclient.DocumentSymbol[];
+        if (symbols) {
+            return client.protocol2CodeConverter.asDocumentSymbols(symbols);
         }
     });
 }
