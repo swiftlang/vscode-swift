@@ -23,6 +23,7 @@ import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 import { TemporaryFolder } from "./utilities/tempFolder";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { TaskManager } from "./TaskManager";
+import { BackgroundCompilation } from "./BackgroundCompilation";
 
 export interface SwiftExtensionContext {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,7 +41,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public statusItem: StatusItem;
     public languageClientManager: LanguageClientManager;
     public tasks: TaskManager;
-    private onChangeConfig: vscode.Disposable;
+    private subscriptions: { dispose(): unknown }[];
 
     private constructor(
         public extensionContext: SwiftExtensionContext,
@@ -53,7 +54,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.outputChannel.log(this.toolchain.swiftVersionString);
         this.tasks = new TaskManager();
         // on change config restart server
-        this.onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
+        const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
             if (event.affectsConfiguration("swift.path")) {
                 vscode.window
                     .showInformationMessage(
@@ -67,14 +68,20 @@ export class WorkspaceContext implements vscode.Disposable {
                     });
             }
         });
+        const backgroundCompilationOnDidSave = BackgroundCompilation.start(this);
+        this.subscriptions = [
+            backgroundCompilationOnDidSave,
+            onChangeConfig,
+            this.tasks,
+            this.languageClientManager,
+            this.outputChannel,
+            this.statusItem,
+        ];
     }
 
     dispose() {
         this.folders.forEach(f => f.dispose());
-        this.onChangeConfig.dispose();
-        this.languageClientManager.dispose();
-        this.outputChannel.dispose();
-        this.statusItem.dispose();
+        this.subscriptions.forEach(item => item.dispose());
     }
 
     get swiftVersion() {

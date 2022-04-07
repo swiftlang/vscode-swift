@@ -88,6 +88,12 @@ const configuration = {
             .getConfiguration("swift")
             .get<boolean>("autoGenerateLaunchConfigurations", true);
     },
+    /** background compilation */
+    get backgroundCompilation(): boolean {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<boolean>("backgroundCompilation", false);
+    },
 };
 
 export default configuration;

@@ -129,6 +129,12 @@
             ],
             "order": 5
           },
+          "swift.backgroundCompilation": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "**Experimental**: Run `swift build` in the background whenever a file is saved.",
+            "order": 6
+          },
           "sourcekit-lsp.serverPath": {
             "type": "string",
             "markdownDescription": "The path of the `sourcekit-lsp` executable. The default is to look in the path where `swift` is found."
