@@ -128,6 +128,8 @@ export function createTestConfiguration(
         folder = `${workspaceFolder}}/${ctx.relativePath}`;
         nameSuffix = ` (${ctx.relativePath})`;
     }
+    const testEnv = configuration.testEnvironmentVariables;
+
     if (process.platform === "darwin") {
         // On macOS, find the path to xctest
         // and point it at the .xctest bundle from the .build directory.
@@ -142,6 +144,7 @@ export function createTestConfiguration(
             program: `${xctestPath}/xctest`,
             args: [`.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`],
             cwd: folder,
+            env: testEnv,
             preLaunchTask: `swift: Build All${nameSuffix}`,
         };
     } else if (process.platform === "win32") {
@@ -158,6 +161,7 @@ export function createTestConfiguration(
             cwd: folder,
             env: {
                 path: `${ctx.workspaceContext.toolchain.xcTestPath};\${env:PATH}`,
+                ...testEnv,
             },
             preLaunchTask: `swift: Build All${nameSuffix}`,
         };
@@ -169,6 +173,7 @@ export function createTestConfiguration(
             name: `Test ${ctx.swiftPackage.name}`,
             program: `${folder}/.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
             cwd: folder,
+            env: testEnv,
             preLaunchTask: `swift: Build All${nameSuffix}`,
         };
     }
@@ -213,12 +218,17 @@ export function createDarwinTestConfiguration(
         default:
             return null;
     }
+    const envCommands = Object.entries(configuration.testEnvironmentVariables).map(
+        ([key, value]) => `settings set target.env-vars ${key}="${value}"`
+    );
+
     return {
         type: "lldb",
         request: "custom",
         name: `Test ${ctx.swiftPackage.name}`,
         targetCreateCommands: [`file -a ${arch} ${xctestPath}/xctest`],
         processCreateCommands: [
+            ...envCommands,
             `process launch -e ${outputFile} -w ${folder} -- ${args} .build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
         ],
         preLaunchTask: `swift: Build All${nameSuffix}`,

@@ -94,6 +94,12 @@ const configuration = {
             .getConfiguration("swift")
             .get<boolean>("backgroundCompilation", false);
     },
+    /** Environment variables to set when running tests */
+    get testEnvironmentVariables(): Record<string, string> {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<Record<string, string>>("testEnvironmentVariables", {});
+    },
 };
 
 export default configuration;
