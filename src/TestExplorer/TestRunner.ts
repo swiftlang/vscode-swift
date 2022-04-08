@@ -229,7 +229,6 @@ export class TestRunner {
         this.testRun.appendOutput(`> Test run started at ${new Date().toLocaleString()} <\r\n\r\n`);
         // show test results pane
         vscode.commands.executeCommand("testing.showMostRecentOutput");
-        const testEnv = configuration.testEnvironmentVariables;
         try {
             await execFileStreamOutput(
                 testBuildConfig.program,
@@ -239,7 +238,7 @@ export class TestRunner {
                 token,
                 {
                     cwd: testBuildConfig.cwd,
-                    env: { ...process.env, ...testEnv },
+                    env: { ...process.env, ...testBuildConfig.env },
                 }
             );
         } catch {
