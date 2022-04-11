@@ -68,7 +68,7 @@ export async function execFileStreamOutput(
     args: string[],
     stdout: Stream.Writable | null,
     stderr: Stream.Writable | null,
-    token: vscode.CancellationToken,
+    token: vscode.CancellationToken | null,
     options: cp.ExecFileOptions = {}
 ): Promise<{ stdout: string; stderr: string }> {
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
@@ -84,10 +84,12 @@ export async function execFileStreamOutput(
         if (stderr) {
             p.stderr?.pipe(stderr);
         }
-        const cancellation = token.onCancellationRequested(() => {
-            p.kill();
-            cancellation.dispose();
-        });
+        if (token) {
+            const cancellation = token.onCancellationRequested(() => {
+                p.kill();
+                cancellation.dispose();
+            });
+        }
     });
 }
 
