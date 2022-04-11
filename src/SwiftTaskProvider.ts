@@ -94,6 +94,25 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
 }
 
 /**
+ * Return build all task for a folder
+ * @param folderContext Folder to get Build All Task for
+ * @returns Build All Task
+ */
+export async function getBuildAllTask(folderContext: FolderContext): Promise<vscode.Task> {
+    let buildTaskName = SwiftTaskProvider.buildAllName;
+    if (folderContext.relativePath.length > 0) {
+        buildTaskName += ` (${folderContext.relativePath})`;
+    }
+    const task = await vscode.tasks
+        .fetchTasks({ type: "swift" })
+        .then(tasks => tasks.find(task => task.name === buildTaskName));
+    if (!task) {
+        throw Error("Build All Task does not exist");
+    }
+    return task;
+}
+
+/**
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
 function createBuildTasks(product: Product, folderContext: FolderContext): vscode.Task[] {
