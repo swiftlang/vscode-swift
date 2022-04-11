@@ -36,7 +36,7 @@ export interface Api {
 export async function activate(context: vscode.ExtensionContext): Promise<Api> {
     console.debug("Activating Swift for Visual Studio Code...");
 
-    const workspaceContext = await WorkspaceContext.create(context);
+    const workspaceContext = await WorkspaceContext.create();
 
     context.subscriptions.push(workspaceContext);
 

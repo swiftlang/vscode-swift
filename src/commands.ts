@@ -448,7 +448,7 @@ function updateAfterError(result: boolean, folderContext: FolderContext) {
  * Registers this extension's commands in the given {@link vscode.ExtensionContext context}.
  */
 export function register(ctx: WorkspaceContext) {
-    ctx.extensionContext.subscriptions.push(
+    ctx.subscriptions.push(
         vscode.commands.registerCommand("swift.resolveDependencies", () =>
             resolveDependencies(ctx)
         ),
