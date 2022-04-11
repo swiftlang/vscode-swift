@@ -108,13 +108,21 @@ export async function getBuildAllTask(folderContext: FolderContext): Promise<vsc
 
     // search for build all task in task.json first
     let task = tasks.find(
-        task => task.name === `swift: ${buildTaskName}` && task.source === "Workspace"
+        task =>
+            task.name === `swift: ${buildTaskName}` &&
+            task.definition.cwd === folderContext.folder.fsPath &&
+            task.source === "Workspace"
     );
     if (task) {
         return task;
     }
     // search for generated tasks
-    task = tasks.find(task => task.name === buildTaskName && task.source === "swift");
+    task = tasks.find(
+        task =>
+            task.name === buildTaskName &&
+            task.definition.cwd === folderContext.folder.fsPath &&
+            task.source === "swift"
+    );
     if (!task) {
         throw Error("Build All Task does not exist");
     }
