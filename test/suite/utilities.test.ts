@@ -82,6 +82,7 @@ suite("Utilities Test Suite", () => {
             null
         );
         assert(result.length > 0);
+        assert(result.includes("Swift version"));
         assert.strictEqual(result, stdout);
     });
 });
