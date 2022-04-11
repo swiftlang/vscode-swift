@@ -18,7 +18,7 @@ import * as path from "path";
 import { createTestConfiguration, createDarwinTestConfiguration } from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
 import { execFileStreamOutput } from "../utilities/utilities";
-import { createBuildAllTask } from "../SwiftTaskProvider";
+import { getBuildAllTask } from "../SwiftTaskProvider";
 import * as Stream from "stream";
 
 /** Class used to run tests */
@@ -106,7 +106,7 @@ export class TestRunner {
     async runHandler(shouldDebug: boolean, token: vscode.CancellationToken) {
         try {
             // run associated build task
-            const task = createBuildAllTask(this.folderContext);
+            const task = await getBuildAllTask(this.folderContext);
             const exitCode = await this.folderContext.workspaceContext.tasks.executeTaskAndWait(
                 task,
                 token

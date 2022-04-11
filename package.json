@@ -102,7 +102,7 @@
             "items": {
               "type": "string"
             },
-            "markdownDescription": "Arguments to pass to `swift build`. Keys and values should be provided as separate entries.",
+            "markdownDescription": "Arguments to pass to `swift build`. Keys and values should be provided as separate entries. If you have created a copy of the build task in `tasks.json` then these build arguments will not be propogated to that task.",
             "order": 2
           },
           "swift.autoGenerateLaunchConfigurations": {
