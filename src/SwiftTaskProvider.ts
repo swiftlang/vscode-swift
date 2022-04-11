@@ -61,7 +61,7 @@ function testDiscoveryFlag(ctx: FolderContext): string[] {
 }
 
 /** arguments for generating windows debug builds */
-function win32BuildOptions(): string[] {
+export function win32BuildOptions(): string[] {
     return ["-Xswiftc", "-g", "-Xswiftc", "-use-ld=lld", "-Xlinker", "-debug:dwarf"];
 }
 
