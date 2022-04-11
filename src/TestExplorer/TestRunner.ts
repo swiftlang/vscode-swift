@@ -20,7 +20,6 @@ import { FolderContext } from "../FolderContext";
 import { execFileStreamOutput } from "../utilities/utilities";
 import { getBuildAllTask } from "../SwiftTaskProvider";
 import * as Stream from "stream";
-import configuration from "../configuration";
 
 /** Class used to run tests */
 export class TestRunner {

@@ -17,7 +17,6 @@ import * as assert from "assert";
 import { testAssetWorkspaceFolder } from "../fixtures";
 import { FolderEvent, SwiftExtensionContext, WorkspaceContext } from "../../src/WorkspaceContext";
 import { createBuildAllTask, win32BuildOptions } from "../../src/SwiftTaskProvider";
-import { SwiftTaskProvider } from "../../src/SwiftTaskProvider";
 
 class TestExtensionContext implements SwiftExtensionContext {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
