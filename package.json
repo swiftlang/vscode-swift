@@ -105,17 +105,28 @@
             "markdownDescription": "Arguments to pass to `swift build`. Keys and values should be provided as separate entries. If you have created a copy of the build task in `tasks.json` then these build arguments will not be propogated to that task.",
             "order": 2
           },
+          "swift.testEnvironmentVariables": {
+            "type": "object",
+            "patternProperties": {
+              ".*": {
+                "type": "string"
+              }
+            },
+            "default": {},
+            "markdownDescription": "Environment variables to set when running tests. To set environment variables when debugging an application you should edit the relevant `launch.json` configuration",
+            "order": 3
+          },
           "swift.autoGenerateLaunchConfigurations": {
             "type": "boolean",
             "default": true,
             "markdownDescription": "When loading a `Package.swift`, auto-generate `launch.json` configurations for running any executables.",
-            "order": 3
+            "order": 4
           },
           "swift.problemMatchCompileErrors": {
             "type": "boolean",
             "default": true,
             "description": "List compile errors in the Problems View.",
-            "order": 4
+            "order": 5
           },
           "swift.excludePathsFromPackageDependencies": {
             "description": "A list of paths to exclude from the Package Dependencies view.",
@@ -127,13 +138,13 @@
               ".git",
               ".github"
             ],
-            "order": 5
+            "order": 6
           },
           "swift.backgroundCompilation": {
             "type": "boolean",
             "default": false,
             "markdownDescription": "**Experimental**: Run `swift build` in the background whenever a file is saved.",
-            "order": 6
+            "order": 7
           },
           "sourcekit-lsp.serverPath": {
             "type": "string",
