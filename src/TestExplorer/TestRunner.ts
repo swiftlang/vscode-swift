@@ -18,7 +18,7 @@ import * as path from "path";
 import { createTestConfiguration, createDarwinTestConfiguration } from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
 import { execFileStreamOutput } from "../utilities/utilities";
-import { createBuildAllTask, getBuildAllTask } from "../SwiftTaskProvider";
+import { getBuildAllTask } from "../SwiftTaskProvider";
 import * as Stream from "stream";
 
 /** Class used to run tests */

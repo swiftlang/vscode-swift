@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import { isPathInsidePath } from "./utilities/utilities";
-import { createBuildAllTask } from "./SwiftTaskProvider";
+import { getBuildAllTask } from "./SwiftTaskProvider";
 import configuration from "./configuration";
 import { FolderContext } from "./FolderContext";
 import { WorkspaceContext } from "./WorkspaceContext";
@@ -55,11 +55,15 @@ export class BackgroundCompilation {
      * then wait for the current build task to complete and then run another
      * after. Otherwise just return
      */
-    runTask() {
+    async runTask() {
         // create compile task and execute it
-        const task = createBuildAllTask(this.folderContext);
-        task.name = `${task.name} (Background)`;
-        task.presentationOptions = {
+        const task = await getBuildAllTask(this.folderContext);
+        if (!task) {
+            return;
+        }
+        const backgroundTask = Object.assign(task);
+        backgroundTask.name = `${backgroundTask.name} (Background)`;
+        backgroundTask.presentationOptions = {
             reveal: vscode.TaskRevealKind.Never,
             panel: vscode.TaskPanelKind.Dedicated,
         };
@@ -86,7 +90,7 @@ export class BackgroundCompilation {
                     );
                     if (index2 === -1) {
                         disposable.dispose();
-                        vscode.tasks.executeTask(task);
+                        vscode.tasks.executeTask(backgroundTask);
                         this.waitingToRun = false;
                     }
                 }
@@ -94,6 +98,6 @@ export class BackgroundCompilation {
             return;
         }
 
-        vscode.tasks.executeTask(task);
+        vscode.tasks.executeTask(backgroundTask);
     }
 }

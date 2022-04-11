@@ -68,7 +68,7 @@ function win32BuildOptions(): string[] {
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
-export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
+function createBuildAllTask(folderContext: FolderContext): vscode.Task {
     const additionalArgs: string[] = [];
     if (folderContext.swiftPackage.getTargets("test").length > 0) {
         additionalArgs.push(...testDiscoveryFlag(folderContext));
@@ -99,13 +99,22 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
  * @returns Build All Task
  */
 export async function getBuildAllTask(folderContext: FolderContext): Promise<vscode.Task> {
+    const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
+
     let buildTaskName = SwiftTaskProvider.buildAllName;
     if (folderContext.relativePath.length > 0) {
         buildTaskName += ` (${folderContext.relativePath})`;
     }
-    const task = await vscode.tasks
-        .fetchTasks({ type: "swift" })
-        .then(tasks => tasks.find(task => task.name === buildTaskName));
+
+    // search for build all task in task.json first
+    let task = tasks.find(
+        task => task.name === `swift: ${buildTaskName}` && task.source === "Workspace"
+    );
+    if (task) {
+        return task;
+    }
+    // search for generated tasks
+    task = tasks.find(task => task.name === buildTaskName && task.source === "swift");
     if (!task) {
         throw Error("Build All Task does not exist");
     }
