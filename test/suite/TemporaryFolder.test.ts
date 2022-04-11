@@ -23,7 +23,7 @@ suite("Temporary Folder Test Suite", () => {
         const fileName = tempFolder.filename("test");
         assert.doesNotThrow(async () => await fs.writeFile(fileName, fileContents));
         assert.doesNotThrow(async () => {
-            const contents = await fs.readFile(fileName);
+            const contents = await fs.readFile(fileName, "utf8");
             assert.strictEqual(contents, fileContents);
         });
         assert.doesNotThrow(async () => await fs.rm(fileName));

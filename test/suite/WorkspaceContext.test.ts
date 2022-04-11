@@ -17,6 +17,7 @@ import * as assert from "assert";
 import { testAssetWorkspaceFolder } from "../fixtures";
 import { FolderEvent, SwiftExtensionContext, WorkspaceContext } from "../../src/WorkspaceContext";
 import { createBuildAllTask, win32BuildOptions } from "../../src/SwiftTaskProvider";
+import { SwiftTaskProvider } from "../../src/SwiftTaskProvider";
 
 class TestExtensionContext implements SwiftExtensionContext {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -25,20 +26,23 @@ class TestExtensionContext implements SwiftExtensionContext {
 
 suite("WorkspaceContext Test Suite", () => {
     let workspaceContext: WorkspaceContext;
+    const subscriptions: { dispose(): unknown }[] = [];
     const packageFolder: vscode.WorkspaceFolder = testAssetWorkspaceFolder("package1");
 
     suiteSetup(async () => {
         workspaceContext = await WorkspaceContext.create(new TestExtensionContext());
         await workspaceContext.addWorkspaceFolder(packageFolder);
+        subscriptions.push(workspaceContext);
     });
 
     suiteTeardown(async () => {
         workspaceContext?.removeFolder(packageFolder);
-        workspaceContext?.dispose();
+        subscriptions.forEach(sub => sub.dispose());
     });
 
     suite("Folder Events", () => {
         test("Add/Remove", async () => {
+            assert.strictEqual(workspaceContext.folders.length, 1);
             let count = 0;
             const observer = workspaceContext?.observeFolders((folder, operation) => {
                 assert(folder !== null);
@@ -66,7 +70,6 @@ suite("WorkspaceContext Test Suite", () => {
             const folder = workspaceContext.folders.find(f => f.workspaceFolder === packageFolder);
             assert(folder);
             const buildAllTask = createBuildAllTask(folder);
-            assert(buildAllTask);
             const execution = buildAllTask.execution as vscode.ShellExecution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
             assert.strictEqual(buildAllTask.name, "Build All");
@@ -89,7 +92,6 @@ suite("WorkspaceContext Test Suite", () => {
                 .getConfiguration("swift", packageFolder)
                 .update("buildArguments", ["--sanitize=thread"]);
             const buildAllTask = createBuildAllTask(folder);
-            assert(buildAllTask);
             const execution = buildAllTask.execution as vscode.ShellExecution;
             if (process.platform === "win32") {
                 assert.notStrictEqual(execution?.args, [

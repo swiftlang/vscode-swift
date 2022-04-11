@@ -68,7 +68,7 @@ export function win32BuildOptions(): string[] {
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
-function createBuildAllTask(folderContext: FolderContext): vscode.Task {
+export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
     const additionalArgs: string[] = [];
     if (folderContext.swiftPackage.getTargets("test").length > 0) {
         additionalArgs.push(...testDiscoveryFlag(folderContext));
