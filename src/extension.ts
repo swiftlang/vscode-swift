@@ -23,9 +23,17 @@ import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { LanguageStatusItems } from "./ui/LanguageStatusItems";
 
 /**
+ * External API as exposed by the extension. Can be queried by other extensions
+ * or by the integration test runner for VSCode extensions.
+ */
+export interface Api {
+    workspaceContext: WorkspaceContext;
+}
+
+/**
  * Activate the extension. This is the main entry point.
  */
-export async function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext): Promise<Api> {
     console.debug("Activating Swift for Visual Studio Code...");
 
     const workspaceContext = await WorkspaceContext.create(context);
@@ -103,6 +111,8 @@ export async function activate(context: vscode.ExtensionContext) {
         commentCompletionProvider,
         taskProvider
     );
+
+    return { workspaceContext };
 }
 
 /**
