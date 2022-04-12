@@ -52,6 +52,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.statusItem = new StatusItem();
         this.languageClientManager = new LanguageClientManager(this);
         this.outputChannel.log(this.toolchain.swiftVersionString);
+        this.toolchain.logDiagnostics(this.outputChannel);
         this.tasks = new TaskManager();
         // on change config restart server
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {

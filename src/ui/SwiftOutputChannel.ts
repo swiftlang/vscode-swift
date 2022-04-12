@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import configuration from "../configuration";
 
 export class SwiftOutputChannel {
     private channel: vscode.OutputChannel;
@@ -26,6 +27,21 @@ export class SwiftOutputChannel {
     }
 
     log(message: string, label?: string) {
+        let fullMessage: string;
+        if (label !== undefined) {
+            fullMessage = `${label}: ${message}`;
+        } else {
+            fullMessage = message;
+        }
+        const line = `${this.nowFormatted}: ${fullMessage}`;
+        this.channel.appendLine(line);
+        console.log(line);
+    }
+
+    logDiagnostic(message: string, label?: string) {
+        if (!configuration.diagnostics) {
+            return;
+        }
         let fullMessage: string;
         if (label !== undefined) {
             fullMessage = `${label}: ${message}`;

@@ -94,6 +94,10 @@ const configuration = {
             .getConfiguration("swift")
             .get<boolean>("backgroundCompilation", false);
     },
+    /** output additional diagnostics */
+    get diagnostics(): boolean {
+        return vscode.workspace.getConfiguration("swift").get<boolean>("diagnostics", false);
+    },
     /** Environment variables to set when running tests */
     get testEnvironmentVariables(): Record<string, string> {
         return vscode.workspace
