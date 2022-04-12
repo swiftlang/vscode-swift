@@ -59,7 +59,7 @@ FROM swift:5.5
 
 ### Using a custom Docker Compose File
 
-For more complex development environments you might want to use Docker Compose. The `devcontainer.json` file has three settings you need to include if you are wanting to use Docker Compose: 
+For more complex development environments you may need to use Docker Compose. The `devcontainer.json` file has three settings you need to include if you want to use Docker Compose: 
 - `dockerComposeFile` your docker compose file
 - `service` the service you want to run
 - `workspaceFolder` the root folder for your project
