@@ -20,6 +20,8 @@ import { FolderContext } from "../FolderContext";
 import { execFileStreamOutput } from "../utilities/utilities";
 import { getBuildAllTask } from "../SwiftTaskProvider";
 import * as Stream from "stream";
+import configuration from "../configuration";
+import { WorkspaceContext } from "../WorkspaceContext";
 
 /** Class used to run tests */
 export class TestRunner {
@@ -39,6 +41,10 @@ export class TestRunner {
     ) {
         this.testRun = this.controller.createTestRun(this.request);
         this.testItems = this.createTestList();
+    }
+
+    get workspaceContext(): WorkspaceContext {
+        return this.folderContext.workspaceContext;
     }
 
     /**
@@ -107,10 +113,7 @@ export class TestRunner {
         try {
             // run associated build task
             const task = await getBuildAllTask(this.folderContext);
-            const exitCode = await this.folderContext.workspaceContext.tasks.executeTaskAndWait(
-                task,
-                token
-            );
+            const exitCode = await this.workspaceContext.tasks.executeTaskAndWait(task, token);
 
             // if build failed then exit
             if (exitCode === undefined || exitCode !== 0) {
@@ -238,7 +241,8 @@ export class TestRunner {
                 {
                     cwd: testBuildConfig.cwd,
                     env: { ...process.env, ...testBuildConfig.env },
-                }
+                },
+                this.folderContext
             );
         } catch {
             // ignore errors from execFileStreamOutput. As stderr output is already parsed
@@ -247,10 +251,7 @@ export class TestRunner {
 
     /** Run test session inside debugger */
     async debugSession(token: vscode.CancellationToken) {
-        const testOutputPath = this.folderContext.workspaceContext.tempFolder.filename(
-            "TestOutput",
-            "txt"
-        );
+        const testOutputPath = this.workspaceContext.tempFolder.filename("TestOutput", "txt");
         // create launch config for testing
         const testBuildConfig = this.createLaunchConfigurationForTesting(true, testOutputPath);
         if (testBuildConfig === null) {
@@ -261,10 +262,27 @@ export class TestRunner {
         // to build the tests
         testBuildConfig.preLaunchTask = undefined;
 
+        // output test build configuration
+        if (configuration.diagnostics) {
+            const configJSON = JSON.stringify(testBuildConfig);
+            this.workspaceContext.outputChannel.logDiagnostic(
+                `Debug Config: ${configJSON}`,
+                this.folderContext.name
+            );
+        }
+
         const subscriptions: vscode.Disposable[] = [];
         // add cancelation
         const startSession = vscode.debug.onDidStartDebugSession(session => {
+            this.workspaceContext.outputChannel.logDiagnostic(
+                "Start Test Debugging",
+                this.folderContext.name
+            );
             const cancellation = token.onCancellationRequested(() => {
+                this.workspaceContext.outputChannel.logDiagnostic(
+                    "Test Debugging Cancelled",
+                    this.folderContext.name
+                );
                 vscode.debug.stopDebugging(session);
             });
             subscriptions.push(cancellation);
@@ -283,6 +301,10 @@ export class TestRunner {
 
                         const terminateSession = vscode.debug.onDidTerminateDebugSession(
                             async () => {
+                                this.workspaceContext.outputChannel.logDiagnostic(
+                                    "Stop Test Debugging",
+                                    this.folderContext.name
+                                );
                                 try {
                                     if (!token.isCancellationRequested) {
                                         const debugOutput = await asyncfs.readFile(testOutputPath, {

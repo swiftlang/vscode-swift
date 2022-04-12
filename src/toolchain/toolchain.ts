@@ -16,6 +16,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import * as plist from "plist";
 import configuration from "../configuration";
+import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { execFile, execSwift } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 
@@ -52,6 +53,14 @@ export class SwiftToolchain {
             developerDir,
             xcTestPath
         );
+    }
+
+    logDiagnostics(channel: SwiftOutputChannel) {
+        channel.logDiagnostic(`Toolchain Path: ${this.toolchainPath}`);
+        channel.logDiagnostic(`Developer Dir: ${this.developerDir}`);
+        if (this.xcTestPath) {
+            channel.logDiagnostic(`XCTestPath: ${this.xcTestPath}`);
+        }
     }
 
     /**

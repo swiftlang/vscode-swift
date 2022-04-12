@@ -146,6 +146,12 @@
             "markdownDescription": "**Experimental**: Run `swift build` in the background whenever a file is saved.",
             "order": 7
           },
+          "swift.diagnostics": {
+            "type": "boolean",
+            "default": false,
+            "description": "Output additional diagnostics to the Swift Output View.",
+            "order": 8
+          },
           "sourcekit-lsp.serverPath": {
             "type": "string",
             "markdownDescription": "The path of the `sourcekit-lsp` executable. The default is to look in the path where `swift` is found."
