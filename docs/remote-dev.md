@@ -77,7 +77,7 @@ Your `devcontainer.json` should look something like this
     ],
     "settings": {
       "lldb.library": "/usr/lib/liblldb.so"
-    }
+    },
 }
 ```
 
@@ -103,7 +103,7 @@ services:
       - "6379:6379"
 ```
 
-Note the `service` and `workspace` variables from the `devcontainer.json` reference the service and workspace folder in the `docker-compose.yml`. The `app` service is left to run indefinately and is dependent on the `redis` service. I have also included a `REDIS_HOST` environment variable which can be referenced in your code.
+Note the `service` and `workspace` variables from the `devcontainer.json` reference the service `app` and workspace volume in the `docker-compose.yml`. The `app` service is left to run indefinately using command `sleep infinity` and is dependent on the `redis` service. I have also included a `REDIS_HOST` environment variable which can be referenced in your code.
 
 ### Automatic Setup
 
