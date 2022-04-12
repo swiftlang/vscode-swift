@@ -103,7 +103,7 @@ services:
       - "6379:6379"
 ```
 
-Note the `service` and `workspace` variables from the `devcontainer.json` reference the service `app` and workspace volume in the `docker-compose.yml`. The `app` service is left to run indefinately using command `sleep infinity` and is dependent on the `redis` service. I have also included a `REDIS_HOST` environment variable which can be referenced in your code.
+Note the `service` and `workspace` variables from the `devcontainer.json` reference the service `app` and workspace volume in the `docker-compose.yml`. The `app` service is required to run all the time you are using the devcontainer. We do this here by using the command `sleep infinity`. It is dependent on the `redis` service which can be referenced in code using the service name `redis`. I have also included a `REDIS_HOST` environment variable which can be used in your code.
 
 ### Automatic Setup
 
