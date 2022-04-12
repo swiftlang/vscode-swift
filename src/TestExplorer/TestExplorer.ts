@@ -119,9 +119,13 @@ export class TestExplorer {
     async discoverTestsInWorkspace() {
         try {
             // get list of tests from `swift test --list-tests`
-            const { stdout } = await execSwift(["test", "--skip-build", "--list-tests"], {
-                cwd: this.folderContext.folder.fsPath,
-            });
+            const { stdout } = await execSwift(
+                ["test", "--skip-build", "--list-tests"],
+                {
+                    cwd: this.folderContext.folder.fsPath,
+                },
+                this.folderContext
+            );
 
             // if we got to this point we can get rid of any error test item
             this.deleteErrorTestItem();

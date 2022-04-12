@@ -315,9 +315,13 @@ async function uneditFolderDependency(
     args: string[] = []
 ) {
     try {
-        await execSwift(["package", "unedit", ...args, identifier], {
-            cwd: folder.folder.fsPath,
-        });
+        await execSwift(
+            ["package", "unedit", ...args, identifier],
+            {
+                cwd: folder.folder.fsPath,
+            },
+            folder
+        );
         ctx.fireEvent(folder, FolderEvent.resolvedUpdated);
         // find workspace folder, and check folder still exists
         const folderIndex = vscode.workspace.workspaceFolders?.findIndex(

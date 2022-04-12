@@ -18,26 +18,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import * as Stream from "stream";
 import configuration from "../configuration";
-
-/**
- * Asynchronous wrapper around {@link cp.exec child_process.exec}.
- *
- * Commands will be executed by the user's `$SHELL`, if configured.
- */
-export async function exec(
-    command: string,
-    options: cp.ExecOptions
-): Promise<{ stdout: string; stderr: string }> {
-    options.shell = process.env.SHELL;
-    return new Promise<{ stdout: string; stderr: string }>((resolve, reject) =>
-        cp.exec(command, options, (error, stdout, stderr) => {
-            if (error) {
-                reject({ error, stdout, stderr });
-            }
-            resolve({ stdout, stderr });
-        })
-    );
-}
+import { FolderContext } from "../FolderContext";
 
 /**
  * Asynchronous wrapper around {@link cp.execFile child_process.execFile}.
@@ -51,8 +32,13 @@ export async function exec(
 export async function execFile(
     executable: string,
     args: string[],
-    options: cp.ExecFileOptions = {}
+    options: cp.ExecFileOptions = {},
+    folderContext?: FolderContext
 ): Promise<{ stdout: string; stderr: string }> {
+    folderContext?.workspaceContext.outputChannel.logDiagnostic(
+        `Exec: ${executable} ${args.join(" ")}`,
+        folderContext.name
+    );
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) =>
         cp.execFile(executable, args, options, (error, stdout, stderr) => {
             if (error) {
@@ -69,8 +55,13 @@ export async function execFileStreamOutput(
     stdout: Stream.Writable | null,
     stderr: Stream.Writable | null,
     token: vscode.CancellationToken | null,
-    options: cp.ExecFileOptions = {}
+    options: cp.ExecFileOptions = {},
+    folderContext?: FolderContext
 ): Promise<{ stdout: string; stderr: string }> {
+    folderContext?.workspaceContext.outputChannel.logDiagnostic(
+        `Exec: ${executable} ${args.join(" ")}`,
+        folderContext.name
+    );
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
         const p = cp.execFile(executable, args, options, (error, stdout, stderr) => {
             if (error) {
@@ -102,10 +93,11 @@ export async function execFileStreamOutput(
  */
 export async function execSwift(
     args: string[],
-    options: cp.ExecFileOptions = {}
+    options: cp.ExecFileOptions = {},
+    folderContext?: FolderContext
 ): Promise<{ stdout: string; stderr: string }> {
     const swift = getSwiftExecutable();
-    return await execFile(swift, args, options);
+    return await execFile(swift, args, options, folderContext);
 }
 
 /**
