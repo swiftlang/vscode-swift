@@ -227,18 +227,29 @@ export class LanguageClientManager {
     }
 
     private async createLSPClient(folder?: vscode.Uri): Promise<langclient.LanguageClient> {
-        const serverPathConfig = configuration.lsp.serverPath;
+        const lspConfig = configuration.lsp;
+        const serverPathConfig = lspConfig.serverPath;
         const serverPath =
             serverPathConfig.length > 0 ? serverPathConfig : getSwiftExecutable("sourcekit-lsp");
         const sourcekit: langclient.Executable = {
             command: serverPath,
-            args: configuration.lsp.serverArguments,
+            args: lspConfig.serverArguments,
         };
 
-        const toolchain = configuration.lsp.toolchainPath;
-        if (toolchain.length > 0) {
-            // eslint-disable-next-line @typescript-eslint/naming-convention
-            sourcekit.options = { env: { ...process.env, SOURCEKIT_TOOLCHAIN_PATH: toolchain } };
+        // if path to LSP server if not equal to the path to swift and both are set then pass swift toolchain
+        // to the LSP server
+        if (
+            serverPathConfig.length > 0 &&
+            configuration.path.length > 0 &&
+            serverPathConfig !== getSwiftExecutable("sourcekit-lsp")
+        ) {
+            const toolchainPath = this.workspaceContext.toolchain.toolchainPath;
+            if (toolchainPath) {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                sourcekit.options = {
+                    env: { ...process.env, SOURCEKIT_TOOLCHAIN_PATH: toolchainPath },
+                };
+            }
         }
 
         const serverOptions: langclient.ServerOptions = sourcekit;
