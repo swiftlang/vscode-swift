@@ -15,13 +15,8 @@
 import * as vscode from "vscode";
 import * as assert from "assert";
 import { testAssetWorkspaceFolder } from "../fixtures";
-import { FolderEvent, SwiftExtensionContext, WorkspaceContext } from "../../src/WorkspaceContext";
+import { FolderEvent, WorkspaceContext } from "../../src/WorkspaceContext";
 import { createBuildAllTask, win32BuildOptions } from "../../src/SwiftTaskProvider";
-
-class TestExtensionContext implements SwiftExtensionContext {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    readonly subscriptions: { dispose(): any }[] = [];
-}
 
 suite("WorkspaceContext Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -29,7 +24,7 @@ suite("WorkspaceContext Test Suite", () => {
     const packageFolder: vscode.WorkspaceFolder = testAssetWorkspaceFolder("package1");
 
     suiteSetup(async () => {
-        workspaceContext = await WorkspaceContext.create(new TestExtensionContext());
+        workspaceContext = await WorkspaceContext.create();
         await workspaceContext.addWorkspaceFolder(packageFolder);
         subscriptions.push(workspaceContext);
     });

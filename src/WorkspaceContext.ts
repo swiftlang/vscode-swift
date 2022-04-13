@@ -25,11 +25,6 @@ import { SwiftToolchain } from "./toolchain/toolchain";
 import { TaskManager } from "./TaskManager";
 import { BackgroundCompilation } from "./BackgroundCompilation";
 
-export interface SwiftExtensionContext {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    readonly subscriptions: { dispose(): any }[];
-}
-
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
  * and the ExtensionContext
@@ -41,13 +36,9 @@ export class WorkspaceContext implements vscode.Disposable {
     public statusItem: StatusItem;
     public languageClientManager: LanguageClientManager;
     public tasks: TaskManager;
-    private subscriptions: { dispose(): unknown }[];
+    public subscriptions: { dispose(): unknown }[];
 
-    private constructor(
-        public extensionContext: SwiftExtensionContext,
-        public tempFolder: TemporaryFolder,
-        public toolchain: SwiftToolchain
-    ) {
+    private constructor(public tempFolder: TemporaryFolder, public toolchain: SwiftToolchain) {
         this.outputChannel = new SwiftOutputChannel();
         this.statusItem = new StatusItem();
         this.languageClientManager = new LanguageClientManager(this);
@@ -90,10 +81,10 @@ export class WorkspaceContext implements vscode.Disposable {
     }
 
     /** Get swift version and create WorkspaceContext */
-    static async create(extensionContext: SwiftExtensionContext): Promise<WorkspaceContext> {
+    static async create(): Promise<WorkspaceContext> {
         const tempFolder = await TemporaryFolder.create();
         const toolchain = await SwiftToolchain.create();
-        return new WorkspaceContext(extensionContext, tempFolder, toolchain);
+        return new WorkspaceContext(tempFolder, toolchain);
     }
 
     /** Setup the vscode event listeners to catch folder changes and active window changes */
@@ -114,7 +105,7 @@ export class WorkspaceContext implements vscode.Disposable {
             }
             await this.focusTextEditor(editor);
         });
-        this.extensionContext.subscriptions.push(onWorkspaceChange, onDidChangeActiveWindow);
+        this.subscriptions.push(onWorkspaceChange, onDidChangeActiveWindow);
     }
 
     /** Add workspace folders at initialisation */
