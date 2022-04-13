@@ -190,7 +190,9 @@ export class TestExplorer {
             if (
                 (process.platform === "darwin" &&
                     errorDescription.match(/error: unableToLoadBundle/)) ||
-                (process.platform !== "darwin" &&
+                (process.platform === "win32" &&
+                    errorDescription.match(/The file doesn’t exist./)) ||
+                (!["darwin", "win32"].includes(process.platform) &&
                     errorDescription.match(/No such file or directory/))
             ) {
                 this.setErrorTestItem("Build the project to enable test discovery.");
