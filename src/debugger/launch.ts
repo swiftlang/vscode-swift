@@ -150,7 +150,8 @@ export function createTestConfiguration(
     } else if (process.platform === "win32") {
         // On Windows, add XCTest.dll to the PATH,
         // and then run the .xctest bundle from the .build directory.
-        if (!ctx.workspaceContext.toolchain.developerDir) {
+        const xcTestPath = ctx.workspaceContext.toolchain.xcTestPath;
+        if (xcTestPath === undefined) {
             return null;
         }
         return {
@@ -160,7 +161,7 @@ export function createTestConfiguration(
             program: `${folder}/.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
             cwd: folder,
             env: {
-                path: `${ctx.workspaceContext.toolchain.xcTestPath};\${env:PATH}`,
+                path: `${xcTestPath};\${env:PATH}`,
                 ...testEnv,
             },
             preLaunchTask: `swift: Build All${nameSuffix}`,
