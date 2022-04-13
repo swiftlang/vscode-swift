@@ -4,7 +4,7 @@ The Visual Studio Code Swift extension comes with a number of settings you can u
 
 - **Swift: Path**
 
-This is the folder that the `swift` executable can be found in. If this is not set then the extension will look for executables in the $PATH. The extension will also use this setting when looking for other executables it requires like `sourcekit-lsp` and `lldb`.
+This is the folder that the `swift` executable can be found in. If this is not set then the extension will look for executables in the `$PATH`. The extension will also use this setting when looking for other executables it requires like `sourcekit-lsp` and `lldb`.
 
 - **Swift: Build Arguments**
 
