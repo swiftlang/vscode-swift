@@ -57,6 +57,54 @@ This will use the `Dockerfile` provided in `.devcontainer`. Create that file and
 FROM swift:5.5
 ```
 
+### Using a custom Docker Compose File
+
+For more complex development environments you may need to use Docker Compose. The `devcontainer.json` file has three settings you need to include if you want to use Docker Compose: 
+- `dockerComposeFile` your docker compose file
+- `service` the service you want to run
+- `workspaceFolder` the root folder for your project
+
+Your `devcontainer.json` should look something like this
+
+```json
+{
+    "name": "MyService: 5.6-focal",
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "app",
+    "workspaceFolder": "/workspace",
+    "extensions": [
+      "sswg.swift-lang",
+    ],
+    "settings": {
+      "lldb.library": "/usr/lib/liblldb.so"
+    },
+}
+```
+
+Below is an example of a `docker-compose.yml` file that brings up a redis server
+
+```yaml
+version: "3.3"
+
+services:
+  app:
+    image: swift:5.6-focal
+    volumes:
+      - ..:/workspace
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+    command: sleep infinity
+
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+```
+
+Note the `service` and `workspace` variables from the `devcontainer.json` reference the service `app` and workspace volume in the `docker-compose.yml`. The `app` service is required to run all the time you are using the devcontainer. We do this here by using the command `sleep infinity`. It is dependent on the `redis` service which can be referenced in code using the service name `redis`. I have also included a `REDIS_HOST` environment variable which can be used in your code.
+
 ### Automatic Setup
 
 VSCode allows you to automatically configure your project with a dev container. In the command palette (`F1`) choose **Remote-Containers: Add Development Container Configuration Files...** and choose Swift.
