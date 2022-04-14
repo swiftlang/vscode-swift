@@ -187,6 +187,10 @@ async function runSingleFile(ctx: WorkspaceContext) {
         return;
     }
 
+    if (process.platform === "win32" && !ctx.toolchain.newSwiftDriver) {
+        return;
+    }
+
     let filename = document.fileName;
     let isTempFile = false;
     if (document.isUntitled) {
