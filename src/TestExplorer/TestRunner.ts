@@ -213,8 +213,8 @@ export class TestRunner {
             writeStream.end();
         });
 
-        let stdout: Stream.Writable | null = writeStream;
-        let stderr: Stream.Writable | null = writeStream;
+        const stdout: Stream.Writable = writeStream;
+        const stderr: Stream.Writable = writeStream;
 
         if (token.isCancellationRequested) {
             writeStream.end();
