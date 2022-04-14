@@ -28,7 +28,7 @@ services:
 
   test:
     <<: *common
-    command: /bin/bash -xcl "mkdir /tmp/code && cp -r ./ /tmp/code/ && cd /tmp/code && npm ci && npm run format && npm run package && ./docker/test.sh"
+    command: /bin/bash -xcl "mkdir /tmp/code && cp -r ./ /tmp/code/ && cd /tmp/code && npm ci && npm run lint && npm run format && npm run package && ./docker/test.sh"
 
   shell:
     <<: *common
