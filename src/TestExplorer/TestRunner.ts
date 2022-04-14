@@ -213,15 +213,8 @@ export class TestRunner {
             writeStream.end();
         });
 
-        let stdout: Stream.Writable | null = null;
-        let stderr: Stream.Writable | null = null;
-        if (process.platform === "darwin") {
-            stdout = writeStream;
-            stderr = writeStream;
-        } else {
-            stdout = writeStream;
-            stderr = writeStream;
-        }
+        let stdout: Stream.Writable | null = writeStream;
+        let stderr: Stream.Writable | null = writeStream;
 
         if (token.isCancellationRequested) {
             writeStream.end();
