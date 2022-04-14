@@ -20,7 +20,7 @@ async function main() {
     try {
         // The folder containing the Extension Manifest package.json
         // Passed to `--extensionDevelopmentPath`
-        const extensionDevelopmentPath = path.resolve(__dirname, "../");
+        const extensionDevelopmentPath = path.resolve(__dirname, "../../");
 
         // The path to test runner
         // Passed to --extensionTestsPath
@@ -30,6 +30,12 @@ async function main() {
         await runTests({
             extensionDevelopmentPath,
             extensionTestsPath,
+            launchArgs: [
+                //"--disable-extensions",
+                // Already start in the fixtures dir because we lose debugger connection
+                // once we re-open a different folder due to window reloading
+                path.join(extensionDevelopmentPath, "assets/test"),
+            ],
         });
     } catch (err) {
         console.error("Failed to run tests");
