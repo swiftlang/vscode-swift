@@ -161,7 +161,7 @@ export function createTestConfiguration(
             program: `${folder}/.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
             cwd: folder,
             env: {
-                path: `${xcTestPath};\${env:PATH}`,
+                Path: `${xcTestPath};${process.env.Path}`,
                 ...testEnv,
             },
             preLaunchTask: `swift: Build All${nameSuffix}`,
