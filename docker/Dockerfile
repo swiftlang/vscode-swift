@@ -28,4 +28,4 @@ RUN echo "deb-src [signed-by=$KEYRING] https://deb.nodesource.com/$VERSION $DIST
 # Update package lists and install Node.js
 RUN apt-get update && apt-get install -y nodejs
 
-RUN useradd --user-group --system --home-dir /code vscode
+RUN useradd --user-group --create-home --system --skel /dev/null --home-dir /vscode vscode
