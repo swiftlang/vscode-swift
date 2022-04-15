@@ -34,10 +34,17 @@ async function main() {
         const cliPath = resolveCliPathFromVSCodeExecutablePath(vscodeExecutablePath);
 
         // Use cp.spawn / cp.exec for custom setup
-        cp.spawnSync(cliPath, ["--install-extension", "vadimcn.vscode-lldb"], {
-            encoding: "utf-8",
-            stdio: "inherit",
-        });
+        console.log(`${cliPath} --install-extension vadimcn.vscode-lldb`);
+        const { stdout, stderr } = cp.spawnSync(
+            cliPath,
+            ["--install-extension", "vadimcn.vscode-lldb"],
+            {
+                encoding: "utf-8",
+                stdio: "inherit",
+            }
+        );
+        console.log(stdout);
+        console.log(stderr);
 
         // Download VS Code, unzip it and run the integration test
         await runTests({
