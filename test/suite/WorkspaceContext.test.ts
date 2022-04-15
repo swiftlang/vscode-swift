@@ -103,4 +103,4 @@ suite("WorkspaceContext Test Suite", () => {
             }
         });
     });
-});
+}).timeout(5000);
