@@ -18,6 +18,7 @@ services:
       - ~/.ssh:/root/.ssh
       - ..:/code:z
     working_dir: /code
+    user: vscode:vscode
     cap_drop:
       - CAP_NET_RAW
       - CAP_NET_BIND_SERVICE

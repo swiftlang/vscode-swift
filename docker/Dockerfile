@@ -27,3 +27,5 @@ RUN echo "deb [signed-by=$KEYRING] https://deb.nodesource.com/$VERSION $DISTRO m
 RUN echo "deb-src [signed-by=$KEYRING] https://deb.nodesource.com/$VERSION $DISTRO main" | tee -a /etc/apt/sources.list.d/nodesource.list
 # Update package lists and install Node.js
 RUN apt-get update && apt-get install -y nodejs
+
+RUN useradd --user-group --system --home-dir /code vscode
