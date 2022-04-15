@@ -31,7 +31,7 @@ async function main() {
             extensionDevelopmentPath,
             extensionTestsPath,
             launchArgs: [
-                //"--disable-extensions",
+                "--install-extension vadimcn.vscode-lldb",
                 // Already start in the fixtures dir because we lose debugger connection
                 // once we re-open a different folder due to window reloading
                 path.join(extensionDevelopmentPath, "assets/test"),
