@@ -18,6 +18,7 @@ services:
       - ~/.ssh:/root/.ssh
       - ..:/code:z
     working_dir: /code
+    user: vscode:vscode
     cap_drop:
       - CAP_NET_RAW
       - CAP_NET_BIND_SERVICE
@@ -28,7 +29,7 @@ services:
 
   test:
     <<: *common
-    command: /bin/bash -xcl "mkdir /tmp/code && cp -r ./ /tmp/code/ && cd /tmp/code && npm ci && npm run format && npm run package"
+    command: /bin/bash -xcl "mkdir /tmp/code && cp -r ./ /tmp/code/ && cd /tmp/code && npm ci && npm run lint && npm run format && npm run package && ./docker/test.sh"
 
   shell:
     <<: *common

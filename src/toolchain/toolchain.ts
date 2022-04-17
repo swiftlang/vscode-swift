@@ -34,7 +34,7 @@ export class SwiftToolchain {
         public swiftVersionString: string,
         public swiftVersion: Version,
         public toolchainPath?: string,
-        public developerDir?: string,
+        public sdkroot?: string,
         public xcTestPath?: string,
         public newSwiftDriver?: boolean
     ) {}
@@ -42,20 +42,14 @@ export class SwiftToolchain {
     static async create(): Promise<SwiftToolchain> {
         const version = await this.getSwiftVersion();
         const toolchainPath = await this.getToolchainPath();
-        const developerDir = await this.getDeveloperDir();
-        let xcTestPath: string | undefined;
-        let newSwiftDriver: boolean | undefined;
-        if (developerDir) {
-            xcTestPath = await this.getXCTestPath(developerDir);
-        }
-        if (toolchainPath) {
-            newSwiftDriver = await this.checkNewDriver(toolchainPath);
-        }
+        const sdkroot = this.getSDKROOT();
+        const xcTestPath = await this.getXCTestPath(sdkroot);
+        const newSwiftDriver = await this.checkNewDriver(toolchainPath);
         return new SwiftToolchain(
             version.name,
             version.version,
             toolchainPath,
-            developerDir,
+            sdkroot,
             xcTestPath,
             newSwiftDriver
         );
@@ -63,7 +57,9 @@ export class SwiftToolchain {
 
     logDiagnostics(channel: SwiftOutputChannel) {
         channel.logDiagnostic(`Toolchain Path: ${this.toolchainPath}`);
-        channel.logDiagnostic(`Developer Dir: ${this.developerDir}`);
+        if (this.sdkroot) {
+            channel.logDiagnostic(`SDKROOT: ${this.sdkroot}`);
+        }
         if (this.xcTestPath) {
             channel.logDiagnostic(`XCTestPath: ${this.xcTestPath}`);
         }
@@ -91,42 +87,28 @@ export class SwiftToolchain {
         return undefined;
     }
 
-    /**
-     * @returns path to developer folder, where we find XCTest
-     */
-    private static async getDeveloperDir(): Promise<string | undefined> {
-        try {
-            switch (process.platform) {
-                case "darwin": {
-                    const { stdout } = await execFile("xcode-select", ["-p"]);
-                    return stdout.trimEnd();
-                }
-
-                case "win32": {
-                    const developerDir = process.env.DEVELOPER_DIR;
-                    if (!developerDir) {
-                        throw Error("Environment variable DEVELOPER_DIR is not set.");
-                    }
-                    return developerDir;
-                }
-            }
-            return undefined;
-        } catch {
-            return undefined;
+    private static getSDKROOT(): string | undefined {
+        if (process.platform === "win32") {
+            return process.env.SDKROOT ?? undefined;
         }
+        return undefined;
     }
 
     /**
-     * @param developerDir Developer directory
-     * @returns Path to folder where xctest can be found
+     * @param sdkroot path to Swift SDK
+     * @returns path to folder where XCTest can be found
      */
-    private static async getXCTestPath(developerDir: string): Promise<string | undefined> {
+    private static async getXCTestPath(sdkroot: string | undefined): Promise<string | undefined> {
         switch (process.platform) {
-            case "darwin":
-                return path.join(developerDir, "usr", "bin");
-
+            case "darwin": {
+                const { stdout } = await execFile("xcode-select", ["-p"]);
+                return path.join(stdout.trimEnd(), "usr", "bin");
+            }
             case "win32": {
-                const platformPath = path.join(developerDir, "Platforms", "Windows.platform");
+                if (!sdkroot) {
+                    return undefined;
+                }
+                const platformPath = path.dirname(path.dirname(path.dirname(sdkroot)));
                 const data = await fs.readFile(path.join(platformPath, "Info.plist"), "utf8");
                 const infoPlist = plist.parse(data) as unknown as InfoPlist;
                 const version = infoPlist.DefaultProperties.XCTEST_VERSION;
@@ -166,7 +148,12 @@ export class SwiftToolchain {
     /**
      * @returns if the default Swift driver is the new driver
      */
-    private static async checkNewDriver(toolchainPath: string): Promise<boolean> {
+    private static async checkNewDriver(
+        toolchainPath: string | undefined
+    ): Promise<boolean | undefined> {
+        if (!toolchainPath) {
+            return undefined;
+        }
         const toolDirectory = path.join(toolchainPath, "usr", "bin");
         // judge from environment variable
         if (process.env.SWIFT_USE_NEW_DRIVER) {
@@ -182,7 +169,7 @@ export class SwiftToolchain {
         if ((await pathExists(toolDirectory, getExecutableName("swift-frontend"))) !== true) {
             return false;
         }
-        // check if swift is symlinked to swift-frontend
+        // check if swift is symlinked into swift-frontend
         const swiftDriverPath = await fs.realpath(
             path.join(toolDirectory, getExecutableName("swift"))
         );

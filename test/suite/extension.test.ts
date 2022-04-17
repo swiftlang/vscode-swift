@@ -40,4 +40,4 @@ suite("Extension Test Suite", () => {
             assert.doesNotThrow(async () => await fs.rm(fileName));
         });
     });
-});
+}).timeout(5000);
