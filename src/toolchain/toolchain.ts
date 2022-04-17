@@ -34,7 +34,7 @@ export class SwiftToolchain {
         public swiftVersionString: string,
         public swiftVersion: Version,
         public toolchainPath?: string,
-        public sdkroot?: string,
+        public defaultSDK?: string,
         public xcTestPath?: string,
         public newSwiftDriver?: boolean
     ) {}
@@ -42,14 +42,14 @@ export class SwiftToolchain {
     static async create(): Promise<SwiftToolchain> {
         const version = await this.getSwiftVersion();
         const toolchainPath = await this.getToolchainPath();
-        const sdkroot = this.getSDKROOT();
-        const xcTestPath = await this.getXCTestPath(sdkroot);
+        const defaultSDK = await this.getDefaultSDK();
+        const xcTestPath = await this.getXCTestPath(defaultSDK);
         const newSwiftDriver = await this.checkNewDriver(toolchainPath);
         return new SwiftToolchain(
             version.name,
             version.version,
             toolchainPath,
-            sdkroot,
+            defaultSDK,
             xcTestPath,
             newSwiftDriver
         );
@@ -57,11 +57,11 @@ export class SwiftToolchain {
 
     logDiagnostics(channel: SwiftOutputChannel) {
         channel.logDiagnostic(`Toolchain Path: ${this.toolchainPath}`);
-        if (this.sdkroot) {
-            channel.logDiagnostic(`SDKROOT: ${this.sdkroot}`);
+        if (this.defaultSDK) {
+            channel.logDiagnostic(`Default SDK: ${this.defaultSDK}`);
         }
         if (this.xcTestPath) {
-            channel.logDiagnostic(`XCTestPath: ${this.xcTestPath}`);
+            channel.logDiagnostic(`XCTest Path: ${this.xcTestPath}`);
         }
     }
 
@@ -87,16 +87,25 @@ export class SwiftToolchain {
         return undefined;
     }
 
-    private static getSDKROOT(): string | undefined {
-        if (process.platform === "win32") {
-            return process.env.SDKROOT ?? undefined;
+    /**
+     * @returns path to default SDK
+     */
+    private static async getDefaultSDK(): Promise<string | undefined> {
+        switch (process.platform) {
+            case "darwin": {
+                const { stdout } = await execFile("xcrun", ["--sdk", "macosx", "--show-sdk-path"]);
+                return path.join(stdout.trimEnd());
+            }
+            case "win32": {
+                return process.env.SDKROOT;
+            }
         }
         return undefined;
     }
 
     /**
-     * @param sdkroot path to Swift SDK
-     * @returns path to folder where XCTest can be found
+     * @param sdkroot path to default SDK
+     * @returns path to folder where xctest can be found
      */
     private static async getXCTestPath(sdkroot: string | undefined): Promise<string | undefined> {
         switch (process.platform) {
@@ -106,7 +115,7 @@ export class SwiftToolchain {
             }
             case "win32": {
                 if (!sdkroot) {
-                    return undefined;
+                    return;
                 }
                 const platformPath = path.dirname(path.dirname(path.dirname(sdkroot)));
                 const data = await fs.readFile(path.join(platformPath, "Info.plist"), "utf8");
@@ -128,7 +137,9 @@ export class SwiftToolchain {
         return undefined;
     }
 
-    /** Return swift version string returned by `swift --version` */
+    /**
+     * @returns swift version string returned by `swift --version`
+     */
     private static async getSwiftVersion(): Promise<{ name: string; version: Version }> {
         try {
             const { stdout } = await execSwift(["--version"]);
