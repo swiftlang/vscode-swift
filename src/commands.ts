@@ -188,6 +188,9 @@ async function runSingleFile(ctx: WorkspaceContext) {
     }
 
     if (process.platform === "win32" && !ctx.toolchain.newSwiftDriver) {
+        await vscode.window.showErrorMessage(
+            "Run Swift Script is unavailable with the legacy driver on Windows."
+        );
         return;
     }
 

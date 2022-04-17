@@ -179,7 +179,7 @@ export class SwiftToolchain {
         if (await pathExists(toolDirectory, getExecutableName("swift-driver"))) {
             return true;
         }
-        if (await !pathExists(toolDirectory, getExecutableName("swift-frontend"))) {
+        if ((await pathExists(toolDirectory, getExecutableName("swift-frontend"))) !== true) {
             return false;
         }
         // check if swift is symlinked to swift-frontend
