@@ -15,6 +15,7 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as plist from "plist";
+import * as vscode from "vscode";
 import configuration from "../configuration";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { execFile, execSwift, getExecutableName, pathExists } from "../utilities/utilities";
@@ -115,10 +116,17 @@ export class SwiftToolchain {
             }
             case "win32": {
                 if (!sdkroot) {
-                    return;
+                    return undefined;
                 }
                 const platformPath = path.dirname(path.dirname(path.dirname(sdkroot)));
-                const data = await fs.readFile(path.join(platformPath, "Info.plist"), "utf8");
+                const platformManifest = path.join(platformPath, "Info.plist");
+                if ((await pathExists(platformManifest)) !== true) {
+                    await vscode.window.showWarningMessage(
+                        "XCTest not found due to irregular library layout."
+                    );
+                    return undefined;
+                }
+                const data = await fs.readFile(platformManifest, "utf8");
                 const infoPlist = plist.parse(data) as unknown as InfoPlist;
                 const version = infoPlist.DefaultProperties.XCTEST_VERSION;
                 if (!version) {
