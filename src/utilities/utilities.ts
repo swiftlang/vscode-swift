@@ -97,6 +97,15 @@ export async function execSwift(
     folderContext?: FolderContext
 ): Promise<{ stdout: string; stderr: string }> {
     const swift = getSwiftExecutable();
+
+    // add custom toolchain to path on Windows
+    if (process.platform === "win32" && configuration.path) {
+        options.env = {
+            Path: `${configuration.path};${process.env.Path}`,
+            ...options.env,
+        };
+    }
+
     return await execFile(swift, args, options, folderContext);
 }
 
