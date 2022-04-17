@@ -21,6 +21,27 @@ import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
 
 /**
+ * Get required environment variable for Swift runtime
+ *
+ * @param env base environment
+ * @returns minimal required environment for Swift runtime
+ */
+export function swiftRuntimeEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+    if (configuration.runtimePath === "") {
+        return {};
+    }
+    const runtimePath = configuration.runtimePath;
+    switch (process.platform) {
+        case "win32":
+            return { Path: `${runtimePath};${env.Path}` };
+        case "darwin":
+            return { DYLD_LIBRARY_PATH: `${runtimePath}:${env.DYLD_LIBRARY_PATH}` };
+        default:
+            return { LD_LIBRARY_PATH: `${runtimePath}:${env.LD_LIBRARY_PATH}` };
+    }
+}
+
+/**
  * Asynchronous wrapper around {@link cp.execFile child_process.execFile}.
  *
  * Assumes output will be a string
@@ -39,6 +60,7 @@ export async function execFile(
         `Exec: ${executable} ${args.join(" ")}`,
         folderContext.name
     );
+    options.env = { ...options.env, ...swiftRuntimeEnv(options.env) };
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) =>
         cp.execFile(executable, args, options, (error, stdout, stderr) => {
             if (error) {
@@ -62,6 +84,7 @@ export async function execFileStreamOutput(
         `Exec: ${executable} ${args.join(" ")}`,
         folderContext.name
     );
+    options.env = { ...options.env, ...swiftRuntimeEnv(options.env) };
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
         const p = cp.execFile(executable, args, options, (error, stdout, stderr) => {
             if (error) {

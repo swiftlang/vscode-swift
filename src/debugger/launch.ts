@@ -16,6 +16,7 @@ import * as os from "os";
 import * as vscode from "vscode";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
+import { swiftRuntimeEnv } from "../utilities/utilities";
 
 /**
  * Edit launch.json based on contents of Swift Package.
@@ -88,6 +89,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
                 args: [],
                 cwd: folder,
                 preLaunchTask: `swift: Build Debug ${product.name}${nameSuffix}`,
+                env: swiftRuntimeEnv({}),
             },
             {
                 type: "lldb",
@@ -97,6 +99,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
                 args: [],
                 cwd: folder,
                 preLaunchTask: `swift: Build Release ${product.name}${nameSuffix}`,
+                env: swiftRuntimeEnv({}),
             },
         ];
     });
@@ -128,7 +131,10 @@ export function createTestConfiguration(
         folder = `${workspaceFolder}}/${ctx.relativePath}`;
         nameSuffix = ` (${ctx.relativePath})`;
     }
-    const testEnv = configuration.testEnvironmentVariables;
+    const testEnv = {
+        ...swiftRuntimeEnv(),
+        ...configuration.testEnvironmentVariables,
+    };
 
     if (process.platform === "darwin") {
         // On macOS, find the path to xctest
@@ -161,8 +167,8 @@ export function createTestConfiguration(
             program: `${folder}/.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
             cwd: folder,
             env: {
-                Path: `${xcTestPath};${process.env.Path}`,
                 ...testEnv,
+                Path: `${xcTestPath};${testEnv.Path}`,
             },
             preLaunchTask: `swift: Build All${nameSuffix}`,
         };

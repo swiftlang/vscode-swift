@@ -193,6 +193,12 @@
       {
         "title": "Advanced",
         "properties": {
+          "swift.runtimePath": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "The path of the folder containing the Swift runtime. The default is to look in **$PATH**.",
+            "order": 2
+          },
           "swift.SDK": {
             "type": "string",
             "default": "",

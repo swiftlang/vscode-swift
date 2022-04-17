@@ -65,6 +65,10 @@ const configuration = {
     get path(): string {
         return vscode.workspace.getConfiguration("swift").get<string>("path", "");
     },
+    /** Path to folder that include swift runtime */
+    get runtimePath(): string {
+        return vscode.workspace.getConfiguration("swift").get<string>("runtimePath", "");
+    },
     /** Path to custom swift sdk */
     get sdk(): string {
         return vscode.workspace.getConfiguration("swift").get<string>("SDK", "");
