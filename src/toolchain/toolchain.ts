@@ -35,7 +35,8 @@ export class SwiftToolchain {
         public swiftVersionString: string,
         public swiftVersion: Version,
         public toolchainPath?: string,
-        public defaultSDK?: string,
+        private defaultSDK?: string,
+        private customSDK?: string,
         public xcTestPath?: string,
         public newSwiftDriver?: boolean
     ) {}
@@ -44,6 +45,7 @@ export class SwiftToolchain {
         const version = await this.getSwiftVersion();
         const toolchainPath = await this.getToolchainPath();
         const defaultSDK = await this.getDefaultSDK();
+        const customSDK = this.getCustomSDK();
         const xcTestPath = await this.getXCTestPath(defaultSDK);
         const newSwiftDriver = await this.checkNewDriver(toolchainPath);
         return new SwiftToolchain(
@@ -51,6 +53,7 @@ export class SwiftToolchain {
             version.version,
             toolchainPath,
             defaultSDK,
+            customSDK,
             xcTestPath,
             newSwiftDriver
         );
@@ -60,6 +63,9 @@ export class SwiftToolchain {
         channel.logDiagnostic(`Toolchain Path: ${this.toolchainPath}`);
         if (this.defaultSDK) {
             channel.logDiagnostic(`Default SDK: ${this.defaultSDK}`);
+        }
+        if (this.customSDK) {
+            channel.logDiagnostic(`Custom SDK: ${this.customSDK}`);
         }
         if (this.xcTestPath) {
             channel.logDiagnostic(`XCTest Path: ${this.xcTestPath}`);
@@ -100,6 +106,16 @@ export class SwiftToolchain {
             case "win32": {
                 return process.env.SDKROOT;
             }
+        }
+        return undefined;
+    }
+
+    /**
+     * @returns path to custom SDK
+     */
+    private static getCustomSDK(): string | undefined {
+        if (configuration.sdk !== "") {
+            return configuration.sdk;
         }
         return undefined;
     }

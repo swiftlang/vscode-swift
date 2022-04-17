@@ -18,6 +18,7 @@ import { execSwift, getErrorDescription, isPathInsidePath } from "../utilities/u
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { TestRunner } from "./TestRunner";
 import { LSPTestDiscovery } from "./LSPTestDiscovery";
+import { swiftpmSDKFlags } from "../SwiftTaskProvider";
 
 /** Build test explorer UI */
 export class TestExplorer {
@@ -120,7 +121,7 @@ export class TestExplorer {
         try {
             // get list of tests from `swift test --list-tests`
             const { stdout } = await execSwift(
-                ["test", "--skip-build", "--list-tests"],
+                ["test", "--skip-build", "--list-tests", ...swiftpmSDKFlags()],
                 {
                     cwd: this.folderContext.folder.fsPath,
                 },

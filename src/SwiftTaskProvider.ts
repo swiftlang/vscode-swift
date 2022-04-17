@@ -60,21 +60,38 @@ function testDiscoveryFlag(ctx: FolderContext): string[] {
     return [];
 }
 
-/** arguments for generating windows debug builds */
-export function win32BuildOptions(): string[] {
-    return ["-Xswiftc", "-g", "-Xswiftc", "-use-ld=lld", "-Xlinker", "-debug:dwarf"];
+/** arguments for setting custom sdk for `swift build` */
+export function swiftpmSDKFlags(): string[] {
+    if (configuration.sdk.length > 0) {
+        return ["--sdk", configuration.sdk];
+    }
+    return [];
+}
+
+/** arguments for setting custom sdk for `swiftc` */
+export function swiftDriverSDKFlags(indirect = false): string[] {
+    if (configuration.sdk !== "") {
+        return [];
+    }
+    const args = ["-sdk", configuration.sdk];
+    return indirect ? args.flatMap(arg => ["-Xswiftc", arg]) : args;
+}
+
+/** arguments for generating debug builds */
+export function platformDebugBuildOptions(): string[] {
+    if (process.platform === "win32") {
+        return ["-Xswiftc", "-g", "-Xswiftc", "-use-ld=lld", "-Xlinker", "-debug:dwarf"];
+    }
+    return [];
 }
 
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
 export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
-    const additionalArgs: string[] = [];
+    const additionalArgs = [...swiftpmSDKFlags(), ...platformDebugBuildOptions()];
     if (folderContext.swiftPackage.getTargets("test").length > 0) {
         additionalArgs.push(...testDiscoveryFlag(folderContext));
-    }
-    if (process.platform === "win32") {
-        additionalArgs.push(...win32BuildOptions());
     }
     let buildTaskName = SwiftTaskProvider.buildAllName;
     if (folderContext.relativePath.length > 0) {
@@ -133,7 +150,6 @@ export async function getBuildAllTask(folderContext: FolderContext): Promise<vsc
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
 function createBuildTasks(product: Product, folderContext: FolderContext): vscode.Task[] {
-    const debugArguments = process.platform === "win32" ? win32BuildOptions() : [];
     let buildTaskNameSuffix = "";
     if (folderContext.relativePath.length > 0) {
         buildTaskNameSuffix = ` (${folderContext.relativePath})`;
@@ -144,7 +160,8 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 "build",
                 "--product",
                 product.name,
-                ...debugArguments,
+                ...swiftpmSDKFlags(),
+                ...platformDebugBuildOptions(),
                 ...configuration.buildArguments,
             ],
             `Build Debug ${product.name}${buildTaskNameSuffix}`,
@@ -157,7 +174,15 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
             }
         ),
         createSwiftTask(
-            ["build", "-c", "release", "--product", product.name, ...configuration.buildArguments],
+            [
+                "build",
+                "-c",
+                "release",
+                "--product",
+                product.name,
+                ...swiftpmSDKFlags(),
+                ...configuration.buildArguments,
+            ],
             `Build Release ${product.name}${buildTaskNameSuffix}`,
             {
                 group: vscode.TaskGroup.Build,
