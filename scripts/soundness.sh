@@ -18,7 +18,7 @@ here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 function replace_acceptable_years() {
     # this needs to replace all acceptable forms with 'YEARS'
-    sed -e 's/20[12][78901]-20[12][8901]/YEARS/' -e 's/20[12][8901]/YEARS/'
+    sed -e 's/20[12][78901]-20[12][89012]/YEARS/' -e 's/20[12][89012]/YEARS/'
 }
 
 printf "=> Checking for unacceptable language... "
@@ -99,8 +99,10 @@ EOF
             \( \! -path './.build/*' -a \
             \( \! -path './node_modules/*' -a \
             \( \! -path './out/*' -a \
+            \( \! -path './.vscode-test/*' -a \
+            \( \! -path './docker/*' -a \
             \( "${matching_files[@]}" \) -a \
-            \) \) \)
+            \) \) \) \) \)
 
         if [[ "$language" = bash ]]; then
             # add everything with a shell shebang too
