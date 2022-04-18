@@ -28,13 +28,13 @@ suite("SwiftPackage Test Suite", () => {
     test("No package", async () => {
         const spmPackage = await SwiftPackage.create(testAssetUri("empty-folder"));
         assert.strictEqual(spmPackage.foundPackage, false);
-    }).timeout(5000);
+    }).timeout(10000);
 
     test("Invalid package", async () => {
         const spmPackage = await SwiftPackage.create(testAssetUri("invalid-package"));
         assert.strictEqual(spmPackage.foundPackage, true);
         assert.strictEqual(spmPackage.isValid, false);
-    }).timeout(5000);
+    }).timeout(10000);
 
     test("Executable package", async () => {
         const spmPackage = await SwiftPackage.create(testAssetUri("package1"));
@@ -44,7 +44,7 @@ suite("SwiftPackage Test Suite", () => {
         assert.strictEqual(spmPackage.dependencies.length, 1);
         assert.strictEqual(spmPackage.targets.length, 2);
         assert(spmPackage.resolved !== undefined);
-    }).timeout(5000);
+    }).timeout(10000);
 
     test("Library package", async () => {
         const spmPackage = await SwiftPackage.create(testAssetUri("package2"));
@@ -53,7 +53,7 @@ suite("SwiftPackage Test Suite", () => {
         assert.strictEqual(spmPackage.libraryProducts[0].name, "package2");
         assert.strictEqual(spmPackage.dependencies.length, 0);
         assert.strictEqual(spmPackage.targets.length, 2);
-    }).timeout(5000);
+    }).timeout(10000);
 
     test("Package resolve v2", async () => {
         if (toolchain && toolchain.swiftVersion < new Version(5, 6, 0)) {
@@ -62,5 +62,5 @@ suite("SwiftPackage Test Suite", () => {
         const spmPackage = await SwiftPackage.create(testAssetUri("package5.6"));
         assert.strictEqual(spmPackage.isValid, true);
         assert(spmPackage.resolved !== undefined);
-    }).timeout(5000);
+    }).timeout(10000);
 });
