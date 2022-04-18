@@ -260,7 +260,7 @@ async function useLocalDependency(identifier: string, ctx: WorkspaceContext) {
             }
             const folder = value[0];
             const task = createSwiftTask(
-                ["package", "edit", "--path", folder.fsPath, identifier, ...swiftpmSDKFlags()],
+                ["package", "edit", ...swiftpmSDKFlags(), "--path", folder.fsPath, identifier],
                 "Edit Package Dependency",
                 {
                     scope: currentFolder.workspaceFolder,
@@ -292,7 +292,7 @@ async function editDependency(identifier: string, ctx: WorkspaceContext) {
         return;
     }
     const task = createSwiftTask(
-        ["package", "edit", identifier, ...swiftpmSDKFlags()],
+        ["package", "edit", ...swiftpmSDKFlags(), identifier],
         "Edit Package Dependency",
         {
             scope: currentFolder.workspaceFolder,
@@ -340,7 +340,7 @@ async function uneditFolderDependency(
 ) {
     try {
         await execSwift(
-            ["package", "unedit", ...args, identifier, ...swiftpmSDKFlags()],
+            ["package", "unedit", ...swiftpmSDKFlags(), ...args, identifier],
             {
                 cwd: folder.folder.fsPath,
             },

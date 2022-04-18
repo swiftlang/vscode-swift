@@ -152,7 +152,7 @@ export class SwiftPackage implements PackageContents {
     static async loadPackage(folder: vscode.Uri): Promise<PackageContents | null | undefined> {
         try {
             let { stdout } = await execSwift(
-                ["package", "describe", "--type", "json", ...swiftpmSDKFlags()],
+                ["package", "describe", ...swiftpmSDKFlags(), "--type", "json"],
                 {
                     cwd: folder.fsPath,
                 }
