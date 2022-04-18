@@ -196,14 +196,14 @@
           "swift.runtimePath": {
             "type": "string",
             "default": "",
-            "markdownDescription": "The path of the folder containing the Swift runtime. The default is to look in **$PATH**.",
-            "order": 2
+            "cescription": "The path of the folder containing the Swift runtime libraries. Only effective when they can't be discovered by RPath.",
+            "order": 1
           },
           "swift.SDK": {
             "type": "string",
             "default": "",
             "description": "The path of the SDK to compile against. The default SDK is determined by the environment on macOS and Windows.",
-            "order": 1
+            "order": 2
           }
         }
       }
