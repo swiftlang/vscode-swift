@@ -78,18 +78,23 @@ export class SwiftToolchain {
     private static async getToolchainPath(): Promise<string | undefined> {
         if (configuration.path !== "") {
             return path.dirname(path.dirname(configuration.path));
-        } else if (process.platform === "darwin") {
-            const { stdout } = await execFile("xcrun", ["--find", "swiftc"]);
-            const swiftc = stdout.trimEnd();
-            return path.dirname(path.dirname(path.dirname(swiftc)));
-        } else if (process.platform === "linux") {
-            const { stdout } = await execFile("which", ["swiftc"]);
-            const swiftc = stdout.trimEnd();
-            return path.dirname(path.dirname(path.dirname(swiftc)));
-        } else if (process.platform === "win32") {
-            const { stdout } = await execFile("where", ["swiftc"]);
-            const swiftc = stdout.trimEnd();
-            return path.dirname(path.dirname(path.dirname(swiftc)));
+        }
+        switch (process.platform) {
+            case "darwin": {
+                const { stdout } = await execFile("xcrun", ["--find", "swiftc"]);
+                const swiftc = stdout.trimEnd();
+                return path.dirname(path.dirname(path.dirname(swiftc)));
+            }
+            case "linux": {
+                const { stdout } = await execFile("which", ["swiftc"]);
+                const swiftc = stdout.trimEnd();
+                return path.dirname(path.dirname(path.dirname(swiftc)));
+            }
+            case "win32": {
+                const { stdout } = await execFile("where", ["swiftc"]);
+                const swiftc = stdout.trimEnd();
+                return path.dirname(path.dirname(path.dirname(swiftc)));
+            }
         }
         return undefined;
     }
@@ -114,10 +119,7 @@ export class SwiftToolchain {
      * @returns path to custom SDK
      */
     private static getCustomSDK(): string | undefined {
-        if (configuration.sdk !== "") {
-            return configuration.sdk;
-        }
-        return undefined;
+        return configuration.sdk !== "" ? configuration.sdk : undefined;
     }
 
     /**
@@ -138,7 +140,7 @@ export class SwiftToolchain {
                 const platformManifest = path.join(platformPath, "Info.plist");
                 if ((await pathExists(platformManifest)) !== true) {
                     await vscode.window.showWarningMessage(
-                        "XCTest not found due to irregular library layout."
+                        "XCTest not found due to non-standardized library layout. Tests explorer won't work as expected."
                     );
                     return undefined;
                 }
