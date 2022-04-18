@@ -16,7 +16,7 @@ import * as os from "os";
 import * as vscode from "vscode";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
-import { swiftRuntimeEnv } from "../utilities/utilities";
+import { swiftRuntimePathEnv } from "../utilities/utilities";
 
 /**
  * Edit launch.json based on contents of Swift Package.
@@ -89,7 +89,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
                 args: [],
                 cwd: folder,
                 preLaunchTask: `swift: Build Debug ${product.name}${nameSuffix}`,
-                env: swiftRuntimeEnv({}),
+                env: swiftRuntimePathEnv({}),
             },
             {
                 type: "lldb",
@@ -99,7 +99,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
                 args: [],
                 cwd: folder,
                 preLaunchTask: `swift: Build Release ${product.name}${nameSuffix}`,
-                env: swiftRuntimeEnv({}),
+                env: swiftRuntimePathEnv({}),
             },
         ];
     });
@@ -133,7 +133,7 @@ export function createTestConfiguration(
     }
     // respect user configuration if conflicts with injected runtime path
     const testEnv = {
-        ...swiftRuntimeEnv(),
+        ...swiftRuntimePathEnv(),
         ...configuration.testEnvironmentVariables,
     };
 

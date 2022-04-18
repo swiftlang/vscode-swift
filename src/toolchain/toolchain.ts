@@ -31,7 +31,7 @@ interface InfoPlist {
 }
 
 /**
- * Simplified layout of `swift -print-target-info` output.
+ * Stripped layout of `swift -print-target-info` output.
  */
 interface SwiftTargetInfo {
     compilerVersion: string;
@@ -48,10 +48,10 @@ interface SwiftTargetInfo {
 
 export class SwiftToolchain {
     constructor(
+        public toolchainPath: string,
         public swiftVersionString: string,
         public swiftVersion: Version,
         private defaultTarget?: string,
-        public toolchainPath?: string,
         private runtimePath?: string,
         private defaultSDK?: string,
         private customSDK?: string,
@@ -60,19 +60,19 @@ export class SwiftToolchain {
     ) {}
 
     static async create(): Promise<SwiftToolchain> {
+        const toolchainPath = await this.getToolchainPath();
         const targetInfo = await this.getSwiftTargetInfo();
         const swiftVersion = await this.getSwiftVersion(targetInfo);
-        const toolchainPath = await this.getToolchainPath();
         const runtimePath = await this.getRuntimePath(targetInfo);
         const defaultSDK = await this.getDefaultSDK();
         const customSDK = this.getCustomSDK();
         const xcTestPath = await this.getXCTestPath(defaultSDK);
         const newSwiftDriver = await this.checkNewDriver(toolchainPath);
         return new SwiftToolchain(
+            toolchainPath,
             targetInfo.compilerVersion,
             swiftVersion,
             targetInfo.target?.triple,
-            toolchainPath,
             runtimePath,
             defaultSDK,
             customSDK,
@@ -103,7 +103,7 @@ export class SwiftToolchain {
     /**
      * @returns path to Toolchain folder
      */
-    private static async getToolchainPath(): Promise<string | undefined> {
+    private static async getToolchainPath(): Promise<string> {
         if (configuration.path !== "") {
             return path.dirname(path.dirname(configuration.path));
         }
@@ -113,18 +113,17 @@ export class SwiftToolchain {
                 const swiftc = stdout.trimEnd();
                 return path.dirname(path.dirname(path.dirname(swiftc)));
             }
-            case "linux": {
-                const { stdout } = await execFile("which", ["swiftc"]);
-                const swiftc = stdout.trimEnd();
-                return path.dirname(path.dirname(path.dirname(swiftc)));
-            }
             case "win32": {
                 const { stdout } = await execFile("where", ["swiftc"]);
                 const swiftc = stdout.trimEnd();
                 return path.dirname(path.dirname(path.dirname(swiftc)));
             }
+            default: {
+                const { stdout } = await execFile("which", ["swiftc"]);
+                const swiftc = stdout.trimEnd();
+                return path.dirname(path.dirname(path.dirname(swiftc)));
+            }
         }
-        return undefined;
     }
 
     /**

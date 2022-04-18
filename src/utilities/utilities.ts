@@ -26,7 +26,7 @@ import { FolderContext } from "../FolderContext";
  * @param env base environment
  * @returns minimal required environment for Swift runtime
  */
-export function swiftRuntimeEnv(
+export function swiftRuntimePathEnv(
     env: NodeJS.ProcessEnv = process.env
 ): NodeJS.ProcessEnv | undefined {
     if (configuration.runtimePath === "") {
@@ -63,7 +63,7 @@ export async function execFile(
         folderContext.name
     );
     if (configuration.runtimePath.length > 0) {
-        options.env = { ...options.env, ...swiftRuntimeEnv(options.env) };
+        options.env = { ...options.env, ...swiftRuntimePathEnv(options.env) };
     }
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) =>
         cp.execFile(executable, args, options, (error, stdout, stderr) => {
@@ -89,7 +89,7 @@ export async function execFileStreamOutput(
         folderContext.name
     );
     if (configuration.runtimePath.length > 0) {
-        options.env = { ...options.env, ...swiftRuntimeEnv(options.env) };
+        options.env = { ...options.env, ...swiftRuntimePathEnv(options.env) };
     }
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
         const p = cp.execFile(executable, args, options, (error, stdout, stderr) => {
@@ -164,7 +164,7 @@ export function withSwiftSDKFlags(args: string[]): string[] {
  * Get SDK flags for SwiftPM
  */
 export function swiftpmSDKFlags(): string[] {
-    if (configuration.sdk.length > 0) {
+    if (configuration.sdk !== "") {
         return ["--sdk", configuration.sdk];
     }
     return [];
