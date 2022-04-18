@@ -16,15 +16,10 @@ import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
-import {
-    createSwiftTask,
-    swiftpmSDKFlags,
-    swiftDriverSDKFlags,
-    SwiftTaskProvider,
-} from "./SwiftTaskProvider";
+import { createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderContext } from "./FolderContext";
 import { PackageNode } from "./ui/PackageDependencyProvider";
-import { execSwift } from "./utilities/utilities";
+import { execSwift, swiftDriverSDKFlags, swiftpmSDKFlags } from "./utilities/utilities";
 
 /**
  * References:

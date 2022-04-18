@@ -14,11 +14,15 @@
 
 import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
-import { execSwift, getErrorDescription, isPathInsidePath } from "../utilities/utilities";
+import {
+    execSwift,
+    getErrorDescription,
+    isPathInsidePath,
+    swiftpmSDKFlags,
+} from "../utilities/utilities";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { TestRunner } from "./TestRunner";
 import { LSPTestDiscovery } from "./LSPTestDiscovery";
-import { swiftpmSDKFlags } from "../SwiftTaskProvider";
 
 /** Build test explorer UI */
 export class TestExplorer {

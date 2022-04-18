@@ -17,7 +17,7 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
-import { getSwiftExecutable } from "./utilities/utilities";
+import { getSwiftExecutable, swiftpmSDKFlags } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 
 /**
@@ -58,23 +58,6 @@ function testDiscoveryFlag(ctx: FolderContext): string[] {
         }
     }
     return [];
-}
-
-/** arguments for setting custom sdk for `swift build` */
-export function swiftpmSDKFlags(): string[] {
-    if (configuration.sdk.length > 0) {
-        return ["--sdk", configuration.sdk];
-    }
-    return [];
-}
-
-/** arguments for setting custom sdk for `swiftc` */
-export function swiftDriverSDKFlags(indirect = false): string[] {
-    if (configuration.sdk !== "") {
-        return [];
-    }
-    const args = ["-sdk", configuration.sdk];
-    return indirect ? args.flatMap(arg => ["-Xswiftc", arg]) : args;
 }
 
 /** arguments for generating debug builds */

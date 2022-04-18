@@ -16,11 +16,7 @@ import * as vscode from "vscode";
 import * as assert from "assert";
 import { testAssetWorkspaceFolder } from "../fixtures";
 import { FolderEvent, WorkspaceContext } from "../../src/WorkspaceContext";
-import {
-    createBuildAllTask,
-    platformDebugBuildOptions,
-    swiftpmSDKFlags,
-} from "../../src/SwiftTaskProvider";
+import { createBuildAllTask, platformDebugBuildOptions } from "../../src/SwiftTaskProvider";
 
 suite("WorkspaceContext Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -74,7 +70,6 @@ suite("WorkspaceContext Test Suite", () => {
             assert.notStrictEqual(execution?.args, [
                 "build",
                 "--build-tests",
-                ...swiftpmSDKFlags(),
                 ...platformDebugBuildOptions(),
             ]);
             assert.strictEqual(buildAllTask.scope, packageFolder);
@@ -91,7 +86,6 @@ suite("WorkspaceContext Test Suite", () => {
             assert.notStrictEqual(execution?.args, [
                 "build",
                 "--build-tests",
-                ...swiftpmSDKFlags(),
                 ...platformDebugBuildOptions(),
                 "--sanitize=thread",
             ]);

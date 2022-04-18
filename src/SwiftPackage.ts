@@ -14,8 +14,7 @@
 
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
-import { execSwift } from "./utilities/utilities";
-import { swiftpmSDKFlags } from "./SwiftTaskProvider";
+import { execSwift, swiftpmSDKFlags } from "./utilities/utilities";
 
 /** Swift Package Manager contents */
 export interface PackageContents {

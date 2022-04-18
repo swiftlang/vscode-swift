@@ -15,12 +15,11 @@
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 import configuration from "../configuration";
-import { getSwiftExecutable, isPathInsidePath } from "../utilities/utilities";
+import { getSwiftExecutable, isPathInsidePath, swiftDriverSDKFlags } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { activateInlayHints } from "./inlayHints";
 import { FolderContext } from "../FolderContext";
-import { swiftDriverSDKFlags } from "../SwiftTaskProvider";
 
 /** Manages the creation and destruction of Language clients as we move between
  * workspace folders
