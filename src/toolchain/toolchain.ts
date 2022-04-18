@@ -105,6 +105,9 @@ export class SwiftToolchain {
     private static async getDefaultSDK(): Promise<string | undefined> {
         switch (process.platform) {
             case "darwin": {
+                if (process.env.SDKROOT) {
+                    return process.env.SDKROOT;
+                }
                 const { stdout } = await execFile("xcrun", ["--sdk", "macosx", "--show-sdk-path"]);
                 return path.join(stdout.trimEnd());
             }
