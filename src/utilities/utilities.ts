@@ -26,9 +26,11 @@ import { FolderContext } from "../FolderContext";
  * @param env base environment
  * @returns minimal required environment for Swift runtime
  */
-export function swiftRuntimeEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+export function swiftRuntimeEnv(
+    env: NodeJS.ProcessEnv = process.env
+): NodeJS.ProcessEnv | undefined {
     if (configuration.runtimePath === "") {
-        return {};
+        return undefined;
     }
     const runtimePath = configuration.runtimePath;
     switch (process.platform) {
@@ -60,7 +62,9 @@ export async function execFile(
         `Exec: ${executable} ${args.join(" ")}`,
         folderContext.name
     );
-    options.env = { ...options.env, ...swiftRuntimeEnv(options.env) };
+    if (configuration.runtimePath.length > 0) {
+        options.env = { ...options.env, ...swiftRuntimeEnv(options.env) };
+    }
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) =>
         cp.execFile(executable, args, options, (error, stdout, stderr) => {
             if (error) {
@@ -84,7 +88,9 @@ export async function execFileStreamOutput(
         `Exec: ${executable} ${args.join(" ")}`,
         folderContext.name
     );
-    options.env = { ...options.env, ...swiftRuntimeEnv(options.env) };
+    if (configuration.runtimePath.length > 0) {
+        options.env = { ...options.env, ...swiftRuntimeEnv(options.env) };
+    }
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
         const p = cp.execFile(executable, args, options, (error, stdout, stderr) => {
             if (error) {

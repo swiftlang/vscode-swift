@@ -131,6 +131,7 @@ export function createTestConfiguration(
         folder = `${workspaceFolder}}/${ctx.relativePath}`;
         nameSuffix = ` (${ctx.relativePath})`;
     }
+    // respect user configuration if conflicts with injected runtime path
     const testEnv = {
         ...swiftRuntimeEnv(),
         ...configuration.testEnvironmentVariables,
