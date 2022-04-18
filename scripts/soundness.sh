@@ -101,8 +101,9 @@ EOF
             \( \! -path './out/*' -a \
             \( \! -path './.vscode-test/*' -a \
             \( \! -path './docker/*' -a \
+            \( \! -path './dist/*' -a \
             \( "${matching_files[@]}" \) -a \
-            \) \) \) \) \)
+            \) \) \) \) \) \)
 
         if [[ "$language" = bash ]]; then
             # add everything with a shell shebang too
