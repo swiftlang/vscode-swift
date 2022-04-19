@@ -17,7 +17,7 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
-import { getSwiftExecutable } from "./utilities/utilities";
+import { getSwiftExecutable, withSwiftSDKFlags } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 
 /**
@@ -60,21 +60,21 @@ function testDiscoveryFlag(ctx: FolderContext): string[] {
     return [];
 }
 
-/** arguments for generating windows debug builds */
-export function win32BuildOptions(): string[] {
-    return ["-Xswiftc", "-g", "-Xswiftc", "-use-ld=lld", "-Xlinker", "-debug:dwarf"];
+/** arguments for generating debug builds */
+export function platformDebugBuildOptions(): string[] {
+    if (process.platform === "win32") {
+        return ["-Xswiftc", "-g", "-Xswiftc", "-use-ld=lld", "-Xlinker", "-debug:dwarf"];
+    }
+    return [];
 }
 
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
 export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
-    const additionalArgs: string[] = [];
+    const additionalArgs = [...platformDebugBuildOptions()];
     if (folderContext.swiftPackage.getTargets("test").length > 0) {
         additionalArgs.push(...testDiscoveryFlag(folderContext));
-    }
-    if (process.platform === "win32") {
-        additionalArgs.push(...win32BuildOptions());
     }
     let buildTaskName = SwiftTaskProvider.buildAllName;
     if (folderContext.relativePath.length > 0) {
@@ -133,7 +133,6 @@ export async function getBuildAllTask(folderContext: FolderContext): Promise<vsc
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
 function createBuildTasks(product: Product, folderContext: FolderContext): vscode.Task[] {
-    const debugArguments = process.platform === "win32" ? win32BuildOptions() : [];
     let buildTaskNameSuffix = "";
     if (folderContext.relativePath.length > 0) {
         buildTaskNameSuffix = ` (${folderContext.relativePath})`;
@@ -144,7 +143,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 "build",
                 "--product",
                 product.name,
-                ...debugArguments,
+                ...platformDebugBuildOptions(),
                 ...configuration.buildArguments,
             ],
             `Build Debug ${product.name}${buildTaskNameSuffix}`,
@@ -175,6 +174,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
  */
 export function createSwiftTask(args: string[], name: string, config?: TaskConfig): vscode.Task {
     const swift = getSwiftExecutable();
+    args = withSwiftSDKFlags(args);
     const task = new vscode.Task(
         { type: "swift", command: swift, args: args, cwd: config?.cwd?.fsPath },
         config?.scope ?? vscode.TaskScope.Workspace,

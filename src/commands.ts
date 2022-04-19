@@ -327,6 +327,7 @@ async function uneditFolderDependency(
             {
                 cwd: folder.folder.fsPath,
             },
+            true,
             folder
         );
         ctx.fireEvent(folder, FolderEvent.resolvedUpdated);

@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 import configuration from "../configuration";
-import { getSwiftExecutable, isPathInsidePath } from "../utilities/utilities";
+import { getSwiftExecutable, isPathInsidePath, swiftDriverSDKFlags } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { activateInlayHints } from "./inlayHints";
@@ -231,13 +231,14 @@ export class LanguageClientManager {
         const serverPathConfig = lspConfig.serverPath;
         const serverPath =
             serverPathConfig.length > 0 ? serverPathConfig : getSwiftExecutable("sourcekit-lsp");
+        const sdkArguments = swiftDriverSDKFlags(true);
         const sourcekit: langclient.Executable = {
             command: serverPath,
-            args: lspConfig.serverArguments,
+            args: lspConfig.serverArguments.concat(sdkArguments),
         };
 
-        // if path to LSP server if not equal to the path to swift and both are set then pass swift toolchain
-        // to the LSP server
+        // if path to LSP server is not equal to the path to swift and both are set, then
+        // pass swift toolchain to the LSP server
         if (
             serverPathConfig.length > 0 &&
             configuration.path.length > 0 &&

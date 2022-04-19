@@ -90,14 +90,68 @@ export async function execFileStreamOutput(
  *
  * @param args array of arguments to pass to swift executable
  * @param options execution options
+ * @param setSDKFlags whether to set SDK flags
  */
 export async function execSwift(
     args: string[],
     options: cp.ExecFileOptions = {},
+    setSDKFlags = false,
     folderContext?: FolderContext
 ): Promise<{ stdout: string; stderr: string }> {
     const swift = getSwiftExecutable();
+    if (setSDKFlags) {
+        args = withSwiftSDKFlags(args);
+    }
     return await execFile(swift, args, options, folderContext);
+}
+
+/**
+ * Get modified swift arguments with SDK flags.
+ *
+ * @param args original commandline arguments
+ */
+export function withSwiftSDKFlags(args: string[]): string[] {
+    switch (args.length > 0 ? args[0] : null) {
+        case "package": {
+            // swift-package requires SDK flags to be placed before subcommand options
+            // eg. ["package", "describe", "--type", "json"] should be turned into
+            // ["package", "describe", "--sdk", "/path/to/sdk", "--type", "json"]
+            if (args.length <= 2) {
+                return args.concat(swiftpmSDKFlags());
+            }
+            const subcommand = args.splice(0, 2);
+            return [...subcommand, ...swiftpmSDKFlags(), ...args];
+        }
+        case "build":
+        case "run":
+        case "test":
+            return args.concat(swiftpmSDKFlags());
+        default:
+            return args.concat(swiftDriverSDKFlags());
+    }
+}
+
+/**
+ * Get SDK flags for SwiftPM
+ */
+export function swiftpmSDKFlags(): string[] {
+    if (configuration.sdk.length > 0) {
+        return ["--sdk", configuration.sdk];
+    }
+    return [];
+}
+
+/**
+ * Get SDK flags for swiftc
+ *
+ * @param indirect whether to pass the flags by -Xswiftc
+ */
+export function swiftDriverSDKFlags(indirect = false): string[] {
+    if (configuration.sdk !== "") {
+        return [];
+    }
+    const args = ["-sdk", configuration.sdk];
+    return indirect ? args.flatMap(arg => ["-Xswiftc", arg]) : args;
 }
 
 /**

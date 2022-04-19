@@ -15,6 +15,7 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as plist from "plist";
+import * as vscode from "vscode";
 import configuration from "../configuration";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { execFile, execSwift, getExecutableName, pathExists } from "../utilities/utilities";
@@ -34,7 +35,8 @@ export class SwiftToolchain {
         public swiftVersionString: string,
         public swiftVersion: Version,
         public toolchainPath?: string,
-        public sdkroot?: string,
+        private defaultSDK?: string,
+        private customSDK?: string,
         public xcTestPath?: string,
         public newSwiftDriver?: boolean
     ) {}
@@ -42,14 +44,16 @@ export class SwiftToolchain {
     static async create(): Promise<SwiftToolchain> {
         const version = await this.getSwiftVersion();
         const toolchainPath = await this.getToolchainPath();
-        const sdkroot = this.getSDKROOT();
-        const xcTestPath = await this.getXCTestPath(sdkroot);
+        const defaultSDK = await this.getDefaultSDK();
+        const customSDK = this.getCustomSDK();
+        const xcTestPath = await this.getXCTestPath(defaultSDK);
         const newSwiftDriver = await this.checkNewDriver(toolchainPath);
         return new SwiftToolchain(
             version.name,
             version.version,
             toolchainPath,
-            sdkroot,
+            defaultSDK,
+            customSDK,
             xcTestPath,
             newSwiftDriver
         );
@@ -57,11 +61,14 @@ export class SwiftToolchain {
 
     logDiagnostics(channel: SwiftOutputChannel) {
         channel.logDiagnostic(`Toolchain Path: ${this.toolchainPath}`);
-        if (this.sdkroot) {
-            channel.logDiagnostic(`SDKROOT: ${this.sdkroot}`);
+        if (this.defaultSDK) {
+            channel.logDiagnostic(`Default SDK: ${this.defaultSDK}`);
+        }
+        if (this.customSDK) {
+            channel.logDiagnostic(`Custom SDK: ${this.customSDK}`);
         }
         if (this.xcTestPath) {
-            channel.logDiagnostic(`XCTestPath: ${this.xcTestPath}`);
+            channel.logDiagnostic(`XCTest Path: ${this.xcTestPath}`);
         }
     }
 
@@ -71,32 +78,56 @@ export class SwiftToolchain {
     private static async getToolchainPath(): Promise<string | undefined> {
         if (configuration.path !== "") {
             return path.dirname(path.dirname(configuration.path));
-        } else if (process.platform === "darwin") {
-            const { stdout } = await execFile("xcrun", ["--find", "swiftc"]);
-            const swiftc = stdout.trimEnd();
-            return path.dirname(path.dirname(path.dirname(swiftc)));
-        } else if (process.platform === "linux") {
-            const { stdout } = await execFile("which", ["swiftc"]);
-            const swiftc = stdout.trimEnd();
-            return path.dirname(path.dirname(path.dirname(swiftc)));
-        } else if (process.platform === "win32") {
-            const { stdout } = await execFile("where", ["swiftc"]);
-            const swiftc = stdout.trimEnd();
-            return path.dirname(path.dirname(path.dirname(swiftc)));
         }
-        return undefined;
-    }
-
-    private static getSDKROOT(): string | undefined {
-        if (process.platform === "win32") {
-            return process.env.SDKROOT ?? undefined;
+        switch (process.platform) {
+            case "darwin": {
+                const { stdout } = await execFile("xcrun", ["--find", "swiftc"]);
+                const swiftc = stdout.trimEnd();
+                return path.dirname(path.dirname(path.dirname(swiftc)));
+            }
+            case "linux": {
+                const { stdout } = await execFile("which", ["swiftc"]);
+                const swiftc = stdout.trimEnd();
+                return path.dirname(path.dirname(path.dirname(swiftc)));
+            }
+            case "win32": {
+                const { stdout } = await execFile("where", ["swiftc"]);
+                const swiftc = stdout.trimEnd();
+                return path.dirname(path.dirname(path.dirname(swiftc)));
+            }
         }
         return undefined;
     }
 
     /**
-     * @param sdkroot path to Swift SDK
-     * @returns path to folder where XCTest can be found
+     * @returns path to default SDK
+     */
+    private static async getDefaultSDK(): Promise<string | undefined> {
+        switch (process.platform) {
+            case "darwin": {
+                if (process.env.SDKROOT) {
+                    return process.env.SDKROOT;
+                }
+                const { stdout } = await execFile("xcrun", ["--sdk", "macosx", "--show-sdk-path"]);
+                return path.join(stdout.trimEnd());
+            }
+            case "win32": {
+                return process.env.SDKROOT;
+            }
+        }
+        return undefined;
+    }
+
+    /**
+     * @returns path to custom SDK
+     */
+    private static getCustomSDK(): string | undefined {
+        return configuration.sdk !== "" ? configuration.sdk : undefined;
+    }
+
+    /**
+     * @param sdkroot path to default SDK
+     * @returns path to folder where xctest can be found
      */
     private static async getXCTestPath(sdkroot: string | undefined): Promise<string | undefined> {
         switch (process.platform) {
@@ -109,7 +140,14 @@ export class SwiftToolchain {
                     return undefined;
                 }
                 const platformPath = path.dirname(path.dirname(path.dirname(sdkroot)));
-                const data = await fs.readFile(path.join(platformPath, "Info.plist"), "utf8");
+                const platformManifest = path.join(platformPath, "Info.plist");
+                if ((await pathExists(platformManifest)) !== true) {
+                    await vscode.window.showWarningMessage(
+                        "XCTest not found due to non-standardized library layout. Tests explorer won't work as expected."
+                    );
+                    return undefined;
+                }
+                const data = await fs.readFile(platformManifest, "utf8");
                 const infoPlist = plist.parse(data) as unknown as InfoPlist;
                 const version = infoPlist.DefaultProperties.XCTEST_VERSION;
                 if (!version) {
@@ -128,7 +166,9 @@ export class SwiftToolchain {
         return undefined;
     }
 
-    /** Return swift version string returned by `swift --version` */
+    /**
+     * @returns swift version string returned by `swift --version`
+     */
     private static async getSwiftVersion(): Promise<{ name: string; version: Version }> {
         try {
             const { stdout } = await execSwift(["--version"]);

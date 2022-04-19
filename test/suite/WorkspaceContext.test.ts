@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import * as assert from "assert";
 import { testAssetWorkspaceFolder } from "../fixtures";
 import { FolderEvent, WorkspaceContext } from "../../src/WorkspaceContext";
-import { createBuildAllTask, win32BuildOptions } from "../../src/SwiftTaskProvider";
+import { createBuildAllTask, platformDebugBuildOptions } from "../../src/SwiftTaskProvider";
 
 suite("WorkspaceContext Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -67,15 +67,11 @@ suite("WorkspaceContext Test Suite", () => {
             const execution = buildAllTask.execution as vscode.ShellExecution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
             assert.strictEqual(buildAllTask.name, "Build All");
-            if (process.platform === "win32") {
-                assert.notStrictEqual(execution?.args, [
-                    "build",
-                    "--build-tests",
-                    ...win32BuildOptions(),
-                ]);
-            } else {
-                assert.notStrictEqual(execution?.args, ["build", "--build-tests"]);
-            }
+            assert.notStrictEqual(execution?.args, [
+                "build",
+                "--build-tests",
+                ...platformDebugBuildOptions(),
+            ]);
             assert.strictEqual(buildAllTask.scope, packageFolder);
         });
 
@@ -87,20 +83,12 @@ suite("WorkspaceContext Test Suite", () => {
                 .update("buildArguments", ["--sanitize=thread"]);
             const buildAllTask = createBuildAllTask(folder);
             const execution = buildAllTask.execution as vscode.ShellExecution;
-            if (process.platform === "win32") {
-                assert.notStrictEqual(execution?.args, [
-                    "build",
-                    "--build-tests",
-                    ...win32BuildOptions(),
-                    "--sanitize=thread",
-                ]);
-            } else {
-                assert.notStrictEqual(execution?.args, [
-                    "build",
-                    "--build-tests",
-                    "--sanitize=thread",
-                ]);
-            }
+            assert.notStrictEqual(execution?.args, [
+                "build",
+                "--build-tests",
+                ...platformDebugBuildOptions(),
+                "--sanitize=thread",
+            ]);
         });
     });
 }).timeout(5000);

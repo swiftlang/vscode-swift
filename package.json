@@ -189,6 +189,17 @@
             "order": 4
           }
         }
+      },
+      {
+        "title": "Advanced",
+        "properties": {
+          "swift.SDK": {
+            "type": "string",
+            "default": "",
+            "description": "The path of the SDK to compile against. The default SDK is determined by the environment on macOS and Windows.",
+            "order": 1
+          }
+        }
       }
     ],
     "menus": {
