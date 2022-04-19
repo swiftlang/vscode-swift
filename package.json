@@ -151,11 +151,16 @@
             "default": false,
             "description": "Output additional diagnostics to the Swift Output View.",
             "order": 8
-          },
+          }
+        }
+      },
+      {
+        "title": "Sourcekit-LSP",
+        "properties": {
           "sourcekit-lsp.serverPath": {
             "type": "string",
             "markdownDescription": "The path of the `sourcekit-lsp` executable. The default is to look in the path where `swift` is found.",
-            "order": 101
+            "order": 1
           },
           "sourcekit-lsp.serverArguments": {
             "type": "array",
@@ -164,13 +169,13 @@
               "type": "string"
             },
             "description": "Arguments to pass to Sourcekit-LSP. Argument keys and values should be provided as separate entries in the array e.g. ['--log-level', 'debug']",
-            "order": 102
+            "order": 2
           },
           "sourcekit-lsp.inlayHints.enabled": {
             "type": "boolean",
             "default": true,
             "description": "Render inlay type annotations in the editor. Inlay hints require Swift 5.6 or later.",
-            "order": 103
+            "order": 3
           },
           "sourcekit-lsp.trace.server": {
             "type": "string",
@@ -181,7 +186,7 @@
               "verbose"
             ],
             "description": "Traces the communication between VS Code and the SourceKit-LSP language server.",
-            "order": 104
+            "order": 4
           }
         }
       }
