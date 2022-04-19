@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
-import { execSwift, swiftpmSDKFlags } from "./utilities/utilities";
+import { execSwift } from "./utilities/utilities";
 
 /** Swift Package Manager contents */
 export interface PackageContents {
@@ -151,10 +151,11 @@ export class SwiftPackage implements PackageContents {
     static async loadPackage(folder: vscode.Uri): Promise<PackageContents | null | undefined> {
         try {
             let { stdout } = await execSwift(
-                ["package", "describe", ...swiftpmSDKFlags(), "--type", "json"],
+                ["package", "describe", "--type", "json"],
                 {
                     cwd: folder.fsPath,
-                }
+                },
+                true
             );
             // remove lines from `swift package describe` until we find a "{"
             while (!stdout.startsWith("{")) {

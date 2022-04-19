@@ -90,14 +90,42 @@ export async function execFileStreamOutput(
  *
  * @param args array of arguments to pass to swift executable
  * @param options execution options
+ * @param setSDKFlags whether to set SDK flags
  */
 export async function execSwift(
     args: string[],
     options: cp.ExecFileOptions = {},
+    setSDKFlags = false,
     folderContext?: FolderContext
 ): Promise<{ stdout: string; stderr: string }> {
     const swift = getSwiftExecutable();
+    if (setSDKFlags) {
+        args = withSwiftSDKFlags(args);
+    }
     return await execFile(swift, args, options, folderContext);
+}
+
+/**
+ * Get modified swift arguments with SDK flags.
+ *
+ * @param args original commandline arguments
+ */
+export function withSwiftSDKFlags(args: string[]): string[] {
+    switch (args.length > 0 ? args[0] : null) {
+        case "package": {
+            if (args.length <= 2) {
+                return args.concat(swiftpmSDKFlags());
+            }
+            const subcommand = args.splice(0, 2);
+            return [...subcommand, ...swiftpmSDKFlags(), ...args];
+        }
+        case "build":
+        case "run":
+        case "test":
+            return args.concat(swiftpmSDKFlags());
+        default:
+            return args.concat(swiftDriverSDKFlags());
+    }
 }
 
 /**

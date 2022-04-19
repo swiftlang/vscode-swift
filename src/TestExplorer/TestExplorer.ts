@@ -14,12 +14,7 @@
 
 import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
-import {
-    execSwift,
-    getErrorDescription,
-    isPathInsidePath,
-    swiftpmSDKFlags,
-} from "../utilities/utilities";
+import { execSwift, getErrorDescription, isPathInsidePath } from "../utilities/utilities";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { TestRunner } from "./TestRunner";
 import { LSPTestDiscovery } from "./LSPTestDiscovery";
@@ -125,10 +120,11 @@ export class TestExplorer {
         try {
             // get list of tests from `swift test --list-tests`
             const { stdout } = await execSwift(
-                ["test", "--skip-build", "--list-tests", ...swiftpmSDKFlags()],
+                ["test", "--skip-build", "--list-tests"],
                 {
                     cwd: this.folderContext.folder.fsPath,
                 },
+                true,
                 this.folderContext
             );
 

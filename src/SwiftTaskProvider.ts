@@ -17,7 +17,7 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
-import { getSwiftExecutable, swiftpmSDKFlags } from "./utilities/utilities";
+import { getSwiftExecutable, withSwiftSDKFlags } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 
 /**
@@ -72,7 +72,7 @@ export function platformDebugBuildOptions(): string[] {
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
 export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
-    const additionalArgs = [...swiftpmSDKFlags(), ...platformDebugBuildOptions()];
+    const additionalArgs = [...platformDebugBuildOptions()];
     if (folderContext.swiftPackage.getTargets("test").length > 0) {
         additionalArgs.push(...testDiscoveryFlag(folderContext));
     }
@@ -143,7 +143,6 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 "build",
                 "--product",
                 product.name,
-                ...swiftpmSDKFlags(),
                 ...platformDebugBuildOptions(),
                 ...configuration.buildArguments,
             ],
@@ -157,15 +156,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
             }
         ),
         createSwiftTask(
-            [
-                "build",
-                "-c",
-                "release",
-                "--product",
-                product.name,
-                ...swiftpmSDKFlags(),
-                ...configuration.buildArguments,
-            ],
+            ["build", "-c", "release", "--product", product.name, ...configuration.buildArguments],
             `Build Release ${product.name}${buildTaskNameSuffix}`,
             {
                 group: vscode.TaskGroup.Build,
@@ -183,6 +174,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
  */
 export function createSwiftTask(args: string[], name: string, config?: TaskConfig): vscode.Task {
     const swift = getSwiftExecutable();
+    args = withSwiftSDKFlags(args);
     const task = new vscode.Task(
         { type: "swift", command: swift, args: args, cwd: config?.cwd?.fsPath },
         config?.scope ?? vscode.TaskScope.Workspace,
