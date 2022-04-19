@@ -113,6 +113,9 @@ export async function execSwift(
 export function withSwiftSDKFlags(args: string[]): string[] {
     switch (args.length > 0 ? args[0] : null) {
         case "package": {
+            // swift-package requires SDK flags to be placed before subcommand options
+            // eg. ["package", "describe", "--type", "json"] should be turned into
+            // ["package", "describe", "--sdk", "/path/to/sdk", "--type", "json"]
             if (args.length <= 2) {
                 return args.concat(swiftpmSDKFlags());
             }
