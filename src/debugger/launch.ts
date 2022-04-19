@@ -89,7 +89,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
                 args: [],
                 cwd: folder,
                 preLaunchTask: `swift: Build Debug ${product.name}${nameSuffix}`,
-                env: swiftRuntimePathEnv({}),
+                env: swiftRuntimePathEnv(true),
             },
             {
                 type: "lldb",
@@ -99,7 +99,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
                 args: [],
                 cwd: folder,
                 preLaunchTask: `swift: Build Release ${product.name}${nameSuffix}`,
-                env: swiftRuntimePathEnv({}),
+                env: swiftRuntimePathEnv(true),
             },
         ];
     });

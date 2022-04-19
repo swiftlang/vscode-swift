@@ -23,23 +23,47 @@ import { FolderContext } from "../FolderContext";
 /**
  * Get required environment variable for Swift runtime
  *
- * @param env base environment
+ * @param base base environment configuration
  * @returns minimal required environment for Swift runtime
  */
 export function swiftRuntimePathEnv(
-    env: NodeJS.ProcessEnv = process.env
-): NodeJS.ProcessEnv | undefined {
+    base: NodeJS.ProcessEnv | boolean = process.env
+): { [key: string]: string } | undefined {
     if (configuration.runtimePath === "") {
         return undefined;
     }
     const runtimePath = configuration.runtimePath;
-    switch (process.platform) {
-        case "win32":
-            return { Path: `${runtimePath};${env.Path}` };
-        case "darwin":
-            return { DYLD_LIBRARY_PATH: `${runtimePath}:${env.DYLD_LIBRARY_PATH}` };
-        default:
-            return { LD_LIBRARY_PATH: `${runtimePath}:${env.LD_LIBRARY_PATH}` };
+    switch (base) {
+        case false: {
+            switch (process.platform) {
+                case "win32":
+                    return { Path: runtimePath };
+                case "darwin":
+                    return { DYLD_LIBRARY_PATH: runtimePath };
+                default:
+                    return { LD_LIBRARY_PATH: runtimePath };
+            }
+        }
+        case true: {
+            switch (process.platform) {
+                case "win32":
+                    return { Path: `${runtimePath};\${env:Path}` };
+                case "darwin":
+                    return { DYLD_LIBRARY_PATH: `${runtimePath}:\${env:DYLD_LIBRARY_PATH}` };
+                default:
+                    return { LD_LIBRARY_PATH: `${runtimePath}:\${env:LD_LIBRARY_PATH}` };
+            }
+        }
+        default: {
+            switch (process.platform) {
+                case "win32":
+                    return { Path: `${runtimePath};${base.Path}` };
+                case "darwin":
+                    return { DYLD_LIBRARY_PATH: `${runtimePath}:${base.DYLD_LIBRARY_PATH}` };
+                default:
+                    return { LD_LIBRARY_PATH: `${runtimePath}:${base.LD_LIBRARY_PATH}` };
+            }
+        }
     }
 }
 

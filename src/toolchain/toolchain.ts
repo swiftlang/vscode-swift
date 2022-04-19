@@ -37,11 +37,11 @@ interface SwiftTargetInfo {
     compilerVersion: string;
     target?: {
         triple: string;
-        [name: string]: string | Array<string>;
+        [name: string]: string | string[];
     };
     paths: {
-        runtimeLibraryPaths: [string];
-        [name: string]: string | Array<string>;
+        runtimeLibraryPaths: string[];
+        [name: string]: string | string[];
     };
     [name: string]: string | object | undefined;
 }
@@ -87,7 +87,7 @@ export class SwiftToolchain {
             channel.logDiagnostic(`Runtime Library Path: ${this.runtimePath}`);
         }
         if (this.defaultTarget) {
-            channel.logDiagnostic(`Default Target Triple: ${this.defaultTarget}`);
+            channel.logDiagnostic(`Default Target: ${this.defaultTarget}`);
         }
         if (this.defaultSDK) {
             channel.logDiagnostic(`Default SDK: ${this.defaultSDK}`);
