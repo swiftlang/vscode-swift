@@ -190,7 +190,7 @@
           "swift.runtimePath": {
             "type": "string",
             "default": "",
-            "cescription": "The path of the folder containing the Swift runtime libraries. Only effective when they can't be discovered by RPath.",
+            "description": "The path of the folder containing the Swift runtime libraries. Only effective when they can't be discovered by RPath.",
             "order": 1
           },
           "swift.SDK": {

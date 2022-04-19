@@ -23,8 +23,9 @@ import { swiftRuntimePathEnv } from "../utilities/utilities";
  * Adds launch configurations based on the executables in Package.swift.
  *
  * @param ctx folder context to create launch configurations for
+ * @param regenerate whether to regenerate existing configurations by default
  */
-export async function makeDebugConfigurations(ctx: FolderContext) {
+export async function makeDebugConfigurations(ctx: FolderContext, regenerate = false) {
     if (!configuration.autoGenerateLaunchConfigurations) {
         return;
     }
@@ -36,6 +37,11 @@ export async function makeDebugConfigurations(ctx: FolderContext) {
     for (const config of configs) {
         const index = launchConfigs.findIndex(c => c.name === config.name);
         if (index !== -1) {
+            if (regenerate && launchConfigs[index] !== config) {
+                launchConfigs[index] = config;
+                edited = true;
+                continue;
+            }
             if (
                 launchConfigs[index].program !== config.program ||
                 launchConfigs[index].cwd !== config.cwd ||

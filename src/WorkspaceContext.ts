@@ -24,6 +24,8 @@ import { TemporaryFolder } from "./utilities/tempFolder";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { TaskManager } from "./TaskManager";
 import { BackgroundCompilation } from "./BackgroundCompilation";
+import { makeDebugConfigurations } from "./debugger/launch";
+import configuration from "./configuration";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -45,8 +47,8 @@ export class WorkspaceContext implements vscode.Disposable {
         this.outputChannel.log(this.toolchain.swiftVersionString);
         this.toolchain.logDiagnostics(this.outputChannel);
         this.tasks = new TaskManager();
-        // on change config restart server
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
+            // on toolchain config change, reload window
             if (event.affectsConfiguration("swift.path")) {
                 vscode.window
                     .showInformationMessage(
@@ -56,6 +58,25 @@ export class WorkspaceContext implements vscode.Disposable {
                     .then(selected => {
                         if (selected === "Ok") {
                             vscode.commands.executeCommand("workbench.action.reloadWindow");
+                        }
+                    });
+            }
+            // on runtime path config change, regenerate launch.json
+            if (event.affectsConfiguration("swift.runtimePath")) {
+                if (!configuration.autoGenerateLaunchConfigurations) {
+                    return;
+                }
+                vscode.window
+                    .showInformationMessage(
+                        "Launch configurations need to be updated after changing the Swift runtime path. Do you want to regenerate them?",
+                        "Regenerate",
+                        "Cancel"
+                    )
+                    .then(async selected => {
+                        if (selected === "Regenerate") {
+                            this.folders.forEach(
+                                async ctx => await makeDebugConfigurations(ctx, true)
+                            );
                         }
                     });
             }
