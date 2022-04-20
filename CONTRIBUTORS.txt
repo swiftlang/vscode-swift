@@ -12,7 +12,6 @@ needs to be listed here.
 - Kim de Vos <kimdevos12@hotmail.com>
 - Saleem Abdulrasool <compnerd@compnerd.org>
 - Steven Van Impe <steven.vanimpe@icloud.com>
-- Tim <0xtimc@gmail.com>
 - Tim Condon <0xtimc@gmail.com>
 - YR Chen <stevapple@icloud.com>
 **Updating this list**
