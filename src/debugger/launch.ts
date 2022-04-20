@@ -161,11 +161,15 @@ export function createTestConfiguration(
             preLaunchTask: `swift: Build All${nameSuffix}`,
         };
     } else if (process.platform === "win32") {
-        // On Windows, add XCTest.dll to the PATH,
-        // and then run the .xctest bundle from the .build directory.
+        // On Windows, add XCTest.dll to the Path
+        // and run the .xctest executable from the .build directory.
+        const runtimePath = ctx.workspaceContext.toolchain.runtimePath;
         const xcTestPath = ctx.workspaceContext.toolchain.xcTestPath;
         if (xcTestPath === undefined) {
             return null;
+        }
+        if (xcTestPath !== runtimePath) {
+            testEnv.Path = `${xcTestPath};${testEnv.Path}`;
         }
         return {
             type: "lldb",
@@ -173,14 +177,11 @@ export function createTestConfiguration(
             name: `Test ${ctx.swiftPackage.name}`,
             program: `${folder}/.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
             cwd: folder,
-            env: {
-                ...testEnv,
-                Path: `${xcTestPath};${testEnv.Path}`,
-            },
+            env: testEnv,
             preLaunchTask: `swift: Build All${nameSuffix}`,
         };
     } else {
-        // On Linux, just run the .xctest bundle from the .build directory.
+        // On Linux, just run the .xctest executable from the .build directory.
         return {
             type: "lldb",
             request: "launch",

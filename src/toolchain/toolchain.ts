@@ -51,8 +51,8 @@ export class SwiftToolchain {
         public toolchainPath: string,
         public swiftVersionString: string,
         public swiftVersion: Version,
+        public runtimePath?: string,
         private defaultTarget?: string,
-        private runtimePath?: string,
         private defaultSDK?: string,
         private customSDK?: string,
         public xcTestPath?: string,
@@ -66,14 +66,14 @@ export class SwiftToolchain {
         const runtimePath = await this.getRuntimePath(targetInfo);
         const defaultSDK = await this.getDefaultSDK();
         const customSDK = this.getCustomSDK();
-        const xcTestPath = await this.getXCTestPath(defaultSDK);
+        const xcTestPath = await this.getXCTestPath(runtimePath, defaultSDK);
         const newSwiftDriver = await this.checkNewDriver(toolchainPath);
         return new SwiftToolchain(
             toolchainPath,
             targetInfo.compilerVersion,
             swiftVersion,
-            targetInfo.target?.triple,
             runtimePath,
+            targetInfo.target?.triple,
             defaultSDK,
             customSDK,
             xcTestPath,
@@ -171,10 +171,14 @@ export class SwiftToolchain {
     }
 
     /**
+     * @param runtimePath path to Swift runtime
      * @param sdkroot path to default SDK
      * @returns path to folder where xctest can be found
      */
-    private static async getXCTestPath(sdkroot: string | undefined): Promise<string | undefined> {
+    private static async getXCTestPath(
+        runtimePath: string | undefined,
+        sdkroot: string | undefined
+    ): Promise<string | undefined> {
         switch (process.platform) {
             case "darwin": {
                 const { stdout } = await execFile("xcode-select", ["-p"]);
@@ -187,6 +191,10 @@ export class SwiftToolchain {
                 const platformPath = path.dirname(path.dirname(path.dirname(sdkroot)));
                 const platformManifest = path.join(platformPath, "Info.plist");
                 if ((await pathExists(platformManifest)) !== true) {
+                    // look up runtime library directory for XCTest
+                    if (runtimePath && (await pathExists(path.join(runtimePath, "XCTest.dll")))) {
+                        return runtimePath;
+                    }
                     await vscode.window.showWarningMessage(
                         "XCTest not found due to non-standardized library layout. Tests explorer won't work as expected."
                     );
