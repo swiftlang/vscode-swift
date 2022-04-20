@@ -59,6 +59,21 @@ export class WorkspaceContext implements vscode.Disposable {
                         }
                     });
             }
+            if (event.affectsConfiguration("swift.SDK")) {
+                // FIXME: We only need to restart SourceKit-LSP, but there is a bug stopping us
+                // from doing that now. As long as it's fixed we should only restart SourceKit-LSP
+                // on newer versions.
+                vscode.window
+                    .showInformationMessage(
+                        "Changing the Swift SDK path requires the project be reloaded.",
+                        "Ok"
+                    )
+                    .then(selected => {
+                        if (selected === "Ok") {
+                            vscode.commands.executeCommand("workbench.action.reloadWindow");
+                        }
+                    });
+            }
         });
         const backgroundCompilationOnDidSave = BackgroundCompilation.start(this);
         this.subscriptions = [

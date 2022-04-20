@@ -147,7 +147,7 @@ export function swiftpmSDKFlags(): string[] {
  * @param indirect whether to pass the flags by -Xswiftc
  */
 export function swiftDriverSDKFlags(indirect = false): string[] {
-    if (configuration.sdk !== "") {
+    if (configuration.sdk === "") {
         return [];
     }
     const args = ["-sdk", configuration.sdk];
