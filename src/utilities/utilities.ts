@@ -21,12 +21,12 @@ import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
 
 /**
- * Get required environment variable for Swift runtime
+ * Get required environment variable for Swift product
  *
  * @param base base environment configuration
- * @returns minimal required environment for Swift runtime
+ * @returns minimal required environment for Swift product
  */
-export function swiftRuntimePathEnv(
+export function swiftRuntimeEnv(
     base: NodeJS.ProcessEnv | boolean = process.env
 ): { [key: string]: string } | undefined {
     if (configuration.runtimePath === "") {
@@ -87,7 +87,7 @@ export async function execFile(
         folderContext.name
     );
     if (configuration.runtimePath.length > 0) {
-        options.env = { ...options.env, ...swiftRuntimePathEnv(options.env) };
+        options.env = { ...options.env, ...swiftRuntimeEnv(options.env) };
     }
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) =>
         cp.execFile(executable, args, options, (error, stdout, stderr) => {
@@ -113,7 +113,7 @@ export async function execFileStreamOutput(
         folderContext.name
     );
     if (configuration.runtimePath.length > 0) {
-        options.env = { ...options.env, ...swiftRuntimePathEnv(options.env) };
+        options.env = { ...options.env, ...swiftRuntimeEnv(options.env) };
     }
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
         const p = cp.execFile(executable, args, options, (error, stdout, stderr) => {

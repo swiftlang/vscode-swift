@@ -17,7 +17,7 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
-import { getSwiftExecutable, swiftRuntimePathEnv, withSwiftSDKFlags } from "./utilities/utilities";
+import { getSwiftExecutable, swiftRuntimeEnv, withSwiftSDKFlags } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 
 /**
@@ -182,7 +182,7 @@ export function createSwiftTask(args: string[], name: string, config?: TaskConfi
         "swift",
         new vscode.ShellExecution(swift, args, {
             cwd: config?.cwd?.fsPath,
-            env: swiftRuntimePathEnv(),
+            env: swiftRuntimeEnv(),
         }),
         config?.problemMatcher
     );

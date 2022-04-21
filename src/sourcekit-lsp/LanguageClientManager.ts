@@ -19,7 +19,7 @@ import {
     getSwiftExecutable,
     isPathInsidePath,
     swiftDriverSDKFlags,
-    swiftRuntimePathEnv,
+    swiftRuntimeEnv,
 } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
@@ -240,7 +240,7 @@ export class LanguageClientManager {
         const sourcekit: langclient.Executable = {
             command: serverPath,
             args: lspConfig.serverArguments.concat(sdkArguments),
-            options: { env: { ...process.env, ...swiftRuntimePathEnv() } },
+            options: { env: { ...process.env, ...swiftRuntimeEnv() } },
         };
 
         // if path to LSP server is not equal to the path to swift and both are set, then
