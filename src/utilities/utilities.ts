@@ -126,6 +126,8 @@ export async function execSwift(
 export function withSwiftCompileFlags(args: string[]): string[] {
     switch (args.length > 0 ? args[0] : null) {
         case "package":
+            // swift-package operates on the host, so it doesn't
+            // need to know about the target
             return args;
         case "build":
         case "run":
