@@ -233,9 +233,10 @@ export class TestRunner {
                 token,
                 {
                     cwd: testBuildConfig.cwd,
-                    env: { ...process.env, ...testBuildConfig.env },
+                    env: { ...testBuildConfig.env, ...process.env },
                 },
-                this.folderContext
+                this.folderContext,
+                false
             );
         } catch {
             // ignore errors from execFileStreamOutput. As stderr output is already parsed

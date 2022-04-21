@@ -233,9 +233,10 @@ export function createDarwinTestConfiguration(
         default:
             return null;
     }
-    const envCommands = Object.entries(configuration.testEnvironmentVariables).map(
-        ([key, value]) => `settings set target.env-vars ${key}="${value}"`
-    );
+    const envCommands = Object.entries({
+        ...swiftRuntimeEnv(),
+        ...configuration.testEnvironmentVariables,
+    }).map(([key, value]) => `settings set target.env-vars ${key}="${value}"`);
 
     return {
         type: "lldb",

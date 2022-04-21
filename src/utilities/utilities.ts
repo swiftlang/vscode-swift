@@ -32,38 +32,26 @@ export function swiftRuntimeEnv(
     if (configuration.runtimePath === "") {
         return undefined;
     }
-    const runtimePath = configuration.runtimePath;
-    switch (base) {
-        case false: {
-            switch (process.platform) {
-                case "win32":
-                    return { Path: runtimePath };
-                case "darwin":
-                    return { DYLD_LIBRARY_PATH: runtimePath };
-                default:
-                    return { LD_LIBRARY_PATH: runtimePath };
-            }
+    const runtimeEnv = (key: string, separator = ":"): { [key: string]: string } => {
+        const runtimePath = configuration.runtimePath;
+        switch (base) {
+            case false:
+                return { [key]: runtimePath };
+            case true:
+                return { [key]: `${runtimePath}${separator}\${env:${key}}` };
+            default:
+                return base[key]
+                    ? { [key]: `${runtimePath}${separator}${base[key]}` }
+                    : { [key]: runtimePath };
         }
-        case true: {
-            switch (process.platform) {
-                case "win32":
-                    return { Path: `${runtimePath};\${env:Path}` };
-                case "darwin":
-                    return { DYLD_LIBRARY_PATH: `${runtimePath}:\${env:DYLD_LIBRARY_PATH}` };
-                default:
-                    return { LD_LIBRARY_PATH: `${runtimePath}:\${env:LD_LIBRARY_PATH}` };
-            }
-        }
-        default: {
-            switch (process.platform) {
-                case "win32":
-                    return { Path: `${runtimePath};${base.Path}` };
-                case "darwin":
-                    return { DYLD_LIBRARY_PATH: `${runtimePath}:${base.DYLD_LIBRARY_PATH}` };
-                default:
-                    return { LD_LIBRARY_PATH: `${runtimePath}:${base.LD_LIBRARY_PATH}` };
-            }
-        }
+    };
+    switch (process.platform) {
+        case "win32":
+            return runtimeEnv("Path", ";");
+        case "darwin":
+            return runtimeEnv("DYLD_LIBRARY_PATH");
+        default:
+            return runtimeEnv("LD_LIBRARY_PATH");
     }
 }
 
@@ -80,13 +68,14 @@ export async function execFile(
     executable: string,
     args: string[],
     options: cp.ExecFileOptions = {},
-    folderContext?: FolderContext
+    folderContext?: FolderContext,
+    customSwiftRuntime = true
 ): Promise<{ stdout: string; stderr: string }> {
     folderContext?.workspaceContext.outputChannel.logDiagnostic(
         `Exec: ${executable} ${args.join(" ")}`,
         folderContext.name
     );
-    if (configuration.runtimePath.length > 0) {
+    if (configuration.runtimePath.length > 0 && customSwiftRuntime) {
         options.env = { ...options.env, ...swiftRuntimeEnv(options.env) };
     }
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) =>
@@ -106,13 +95,14 @@ export async function execFileStreamOutput(
     stderr: Stream.Writable | null,
     token: vscode.CancellationToken | null,
     options: cp.ExecFileOptions = {},
-    folderContext?: FolderContext
+    folderContext?: FolderContext,
+    customSwiftRuntime = true
 ): Promise<{ stdout: string; stderr: string }> {
     folderContext?.workspaceContext.outputChannel.logDiagnostic(
         `Exec: ${executable} ${args.join(" ")}`,
         folderContext.name
     );
-    if (configuration.runtimePath.length > 0) {
+    if (configuration.runtimePath.length > 0 && customSwiftRuntime) {
         options.env = { ...options.env, ...swiftRuntimeEnv(options.env) };
     }
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
