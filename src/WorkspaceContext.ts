@@ -59,6 +59,36 @@ export class WorkspaceContext implements vscode.Disposable {
                         }
                     });
             }
+            // on host sdk config change, restart sourcekit-lsp
+            if (event.affectsConfiguration("swift.hostSDK")) {
+                // FIXME: There is a bug stopping us from restarting SourceKit-LSP directly.
+                // As long as it's fixed we won't need to reload on newer versions.
+                vscode.window
+                    .showInformationMessage(
+                        "Changing the Swift host SDK path requires the project be reloaded.",
+                        "Ok"
+                    )
+                    .then(selected => {
+                        if (selected === "Ok") {
+                            vscode.commands.executeCommand("workbench.action.reloadWindow");
+                        }
+                    });
+            }
+            // on target sdk config change, restart sourcekit-lsp
+            if (event.affectsConfiguration("swift.SDK")) {
+                // FIXME: There is a bug stopping us from restarting SourceKit-LSP directly.
+                // As long as it's fixed we won't need to reload on newer versions.
+                vscode.window
+                    .showInformationMessage(
+                        "Changing the Swift target SDK path requires the project be reloaded.",
+                        "Ok"
+                    )
+                    .then(selected => {
+                        if (selected === "Ok") {
+                            vscode.commands.executeCommand("workbench.action.reloadWindow");
+                        }
+                    });
+            }
         });
         const backgroundCompilationOnDidSave = BackgroundCompilation.start(this);
         this.subscriptions = [

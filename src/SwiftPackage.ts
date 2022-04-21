@@ -150,13 +150,9 @@ export class SwiftPackage implements PackageContents {
      */
     static async loadPackage(folder: vscode.Uri): Promise<PackageContents | null | undefined> {
         try {
-            let { stdout } = await execSwift(
-                ["package", "describe", "--type", "json"],
-                {
-                    cwd: folder.fsPath,
-                },
-                true
-            );
+            let { stdout } = await execSwift(["package", "describe", "--type", "json"], {
+                cwd: folder.fsPath,
+            });
             // remove lines from `swift package describe` until we find a "{"
             while (!stdout.startsWith("{")) {
                 const firstNewLine = stdout.indexOf("\n");

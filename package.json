@@ -196,8 +196,14 @@
           "swift.SDK": {
             "type": "string",
             "default": "",
-            "description": "The path of the SDK to compile against. The default SDK is determined by the environment on macOS and Windows.",
+            "description": "The path of the SDK to compile against. The default is to use the host SDK.",
             "order": 1
+          },
+          "swift.hostSDK": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "The path of the SDK for the host (aka. `SDKROOT`). The default is determined by the environment on macOS and Windows.",
+            "order": 2
           }
         }
       }

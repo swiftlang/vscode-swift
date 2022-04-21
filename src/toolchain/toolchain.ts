@@ -35,8 +35,8 @@ export class SwiftToolchain {
         public swiftVersionString: string,
         public swiftVersion: Version,
         public toolchainPath?: string,
-        private defaultSDK?: string,
-        private customSDK?: string,
+        private hostSDK?: string,
+        private targetSDK?: string,
         public xcTestPath?: string,
         public newSwiftDriver?: boolean
     ) {}
@@ -44,16 +44,16 @@ export class SwiftToolchain {
     static async create(): Promise<SwiftToolchain> {
         const version = await this.getSwiftVersion();
         const toolchainPath = await this.getToolchainPath();
-        const defaultSDK = await this.getDefaultSDK();
-        const customSDK = this.getCustomSDK();
-        const xcTestPath = await this.getXCTestPath(defaultSDK);
+        const hostSDK = await this.getHostSDK();
+        const targetSDK = this.getTargetSDK();
+        const xcTestPath = await this.getXCTestPath(hostSDK);
         const newSwiftDriver = await this.checkNewDriver(toolchainPath);
         return new SwiftToolchain(
             version.name,
             version.version,
             toolchainPath,
-            defaultSDK,
-            customSDK,
+            hostSDK,
+            targetSDK,
             xcTestPath,
             newSwiftDriver
         );
@@ -61,11 +61,11 @@ export class SwiftToolchain {
 
     logDiagnostics(channel: SwiftOutputChannel) {
         channel.logDiagnostic(`Toolchain Path: ${this.toolchainPath}`);
-        if (this.defaultSDK) {
-            channel.logDiagnostic(`Default SDK: ${this.defaultSDK}`);
+        if (this.hostSDK) {
+            channel.logDiagnostic(`Host SDK: ${this.hostSDK}`);
         }
-        if (this.customSDK) {
-            channel.logDiagnostic(`Custom SDK: ${this.customSDK}`);
+        if (this.targetSDK) {
+            channel.logDiagnostic(`Target SDK: ${this.targetSDK}`);
         }
         if (this.xcTestPath) {
             channel.logDiagnostic(`XCTest Path: ${this.xcTestPath}`);
@@ -100,9 +100,12 @@ export class SwiftToolchain {
     }
 
     /**
-     * @returns path to default SDK
+     * @returns path to host SDK
      */
-    private static async getDefaultSDK(): Promise<string | undefined> {
+    private static async getHostSDK(): Promise<string | undefined> {
+        if (configuration.hostSDK !== "") {
+            return configuration.hostSDK;
+        }
         switch (process.platform) {
             case "darwin": {
                 if (process.env.SDKROOT) {
@@ -119,14 +122,14 @@ export class SwiftToolchain {
     }
 
     /**
-     * @returns path to custom SDK
+     * @returns path to custom target SDK
      */
-    private static getCustomSDK(): string | undefined {
+    private static getTargetSDK(): string | undefined {
         return configuration.sdk !== "" ? configuration.sdk : undefined;
     }
 
     /**
-     * @param sdkroot path to default SDK
+     * @param sdkroot path to host SDK
      * @returns path to folder where xctest can be found
      */
     private static async getXCTestPath(sdkroot: string | undefined): Promise<string | undefined> {
@@ -142,7 +145,7 @@ export class SwiftToolchain {
                 const platformPath = path.dirname(path.dirname(path.dirname(sdkroot)));
                 const platformManifest = path.join(platformPath, "Info.plist");
                 if ((await pathExists(platformManifest)) !== true) {
-                    await vscode.window.showWarningMessage(
+                    vscode.window.showWarningMessage(
                         "XCTest not found due to non-standardized library layout. Tests explorer won't work as expected."
                     );
                     return undefined;

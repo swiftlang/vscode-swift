@@ -65,7 +65,11 @@ const configuration = {
     get path(): string {
         return vscode.workspace.getConfiguration("swift").get<string>("path", "");
     },
-    /** Path to custom swift sdk */
+    /** Path to custom host sdk */
+    get hostSDK(): string {
+        return vscode.workspace.getConfiguration("swift").get<string>("hostSDK", "");
+    },
+    /** Path to custom target sdk */
     get sdk(): string {
         return vscode.workspace.getConfiguration("swift").get<string>("SDK", "");
     },

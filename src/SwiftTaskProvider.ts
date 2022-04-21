@@ -17,7 +17,7 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
-import { getSwiftExecutable, withSwiftSDKFlags } from "./utilities/utilities";
+import { getSwiftExecutable, swiftCompilerEnv, withSwiftCompileFlags } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 
 /**
@@ -174,13 +174,16 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
  */
 export function createSwiftTask(args: string[], name: string, config?: TaskConfig): vscode.Task {
     const swift = getSwiftExecutable();
-    args = withSwiftSDKFlags(args);
+    args = withSwiftCompileFlags(args);
     const task = new vscode.Task(
         { type: "swift", command: swift, args: args, cwd: config?.cwd?.fsPath },
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
         "swift",
-        new vscode.ShellExecution(swift, args, { cwd: config?.cwd?.fsPath }),
+        new vscode.ShellExecution(swift, args, {
+            cwd: config?.cwd?.fsPath,
+            env: swiftCompilerEnv(),
+        }),
         config?.problemMatcher
     );
     // This doesn't include any quotes added by VS Code.

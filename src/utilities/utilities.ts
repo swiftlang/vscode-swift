@@ -21,6 +21,18 @@ import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
 
 /**
+ * Get required environment variable for Swift compiler
+ *
+ * @returns required environment for Swift compiler
+ */
+export function swiftCompilerEnv(): { SDKROOT: string } | undefined {
+    if (configuration.hostSDK === "") {
+        return undefined;
+    }
+    return { SDKROOT: configuration.hostSDK };
+}
+
+/**
  * Asynchronous wrapper around {@link cp.execFile child_process.execFile}.
  *
  * Assumes output will be a string
@@ -95,33 +107,26 @@ export async function execFileStreamOutput(
 export async function execSwift(
     args: string[],
     options: cp.ExecFileOptions = {},
-    setSDKFlags = false,
-    folderContext?: FolderContext
+    folderContext?: FolderContext,
+    setSDKFlags = false
 ): Promise<{ stdout: string; stderr: string }> {
     const swift = getSwiftExecutable();
     if (setSDKFlags) {
-        args = withSwiftSDKFlags(args);
+        args = withSwiftCompileFlags(args);
     }
+    options.env = { ...options.env, ...swiftCompilerEnv() };
     return await execFile(swift, args, options, folderContext);
 }
 
 /**
- * Get modified swift arguments with SDK flags.
+ * Get modified swift arguments with config-based compilation flags.
  *
  * @param args original commandline arguments
  */
-export function withSwiftSDKFlags(args: string[]): string[] {
+export function withSwiftCompileFlags(args: string[]): string[] {
     switch (args.length > 0 ? args[0] : null) {
-        case "package": {
-            // swift-package requires SDK flags to be placed before subcommand options
-            // eg. ["package", "describe", "--type", "json"] should be turned into
-            // ["package", "describe", "--sdk", "/path/to/sdk", "--type", "json"]
-            if (args.length <= 2) {
-                return args.concat(swiftpmSDKFlags());
-            }
-            const subcommand = args.splice(0, 2);
-            return [...subcommand, ...swiftpmSDKFlags(), ...args];
-        }
+        case "package":
+            return args;
         case "build":
         case "run":
         case "test":
