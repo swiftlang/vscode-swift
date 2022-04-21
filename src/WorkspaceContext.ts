@@ -81,16 +81,28 @@ export class WorkspaceContext implements vscode.Disposable {
                 if (!configuration.autoGenerateLaunchConfigurations) {
                     return;
                 }
+                const runtimePathEnvKey = (): string => {
+                    switch (process.platform) {
+                        case "win32":
+                            return "Path";
+                        case "darwin":
+                            return "DYLD_LIBRARY_PATH";
+                        default:
+                            return "LD_LIBRARY_PATH";
+                    }
+                };
+                const runtimePathConfigKey = `env.${runtimePathEnvKey()}`;
                 vscode.window
                     .showInformationMessage(
-                        "Launch configurations need to be updated after changing the Swift runtime path. Do you want to regenerate them?",
-                        "Regenerate",
+                        `Launch configurations need to be updated after changing the Swift runtime path. Your custom values of '${runtimePathConfigKey}' may be covered. Do you want to update?`,
+                        "Update",
                         "Cancel"
                     )
                     .then(async selected => {
-                        if (selected === "Regenerate") {
+                        if (selected === "Update") {
                             this.folders.forEach(
-                                async ctx => await makeDebugConfigurations(ctx, true)
+                                async ctx =>
+                                    await makeDebugConfigurations(ctx, [runtimePathConfigKey])
                             );
                         }
                     });

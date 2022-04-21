@@ -23,9 +23,12 @@ import { swiftRuntimeEnv } from "../utilities/utilities";
  * Adds launch configurations based on the executables in Package.swift.
  *
  * @param ctx folder context to create launch configurations for
- * @param regenerate whether to regenerate existing configurations by default
+ * @param keysToUpdate configuration keys to update, with maximum nested depth of 2
  */
-export async function makeDebugConfigurations(ctx: FolderContext, regenerate = false) {
+export async function makeDebugConfigurations(
+    ctx: FolderContext,
+    keysToUpdate: string[] | undefined = undefined
+) {
     if (!configuration.autoGenerateLaunchConfigurations) {
         return;
     }
@@ -37,8 +40,26 @@ export async function makeDebugConfigurations(ctx: FolderContext, regenerate = f
     for (const config of configs) {
         const index = launchConfigs.findIndex(c => c.name === config.name);
         if (index !== -1) {
-            if (regenerate && launchConfigs[index] !== config) {
-                launchConfigs[index] = config;
+            if (keysToUpdate && launchConfigs[index] !== config) {
+                keysToUpdate.forEach(keyPath => {
+                    if (keyPath.includes(".")) {
+                        const keys = keyPath.split(".", 2);
+                        if (launchConfigs[index][keys[0]] === undefined) {
+                            launchConfigs[index][keys[0]] = config[keys[0]];
+                        } else if (config[keys[0]] === undefined) {
+                            const subkeys = Object.keys(launchConfigs[index][keys[0]]);
+                            if (subkeys.length === 1 && subkeys[0] === keys[1]) {
+                                launchConfigs[index][keys[0]] = undefined;
+                            } else {
+                                launchConfigs[index][keys[0]][keys[1]] = undefined;
+                            }
+                        } else {
+                            launchConfigs[index][keys[0]][keys[1]] = config[keys[0]][keys[1]];
+                        }
+                    } else {
+                        launchConfigs[index][keyPath] = config[keyPath];
+                    }
+                });
                 edited = true;
                 continue;
             }
