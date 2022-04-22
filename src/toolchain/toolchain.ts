@@ -18,7 +18,7 @@ import * as plist from "plist";
 import * as vscode from "vscode";
 import configuration from "../configuration";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
-import { execFile, execSwift, getExecutableName, pathExists } from "../utilities/utilities";
+import { execFile, execSwift, pathExists } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 
 /**
@@ -55,8 +55,7 @@ export class SwiftToolchain {
         private defaultTarget?: string,
         private defaultSDK?: string,
         private customSDK?: string,
-        public xcTestPath?: string,
-        public newSwiftDriver?: boolean
+        public xcTestPath?: string
     ) {}
 
     static async create(): Promise<SwiftToolchain> {
@@ -67,7 +66,6 @@ export class SwiftToolchain {
         const defaultSDK = await this.getDefaultSDK();
         const customSDK = this.getCustomSDK();
         const xcTestPath = await this.getXCTestPath(runtimePath, defaultSDK);
-        const newSwiftDriver = await this.checkNewDriver(toolchainPath);
         return new SwiftToolchain(
             toolchainPath,
             targetInfo.compilerVersion,
@@ -76,8 +74,7 @@ export class SwiftToolchain {
             targetInfo.target?.triple,
             defaultSDK,
             customSDK,
-            xcTestPath,
-            newSwiftDriver
+            xcTestPath
         );
     }
 
@@ -240,45 +237,5 @@ export class SwiftToolchain {
             version = Version.fromString(match[1]);
         }
         return version ?? new Version(0, 0, 0);
-    }
-
-    /**
-     * @returns if the default Swift driver is the new driver
-     */
-    private static async checkNewDriver(
-        toolchainPath: string | undefined
-    ): Promise<boolean | undefined> {
-        if (!toolchainPath) {
-            return undefined;
-        }
-        const toolDirectory = path.join(toolchainPath, "usr", "bin");
-        // judge from environment variable
-        if (process.env.SWIFT_USE_NEW_DRIVER) {
-            return true;
-        }
-        if (process.env.SWIFT_USE_OLD_DRIVER) {
-            return false;
-        }
-        // judge from tool existence
-        if (await pathExists(toolDirectory, getExecutableName("swift-driver"))) {
-            return true;
-        }
-        if ((await pathExists(toolDirectory, getExecutableName("swift-frontend"))) !== true) {
-            return false;
-        }
-        // check if swift is symlinked into swift-frontend
-        const swiftDriverPath = await fs.realpath(
-            path.join(toolDirectory, getExecutableName("swift"))
-        );
-        const swiftFrontendPath = await fs.realpath(
-            path.join(toolDirectory, getExecutableName("swift-frontend"))
-        );
-        if (swiftDriverPath === swiftFrontendPath) {
-            return false;
-        }
-        // check if swift is replaced by the new driver
-        const swiftDriverBuffer = await fs.readFile(swiftDriverPath);
-        const swiftFrontendBuffer = await fs.readFile(swiftFrontendPath);
-        return !swiftDriverBuffer.equals(swiftFrontendBuffer);
     }
 }
