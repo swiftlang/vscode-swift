@@ -233,7 +233,7 @@ export class TestRunner {
                 token,
                 {
                     cwd: testBuildConfig.cwd,
-                    env: { ...testBuildConfig.env, ...process.env },
+                    env: { ...process.env, ...testBuildConfig.env },
                 },
                 this.folderContext,
                 false

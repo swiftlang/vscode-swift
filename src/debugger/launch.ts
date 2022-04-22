@@ -41,25 +41,7 @@ export async function makeDebugConfigurations(
         const index = launchConfigs.findIndex(c => c.name === config.name);
         if (index !== -1) {
             if (keysToUpdate && launchConfigs[index] !== config) {
-                keysToUpdate.forEach(keyPath => {
-                    if (keyPath.includes(".")) {
-                        const keys = keyPath.split(".", 2);
-                        if (launchConfigs[index][keys[0]] === undefined) {
-                            launchConfigs[index][keys[0]] = config[keys[0]];
-                        } else if (config[keys[0]] === undefined) {
-                            const subkeys = Object.keys(launchConfigs[index][keys[0]]);
-                            if (subkeys.length === 1 && subkeys[0] === keys[1]) {
-                                launchConfigs[index][keys[0]] = undefined;
-                            } else {
-                                launchConfigs[index][keys[0]][keys[1]] = undefined;
-                            }
-                        } else {
-                            launchConfigs[index][keys[0]][keys[1]] = config[keys[0]][keys[1]];
-                        }
-                    } else {
-                        launchConfigs[index][keyPath] = config[keyPath];
-                    }
-                });
+                launchConfigs[index] = withKeysUpdated(launchConfigs[index], config, keysToUpdate);
                 edited = true;
                 continue;
             }
@@ -270,4 +252,40 @@ export function createDarwinTestConfiguration(
         ],
         preLaunchTask: `swift: Build All${nameSuffix}`,
     };
+}
+
+/** Return the base object with (nested) keys updated with the new object. */
+function withKeysUpdated(
+    baseObject: vscode.DebugConfiguration,
+    newObject: vscode.DebugConfiguration,
+    keys: string[]
+): vscode.DebugConfiguration {
+    keys.forEach(key => {
+        // We're manually handling `undefined`s during nested update, so even if the depth
+        // is restricted to 2, the implementation still looks a bit messy.
+        if (key.includes(".")) {
+            const [mainKey, subKey] = key.split(".", 2);
+            if (baseObject[mainKey] === undefined) {
+                // { mainKey: unknown | undefined } -> { mainKey: undefined }
+                // { mainKey: { subKey: unknown | undefined } } -> { mainKey: undefined }
+                baseObject[mainKey] = newObject[mainKey];
+            } else if (newObject[mainKey] === undefined) {
+                const subKeys = Object.keys(baseObject[mainKey]);
+                if (subKeys.length === 1 && subKeys[0] === subKey) {
+                    // { mainKey: undefined } -> { mainKey: { subKey: unknown } }
+                    baseObject[mainKey] = undefined;
+                } else {
+                    // { mainKey: undefined } -> { mainKey: { subKey: unknown | undefined, ... } }
+                    baseObject[mainKey][subKey] = undefined;
+                }
+            } else {
+                // { mainKey: { subKey: unknown | undefined } } -> { mainKey: { subKey: unknown | undefined, ... } }
+                baseObject[mainKey][subKey] = newObject[mainKey][subKey];
+            }
+        } else {
+            // { key: unknown | undefined } -> { key: unknown | undefined, ... }
+            baseObject[key] = newObject[key];
+        }
+    });
+    return baseObject;
 }
