@@ -48,7 +48,7 @@ interface SwiftTargetInfo {
 
 export class SwiftToolchain {
     constructor(
-        public toolchainPath: string,
+        public toolchainPath: string | undefined,
         public swiftVersionString: string,
         public swiftVersion: Version,
         public runtimePath?: string,
@@ -100,7 +100,7 @@ export class SwiftToolchain {
     /**
      * @returns path to Toolchain folder
      */
-    private static async getToolchainPath(): Promise<string> {
+    private static async getToolchainPath(): Promise<string | undefined> {
         if (configuration.path !== "") {
             return path.dirname(path.dirname(configuration.path));
         }
@@ -116,9 +116,17 @@ export class SwiftToolchain {
                 return path.dirname(path.dirname(path.dirname(swiftc)));
             }
             default: {
-                const { stdout } = await execFile("which", ["swiftc"]);
-                const swiftc = stdout.trimEnd();
-                return path.dirname(path.dirname(path.dirname(swiftc)));
+                // use `type swiftc` to find `swiftc`. Run inside /bin/sh to ensure
+                // we get consistent output as different shells output a different
+                // format. Tried running with `-p` but that is not available in /bin/sh
+                const { stdout } = await execFile("/bin/sh", ["-c", "type swiftc"]);
+                const swiftcMatch = /^swiftc is (.*)$/.exec(stdout);
+                if (swiftcMatch) {
+                    const swiftc = swiftcMatch[1];
+                    vscode.window.showInformationMessage("swiftc: ${swiftc}");
+                    return path.dirname(path.dirname(path.dirname(swiftc)));
+                }
+                break;
             }
         }
     }
