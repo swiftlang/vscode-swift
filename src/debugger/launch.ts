@@ -254,10 +254,10 @@ export function createDarwinTestConfiguration(
     };
 }
 
-/** Return the base object with (nested) keys updated with the new object. */
+/** Return the base configuration with (nested) keys updated with the new one. */
 function withKeysUpdated(
-    baseObject: vscode.DebugConfiguration,
-    newObject: vscode.DebugConfiguration,
+    baseConfiguration: vscode.DebugConfiguration,
+    newConfiguration: vscode.DebugConfiguration,
     keys: string[]
 ): vscode.DebugConfiguration {
     keys.forEach(key => {
@@ -265,27 +265,26 @@ function withKeysUpdated(
         // is restricted to 2, the implementation still looks a bit messy.
         if (key.includes(".")) {
             const [mainKey, subKey] = key.split(".", 2);
-            if (baseObject[mainKey] === undefined) {
+            if (baseConfiguration[mainKey] === undefined) {
                 // { mainKey: unknown | undefined } -> { mainKey: undefined }
-                // { mainKey: { subKey: unknown | undefined } } -> { mainKey: undefined }
-                baseObject[mainKey] = newObject[mainKey];
-            } else if (newObject[mainKey] === undefined) {
-                const subKeys = Object.keys(baseObject[mainKey]);
+                baseConfiguration[mainKey] = newConfiguration[mainKey];
+            } else if (newConfiguration[mainKey] === undefined) {
+                const subKeys = Object.keys(baseConfiguration[mainKey]);
                 if (subKeys.length === 1 && subKeys[0] === subKey) {
                     // { mainKey: undefined } -> { mainKey: { subKey: unknown } }
-                    baseObject[mainKey] = undefined;
+                    baseConfiguration[mainKey] = undefined;
                 } else {
                     // { mainKey: undefined } -> { mainKey: { subKey: unknown | undefined, ... } }
-                    baseObject[mainKey][subKey] = undefined;
+                    baseConfiguration[mainKey][subKey] = undefined;
                 }
             } else {
                 // { mainKey: { subKey: unknown | undefined } } -> { mainKey: { subKey: unknown | undefined, ... } }
-                baseObject[mainKey][subKey] = newObject[mainKey][subKey];
+                baseConfiguration[mainKey][subKey] = newConfiguration[mainKey][subKey];
             }
         } else {
             // { key: unknown | undefined } -> { key: unknown | undefined, ... }
-            baseObject[key] = newObject[key];
+            baseConfiguration[key] = newConfiguration[key];
         }
     });
-    return baseObject;
+    return baseConfiguration;
 }
