@@ -16,7 +16,7 @@ import * as os from "os";
 import * as vscode from "vscode";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
-import { swiftRuntimeEnv } from "../utilities/utilities";
+import { swiftLibraryPathVariable, swiftRuntimeEnv } from "../utilities/utilities";
 
 /**
  * Edit launch.json based on contents of Swift Package.
@@ -253,15 +253,7 @@ export function createDarwinTestConfiguration(
 }
 
 function launchConfigKeysToUpdate(): string[] {
-    const keysToUpdate = ["program", "cwd", "preLaunchTask"];
-    switch (process.platform) {
-        case "win32":
-            return [...keysToUpdate, "env.Path"];
-        case "darwin":
-            return [...keysToUpdate, "env.DYLD_LIBRARY_PATH"];
-        default:
-            return [...keysToUpdate, "env.LD_LIBRARY_PATH"];
-    }
+    return ["program", "cwd", "preLaunchTask", `env.${swiftLibraryPathVariable()}`];
 }
 
 /** Return the base configuration with (nested) keys updated with the new one. */

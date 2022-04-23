@@ -47,11 +47,20 @@ export function swiftRuntimeEnv(
     };
     switch (process.platform) {
         case "win32":
-            return runtimeEnv("Path", ";");
-        case "darwin":
-            return runtimeEnv("DYLD_LIBRARY_PATH");
+            return runtimeEnv(swiftLibraryPathVariable(), ";");
         default:
-            return runtimeEnv("LD_LIBRARY_PATH");
+            return runtimeEnv(swiftLibraryPathVariable());
+    }
+}
+
+export function swiftLibraryPathVariable(): string {
+    switch (process.platform) {
+        case "win32":
+            return "Path";
+        case "darwin":
+            return "DYLD_LIBRARY_PATH";
+        default:
+            return "LD_LIBRARY_PATH";
     }
 }
 

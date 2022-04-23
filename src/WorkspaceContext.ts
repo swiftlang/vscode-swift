@@ -17,7 +17,12 @@ import * as path from "path";
 import { FolderContext } from "./FolderContext";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
-import { getSwiftExecutable, pathExists, isPathInsidePath } from "./utilities/utilities";
+import {
+    getSwiftExecutable,
+    pathExists,
+    isPathInsidePath,
+    swiftLibraryPathVariable,
+} from "./utilities/utilities";
 import { getLLDBLibPath } from "./debugger/lldb";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 import { TemporaryFolder } from "./utilities/tempFolder";
@@ -81,20 +86,9 @@ export class WorkspaceContext implements vscode.Disposable {
                 if (!configuration.autoGenerateLaunchConfigurations) {
                     return;
                 }
-                const runtimePathEnvKey = (): string => {
-                    switch (process.platform) {
-                        case "win32":
-                            return "Path";
-                        case "darwin":
-                            return "DYLD_LIBRARY_PATH";
-                        default:
-                            return "LD_LIBRARY_PATH";
-                    }
-                };
-                const runtimePathConfigKey = `env.${runtimePathEnvKey()}`;
                 vscode.window
                     .showInformationMessage(
-                        `Launch configurations need to be updated after changing the Swift runtime path. Your custom values of '${runtimePathConfigKey}' may be covered. Do you want to update?`,
+                        `Launch configurations need to be updated after changing the Swift runtime path. Custom versions of environment variable '${swiftLibraryPathVariable()}' may be overridden. Do you want to update?`,
                         "Update",
                         "Cancel"
                     )
