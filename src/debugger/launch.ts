@@ -49,8 +49,8 @@ export async function makeDebugConfigurations(ctx: FolderContext, yes = false) {
                 if (!yes) {
                     const answer = await vscode.window.showErrorMessage(
                         `${ctx.name}: Launch configuration '${config.name}' already exists. Do you want to update it?`,
-                        "Cancel",
-                        "Update"
+                        "Update",
+                        "Cancel"
                     );
                     if (answer === "Cancel") {
                         continue;

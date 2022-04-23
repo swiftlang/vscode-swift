@@ -307,9 +307,9 @@ export class WorkspaceContext implements vscode.Disposable {
         vscode.window
             .showInformationMessage(
                 "CodeLLDB requires the correct Swift version of LLDB for debugging. Do you want to set this up in your global settings or the workspace settings?",
-                "Cancel",
                 "Global",
-                "Workspace"
+                "Workspace",
+                "Cancel"
             )
             .then(result => {
                 switch (result) {
