@@ -23,42 +23,40 @@ import { swiftRuntimeEnv } from "../utilities/utilities";
  * Adds launch configurations based on the executables in Package.swift.
  *
  * @param ctx folder context to create launch configurations for
- * @param keysToUpdate configuration keys to update, with maximum nested depth of 2
+ * @param yes automatically answer yes to dialogs
  */
-export async function makeDebugConfigurations(
-    ctx: FolderContext,
-    keysToUpdate: string[] | undefined = undefined
-) {
+export async function makeDebugConfigurations(ctx: FolderContext, yes = false) {
     if (!configuration.autoGenerateLaunchConfigurations) {
         return;
     }
     const wsLaunchSection = vscode.workspace.getConfiguration("launch", ctx.folder);
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
+    const keysToUpdate = launchConfigKeysToUpdate();
 
     const configs = createExecutableConfigurations(ctx);
     let edited = false;
     for (const config of configs) {
         const index = launchConfigs.findIndex(c => c.name === config.name);
         if (index !== -1) {
-            if (keysToUpdate && launchConfigs[index] !== config) {
-                launchConfigs[index] = withKeysUpdated(launchConfigs[index], config, keysToUpdate);
-                edited = true;
-                continue;
-            }
-            if (
-                launchConfigs[index].program !== config.program ||
-                launchConfigs[index].cwd !== config.cwd ||
-                launchConfigs[index].preLaunchTask !== config.preLaunchTask
-            ) {
-                const answer = await vscode.window.showErrorMessage(
-                    `${ctx.name}: Launch configuration '${config.name}' already exists. Do you want to update it?`,
-                    "Cancel",
-                    "Update"
-                );
-                if (answer === "Cancel") {
-                    continue;
+            // deep clone config and update with keys from calculated config
+            const newConfig: vscode.DebugConfiguration = JSON.parse(
+                JSON.stringify(launchConfigs[index])
+            );
+            updateConfigWithNewKeys(newConfig, config, keysToUpdate);
+
+            // if original config is different from new config
+            if (JSON.stringify(launchConfigs[index]) !== JSON.stringify(newConfig)) {
+                if (!yes) {
+                    const answer = await vscode.window.showErrorMessage(
+                        `${ctx.name}: Launch configuration '${config.name}' already exists. Do you want to update it?`,
+                        "Cancel",
+                        "Update"
+                    );
+                    if (answer === "Cancel") {
+                        continue;
+                    }
                 }
-                launchConfigs[index] = config;
+                launchConfigs[index] = newConfig;
                 edited = true;
             }
         } else {
@@ -254,12 +252,24 @@ export function createDarwinTestConfiguration(
     };
 }
 
+function launchConfigKeysToUpdate(): string[] {
+    const keysToUpdate = ["program", "cwd", "preLaunchTask"];
+    switch (process.platform) {
+        case "win32":
+            return [...keysToUpdate, "env.Path"];
+        case "darwin":
+            return [...keysToUpdate, "env.DYLD_LIBRARY_PATH"];
+        default:
+            return [...keysToUpdate, "env.LD_LIBRARY_PATH"];
+    }
+}
+
 /** Return the base configuration with (nested) keys updated with the new one. */
-function withKeysUpdated(
+function updateConfigWithNewKeys(
     baseConfiguration: vscode.DebugConfiguration,
     newConfiguration: vscode.DebugConfiguration,
     keys: string[]
-): vscode.DebugConfiguration {
+) {
     keys.forEach(key => {
         // We're manually handling `undefined`s during nested update, so even if the depth
         // is restricted to 2, the implementation still looks a bit messy.
@@ -286,5 +296,4 @@ function withKeysUpdated(
             baseConfiguration[key] = newConfiguration[key];
         }
     });
-    return baseConfiguration;
 }

@@ -101,8 +101,7 @@ export class WorkspaceContext implements vscode.Disposable {
                     .then(async selected => {
                         if (selected === "Update") {
                             this.folders.forEach(
-                                async ctx =>
-                                    await makeDebugConfigurations(ctx, [runtimePathConfigKey])
+                                async ctx => await makeDebugConfigurations(ctx, true)
                             );
                         }
                     });
