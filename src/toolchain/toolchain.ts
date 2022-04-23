@@ -48,7 +48,7 @@ interface SwiftTargetInfo {
 
 export class SwiftToolchain {
     constructor(
-        public toolchainPath: string | undefined,
+        public toolchainPath: string,
         public swiftVersionString: string,
         public swiftVersion: Version,
         public runtimePath?: string,
@@ -100,7 +100,7 @@ export class SwiftToolchain {
     /**
      * @returns path to Toolchain folder
      */
-    private static async getToolchainPath(): Promise<string | undefined> {
+    private static async getToolchainPath(): Promise<string> {
         if (configuration.path !== "") {
             return path.dirname(path.dirname(configuration.path));
         }
@@ -119,13 +119,13 @@ export class SwiftToolchain {
                 // use `type swiftc` to find `swiftc`. Run inside /bin/sh to ensure
                 // we get consistent output as different shells output a different
                 // format. Tried running with `-p` but that is not available in /bin/sh
-                const { stdout } = await execFile("/bin/sh", ["-c", "type swiftc"]);
-                const swiftcMatch = /^swiftc is (.*)$/.exec(stdout);
-                if (swiftcMatch) {
-                    const swiftc = swiftcMatch[1];
-                    return path.dirname(path.dirname(path.dirname(swiftc)));
+                const { stdout } = await execFile("/bin/sh", ["-c", "type swift"]);
+                const swiftMatch = /^swift is (.*)$/.exec(stdout.trimEnd());
+                if (swiftMatch) {
+                    const swift = swiftMatch[1];
+                    return path.dirname(path.dirname(path.dirname(swift)));
                 }
-                break;
+                throw Error("Failed to find swift executable");
             }
         }
     }
