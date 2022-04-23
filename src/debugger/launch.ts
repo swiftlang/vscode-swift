@@ -47,8 +47,8 @@ export async function makeDebugConfigurations(ctx: FolderContext, yes = false) {
             // if original config is different from new config
             if (JSON.stringify(launchConfigs[index]) !== JSON.stringify(newConfig)) {
                 if (!yes) {
-                    const answer = await vscode.window.showErrorMessage(
-                        `${ctx.name}: Launch configuration '${config.name}' already exists. Do you want to update it?`,
+                    const answer = await vscode.window.showWarningMessage(
+                        `${ctx.name}: The Swift extension would like to update launch configuration '${config.name}'. Do you want to update it?`,
                         "Update",
                         "Cancel"
                     );
