@@ -47,13 +47,13 @@ export function swiftRuntimeEnv(
     };
     switch (process.platform) {
         case "win32":
-            return runtimeEnv(swiftLibraryPathVariable(), ";");
+            return runtimeEnv(swiftLibraryPathKey(), ";");
         default:
-            return runtimeEnv(swiftLibraryPathVariable());
+            return runtimeEnv(swiftLibraryPathKey());
     }
 }
 
-export function swiftLibraryPathVariable(): string {
+export function swiftLibraryPathKey(): string {
     switch (process.platform) {
         case "win32":
             return "Path";

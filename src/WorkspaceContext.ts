@@ -21,7 +21,7 @@ import {
     getSwiftExecutable,
     pathExists,
     isPathInsidePath,
-    swiftLibraryPathVariable,
+    swiftLibraryPathKey,
 } from "./utilities/utilities";
 import { getLLDBLibPath } from "./debugger/lldb";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
@@ -88,7 +88,7 @@ export class WorkspaceContext implements vscode.Disposable {
                 }
                 vscode.window
                     .showInformationMessage(
-                        `Launch configurations need to be updated after changing the Swift runtime path. Custom versions of environment variable '${swiftLibraryPathVariable()}' may be overridden. Do you want to update?`,
+                        `Launch configurations need to be updated after changing the Swift runtime path. Custom versions of environment variable '${swiftLibraryPathKey()}' may be overridden. Do you want to update?`,
                         "Update",
                         "Cancel"
                     )
