@@ -123,7 +123,6 @@ export class SwiftToolchain {
                 const swiftcMatch = /^swiftc is (.*)$/.exec(stdout);
                 if (swiftcMatch) {
                     const swiftc = swiftcMatch[1];
-                    vscode.window.showInformationMessage("swiftc: ${swiftc}");
                     return path.dirname(path.dirname(path.dirname(swiftc)));
                 }
                 break;
