@@ -17,7 +17,7 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
-import { getSwiftExecutable, withSwiftSDKFlags } from "./utilities/utilities";
+import { getSwiftExecutable, swiftRuntimeEnv, withSwiftSDKFlags } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 
 /**
@@ -180,7 +180,10 @@ export function createSwiftTask(args: string[], name: string, config?: TaskConfi
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
         "swift",
-        new vscode.ShellExecution(swift, args, { cwd: config?.cwd?.fsPath }),
+        new vscode.ShellExecution(swift, args, {
+            cwd: config?.cwd?.fsPath,
+            env: swiftRuntimeEnv(),
+        }),
         config?.problemMatcher
     );
     // This doesn't include any quotes added by VS Code.

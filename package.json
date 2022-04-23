@@ -145,12 +145,6 @@
             "default": false,
             "markdownDescription": "**Experimental**: Run `swift build` in the background whenever a file is saved.",
             "order": 7
-          },
-          "swift.diagnostics": {
-            "type": "boolean",
-            "default": false,
-            "description": "Output additional diagnostics to the Swift Output View.",
-            "order": 8
           }
         }
       },
@@ -193,11 +187,23 @@
       {
         "title": "Advanced",
         "properties": {
+          "swift.runtimePath": {
+            "type": "string",
+            "default": "",
+            "description": "The path of the folder containing the Swift runtime libraries. Only effective when they can't be discovered by RPath.",
+            "order": 1
+          },
           "swift.SDK": {
             "type": "string",
             "default": "",
             "description": "The path of the SDK to compile against. The default SDK is determined by the environment on macOS and Windows.",
-            "order": 1
+            "order": 2
+          },
+          "swift.diagnostics": {
+            "type": "boolean",
+            "default": false,
+            "description": "Output additional diagnostics to the Swift Output View.",
+            "order": 100
           }
         }
       }

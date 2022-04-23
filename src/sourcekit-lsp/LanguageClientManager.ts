@@ -15,7 +15,12 @@
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 import configuration from "../configuration";
-import { getSwiftExecutable, isPathInsidePath, swiftDriverSDKFlags } from "../utilities/utilities";
+import {
+    getSwiftExecutable,
+    isPathInsidePath,
+    swiftDriverSDKFlags,
+    swiftRuntimeEnv,
+} from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { activateInlayHints } from "./inlayHints";
@@ -235,6 +240,7 @@ export class LanguageClientManager {
         const sourcekit: langclient.Executable = {
             command: serverPath,
             args: lspConfig.serverArguments.concat(sdkArguments),
+            options: { env: { ...process.env, ...swiftRuntimeEnv() } },
         };
 
         // if path to LSP server is not equal to the path to swift and both are set, then
@@ -248,7 +254,7 @@ export class LanguageClientManager {
             if (toolchainPath) {
                 // eslint-disable-next-line @typescript-eslint/naming-convention
                 sourcekit.options = {
-                    env: { ...process.env, SOURCEKIT_TOOLCHAIN_PATH: toolchainPath },
+                    env: { ...sourcekit.options?.env, SOURCEKIT_TOOLCHAIN_PATH: toolchainPath },
                 };
             }
         }

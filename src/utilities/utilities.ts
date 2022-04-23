@@ -21,6 +21,41 @@ import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
 
 /**
+ * Get required environment variable for Swift product
+ *
+ * @param base base environment configuration
+ * @returns minimal required environment for Swift product
+ */
+export function swiftRuntimeEnv(
+    base: NodeJS.ProcessEnv | boolean = process.env
+): { [key: string]: string } | undefined {
+    if (configuration.runtimePath === "") {
+        return undefined;
+    }
+    const runtimeEnv = (key: string, separator = ":"): { [key: string]: string } => {
+        const runtimePath = configuration.runtimePath;
+        switch (base) {
+            case false:
+                return { [key]: runtimePath };
+            case true:
+                return { [key]: `${runtimePath}${separator}\${env:${key}}` };
+            default:
+                return base[key]
+                    ? { [key]: `${runtimePath}${separator}${base[key]}` }
+                    : { [key]: runtimePath };
+        }
+    };
+    switch (process.platform) {
+        case "win32":
+            return runtimeEnv("Path", ";");
+        case "darwin":
+            return runtimeEnv("DYLD_LIBRARY_PATH");
+        default:
+            return runtimeEnv("LD_LIBRARY_PATH");
+    }
+}
+
+/**
  * Asynchronous wrapper around {@link cp.execFile child_process.execFile}.
  *
  * Assumes output will be a string
@@ -33,12 +68,16 @@ export async function execFile(
     executable: string,
     args: string[],
     options: cp.ExecFileOptions = {},
-    folderContext?: FolderContext
+    folderContext?: FolderContext,
+    customSwiftRuntime = true
 ): Promise<{ stdout: string; stderr: string }> {
     folderContext?.workspaceContext.outputChannel.logDiagnostic(
         `Exec: ${executable} ${args.join(" ")}`,
         folderContext.name
     );
+    if (configuration.runtimePath.length > 0 && customSwiftRuntime) {
+        options.env = { ...options.env, ...swiftRuntimeEnv(options.env) };
+    }
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) =>
         cp.execFile(executable, args, options, (error, stdout, stderr) => {
             if (error) {
@@ -56,12 +95,16 @@ export async function execFileStreamOutput(
     stderr: Stream.Writable | null,
     token: vscode.CancellationToken | null,
     options: cp.ExecFileOptions = {},
-    folderContext?: FolderContext
+    folderContext?: FolderContext,
+    customSwiftRuntime = true
 ): Promise<{ stdout: string; stderr: string }> {
     folderContext?.workspaceContext.outputChannel.logDiagnostic(
         `Exec: ${executable} ${args.join(" ")}`,
         folderContext.name
     );
+    if (configuration.runtimePath.length > 0 && customSwiftRuntime) {
+        options.env = { ...options.env, ...swiftRuntimeEnv(options.env) };
+    }
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
         const p = cp.execFile(executable, args, options, (error, stdout, stderr) => {
             if (error) {
@@ -135,7 +178,7 @@ export function withSwiftSDKFlags(args: string[]): string[] {
  * Get SDK flags for SwiftPM
  */
 export function swiftpmSDKFlags(): string[] {
-    if (configuration.sdk.length > 0) {
+    if (configuration.sdk !== "") {
         return ["--sdk", configuration.sdk];
     }
     return [];

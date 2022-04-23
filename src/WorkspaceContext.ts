@@ -24,6 +24,8 @@ import { TemporaryFolder } from "./utilities/tempFolder";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { TaskManager } from "./TaskManager";
 import { BackgroundCompilation } from "./BackgroundCompilation";
+import { makeDebugConfigurations } from "./debugger/launch";
+import configuration from "./configuration";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -45,8 +47,8 @@ export class WorkspaceContext implements vscode.Disposable {
         this.outputChannel.log(this.toolchain.swiftVersionString);
         this.toolchain.logDiagnostics(this.outputChannel);
         this.tasks = new TaskManager();
-        // on change config restart server
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
+            // on toolchain config change, reload window
             if (event.affectsConfiguration("swift.path")) {
                 vscode.window
                     .showInformationMessage(
@@ -59,10 +61,10 @@ export class WorkspaceContext implements vscode.Disposable {
                         }
                     });
             }
+            // on sdk config change, restart sourcekit-lsp
             if (event.affectsConfiguration("swift.SDK")) {
-                // FIXME: We only need to restart SourceKit-LSP, but there is a bug stopping us
-                // from doing that now. As long as it's fixed we should only restart SourceKit-LSP
-                // on newer versions.
+                // FIXME: There is a bug stopping us from restarting SourceKit-LSP directly.
+                // As long as it's fixed we won't need to reload on newer versions.
                 vscode.window
                     .showInformationMessage(
                         "Changing the Swift SDK path requires the project be reloaded.",
@@ -71,6 +73,37 @@ export class WorkspaceContext implements vscode.Disposable {
                     .then(selected => {
                         if (selected === "Ok") {
                             vscode.commands.executeCommand("workbench.action.reloadWindow");
+                        }
+                    });
+            }
+            // on runtime path config change, regenerate launch.json
+            if (event.affectsConfiguration("swift.runtimePath")) {
+                if (!configuration.autoGenerateLaunchConfigurations) {
+                    return;
+                }
+                const runtimePathEnvKey = (): string => {
+                    switch (process.platform) {
+                        case "win32":
+                            return "Path";
+                        case "darwin":
+                            return "DYLD_LIBRARY_PATH";
+                        default:
+                            return "LD_LIBRARY_PATH";
+                    }
+                };
+                const runtimePathConfigKey = `env.${runtimePathEnvKey()}`;
+                vscode.window
+                    .showInformationMessage(
+                        `Launch configurations need to be updated after changing the Swift runtime path. Your custom values of '${runtimePathConfigKey}' may be covered. Do you want to update?`,
+                        "Update",
+                        "Cancel"
+                    )
+                    .then(async selected => {
+                        if (selected === "Update") {
+                            this.folders.forEach(
+                                async ctx =>
+                                    await makeDebugConfigurations(ctx, [runtimePathConfigKey])
+                            );
                         }
                     });
             }

@@ -30,26 +30,48 @@ interface InfoPlist {
     };
 }
 
+/**
+ * Stripped layout of `swift -print-target-info` output.
+ */
+interface SwiftTargetInfo {
+    compilerVersion: string;
+    target?: {
+        triple: string;
+        [name: string]: string | string[];
+    };
+    paths: {
+        runtimeLibraryPaths: string[];
+        [name: string]: string | string[];
+    };
+    [name: string]: string | object | undefined;
+}
+
 export class SwiftToolchain {
     constructor(
+        public toolchainPath: string,
         public swiftVersionString: string,
         public swiftVersion: Version,
-        public toolchainPath?: string,
+        public runtimePath?: string,
+        private defaultTarget?: string,
         private defaultSDK?: string,
         private customSDK?: string,
         public xcTestPath?: string
     ) {}
 
     static async create(): Promise<SwiftToolchain> {
-        const version = await this.getSwiftVersion();
         const toolchainPath = await this.getToolchainPath();
+        const targetInfo = await this.getSwiftTargetInfo();
+        const swiftVersion = await this.getSwiftVersion(targetInfo);
+        const runtimePath = await this.getRuntimePath(targetInfo);
         const defaultSDK = await this.getDefaultSDK();
         const customSDK = this.getCustomSDK();
-        const xcTestPath = await this.getXCTestPath(defaultSDK);
+        const xcTestPath = await this.getXCTestPath(runtimePath, defaultSDK);
         return new SwiftToolchain(
-            version.name,
-            version.version,
             toolchainPath,
+            targetInfo.compilerVersion,
+            swiftVersion,
+            runtimePath,
+            targetInfo.target?.triple,
             defaultSDK,
             customSDK,
             xcTestPath
@@ -58,6 +80,12 @@ export class SwiftToolchain {
 
     logDiagnostics(channel: SwiftOutputChannel) {
         channel.logDiagnostic(`Toolchain Path: ${this.toolchainPath}`);
+        if (this.runtimePath) {
+            channel.logDiagnostic(`Runtime Library Path: ${this.runtimePath}`);
+        }
+        if (this.defaultTarget) {
+            channel.logDiagnostic(`Default Target: ${this.defaultTarget}`);
+        }
         if (this.defaultSDK) {
             channel.logDiagnostic(`Default SDK: ${this.defaultSDK}`);
         }
@@ -72,7 +100,7 @@ export class SwiftToolchain {
     /**
      * @returns path to Toolchain folder
      */
-    private static async getToolchainPath(): Promise<string | undefined> {
+    private static async getToolchainPath(): Promise<string> {
         if (configuration.path !== "") {
             return path.dirname(path.dirname(configuration.path));
         }
@@ -82,18 +110,35 @@ export class SwiftToolchain {
                 const swiftc = stdout.trimEnd();
                 return path.dirname(path.dirname(path.dirname(swiftc)));
             }
-            case "linux": {
-                const { stdout } = await execFile("which", ["swiftc"]);
-                const swiftc = stdout.trimEnd();
-                return path.dirname(path.dirname(path.dirname(swiftc)));
-            }
             case "win32": {
                 const { stdout } = await execFile("where", ["swiftc"]);
                 const swiftc = stdout.trimEnd();
                 return path.dirname(path.dirname(path.dirname(swiftc)));
             }
+            default: {
+                const { stdout } = await execFile("which", ["swiftc"]);
+                const swiftc = stdout.trimEnd();
+                return path.dirname(path.dirname(path.dirname(swiftc)));
+            }
         }
-        return undefined;
+    }
+
+    /**
+     * @param targetInfo swift target info
+     * @returns path to Swift runtime
+     */
+    private static async getRuntimePath(targetInfo: SwiftTargetInfo): Promise<string | undefined> {
+        if (configuration.runtimePath !== "") {
+            return configuration.runtimePath;
+        } else if (process.platform === "win32") {
+            const { stdout } = await execFile("where", ["swiftCore.dll"]);
+            const swiftCore = stdout.trimEnd();
+            return swiftCore.length > 0 ? path.dirname(swiftCore) : undefined;
+        } else {
+            return targetInfo.paths.runtimeLibraryPaths.length > 0
+                ? targetInfo.paths.runtimeLibraryPaths.join(":")
+                : undefined;
+        }
     }
 
     /**
@@ -123,10 +168,14 @@ export class SwiftToolchain {
     }
 
     /**
+     * @param runtimePath path to Swift runtime
      * @param sdkroot path to default SDK
      * @returns path to folder where xctest can be found
      */
-    private static async getXCTestPath(sdkroot: string | undefined): Promise<string | undefined> {
+    private static async getXCTestPath(
+        runtimePath: string | undefined,
+        sdkroot: string | undefined
+    ): Promise<string | undefined> {
         switch (process.platform) {
             case "darwin": {
                 const { stdout } = await execFile("xcode-select", ["-p"]);
@@ -139,6 +188,10 @@ export class SwiftToolchain {
                 const platformPath = path.dirname(path.dirname(path.dirname(sdkroot)));
                 const platformManifest = path.join(platformPath, "Info.plist");
                 if ((await pathExists(platformManifest)) !== true) {
+                    // look up runtime library directory for XCTest
+                    if (runtimePath && (await pathExists(path.join(runtimePath, "XCTest.dll")))) {
+                        return runtimePath;
+                    }
                     await vscode.window.showWarningMessage(
                         "XCTest not found due to non-standardized library layout. Tests explorer won't work as expected."
                     );
@@ -163,22 +216,26 @@ export class SwiftToolchain {
         return undefined;
     }
 
-    /**
-     * @returns swift version string returned by `swift --version`
-     */
-    private static async getSwiftVersion(): Promise<{ name: string; version: Version }> {
+    /** @returns swift target info */
+    private static async getSwiftTargetInfo(): Promise<SwiftTargetInfo> {
         try {
-            const { stdout } = await execSwift(["--version"]);
-            const versionString = stdout.split("\n", 1)[0];
-            // extract version
-            const match = versionString.match(/Swift version ([\S]+)/);
-            let version: Version | undefined;
-            if (match) {
-                version = Version.fromString(match[1]);
-            }
-            return { name: versionString, version: version ?? new Version(0, 0, 0) };
+            const { stdout } = await execSwift(["-print-target-info"]);
+            return JSON.parse(stdout.trimEnd()) as SwiftTargetInfo;
         } catch {
-            throw Error("Cannot find swift executable.");
+            throw Error("Cannot parse swift target info output.");
         }
+    }
+
+    /**
+     * @param targetInfo swift target info
+     * @returns swift version object
+     */
+    private static getSwiftVersion(targetInfo: SwiftTargetInfo): Version {
+        const match = targetInfo.compilerVersion.match(/Swift version ([\S]+)/);
+        let version: Version | undefined;
+        if (match) {
+            version = Version.fromString(match[1]);
+        }
+        return version ?? new Version(0, 0, 0);
     }
 }
