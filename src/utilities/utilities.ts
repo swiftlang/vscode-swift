@@ -32,26 +32,30 @@ export function swiftRuntimeEnv(
     if (configuration.runtimePath === "") {
         return undefined;
     }
-    const runtimeEnv = (key: string, separator = ":"): { [key: string]: string } => {
-        const runtimePath = configuration.runtimePath;
-        switch (base) {
-            case false:
-                return { [key]: runtimePath };
-            case true:
-                return { [key]: `${runtimePath}${separator}\${env:${key}}` };
-            default:
-                return base[key]
-                    ? { [key]: `${runtimePath}${separator}${base[key]}` }
-                    : { [key]: runtimePath };
-        }
-    };
+    const runtimePath = configuration.runtimePath;
+    const key = swiftLibraryPathKey();
+    const separator = process.platform === "win32" ? ";" : ":";
+    switch (base) {
+        case false:
+            return { [key]: runtimePath };
+        case true:
+            return { [key]: `${runtimePath}${separator}\${env:${key}}` };
+        default:
+            return base[key]
+                ? { [key]: `${runtimePath}${separator}${base[key]}` }
+                : { [key]: runtimePath };
+    }
+}
+
+/** Return environment variable to update for runtime library search path */
+export function swiftLibraryPathKey(): string {
     switch (process.platform) {
         case "win32":
-            return runtimeEnv("Path", ";");
+            return "Path";
         case "darwin":
-            return runtimeEnv("DYLD_LIBRARY_PATH");
+            return "DYLD_LIBRARY_PATH";
         default:
-            return runtimeEnv("LD_LIBRARY_PATH");
+            return "LD_LIBRARY_PATH";
     }
 }
 
