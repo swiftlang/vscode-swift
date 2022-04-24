@@ -31,7 +31,8 @@ export async function makeDebugConfigurations(ctx: FolderContext, yes = false) {
     }
     const wsLaunchSection = vscode.workspace.getConfiguration("launch", ctx.folder);
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
-    const keysToUpdate = launchConfigKeysToUpdate();
+    // list of keys that can be updated in config merge
+    const keysToUpdate = ["program", "cwd", "preLaunchTask", `env.${swiftLibraryPathKey()}`];
 
     const configs = createExecutableConfigurations(ctx);
     let edited = false;
@@ -250,10 +251,6 @@ export function createDarwinTestConfiguration(
         ],
         preLaunchTask: `swift: Build All${nameSuffix}`,
     };
-}
-
-function launchConfigKeysToUpdate(): string[] {
-    return ["program", "cwd", "preLaunchTask", `env.${swiftLibraryPathKey()}`];
 }
 
 /** Return the base configuration with (nested) keys updated with the new one. */
