@@ -188,9 +188,13 @@ async function runSingleFile(ctx: WorkspaceContext) {
         return;
     }
 
-    // Swift scripts require new swift driver to work on Windows. Swift driver is available
-    // from v5.7 of Windows Swift
-    if (process.platform === "win32" && ctx.toolchain.swiftVersion < new Version(5, 7, 0)) {
+    // Swift interpreter requires new swift driver to work on Windows
+    // which is not available until Swift 5.7
+    if (
+        process.platform === "win32" &&
+        process.env.SWIFT_USE_OLD_DRIVER === undefined &&
+        ctx.toolchain.swiftVersion < new Version(5, 7, 0)
+    ) {
         vscode.window.showErrorMessage(
             "Run Swift Script is unavailable with the legacy driver on Windows."
         );
