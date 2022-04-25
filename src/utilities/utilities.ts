@@ -291,3 +291,9 @@ export function getErrorDescription(error: unknown): string {
         return JSON.stringify(error);
     }
 }
+
+export function stringArrayInEnglish(strings: string[]): string {
+    return strings.length === 1
+        ? strings[0]
+        : [strings.slice(0, -1).join(", "), strings[strings.length - 1]].join(" and ");
+}
