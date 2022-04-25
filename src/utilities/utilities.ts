@@ -161,7 +161,7 @@ export async function execSwift(
     if (setSDKFlags) {
         args = withSwiftCompileFlags(args);
     }
-    options.env = { ...options.env, ...swiftCompilerEnv() };
+    options.env = { ...(options.env ?? process.env), ...swiftCompilerEnv() };
     return await execFile(swift, args, options, folderContext);
 }
 
