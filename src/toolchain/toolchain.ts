@@ -123,7 +123,9 @@ export class SwiftToolchain {
                 const swiftMatch = /^swift is (.*)$/.exec(stdout.trimEnd());
                 if (swiftMatch) {
                     const swift = swiftMatch[1];
-                    return path.dirname(path.dirname(path.dirname(swift)));
+                    // swift may be a symbolic link
+                    const realSwift = await fs.realpath(swift);
+                    return path.dirname(path.dirname(path.dirname(realSwift)));
                 }
                 throw Error("Failed to find swift executable");
             }
