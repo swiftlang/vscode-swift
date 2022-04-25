@@ -183,6 +183,10 @@ export function createTestConfiguration(
         if (xcTestPath !== runtimePath) {
             testEnv.Path = `${xcTestPath};${testEnv.Path}`;
         }
+        const sdkroot = configuration.sdk === "" ? process.env.SDKROOT : configuration.sdk;
+        if (sdkroot === undefined) {
+            return null;
+        }
         return {
             type: "lldb",
             request: "launch",
@@ -190,6 +194,7 @@ export function createTestConfiguration(
             program: `${folder}/.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
             cwd: folder,
             env: testEnv,
+            preRunCommands: [`settings set target.sdk-path ${sdkroot}`],
             preLaunchTask: `swift: Build All${nameSuffix}`,
         };
     } else {
