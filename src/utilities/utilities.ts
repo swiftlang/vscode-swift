@@ -281,11 +281,12 @@ export function randomString(length = 8): string {
  * @returns String description of error
  */
 export function getErrorDescription(error: unknown): string {
-    const stdError = error as { stderr: string };
-    if (stdError) {
-        return stdError.stderr;
+    if ((error as { stderr: string }).stderr) {
+        return (error as { stderr: string }).stderr;
+    } else if ((error as { error: string }).error) {
+        return JSON.stringify((error as { error: string }).error);
     } else if (error instanceof Error) {
-        return error.toString();
+        return error.message;
     } else {
         return JSON.stringify(error);
     }

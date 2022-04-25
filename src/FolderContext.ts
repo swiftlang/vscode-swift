@@ -79,9 +79,15 @@ export class FolderContext implements vscode.Disposable {
             workspaceContext
         );
 
-        if (swiftPackage.foundPackage && !swiftPackage.isValid) {
-            vscode.window.showErrorMessage(`Failed to load ${folderContext.name}/Package.swift`);
-            workspaceContext.outputChannel.log("Failed to load Package.swift", folderContext.name);
+        const error = swiftPackage.error;
+        if (error) {
+            vscode.window.showErrorMessage(
+                `Failed to load ${folderContext.name}/Package.swift: ${error.message}`
+            );
+            workspaceContext.outputChannel.log(
+                `Failed to load Package.swift: ${error.message}`,
+                folderContext.name
+            );
         }
 
         return folderContext;
