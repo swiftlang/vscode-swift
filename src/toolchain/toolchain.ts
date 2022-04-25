@@ -116,7 +116,7 @@ export class SwiftToolchain {
                 return path.dirname(path.dirname(path.dirname(swiftc)));
             }
             default: {
-                // use `type swiftc` to find `swiftc`. Run inside /bin/sh to ensure
+                // use `type swift` to find `swift`. Run inside /bin/sh to ensure
                 // we get consistent output as different shells output a different
                 // format. Tried running with `-p` but that is not available in /bin/sh
                 const { stdout } = await execFile("/bin/sh", ["-c", "type swift"]);
