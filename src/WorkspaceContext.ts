@@ -17,13 +17,20 @@ import * as path from "path";
 import { FolderContext } from "./FolderContext";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
-import { getSwiftExecutable, pathExists, isPathInsidePath } from "./utilities/utilities";
+import {
+    getSwiftExecutable,
+    pathExists,
+    isPathInsidePath,
+    swiftLibraryPathKey,
+} from "./utilities/utilities";
 import { getLLDBLibPath } from "./debugger/lldb";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 import { TemporaryFolder } from "./utilities/tempFolder";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { TaskManager } from "./TaskManager";
 import { BackgroundCompilation } from "./BackgroundCompilation";
+import { makeDebugConfigurations } from "./debugger/launch";
+import configuration from "./configuration";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -45,8 +52,8 @@ export class WorkspaceContext implements vscode.Disposable {
         this.outputChannel.log(this.toolchain.swiftVersionString);
         this.toolchain.logDiagnostics(this.outputChannel);
         this.tasks = new TaskManager();
-        // on change config restart server
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
+            // on toolchain config change, reload window
             if (event.affectsConfiguration("swift.path")) {
                 vscode.window
                     .showInformationMessage(
@@ -86,6 +93,25 @@ export class WorkspaceContext implements vscode.Disposable {
                     .then(selected => {
                         if (selected === "Ok") {
                             vscode.commands.executeCommand("workbench.action.reloadWindow");
+                        }
+                    });
+            }
+            // on runtime path config change, regenerate launch.json
+            if (event.affectsConfiguration("swift.runtimePath")) {
+                if (!configuration.autoGenerateLaunchConfigurations) {
+                    return;
+                }
+                vscode.window
+                    .showInformationMessage(
+                        `Launch configurations need to be updated after changing the Swift runtime path. Custom versions of environment variable '${swiftLibraryPathKey()}' may be overridden. Do you want to update?`,
+                        "Update",
+                        "Cancel"
+                    )
+                    .then(async selected => {
+                        if (selected === "Update") {
+                            this.folders.forEach(
+                                async ctx => await makeDebugConfigurations(ctx, true)
+                            );
                         }
                     });
             }
@@ -290,9 +316,9 @@ export class WorkspaceContext implements vscode.Disposable {
         vscode.window
             .showInformationMessage(
                 "CodeLLDB requires the correct Swift version of LLDB for debugging. Do you want to set this up in your global settings or the workspace settings?",
-                "Cancel",
                 "Global",
-                "Workspace"
+                "Workspace",
+                "Cancel"
             )
             .then(result => {
                 switch (result) {

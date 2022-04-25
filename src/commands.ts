@@ -20,6 +20,7 @@ import { createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderContext } from "./FolderContext";
 import { PackageNode } from "./ui/PackageDependencyProvider";
 import { execSwift } from "./utilities/utilities";
+import { Version } from "./utilities/version";
 
 /**
  * References:
@@ -187,8 +188,10 @@ async function runSingleFile(ctx: WorkspaceContext) {
         return;
     }
 
-    if (process.platform === "win32" && !ctx.toolchain.newSwiftDriver) {
-        await vscode.window.showErrorMessage(
+    // Swift scripts require new swift driver to work on Windows. Swift driver is available
+    // from v5.7 of Windows Swift
+    if (process.platform === "win32" && ctx.toolchain.swiftVersion < new Version(5, 7, 0)) {
+        vscode.window.showErrorMessage(
             "Run Swift Script is unavailable with the legacy driver on Windows."
         );
         return;

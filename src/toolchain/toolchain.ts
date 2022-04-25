@@ -18,7 +18,7 @@ import * as plist from "plist";
 import * as vscode from "vscode";
 import configuration from "../configuration";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
-import { execFile, execSwift, getExecutableName, pathExists } from "../utilities/utilities";
+import { execFile, execSwift, pathExists } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 
 /**
@@ -30,37 +30,62 @@ interface InfoPlist {
     };
 }
 
+/**
+ * Stripped layout of `swift -print-target-info` output.
+ */
+interface SwiftTargetInfo {
+    compilerVersion: string;
+    target?: {
+        triple: string;
+        [name: string]: string | string[];
+    };
+    paths: {
+        runtimeLibraryPaths: string[];
+        [name: string]: string | string[];
+    };
+    [name: string]: string | object | undefined;
+}
+
 export class SwiftToolchain {
     constructor(
+        public toolchainPath: string | undefined,
         public swiftVersionString: string,
         public swiftVersion: Version,
-        public toolchainPath?: string,
+        public runtimePath?: string,
+        private defaultTarget?: string,
         private hostSDK?: string,
         private targetSDK?: string,
-        public xcTestPath?: string,
-        public newSwiftDriver?: boolean
+        public xcTestPath?: string
     ) {}
 
     static async create(): Promise<SwiftToolchain> {
-        const version = await this.getSwiftVersion();
         const toolchainPath = await this.getToolchainPath();
+        const targetInfo = await this.getSwiftTargetInfo();
+        const swiftVersion = await this.getSwiftVersion(targetInfo);
+        const runtimePath = await this.getRuntimePath(targetInfo);
         const hostSDK = await this.getHostSDK();
         const targetSDK = this.getTargetSDK();
-        const xcTestPath = await this.getXCTestPath(hostSDK);
-        const newSwiftDriver = await this.checkNewDriver(toolchainPath);
+        const xcTestPath = await this.getXCTestPath(runtimePath, hostSDK);
         return new SwiftToolchain(
-            version.name,
-            version.version,
             toolchainPath,
+            targetInfo.compilerVersion,
+            swiftVersion,
+            runtimePath,
+            targetInfo.target?.triple,
             hostSDK,
             targetSDK,
-            xcTestPath,
-            newSwiftDriver
+            xcTestPath
         );
     }
 
     logDiagnostics(channel: SwiftOutputChannel) {
         channel.logDiagnostic(`Toolchain Path: ${this.toolchainPath}`);
+        if (this.runtimePath) {
+            channel.logDiagnostic(`Runtime Library Path: ${this.runtimePath}`);
+        }
+        if (this.defaultTarget) {
+            channel.logDiagnostic(`Default Target: ${this.defaultTarget}`);
+        }
         if (this.hostSDK) {
             channel.logDiagnostic(`Host SDK: ${this.hostSDK}`);
         }
@@ -85,18 +110,43 @@ export class SwiftToolchain {
                 const swiftc = stdout.trimEnd();
                 return path.dirname(path.dirname(path.dirname(swiftc)));
             }
-            case "linux": {
-                const { stdout } = await execFile("which", ["swiftc"]);
-                const swiftc = stdout.trimEnd();
-                return path.dirname(path.dirname(path.dirname(swiftc)));
-            }
             case "win32": {
                 const { stdout } = await execFile("where", ["swiftc"]);
                 const swiftc = stdout.trimEnd();
                 return path.dirname(path.dirname(path.dirname(swiftc)));
             }
+            default: {
+                // use `type swiftc` to find `swiftc`. Run inside /bin/sh to ensure
+                // we get consistent output as different shells output a different
+                // format. Tried running with `-p` but that is not available in /bin/sh
+                const { stdout } = await execFile("/bin/sh", ["-c", "type swiftc"]);
+                const swiftcMatch = /^swiftc is (.*)$/.exec(stdout);
+                if (swiftcMatch) {
+                    const swiftc = swiftcMatch[1];
+                    vscode.window.showInformationMessage("swiftc: ${swiftc}");
+                    return path.dirname(path.dirname(path.dirname(swiftc)));
+                }
+                break;
+            }
         }
-        return undefined;
+    }
+
+    /**
+     * @param targetInfo swift target info
+     * @returns path to Swift runtime
+     */
+    private static async getRuntimePath(targetInfo: SwiftTargetInfo): Promise<string | undefined> {
+        if (configuration.runtimePath !== "") {
+            return configuration.runtimePath;
+        } else if (process.platform === "win32") {
+            const { stdout } = await execFile("where", ["swiftCore.dll"]);
+            const swiftCore = stdout.trimEnd();
+            return swiftCore.length > 0 ? path.dirname(swiftCore) : undefined;
+        } else {
+            return targetInfo.paths.runtimeLibraryPaths.length > 0
+                ? targetInfo.paths.runtimeLibraryPaths.join(":")
+                : undefined;
+        }
     }
 
     /**
@@ -129,10 +179,14 @@ export class SwiftToolchain {
     }
 
     /**
+     * @param runtimePath path to Swift runtime
      * @param sdkroot path to host SDK
      * @returns path to folder where xctest can be found
      */
-    private static async getXCTestPath(sdkroot: string | undefined): Promise<string | undefined> {
+    private static async getXCTestPath(
+        runtimePath: string | undefined,
+        sdkroot: string | undefined
+    ): Promise<string | undefined> {
         switch (process.platform) {
             case "darwin": {
                 const { stdout } = await execFile("xcode-select", ["-p"]);
@@ -145,6 +199,10 @@ export class SwiftToolchain {
                 const platformPath = path.dirname(path.dirname(path.dirname(sdkroot)));
                 const platformManifest = path.join(platformPath, "Info.plist");
                 if ((await pathExists(platformManifest)) !== true) {
+                    // look up runtime library directory for XCTest
+                    if (runtimePath && (await pathExists(path.join(runtimePath, "XCTest.dll")))) {
+                        return runtimePath;
+                    }
                     vscode.window.showWarningMessage(
                         "XCTest not found due to non-standardized library layout. Tests explorer won't work as expected."
                     );
@@ -169,62 +227,26 @@ export class SwiftToolchain {
         return undefined;
     }
 
-    /**
-     * @returns swift version string returned by `swift --version`
-     */
-    private static async getSwiftVersion(): Promise<{ name: string; version: Version }> {
+    /** @returns swift target info */
+    private static async getSwiftTargetInfo(): Promise<SwiftTargetInfo> {
         try {
-            const { stdout } = await execSwift(["--version"]);
-            const versionString = stdout.split("\n", 1)[0];
-            // extract version
-            const match = versionString.match(/Swift version ([\S]+)/);
-            let version: Version | undefined;
-            if (match) {
-                version = Version.fromString(match[1]);
-            }
-            return { name: versionString, version: version ?? new Version(0, 0, 0) };
+            const { stdout } = await execSwift(["-print-target-info"]);
+            return JSON.parse(stdout.trimEnd()) as SwiftTargetInfo;
         } catch {
-            throw Error("Cannot find swift executable.");
+            throw Error("Cannot parse swift target info output.");
         }
     }
 
     /**
-     * @returns if the default Swift driver is the new driver
+     * @param targetInfo swift target info
+     * @returns swift version object
      */
-    private static async checkNewDriver(
-        toolchainPath: string | undefined
-    ): Promise<boolean | undefined> {
-        if (!toolchainPath) {
-            return undefined;
+    private static getSwiftVersion(targetInfo: SwiftTargetInfo): Version {
+        const match = targetInfo.compilerVersion.match(/Swift version ([\S]+)/);
+        let version: Version | undefined;
+        if (match) {
+            version = Version.fromString(match[1]);
         }
-        const toolDirectory = path.join(toolchainPath, "usr", "bin");
-        // judge from environment variable
-        if (process.env.SWIFT_USE_NEW_DRIVER) {
-            return true;
-        }
-        if (process.env.SWIFT_USE_OLD_DRIVER) {
-            return false;
-        }
-        // judge from tool existence
-        if (await pathExists(toolDirectory, getExecutableName("swift-driver"))) {
-            return true;
-        }
-        if ((await pathExists(toolDirectory, getExecutableName("swift-frontend"))) !== true) {
-            return false;
-        }
-        // check if swift is symlinked into swift-frontend
-        const swiftDriverPath = await fs.realpath(
-            path.join(toolDirectory, getExecutableName("swift"))
-        );
-        const swiftFrontendPath = await fs.realpath(
-            path.join(toolDirectory, getExecutableName("swift-frontend"))
-        );
-        if (swiftDriverPath === swiftFrontendPath) {
-            return false;
-        }
-        // check if swift is replaced by the new driver
-        const swiftDriverBuffer = await fs.readFile(swiftDriverPath);
-        const swiftFrontendBuffer = await fs.readFile(swiftFrontendPath);
-        return !swiftDriverBuffer.equals(swiftFrontendBuffer);
+        return version ?? new Version(0, 0, 0);
     }
 }

@@ -71,13 +71,20 @@ export class FolderContext implements vscode.Disposable {
 
         workspaceContext.statusItem.end(statusItemText);
 
-        return new FolderContext(
+        const folderContext = new FolderContext(
             folder,
             linuxMain,
             swiftPackage,
             workspaceFolder,
             workspaceContext
         );
+
+        if (swiftPackage.foundPackage && !swiftPackage.isValid) {
+            vscode.window.showErrorMessage(`Failed to load ${folderContext.name}/Package.swift`);
+            workspaceContext.outputChannel.log("Failed to load Package.swift", folderContext.name);
+        }
+
+        return folderContext;
     }
 
     get name(): string {
