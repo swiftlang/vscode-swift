@@ -292,6 +292,11 @@ export function getErrorDescription(error: unknown): string {
     }
 }
 
+/**
+ * Convert array of strings into phrase eg "a, b and c"
+ * @param strings Array of strings
+ * @returns phrase
+ */
 export function stringArrayInEnglish(strings: string[]): string {
     return strings.length === 1
         ? strings[0]
