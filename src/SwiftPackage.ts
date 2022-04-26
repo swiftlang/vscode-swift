@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
-import { execSwift } from "./utilities/utilities";
+import { execSwift, getErrorDescription } from "./utilities/utilities";
 
 /** Swift Package Manager contents */
 export interface PackageContents {
@@ -116,6 +116,21 @@ export interface WorkspaceStateDependency {
     state: { name: string; path?: string };
 }
 
+/** Swift Package State
+ *
+ * Can be package contents, error found when loading package or undefined meaning
+ * did not find package
+ */
+type SwiftPackageState = PackageContents | Error | undefined;
+
+function isPackage(state: SwiftPackageState): state is PackageContents {
+    return (state as PackageContents).products !== undefined;
+}
+
+function isError(state: SwiftPackageState): state is Error {
+    return state instanceof Error;
+}
+
 /**
  * Class holding Swift Package Manager Package
  */
@@ -128,7 +143,7 @@ export class SwiftPackage implements PackageContents {
      */
     private constructor(
         readonly folder: vscode.Uri,
-        private contents?: PackageContents | null,
+        private contents: SwiftPackageState,
         public resolved?: PackageResolved
     ) {}
 
@@ -148,7 +163,7 @@ export class SwiftPackage implements PackageContents {
      * @param folder folder package is in
      * @returns results of `swift package describe`
      */
-    static async loadPackage(folder: vscode.Uri): Promise<PackageContents | null | undefined> {
+    static async loadPackage(folder: vscode.Uri): Promise<SwiftPackageState> {
         try {
             let { stdout } = await execSwift(
                 ["package", "describe", "--type", "json"],
@@ -175,7 +190,7 @@ export class SwiftPackage implements PackageContents {
             } else {
                 // otherwise it is an error loading the Package.swift so return `null` indicating
                 // we have a package but we failed to load it
-                return null;
+                return Error(getErrorDescription(error));
             }
         }
     }
@@ -226,7 +241,16 @@ export class SwiftPackage implements PackageContents {
 
     /** Return if has valid contents */
     public get isValid(): boolean {
-        return this.contents !== null && this.contents !== undefined;
+        return isPackage(this.contents);
+    }
+
+    /** Load error */
+    public get error(): Error | undefined {
+        if (isError(this.contents)) {
+            return this.contents;
+        } else {
+            return undefined;
+        }
     }
 
     /** Did we find a Package.swift */
@@ -236,22 +260,22 @@ export class SwiftPackage implements PackageContents {
 
     /** name of Swift Package */
     get name(): string {
-        return this.contents?.name ?? "";
+        return (this.contents as PackageContents)?.name ?? "";
     }
 
     /** array of products in Swift Package */
     get products(): Product[] {
-        return this.contents?.products ?? [];
+        return (this.contents as PackageContents)?.products ?? [];
     }
 
     /** array of dependencies in Swift Package */
     get dependencies(): Dependency[] {
-        return this.contents?.dependencies ?? [];
+        return (this.contents as PackageContents)?.dependencies ?? [];
     }
 
     /** array of targets in Swift Package */
     get targets(): Target[] {
-        return this.contents?.targets ?? [];
+        return (this.contents as PackageContents)?.targets ?? [];
     }
 
     /** array of executable products in Swift Package */
