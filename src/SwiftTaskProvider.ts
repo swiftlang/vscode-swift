@@ -87,7 +87,9 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
             group: vscode.TaskGroup.Build,
             cwd: folderContext.folder,
             scope: folderContext.workspaceFolder,
-            presentationOptions: { clear: true },
+            presentationOptions: {
+                reveal: vscode.TaskRevealKind.Silent,
+            },
             problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
         }
     );
@@ -151,7 +153,9 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 group: vscode.TaskGroup.Build,
                 cwd: folderContext.folder,
                 scope: folderContext.workspaceFolder,
-                presentationOptions: { clear: true },
+                presentationOptions: {
+                    reveal: vscode.TaskRevealKind.Silent,
+                },
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
             }
         ),
@@ -162,7 +166,9 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 group: vscode.TaskGroup.Build,
                 cwd: folderContext.folder,
                 scope: folderContext.workspaceFolder,
-                presentationOptions: { clear: true },
+                presentationOptions: {
+                    reveal: vscode.TaskRevealKind.Silent,
+                },
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
             }
         ),

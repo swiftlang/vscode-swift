@@ -61,12 +61,12 @@ export class BackgroundCompilation {
         if (!task) {
             return;
         }
-        const backgroundTask = Object.assign(task);
-        backgroundTask.name = `${backgroundTask.name} (Background)`;
+        const backgroundTask = task;
+        /*backgroundTask.name = `${backgroundTask.name} (Background)`;
         backgroundTask.presentationOptions = {
             reveal: vscode.TaskRevealKind.Never,
             panel: vscode.TaskPanelKind.Dedicated,
-        };
+        };*/
 
         // are there any tasks running inside this folder
         const index = vscode.tasks.taskExecutions.findIndex(
