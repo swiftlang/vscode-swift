@@ -76,10 +76,14 @@ export class LanguageClientManager {
     ) => void;
     private subscriptions: { dispose(): unknown }[];
     private singleServerSupport: boolean;
+    // used by single server support to keep a record of the workspace folders
+    // sent to the lsp server
+    private activeFolders: vscode.Uri[];
 
     constructor(public workspaceContext: WorkspaceContext) {
         this.singleServerSupport = true; //workspaceContext.swiftVersion >= new Version(5, 7, 0);
         this.subscriptions = [];
+        this.activeFolders = [];
         if (this.singleServerSupport) {
             // add/remove folders from server
             const observeFoldersDisposable = workspaceContext.observeFolders(
@@ -99,6 +103,12 @@ export class LanguageClientManager {
             );
             this.subscriptions.push(observeFoldersDisposable);
             this.setLanguageClientFolder(undefined);
+            // add current workspace folders to list of active folders
+            if (vscode.workspace.workspaceFolders) {
+                this.activeFolders.push(
+                    ...vscode.workspace.workspaceFolders.map(folder => folder.uri)
+                );
+            }
         } else {
             // stop and start server for each folder based on which file I am looking at
             const observeFoldersDisposable = workspaceContext.observeFolders(
@@ -198,24 +208,36 @@ export class LanguageClientManager {
     }
 
     private async addFolder(uri: vscode.Uri) {
+        // don't add folder if it has already been added
+        if (this.activeFolders.find(item => item === uri)) {
+            return;
+        }
+        this.activeFolders.push(uri);
+
         this.useLanguageClient(async client => {
             const workspaceFolder = {
                 uri: client.code2ProtocolConverter.asUri(uri),
                 name: FolderContext.uriName(uri),
             };
-            await client.sendNotification(langclient.DidChangeWorkspaceFoldersNotification.type, {
+            client.sendNotification(langclient.DidChangeWorkspaceFoldersNotification.type, {
                 event: { added: [workspaceFolder], removed: [] },
             });
         });
     }
 
     private async removeFolder(uri: vscode.Uri) {
+        // find folder and remove from list
+        const index = this.activeFolders.findIndex(item => item === uri);
+        if (index) {
+            this, this.activeFolders.slice(index, 1);
+        }
+
         this.useLanguageClient(async client => {
             const workspaceFolder = {
                 uri: client.code2ProtocolConverter.asUri(uri),
                 name: FolderContext.uriName(uri),
             };
-            await client.sendNotification(langclient.DidChangeWorkspaceFoldersNotification.type, {
+            client.sendNotification(langclient.DidChangeWorkspaceFoldersNotification.type, {
                 event: { added: [], removed: [workspaceFolder] },
             });
         });
