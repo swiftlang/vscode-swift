@@ -65,7 +65,12 @@ export class SwiftToolchain {
         const runtimePath = await this.getRuntimePath(targetInfo);
         const defaultSDK = await this.getDefaultSDK();
         const customSDK = this.getCustomSDK();
-        const xcTestPath = await this.getXCTestPath(runtimePath, defaultSDK);
+        const xcTestPath = await this.getXCTestPath(
+            targetInfo,
+            swiftVersion,
+            runtimePath,
+            defaultSDK
+        );
         return new SwiftToolchain(
             toolchainPath,
             targetInfo.compilerVersion,
@@ -182,6 +187,8 @@ export class SwiftToolchain {
      * @returns path to folder where xctest can be found
      */
     private static async getXCTestPath(
+        targetInfo: SwiftTargetInfo,
+        swiftVersion: Version,
         runtimePath: string | undefined,
         sdkroot: string | undefined
     ): Promise<string | undefined> {
@@ -212,14 +219,39 @@ export class SwiftToolchain {
                 if (!version) {
                     throw Error("Info.plist is missing the XCTEST_VERSION key.");
                 }
-                return path.join(
-                    platformPath,
-                    "Developer",
-                    "Library",
-                    `XCTest-${version}`,
-                    "usr",
-                    "bin"
-                );
+
+                if (swiftVersion >= new Version(5, 7, 0)) {
+                    let bindir: string;
+                    const arch = targetInfo.target?.triple.split("-", 1)[0];
+                    switch (arch) {
+                        case "x86_64":
+                            bindir = "bin64";
+                            break;
+                        case "i686":
+                            bindir = "bin32";
+                            break;
+                        case "aarch64":
+                            bindir = "bin64a";
+                            break;
+                        default:
+                            throw Error(`unsupported architecture ${arch}`);
+                    }
+                    return path.join(
+                        platformPath,
+                        "Developer",
+                        "Library",
+                        `XCTest-${version}`,
+                        bindir
+                    );
+                } else {
+                    return path.join(
+                        platformPath,
+                        "Developer",
+                        "Library",
+                        `XCTest-${version}`,
+                        "bin"
+                    );
+                }
             }
         }
         return undefined;
