@@ -65,12 +65,7 @@ export class LanguageClientManager {
      */
     private languageClient: langclient.LanguageClient | null | undefined;
     private cancellationToken?: vscode.CancellationTokenSource;
-    private observeFoldersDisposable: vscode.Disposable;
-    private onDidCreateFileDisposable: vscode.Disposable;
-    private onDidDeleteFileDisposable: vscode.Disposable;
-    private onChangeConfig: vscode.Disposable;
     private legacyInlayHints?: vscode.Disposable;
-    private supportsDidChangedWatchedFiles: boolean;
     private restartedPromise?: Promise<void>;
     private currentWorkspaceFolder?: vscode.Uri;
     private waitingOnRestartCount: number;
@@ -79,10 +74,11 @@ export class LanguageClientManager {
         document: vscode.TextDocument,
         symbols: vscode.DocumentSymbol[] | null | undefined
     ) => void;
+    private subscriptions: { dispose(): unknown }[];
 
     constructor(public workspaceContext: WorkspaceContext) {
         // stop and start server for each folder based on which file I am looking at
-        this.observeFoldersDisposable = workspaceContext.observeFolders(
+        const observeFoldersDisposable = workspaceContext.observeFolders(
             async (folderContext, event) => {
                 switch (event) {
                     case FolderEvent.add:
@@ -99,20 +95,9 @@ export class LanguageClientManager {
                 }
             }
         );
-        // restart LSP server on creation of a new file
-        this.onDidCreateFileDisposable = vscode.workspace.onDidCreateFiles(() => {
-            if (!this.supportsDidChangedWatchedFiles) {
-                this.restartLanguageClient();
-            }
-        });
-        // restart LSP server on deletion of a file
-        this.onDidDeleteFileDisposable = vscode.workspace.onDidDeleteFiles(() => {
-            if (!this.supportsDidChangedWatchedFiles) {
-                this.restartLanguageClient();
-            }
-        });
+
         // on change config restart server
-        this.onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
+        const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
             if (event.affectsConfiguration("sourcekit-lsp.serverPath")) {
                 vscode.window
                     .showInformationMessage(
@@ -127,10 +112,21 @@ export class LanguageClientManager {
             }
         });
 
-        // if we are running swift 5.6 or greater then LSP supports `didChangeWatchedFiles` message
-        this.supportsDidChangedWatchedFiles = workspaceContext.swiftVersion.isGreaterThanOrEqual(
-            new Version(5, 6, 0)
-        );
+        this.subscriptions = [onChangeConfig, observeFoldersDisposable];
+
+        // Swift versions prior to 5.6 don't support file changes, so need to restart
+        // lSP server when a file is either created or deleted
+        if (workspaceContext.swiftVersion < new Version(5, 6, 0)) {
+            // restart LSP server on creation of a new file
+            const onDidCreateFileDisposable = vscode.workspace.onDidCreateFiles(() => {
+                this.restartLanguageClient();
+            });
+            // restart LSP server on deletion of a file
+            const onDidDeleteFileDisposable = vscode.workspace.onDidDeleteFiles(() => {
+                this.restartLanguageClient();
+            });
+            this.subscriptions.push(onDidCreateFileDisposable, onDidDeleteFileDisposable);
+        }
 
         this.waitingOnRestartCount = 0;
         this.documentSymbolWatcher = undefined;
@@ -140,12 +136,9 @@ export class LanguageClientManager {
     dispose() {
         this.cancellationToken?.cancel();
         this.cancellationToken?.dispose();
-        this.observeFoldersDisposable.dispose();
-        this.onDidCreateFileDisposable?.dispose();
-        this.onDidDeleteFileDisposable?.dispose();
-        this.onChangeConfig.dispose();
         this.legacyInlayHints?.dispose();
         this.languageClient?.stop();
+        this.subscriptions.forEach(item => item.dispose());
     }
 
     /** Set folder for LSP server
