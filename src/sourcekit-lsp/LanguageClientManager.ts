@@ -75,27 +75,51 @@ export class LanguageClientManager {
         symbols: vscode.DocumentSymbol[] | null | undefined
     ) => void;
     private subscriptions: { dispose(): unknown }[];
+    private singleServerSupport: boolean;
 
     constructor(public workspaceContext: WorkspaceContext) {
-        // stop and start server for each folder based on which file I am looking at
-        const observeFoldersDisposable = workspaceContext.observeFolders(
-            async (folderContext, event) => {
-                switch (event) {
-                    case FolderEvent.add:
-                        if (folderContext && folderContext.folder) {
-                            // if active document is inside folder then setup language client
-                            if (this.isActiveFileInFolder(folderContext.folder)) {
-                                await this.setLanguageClientFolder(folderContext.folder);
-                            }
-                        }
-                        break;
-                    case FolderEvent.focus:
-                        await this.setLanguageClientFolder(folderContext?.folder);
-                        break;
+        this.singleServerSupport = true; //workspaceContext.swiftVersion >= new Version(5, 7, 0);
+        this.subscriptions = [];
+        if (this.singleServerSupport) {
+            // add/remove folders from server
+            const observeFoldersDisposable = workspaceContext.observeFolders(
+                async (folderContext, event) => {
+                    if (!folderContext) {
+                        return;
+                    }
+                    switch (event) {
+                        case FolderEvent.add:
+                            this.addFolder(folderContext.folder);
+                            break;
+                        case FolderEvent.remove:
+                            this.removeFolder(folderContext.folder);
+                            break;
+                    }
                 }
-            }
-        );
-
+            );
+            this.subscriptions.push(observeFoldersDisposable);
+            this.setLanguageClientFolder(undefined);
+        } else {
+            // stop and start server for each folder based on which file I am looking at
+            const observeFoldersDisposable = workspaceContext.observeFolders(
+                async (folderContext, event) => {
+                    switch (event) {
+                        case FolderEvent.add:
+                            if (folderContext && folderContext.folder) {
+                                // if active document is inside folder then setup language client
+                                if (this.isActiveFileInFolder(folderContext.folder)) {
+                                    await this.setLanguageClientFolder(folderContext.folder);
+                                }
+                            }
+                            break;
+                        case FolderEvent.focus:
+                            await this.setLanguageClientFolder(folderContext?.folder);
+                            break;
+                    }
+                }
+            );
+            this.subscriptions.push(observeFoldersDisposable);
+        }
         // on change config restart server
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
             if (event.affectsConfiguration("sourcekit-lsp.serverPath")) {
@@ -106,24 +130,24 @@ export class LanguageClientManager {
                     )
                     .then(selected => {
                         if (selected === "Ok") {
-                            this.restartLanguageClient();
+                            this.restart();
                         }
                     });
             }
         });
-
-        this.subscriptions = [onChangeConfig, observeFoldersDisposable];
+        this.subscriptions.push(onChangeConfig);
 
         // Swift versions prior to 5.6 don't support file changes, so need to restart
         // lSP server when a file is either created or deleted
         if (workspaceContext.swiftVersion < new Version(5, 6, 0)) {
+            workspaceContext.outputChannel.logDiagnostic("LSP: Adding new/delete file handlers");
             // restart LSP server on creation of a new file
             const onDidCreateFileDisposable = vscode.workspace.onDidCreateFiles(() => {
-                this.restartLanguageClient();
+                this.restart();
             });
             // restart LSP server on deletion of a file
             const onDidDeleteFileDisposable = vscode.workspace.onDidDeleteFiles(() => {
-                this.restartLanguageClient();
+                this.restart();
             });
             this.subscriptions.push(onDidCreateFileDisposable, onDidDeleteFileDisposable);
         }
@@ -137,60 +161,8 @@ export class LanguageClientManager {
         this.cancellationToken?.cancel();
         this.cancellationToken?.dispose();
         this.legacyInlayHints?.dispose();
-        this.languageClient?.stop();
         this.subscriptions.forEach(item => item.dispose());
-    }
-
-    /** Set folder for LSP server
-     *
-     * If server is already running then check if the workspace folder is the same if
-     * it isn't then restart the server using the new workspace folder.
-     */
-    async setLanguageClientFolder(uri?: vscode.Uri, forceRestart = false) {
-        if (this.languageClient === undefined) {
-            this.currentWorkspaceFolder = uri;
-            this.restartedPromise = this.setupLanguageClient(uri);
-            return;
-        } else {
-            if (uri === undefined || (this.currentWorkspaceFolder === uri && !forceRestart)) {
-                return;
-            }
-            // count number of setLanguageClientFolder calls waiting on startedPromise
-            this.waitingOnRestartCount += 1;
-            // if in the middle of a restart then we have to wait until that
-            // restart has finished
-            if (this.restartedPromise) {
-                try {
-                    await this.restartedPromise;
-                } catch (error) {
-                    //ignore error
-                }
-            }
-            this.waitingOnRestartCount -= 1;
-            // only continue if no more calls are waiting on startedPromise
-            if (this.waitingOnRestartCount !== 0) {
-                return;
-            }
-
-            const client = this.languageClient;
-            // language client is set to null while it is in the process of restarting
-            this.languageClient = null;
-            this.currentWorkspaceFolder = uri;
-            this.legacyInlayHints?.dispose();
-            this.legacyInlayHints = undefined;
-            if (client) {
-                this.cancellationToken?.cancel();
-                this.cancellationToken?.dispose();
-                this.restartedPromise = client
-                    .stop()
-                    .then(async () => {
-                        await this.setupLanguageClient(uri);
-                    })
-                    .catch(reason => {
-                        this.workspaceContext.outputChannel.log(`${reason}`);
-                    });
-            }
-        }
+        this.languageClient?.stop();
     }
 
     /** workspace folder of current client */
@@ -220,9 +192,104 @@ export class LanguageClientManager {
     }
 
     /** Restart language client */
-    async restartLanguageClient() {
+    async restart() {
         // force restart of language client
         await this.setLanguageClientFolder(this.currentWorkspaceFolder, true);
+    }
+
+    private async addFolder(uri: vscode.Uri) {
+        this.useLanguageClient(async client => {
+            const workspaceFolder = {
+                uri: client.code2ProtocolConverter.asUri(uri),
+                name: FolderContext.uriName(uri),
+            };
+            await client.sendNotification(langclient.DidChangeWorkspaceFoldersNotification.type, {
+                event: { added: [workspaceFolder], removed: [] },
+            });
+        });
+    }
+
+    private async removeFolder(uri: vscode.Uri) {
+        this.useLanguageClient(async client => {
+            const workspaceFolder = {
+                uri: client.code2ProtocolConverter.asUri(uri),
+                name: FolderContext.uriName(uri),
+            };
+            await client.sendNotification(langclient.DidChangeWorkspaceFoldersNotification.type, {
+                event: { added: [], removed: [workspaceFolder] },
+            });
+        });
+    }
+
+    /** Set folder for LSP server
+     *
+     * If server is already running then check if the workspace folder is the same if
+     * it isn't then restart the server using the new workspace folder.
+     */
+    private async setLanguageClientFolder(uri?: vscode.Uri, forceRestart = false) {
+        if (this.languageClient === undefined) {
+            this.currentWorkspaceFolder = uri;
+            this.restartedPromise = this.setupLanguageClient(uri);
+            return;
+        } else {
+            if (this.singleServerSupport) {
+                if (uri === undefined || (this.currentWorkspaceFolder === uri && !forceRestart)) {
+                    return;
+                }
+            }
+            let workspaceFolder: vscode.WorkspaceFolder;
+            if (uri) {
+                workspaceFolder = {
+                    uri: uri,
+                    name: FolderContext.uriName(uri),
+                    index: 0,
+                };
+                this.restartLanguageClient(workspaceFolder);
+            }
+        }
+    }
+
+    /**
+     * Restart language client using supplied workspace folder
+     * @param workspaceFolder workspace folder to send to server
+     * @returns when done
+     */
+    private async restartLanguageClient(workspaceFolder: vscode.WorkspaceFolder | undefined) {
+        // count number of setLanguageClientFolder calls waiting on startedPromise
+        this.waitingOnRestartCount += 1;
+        // if in the middle of a restart then we have to wait until that
+        // restart has finished
+        if (this.restartedPromise) {
+            try {
+                await this.restartedPromise;
+            } catch (error) {
+                //ignore error
+            }
+        }
+        this.waitingOnRestartCount -= 1;
+        // only continue if no more calls are waiting on startedPromise
+        if (this.waitingOnRestartCount !== 0) {
+            return;
+        }
+
+        const client = this.languageClient;
+        // language client is set to null while it is in the process of restarting
+        this.languageClient = null;
+        this.currentWorkspaceFolder = workspaceFolder?.uri;
+        this.legacyInlayHints?.dispose();
+        this.legacyInlayHints = undefined;
+        if (client) {
+            this.cancellationToken?.cancel();
+            this.cancellationToken?.dispose();
+            this.restartedPromise = client
+                .stop()
+                .then(async () => {
+                    await this.setupLanguageClient(workspaceFolder?.uri);
+                })
+                .catch(reason => {
+                    this.workspaceContext.outputChannel.log(`${reason}`);
+                });
+        }
     }
 
     private isActiveFileInFolder(uri: vscode.Uri): boolean {
