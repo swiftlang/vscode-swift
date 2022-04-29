@@ -62,4 +62,10 @@ suite("Version Test Suite", () => {
         assert(new Version(3, 3, 0).isGreaterThanOrEqual(new Version(3, 2, 7)));
         assert(new Version(7, 1, 2).isGreaterThanOrEqual(new Version(7, 1, 2)));
     });
+    test("operators", () => {
+        assert(new Version(1, 0, 1) >= new Version(1, 0, 0));
+        assert(new Version(1, 0, 1) <= new Version(4, 5, 0));
+        assert(new Version(1, 1, 1) > new Version(1, 1, 0));
+        assert(new Version(2, 3, 2) < new Version(2, 3, 8));
+    });
 });
