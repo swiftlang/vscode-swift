@@ -57,16 +57,10 @@ export class BackgroundCompilation {
      */
     async runTask() {
         // create compile task and execute it
-        const task = await getBuildAllTask(this.folderContext);
-        if (!task) {
+        const backgroundTask = await getBuildAllTask(this.folderContext);
+        if (!backgroundTask) {
             return;
         }
-        const backgroundTask = task;
-        /*backgroundTask.name = `${backgroundTask.name} (Background)`;
-        backgroundTask.presentationOptions = {
-            reveal: vscode.TaskRevealKind.Never,
-            panel: vscode.TaskPanelKind.Dedicated,
-        };*/
 
         // are there any tasks running inside this folder
         const index = vscode.tasks.taskExecutions.findIndex(
