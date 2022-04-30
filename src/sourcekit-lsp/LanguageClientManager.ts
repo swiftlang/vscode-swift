@@ -28,6 +28,7 @@ import { Version } from "../utilities/version";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { activateLegacyInlayHints } from "./inlayHints";
 import { FolderContext } from "../FolderContext";
+import { LanguageClient } from "vscode-languageclient/node";
 
 /** Manages the creation and destruction of Language clients as we move between
  * workspace folders
@@ -76,14 +77,14 @@ export class LanguageClientManager {
     ) => void;
     private subscriptions: { dispose(): unknown }[];
     private singleServerSupport: boolean;
-    // used by single server support to keep a record of the workspace folders
-    // sent to the lsp server
-    private activeFolders: vscode.Uri[];
+    // used by single server support to keep a record of the project folders
+    // that are not at the root of their workspace
+    private subFolderWorkspaces: vscode.Uri[];
 
     constructor(public workspaceContext: WorkspaceContext) {
         this.singleServerSupport = true; //workspaceContext.swiftVersion >= new Version(5, 7, 0);
         this.subscriptions = [];
-        this.activeFolders = [];
+        this.subFolderWorkspaces = [];
         if (this.singleServerSupport) {
             // add/remove folders from server
             const observeFoldersDisposable = workspaceContext.observeFolders(
@@ -93,22 +94,16 @@ export class LanguageClientManager {
                     }
                     switch (event) {
                         case FolderEvent.add:
-                            this.addFolder(folderContext.folder);
+                            this.addFolder(folderContext);
                             break;
                         case FolderEvent.remove:
-                            this.removeFolder(folderContext.folder);
+                            this.removeFolder(folderContext);
                             break;
                     }
                 }
             );
             this.subscriptions.push(observeFoldersDisposable);
             this.setLanguageClientFolder(undefined);
-            // add current workspace folders to list of active folders
-            if (vscode.workspace.workspaceFolders) {
-                this.activeFolders.push(
-                    ...vscode.workspace.workspaceFolders.map(folder => folder.uri)
-                );
-            }
         } else {
             // stop and start server for each folder based on which file I am looking at
             const observeFoldersDisposable = workspaceContext.observeFolders(
@@ -207,14 +202,42 @@ export class LanguageClientManager {
         await this.setLanguageClientFolder(this.currentWorkspaceFolder, true);
     }
 
-    private async addFolder(uri: vscode.Uri) {
-        // don't add folder if it has already been added
-        if (this.activeFolders.find(item => item === uri)) {
-            return;
-        }
-        this.activeFolders.push(uri);
+    private async addFolder(folderContext: FolderContext) {
+        if (!folderContext.isRootFolder) {
+            this.useLanguageClient(async client => {
+                const uri = folderContext.folder;
+                this.subFolderWorkspaces.push(folderContext.folder);
 
-        this.useLanguageClient(async client => {
+                const workspaceFolder = {
+                    uri: client.code2ProtocolConverter.asUri(uri),
+                    name: FolderContext.uriName(uri),
+                };
+                client.sendNotification(langclient.DidChangeWorkspaceFoldersNotification.type, {
+                    event: { added: [workspaceFolder], removed: [] },
+                });
+            });
+        }
+    }
+
+    private async removeFolder(folderContext: FolderContext) {
+        if (!folderContext.isRootFolder) {
+            this.useLanguageClient(async client => {
+                const uri = folderContext.folder;
+                this.subFolderWorkspaces = this.subFolderWorkspaces.filter(item => item !== uri);
+
+                const workspaceFolder = {
+                    uri: client.code2ProtocolConverter.asUri(uri),
+                    name: FolderContext.uriName(uri),
+                };
+                client.sendNotification(langclient.DidChangeWorkspaceFoldersNotification.type, {
+                    event: { added: [], removed: [workspaceFolder] },
+                });
+            });
+        }
+    }
+
+    private async addSubFolderWorkspaces(client: LanguageClient) {
+        for (const uri of this.subFolderWorkspaces) {
             const workspaceFolder = {
                 uri: client.code2ProtocolConverter.asUri(uri),
                 name: FolderContext.uriName(uri),
@@ -222,25 +245,7 @@ export class LanguageClientManager {
             client.sendNotification(langclient.DidChangeWorkspaceFoldersNotification.type, {
                 event: { added: [workspaceFolder], removed: [] },
             });
-        });
-    }
-
-    private async removeFolder(uri: vscode.Uri) {
-        // find folder and remove from list
-        const index = this.activeFolders.findIndex(item => item === uri);
-        if (index) {
-            this, this.activeFolders.slice(index, 1);
         }
-
-        this.useLanguageClient(async client => {
-            const workspaceFolder = {
-                uri: client.code2ProtocolConverter.asUri(uri),
-                name: FolderContext.uriName(uri),
-            };
-            client.sendNotification(langclient.DidChangeWorkspaceFoldersNotification.type, {
-                event: { added: [], removed: [workspaceFolder] },
-            });
-        });
     }
 
     /** Set folder for LSP server
@@ -403,7 +408,20 @@ export class LanguageClientManager {
         );
     }
 
-    private startClient(client: langclient.LanguageClient): Promise<void> {
+    private async startClient(client: langclient.LanguageClient) {
+        client.onDidChangeState(e => {
+            // if state is now running add in any sub-folder workspaces that
+            // we have cached. If this is the first time we are starting then
+            // we won't have any sub folder workspaces, but if the server crashed
+            // or we forced a restart then we need to do this
+            if (
+                e.oldState === langclient.State.Starting &&
+                e.newState === langclient.State.Running
+            ) {
+                this.addSubFolderWorkspaces(client);
+            }
+            //console.log(e);
+        });
         if (client.clientOptions.workspaceFolder) {
             this.workspaceContext.outputChannel.log(
                 `SourceKit-LSP setup for ${FolderContext.uriName(

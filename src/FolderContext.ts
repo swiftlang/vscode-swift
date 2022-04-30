@@ -109,6 +109,10 @@ export class FolderContext implements vscode.Disposable {
         return path.relative(this.workspaceFolder.uri.fsPath, this.folder.fsPath);
     }
 
+    get isRootFolder(): boolean {
+        return this.workspaceFolder.uri === this.folder;
+    }
+
     /** reload swift package for this folder */
     async reload() {
         await this.swiftPackage.reload();
