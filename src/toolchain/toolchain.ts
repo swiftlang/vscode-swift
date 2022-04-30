@@ -241,6 +241,7 @@ export class SwiftToolchain {
                         "Developer",
                         "Library",
                         `XCTest-${version}`,
+                        "usr",
                         bindir
                     );
                 } else {
@@ -249,6 +250,7 @@ export class SwiftToolchain {
                         "Developer",
                         "Library",
                         `XCTest-${version}`,
+                        "usr",
                         "bin"
                     );
                 }
