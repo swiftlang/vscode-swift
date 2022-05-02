@@ -54,7 +54,7 @@ Where to find Swift runtime libraries. This is mainly of use when these librarie
 
 - **SDK**
 
-The path of the target SDK to compile against. The default SDK is determined by the environment on macOS and Windows. This is of use when supporting non-standard SDK layouts on Windows and using custom SDKs.
+The path of the target SDK to compile against. The default SDK is determined by the environment on macOS and Windows. This is of use when supporting non-standard SDK layouts on Windows and using custom SDKs. This adds the `--sdk` command line parameter to the relevant `swift` calls.
 
 - **Diagnostics**
 
