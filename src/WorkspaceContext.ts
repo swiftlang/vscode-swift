@@ -86,7 +86,7 @@ export class WorkspaceContext implements vscode.Disposable {
                     });
             }
             // on destination config change, restart sourcekit-lsp
-            if (event.affectsConfiguration("destination.SDK")) {
+            if (event.affectsConfiguration("swift.destination.SDK")) {
                 // FIXME: There is a bug stopping us from restarting SourceKit-LSP directly.
                 // As long as it's fixed we won't need to reload on newer versions.
                 vscode.window

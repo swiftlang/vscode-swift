@@ -58,7 +58,9 @@ const configuration = {
     get destination(): DestinationConfiguration {
         return {
             get sdk(): string {
-                return vscode.workspace.getConfiguration("destination").get<string>("SDK", "");
+                return vscode.workspace
+                    .getConfiguration("swift")
+                    .get<string>("destination.SDK", "");
             },
         };
     },

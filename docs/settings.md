@@ -52,7 +52,7 @@ Cross-compilation is the act of compiling code for one computer system on a diff
 
 > **NOTE:** Cross-compilation settings are not suggested to be set globally, as different projects often target different destinations.
 
-- **Destination > SDK**
+- **Destination: SDK**
 
 The path of the SDK to compile against. The default destination SDK is determined by the environment on macOS and Windows. This adds the `--sdk` command line parameter to the relevant SwiftPM calls.
 

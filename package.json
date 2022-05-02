@@ -187,7 +187,7 @@
       {
         "title": "Cross compilation (Experimental)",
         "properties": {
-          "destination.SDK": {
+          "swift.destination.SDK": {
             "type": "string",
             "default": "",
             "description": "The path of the SDK to compile against. The default SDK is determined by the environment on macOS and Windows.",
