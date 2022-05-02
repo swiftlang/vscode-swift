@@ -288,12 +288,24 @@ export function randomString(length = 8): string {
  * @returns String description of error
  */
 export function getErrorDescription(error: unknown): string {
-    const stdError = error as { stderr: string };
-    if (stdError) {
-        return stdError.stderr;
+    if ((error as { stderr: string }).stderr) {
+        return (error as { stderr: string }).stderr;
+    } else if ((error as { error: string }).error) {
+        return JSON.stringify((error as { error: string }).error);
     } else if (error instanceof Error) {
-        return error.toString();
+        return error.message;
     } else {
         return JSON.stringify(error);
     }
+}
+
+/**
+ * Convert array of strings into phrase eg "a, b and c"
+ * @param strings Array of strings
+ * @returns phrase
+ */
+export function stringArrayInEnglish(strings: string[]): string {
+    return strings.length === 1
+        ? strings[0]
+        : [strings.slice(0, -1).join(", "), strings[strings.length - 1]].join(" and ");
 }

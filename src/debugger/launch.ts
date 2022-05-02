@@ -16,7 +16,7 @@ import * as os from "os";
 import * as vscode from "vscode";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
-import { swiftLibraryPathKey, swiftRuntimeEnv } from "../utilities/utilities";
+import { stringArrayInEnglish, swiftLibraryPathKey, swiftRuntimeEnv } from "../utilities/utilities";
 
 /**
  * Edit launch.json based on contents of Swift Package.
@@ -33,6 +33,7 @@ export async function makeDebugConfigurations(ctx: FolderContext, yes = false) {
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
     // list of keys that can be updated in config merge
     const keysToUpdate = ["program", "cwd", "preLaunchTask", `env.${swiftLibraryPathKey()}`];
+    const configUpdates: { index: number; config: vscode.DebugConfiguration }[] = [];
 
     const configs = createExecutableConfigurations(ctx);
     let edited = false;
@@ -47,21 +48,30 @@ export async function makeDebugConfigurations(ctx: FolderContext, yes = false) {
 
             // if original config is different from new config
             if (JSON.stringify(launchConfigs[index]) !== JSON.stringify(newConfig)) {
-                if (!yes) {
-                    const answer = await vscode.window.showWarningMessage(
-                        `${ctx.name}: The Swift extension would like to update launch configuration '${config.name}'. Do you want to update it?`,
-                        "Update",
-                        "Cancel"
-                    );
-                    if (answer === "Cancel") {
-                        continue;
-                    }
-                }
-                launchConfigs[index] = newConfig;
-                edited = true;
+                configUpdates.push({ index: index, config: newConfig });
             }
         } else {
             launchConfigs.push(config);
+            edited = true;
+        }
+    }
+
+    if (configUpdates.length > 0) {
+        if (!yes) {
+            const configUpdateNames = stringArrayInEnglish(
+                configUpdates.map(update => update.config.name)
+            );
+            const answer = await vscode.window.showWarningMessage(
+                `${ctx.name}: The Swift extension would like to update launch configurations '${configUpdateNames}'. Do you want to update?`,
+                "Update",
+                "Cancel"
+            );
+            if (answer === "Update") {
+                yes = true;
+            }
+        }
+        if (yes) {
+            configUpdates.forEach(update => (launchConfigs[update.index] = update.config));
             edited = true;
         }
     }
@@ -171,7 +181,11 @@ export function createTestConfiguration(
             return null;
         }
         if (xcTestPath !== runtimePath) {
-            testEnv.Path = `${xcTestPath};${testEnv.Path}`;
+            testEnv.Path = `${xcTestPath};${testEnv.Path ?? process.env.Path}`;
+        }
+        const sdkroot = configuration.sdk === "" ? process.env.SDKROOT : configuration.sdk;
+        if (sdkroot === undefined) {
+            return null;
         }
         return {
             type: "lldb",
@@ -180,6 +194,7 @@ export function createTestConfiguration(
             program: `${folder}/.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
             cwd: folder,
             env: testEnv,
+            preRunCommands: [`settings set target.sdk-path ${sdkroot}`],
             preLaunchTask: `swift: Build All${nameSuffix}`,
         };
     } else {

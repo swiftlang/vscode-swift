@@ -48,7 +48,7 @@ interface SwiftTargetInfo {
 
 export class SwiftToolchain {
     constructor(
-        public toolchainPath: string | undefined,
+        public toolchainPath: string,
         public swiftVersionString: string,
         public swiftVersion: Version,
         public runtimePath?: string,
@@ -65,7 +65,7 @@ export class SwiftToolchain {
         const runtimePath = await this.getRuntimePath(targetInfo);
         const hostSDK = await this.getHostSDK();
         const targetSDK = this.getTargetSDK();
-        const xcTestPath = await this.getXCTestPath(runtimePath, hostSDK);
+        const xcTestPath = await this.getXCTestPath(targetInfo, swiftVersion, runtimePath, hostSDK);
         return new SwiftToolchain(
             toolchainPath,
             targetInfo.compilerVersion,
@@ -100,7 +100,7 @@ export class SwiftToolchain {
     /**
      * @returns path to Toolchain folder
      */
-    private static async getToolchainPath(): Promise<string | undefined> {
+    private static async getToolchainPath(): Promise<string> {
         if (configuration.path !== "") {
             return path.dirname(path.dirname(configuration.path));
         }
@@ -116,17 +116,18 @@ export class SwiftToolchain {
                 return path.dirname(path.dirname(path.dirname(swiftc)));
             }
             default: {
-                // use `type swiftc` to find `swiftc`. Run inside /bin/sh to ensure
+                // use `type swift` to find `swift`. Run inside /bin/sh to ensure
                 // we get consistent output as different shells output a different
                 // format. Tried running with `-p` but that is not available in /bin/sh
-                const { stdout } = await execFile("/bin/sh", ["-c", "type swiftc"]);
-                const swiftcMatch = /^swiftc is (.*)$/.exec(stdout);
-                if (swiftcMatch) {
-                    const swiftc = swiftcMatch[1];
-                    vscode.window.showInformationMessage("swiftc: ${swiftc}");
-                    return path.dirname(path.dirname(path.dirname(swiftc)));
+                const { stdout } = await execFile("/bin/sh", ["-c", "type swift"]);
+                const swiftMatch = /^swift is (.*)$/.exec(stdout.trimEnd());
+                if (swiftMatch) {
+                    const swift = swiftMatch[1];
+                    // swift may be a symbolic link
+                    const realSwift = await fs.realpath(swift);
+                    return path.dirname(path.dirname(path.dirname(realSwift)));
                 }
-                break;
+                throw Error("Failed to find swift executable");
             }
         }
     }
@@ -179,11 +180,15 @@ export class SwiftToolchain {
     }
 
     /**
+     * @param targetInfo swift target info
+     * @param swiftVersion parsed swift version
      * @param runtimePath path to Swift runtime
-     * @param sdkroot path to host SDK
+     * @param sdkroot path to swift SDK
      * @returns path to folder where xctest can be found
      */
     private static async getXCTestPath(
+        targetInfo: SwiftTargetInfo,
+        swiftVersion: Version,
         runtimePath: string | undefined,
         sdkroot: string | undefined
     ): Promise<string | undefined> {
@@ -193,15 +198,20 @@ export class SwiftToolchain {
                 return path.join(stdout.trimEnd(), "usr", "bin");
             }
             case "win32": {
+                // look up runtime library directory for XCTest alternatively
+                const fallbackPath =
+                    runtimePath !== undefined &&
+                    (await pathExists(path.join(runtimePath, "XCTest.dll")))
+                        ? runtimePath
+                        : undefined;
                 if (!sdkroot) {
-                    return undefined;
+                    return fallbackPath;
                 }
                 const platformPath = path.dirname(path.dirname(path.dirname(sdkroot)));
                 const platformManifest = path.join(platformPath, "Info.plist");
                 if ((await pathExists(platformManifest)) !== true) {
-                    // look up runtime library directory for XCTest
-                    if (runtimePath && (await pathExists(path.join(runtimePath, "XCTest.dll")))) {
-                        return runtimePath;
+                    if (fallbackPath) {
+                        return fallbackPath;
                     }
                     vscode.window.showWarningMessage(
                         "XCTest not found due to non-standardized library layout. Tests explorer won't work as expected."
@@ -214,14 +224,41 @@ export class SwiftToolchain {
                 if (!version) {
                     throw Error("Info.plist is missing the XCTEST_VERSION key.");
                 }
-                return path.join(
-                    platformPath,
-                    "Developer",
-                    "Library",
-                    `XCTest-${version}`,
-                    "usr",
-                    "bin"
-                );
+
+                if (swiftVersion >= new Version(5, 7, 0)) {
+                    let bindir: string;
+                    const arch = targetInfo.target?.triple.split("-", 1)[0];
+                    switch (arch) {
+                        case "x86_64":
+                            bindir = "bin64";
+                            break;
+                        case "i686":
+                            bindir = "bin32";
+                            break;
+                        case "aarch64":
+                            bindir = "bin64a";
+                            break;
+                        default:
+                            throw Error(`unsupported architecture ${arch}`);
+                    }
+                    return path.join(
+                        platformPath,
+                        "Developer",
+                        "Library",
+                        `XCTest-${version}`,
+                        "usr",
+                        bindir
+                    );
+                } else {
+                    return path.join(
+                        platformPath,
+                        "Developer",
+                        "Library",
+                        `XCTest-${version}`,
+                        "usr",
+                        "bin"
+                    );
+                }
             }
         }
         return undefined;

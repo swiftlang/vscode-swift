@@ -92,7 +92,9 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
             group: vscode.TaskGroup.Build,
             cwd: folderContext.folder,
             scope: folderContext.workspaceFolder,
-            presentationOptions: { clear: true },
+            presentationOptions: {
+                reveal: vscode.TaskRevealKind.Silent,
+            },
             problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
         }
     );
@@ -156,7 +158,9 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 group: vscode.TaskGroup.Build,
                 cwd: folderContext.folder,
                 scope: folderContext.workspaceFolder,
-                presentationOptions: { clear: true },
+                presentationOptions: {
+                    reveal: vscode.TaskRevealKind.Silent,
+                },
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
             }
         ),
@@ -167,7 +171,9 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 group: vscode.TaskGroup.Build,
                 cwd: folderContext.folder,
                 scope: folderContext.workspaceFolder,
-                presentationOptions: { clear: true },
+                presentationOptions: {
+                    reveal: vscode.TaskRevealKind.Silent,
+                },
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
             }
         ),
@@ -259,12 +265,13 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
     resolveTask(task: vscode.Task, token: vscode.CancellationToken): vscode.Task {
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
+        const swift = getSwiftExecutable();
         const newTask = new vscode.Task(
             task.definition,
             task.scope ?? vscode.TaskScope.Workspace,
             task.name ?? "Custom Task",
             "swift",
-            new vscode.ShellExecution(task.definition.command, task.definition.args, {
+            new vscode.ShellExecution(swift, task.definition.args, {
                 cwd: task.definition.cwd,
             }),
             task.problemMatchers
