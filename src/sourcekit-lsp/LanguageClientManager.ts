@@ -172,14 +172,21 @@ export class LanguageClientManager {
                 this.startedPromise = client
                     .stop()
                     .then(async () => {
-                        // change workspace folder and restart
-                        const workspaceFolder = {
-                            uri: uri,
-                            name: FolderContext.uriName(uri),
-                            index: 0,
-                        };
-                        client.clientOptions.workspaceFolder = workspaceFolder;
-                        await this.startClient(client);
+                        // if force restart is set then rebuild client completely
+                        // before starting otherwise just set the workspace folder
+                        // and call `startClient`
+                        if (forceRestart) {
+                            await this.setupLanguageClient(uri);
+                        } else {
+                            // change workspace folder and restart
+                            const workspaceFolder = {
+                                uri: uri,
+                                name: FolderContext.uriName(uri),
+                                index: 0,
+                            };
+                            client.clientOptions.workspaceFolder = workspaceFolder;
+                            await this.startClient(client);
+                        }
                     })
                     .catch(reason => {
                         this.workspaceContext.outputChannel.log(`${reason}`);
