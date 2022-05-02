@@ -74,4 +74,5 @@ Once your project has been built the Test Explorer will be able to list all your
 
 ### Documentation
 
+* [Extension Settings](docs/settings.md)
 * [Visual Studio Code Remote Development](docs/remote-dev.md)
