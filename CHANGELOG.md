@@ -4,6 +4,45 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.5.0 - 2022-05-02
+
+Version 0.5.0 of vscode-swift now requires v1.65.0 of Visual Studio Code
+
+### Added
+
+- Language status item to bottom bar. Pressing `{}` next to `Swift` label will display current swift version and a link to the `Package.swift` for the currently open project.
+- Experimental background compilation option. Whenever you save a file it will instigate a build task. This is currently defaulted to off.
+- Setting to set environment variables while running tests.
+- Setting to output more detailed diagnostics to Swift output pane.
+- Setting to set SDK folder (supporting non-standard SDK layout on Windows and custom SDKs).
+- Setting to set additional runtime path (supporting non-standard SDK layout on Windows).
+- More informative error messaging when Swift Package fails to load.
+
+### Changed
+
+- Inlay hints (annotations indicating infered types) now use the standard Visual Studio Code renderer.
+- Inlay hints are enabled by default.
+- Use Language client middleware to catch Document Symbol requests and use the results to update test list in TestExplorer.
+- Don't send unfocus events when opening non-file based view. Means current project stays in focus and project dependencies view won't disappear. 
+- If user has created a custom version of a build task in `tasks.json` then use that when building for tests, or running background compilation.
+- Split settings into sections. Add Sourcekit-LSP and Advanced sections.
+- When updating launch.json configurations, show one dialog for each project instead of for each configuration.
+- Windows: Removed dependency on `DEVELOPER_DIR` environment variable. Use `SDKROOT` instead.
+- Windows: Support Swift 5.7 file structure when finding XCTest.
+
+### Fixed
+
+- Tasks setup in `tasks.json` use the correct version of swift.
+- Restarting the LSP server after changing the `serverPath` setting actually uses new setting.
+- Windows: Test Explorer messaging when nothing is built.
+- Windows: Launching of tests
+- Windows: Use Swift LLDB to improve debugging experience.
+- Centos7: Fix the code finding `swift`.
+
+### Removed
+
+- `Sourcekit-LSP: Toolchain Path` setting. You can set this using the `Swift: Path` setting.
+
 ## 0.4.3 - 2022-04-05
 
 ### Fixed
