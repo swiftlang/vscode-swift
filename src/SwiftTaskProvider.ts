@@ -260,12 +260,13 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
     resolveTask(task: vscode.Task, token: vscode.CancellationToken): vscode.Task {
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
+        const swift = getSwiftExecutable();
         const newTask = new vscode.Task(
             task.definition,
             task.scope ?? vscode.TaskScope.Workspace,
             task.name ?? "Custom Task",
             "swift",
-            new vscode.ShellExecution(task.definition.command, task.definition.args, {
+            new vscode.ShellExecution(swift, task.definition.args, {
                 cwd: task.definition.cwd,
             }),
             task.problemMatchers
