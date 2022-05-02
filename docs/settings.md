@@ -50,11 +50,11 @@ Trace the communication between Visual Studio Code and the SourceKit-LSP server.
 
 - **Runtime Path**
 
-Where to find Swift runtime libraries. This is mainly of use when these libraries cannot be discovered via the RPATH. On Windows the runtime path is added to the `Path` environment variable. This is of less use on macOS and Linux but will be added to `DYLD_LIBRARY_PATH` and `LD_LIBRARY_PATH` environment variables respectively on each platform.
+Where to find Swift runtime libraries. This is mainly of use when these libraries cannot be discovered via the RPATH. On Windows the runtime path is added to the `Path` environment variable. This is of less use on macOS and Linux but will be added to `DYLD_LIBRARY_PATH` and `LD_LIBRARY_PATH` environment variables respectively on each platform. This is of use when supporting non-standard SDK layouts on Windows
 
 - **SDK**
 
-The path of the target SDK to compile against. The default SDK is determined by the environment on macOS and Windows.
+The path of the target SDK to compile against. The default SDK is determined by the environment on macOS and Windows. This is of use when supporting non-standard SDK layouts on Windows and using custom SDKs.
 
 - **Diagnostics**
 
