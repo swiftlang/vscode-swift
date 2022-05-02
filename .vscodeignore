@@ -3,8 +3,6 @@
 .vscode/**
 .vscode-test/**
 docker/**
-docs/**
-images/**
 assets/test/**
 node_modules/**
 out/**
