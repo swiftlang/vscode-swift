@@ -160,9 +160,20 @@ export async function execSwift(
 export function withSwiftSDKFlags(args: string[]): string[] {
     switch (args.length > 0 ? args[0] : null) {
         case "package":
-            // swift-package operates on the host, so it doesn't
-            // need to know about the destination
-            return args;
+            switch (args.length > 1 ? args[1] : null) {
+                case "dump-symbol-graph":
+                case "diagnose-api-breaking-changes": {
+                    // These two tools require building the package, so SDK
+                    // flags are needed. Destination control flags are
+                    // required to be placed before subcommand options.
+                    const subcommand = args.splice(0, 2);
+                    return [...subcommand, ...swiftpmSDKFlags(), ...args];
+                }
+                default:
+                    // Other swift-package subcommands operate on the host,
+                    // so it doesn't need to know about the destination.
+                    return args;
+            }
         case "build":
         case "run":
         case "test":
