@@ -2,10 +2,15 @@
 .gitignore
 .vscode/**
 .vscode-test/**
+docker/**
+docs/**
+images/**
+assets/test/**
 node_modules/**
 out/**
 scripts/**
 src/**
+test/**
 **/.eslintrc.json
 **/.prettierignore
 **/.prettierrc.json
