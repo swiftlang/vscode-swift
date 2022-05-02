@@ -158,9 +158,9 @@ export async function execSwift(
  * @param args original commandline arguments
  */
 export function withSwiftSDKFlags(args: string[]): string[] {
-    switch (args.length > 0 ? args[0] : null) {
+    switch (args[0]) {
         case "package":
-            switch (args.length > 1 ? args[1] : null) {
+            switch (args[1]) {
                 case "dump-symbol-graph":
                 case "diagnose-api-breaking-changes": {
                     // These two tools require building the package, so SDK
