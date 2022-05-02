@@ -180,11 +180,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
  */
 export function createSwiftTask(args: string[], name: string, config?: TaskConfig): vscode.Task {
     const swift = getSwiftExecutable();
-    if (["build", "package", "run", "test"].includes(args[0])) {
-        // Only inject destination flags for SwiftPM tasks.
-        // "Run Swift Script" shouldn't use custom destination SDK.
-        args = withSwiftSDKFlags(args);
-    }
+    args = withSwiftSDKFlags(args);
     const task = new vscode.Task(
         { type: "swift", command: swift, args: args, cwd: config?.cwd?.fsPath },
         config?.scope ?? vscode.TaskScope.Workspace,

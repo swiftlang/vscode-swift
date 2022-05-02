@@ -142,13 +142,10 @@ export async function execFileStreamOutput(
 export async function execSwift(
     args: string[],
     options: cp.ExecFileOptions = {},
-    folderContext?: FolderContext,
-    setSDKFlags = false
+    folderContext?: FolderContext
 ): Promise<{ stdout: string; stderr: string }> {
     const swift = getSwiftExecutable();
-    if (setSDKFlags) {
-        args = withSwiftSDKFlags(args);
-    }
+    args = withSwiftSDKFlags(args);
     return await execFile(swift, args, options, folderContext);
 }
 
@@ -179,7 +176,9 @@ export function withSwiftSDKFlags(args: string[]): string[] {
         case "test":
             return args.concat(swiftpmSDKFlags());
         default:
-            return args.concat(swiftDriverSDKFlags());
+            // We're not going to call the Swift compiler directly for cross-compiling
+            // and the destination settings are package-only, so do nothing here.
+            return args;
     }
 }
 
