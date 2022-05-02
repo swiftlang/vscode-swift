@@ -142,8 +142,8 @@ export async function execFileStreamOutput(
 export async function execSwift(
     args: string[],
     options: cp.ExecFileOptions = {},
-    setSDKFlags = false,
-    folderContext?: FolderContext
+    folderContext?: FolderContext,
+    setSDKFlags = false
 ): Promise<{ stdout: string; stderr: string }> {
     const swift = getSwiftExecutable();
     if (setSDKFlags) {
@@ -159,16 +159,10 @@ export async function execSwift(
  */
 export function withSwiftSDKFlags(args: string[]): string[] {
     switch (args.length > 0 ? args[0] : null) {
-        case "package": {
-            // swift-package requires SDK flags to be placed before subcommand options
-            // eg. ["package", "describe", "--type", "json"] should be turned into
-            // ["package", "describe", "--sdk", "/path/to/sdk", "--type", "json"]
-            if (args.length <= 2) {
-                return args.concat(swiftpmSDKFlags());
-            }
-            const subcommand = args.splice(0, 2);
-            return [...subcommand, ...swiftpmSDKFlags(), ...args];
-        }
+        case "package":
+            // swift-package operates on the host, so it doesn't
+            // need to know about the destination
+            return args;
         case "build":
         case "run":
         case "test":

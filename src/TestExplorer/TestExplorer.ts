@@ -124,8 +124,8 @@ export class TestExplorer {
                 {
                     cwd: this.folderContext.folder.fsPath,
                 },
-                true,
-                this.folderContext
+                this.folderContext,
+                true
             );
 
             // if we got to this point we can get rid of any error test item
