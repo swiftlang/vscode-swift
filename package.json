@@ -2,7 +2,7 @@
   "name": "swift-lang",
   "displayName": "Swift",
   "description": "Swift Language Support for Visual Studio Code.",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "publisher": "sswg",
   "icon": "icon.png",
   "repository": {
@@ -196,7 +196,7 @@
           "swift.SDK": {
             "type": "string",
             "default": "",
-            "description": "The path of the SDK to compile against. The default SDK is determined by the environment on macOS and Windows.",
+            "description": "The path of the SDK to compile against (`--sdk` parameter). The default SDK is determined by the environment on macOS and Windows.",
             "order": 2
           },
           "swift.diagnostics": {
