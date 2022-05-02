@@ -54,7 +54,7 @@ export class SwiftToolchain {
         public runtimePath?: string,
         private defaultTarget?: string,
         private hostSDK?: string,
-        private targetSDK?: string,
+        private destinationSDK?: string,
         public xcTestPath?: string
     ) {}
 
@@ -64,7 +64,7 @@ export class SwiftToolchain {
         const swiftVersion = await this.getSwiftVersion(targetInfo);
         const runtimePath = await this.getRuntimePath(targetInfo);
         const hostSDK = await this.getHostSDK();
-        const targetSDK = this.getTargetSDK();
+        const destinationSDK = this.getDestinationSDK();
         const xcTestPath = await this.getXCTestPath(targetInfo, swiftVersion, runtimePath, hostSDK);
         return new SwiftToolchain(
             toolchainPath,
@@ -73,7 +73,7 @@ export class SwiftToolchain {
             runtimePath,
             targetInfo.target?.triple,
             hostSDK,
-            targetSDK,
+            destinationSDK,
             xcTestPath
         );
     }
@@ -89,8 +89,8 @@ export class SwiftToolchain {
         if (this.hostSDK) {
             channel.logDiagnostic(`Host SDK: ${this.hostSDK}`);
         }
-        if (this.targetSDK) {
-            channel.logDiagnostic(`Target SDK: ${this.targetSDK}`);
+        if (this.destinationSDK) {
+            channel.logDiagnostic(`Target SDK: ${this.destinationSDK}`);
         }
         if (this.xcTestPath) {
             channel.logDiagnostic(`XCTest Path: ${this.xcTestPath}`);
@@ -173,9 +173,9 @@ export class SwiftToolchain {
     }
 
     /**
-     * @returns path to custom target SDK
+     * @returns path to destination SDK
      */
-    private static getTargetSDK(): string | undefined {
+    private static getDestinationSDK(): string | undefined {
         return configuration.sdk !== "" ? configuration.sdk : undefined;
     }
 

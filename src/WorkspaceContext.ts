@@ -81,13 +81,13 @@ export class WorkspaceContext implements vscode.Disposable {
                         }
                     });
             }
-            // on target sdk config change, restart sourcekit-lsp
+            // on destination sdk config change, restart sourcekit-lsp
             if (event.affectsConfiguration("swift.SDK")) {
                 // FIXME: There is a bug stopping us from restarting SourceKit-LSP directly.
                 // As long as it's fixed we won't need to reload on newer versions.
                 vscode.window
                     .showInformationMessage(
-                        "Changing the Swift target SDK path requires the project be reloaded.",
+                        "Changing the Swift destination SDK path requires the project be reloaded.",
                         "Ok"
                     )
                     .then(selected => {
