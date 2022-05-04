@@ -142,13 +142,10 @@ export async function execFileStreamOutput(
 export async function execSwift(
     args: string[],
     options: cp.ExecFileOptions = {},
-    setSDKFlags = false,
     folderContext?: FolderContext
 ): Promise<{ stdout: string; stderr: string }> {
     const swift = getSwiftExecutable();
-    if (setSDKFlags) {
-        args = withSwiftSDKFlags(args);
-    }
+    args = withSwiftSDKFlags(args);
     return await execFile(swift, args, options, folderContext);
 }
 
@@ -158,23 +155,30 @@ export async function execSwift(
  * @param args original commandline arguments
  */
 export function withSwiftSDKFlags(args: string[]): string[] {
-    switch (args.length > 0 ? args[0] : null) {
-        case "package": {
-            // swift-package requires SDK flags to be placed before subcommand options
-            // eg. ["package", "describe", "--type", "json"] should be turned into
-            // ["package", "describe", "--sdk", "/path/to/sdk", "--type", "json"]
-            if (args.length <= 2) {
-                return args.concat(swiftpmSDKFlags());
+    switch (args[0]) {
+        case "package":
+            switch (args[1]) {
+                case "dump-symbol-graph":
+                case "diagnose-api-breaking-changes": {
+                    // These two tools require building the package, so SDK
+                    // flags are needed. Destination control flags are
+                    // required to be placed before subcommand options.
+                    const subcommand = args.splice(0, 2);
+                    return [...subcommand, ...swiftpmSDKFlags(), ...args];
+                }
+                default:
+                    // Other swift-package subcommands operate on the host,
+                    // so it doesn't need to know about the destination.
+                    return args;
             }
-            const subcommand = args.splice(0, 2);
-            return [...subcommand, ...swiftpmSDKFlags(), ...args];
-        }
         case "build":
         case "run":
         case "test":
             return args.concat(swiftpmSDKFlags());
         default:
-            return args.concat(swiftDriverSDKFlags());
+            // We're not going to call the Swift compiler directly for cross-compiling
+            // and the destination settings are package-only, so do nothing here.
+            return args;
     }
 }
 

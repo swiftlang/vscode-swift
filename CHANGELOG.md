@@ -14,8 +14,8 @@ Version 0.5.0 of vscode-swift now requires v1.65.0 of Visual Studio Code
 - Experimental background compilation option. Whenever you save a file it will instigate a build task. This is currently defaulted to off.
 - Setting to set environment variables while running tests.
 - Setting to output more detailed diagnostics to Swift output pane.
-- Setting to set SDK folder (supporting non-standard SDK layout on Windows and custom SDKs).
-- Setting to set additional runtime path (supporting non-standard SDK layout on Windows).
+- Setting to set SDK folder (supporting custom SDKs).
+- Setting to set additional runtime path (supporting non-standard installation on Windows).
 - More informative error messaging when Swift Package fails to load.
 
 ### Changed
@@ -37,7 +37,7 @@ Version 0.5.0 of vscode-swift now requires v1.65.0 of Visual Studio Code
 - Windows: Test Explorer messaging when nothing is built.
 - Windows: Launching of tests
 - Windows: Use Swift LLDB to improve debugging experience.
-- Centos7: Fix the code finding `swift`.
+- CentOS7: Fix the code finding `swift`.
 
 ### Removed
 

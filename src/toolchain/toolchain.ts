@@ -69,7 +69,7 @@ export class SwiftToolchain {
             targetInfo,
             swiftVersion,
             runtimePath,
-            defaultSDK
+            customSDK ?? defaultSDK
         );
         return new SwiftToolchain(
             toolchainPath,
@@ -182,8 +182,10 @@ export class SwiftToolchain {
     }
 
     /**
+     * @param targetInfo swift target info
+     * @param swiftVersion parsed swift version
      * @param runtimePath path to Swift runtime
-     * @param sdkroot path to default SDK
+     * @param sdkroot path to swift SDK
      * @returns path to folder where xctest can be found
      */
     private static async getXCTestPath(
@@ -198,17 +200,22 @@ export class SwiftToolchain {
                 return path.join(stdout.trimEnd(), "usr", "bin");
             }
             case "win32": {
+                // look up runtime library directory for XCTest alternatively
+                const fallbackPath =
+                    runtimePath !== undefined &&
+                    (await pathExists(path.join(runtimePath, "XCTest.dll")))
+                        ? runtimePath
+                        : undefined;
                 if (!sdkroot) {
-                    return undefined;
+                    return fallbackPath;
                 }
                 const platformPath = path.dirname(path.dirname(path.dirname(sdkroot)));
                 const platformManifest = path.join(platformPath, "Info.plist");
                 if ((await pathExists(platformManifest)) !== true) {
-                    // look up runtime library directory for XCTest
-                    if (runtimePath && (await pathExists(path.join(runtimePath, "XCTest.dll")))) {
-                        return runtimePath;
+                    if (fallbackPath) {
+                        return fallbackPath;
                     }
-                    await vscode.window.showWarningMessage(
+                    vscode.window.showWarningMessage(
                         "XCTest not found due to non-standardized library layout. Tests explorer won't work as expected."
                     );
                     return undefined;

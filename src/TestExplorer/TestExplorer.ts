@@ -124,7 +124,6 @@ export class TestExplorer {
                 {
                     cwd: this.folderContext.folder.fsPath,
                 },
-                true,
                 this.folderContext
             );
 
