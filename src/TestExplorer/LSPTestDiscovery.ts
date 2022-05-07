@@ -128,6 +128,13 @@ export class LSPTestDiscovery {
             const funcId = `${this.targetName}.${f.className}/${f.funcName}`;
             classItem.children.delete(funcId);
         }
+
+        // delete any empty classes
+        targetItem.children.forEach(classItem => {
+            if (classItem.children.size === 0) {
+                targetItem.children.delete(classItem.id);
+            }
+        });
     }
 
     /** Add test items for LSP server results */
