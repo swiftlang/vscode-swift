@@ -284,6 +284,10 @@ export class WorkspaceContext implements vscode.Disposable {
     async setLLDBVersion() {
         const libPath = await getLLDBLibPath(getSwiftExecutable("lldb"));
         if (!libPath) {
+            vscode.window.showErrorMessage(
+                "Failed to setup CodeLLDB for debugging of Swift code. Debugging may produce unexpected results."
+            );
+            this.outputChannel.log("Failed to setup CodeLLDB");
             return;
         }
 

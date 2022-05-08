@@ -187,6 +187,10 @@ export function createTestConfiguration(
         if (sdkroot === undefined) {
             return null;
         }
+        let preRunCommands: string[] | undefined;
+        if (vscode.workspace.getConfiguration("lldb")?.get<string>("library")) {
+            preRunCommands = [`settings set target.sdk-path ${sdkroot}`];
+        }
         return {
             type: "lldb",
             request: "launch",
@@ -194,7 +198,7 @@ export function createTestConfiguration(
             program: `${folder}/.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
             cwd: folder,
             env: testEnv,
-            preRunCommands: [`settings set target.sdk-path ${sdkroot}`],
+            preRunCommands: preRunCommands,
             preLaunchTask: `swift: Build All${nameSuffix}`,
         };
     } else {
