@@ -18,25 +18,32 @@
 import * as path from "path";
 import * as fs from "fs/promises";
 import { execFile } from "../utilities/utilities";
+import { Result } from "../utilities/result";
 
 /**
  * Get LLDB library for given LLDB executable
  * @param executable LLDB executable
  * @returns Library path for LLDB
  */
-export async function getLLDBLibPath(executable: string): Promise<string | undefined> {
+export async function getLLDBLibPath(executable: string): Promise<Result<string>> {
     try {
         const statement = `print('<!' + lldb.SBHostOS.GetLLDBPath(lldb.ePathTypeLLDBShlibDir).fullpath + '!>')`;
         const args = ["-b", "-O", `script ${statement}`];
         const { stdout } = await execFile(executable, args);
         const m = /^<!([^!]*)!>/m.exec(stdout);
         if (m) {
-            return findLibLLDB(m[1]);
+            const lldbPath = await findLibLLDB(m[1]);
+            if (lldbPath) {
+                return Result.makeSuccess(lldbPath);
+            } else {
+                return Result.makeFailure("Failed to find Swift version of LLDB.");
+            }
         }
-    } catch {
+    } catch (error) {
         // ignore error just return undefined
+        return Result.makeFailure(error);
     }
-    return undefined;
+    return Result.makeFailure("LLDB failed to provide a library path");
 }
 
 async function findLibLLDB(pathHint: string): Promise<string | undefined> {
