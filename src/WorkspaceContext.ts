@@ -408,27 +408,19 @@ export class WorkspaceContext implements vscode.Disposable {
 }
 
 /** Workspace Folder events */
-export class FolderEvent {
-    /** Workspace folder has been added */
-    static add = new FolderEvent("add");
-    /** Workspace folder has been removed */
-    static remove = new FolderEvent("remove");
-    /** Workspace folder has gained focus via a file inside the folder becoming the actively edited file */
-    static focus = new FolderEvent("focus");
-    /** Workspace folder loses focus because another workspace folder gained it */
-    static unfocus = new FolderEvent("unfocus");
-    /** Package.swift has been updated */
-    static packageUpdated = new FolderEvent("packageUpdated");
-    /** Package.resolved has been updated */
-    static resolvedUpdated = new FolderEvent("resolvedUpdated");
-
-    constructor(private readonly name: string) {
-        this.name = name;
-    }
-
-    toString() {
-        return this.name;
-    }
+export enum FolderEvent {
+    // Workspace folder has been added
+    add = "add",
+    // Workspace folder has been removed
+    remove = "remove",
+    // Workspace folder has gained focus via a file inside the folder becoming the actively edited file
+    focus = "focus",
+    // Workspace folder loses focus because another workspace folder gained it
+    unfocus = "unfocus",
+    // Package.swift has been updated
+    packageUpdated = "packageUpdated",
+    // Package.resolved has been updated
+    resolvedUpdated = "resolvedUpdated",
 }
 
 /** Workspace Folder observer function */
