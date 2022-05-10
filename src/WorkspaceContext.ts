@@ -291,7 +291,7 @@ export class WorkspaceContext implements vscode.Disposable {
             vscode.window.showErrorMessage(
                 `Failed to setup CodeLLDB for debugging of Swift code. Debugging may produce unexpected results. ${errorMessage}`
             );
-            this.outputChannel.log("Failed to setup CodeLLDB");
+            this.outputChannel.log(`Failed to setup CodeLLDB: ${errorMessage}`);
             return;
         }
 
