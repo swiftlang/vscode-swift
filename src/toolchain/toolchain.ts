@@ -109,31 +109,35 @@ export class SwiftToolchain {
         if (configuration.path !== "") {
             return path.dirname(path.dirname(configuration.path));
         }
-        switch (process.platform) {
-            case "darwin": {
-                const { stdout } = await execFile("xcrun", ["--find", "swiftc"]);
-                const swiftc = stdout.trimEnd();
-                return path.dirname(path.dirname(path.dirname(swiftc)));
-            }
-            case "win32": {
-                const { stdout } = await execFile("where", ["swiftc"]);
-                const swiftc = stdout.trimEnd();
-                return path.dirname(path.dirname(path.dirname(swiftc)));
-            }
-            default: {
-                // use `type swift` to find `swift`. Run inside /bin/sh to ensure
-                // we get consistent output as different shells output a different
-                // format. Tried running with `-p` but that is not available in /bin/sh
-                const { stdout } = await execFile("/bin/sh", ["-c", "type swift"]);
-                const swiftMatch = /^swift is (.*)$/.exec(stdout.trimEnd());
-                if (swiftMatch) {
-                    const swift = swiftMatch[1];
-                    // swift may be a symbolic link
-                    const realSwift = await fs.realpath(swift);
-                    return path.dirname(path.dirname(path.dirname(realSwift)));
+        try {
+            switch (process.platform) {
+                case "darwin": {
+                    const { stdout } = await execFile("xcrun", ["--find", "swiftc"]);
+                    const swiftc = stdout.trimEnd();
+                    return path.dirname(path.dirname(path.dirname(swiftc)));
                 }
-                throw Error("Failed to find swift executable");
+                case "win32": {
+                    const { stdout } = await execFile("where", ["swiftc"]);
+                    const swiftc = stdout.trimEnd();
+                    return path.dirname(path.dirname(path.dirname(swiftc)));
+                }
+                default: {
+                    // use `type swift` to find `swift`. Run inside /bin/sh to ensure
+                    // we get consistent output as different shells output a different
+                    // format. Tried running with `-p` but that is not available in /bin/sh
+                    const { stdout } = await execFile("/bin/sh", ["-c", "type swift"]);
+                    const swiftMatch = /^swift is (.*)$/.exec(stdout.trimEnd());
+                    if (swiftMatch) {
+                        const swift = swiftMatch[1];
+                        // swift may be a symbolic link
+                        const realSwift = await fs.realpath(swift);
+                        return path.dirname(path.dirname(path.dirname(realSwift)));
+                    }
+                    throw Error("Failed to find swift executable");
+                }
             }
+        } catch {
+            throw Error("Failed to find swift executable");
         }
     }
 
