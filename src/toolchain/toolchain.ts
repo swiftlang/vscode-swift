@@ -48,6 +48,7 @@ interface SwiftTargetInfo {
 
 export class SwiftToolchain {
     constructor(
+        public swiftFolderPath: string,
         public toolchainPath: string,
         public swiftVersionString: string,
         public swiftVersion: Version,
@@ -59,7 +60,8 @@ export class SwiftToolchain {
     ) {}
 
     static async create(): Promise<SwiftToolchain> {
-        const toolchainPath = await this.getToolchainPath();
+        const swiftFolderPath = await this.getSwiftFolderPath();
+        const toolchainPath = await this.getToolchainPath(swiftFolderPath);
         const targetInfo = await this.getSwiftTargetInfo();
         const swiftVersion = await this.getSwiftVersion(targetInfo);
         const runtimePath = await this.getRuntimePath(targetInfo);
@@ -72,6 +74,7 @@ export class SwiftToolchain {
             customSDK ?? defaultSDK
         );
         return new SwiftToolchain(
+            swiftFolderPath,
             toolchainPath,
             targetInfo.compilerVersion,
             swiftVersion,
@@ -84,6 +87,7 @@ export class SwiftToolchain {
     }
 
     logDiagnostics(channel: SwiftOutputChannel) {
+        channel.logDiagnostic(`Swift Path: ${this.swiftFolderPath}`);
         channel.logDiagnostic(`Toolchain Path: ${this.toolchainPath}`);
         if (this.runtimePath) {
             channel.logDiagnostic(`Runtime Library Path: ${this.runtimePath}`);
@@ -102,24 +106,22 @@ export class SwiftToolchain {
         }
     }
 
-    /**
-     * @returns path to Toolchain folder
-     */
-    private static async getToolchainPath(): Promise<string> {
+    private static async getSwiftFolderPath(): Promise<string> {
         if (configuration.path !== "") {
-            return path.dirname(path.dirname(configuration.path));
+            return configuration.path;
         }
         try {
+            let swift: string;
             switch (process.platform) {
                 case "darwin": {
-                    const { stdout } = await execFile("xcrun", ["--find", "swiftc"]);
-                    const swiftc = stdout.trimEnd();
-                    return path.dirname(path.dirname(path.dirname(swiftc)));
+                    const { stdout } = await execFile("which", ["swift"]);
+                    swift = stdout.trimEnd();
+                    break;
                 }
                 case "win32": {
-                    const { stdout } = await execFile("where", ["swiftc"]);
-                    const swiftc = stdout.trimEnd();
-                    return path.dirname(path.dirname(path.dirname(swiftc)));
+                    const { stdout } = await execFile("where", ["swift"]);
+                    swift = stdout.trimEnd();
+                    break;
                 }
                 default: {
                     // use `type swift` to find `swift`. Run inside /bin/sh to ensure
@@ -128,16 +130,41 @@ export class SwiftToolchain {
                     const { stdout } = await execFile("/bin/sh", ["-c", "type swift"]);
                     const swiftMatch = /^swift is (.*)$/.exec(stdout.trimEnd());
                     if (swiftMatch) {
-                        const swift = swiftMatch[1];
-                        // swift may be a symbolic link
-                        const realSwift = await fs.realpath(swift);
-                        return path.dirname(path.dirname(path.dirname(realSwift)));
+                        swift = swiftMatch[1];
+                    } else {
+                        throw Error("Failed to find swift executable");
                     }
-                    throw Error("Failed to find swift executable");
+                    break;
+                }
+            }
+            // swift may be a symbolic link
+            const realSwift = await fs.realpath(swift);
+            return path.dirname(realSwift);
+        } catch {
+            throw Error("Failed to find swift executable");
+        }
+    }
+
+    /**
+     * @returns path to Toolchain folder
+     */
+    private static async getToolchainPath(swiftPath: string): Promise<string> {
+        if (configuration.path !== "") {
+            return path.dirname(path.dirname(configuration.path));
+        }
+        try {
+            switch (process.platform) {
+                case "darwin": {
+                    const { stdout } = await execFile("xcrun", ["--find", "swift"]);
+                    const swift = stdout.trimEnd();
+                    return path.dirname(path.dirname(path.dirname(swift)));
+                }
+                default: {
+                    return path.dirname(path.dirname(path.dirname(swiftPath)));
                 }
             }
         } catch {
-            throw Error("Failed to find swift executable");
+            throw Error("Failed to find swift toolchain");
         }
     }
 
