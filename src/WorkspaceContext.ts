@@ -18,7 +18,6 @@ import { FolderContext } from "./FolderContext";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
 import {
-    getSwiftExecutable,
     pathExists,
     isPathInsidePath,
     swiftLibraryPathKey,
@@ -283,7 +282,7 @@ export class WorkspaceContext implements vscode.Disposable {
 
     /** find LLDB version and setup path in CodeLLDB */
     async setLLDBVersion() {
-        const libPathResult = await getLLDBLibPath(getSwiftExecutable("lldb"));
+        const libPathResult = await getLLDBLibPath(this.toolchain);
         if (!libPathResult.success) {
             const errorMessage = libPathResult.failure
                 ? `Error: ${getErrorDescription(libPathResult.failure)}`
