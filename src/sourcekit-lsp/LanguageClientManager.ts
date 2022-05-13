@@ -247,7 +247,7 @@ export class LanguageClientManager {
         const sdkArguments = [
             ...swiftDriverSDKFlags(true),
             ...platformDebugBuildOptions(),
-            ...configuration.buildArguments,
+            ...this.filterBuildArguments(configuration.buildArguments),
         ];
         const sourcekit: langclient.Executable = {
             command: serverPath,
@@ -331,6 +331,35 @@ export class LanguageClientManager {
                     reject(reason);
                 });
         });
+    }
+
+    /** Filter arguments passed to swift exe for arguments we can pass to sourcekit-lsp */
+    private filterBuildArguments(args: string[]): string[] {
+        const filter: { argument: string; include: number }[] = [
+            { argument: "--build-path", include: 1 },
+            { argument: "-Xswiftc", include: 1 },
+            { argument: "-Xcc", include: 1 },
+            { argument: "-Xcxx", include: 1 },
+            { argument: "-Xlinker", include: 1 },
+            { argument: "-Xclangd", include: 1 },
+            { argument: "-index-store-path", include: 1 },
+        ];
+        const filteredArguments: string[] = [];
+        let includeCount = 0;
+        for (const arg of args) {
+            if (includeCount > 0) {
+                filteredArguments.push(arg);
+                includeCount -= 1;
+                continue;
+            }
+            const argFilter = filter.find(item => item.argument === arg);
+            if (argFilter) {
+                filteredArguments.push(arg);
+                includeCount = argFilter.include;
+            }
+        }
+        return filteredArguments;
+        // can include any from -X.. family of
     }
 }
 
