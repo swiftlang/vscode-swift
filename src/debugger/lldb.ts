@@ -19,31 +19,33 @@ import * as path from "path";
 import * as fs from "fs/promises";
 import { execFile } from "../utilities/utilities";
 import { Result } from "../utilities/result";
+import { SwiftToolchain } from "../toolchain/toolchain";
 
 /**
  * Get LLDB library for given LLDB executable
  * @param executable LLDB executable
  * @returns Library path for LLDB
  */
-export async function getLLDBLibPath(executable: string): Promise<Result<string>> {
+export async function getLLDBLibPath(toolchain: SwiftToolchain): Promise<Result<string>> {
+    const executable = path.join(toolchain.swiftFolderPath, "lldb");
+    let pathHint = path.dirname(toolchain.swiftFolderPath);
     try {
         const statement = `print('<!' + lldb.SBHostOS.GetLLDBPath(lldb.ePathTypeLLDBShlibDir).fullpath + '!>')`;
         const args = ["-b", "-O", `script ${statement}`];
         const { stdout } = await execFile(executable, args);
         const m = /^<!([^!]*)!>/m.exec(stdout);
         if (m) {
-            const lldbPath = await findLibLLDB(m[1]);
-            if (lldbPath) {
-                return Result.makeSuccess(lldbPath);
-            } else {
-                return Result.makeFailure("Failed to find Swift version of LLDB.");
-            }
+            pathHint = m[1];
         }
     } catch (error) {
-        // ignore error just return undefined
-        return Result.makeFailure(error);
+        // ignore error
     }
-    return Result.makeFailure("LLDB failed to provide a library path");
+    const lldbPath = await findLibLLDB(pathHint);
+    if (lldbPath) {
+        return Result.makeSuccess(lldbPath);
+    } else {
+        return Result.makeFailure("LLDB failed to provide a library path");
+    }
 }
 
 async function findLibLLDB(pathHint: string): Promise<string | undefined> {

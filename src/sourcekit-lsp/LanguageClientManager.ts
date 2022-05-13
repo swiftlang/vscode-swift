@@ -257,11 +257,14 @@ export class LanguageClientManager {
             configuration.path.length > 0 &&
             serverPathConfig !== getSwiftExecutable("sourcekit-lsp")
         ) {
-            const toolchainPath = this.workspaceContext.toolchain.toolchainPath;
-            if (toolchainPath) {
+            // if configuration has custom swift path then set toolchain path
+            if (configuration.path) {
                 // eslint-disable-next-line @typescript-eslint/naming-convention
                 sourcekit.options = {
-                    env: { ...sourcekit.options?.env, SOURCEKIT_TOOLCHAIN_PATH: toolchainPath },
+                    env: {
+                        ...sourcekit.options?.env,
+                        SOURCEKIT_TOOLCHAIN_PATH: this.workspaceContext.toolchain.toolchainPath,
+                    },
                 };
             }
         }
