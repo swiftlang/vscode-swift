@@ -27,7 +27,6 @@ import { Version } from "../utilities/version";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { activateInlayHints } from "./inlayHints";
 import { FolderContext } from "../FolderContext";
-import { platformDebugBuildOptions } from "../SwiftTaskProvider";
 
 /** Manages the creation and destruction of Language clients as we move between
  * workspace folders
@@ -258,7 +257,6 @@ export class LanguageClientManager {
             serverPathConfig.length > 0 ? serverPathConfig : getSwiftExecutable("sourcekit-lsp");
         const sdkArguments = [
             ...swiftDriverSDKFlags(true),
-            ...platformDebugBuildOptions(),
             ...filterArguments(
                 configuration.buildArguments,
                 LanguageClientManager.buildArgumentFilter
