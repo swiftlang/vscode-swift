@@ -16,6 +16,8 @@ import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 import configuration from "../configuration";
 import {
+    ArgumentFilter,
+    filterArguments,
     getSwiftExecutable,
     isPathInsidePath,
     swiftDriverSDKFlags,
@@ -43,6 +45,16 @@ export class LanguageClientManager {
         { scheme: "untitled", language: "objective-c" },
         { scheme: "file", language: "objective-cpp" },
         { scheme: "untitled", language: "objective-cpp" },
+    ];
+    // build argument to sourcekit-lsp filter
+    static buildArgumentFilter: ArgumentFilter[] = [
+        { argument: "--build-path", include: 1 },
+        { argument: "-Xswiftc", include: 1 },
+        { argument: "-Xcc", include: 1 },
+        { argument: "-Xcxx", include: 1 },
+        { argument: "-Xlinker", include: 1 },
+        { argument: "-Xclangd", include: 1 },
+        { argument: "-index-store-path", include: 1 },
     ];
 
     /** current running client */
@@ -247,7 +259,10 @@ export class LanguageClientManager {
         const sdkArguments = [
             ...swiftDriverSDKFlags(true),
             ...platformDebugBuildOptions(),
-            ...this.filterBuildArguments(configuration.buildArguments),
+            ...filterArguments(
+                configuration.buildArguments,
+                LanguageClientManager.buildArgumentFilter
+            ),
         ];
         const sourcekit: langclient.Executable = {
             command: serverPath,
@@ -331,35 +346,6 @@ export class LanguageClientManager {
                     reject(reason);
                 });
         });
-    }
-
-    /** Filter arguments passed to swift exe for arguments we can pass to sourcekit-lsp */
-    private filterBuildArguments(args: string[]): string[] {
-        const filter: { argument: string; include: number }[] = [
-            { argument: "--build-path", include: 1 },
-            { argument: "-Xswiftc", include: 1 },
-            { argument: "-Xcc", include: 1 },
-            { argument: "-Xcxx", include: 1 },
-            { argument: "-Xlinker", include: 1 },
-            { argument: "-Xclangd", include: 1 },
-            { argument: "-index-store-path", include: 1 },
-        ];
-        const filteredArguments: string[] = [];
-        let includeCount = 0;
-        for (const arg of args) {
-            if (includeCount > 0) {
-                filteredArguments.push(arg);
-                includeCount -= 1;
-                continue;
-            }
-            const argFilter = filter.find(item => item.argument === arg);
-            if (argFilter) {
-                filteredArguments.push(arg);
-                includeCount = argFilter.include;
-            }
-        }
-        return filteredArguments;
-        // can include any from -X.. family of
     }
 }
 

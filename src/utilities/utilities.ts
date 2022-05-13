@@ -306,3 +306,32 @@ export function stringArrayInEnglish(strings: string[]): string {
         ? strings[0]
         : [strings.slice(0, -1).join(", "), strings[strings.length - 1]].join(" and ");
 }
+
+export interface ArgumentFilter {
+    argument: string;
+    include: number;
+}
+
+/**
+ *  Filter argument list
+ * @param args argument list
+ * @param filter argument list filter
+ * @returns filtered argument list
+ */
+export function filterArguments(args: string[], filter: ArgumentFilter[]): string[] {
+    const filteredArguments: string[] = [];
+    let includeCount = 0;
+    for (const arg of args) {
+        if (includeCount > 0) {
+            filteredArguments.push(arg);
+            includeCount -= 1;
+            continue;
+        }
+        const argFilter = filter.find(item => item.argument === arg);
+        if (argFilter) {
+            filteredArguments.push(arg);
+            includeCount = argFilter.include;
+        }
+    }
+    return filteredArguments;
+}
