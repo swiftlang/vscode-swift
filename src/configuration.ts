@@ -77,6 +77,12 @@ const configuration = {
     get buildArguments(): string[] {
         return vscode.workspace.getConfiguration("swift").get<string[]>("buildArguments", []);
     },
+    /** Environment variables to set when building */
+    get swiftEnvironmentVariables(): { [key: string]: string } {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<{ [key: string]: string }>("swiftEnvironmentVariables", {});
+    },
     /** include build errors in problems view */
     get problemMatchCompileErrors(): boolean {
         return vscode.workspace
@@ -100,10 +106,10 @@ const configuration = {
         return vscode.workspace.getConfiguration("swift").get<boolean>("diagnostics", false);
     },
     /** Environment variables to set when running tests */
-    get testEnvironmentVariables(): Record<string, string> {
+    get testEnvironmentVariables(): { [key: string]: string } {
         return vscode.workspace
             .getConfiguration("swift")
-            .get<Record<string, string>>("testEnvironmentVariables", {});
+            .get<{ [key: string]: string }>("testEnvironmentVariables", {});
     },
 };
 

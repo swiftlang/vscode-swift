@@ -188,7 +188,7 @@ export function createSwiftTask(args: string[], name: string, config?: TaskConfi
         "swift",
         new vscode.ShellExecution(swift, args, {
             cwd: config?.cwd?.fsPath,
-            env: swiftRuntimeEnv(),
+            env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
         }),
         config?.problemMatcher
     );
