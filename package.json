@@ -195,7 +195,7 @@
               }
             },
             "default": {},
-            "markdownDescription": "Additional environment variables to pass to swift build and package operations.",
+            "markdownDescription": "Additional environment variables to pass to swift operations.",
             "order": 1
           },
           "swift.runtimePath": {
