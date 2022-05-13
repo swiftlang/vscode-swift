@@ -85,6 +85,10 @@ export async function execFile(
             options.env = { ...options.env, ...runtimeEnv };
         }
     }
+    // it options contain environment keys add them to process environment keys
+    if (options.env && Object.keys(options.env).length) {
+        options.env = { ...process.env, ...options.env };
+    }
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) =>
         cp.execFile(executable, args, options, (error, stdout, stderr) => {
             if (error) {
@@ -112,7 +116,7 @@ export async function execFileStreamOutput(
     if (customSwiftRuntime) {
         const runtimeEnv = swiftRuntimeEnv(options.env);
         if (runtimeEnv && Object.keys(runtimeEnv).length > 0) {
-            options.env = { ...options.env, ...runtimeEnv };
+            options.env = { ...(options.env ?? process.env), ...runtimeEnv };
         }
     }
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
@@ -153,7 +157,12 @@ export async function execSwift(
     const swift = getSwiftExecutable();
     args = withSwiftSDKFlags(args);
     if (Object.keys(configuration.swiftEnvironmentVariables).length > 0) {
-        options.env = { ...configuration.swiftEnvironmentVariables, ...options.env };
+        // when adding environment vars we either combine with vars passed
+        // into the function or the process environment vars
+        options.env = {
+            ...configuration.swiftEnvironmentVariables,
+            ...(options.env ?? process.env),
+        };
     }
     return await execFile(swift, args, options, folderContext);
 }
