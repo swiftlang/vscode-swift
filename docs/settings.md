@@ -48,6 +48,10 @@ Trace the communication between Visual Studio Code and the SourceKit-LSP server.
 
 ### Advanced
 
+- **Swift Environment Variables**
+
+This is a list of environment variables to set when running swift (build, resolve etc). 
+
 - **Runtime Path**
 
 Where to find Swift runtime libraries. This is mainly of use when these libraries cannot be discovered via the RPATH. On Windows the runtime path is added to the `Path` environment variable. This is of less use on macOS and Linux but will be added to `DYLD_LIBRARY_PATH` and `LD_LIBRARY_PATH` environment variables respectively on each platform. This is of use when supporting non-standard SDK layouts on Windows
