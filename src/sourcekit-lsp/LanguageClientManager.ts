@@ -247,7 +247,13 @@ export class LanguageClientManager {
         const sourcekit: langclient.Executable = {
             command: serverPath,
             args: lspConfig.serverArguments.concat(sdkArguments),
-            options: { env: { ...process.env, ...swiftRuntimeEnv() } },
+            options: {
+                env: {
+                    ...process.env,
+                    ...configuration.swiftEnvironmentVariables,
+                    ...swiftRuntimeEnv(),
+                },
+            },
         };
 
         // if path to LSP server is not equal to the path to swift and both are set, then
