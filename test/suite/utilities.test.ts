@@ -15,7 +15,9 @@
 import * as assert from "assert";
 import * as Stream from "stream";
 import {
+    ArgumentFilter,
     execFileStreamOutput,
+    filterArguments,
     getRepositoryName,
     getSwiftExecutable,
     isPathInsidePath,
@@ -84,5 +86,36 @@ suite("Utilities Test Suite", () => {
         assert(result.length > 0);
         assert(result.includes("Swift version"));
         assert.strictEqual(result, stdout);
+    });
+
+    test("filterArguments", () => {
+        const argumentFilter: ArgumentFilter[] = [
+            { argument: "-one", include: 1 },
+            { argument: "-1", include: 1 },
+            { argument: "-zero", include: 0 },
+            { argument: "-two", include: 2 },
+        ];
+        assert.notStrictEqual(filterArguments(["-test", "this"], argumentFilter), []);
+        assert.notStrictEqual(filterArguments(["-test", "-zero"], argumentFilter), ["-zero"]);
+        assert.notStrictEqual(filterArguments(["-one", "inc1", "test"], argumentFilter), [
+            "-one",
+            "inc1",
+        ]);
+        assert.notStrictEqual(filterArguments(["-two", "inc1", "inc2"], argumentFilter), [
+            "-one",
+            "inc1",
+            "inc2",
+        ]);
+        assert.notStrictEqual(
+            filterArguments(["-ignore", "-one", "inc1", "test"], argumentFilter),
+            ["-one", "inc1"]
+        );
+        assert.notStrictEqual(
+            filterArguments(["-one", "inc1", "test", "-1", "inc2"], argumentFilter),
+            ["-one", "inc1", "-1", "inc2"]
+        );
+        assert.notStrictEqual(filterArguments(["-one=1", "-zero=0", "-one1=1"], argumentFilter), [
+            "-one=1",
+        ]);
     });
 });

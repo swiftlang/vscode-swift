@@ -16,6 +16,8 @@ import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 import configuration from "../configuration";
 import {
+    ArgumentFilter,
+    filterArguments,
     getSwiftExecutable,
     isPathInsidePath,
     swiftDriverSDKFlags,
@@ -42,6 +44,16 @@ export class LanguageClientManager {
         { scheme: "untitled", language: "objective-c" },
         { scheme: "file", language: "objective-cpp" },
         { scheme: "untitled", language: "objective-cpp" },
+    ];
+    // build argument to sourcekit-lsp filter
+    static buildArgumentFilter: ArgumentFilter[] = [
+        { argument: "--build-path", include: 1 },
+        { argument: "-Xswiftc", include: 1 },
+        { argument: "-Xcc", include: 1 },
+        { argument: "-Xcxx", include: 1 },
+        { argument: "-Xlinker", include: 1 },
+        { argument: "-Xclangd", include: 1 },
+        { argument: "-index-store-path", include: 1 },
     ];
 
     /** current running client */
@@ -243,7 +255,13 @@ export class LanguageClientManager {
         const serverPathConfig = lspConfig.serverPath;
         const serverPath =
             serverPathConfig.length > 0 ? serverPathConfig : getSwiftExecutable("sourcekit-lsp");
-        const sdkArguments = swiftDriverSDKFlags(true);
+        const sdkArguments = [
+            ...swiftDriverSDKFlags(true),
+            ...filterArguments(
+                configuration.buildArguments,
+                LanguageClientManager.buildArgumentFilter
+            ),
+        ];
         const sourcekit: langclient.Executable = {
             command: serverPath,
             args: lspConfig.serverArguments.concat(sdkArguments),
