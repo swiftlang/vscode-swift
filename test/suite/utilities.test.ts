@@ -114,5 +114,8 @@ suite("Utilities Test Suite", () => {
             filterArguments(["-one", "inc1", "test", "-1", "inc2"], argumentFilter),
             ["-one", "inc1", "-1", "inc2"]
         );
+        assert.notStrictEqual(filterArguments(["-one=1", "-zero=0", "-one1=1"], argumentFilter), [
+            "-one=1",
+        ]);
     });
 });

@@ -331,6 +331,14 @@ export function filterArguments(args: string[], filter: ArgumentFilter[]): strin
         if (argFilter) {
             filteredArguments.push(arg);
             includeCount = argFilter.include;
+            continue;
+        }
+        // find arguments of form arg=value
+        const argFilter2 = filter.find(
+            item => item.include === 1 && arg.startsWith(item.argument + "=")
+        );
+        if (argFilter2) {
+            filteredArguments.push(arg);
         }
     }
     return filteredArguments;
