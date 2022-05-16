@@ -41,7 +41,7 @@ export async function getLLDBLibPath(toolchain: SwiftToolchain): Promise<Result<
         // win32 should fail at this point. If it fails it is most likely due to the fact that
         // the lldb $PYTHONHOME path is not setup correctly and swift lldb will not work
         if (process.platform === "win32") {
-            Result.makeFailure(undefined);
+            return Result.makeFailure(undefined);
         }
     }
     const lldbPath = await findLibLLDB(pathHint);
