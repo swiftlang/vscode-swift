@@ -35,7 +35,7 @@ Please keep your PRs to a minimal number of changes. If a PR is large, try to sp
 ### Testing
 
 Where possible any new feature should have tests that go along with it, to ensure it works and will continue to work in the future. When a PR is submitted one of the prequisites for it to be merged is that all tests pass. You can run tests locally using either of the following methods
-- From VSCode, by selection "Extension Tests" in the Run and Debug activity.
+- From VSCode, by selecting "Extension Tests" in the Run and Debug activity.
 - Using `npm run test` from the command line (when VS Code is not running, or you'll get an error)
 
 ## Legal
