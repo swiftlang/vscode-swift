@@ -284,9 +284,11 @@ export class WorkspaceContext implements vscode.Disposable {
     async setLLDBVersion() {
         const libPathResult = await getLLDBLibPath(this.toolchain);
         if (!libPathResult.success) {
-            const errorMessage = libPathResult.failure
-                ? `Error: ${getErrorDescription(libPathResult.failure)}`
-                : "";
+            // if failure message is undefined then fail silently
+            if (!libPathResult.failure) {
+                return;
+            }
+            const errorMessage = `Error: ${getErrorDescription(libPathResult.failure)}`;
             vscode.window.showErrorMessage(
                 `Failed to setup CodeLLDB for debugging of Swift code. Debugging may produce unexpected results. ${errorMessage}`
             );

@@ -38,7 +38,14 @@ export async function getLLDBLibPath(toolchain: SwiftToolchain): Promise<Result<
             pathHint = m[1];
         }
     } catch (error) {
-        // ignore error
+        // If we get an error on Windows here we should not attempt to use the fallback path. If it failed
+        // it is most likely due to lldb failing to run because $PYHTONHOME environment variable is setup
+        // incorrectly (this is the case in Swift < 5.7). In this situation swift lldb does not work so we
+        // should just the version of lldb that comes with CodeLLDB. We return a failure with no message
+        // to indicate we want it to fail silently.
+        if (process.platform === "win32") {
+            return Result.makeFailure(undefined);
+        }
     }
     const lldbPath = await findLibLLDB(pathHint);
     if (lldbPath) {
