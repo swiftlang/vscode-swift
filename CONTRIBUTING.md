@@ -10,7 +10,7 @@ To begin development on the VSCode extension for Swift you will need to install 
 
 Next, clone this repository, and in the project directory run `npm install` to install all the dependencies.
 
-When you first open the project in VSCode you will be recommended to also install `ESLint` and `Prettier - Code formatter`. Please do so. We use these to ensure a consistent style and expect everyone who contributes to follow this style as well. 
+When you first open the project in VSCode you will be recommended to also install [`ESLint`](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint), [`Prettier - Code formatter`](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) and [`esbuild Problem Matchers`](https://marketplace.visualstudio.com/items?itemName=connor4312.esbuild-problem-matchers). Please do so. `ESLint`, `Prettier - Code formatter` are used to ensure a consistent style and expect everyone who contributes to follow this style as well. `esbuild Problem Matchers` provides proper error output from building the project.
 
 To run your version of the Swift extension while in VSCode, press `F5`. This will open up another instance of VSCode with it running. You can use the original version of VSCode to debug it. 
 
@@ -24,13 +24,19 @@ Please ensure to include the following in your bug report:
 
 ## Submitting a Pull Request
 
-Please ensure to include the following in your Pull Request:
+Please ensure to include the following in your Pull Request (PR):
 - A description of what you are trying to do. What the PR provides to the library, additional functionality, fixing a bug etc
 - A description of the code changes
 - Documentation on how these changes are being tested
 - Additional tests to show your code working and to ensure future changes don't break your code.
 
 Please keep your PRs to a minimal number of changes. If a PR is large, try to split it up into smaller PRs. Don't move code around unnecessarily as it makes comparing old with new very hard. If you have plans for a large change please talk to the maintainers of the project beforehand. There is a `#vscode-swift` channel on the Swift Server Slack. You can [join here](https://join.slack.com/t/swift-server/shared_invite/zt-5jv0mzlu-1HnA~7cpjL6IfmZqd~yQ2A).
+
+### Testing
+
+Where possible any new feature should have tests that go along with it, to ensure it works and will continue to work in the future. When a PR is submitted one of the prerequisites for it to be merged is that all tests pass. You can run tests locally using either of the following methods:
+- From VSCode, by selecting "Extension Tests" in the Run and Debug activity.
+- Using `npm run test` from the command line (when VS Code is not running, or you'll get an error)
 
 ## Legal
 By submitting a pull request, you represent that you have the right to license your contribution to the community, and agree by submitting the patch that your contributions are licensed under the Apache 2.0 license (see [LICENSE](LICENSE)).
