@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.5.2 - 2022-05-17
+
+### Added
+
+- Advance Setting: Swift environment variables. These are environment variables to pass to Swift operations.
+
+### Fixed
+
+- Setup of Swift LLDB on Linux.
+- If Swift LLDB on Windows setup fails, then fail silently. This indicates the Swift version of LLDB has issues (as is the case in Swift < 5.7) and should not be used. 
+- Pass flags used in Swift build to SourceKit-LSP to avoid unnecessary project rebuilds.
+
 ## 0.5.1 - 2022-05-10
 
 ### Added
