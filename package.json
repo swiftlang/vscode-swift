@@ -145,6 +145,12 @@
             "default": false,
             "markdownDescription": "**Experimental**: Run `swift build` in the background whenever a file is saved.",
             "order": 7
+          },
+          "swift.buildPath": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "Path to the build directory passed to all swift package manager commands.",
+            "order": 8
           }
         }
       },

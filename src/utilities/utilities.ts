@@ -170,25 +170,29 @@ export async function execSwift(
  */
 export function withSwiftSDKFlags(args: string[]): string[] {
     switch (args[0]) {
-        case "package":
-            switch (args[1]) {
+        case "package": {
+            const subcommand = args.splice(0, 2).concat(buildPathFlags());
+            switch (subcommand[1]) {
                 case "dump-symbol-graph":
-                case "diagnose-api-breaking-changes": {
+                case "diagnose-api-breaking-changes":
+                case "resolve": {
                     // These two tools require building the package, so SDK
                     // flags are needed. Destination control flags are
                     // required to be placed before subcommand options.
-                    const subcommand = args.splice(0, 2);
                     return [...subcommand, ...swiftpmSDKFlags(), ...args];
                 }
                 default:
                     // Other swift-package subcommands operate on the host,
                     // so it doesn't need to know about the destination.
-                    return args;
+                    return subcommand.concat(args);
             }
+        }
         case "build":
         case "run":
-        case "test":
-            return args.concat(swiftpmSDKFlags());
+        case "test": {
+            const subcommand = args.splice(0, 1).concat(buildPathFlags());
+            return [...subcommand, ...swiftpmSDKFlags(), ...args];
+        }
         default:
             // We're not going to call the Swift compiler directly for cross-compiling
             // and the destination settings are package-only, so do nothing here.
@@ -204,6 +208,30 @@ export function swiftpmSDKFlags(): string[] {
         return ["--sdk", configuration.sdk];
     }
     return [];
+}
+
+/**
+ * Get build path flags to be passed to swift package manager and sourcekit-lsp server
+ */
+export function buildPathFlags(): string[] {
+    if (configuration.buildPath && configuration.buildPath.length > 0) {
+        return ["--build-path", configuration.buildPath];
+    } else {
+        return [];
+    }
+}
+
+/**
+ * Get build path from configuration if exists or return a fallback .build directory in given workspace
+ * @param filesystem path to workspace that will be used as a fallback loacation with .build directory
+ */
+export function buildDirectoryFromWorkspacePath(workspacePath: string, absolute = false): string {
+    const buildPath = configuration.buildPath.length > 0 ? configuration.buildPath : ".build";
+    if (!path.isAbsolute(buildPath) && absolute) {
+        return path.join(workspacePath, buildPath);
+    } else {
+        return buildPath;
+    }
 }
 
 /**

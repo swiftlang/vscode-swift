@@ -100,6 +100,25 @@ export class WorkspaceContext implements vscode.Disposable {
                         }
                     });
             }
+            // on change of swift build path, regenerate launch.json
+            if (event.affectsConfiguration("swift.buildPath")) {
+                if (!configuration.autoGenerateLaunchConfigurations) {
+                    return;
+                }
+                vscode.window
+                    .showInformationMessage(
+                        `Launch configurations need to be updated after changing the Swift build path. Do you want to update?`,
+                        "Update",
+                        "Cancel"
+                    )
+                    .then(async selected => {
+                        if (selected === "Update") {
+                            this.folders.forEach(
+                                async ctx => await makeDebugConfigurations(ctx, true)
+                            );
+                        }
+                    });
+            }
         });
         const backgroundCompilationOnDidSave = BackgroundCompilation.start(this);
         this.subscriptions = [
