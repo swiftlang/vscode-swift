@@ -56,8 +56,13 @@ export class LanguageClientManager {
         { argument: "-index-store-path", include: 1 },
     ];
 
-    /** current running client */
-    private languageClient: langclient.LanguageClient | null | undefined;
+    /**
+     * current running client
+     *
+     * undefined means not setup
+     * null means in the process of restarting
+     */
+    public languageClient: langclient.LanguageClient | null | undefined;
     private cancellationToken?: vscode.CancellationTokenSource;
     private observeFoldersDisposable: vscode.Disposable;
     private onDidCreateFileDisposable: vscode.Disposable;
