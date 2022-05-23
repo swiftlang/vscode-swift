@@ -333,11 +333,13 @@ export class WorkspaceContext implements vscode.Disposable {
         if (!editor || !editor.document || editor.document.uri.scheme !== "file") {
             return;
         }
-        const url = editor.document.uri;
+        await this.focusUri(editor.document.uri);
+    }
 
-        const packageFolder = await this.getPackageFolder(url);
+    async focusUri(uri: vscode.Uri) {
+        const packageFolder = await this.getPackageFolder(uri);
         if (packageFolder instanceof FolderContext) {
-            this.focusFolder(packageFolder);
+            await this.focusFolder(packageFolder);
         } else if (packageFolder instanceof vscode.Uri) {
             const workspaceFolder = vscode.workspace.getWorkspaceFolder(packageFolder);
             if (!workspaceFolder) {
@@ -345,9 +347,9 @@ export class WorkspaceContext implements vscode.Disposable {
             }
             await this.unfocusCurrentFolder();
             const folderContext = await this.addPackageFolder(packageFolder, workspaceFolder);
-            this.focusFolder(folderContext);
+            await this.focusFolder(folderContext);
         } else {
-            this.focusFolder(null);
+            await this.focusFolder(null);
         }
     }
 
