@@ -62,7 +62,7 @@ export class LanguageClientManager {
      * undefined means not setup
      * null means in the process of restarting
      */
-    public languageClient: langclient.LanguageClient | null | undefined;
+    private languageClient: langclient.LanguageClient | null | undefined;
     private cancellationToken?: vscode.CancellationTokenSource;
     private observeFoldersDisposable: vscode.Disposable;
     private onDidCreateFileDisposable: vscode.Disposable;
@@ -210,6 +210,11 @@ export class LanguageClientManager {
                     });
             }
         }
+    }
+
+    /** workspace folder of current client */
+    get workspaceFolder(): vscode.Uri | undefined {
+        return this.languageClient?.clientOptions?.workspaceFolder?.uri;
     }
 
     /**

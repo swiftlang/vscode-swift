@@ -13,9 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as langclient from "vscode-languageclient/node";
 import * as assert from "assert";
-import { testAssetWorkspaceFolder } from "../fixtures";
+import { testAssetUri, testAssetWorkspaceFolder } from "../fixtures";
 import { FolderEvent, WorkspaceContext } from "../../src/WorkspaceContext";
 import { createBuildAllTask, platformDebugBuildOptions } from "../../src/SwiftTaskProvider";
 
@@ -95,15 +94,10 @@ suite("WorkspaceContext Test Suite", () => {
 
     suite("Language Server", async () => {
         test("Server Start", async () => {
-            assert.strictEqual(workspaceContext.languageClientManager.languageClient, undefined);
+            assert.strictEqual(workspaceContext.languageClientManager.workspaceFolder, undefined);
             await workspaceContext.focusFolder(workspaceContext.folders[0]);
-            const client: langclient.LanguageClient | null | undefined =
-                workspaceContext.languageClientManager.languageClient;
-            assert(client !== undefined);
-            if (client) {
-                const folder = client["clientOptions"]["workspaceFolder"]["uri"]["fsPath"];
-                assert.strictEqual(folder, testAssetWorkspaceFolder("package1").uri.fsPath);
-            }
+            const lspWorkspaceFolder = workspaceContext.languageClientManager.workspaceFolder;
+            assert.notStrictEqual(lspWorkspaceFolder, testAssetUri("package1"));
         });
     });
 }).timeout(5000);
