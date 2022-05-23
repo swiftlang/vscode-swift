@@ -329,6 +329,7 @@ export class WorkspaceContext implements vscode.Disposable {
             });
     }
 
+    /** set focus based on the file a TextEditor is editing */
     async focusTextEditor(editor?: vscode.TextEditor) {
         if (!editor || !editor.document || editor.document.uri.scheme !== "file") {
             return;
@@ -336,6 +337,7 @@ export class WorkspaceContext implements vscode.Disposable {
         await this.focusUri(editor.document.uri);
     }
 
+    /** set focus based on the file */
     async focusUri(uri: vscode.Uri) {
         const packageFolder = await this.getPackageFolder(uri);
         if (packageFolder instanceof FolderContext) {
@@ -393,12 +395,18 @@ export class WorkspaceContext implements vscode.Disposable {
         const workspacePath = workspaceFolder.uri.fsPath;
         let packagePath: string | undefined = undefined;
         let currentFolder = path.dirname(url.fsPath);
-        do {
+        // does Package.swift exist in this folder
+        if (await pathExists(currentFolder, "Package.swift")) {
+            packagePath = currentFolder;
+        }
+        // does Package.swift exist in any parent folders up to the root of the
+        // workspace
+        while (currentFolder !== workspacePath) {
+            currentFolder = path.dirname(currentFolder);
             if (await pathExists(currentFolder, "Package.swift")) {
                 packagePath = currentFolder;
             }
-            currentFolder = path.dirname(currentFolder);
-        } while (currentFolder !== workspacePath);
+        }
 
         if (packagePath) {
             return vscode.Uri.file(packagePath);
