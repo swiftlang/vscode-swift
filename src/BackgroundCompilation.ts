@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import * as path from "path";
 import { isPathInsidePath } from "./utilities/utilities";
 import { getBuildAllTask } from "./SwiftTaskProvider";
 import configuration from "./configuration";
@@ -42,8 +43,18 @@ export class BackgroundCompilation {
                 return isPathInsidePath(event.uri.fsPath, context.folder.fsPath);
             });
 
+            if (!folderContext) {
+                return;
+            }
+
+            // don't run auto-build if saving Package.swift as it clashes with the resolve
+            // that is run after the Package.swift is saved
+            if (path.join(folderContext.folder.fsPath, "Package.swift") === event.uri.fsPath) {
+                return;
+            }
+
             // run background compilation task
-            folderContext?.backgroundCompilation.runTask();
+            folderContext.backgroundCompilation.runTask();
         });
         return { dispose: () => onDidSaveDocument.dispose() };
     }
