@@ -56,7 +56,12 @@ export class LanguageClientManager {
         { argument: "-index-store-path", include: 1 },
     ];
 
-    /** current running client */
+    /**
+     * current running client
+     *
+     * undefined means not setup
+     * null means in the process of restarting
+     */
     private languageClient: langclient.LanguageClient | null | undefined;
     private cancellationToken?: vscode.CancellationTokenSource;
     private observeFoldersDisposable: vscode.Disposable;
@@ -205,6 +210,11 @@ export class LanguageClientManager {
                     });
             }
         }
+    }
+
+    /** workspace folder of current client */
+    get workspaceFolder(): vscode.Uri | undefined {
+        return this.languageClient?.clientOptions?.workspaceFolder?.uri;
     }
 
     /**
