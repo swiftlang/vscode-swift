@@ -403,25 +403,21 @@ async function executeTaskWithUI(
     folderContext: FolderContext,
     showErrors = false
 ): Promise<boolean> {
-    const workspaceContext = folderContext.workspaceContext;
-    workspaceContext.outputChannel.logStart(`${description} ... `, folderContext.name);
-    workspaceContext.statusItem.start(task);
     try {
-        const exitCode = await folderContext.taskQueue.queueOperation({ task: task });
-        workspaceContext.statusItem.end(task);
+        const exitCode = await folderContext.taskQueue.queueOperation({
+            task: task,
+            showStatusItem: true,
+            log: description,
+        });
         if (exitCode === 0) {
-            workspaceContext.outputChannel.logEnd("done.");
             return true;
         } else {
-            workspaceContext.outputChannel.logEnd("failed.");
             if (showErrors) {
                 vscode.window.showErrorMessage(`${description} failed`);
             }
             return false;
         }
     } catch (error) {
-        workspaceContext.outputChannel.logEnd(`${error}`);
-        workspaceContext.statusItem.end(task);
         if (showErrors) {
             vscode.window.showErrorMessage(`${description} failed: ${error}`);
         }
