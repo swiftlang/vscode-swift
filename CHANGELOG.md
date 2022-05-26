@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.5.3 - 2022-05-26
+
+### Fixed
+
+- Don't run background compilation when saving `Package.swift` as it clashes with the resolve that runs at the same time.
+- Startup of SourceKit-LSP for single swift files in the root of a workspace.
+- SourceKit-LSP server crash when opening a file that contains a space.
+
 ## 0.5.2 - 2022-05-17
 
 ### Added
