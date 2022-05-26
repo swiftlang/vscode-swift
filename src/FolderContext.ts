@@ -20,12 +20,14 @@ import { SwiftPackage } from "./SwiftPackage";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { WorkspaceContext, FolderEvent } from "./WorkspaceContext";
 import { BackgroundCompilation } from "./BackgroundCompilation";
+import { TaskQueue } from "./TaskQueue";
 
 export class FolderContext implements vscode.Disposable {
     private packageWatcher: PackageWatcher;
     public backgroundCompilation: BackgroundCompilation;
     public hasResolveErrors = false;
     public testExplorer?: TestExplorer;
+    public taskQueue: TaskQueue;
 
     /**
      * FolderContext constructor
@@ -43,6 +45,7 @@ export class FolderContext implements vscode.Disposable {
         this.packageWatcher = new PackageWatcher(this, workspaceContext);
         this.packageWatcher.install();
         this.backgroundCompilation = new BackgroundCompilation(this);
+        this.taskQueue = new TaskQueue(this);
     }
 
     /** dispose of any thing FolderContext holds */

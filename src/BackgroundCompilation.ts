@@ -72,37 +72,6 @@ export class BackgroundCompilation {
         if (!backgroundTask) {
             return;
         }
-
-        // are there any tasks running inside this folder
-        const index = vscode.tasks.taskExecutions.findIndex(
-            exe => exe.task.definition.cwd === this.folderContext.folder.fsPath
-        );
-        if (index !== -1) {
-            if (this.waitingToRun) {
-                return;
-            }
-            this.waitingToRun = true;
-            // if we found a task then wait until no tasks are running on this folder and then run
-            // the build task
-            const disposable = this.folderContext.workspaceContext.tasks.onDidEndTaskProcess(
-                event => {
-                    // find running task, that is running on current folder and is not the one that
-                    // just ended
-                    const index2 = vscode.tasks.taskExecutions.findIndex(
-                        exe =>
-                            exe.task.definition.cwd === this.folderContext.folder.fsPath &&
-                            exe !== event.execution
-                    );
-                    if (index2 === -1) {
-                        disposable.dispose();
-                        vscode.tasks.executeTask(backgroundTask);
-                        this.waitingToRun = false;
-                    }
-                }
-            );
-            return;
-        }
-
-        vscode.tasks.executeTask(backgroundTask);
+        this.folderContext.taskQueue.queueOperation({ task: backgroundTask });
     }
 }
