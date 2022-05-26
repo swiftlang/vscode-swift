@@ -82,7 +82,7 @@ export class LanguageClientManager {
     private subFolderWorkspaces: vscode.Uri[];
 
     constructor(public workspaceContext: WorkspaceContext) {
-        this.singleServerSupport = true; //workspaceContext.swiftVersion >= new Version(5, 7, 0);
+        this.singleServerSupport = workspaceContext.swiftVersion >= new Version(5, 7, 0);
         this.subscriptions = [];
         this.subFolderWorkspaces = [];
         if (this.singleServerSupport) {
