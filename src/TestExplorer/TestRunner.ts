@@ -113,7 +113,10 @@ export class TestRunner {
         try {
             // run associated build task
             const task = await getBuildAllTask(this.folderContext);
-            const exitCode = await this.workspaceContext.tasks.executeTaskAndWait(task, token);
+            const exitCode = await this.folderContext.taskQueue.queueOperation(
+                { task: task },
+                token
+            );
 
             // if build failed then exit
             if (exitCode === undefined || exitCode !== 0) {
