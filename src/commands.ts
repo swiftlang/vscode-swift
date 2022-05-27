@@ -47,17 +47,6 @@ export async function resolveDependencies(ctx: WorkspaceContext) {
  * @param folderContext folder to run resolve for
  */
 export async function resolveFolderDependencies(folderContext: FolderContext) {
-    // Is an update or resolve task already running for this folder
-    /*const index = vscode.tasks.taskExecutions.findIndex(
-        exe =>
-            (exe.task.name === SwiftTaskProvider.resolvePackageName ||
-                exe.task.name === SwiftTaskProvider.updatePackageName) &&
-            exe.task.definition.cwd === folderContext.folder.fsPath
-    );
-    if (index !== -1) {
-        return;
-    }*/
-
     const task = createSwiftTask(["package", "resolve"], SwiftTaskProvider.resolvePackageName, {
         cwd: folderContext.folder,
         scope: folderContext.workspaceFolder,
@@ -87,16 +76,6 @@ export async function updateDependencies(ctx: WorkspaceContext) {
  * @returns
  */
 export async function updateFolderDependencies(folderContext: FolderContext) {
-    // Is an update task already running for this folder
-    /*const index = vscode.tasks.taskExecutions.findIndex(
-        exe =>
-            exe.task.name === SwiftTaskProvider.updatePackageName &&
-            exe.task.definition.cwd === folderContext.folder.fsPath
-    );
-    if (index !== -1) {
-        return;
-    }*/
-
     const task = createSwiftTask(["package", "update"], SwiftTaskProvider.updatePackageName, {
         cwd: folderContext.folder,
         scope: folderContext.workspaceFolder,
