@@ -7,6 +7,7 @@ export interface SwiftOperation {
     task: vscode.Task;
     showStatusItem?: boolean;
     log?: string;
+    checkAlreadyRunning?: boolean;
 }
 
 /**
@@ -71,6 +72,15 @@ export class TaskQueue {
         let queuedOperation = this.findQueuedOperation(operation);
         if (queuedOperation && queuedOperation.promise !== undefined) {
             return queuedOperation.promise;
+        }
+        // if checkAlreadyRunning is set then check the active operation is not the same
+        if (
+            operation.checkAlreadyRunning === true &&
+            this.activeOperation &&
+            this.activeOperation.promise &&
+            this.activeOperation.isEqual(operation)
+        ) {
+            return this.activeOperation.promise;
         }
 
         const promise = new Promise<number | undefined>(resolve => {

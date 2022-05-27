@@ -46,7 +46,10 @@ export async function resolveDependencies(ctx: WorkspaceContext) {
  * Run `swift package resolve` inside a folder
  * @param folderContext folder to run resolve for
  */
-export async function resolveFolderDependencies(folderContext: FolderContext) {
+export async function resolveFolderDependencies(
+    folderContext: FolderContext,
+    checkAlreadyRunning?: boolean
+) {
     const task = createSwiftTask(["package", "resolve"], SwiftTaskProvider.resolvePackageName, {
         cwd: folderContext.folder,
         scope: folderContext.workspaceFolder,
@@ -54,7 +57,13 @@ export async function resolveFolderDependencies(folderContext: FolderContext) {
         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
     });
 
-    await executeTaskWithUI(task, "Resolving Dependencies", folderContext).then(result => {
+    await executeTaskWithUI(
+        task,
+        "Resolving Dependencies",
+        folderContext,
+        false,
+        checkAlreadyRunning
+    ).then(result => {
         updateAfterError(result, folderContext);
     });
 }
@@ -380,13 +389,15 @@ async function executeTaskWithUI(
     task: vscode.Task,
     description: string,
     folderContext: FolderContext,
-    showErrors = false
+    showErrors = false,
+    checkAlreadyRunning?: boolean
 ): Promise<boolean> {
     try {
         const exitCode = await folderContext.taskQueue.queueOperation({
             task: task,
             showStatusItem: true,
             log: description,
+            checkAlreadyRunning: checkAlreadyRunning,
         });
         if (exitCode === 0) {
             return true;
