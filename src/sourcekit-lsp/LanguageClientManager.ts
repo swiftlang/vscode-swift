@@ -70,9 +70,10 @@ export class LanguageClientManager {
     private onChangeConfig: vscode.Disposable;
     private inlayHints?: vscode.Disposable;
     private supportsDidChangedWatchedFiles: boolean;
-    private startedPromise?: Promise<void>;
+    private restartedPromise?: Promise<void>;
     private currentWorkspaceFolder?: vscode.Uri;
     private waitingOnRestartCount: number;
+    private clientReadyPromise?: Promise<void>;
     public documentSymbolWatcher?: (
         document: vscode.TextDocument,
         symbols: vscode.DocumentSymbol[] | null | undefined
@@ -154,7 +155,7 @@ export class LanguageClientManager {
     async setLanguageClientFolder(uri?: vscode.Uri, forceRestart = false) {
         if (this.languageClient === undefined) {
             this.currentWorkspaceFolder = uri;
-            this.startedPromise = this.setupLanguageClient(uri);
+            this.restartedPromise = this.setupLanguageClient(uri);
             return;
         } else {
             if (uri === undefined || (this.currentWorkspaceFolder === uri && !forceRestart)) {
@@ -164,9 +165,9 @@ export class LanguageClientManager {
             this.waitingOnRestartCount += 1;
             // if in the middle of a restart then we have to wait until that
             // restart has finished
-            if (this.startedPromise) {
+            if (this.restartedPromise) {
                 try {
-                    await this.startedPromise;
+                    await this.restartedPromise;
                 } catch (error) {
                     //ignore error
                 }
@@ -186,24 +187,10 @@ export class LanguageClientManager {
             if (client) {
                 this.cancellationToken?.cancel();
                 this.cancellationToken?.dispose();
-                this.startedPromise = client
+                this.restartedPromise = client
                     .stop()
                     .then(async () => {
-                        // if force restart is set then rebuild client completely
-                        // before starting otherwise just set the workspace folder
-                        // and call `startClient`
-                        if (forceRestart) {
-                            await this.setupLanguageClient(uri);
-                        } else {
-                            // change workspace folder and restart
-                            const workspaceFolder = {
-                                uri: uri,
-                                name: FolderContext.uriName(uri),
-                                index: 0,
-                            };
-                            client.clientOptions.workspaceFolder = workspaceFolder;
-                            await this.startClient(client);
-                        }
+                        await this.setupLanguageClient(uri);
                     })
                     .catch(reason => {
                         this.workspaceContext.outputChannel.log(`${reason}`);
@@ -230,7 +217,7 @@ export class LanguageClientManager {
         if (!this.languageClient) {
             throw LanguageClientError.LanguageClientUnavailable;
         }
-        return await this.languageClient.onReady().then(() => {
+        return await this.clientReadyPromise?.then(() => {
             if (!this.languageClient || !this.cancellationToken) {
                 throw LanguageClientError.LanguageClientUnavailable;
             }
@@ -255,12 +242,12 @@ export class LanguageClientManager {
         return false;
     }
 
-    private async setupLanguageClient(folder?: vscode.Uri): Promise<void> {
-        const client = await this.createLSPClient(folder);
-        await this.startClient(client);
+    private setupLanguageClient(folder?: vscode.Uri): Promise<void> {
+        const client = this.createLSPClient(folder);
+        return this.startClient(client);
     }
 
-    private async createLSPClient(folder?: vscode.Uri): Promise<langclient.LanguageClient> {
+    private createLSPClient(folder?: vscode.Uri): langclient.LanguageClient {
         const lspConfig = configuration.lsp;
         const serverPathConfig = lspConfig.serverPath;
         const serverPath =
@@ -332,9 +319,7 @@ export class LanguageClientManager {
         );
     }
 
-    private async startClient(client: langclient.LanguageClient) {
-        client.start();
-
+    private startClient(client: langclient.LanguageClient): Promise<void> {
         if (client.clientOptions.workspaceFolder) {
             this.workspaceContext.outputChannel.log(
                 `SourceKit-LSP setup for ${FolderContext.uriName(
@@ -345,24 +330,24 @@ export class LanguageClientManager {
             this.workspaceContext.outputChannel.log(`SourceKit-LSP setup`);
         }
 
+        // start client
+        this.clientReadyPromise = client
+            .start()
+            .then(() => {
+                this.inlayHints = activateInlayHints(client);
+            })
+            .catch(reason => {
+                this.workspaceContext.outputChannel.log(`${reason}`);
+                // if language client failed to initialise then shutdown and set to undefined
+                this.languageClient?.stop();
+                this.languageClient = undefined;
+                throw reason;
+            });
+
         this.languageClient = client;
         this.cancellationToken = new vscode.CancellationTokenSource();
 
-        return new Promise<void>((resolve, reject) => {
-            client
-                .onReady()
-                .then(() => {
-                    this.inlayHints = activateInlayHints(client);
-                    resolve();
-                })
-                .catch(reason => {
-                    this.workspaceContext.outputChannel.log(`${reason}`);
-                    // if language client failed to initialise then shutdown and set to undefined
-                    this.languageClient?.stop();
-                    this.languageClient = undefined;
-                    reject(reason);
-                });
-        });
+        return this.clientReadyPromise;
     }
 }
 
