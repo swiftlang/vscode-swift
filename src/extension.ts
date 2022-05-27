@@ -86,13 +86,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                     // Create launch.json files based on package description.
                     debug.makeDebugConfigurations(folder);
                     if (folder.swiftPackage.foundPackage) {
-                        await commands.resolveFolderDependencies(folder);
+                        await commands.resolveFolderDependencies(folder, true);
                     }
                     break;
 
                 case FolderEvent.resolvedUpdated:
                     if (folder.swiftPackage.foundPackage) {
-                        await commands.resolveFolderDependencies(folder);
+                        await commands.resolveFolderDependencies(folder, true);
                     }
             }
         });
