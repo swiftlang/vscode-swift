@@ -45,16 +45,6 @@ suite("Extension Test Suite", () => {
     suite("Workspace", () => {
         // test adding FolderContext based on active file
         test("Active Document", async () => {
-            let addedPackage: string | undefined;
-            const observer = workspaceContext.observeFolders((folder, operation) => {
-                assert(folder !== null);
-                assert.strictEqual(folder.swiftPackage.name, "package2");
-                switch (operation) {
-                    case FolderEvent.add:
-                        addedPackage = folder.name;
-                        break;
-                }
-            });
             // This makes sure that we set the focus on the opened files which then
             // adds the related package
             await vscode.commands.executeCommand(
@@ -69,17 +59,16 @@ suite("Extension Test Suite", () => {
             let i = 0;
             while (i < 50) {
                 await sleep(100);
-                if (addedPackage) {
-                    assert.strictEqual(addedPackage, "test/package2");
+                if (workspaceContext.currentFolder) {
+                    assert.strictEqual(workspaceContext.currentFolder.name, "test/package2");
                     break;
                 }
                 i++;
             }
             assert.notStrictEqual(i, 50);
-            observer.dispose();
-        });
+        }).timeout(5000);
     });
-}).timeout(5000);
+}).timeout(8000);
 
 async function sleep(ms: number): Promise<void> {
     return new Promise(resolve => {
