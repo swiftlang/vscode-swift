@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import * as assert from "assert";
 import * as fs from "fs/promises";
 import * as swiftExtension from "../../src/extension";
-import { FolderEvent, WorkspaceContext } from "../../src/WorkspaceContext";
+import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { testAssetPath } from "../fixtures";
 
 suite("Extension Test Suite", () => {
