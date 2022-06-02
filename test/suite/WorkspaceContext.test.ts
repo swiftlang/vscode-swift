@@ -61,17 +61,10 @@ suite("WorkspaceContext Test Suite", () => {
 
     suite("Tasks", async () => {
         const swiftConfig = vscode.workspace.getConfiguration("swift");
-        let buildArgs: string[] | undefined;
-        let path: string | undefined;
-
-        suiteSetup(async () => {
-            buildArgs = swiftConfig.get("buildArguments");
-            path = swiftConfig.get("path");
-        });
 
         suiteTeardown(async () => {
-            await swiftConfig.update("buildArguments", buildArgs);
-            await swiftConfig.update("path", path);
+            await swiftConfig.update("buildArguments", undefined);
+            await swiftConfig.update("path", undefined);
         });
 
         test("Default Task values", async () => {
