@@ -60,6 +60,20 @@ suite("WorkspaceContext Test Suite", () => {
     });
 
     suite("Tasks", async () => {
+        const swiftConfig = vscode.workspace.getConfiguration("swift");
+        let buildArgs: string[] | undefined;
+        let path: string | undefined;
+
+        suiteSetup(async () => {
+            buildArgs = swiftConfig.get("buildArguments");
+            path = swiftConfig.get("path");
+        });
+
+        suiteTeardown(async () => {
+            await swiftConfig.update("buildArguments", buildArgs);
+            await swiftConfig.update("path", path);
+        });
+
         test("Default Task values", async () => {
             const folder = workspaceContext.folders.find(f => f.workspaceFolder === packageFolder);
             assert(folder);
@@ -78,9 +92,7 @@ suite("WorkspaceContext Test Suite", () => {
         test("Build Settings", async () => {
             const folder = workspaceContext.folders.find(f => f.workspaceFolder === packageFolder);
             assert(folder);
-            vscode.workspace
-                .getConfiguration("swift", packageFolder)
-                .update("buildArguments", ["--sanitize=thread"]);
+            await swiftConfig.update("buildArguments", ["--sanitize=thread"]);
             const buildAllTask = createBuildAllTask(folder);
             const execution = buildAllTask.execution as vscode.ShellExecution;
             assert.notStrictEqual(execution?.args, [
@@ -90,11 +102,19 @@ suite("WorkspaceContext Test Suite", () => {
                 "--sanitize=thread",
             ]);
         });
+
+        test("Swift Path", async () => {
+            const folder = workspaceContext.folders.find(f => f.workspaceFolder === packageFolder);
+            assert(folder);
+            await swiftConfig.update("path", "/usr/bin/swift");
+            const buildAllTask = createBuildAllTask(folder);
+            const execution = buildAllTask.execution as vscode.ShellExecution;
+            assert.notStrictEqual(execution?.command, "/usr/bin/swift");
+        });
     });
 
     suite("Language Server", async () => {
         test("Server Start", async () => {
-            assert.strictEqual(workspaceContext.languageClientManager.workspaceFolder, undefined);
             await workspaceContext.focusFolder(workspaceContext.folders[0]);
             const lspWorkspaceFolder = workspaceContext.languageClientManager.workspaceFolder;
             assert.notStrictEqual(lspWorkspaceFolder, testAssetUri("package1"));
