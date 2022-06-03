@@ -124,6 +124,8 @@ export class TestRunner {
                 return;
             }
 
+            this.setTestsEnqueued();
+
             if (shouldDebug) {
                 await this.debugSession(token);
             } else {
@@ -350,6 +352,16 @@ export class TestRunner {
 
         for (const line of lines) {
             // Regex "Test Case '-[<test target> <class.function>]' passed"
+            const startedMatch = /^Test Case '-\[(\S+)\s(.*)\]' started./.exec(line);
+            if (startedMatch) {
+                const testId = `${startedMatch[1]}/${startedMatch[2]}`;
+                const passedTestIndex = this.testItems.findIndex(item => item.id === testId);
+                if (passedTestIndex !== -1) {
+                    this.testRun.started(this.testItems[passedTestIndex]);
+                }
+                continue;
+            }
+            // Regex "Test Case '-[<test target> <class.function>]' passed"
             const passedMatch = /^Test Case '-\[(\S+)\s(.*)\]' passed/.exec(line);
             if (passedMatch) {
                 const testId = `${passedMatch[1]}/${passedMatch[2]}`;
@@ -500,5 +512,11 @@ export class TestRunner {
             return target.sources.find(source => source === relativePath) !== undefined;
         }
         return false;
+    }
+
+    setTestsEnqueued() {
+        for (const test of this.testItems) {
+            this.testRun.enqueued(test);
+        }
     }
 }
