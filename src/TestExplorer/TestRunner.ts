@@ -362,12 +362,15 @@ export class TestRunner {
                 continue;
             }
             // Regex "Test Case '-[<test target> <class.function>]' passed"
-            const passedMatch = /^Test Case '-\[(\S+)\s(.*)\]' passed/.exec(line);
+            const passedMatch = /^Test Case '-\[(\S+)\s(.*)\]' passed \((\d.*) seconds\)/.exec(
+                line
+            );
             if (passedMatch) {
                 const testId = `${passedMatch[1]}/${passedMatch[2]}`;
+                const duration: number = +passedMatch[3];
                 const passedTestIndex = this.testItems.findIndex(item => item.id === testId);
                 if (passedTestIndex !== -1) {
-                    this.testRun.passed(this.testItems[passedTestIndex]);
+                    this.testRun.passed(this.testItems[passedTestIndex], duration * 1000);
                     this.testItems.splice(passedTestIndex, 1);
                 }
                 continue;
