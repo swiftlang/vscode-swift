@@ -26,6 +26,10 @@ This is a list of paths to exclude from the Package Dependency View.
 
 This is an experimental setting which runs `swift build` whenever a file is saved. There are possibilites the background compilation will clash with any compilation you trigger yourselves so this is disabled by default.
 
+- **Build path**
+
+The path to a directory that will be used for build artifacts. This path will be added to all swift package manager commands that are executed by vscode-swift extension via `--build-path` option. When no value provided - nothing gets passed to swift package manager and it will use its default value of `.build` folder in workspace. You can use absolute path for directory or the relative path, which will use the workspace path as a base. Unfortunately, VSCode does not correctly understand and pass the tilde symbol (~) which represents user home folder under *nix systems. Thus, it should be avoided.
+
 ### Sourcekit-LSP
 
 [Sourcekit-LSP](https://github.com/apple/sourcekit-lsp) is the language server used by the the Swift extension to provide symbol completion, jump to definition etc. It is developed by Apple to provide Swift and C language support for any editor that supports the Language Server Protocol.   
@@ -63,7 +67,3 @@ The path of the target SDK to compile against. The default SDK is determined by 
 - **Diagnostics**
 
 The Swift extension includes a Swift Output channel that events are logged in. You can access this by selecting menu item `View -> Output` and then selecting `Swift` in the drop down menu. Events like adding new folders, LSP server starting, errors and package resolves/updates are recorded in here. This is all useful information when trying to debug an issue with the extension. Enabling the diagnostics setting will extend this information to include considerably more information. If you want to report a bug with the extension it would be good practice to enable this setting, restart Visual Studio Code and once you have replicated your bug include the contents of the Swift Output channel in the bug report.
-
-- **Build path**
-
-The path to a directory that will be used for build artifacts. This path will be added to all swift package manager commands that are executed by vscode-swift extension via `--build-path` option. When no value provided - nothing gets passed to swift package manager and it will use its default value of `.build` folder in workspace. You can use absolute path for directory or the relative path, which will use the workspace path as a base. Unfortunately, VSCode can not correctly understand and pass the tilde symbol (~) which represents user home folder under *nix systems thus it should be avoided.
