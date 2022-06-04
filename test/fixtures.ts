@@ -27,10 +27,17 @@ class TestWorkspaceFolder implements vscode.WorkspaceFolder {
 }
 
 /**
+ * @returns the path of a resource in the **test** directory.
+ */
+export function testAssetPath(name: string): string {
+    return path.resolve(__dirname, "../../assets/test", name);
+}
+
+/**
  * @returns the {@link vscode.Uri URI} of a resource in the **test** directory.
  */
 export function testAssetUri(name: string): vscode.Uri {
-    return vscode.Uri.file(path.resolve(__dirname, "../../assets/test", name));
+    return vscode.Uri.file(testAssetPath(name));
 }
 
 /**
