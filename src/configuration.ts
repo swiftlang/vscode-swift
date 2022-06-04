@@ -77,6 +77,9 @@ const configuration = {
     get buildArguments(): string[] {
         return vscode.workspace.getConfiguration("swift").get<string[]>("buildArguments", []);
     },
+    get buildPath(): string {
+        return vscode.workspace.getConfiguration("swift").get<string>("buildPath", "");
+    },
     /** Environment variables to set when building */
     get swiftEnvironmentVariables(): { [key: string]: string } {
         return vscode.workspace

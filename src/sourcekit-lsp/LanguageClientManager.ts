@@ -21,6 +21,7 @@ import {
     getSwiftExecutable,
     isPathInsidePath,
     swiftDriverSDKFlags,
+    buildPathFlags,
     swiftRuntimeEnv,
 } from "../utilities/utilities";
 import { Version } from "../utilities/version";
@@ -255,10 +256,11 @@ export class LanguageClientManager {
         const sdkArguments = [
             ...swiftDriverSDKFlags(true),
             ...filterArguments(
-                configuration.buildArguments,
+                configuration.buildArguments.concat(buildPathFlags()),
                 LanguageClientManager.buildArgumentFilter
             ),
         ];
+
         const sourcekit: langclient.Executable = {
             command: serverPath,
             args: lspConfig.serverArguments.concat(sdkArguments),

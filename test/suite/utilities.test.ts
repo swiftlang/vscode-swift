@@ -21,9 +21,16 @@ import {
     getRepositoryName,
     getSwiftExecutable,
     isPathInsidePath,
+    buildPathFlags,
+    buildDirectoryFromWorkspacePath,
 } from "../../src/utilities/utilities";
+import * as vscode from "vscode";
 
 suite("Utilities Test Suite", () => {
+    suiteTeardown(async () => {
+        await vscode.workspace.getConfiguration("swift").update("buildPath", undefined);
+    });
+
     test("getRepositoryName", () => {
         // Regular case.
         assert.strictEqual(
@@ -117,5 +124,79 @@ suite("Utilities Test Suite", () => {
         assert.notStrictEqual(filterArguments(["-one=1", "-zero=0", "-one1=1"], argumentFilter), [
             "-one=1",
         ]);
+    });
+
+    test("buildPathFlags", async () => {
+        // no configuration provided - fallback
+        await vscode.workspace.getConfiguration("swift").update("buildPath", undefined);
+
+        assert.deepStrictEqual(buildPathFlags(), []);
+
+        await vscode.workspace.getConfiguration("swift").update("buildPath", "");
+
+        assert.deepStrictEqual(buildPathFlags(), []);
+
+        // configuration provided
+        await vscode.workspace
+            .getConfiguration("swift")
+            .update("buildPath", "/some/other/full/test/path");
+
+        assert.deepStrictEqual(buildPathFlags(), ["--build-path", "/some/other/full/test/path"]);
+    });
+
+    test("buildDirectoryFromWorkspacePath", async () => {
+        // no configuration provided - fallback
+        await vscode.workspace.getConfiguration("swift").update("buildPath", undefined);
+
+        assert.strictEqual(
+            buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false),
+            ".build"
+        );
+
+        assert.strictEqual(
+            buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true),
+            "/some/full/workspace/test/path/.build"
+        );
+
+        await vscode.workspace.getConfiguration("swift").update("buildPath", "");
+
+        assert.strictEqual(
+            buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false),
+            ".build"
+        );
+
+        assert.strictEqual(
+            buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true),
+            "/some/full/workspace/test/path/.build"
+        );
+
+        // configuration provided
+        await vscode.workspace
+            .getConfiguration("swift")
+            .update("buildPath", "/some/other/full/test/path");
+
+        assert.strictEqual(
+            buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false),
+            "/some/other/full/test/path"
+        );
+
+        assert.strictEqual(
+            buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true),
+            "/some/other/full/test/path"
+        );
+
+        await vscode.workspace
+            .getConfiguration("swift")
+            .update("buildPath", "some/relative/test/path");
+
+        assert.strictEqual(
+            buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false),
+            "some/relative/test/path"
+        );
+
+        assert.strictEqual(
+            buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true),
+            "/some/full/workspace/test/path/some/relative/test/path"
+        );
     });
 });

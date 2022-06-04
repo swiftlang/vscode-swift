@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
 import configuration from "../configuration";
-import { getRepositoryName } from "../utilities/utilities";
+import { getRepositoryName, buildDirectoryFromWorkspacePath } from "../utilities/utilities";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderEvent } from "../WorkspaceContext";
 import { FolderContext } from "../FolderContext";
@@ -176,16 +176,14 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                 first.name.localeCompare(second.name)
             );
         }
+
+        const buildDirectory = buildDirectoryFromWorkspacePath(folderContext.folder.fsPath, true);
+
         if (element instanceof PackageNode) {
             // Read the contents of a package.
             const packagePath =
                 element.type === "remote"
-                    ? path.join(
-                          folderContext.folder.fsPath,
-                          ".build",
-                          "checkouts",
-                          getRepositoryName(element.path)
-                      )
+                    ? path.join(buildDirectory, "checkouts", getRepositoryName(element.path))
                     : element.path;
             return this.getNodesInDirectory(packagePath);
         } else {

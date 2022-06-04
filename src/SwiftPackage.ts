@@ -14,7 +14,11 @@
 
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
-import { execSwift, getErrorDescription } from "./utilities/utilities";
+import {
+    buildDirectoryFromWorkspacePath,
+    execSwift,
+    getErrorDescription,
+} from "./utilities/utilities";
 
 /** Swift Package Manager contents */
 export interface PackageContents {
@@ -216,7 +220,10 @@ export class SwiftPackage implements PackageContents {
      */
     public async loadWorkspaceState(): Promise<WorkspaceState | undefined> {
         try {
-            const uri = vscode.Uri.joinPath(this.folder, ".build", "workspace-state.json");
+            const uri = vscode.Uri.joinPath(
+                vscode.Uri.file(buildDirectoryFromWorkspacePath(this.folder.fsPath, true)),
+                "workspace-state.json"
+            );
             const contents = await fs.readFile(uri.fsPath, "utf8");
             return JSON.parse(contents);
         } catch {

@@ -16,7 +16,12 @@ import * as os from "os";
 import * as vscode from "vscode";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
-import { stringArrayInEnglish, swiftLibraryPathKey, swiftRuntimeEnv } from "../utilities/utilities";
+import {
+    buildDirectoryFromWorkspacePath,
+    stringArrayInEnglish,
+    swiftLibraryPathKey,
+    swiftRuntimeEnv,
+} from "../utilities/utilities";
 
 /**
  * Edit launch.json based on contents of Swift Package.
@@ -97,13 +102,14 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
         folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}/${ctx.relativePath}`;
         nameSuffix = ` (${ctx.relativePath})`;
     }
+    const buildDirectory = buildDirectoryFromWorkspacePath(folder);
     return executableProducts.flatMap(product => {
         return [
             {
                 type: "lldb",
                 request: "launch",
                 name: `Debug ${product.name}${nameSuffix}`,
-                program: `${folder}/.build/debug/` + product.name,
+                program: `${buildDirectory}/debug/` + product.name,
                 args: [],
                 cwd: folder,
                 preLaunchTask: `swift: Build Debug ${product.name}${nameSuffix}`,
@@ -113,7 +119,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
                 type: "lldb",
                 request: "launch",
                 name: `Release ${product.name}${nameSuffix}`,
-                program: `${folder}/.build/release/` + product.name,
+                program: `${buildDirectory}/release/` + product.name,
                 args: [],
                 cwd: folder,
                 preLaunchTask: `swift: Build Release ${product.name}${nameSuffix}`,
@@ -155,9 +161,10 @@ export function createTestConfiguration(
         ...configuration.testEnvironmentVariables,
     };
 
+    const buildDirectory = buildDirectoryFromWorkspacePath(folder);
     if (process.platform === "darwin") {
         // On macOS, find the path to xctest
-        // and point it at the .xctest bundle from the .build directory.
+        // and point it at the .xctest bundle from the configured build directory.
         const xctestPath = ctx.workspaceContext.toolchain.xcTestPath;
         if (xctestPath === undefined) {
             return null;
@@ -167,7 +174,7 @@ export function createTestConfiguration(
             request: "launch",
             name: `Test ${ctx.swiftPackage.name}`,
             program: `${xctestPath}/xctest`,
-            args: [`.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`],
+            args: [`${buildDirectory}/debug/${ctx.swiftPackage.name}PackageTests.xctest`],
             cwd: folder,
             env: testEnv,
             preLaunchTask: `swift: Build All${nameSuffix}`,
@@ -195,19 +202,19 @@ export function createTestConfiguration(
             type: "lldb",
             request: "launch",
             name: `Test ${ctx.swiftPackage.name}`,
-            program: `${folder}/.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
+            program: `${buildDirectory}/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
             cwd: folder,
             env: testEnv,
             preRunCommands: preRunCommands,
             preLaunchTask: `swift: Build All${nameSuffix}`,
         };
     } else {
-        // On Linux, just run the .xctest executable from the .build directory.
+        // On Linux, just run the .xctest executable from the configured build directory.
         return {
             type: "lldb",
             request: "launch",
             name: `Test ${ctx.swiftPackage.name}`,
-            program: `${folder}/.build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
+            program: `${buildDirectory}/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
             cwd: folder,
             env: testEnv,
             preLaunchTask: `swift: Build All${nameSuffix}`,
@@ -237,8 +244,9 @@ export function createDarwinTestConfiguration(
         folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}/${ctx.relativePath}`;
         nameSuffix = ` (${ctx.relativePath})`;
     }
+    const buildDirectory = buildDirectoryFromWorkspacePath(folder);
     // On macOS, find the path to xctest
-    // and point it at the .xctest bundle from the .build directory.
+    // and point it at the .xctest bundle from the configured build directory.
     const xctestPath = ctx.workspaceContext.toolchain.xcTestPath;
     if (xctestPath === undefined) {
         return null;
@@ -266,7 +274,7 @@ export function createDarwinTestConfiguration(
         targetCreateCommands: [`file -a ${arch} ${xctestPath}/xctest`],
         processCreateCommands: [
             ...envCommands,
-            `process launch -e ${outputFile} -w ${folder} -- ${args} .build/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
+            `process launch -e ${outputFile} -w ${folder} -- ${args} ${buildDirectory}/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
         ],
         preLaunchTask: `swift: Build All${nameSuffix}`,
     };
