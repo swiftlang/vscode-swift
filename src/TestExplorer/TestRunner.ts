@@ -124,6 +124,8 @@ export class TestRunner {
                 return;
             }
 
+            this.setTestsEnqueued();
+
             if (shouldDebug) {
                 await this.debugSession(token);
             } else {
@@ -349,13 +351,26 @@ export class TestRunner {
         const lines = output.split("\n").map(item => item.trim());
 
         for (const line of lines) {
-            // Regex "Test Case '-[<test target> <class.function>]' passed"
-            const passedMatch = /^Test Case '-\[(\S+)\s(.*)\]' passed/.exec(line);
-            if (passedMatch) {
-                const testId = `${passedMatch[1]}/${passedMatch[2]}`;
+            // Regex "Test Case '-[<test target> <class.function>]' started"
+            const startedMatch = /^Test Case '-\[(\S+)\s(.*)\]' started./.exec(line);
+            if (startedMatch) {
+                const testId = `${startedMatch[1]}/${startedMatch[2]}`;
                 const passedTestIndex = this.testItems.findIndex(item => item.id === testId);
                 if (passedTestIndex !== -1) {
-                    this.testRun.passed(this.testItems[passedTestIndex]);
+                    this.testRun.started(this.testItems[passedTestIndex]);
+                }
+                continue;
+            }
+            // Regex "Test Case '-[<test target> <class.function>]' passed (<duration> seconds)"
+            const passedMatch = /^Test Case '-\[(\S+)\s(.*)\]' passed \((\d.*) seconds\)/.exec(
+                line
+            );
+            if (passedMatch) {
+                const testId = `${passedMatch[1]}/${passedMatch[2]}`;
+                const duration: number = +passedMatch[3];
+                const passedTestIndex = this.testItems.findIndex(item => item.id === testId);
+                if (passedTestIndex !== -1) {
+                    this.testRun.passed(this.testItems[passedTestIndex], duration * 1000);
                     this.testItems.splice(passedTestIndex, 1);
                 }
                 continue;
@@ -406,6 +421,18 @@ export class TestRunner {
         // occur in another target, so we revert to just searching for class and function name if
         // the above method is unsuccessful.
         for (const line of lines) {
+            // Regex "Test Case '-[<test target> <class.function>]' started"
+            const startedMatch = /^Test Case '(.*)\.(.*)' started/.exec(line);
+            if (startedMatch) {
+                const testName = `${startedMatch[1]}/${startedMatch[2]}`;
+                const startedTestIndex = this.testItems.findIndex(item =>
+                    item.id.endsWith(testName)
+                );
+                if (startedTestIndex !== -1) {
+                    this.testRun.started(this.testItems[startedTestIndex]);
+                }
+                continue;
+            }
             // Regex "<path/to/test>:<line number>: error: <class>.<function> : <error>"
             const failedMatch = /^(.+):(\d+):\serror:\s*(.*)\.(.*) : (.*)/.exec(line);
             if (failedMatch) {
@@ -450,14 +477,15 @@ export class TestRunner {
 
         for (const line of lines) {
             // Regex "Test Case '<class>.<function>' passed"
-            const passedMatch = /^Test Case '(.*)\.(.*)' passed/.exec(line);
+            const passedMatch = /^Test Case '(.*)\.(.*)' passed \((\d.*) seconds\)/.exec(line);
             if (passedMatch) {
                 const testName = `${passedMatch[1]}/${passedMatch[2]}`;
+                const duration: number = +passedMatch[3];
                 const passedTestIndex = this.testItems.findIndex(item =>
                     item.id.endsWith(testName)
                 );
                 if (passedTestIndex !== -1) {
-                    this.testRun.passed(this.testItems[passedTestIndex]);
+                    this.testRun.passed(this.testItems[passedTestIndex], duration);
                     // remove from test item list as its status has been set
                     this.testItems.splice(passedTestIndex, 1);
                 }
@@ -500,5 +528,11 @@ export class TestRunner {
             return target.sources.find(source => source === relativePath) !== undefined;
         }
         return false;
+    }
+
+    setTestsEnqueued() {
+        for (const test of this.testItems) {
+            this.testRun.enqueued(test);
+        }
     }
 }
