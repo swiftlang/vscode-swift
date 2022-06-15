@@ -119,32 +119,21 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                         return;
                     }
                     treeView.title = `Package Dependencies (${folder.name})`;
-                    this.updateView(folder);
+                    this.didChangeTreeDataEmitter.fire();
                     break;
                 case FolderEvent.unfocus:
                     treeView.title = `Package Dependencies`;
-                    this.updateView(undefined);
+                    this.didChangeTreeDataEmitter.fire();
                     break;
                 case FolderEvent.resolvedUpdated:
                     if (!folder) {
                         return;
                     }
                     if (folder === this.workspaceContext.currentFolder) {
-                        this.updateView(folder);
+                        this.didChangeTreeDataEmitter.fire();
                     }
             }
         });
-    }
-
-    updateView(folderContext?: FolderContext) {
-        if (!folderContext || !folderContext.swiftPackage.foundPackage) {
-            contextKeys.hasPackage = false;
-            contextKeys.packageHasDependencies = false;
-            return;
-        }
-        contextKeys.hasPackage = true;
-        contextKeys.packageHasDependencies = folderContext.swiftPackage.dependencies.length > 0;
-        this.didChangeTreeDataEmitter.fire();
     }
 
     getTreeItem(element: TreeNode): vscode.TreeItem {

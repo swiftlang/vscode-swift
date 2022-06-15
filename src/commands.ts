@@ -384,6 +384,46 @@ async function openPackage(workspaceContext: WorkspaceContext) {
     }
 }
 
+/**
+ * Run SwiftPM plugin
+ * @param workspaceContext Workspace context, required to get current project
+ */
+async function runPlugin(workspaceContext: WorkspaceContext) {
+    const folderContext = workspaceContext.currentFolder;
+    if (!folderContext || !folderContext.swiftPackage) {
+        return;
+    }
+    const items = folderContext.swiftPackage.plugins.map(plugin => {
+        return {
+            label: plugin.name,
+            detail: `swift package ${plugin.command}`,
+            description: plugin.package,
+            command: plugin.command,
+            buttons: [{ iconPath: { id: "globe", tooltips: "sdf" } }],
+        };
+    });
+    vscode.window.showQuickPick(items).then(selection => {
+        if (!selection) {
+            return;
+        }
+        vscode.window.showInputBox({ title: "Plugin parameters: " }).then(result => {
+            const options = result?.split(" ") ?? [];
+            const task = createSwiftTask(
+                ["package", selection.command, ...options],
+                `Plugin ${selection.command}`,
+                {
+                    cwd: folderContext.folder,
+                    scope: folderContext.workspaceFolder,
+                    prefix: folderContext.name,
+                    presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+                }
+            );
+
+            executeTaskWithUI(task, `Plugin ${selection.command}`, folderContext, false, true);
+        });
+    });
+}
+
 /** Execute task and show UI while running */
 async function executeTaskWithUI(
     task: vscode.Task,
@@ -453,6 +493,7 @@ export function register(ctx: WorkspaceContext) {
         vscode.commands.registerCommand("swift.resetPackage", () => resetPackage(ctx)),
         vscode.commands.registerCommand("swift.runSingle", () => runSingleFile(ctx)),
         vscode.commands.registerCommand("swift.openPackage", () => openPackage(ctx)),
+        vscode.commands.registerCommand("swift.runPlugin", () => runPlugin(ctx)),
         vscode.commands.registerCommand("swift.useLocalDependency", item => {
             if (item instanceof PackageNode) {
                 useLocalDependency(item.name, ctx);

@@ -84,6 +84,11 @@
         "command": "swift.openPackage",
         "title": "Open Package.swift",
         "category": "Swift"
+      },
+      {
+        "command": "swift.runPlugin",
+        "title": "Run SwiftPM Plugin",
+        "category": "Swift"
       }
     ],
     "configuration": [
@@ -246,6 +251,10 @@
         {
           "command": "swift.openPackage",
           "when": "swift.hasPackage"
+        },
+        {
+          "command": "swift.runPlugin",
+          "when": "swift.packageHasPlugins"
         },
         {
           "command": "swift.useLocalDependency",
