@@ -259,20 +259,23 @@ export class LanguageClientManager {
             this.restartedPromise = this.setupLanguageClient(uri);
             return;
         } else {
-            if (this.singleServerSupport) {
+            // don't check for undefined uri's or if the current workspace is the same if we are
+            // running a single server. The only way we can get here while using a single server
+            // is when restart is called.
+            if (!this.singleServerSupport) {
                 if (uri === undefined || (this.currentWorkspaceFolder === uri && !forceRestart)) {
                     return;
                 }
             }
-            let workspaceFolder: vscode.WorkspaceFolder;
+            let workspaceFolder: vscode.WorkspaceFolder | undefined;
             if (uri) {
                 workspaceFolder = {
                     uri: uri,
                     name: FolderContext.uriName(uri),
                     index: 0,
                 };
-                this.restartLanguageClient(workspaceFolder);
             }
+            this.restartLanguageClient(workspaceFolder);
         }
     }
 
