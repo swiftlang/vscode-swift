@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.6.0 - 2022-06-20
+
+### Added
+
+- Queue Swift tasks where we can to ensure we don't have multiple `swift` processes running on the same package at the same time.
+- Configuration setting `buildPath` to set a custom build folder.
+- The Test Explorer now displays additional states: test enqueued, test running and test errored.
+  
+### Changed
+
+- Upgrade to VS Code LanguageClient v8
+
+### Fixed
+
+- Increased stdio buffer sizes when running tests to reduce the chance of the process crashing because it ran out of buffer space.
+
 ## 0.5.3 - 2022-05-26
 
 ### Fixed
