@@ -174,7 +174,8 @@
           "sourcekit-lsp.inlayHints.enabled": {
             "type": "boolean",
             "default": true,
-            "description": "Render inlay type annotations in the editor. Inlay hints require Swift 5.6 or later.",
+            "description": "Render inlay type annotations in the editor. Inlay hints require Swift 5.6.",
+            "deprecationMessage": "SourceKit-LSP's custom inlay hints are deprecated as Swift 5.7 and newer use LSP-native inlay hints. These can be enabled using the setting 'editor.inlayHints.enabled'.",
             "order": 3
           },
           "sourcekit-lsp.trace.server": {
