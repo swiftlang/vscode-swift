@@ -15,11 +15,11 @@
 import * as vscode from "vscode";
 import * as asyncfs from "fs/promises";
 import * as path from "path";
+import * as stream from "stream";
 import { createTestConfiguration, createDarwinTestConfiguration } from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
-import { execFileStreamOutput } from "../utilities/utilities";
+import { execFileStreamOutput, getErrorDescription } from "../utilities/utilities";
 import { getBuildAllTask } from "../SwiftTaskProvider";
-import * as Stream from "stream";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
 
@@ -27,6 +27,7 @@ import { WorkspaceContext } from "../WorkspaceContext";
 export class TestRunner {
     private testRun: vscode.TestRun;
     private testItems: vscode.TestItem[];
+    private currentTestItem?: vscode.TestItem;
 
     /**
      * Constructor for TestRunner
@@ -41,6 +42,7 @@ export class TestRunner {
     ) {
         this.testRun = this.controller.createTestRun(this.request);
         this.testItems = this.createTestList();
+        this.currentTestItem = undefined;
     }
 
     get workspaceContext(): WorkspaceContext {
@@ -132,12 +134,11 @@ export class TestRunner {
                 await this.runSession(token);
             }
         } catch (error) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const reason = error as any;
-            if (reason) {
-                this.testRun.appendOutput(reason.toString());
+            if (this.currentTestItem) {
+                const message = new vscode.TestMessage(getErrorDescription(error));
+                this.testRun.errored(this.currentTestItem, message);
             }
-            console.log(error);
+            this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
         }
 
         this.testRun.end();
@@ -203,23 +204,21 @@ export class TestRunner {
         }
 
         // Use WriteStream to log results
-        const writeStream = new Stream.Writable();
-        writeStream._write = (chunk, encoding, next) => {
-            const text = chunk.toString("utf8");
-            this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
-            if (process.platform === "darwin") {
-                this.parseResultDarwin(text);
-            } else {
-                this.parseResultNonDarwin(text);
-            }
-            next();
-        };
-        writeStream.on("close", () => {
-            writeStream.end();
+        const writeStream = new stream.Writable({
+            write: (chunk, encoding, next) => {
+                const text = chunk.toString();
+                this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
+                if (process.platform === "darwin") {
+                    this.parseResultDarwin(text);
+                } else {
+                    this.parseResultNonDarwin(text);
+                }
+                next();
+            },
         });
 
-        const stdout: Stream.Writable = writeStream;
-        const stderr: Stream.Writable = writeStream;
+        const stdout: stream.Writable = writeStream;
+        const stderr: stream.Writable = writeStream;
 
         if (token.isCancellationRequested) {
             writeStream.end();
@@ -229,23 +228,20 @@ export class TestRunner {
         this.testRun.appendOutput(`> Test run started at ${new Date().toLocaleString()} <\r\n\r\n`);
         // show test results pane
         vscode.commands.executeCommand("testing.showMostRecentOutput");
-        try {
-            await execFileStreamOutput(
-                testBuildConfig.program,
-                testBuildConfig.args,
-                stdout,
-                stderr,
-                token,
-                {
-                    cwd: testBuildConfig.cwd,
-                    env: { ...process.env, ...testBuildConfig.env },
-                },
-                this.folderContext,
-                false
-            );
-        } catch {
-            // ignore errors from execFileStreamOutput. As stderr output is already parsed
-        }
+        await execFileStreamOutput(
+            testBuildConfig.program,
+            testBuildConfig.args,
+            stdout,
+            stderr,
+            token,
+            {
+                cwd: testBuildConfig.cwd,
+                env: { ...process.env, ...testBuildConfig.env },
+                maxBuffer: 16 * 1024 * 1024,
+            },
+            this.folderContext,
+            false
+        );
     }
 
     /** Run test session inside debugger */
@@ -355,9 +351,10 @@ export class TestRunner {
             const startedMatch = /^Test Case '-\[(\S+)\s(.*)\]' started./.exec(line);
             if (startedMatch) {
                 const testId = `${startedMatch[1]}/${startedMatch[2]}`;
-                const passedTestIndex = this.testItems.findIndex(item => item.id === testId);
-                if (passedTestIndex !== -1) {
-                    this.testRun.started(this.testItems[passedTestIndex]);
+                const startedTestIndex = this.testItems.findIndex(item => item.id === testId);
+                if (startedTestIndex !== -1) {
+                    this.testRun.started(this.testItems[startedTestIndex]);
+                    this.currentTestItem = this.testItems[startedTestIndex];
                 }
                 continue;
             }
@@ -373,6 +370,7 @@ export class TestRunner {
                     this.testRun.passed(this.testItems[passedTestIndex], duration * 1000);
                     this.testItems.splice(passedTestIndex, 1);
                 }
+                this.currentTestItem = undefined;
                 continue;
             }
             // Regex "<path/to/test>:<line number>: error: -[<test target> <class.function>] : <error>"
@@ -389,6 +387,7 @@ export class TestRunner {
                     this.testRun.failed(this.testItems[failedTestIndex], message);
                     this.testItems.splice(failedTestIndex, 1);
                 }
+                this.currentTestItem = undefined;
                 continue;
             }
             // Regex "<path/to/test>:<line number>: -[<test target> <class.function>] : Test skipped"
@@ -400,6 +399,7 @@ export class TestRunner {
                     this.testRun.skipped(this.testItems[skippedTestIndex]);
                     this.testItems.splice(skippedTestIndex, 1);
                 }
+                this.currentTestItem = undefined;
                 continue;
             }
         }
@@ -430,6 +430,7 @@ export class TestRunner {
                 );
                 if (startedTestIndex !== -1) {
                     this.testRun.started(this.testItems[startedTestIndex]);
+                    this.currentTestItem = this.testItems[startedTestIndex];
                 }
                 continue;
             }
@@ -454,6 +455,7 @@ export class TestRunner {
                     // remove from test item list as its status has been set
                     this.testItems.splice(failedTestIndex, 1);
                 }
+                this.currentTestItem = undefined;
                 continue;
             }
             // Regex "<path/to/test>:<line number>: <class>.<function> : Test skipped:"
@@ -471,6 +473,7 @@ export class TestRunner {
                     // remove from test item list as its status has been set
                     this.testItems.splice(skippedTestIndex, 1);
                 }
+                this.currentTestItem = undefined;
                 continue;
             }
         }
@@ -489,6 +492,7 @@ export class TestRunner {
                     // remove from test item list as its status has been set
                     this.testItems.splice(passedTestIndex, 1);
                 }
+                this.currentTestItem = undefined;
                 continue;
             }
         }
