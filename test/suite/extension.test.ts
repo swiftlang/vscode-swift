@@ -39,7 +39,7 @@ suite("Extension Test Suite", () => {
                 assert.strictEqual(contents, fileContents);
             });
             assert.doesNotThrow(async () => await fs.rm(fileName));
-        });
+        }).timeout(5000);
     });
 
     suite("Workspace", () => {
@@ -66,9 +66,9 @@ suite("Extension Test Suite", () => {
                 i++;
             }
             assert.notStrictEqual(i, 50);
-        }).timeout(5000);
+        }).timeout(8000);
     });
-}).timeout(8000);
+});
 
 async function sleep(ms: number): Promise<void> {
     return new Promise(resolve => {
