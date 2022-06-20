@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
-- Queue Swift tasks where we can to ensure we don't have multiple `swift` processes running on the same package at the same time.
+- Queue Swift tasks, where we can, to ensure we don't have multiple `swift` processes running on the same package at the same time.
 - Configuration setting `buildPath` to set a custom build folder.
 - The Test Explorer now displays additional states: test enqueued, test running and test errored.
   
