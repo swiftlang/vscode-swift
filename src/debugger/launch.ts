@@ -152,7 +152,7 @@ export function createTestConfiguration(
         folder = workspaceFolder;
         nameSuffix = "";
     } else {
-        folder = `${workspaceFolder}}/${ctx.relativePath}`;
+        folder = `${workspaceFolder}/${ctx.relativePath}`;
         nameSuffix = ` (${ctx.relativePath})`;
     }
     // respect user configuration if conflicts with injected runtime path
