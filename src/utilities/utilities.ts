@@ -104,7 +104,7 @@ export async function execFileStreamOutput(
     options: cp.ExecFileOptions = {},
     folderContext?: FolderContext,
     customSwiftRuntime = true
-): Promise<{ stdout: string; stderr: string }> {
+): Promise<void> {
     folderContext?.workspaceContext.outputChannel.logDiagnostic(
         `Exec: ${executable} ${args.join(" ")}`,
         folderContext.name
@@ -115,12 +115,12 @@ export async function execFileStreamOutput(
             options.env = { ...(options.env ?? process.env), ...runtimeEnv };
         }
     }
-    return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-        const p = cp.execFile(executable, args, options, (error, stdout, stderr) => {
+    return new Promise<void>((resolve, reject) => {
+        const p = cp.execFile(executable, args, options, error => {
             if (error) {
-                reject({ error, stdout, stderr });
+                reject({ error });
             }
-            resolve({ stdout, stderr });
+            resolve();
         });
         if (stdout) {
             p.stdout?.pipe(stdout);

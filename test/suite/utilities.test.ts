@@ -23,6 +23,7 @@ import {
     isPathInsidePath,
     buildPathFlags,
     buildDirectoryFromWorkspacePath,
+    execSwift,
 } from "../../src/utilities/utilities";
 import * as vscode from "vscode";
 
@@ -83,13 +84,8 @@ suite("Utilities Test Suite", () => {
             writeStream.end();
         });
 
-        const { stdout } = await execFileStreamOutput(
-            swift,
-            ["--version"],
-            writeStream,
-            null,
-            null
-        );
+        const { stdout } = await execSwift(["--version"]);
+        await execFileStreamOutput(swift, ["--version"], writeStream, null, null);
         assert(result.length > 0);
         assert(result.includes("Swift version"));
         assert.strictEqual(result, stdout);
