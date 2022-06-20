@@ -18,7 +18,7 @@ import * as path from "path";
 import * as stream from "stream";
 import { createTestConfiguration, createDarwinTestConfiguration } from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
-import { execFileStreamOutput, getErrorDescription } from "../utilities/utilities";
+import { ExecError, execFileStreamOutput, getErrorDescription } from "../utilities/utilities";
 import { getBuildAllTask } from "../SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
@@ -134,6 +134,18 @@ export class TestRunner {
                 await this.runSession(token);
             }
         } catch (error) {
+            // is error returned from child_process.exec call and command failed then
+            // skip reporting error
+            const execError = error as ExecError;
+            if (
+                execError &&
+                execError.error &&
+                execError.error.message.startsWith("Command failed")
+            ) {
+                this.testRun.end();
+                return;
+            }
+            // report error
             if (this.currentTestItem) {
                 const message = new vscode.TestMessage(getErrorDescription(error));
                 this.testRun.errored(this.currentTestItem, message);

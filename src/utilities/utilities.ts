@@ -20,6 +20,10 @@ import * as Stream from "stream";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
 
+export interface ExecError {
+    error: Error;
+}
+
 /**
  * Get required environment variable for Swift product
  *
