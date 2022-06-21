@@ -110,8 +110,10 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         let swiftArgs = ["package", plugin.command, ...args];
         swiftArgs = withSwiftSDKFlags(swiftArgs);
 
+        // Add relative path current working directory
         const relativeCwd = path.relative(config.scope.uri.fsPath, config.cwd?.fsPath);
         const cwd = relativeCwd !== "" ? relativeCwd : undefined;
+
         const task = new vscode.Task(
             {
                 type: "swift-plugin",
