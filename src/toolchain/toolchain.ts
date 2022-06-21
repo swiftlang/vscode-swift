@@ -127,7 +127,7 @@ export class SwiftToolchain {
                     // use `type swift` to find `swift`. Run inside /bin/sh to ensure
                     // we get consistent output as different shells output a different
                     // format. Tried running with `-p` but that is not available in /bin/sh
-                    const { stdout } = await execFile("/bin/sh", ["-c", "type swift"]);
+                    const { stdout } = await execFile("/bin/sh", ["-c", "LCMESSAGES=C type swift"]);
                     const swiftMatch = /^swift is (.*)$/.exec(stdout.trimEnd());
                     if (swiftMatch) {
                         swift = swiftMatch[1];
