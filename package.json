@@ -361,6 +361,34 @@
           "command",
           "args"
         ]
+      },
+      {
+        "type": "swift-plugin",
+        "properties": {
+          "command": {
+            "description": "The plugin command to execute. This should not contain any arguments as it will be quoted.",
+            "type": "string"
+          },
+          "args": {
+            "description": "An array of arguments for the command. Each argument will be quoted separately.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "disableSandbox": {
+            "description": "Plugins normally run inside a sandbox. Set this to true to disable the sandbox when running .",
+            "type": "boolean"
+          },
+          "cwd": {
+            "description": "The folder to run the swift plugin in.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command",
+          "args"
+        ]
       }
     ],
     "views": {
