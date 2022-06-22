@@ -253,10 +253,6 @@
           "when": "swift.hasPackage"
         },
         {
-          "command": "swift.runPlugin",
-          "when": "swift.packageHasPlugins"
-        },
-        {
           "command": "swift.useLocalDependency",
           "when": "false"
         },
