@@ -182,7 +182,7 @@ export function createSwiftTask(args: string[], name: string, config?: TaskConfi
     const swift = getSwiftExecutable();
     args = withSwiftSDKFlags(args);
     const task = new vscode.Task(
-        { type: "swift", command: swift, args: args, cwd: config?.cwd?.fsPath },
+        { type: "swift", args: args, cwd: config?.cwd?.fsPath },
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
         "swift",
@@ -209,7 +209,7 @@ export function createSwiftTask(args: string[], name: string, config?: TaskConfi
 
 /**
  * A {@link vscode.TaskProvider TaskProvider} for tasks that match the definition
- * in **package.json**: `{ type: 'swift'; command: string; args: string[] }`.
+ * in **package.json**: `{ type: 'swift'; args: string[], cwd: string? }`.
  *
  * See {@link SwiftTaskProvider.provideTasks provideTasks} for a list of provided tasks.
  */
@@ -228,7 +228,6 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
      * - `swift package clean`
      * - `swift package resolve`
      * - `swift package update`
-     * - `swift run ${target}` for every executable target
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async provideTasks(token: vscode.CancellationToken): Promise<vscode.Task[]> {
@@ -264,15 +263,14 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         const newTask = new vscode.Task(
             task.definition,
             task.scope ?? vscode.TaskScope.Workspace,
-            task.name ?? "Custom Task",
+            task.name ?? "Swift Custom Task",
             "swift",
             new vscode.ShellExecution(swift, task.definition.args, {
                 cwd: task.definition.cwd,
             }),
             task.problemMatchers
         );
-        newTask.detail =
-            task.detail ?? `${task.definition.command} ${task.definition.args.join(" ")}`;
+        newTask.detail = task.detail ?? `swift ${task.definition.args.join(" ")}`;
         newTask.group = task.group;
         newTask.presentationOptions = task.presentationOptions;
 
