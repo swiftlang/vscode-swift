@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import * as path from "path";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { Product } from "./SwiftPackage";
@@ -34,7 +35,7 @@ import { Version } from "./utilities/version";
 // Interface class for defining task configuration
 interface TaskConfig {
     cwd?: vscode.Uri;
-    scope?: vscode.TaskScope | vscode.WorkspaceFolder;
+    scope: vscode.TaskScope | vscode.WorkspaceFolder;
     group?: vscode.TaskGroup;
     problemMatcher?: string | string[];
     presentationOptions?: vscode.TaskPresentationOptions;
@@ -178,16 +179,31 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
 /**
  * Helper function to create a {@link vscode.Task Task} with the given parameters.
  */
-export function createSwiftTask(args: string[], name: string, config?: TaskConfig): vscode.Task {
+export function createSwiftTask(args: string[], name: string, config: TaskConfig): vscode.Task {
     const swift = getSwiftExecutable();
     args = withSwiftSDKFlags(args);
+
+    // Add relative path current working directory
+    let cwd: string | undefined;
+    const scopeWorkspaceFolder = config.scope as vscode.WorkspaceFolder;
+    if (scopeWorkspaceFolder) {
+        if (config.cwd) {
+            const relativeCwd = path.relative(scopeWorkspaceFolder.uri.fsPath, config.cwd.fsPath);
+            if (relativeCwd !== "") {
+                cwd = relativeCwd;
+            }
+        }
+    } else {
+        cwd = config.cwd?.fsPath;
+    }
+
     const task = new vscode.Task(
-        { type: "swift", args: args, cwd: config?.cwd?.fsPath },
+        { type: "swift", args: args, cwd: cwd },
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
         "swift",
         new vscode.ShellExecution(swift, args, {
-            cwd: config?.cwd?.fsPath,
+            cwd: cwd,
             env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
         }),
         config?.problemMatcher
@@ -215,7 +231,7 @@ export function createSwiftTask(args: string[], name: string, config?: TaskConfi
  */
 export class SwiftTaskProvider implements vscode.TaskProvider {
     static buildAllName = "Build All";
-    static cleanBuildName = "Clean Build Artifacts";
+    static cleanBuildName = "Clean Build";
     static resolvePackageName = "Resolve Package Dependencies";
     static updatePackageName = "Update Package Dependencies";
 
