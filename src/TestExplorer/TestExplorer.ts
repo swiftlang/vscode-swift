@@ -196,6 +196,8 @@ export class TestExplorer {
                     errorDescription.match(/No such file or directory/))
             ) {
                 this.setErrorTestItem("Build the project to enable test discovery.");
+            } else if (errorDescription.startsWith("error: no tests found")) {
+                this.setErrorTestItem("Add a test target to your Package.", "No Tests Found.");
             } else {
                 this.setErrorTestItem(errorDescription);
             }
@@ -215,8 +217,10 @@ export class TestExplorer {
      * Add/replace a TestItem with an error, if test controller currently has no TestItems
      * @param errorDescription Error description to display
      */
-    private setErrorTestItem(errorDescription: string, title = "Test Discovery Error") {
-        this.deleteErrorTestItem();
+    private setErrorTestItem(errorDescription: string | undefined, title = "Test Discovery Error") {
+        this.controller.items.forEach(item => {
+            this.controller.items.delete(item.id);
+        });
         if (this.controller.items.size === 0) {
             const errorItem = this.controller.createTestItem(TestExplorer.errorTestItemId, title);
             errorItem.error = errorDescription;
