@@ -16,7 +16,7 @@ import * as langclient from "vscode-languageclient/node";
 
 // Definitions for non-standard requests used by sourcekit-lsp
 
-export interface InlayHintsParams {
+export interface LegacyInlayHintsParams {
     /**
      * The text document.
      */
@@ -36,7 +36,7 @@ export interface InlayHintsParams {
     only?: string[];
 }
 
-export interface InlayHint {
+export interface LegacyInlayHint {
     /**
      * The position within the code that this hint is
      * attached to.
@@ -55,6 +55,8 @@ export interface InlayHint {
     label: string;
 }
 
-export const inlayHintsRequest = new langclient.RequestType<InlayHintsParams, InlayHint[], unknown>(
-    "sourcekit-lsp/inlayHints"
-);
+export const legacyInlayHintsRequest = new langclient.RequestType<
+    LegacyInlayHintsParams,
+    LegacyInlayHint[],
+    unknown
+>("sourcekit-lsp/inlayHints");
