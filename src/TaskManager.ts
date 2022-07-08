@@ -59,7 +59,10 @@ export class TaskManager implements vscode.Disposable {
     ): Promise<number | undefined> {
         return new Promise<number | undefined>(resolve => {
             const disposable = this.onDidEndTaskProcess(event => {
-                if (event.execution.task.definition === task.definition) {
+                if (
+                    event.execution.task.definition === task.definition ||
+                    event.execution.task.scope === task.scope
+                ) {
                     disposable.dispose();
                     resolve(event.exitCode);
                 }
