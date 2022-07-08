@@ -34,7 +34,7 @@ import { Version } from "./utilities/version";
 
 // Interface class for defining task configuration
 interface TaskConfig {
-    cwd?: vscode.Uri;
+    cwd: vscode.Uri;
     scope: vscode.TaskScope | vscode.WorkspaceFolder;
     group?: vscode.TaskGroup;
     problemMatcher?: string | string[];
@@ -187,14 +187,14 @@ export function createSwiftTask(args: string[], name: string, config: TaskConfig
     let cwd: string | undefined;
     const scopeWorkspaceFolder = config.scope as vscode.WorkspaceFolder;
     if (scopeWorkspaceFolder) {
-        if (config.cwd) {
-            const relativeCwd = path.relative(scopeWorkspaceFolder.uri.fsPath, config.cwd.fsPath);
-            if (relativeCwd !== "") {
-                cwd = relativeCwd;
-            }
+        const relativeCwd = path.relative(scopeWorkspaceFolder.uri.fsPath, config.cwd.fsPath);
+        if (relativeCwd !== "") {
+            cwd = relativeCwd;
+        } else {
+            cwd = config.cwd.fsPath;
         }
     } else {
-        cwd = config.cwd?.fsPath;
+        cwd = config.cwd.fsPath;
     }
 
     const task = new vscode.Task(
