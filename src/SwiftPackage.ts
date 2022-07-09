@@ -120,6 +120,12 @@ export interface WorkspaceStateDependency {
     state: { name: string; path?: string };
 }
 
+export interface PackagePlugin {
+    command: string;
+    name: string;
+    package: string;
+}
+
 /** Swift Package State
  *
  * Can be package contents, error found when loading package or undefined meaning
@@ -148,7 +154,8 @@ export class SwiftPackage implements PackageContents {
     private constructor(
         readonly folder: vscode.Uri,
         private contents: SwiftPackageState,
-        public resolved?: PackageResolved
+        public resolved: PackageResolved | undefined,
+        public plugins: PackagePlugin[]
     ) {}
 
     /**
@@ -159,7 +166,8 @@ export class SwiftPackage implements PackageContents {
     static async create(folder: vscode.Uri): Promise<SwiftPackage> {
         const contents = await SwiftPackage.loadPackage(folder);
         const resolved = await SwiftPackage.loadPackageResolved(folder);
-        return new SwiftPackage(folder, contents, resolved);
+        const plugins = await SwiftPackage.loadPlugins(folder);
+        return new SwiftPackage(folder, contents, resolved, plugins);
     }
 
     /**
@@ -211,6 +219,31 @@ export class SwiftPackage implements PackageContents {
         } catch {
             // failed to load resolved file return undefined
             return undefined;
+        }
+    }
+
+    static async loadPlugins(folder: vscode.Uri): Promise<PackagePlugin[]> {
+        try {
+            const { stdout } = await execSwift(["package", "plugin", "--list"], {
+                cwd: folder.fsPath,
+            });
+            const plugins: PackagePlugin[] = [];
+            const lines = stdout.split("\n").map(item => item.trim());
+            for (const line of lines) {
+                // ‘generate-documentation’ (plugin ‘Swift-DocC’ in package ‘SwiftDocCPlugin’)
+                const pluginMatch = /^‘(.*)’ \(plugin ‘(.*)’ in package ‘(.*)’\)/.exec(line);
+                if (pluginMatch) {
+                    plugins.push({
+                        command: pluginMatch[1],
+                        name: pluginMatch[2],
+                        package: pluginMatch[3],
+                    });
+                }
+            }
+            return plugins;
+        } catch {
+            // failed to load resolved file return undefined
+            return [];
         }
     }
 

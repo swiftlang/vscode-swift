@@ -22,6 +22,7 @@ import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { LanguageStatusItems } from "./ui/LanguageStatusItems";
 import { getErrorDescription } from "./utilities/utilities";
+import { SwiftPluginTaskProvider } from "./SwiftPluginTaskProvider";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -48,10 +49,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         // listen for workspace folder changes and active text editor changes
         workspaceContext.setupEventListeners();
 
-        // Register commands.
+        // Register task provider.
         const taskProvider = vscode.tasks.registerTaskProvider(
             "swift",
             new SwiftTaskProvider(workspaceContext)
+        );
+        // Register swift plugin task provider.
+        const pluginTaskProvider = vscode.tasks.registerTaskProvider(
+            "swift-plugin",
+            new SwiftPluginTaskProvider(workspaceContext)
         );
         commands.register(workspaceContext);
 
@@ -111,6 +117,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             logObserver,
             languageStatusItem,
             commentCompletionProvider,
+            pluginTaskProvider,
             taskProvider
         );
 

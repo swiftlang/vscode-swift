@@ -38,6 +38,13 @@ const contextKeys = {
     set packageHasDependencies(value: boolean) {
         vscode.commands.executeCommand("setContext", "swift.packageHasDependencies", value);
     },
+
+    /**
+     * Whether the Swift package has any dependencies to display in the Package Dependencies view.
+     */
+    set packageHasPlugins(value: boolean) {
+        vscode.commands.executeCommand("setContext", "swift.packageHasPlugins", value);
+    },
 };
 
 export default contextKeys;

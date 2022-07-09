@@ -31,6 +31,7 @@ import { TaskManager } from "./TaskManager";
 import { BackgroundCompilation } from "./BackgroundCompilation";
 import { makeDebugConfigurations } from "./debugger/launch";
 import configuration from "./configuration";
+import contextKeys from "./contextKeys";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -121,8 +122,23 @@ export class WorkspaceContext implements vscode.Disposable {
             }
         });
         const backgroundCompilationOnDidSave = BackgroundCompilation.start(this);
+        const contextKeysUpdate = this.observeFolders((folder, event) => {
+            switch (event) {
+                case FolderEvent.focus:
+                    this.updateContextKeys(folder);
+                    break;
+                case FolderEvent.unfocus:
+                    this.updateContextKeys(folder);
+                    break;
+                case FolderEvent.resolvedUpdated:
+                    if (folder === this.currentFolder) {
+                        this.updateContextKeys(folder);
+                    }
+            }
+        });
         this.subscriptions = [
             backgroundCompilationOnDidSave,
+            contextKeysUpdate,
             onChangeConfig,
             this.tasks,
             this.languageClientManager,
@@ -145,6 +161,21 @@ export class WorkspaceContext implements vscode.Disposable {
         const tempFolder = await TemporaryFolder.create();
         const toolchain = await SwiftToolchain.create();
         return new WorkspaceContext(tempFolder, toolchain);
+    }
+
+    /**
+     * Update context keys based on package contents
+     */
+    updateContextKeys(folderContext: FolderContext | null) {
+        if (!folderContext || !folderContext.swiftPackage.foundPackage) {
+            contextKeys.hasPackage = false;
+            contextKeys.packageHasDependencies = false;
+            contextKeys.packageHasPlugins = false;
+            return;
+        }
+        contextKeys.hasPackage = true;
+        contextKeys.packageHasDependencies = folderContext.swiftPackage.dependencies.length > 0;
+        contextKeys.packageHasPlugins = folderContext.swiftPackage.plugins.length > 0;
     }
 
     /** Setup the vscode event listeners to catch folder changes and active window changes */
