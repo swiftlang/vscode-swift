@@ -57,12 +57,12 @@ export class TaskManager implements vscode.Disposable {
         task: vscode.Task,
         token?: vscode.CancellationToken
     ): Promise<number | undefined> {
+        // set id on definition to catch this task when completing
+        task.definition.id = this.taskId;
+        this.taskId += 1;
         return new Promise<number | undefined>(resolve => {
             const disposable = this.onDidEndTaskProcess(event => {
-                if (
-                    event.execution.task.definition === task.definition ||
-                    event.execution.task.scope === task.scope
-                ) {
+                if (event.execution.task.definition.id === task.definition.id) {
                     disposable.dispose();
                     resolve(event.exitCode);
                 }
@@ -89,6 +89,7 @@ export class TaskManager implements vscode.Disposable {
     private observers: Set<TaskObserver> = new Set();
     private onDidEndTaskProcessDisposible: vscode.Disposable;
     private onDidEndTaskDisposible: vscode.Disposable;
+    private taskId = 0;
 }
 
 /** Workspace Folder observer function */
