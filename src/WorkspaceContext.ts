@@ -211,9 +211,9 @@ export class WorkspaceContext implements vscode.Disposable {
         // on either null folder or the first folder if there is only one
         if (this.currentFolder === undefined) {
             if (this.folders.length === 1) {
-                await this.fireEvent(this.folders[0], FolderEvent.focus);
+                await this.focusFolder(this.folders[0]);
             } else {
-                await this.fireEvent(null, FolderEvent.focus);
+                await this.focusFolder(null);
             }
         }
     }
