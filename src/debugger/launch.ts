@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as os from "os";
+import path = require("path");
 import * as vscode from "vscode";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
@@ -102,7 +103,10 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
         folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}/${ctx.relativePath}`;
         nameSuffix = ` (${ctx.relativePath})`;
     }
-    const buildDirectory = buildDirectoryFromWorkspacePath(folder);
+    let buildDirectory = buildDirectoryFromWorkspacePath(folder);
+    if (!path.isAbsolute(buildDirectory)) {
+        buildDirectory = path.join(folder, buildDirectory);
+    }
     return executableProducts.flatMap(product => {
         return [
             {
@@ -161,7 +165,10 @@ export function createTestConfiguration(
         ...configuration.testEnvironmentVariables,
     };
 
-    const buildDirectory = buildDirectoryFromWorkspacePath(folder);
+    let buildDirectory = buildDirectoryFromWorkspacePath(folder);
+    if (!path.isAbsolute(buildDirectory)) {
+        buildDirectory = path.join(folder, buildDirectory);
+    }
     if (process.platform === "darwin") {
         // On macOS, find the path to xctest
         // and point it at the .xctest bundle from the configured build directory.
