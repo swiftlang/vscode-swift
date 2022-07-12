@@ -36,7 +36,10 @@ class QueuedOperation implements SwiftOperation {
         if (args1.length !== args2.length) {
             return false;
         }
-        return args1.every((value, index) => value === args2[index]);
+        return (
+            args1.every((value, index) => value === args2[index]) &&
+            operation.task.scope === this.task.scope
+        );
     }
 }
 

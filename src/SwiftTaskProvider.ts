@@ -113,7 +113,8 @@ export async function getBuildAllTask(folderContext: FolderContext): Promise<vsc
     let task = tasks.find(
         task =>
             task.name === `swift: ${buildTaskName}` &&
-            task.definition.cwd === folderContext.folder.fsPath &&
+            (task.execution as vscode.ShellExecution).options?.cwd ===
+                folderContext.folder.fsPath &&
             task.source === "Workspace"
     );
     if (task) {
@@ -123,7 +124,8 @@ export async function getBuildAllTask(folderContext: FolderContext): Promise<vsc
     task = tasks.find(
         task =>
             task.name === buildTaskName &&
-            task.definition.cwd === folderContext.folder.fsPath &&
+            (task.execution as vscode.ShellExecution).options?.cwd ===
+                folderContext.folder.fsPath &&
             task.source === "swift"
     );
     if (!task) {
@@ -184,18 +186,20 @@ export function createSwiftTask(args: string[], name: string, config: TaskConfig
     args = withSwiftSDKFlags(args);
 
     // Add relative path current working directory
-    let cwd: string | undefined;
+    const cwd = config.cwd.fsPath;
+    const fullCwd = config.cwd.fsPath;
+
+    /* Currently there seems to be a bug in vscode where kicking off two tasks
+     with the same definition but different scopes messes with the task 
+     completion code. When that is resolved we will go back to the code below
+     where we only store the relative cwd instead of the full cwd
+
     const scopeWorkspaceFolder = config.scope as vscode.WorkspaceFolder;
-    if (scopeWorkspaceFolder) {
-        const relativeCwd = path.relative(scopeWorkspaceFolder.uri.fsPath, config.cwd.fsPath);
-        if (relativeCwd !== "") {
-            cwd = relativeCwd;
-        } else {
-            cwd = config.cwd.fsPath;
-        }
+    if (scopeWorkspaceFolder.uri.fsPath) {
+        cwd = path.relative(scopeWorkspaceFolder.uri.fsPath, config.cwd.fsPath);
     } else {
         cwd = config.cwd.fsPath;
-    }
+    }*/
 
     const task = new vscode.Task(
         { type: "swift", args: args, cwd: cwd },
@@ -203,7 +207,7 @@ export function createSwiftTask(args: string[], name: string, config: TaskConfig
         name,
         "swift",
         new vscode.ShellExecution(swift, args, {
-            cwd: cwd,
+            cwd: fullCwd,
             env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
         }),
         config?.problemMatcher
@@ -276,13 +280,22 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
         const swift = getSwiftExecutable();
+
+        const scopeWorkspaceFolder = task.scope as vscode.WorkspaceFolder;
+        let fullCwd = task.definition.cwd;
+        if (!path.isAbsolute(fullCwd) && scopeWorkspaceFolder.uri.fsPath) {
+            fullCwd = path.join(scopeWorkspaceFolder.uri.fsPath, fullCwd);
+        }
+        // set definition cwd to be the full path
+        task.definition.cwd = fullCwd;
+
         const newTask = new vscode.Task(
             task.definition,
             task.scope ?? vscode.TaskScope.Workspace,
             task.name ?? "Swift Custom Task",
             "swift",
             new vscode.ShellExecution(swift, task.definition.args, {
-                cwd: task.definition.cwd,
+                cwd: fullCwd,
             }),
             task.problemMatchers
         );
