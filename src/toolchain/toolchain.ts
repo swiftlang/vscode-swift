@@ -305,7 +305,7 @@ export class SwiftToolchain {
             // workaround for Swift 5.3 and older toolchains
             if (targetInfo.compilerVersion === undefined) {
                 const { stdout } = await execSwift(["--version"]);
-                targetInfo.compilerVersion = stdout.trimEnd();
+                targetInfo.compilerVersion = stdout.split("\n", 1)[0];
             }
             return targetInfo;
         } catch {
