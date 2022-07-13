@@ -55,9 +55,9 @@ suite("Extension Test Suite", () => {
 
             await vscode.commands.executeCommand("workbench.action.acceptSelectedQuickOpenItem");
 
-            // wait for results (allow for 3 seconds), check result every 100ms
+            // wait for results (allow for 7 seconds), check result every 100ms
             let i = 0;
-            while (i < 50) {
+            while (i < 70) {
                 await sleep(100);
                 if (workspaceContext.currentFolder) {
                     assert.strictEqual(workspaceContext.currentFolder.name, "test/package2");
@@ -65,8 +65,8 @@ suite("Extension Test Suite", () => {
                 }
                 i++;
             }
-            assert.notStrictEqual(i, 50);
-        }).timeout(8000);
+            assert.notStrictEqual(i, 70);
+        }).timeout(10000);
     });
 });
 
