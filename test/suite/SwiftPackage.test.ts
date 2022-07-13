@@ -62,5 +62,5 @@ suite("SwiftPackage Test Suite", () => {
         const spmPackage = await SwiftPackage.create(testAssetUri("package5.6"));
         assert.strictEqual(spmPackage.isValid, true);
         assert(spmPackage.resolved !== undefined);
-    }).timeout(10000);
+    }).timeout(15000);
 });
