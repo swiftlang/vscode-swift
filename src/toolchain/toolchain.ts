@@ -301,7 +301,13 @@ export class SwiftToolchain {
     private static async getSwiftTargetInfo(): Promise<SwiftTargetInfo> {
         try {
             const { stdout } = await execSwift(["-print-target-info"]);
-            return JSON.parse(stdout.trimEnd()) as SwiftTargetInfo;
+            const targetInfo = JSON.parse(stdout.trimEnd()) as SwiftTargetInfo;
+            // workaround for Swift 5.3 and older toolchains
+            if (targetInfo.compilerVersion === undefined) {
+                const { stdout } = await execSwift(["--version"]);
+                targetInfo.compilerVersion = stdout.split("\n", 1)[0];
+            }
+            return targetInfo;
         } catch {
             throw Error("Cannot parse swift target info output.");
         }
