@@ -286,8 +286,6 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         if (!path.isAbsolute(fullCwd) && scopeWorkspaceFolder.uri.fsPath) {
             fullCwd = path.join(scopeWorkspaceFolder.uri.fsPath, fullCwd);
         }
-        // set definition cwd to be the full path
-        task.definition.cwd = fullCwd;
 
         const newTask = new vscode.Task(
             task.definition,

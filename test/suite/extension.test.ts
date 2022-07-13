@@ -18,6 +18,7 @@ import * as fs from "fs/promises";
 import * as swiftExtension from "../../src/extension";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { testAssetPath } from "../fixtures";
+import { getBuildAllTask } from "../../src/SwiftTaskProvider";
 
 suite("Extension Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -67,6 +68,16 @@ suite("Extension Test Suite", () => {
             }
             assert.notStrictEqual(i, 70);
         }).timeout(10000);
+
+        test("Tasks.json", async () => {
+            const folder = workspaceContext.folders.find(f => f.name === "test/package2");
+            assert(folder);
+            const buildAllTask = await getBuildAllTask(folder);
+            const execution = buildAllTask.execution as vscode.ShellExecution;
+            assert.strictEqual(buildAllTask.definition.type, "swift");
+            assert.strictEqual(buildAllTask.name, "Build All (package2)");
+            assert.notStrictEqual(execution?.args, ["build", "--build-tests", "--verbose"]);
+        });
     });
 });
 
