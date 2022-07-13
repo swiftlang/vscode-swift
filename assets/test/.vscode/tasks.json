@@ -1,0 +1,21 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "swift",
+			"command": "",
+			"args": [
+				"build",
+				"--build-tests",
+                "--verbose"
+			],
+			"cwd": "",
+			"problemMatcher": [
+				"$swiftc"
+			],
+			"group": "build",
+			"label": "swift: Build All (package2)",
+			"detail": "swift build --build-tests --verbose"
+		}
+	]
+}
