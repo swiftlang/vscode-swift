@@ -7,6 +7,7 @@ needs to be listed here.
 - Swift Server Work Group
 ### Contributors
 - Adam Fowler <adamfowler71@gmail.com>
+- FW <30873659+fwcd@users.noreply.github.com>
 - Hassan Talat <hassan.talat.92@gmail.com>
 - Kenta Kubo <kabuto669@icloud.com>
 - Kim de Vos <kimdevos12@hotmail.com>
