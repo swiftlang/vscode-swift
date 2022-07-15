@@ -15,7 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - When running with Swift 5.7 or later, migrate to using official implementation of Inlay Hints.
 - Cleanup Swift Task implementation, remove `command` property as it is always `swift`.
-- Show no tests messages instead of an error message in Test Explorer when a package has no tests.
+- Show "no tests" message instead of an error message in Test Explorer when a package has no tests.
 
 ### Fixed
 
