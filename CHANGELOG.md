@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.7.0 - 2022-07-16
+
+### Added
+
+- Support multiple workspace feature of SourceKit-LSP that comes with Swift 5.7.
+- Tasks for SwiftPM plugins.
+
+### Changed
+
+- When running with Swift 5.7 or later, migrate to using official implementation of Inlay Hints.
+- Cleanup Swift Task implementation, remove `command` property as it is always `swift`.
+- Show "no tests" message instead of an error message in Test Explorer when a package has no tests.
+
+### Fixed
+
+- Finding the Swift executable on non-English Linux systems.
+- Setting path to executable in `launch.json` when package is in a sub-folder of the workspace.
+- Setting focus package at startup when the workspace only has one package.
+- Crash while getting Swift version from versions 5.3 or earlier of Swift.
+
 ## 0.6.0 - 2022-06-20
 
 ### Added

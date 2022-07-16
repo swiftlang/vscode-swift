@@ -7,11 +7,12 @@ needs to be listed here.
 - Swift Server Work Group
 ### Contributors
 - Adam Fowler <adamfowler71@gmail.com>
+- FW <30873659+fwcd@users.noreply.github.com>
 - Hassan Talat <hassan.talat.92@gmail.com>
 - Kenta Kubo <kabuto669@icloud.com>
 - Kim de Vos <kimdevos12@hotmail.com>
 - Saleem Abdulrasool <compnerd@compnerd.org>
-- Serhii Mumriak <4306641+smumriak@users.noreply.github.com>
+- Serhii Mumriak <sergiy.mumryak@gmail.com>
 - Steven Van Impe <steven.vanimpe@icloud.com>
 - Tim Condon <0xtimc@gmail.com>
 - YR Chen <stevapple@icloud.com>
