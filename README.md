@@ -26,6 +26,10 @@ For the extension to work, you must have Swift installed on your system. Please 
 
 ## Features
 
+### Language features
+
+The extension provides language features such as code completion and jump to definition via the Apple project [SourceKit-LSP](https://github.com/apple/sourcekit-lsp). For these to work fully it is required that the project has been built at least once. Every time you add a new dependency to your project you should build it so SourceKit-LSP can extract the symbol data for that dependency.
+
 ### Automatic task creation
 
 For workspaces that contain a **Package.swift** file, this extension will create the following tasks:
