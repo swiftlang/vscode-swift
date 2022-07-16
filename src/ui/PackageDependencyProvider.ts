@@ -187,10 +187,10 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
      */
     private getLocalDependencies(folderContext: FolderContext): PackageNode[] {
         return folderContext.swiftPackage.dependencies
-            .filter(dependency => !dependency.requirement && dependency.url)
+            .filter(dependency => !dependency.requirement && dependency.path)
             .map(
                 dependency =>
-                    new PackageNode(dependency.identity, dependency.url!, "local", "local")
+                    new PackageNode(dependency.identity, dependency.path!, "local", "local")
             );
     }
 
