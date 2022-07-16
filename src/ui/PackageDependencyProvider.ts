@@ -21,6 +21,7 @@ import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderEvent } from "../WorkspaceContext";
 import { FolderContext } from "../FolderContext";
 import contextKeys from "../contextKeys";
+import { Version } from "../utilities/version";
 
 /**
  * References:
@@ -186,12 +187,24 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
      * declared in **Package.swift**.
      */
     private getLocalDependencies(folderContext: FolderContext): PackageNode[] {
-        return folderContext.swiftPackage.dependencies
-            .filter(dependency => !dependency.requirement && dependency.path)
-            .map(
-                dependency =>
-                    new PackageNode(dependency.identity, dependency.path!, "local", "local")
-            );
+        const swiftVersion = folderContext.workspaceContext.toolchain.swiftVersion;
+        // prior to Swift 5.6 local dependencies had no requirements
+        if (swiftVersion.isLessThan(new Version(5, 6, 0))) {
+            return folderContext.swiftPackage.dependencies
+                .filter(dependency => !dependency.requirement && dependency.url)
+                .map(
+                    dependency =>
+                        new PackageNode(dependency.identity, dependency.url!, "local", "local")
+                );
+        } else {
+            // since Swift 5.6 local dependencies have `type` `fileSystem`
+            return folderContext.swiftPackage.dependencies
+                .filter(dependency => dependency.type === "fileSystem" && dependency.path)
+                .map(
+                    dependency =>
+                        new PackageNode(dependency.identity, dependency.path!, "local", "local")
+                );
+        }
     }
 
     /**
