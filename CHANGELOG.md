@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Setting path to executable in `launch.json` when package is in a sub-folder of the workspace.
 - Setting focus package at startup when the workspace only has one package.
 - Crash while getting Swift version from versions 5.3 or earlier of Swift.
+- Local packages not showing in Package Dependency View with Swift 5.6 or later.
 
 ## 0.6.0 - 2022-06-20
 
