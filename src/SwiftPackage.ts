@@ -46,8 +46,10 @@ export interface Target {
 /** Swift Package Manager dependency */
 export interface Dependency {
     identity: string;
+    type?: string; // fileSystem, sourceControl or registry
     requirement?: object;
     url?: string;
+    path?: string;
 }
 
 /** Swift Package.resolved file */
