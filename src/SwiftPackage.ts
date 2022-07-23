@@ -117,9 +117,14 @@ export interface WorkspaceState {
     version: number;
 }
 
+export interface CheckoutState {
+    revision: string;
+    version: string;
+}
+
 export interface WorkspaceStateDependency {
     packageRef: { identity: string; kind: string; location: string; name: string };
-    state: { name: string; path?: string };
+    state: { name: string; path?: string; checkoutState?: CheckoutState };
 }
 
 export interface PackagePlugin {

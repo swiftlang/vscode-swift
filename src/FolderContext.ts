@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { LinuxMain } from "./LinuxMain";
 import { PackageWatcher } from "./PackageWatcher";
-import { SwiftPackage } from "./SwiftPackage";
+import { SwiftPackage, WorkspaceStateDependency } from "./SwiftPackage";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { WorkspaceContext, FolderEvent } from "./WorkspaceContext";
 import { BackgroundCompilation } from "./BackgroundCompilation";
@@ -153,6 +153,12 @@ export class FolderContext implements vscode.Disposable {
                     return { name: item.packageRef.identity, folder: item.state.path! };
                 }) ?? []
         );
+    }
+
+    /** Get list of all packages */
+    async getAllPackages(): Promise<WorkspaceStateDependency[]> {
+        const workspaceState = await this.swiftPackage.loadWorkspaceState();
+        return workspaceState?.object.dependencies ?? [];
     }
 
     static uriName(uri: vscode.Uri): string {
