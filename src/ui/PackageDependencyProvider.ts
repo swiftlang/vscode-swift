@@ -42,7 +42,8 @@ export class PackageNode {
         public name: string,
         public path: string,
         public version: string,
-        public type: "local" | "remote" | "editing"
+        public type: "local" | "remote" | "editing",
+        public packagePath: string = ""
     ) {}
 
     toTreeItem(): vscode.TreeItem {
@@ -164,15 +165,9 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             );
         }
 
-        const buildDirectory = buildDirectoryFromWorkspacePath(folderContext.folder.fsPath, true);
-
         if (element instanceof PackageNode) {
             // Read the contents of a package.
-            const packagePath =
-                element.type === "remote"
-                    ? path.join(buildDirectory, "checkouts", getRepositoryName(element.path))
-                    : element.path;
-            return this.getNodesInDirectory(packagePath);
+            return this.getNodesInDirectory(element.packagePath);
         } else {
             // Read the contents of a directory within a package.
             return this.getNodesInDirectory(element.path);
@@ -184,14 +179,42 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             const version =
                 dependency.packageRef.kind === "fileSystem"
                     ? "local"
-                    : (dependency.state.checkoutState?.version ?? dependency.state.checkoutState?.branch ?? "loading");
-            const type = dependency.packageRef.kind === "fileSystem" ? "local" : "remote";
+                    : dependency.state.checkoutState?.version ??
+                      dependency.state.checkoutState?.branch ??
+                      "editing";
+
+            const type =
+                dependency.state.name === "edited"
+                    ? "editing"
+                    : dependency.packageRef.kind === "fileSystem"
+                    ? "local"
+                    : "remote";
+
+            let packagePath = "";
+            if (type === "editing") {
+                packagePath = path.join(
+                    folderContext.folder.fsPath,
+                    "Packages",
+                    dependency.subpath
+                );
+            } else if (type === "local") {
+                packagePath = dependency.state.path ?? dependency.packageRef.location;
+            } else {
+                // remote
+                const buildDirectory = buildDirectoryFromWorkspacePath(
+                    folderContext.folder.fsPath,
+                    true
+                );
+                packagePath = path.join(buildDirectory, "checkouts", dependency.subpath);
+            }
+
             return new PackageNode(
                 dependency.packageRef.identity,
                 dependency.packageRef.name,
                 dependency.packageRef.location!,
                 version,
-                type
+                type,
+                packagePath
             );
         });
     }
