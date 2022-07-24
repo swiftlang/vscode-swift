@@ -117,9 +117,11 @@ export interface WorkspaceState {
     version: number;
 }
 
+/** branch + revision || revision + version */
 export interface CheckoutState {
+    branch: string | null;
     revision: string;
-    version: string;
+    version: string | null;
 }
 
 export interface WorkspaceStateDependency {

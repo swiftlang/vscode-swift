@@ -21,7 +21,6 @@ import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderEvent } from "../WorkspaceContext";
 import { FolderContext } from "../FolderContext";
 import contextKeys from "../contextKeys";
-import { Version } from "../utilities/version";
 
 /**
  * References:
@@ -39,6 +38,7 @@ import { Version } from "../utilities/version";
  */
 export class PackageNode {
     constructor(
+        public identity: string,
         public name: string,
         public path: string,
         public version: string,
@@ -184,12 +184,14 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             const version =
                 dependency.packageRef.kind === "fileSystem"
                     ? "local"
-                    : dependency.state.checkoutState?.version ?? "loading";
+                    : (dependency.state.checkoutState?.version ?? dependency.state.checkoutState?.branch ?? "loading");
+            const type = dependency.packageRef.kind === "fileSystem" ? "local" : "remote";
             return new PackageNode(
                 dependency.packageRef.identity,
+                dependency.packageRef.name,
                 dependency.packageRef.location!,
                 version,
-                dependency.packageRef.kind === "filesystem" ? "local" : "remote"
+                type
             );
         });
     }
@@ -201,7 +203,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
      */
     private async getEditedDependencies(folderContext: FolderContext): Promise<PackageNode[]> {
         return (await folderContext.getEditedPackages()).map(
-            item => new PackageNode(item.name, item.folder, "local", "editing")
+            item => new PackageNode(item.identity, item.name, item.folder, "local", "editing")
         );
     }
 

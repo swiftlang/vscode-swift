@@ -150,7 +150,7 @@ export class FolderContext implements vscode.Disposable {
                     return item.state.name === "edited" && item.state.path;
                 })
                 .map(item => {
-                    return { name: item.packageRef.identity, folder: item.state.path! };
+                    return { identity: item.packageRef.identity, name: item.packageRef.identity, folder: item.state.path! };
                 }) ?? []
         );
     }
@@ -167,6 +167,7 @@ export class FolderContext implements vscode.Disposable {
 }
 
 export interface EditedPackage {
+    identity: string;
     name: string;
     folder: string;
 }
