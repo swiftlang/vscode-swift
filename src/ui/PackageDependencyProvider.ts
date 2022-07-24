@@ -164,7 +164,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
     }
 
     private async getAllDependencies(folderContext: FolderContext): Promise<PackageNode[]> {
-        return (await folderContext.getAllPackages()).map(dependency => {
+        return (await folderContext.getWorkspaceDependencies()).map(dependency => {
             const version =
                 dependency.packageRef.kind === "fileSystem"
                     ? "local"
