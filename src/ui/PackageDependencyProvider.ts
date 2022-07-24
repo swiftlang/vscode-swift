@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
 import configuration from "../configuration";
-import { getRepositoryName, buildDirectoryFromWorkspacePath } from "../utilities/utilities";
+import { buildDirectoryFromWorkspacePath } from "../utilities/utilities";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderEvent } from "../WorkspaceContext";
 import { FolderContext } from "../FolderContext";
@@ -42,8 +42,7 @@ export class PackageNode {
         public name: string,
         public path: string,
         public version: string,
-        public type: "local" | "remote" | "editing",
-        public packagePath: string = ""
+        public type: "local" | "remote" | "editing"
     ) {}
 
     toTreeItem(): vscode.TreeItem {
@@ -157,7 +156,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
 
         if (element instanceof PackageNode) {
             // Read the contents of a package.
-            return this.getNodesInDirectory(element.packagePath);
+            return this.getNodesInDirectory(element.path);
         } else {
             // Read the contents of a directory within a package.
             return this.getNodesInDirectory(element.path);
@@ -199,10 +198,9 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             return new PackageNode(
                 dependency.packageRef.identity,
                 dependency.packageRef.name,
-                dependency.packageRef.location!,
+                packagePath,
                 version,
-                type,
-                packagePath
+                type
             );
         });
     }
