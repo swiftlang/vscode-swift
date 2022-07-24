@@ -152,17 +152,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             // be up to date with edited dependency list, we need to remove the edited
             // dependencies from the list before adding in the edit version
             const children = await this.getAllDependencies(folderContext);
-            const editedChildren = await this.getEditedDependencies(folderContext);
-            const uneditedChildren: PackageNode[] = [];
-            for (const child of children) {
-                const editedVersion = editedChildren.find(item => item.name === child.name);
-                if (!editedVersion) {
-                    uneditedChildren.push(child);
-                }
-            }
-            return [...uneditedChildren, ...editedChildren].sort((first, second) =>
-                first.name.localeCompare(second.name)
-            );
+            return children;
         }
 
         if (element instanceof PackageNode) {
@@ -192,11 +182,10 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
 
             let packagePath = "";
             if (type === "editing") {
-                packagePath = path.join(
+                packagePath = dependency.state.path ?? path.join(
                     folderContext.folder.fsPath,
                     "Packages",
-                    dependency.subpath
-                );
+                    dependency.subpath);
             } else if (type === "local") {
                 packagePath = dependency.state.path ?? dependency.packageRef.location;
             } else {
