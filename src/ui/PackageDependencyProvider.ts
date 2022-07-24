@@ -182,10 +182,9 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
 
             let packagePath = "";
             if (type === "editing") {
-                packagePath = dependency.state.path ?? path.join(
-                    folderContext.folder.fsPath,
-                    "Packages",
-                    dependency.subpath);
+                packagePath =
+                    dependency.state.path ??
+                    path.join(folderContext.folder.fsPath, "Packages", dependency.subpath);
             } else if (type === "local") {
                 packagePath = dependency.state.path ?? dependency.packageRef.location;
             } else {
@@ -206,17 +205,6 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                 packagePath
             );
         });
-    }
-
-    /**
-     * Return list of package dependencies in edit mode
-     * @param folderContext Folder to get edited dependencies for
-     * @returns Array of packages
-     */
-    private async getEditedDependencies(folderContext: FolderContext): Promise<PackageNode[]> {
-        return (await folderContext.getEditedPackages()).map(
-            item => new PackageNode(item.identity, item.name, item.folder, "local", "editing")
-        );
     }
 
     /**
