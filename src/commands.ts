@@ -455,17 +455,17 @@ export function register(ctx: WorkspaceContext) {
         vscode.commands.registerCommand("swift.openPackage", () => openPackage(ctx)),
         vscode.commands.registerCommand("swift.useLocalDependency", item => {
             if (item instanceof PackageNode) {
-                useLocalDependency(item.name, ctx);
+                useLocalDependency(item.identity, ctx);
             }
         }),
         vscode.commands.registerCommand("swift.editDependency", item => {
             if (item instanceof PackageNode) {
-                editDependency(item.name, ctx);
+                editDependency(item.identity, ctx);
             }
         }),
         vscode.commands.registerCommand("swift.uneditDependency", item => {
             if (item instanceof PackageNode) {
-                uneditDependency(item.name, ctx);
+                uneditDependency(item.identity, ctx);
             }
         }),
         vscode.commands.registerCommand("swift.openInWorkspace", item => {

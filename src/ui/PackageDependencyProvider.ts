@@ -42,7 +42,7 @@ export class PackageNode {
         public name: string,
         public path: string,
         public version: string,
-        public type: "local" | "remote" | "editing"
+        public type: "local" | "remote" | "edited"
     ) {}
 
     toTreeItem(): vscode.TreeItem {
@@ -50,9 +50,7 @@ export class PackageNode {
         item.id = this.path;
         item.description = this.version;
         item.iconPath =
-            this.type === "editing"
-                ? new vscode.ThemeIcon("edit")
-                : new vscode.ThemeIcon("archive");
+            this.type === "edited" ? new vscode.ThemeIcon("edit") : new vscode.ThemeIcon("archive");
         item.contextValue = this.type;
         return item;
     }
@@ -127,12 +125,13 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                     this.didChangeTreeDataEmitter.fire();
                     break;
                 case FolderEvent.resolvedUpdated:
+                    break;
+                case FolderEvent.workspaceStateUpdated:
                     if (!folder) {
                         return;
                     }
-                    if (folder === this.workspaceContext.currentFolder) {
-                        this.didChangeTreeDataEmitter.fire();
-                    }
+                    this.didChangeTreeDataEmitter.fire();
+                    break;
             }
         });
     }
@@ -150,8 +149,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             // Build PackageNodes for all dependencies. Because Package.resolved might not
             // be up to date with edited dependency list, we need to remove the edited
             // dependencies from the list before adding in the edit version
-            const children = await this.getAllDependencies(folderContext);
-            return children;
+            return await this.getAllDependencies(folderContext);
         }
 
         if (element instanceof PackageNode) {
@@ -170,17 +168,17 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                     ? "local"
                     : dependency.state.checkoutState?.version ??
                       dependency.state.checkoutState?.branch ??
-                      "editing";
+                      "edited";
 
             const type =
                 dependency.state.name === "edited"
-                    ? "editing"
+                    ? "edited"
                     : dependency.packageRef.kind === "fileSystem"
                     ? "local"
                     : "remote";
 
             let packagePath = "";
-            if (type === "editing") {
+            if (type === "edited") {
                 packagePath =
                     dependency.state.path ??
                     path.join(folderContext.folder.fsPath, "Packages", dependency.subpath);

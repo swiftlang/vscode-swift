@@ -491,6 +491,8 @@ export enum FolderEvent {
     packageUpdated = "packageUpdated",
     // Package.resolved has been updated
     resolvedUpdated = "resolvedUpdated",
+    // workspace-state.json has been updated
+    workspaceStateUpdated = "workspaceStateUpdated",
 }
 
 /** Workspace Folder observer function */

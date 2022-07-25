@@ -14,6 +14,7 @@
 
 import * as vscode from "vscode";
 import { FolderContext } from "./FolderContext";
+import { buildDirectoryFromWorkspacePath } from "./utilities/utilities";
 import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
 
 /**
@@ -25,6 +26,7 @@ import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
 export class PackageWatcher {
     private packageFileWatcher?: vscode.FileSystemWatcher;
     private resolvedFileWatcher?: vscode.FileSystemWatcher;
+    private workspaceStateFileWatcher?: vscode.FileSystemWatcher;
 
     constructor(private folderContext: FolderContext, private workspaceContext: WorkspaceContext) {}
 
@@ -35,6 +37,7 @@ export class PackageWatcher {
     install() {
         this.packageFileWatcher = this.createPackageFileWatcher();
         this.resolvedFileWatcher = this.createResolvedFileWatcher();
+        this.workspaceStateFileWatcher = this.createWorkspaceStateFileWatcher();
     }
 
     /**
@@ -44,6 +47,7 @@ export class PackageWatcher {
     dispose() {
         this.packageFileWatcher?.dispose();
         this.resolvedFileWatcher?.dispose();
+        this.workspaceStateFileWatcher?.dispose();
     }
 
     private createPackageFileWatcher(): vscode.FileSystemWatcher {
@@ -63,6 +67,20 @@ export class PackageWatcher {
         watcher.onDidCreate(async () => await this.handlePackageResolvedChange());
         watcher.onDidChange(async () => await this.handlePackageResolvedChange());
         watcher.onDidDelete(async () => await this.handlePackageResolvedChange());
+        return watcher;
+    }
+
+    private createWorkspaceStateFileWatcher(): vscode.FileSystemWatcher {
+        const uri = vscode.Uri.file(
+            buildDirectoryFromWorkspacePath(this.folderContext.folder.fsPath, true)
+        );
+
+        const watcher = vscode.workspace.createFileSystemWatcher(
+            new vscode.RelativePattern(uri, "workspace-state.json")
+        );
+        watcher.onDidCreate(async () => await this.handleWorkspaceStateChange());
+        watcher.onDidChange(async () => await this.handleWorkspaceStateChange());
+        watcher.onDidDelete(async () => await this.handleWorkspaceStateChange());
         return watcher;
     }
 
@@ -87,5 +105,16 @@ export class PackageWatcher {
     private async handlePackageResolvedChange() {
         await this.folderContext.reloadPackageResolved();
         this.workspaceContext.fireEvent(this.folderContext, FolderEvent.resolvedUpdated);
+    }
+
+    /**
+     * Handles a create or change event for **workspace-state.json**.
+     *
+     * This will resolve any changes in the workspace-state.json
+     */
+    private async handleWorkspaceStateChange() {
+        // load dependency info from workspace-state.json
+        await this.folderContext.reloadDependencies();
+        this.workspaceContext.fireEvent(this.folderContext, FolderEvent.workspaceStateUpdated);
     }
 }

@@ -266,8 +266,7 @@ export class SwiftPackage implements PackageContents {
     static async loadWorkspaceState(folder: vscode.Uri): Promise<WorkspaceState | undefined> {
         try {
             const uri = vscode.Uri.joinPath(
-                vscode.Uri.file(
-                buildDirectoryFromWorkspacePath(folder.fsPath, true)),
+                vscode.Uri.file(buildDirectoryFromWorkspacePath(folder.fsPath, true)),
                 "workspace-state.json"
             );
             const contents = await fs.readFile(uri.fsPath, "utf8");
@@ -281,12 +280,15 @@ export class SwiftPackage implements PackageContents {
     /** Reload swift package */
     public async reload() {
         this.contents = await SwiftPackage.loadPackage(this.folder);
-        this.workspaceState = await SwiftPackage.loadWorkspaceState(this.folder);
     }
 
     /** Reload Package.resolved file */
     public async reloadPackageResolved() {
         this.resolved = await SwiftPackage.loadPackageResolved(this.folder);
+    }
+
+    public async reloadDependencies() {
+        this.workspaceState = await SwiftPackage.loadWorkspaceState(this.folder);
     }
 
     /** Return if has valid contents */
