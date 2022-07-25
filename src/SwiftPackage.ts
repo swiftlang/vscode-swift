@@ -165,7 +165,8 @@ export class SwiftPackage implements PackageContents {
         readonly folder: vscode.Uri,
         private contents: SwiftPackageState,
         public resolved: PackageResolved | undefined,
-        public plugins: PackagePlugin[]
+        public plugins: PackagePlugin[],
+        public workspaceState: WorkspaceState | undefined
     ) {}
 
     /**
@@ -177,7 +178,8 @@ export class SwiftPackage implements PackageContents {
         const contents = await SwiftPackage.loadPackage(folder);
         const resolved = await SwiftPackage.loadPackageResolved(folder);
         const plugins = await SwiftPackage.loadPlugins(folder);
-        return new SwiftPackage(folder, contents, resolved, plugins);
+        const workspaceState = await SwiftPackage.loadWorkspaceState(folder);
+        return new SwiftPackage(folder, contents, resolved, plugins, workspaceState);
     }
 
     /**
@@ -261,10 +263,11 @@ export class SwiftPackage implements PackageContents {
      * Load workspace-state.json file for swift package
      * @returns Workspace state
      */
-    public async loadWorkspaceState(): Promise<WorkspaceState | undefined> {
+    static async loadWorkspaceState(folder: vscode.Uri): Promise<WorkspaceState | undefined> {
         try {
             const uri = vscode.Uri.joinPath(
-                vscode.Uri.file(buildDirectoryFromWorkspacePath(this.folder.fsPath, true)),
+                vscode.Uri.file(
+                buildDirectoryFromWorkspacePath(folder.fsPath, true)),
                 "workspace-state.json"
             );
             const contents = await fs.readFile(uri.fsPath, "utf8");
@@ -278,6 +281,7 @@ export class SwiftPackage implements PackageContents {
     /** Reload swift package */
     public async reload() {
         this.contents = await SwiftPackage.loadPackage(this.folder);
+        this.workspaceState = await SwiftPackage.loadWorkspaceState(this.folder);
     }
 
     /** Reload Package.resolved file */
@@ -317,6 +321,10 @@ export class SwiftPackage implements PackageContents {
     /** array of dependencies in Swift Package */
     get dependencies(): Dependency[] {
         return (this.contents as PackageContents)?.dependencies ?? [];
+    }
+
+    get workspaceDependencies(): WorkspaceStateDependency[] {
+        return this.workspaceState?.object.dependencies ?? [];
     }
 
     /** array of targets in Swift Package */

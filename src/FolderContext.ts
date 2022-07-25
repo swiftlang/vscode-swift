@@ -143,8 +143,7 @@ export class FolderContext implements vscode.Disposable {
 
     /** Get list of all packages */
     async getWorkspaceDependencies(): Promise<WorkspaceStateDependency[]> {
-        const workspaceState = await this.swiftPackage.loadWorkspaceState();
-        return workspaceState?.object.dependencies ?? [];
+        return this.swiftPackage.workspaceDependencies;
     }
 
     static uriName(uri: vscode.Uri): string {
