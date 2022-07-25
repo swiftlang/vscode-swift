@@ -52,7 +52,7 @@ export class PackageNode {
         item.iconPath =
             this.type === "editing"
                 ? new vscode.ThemeIcon("edit")
-                : new vscode.ThemeIcon("archive");
+                : new vscode.ThemeIcon("package");
         item.contextValue = this.type;
         return item;
     }
