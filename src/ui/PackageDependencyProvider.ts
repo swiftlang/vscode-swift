@@ -21,6 +21,7 @@ import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderEvent } from "../WorkspaceContext";
 import { FolderContext } from "../FolderContext";
 import contextKeys from "../contextKeys";
+import { Version } from "../utilities/version";
 
 /**
  * References:
@@ -196,6 +197,72 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                 type
             );
         });
+    }
+
+    /**
+     * Returns a {@link PackageNode} for every local dependency
+     * declared in **Package.swift**.
+     */
+    private getLocalDependencies(folderContext: FolderContext): PackageNode[] {
+        const swiftVersion = folderContext.workspaceContext.toolchain.swiftVersion;
+        // prior to Swift 5.6 local dependencies had no requirements
+        if (swiftVersion.isLessThan(new Version(5, 6, 0))) {
+            return folderContext.swiftPackage.dependencies
+                .filter(dependency => !dependency.requirement && dependency.url)
+                .map(
+                    dependency =>
+                        new PackageNode(
+                            dependency.identity,
+                            dependency.identity,
+                            dependency.url!,
+                            "local",
+                            "local"
+                        )
+                );
+        } else {
+            // since Swift 5.6 local dependencies have `type` `fileSystem`
+            return folderContext.swiftPackage.dependencies
+                .filter(dependency => dependency.type === "fileSystem" && dependency.path)
+                .map(
+                    dependency =>
+                        new PackageNode(
+                            dependency.identity,
+                            dependency.identity,
+                            dependency.path!,
+                            "local",
+                            "local"
+                        )
+                );
+        }
+    }
+
+    /**
+     * Returns a {@link PackageNode} for every remote dependency.
+     */
+    private getRemoteDependencies(folderContext: FolderContext): PackageNode[] {
+        return (
+            folderContext.swiftPackage.resolved?.pins.map(
+                pin =>
+                    new PackageNode(
+                        pin.identity,
+                        pin.identity,
+                        pin.location,
+                        pin.state.version ?? pin.state.branch ?? pin.state.revision.substring(0, 7),
+                        "remote"
+                    )
+            ) ?? []
+        );
+    }
+
+    /**
+     * Return list of package dependencies in edit mode
+     * @param folderContext Folder to get edited dependencies for
+     * @returns Array of packages
+     */
+    private async getEditedDependencies(folderContext: FolderContext): Promise<PackageNode[]> {
+        return (await folderContext.getEditedPackages()).map(
+            item => new PackageNode(item.name, item.name, item.folder, "local", "edited")
+        );
     }
 
     /**

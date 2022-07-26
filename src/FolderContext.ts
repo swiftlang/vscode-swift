@@ -141,9 +141,27 @@ export class FolderContext implements vscode.Disposable {
         this.testExplorer = new TestExplorer(this);
     }
 
+    /** Get list of edited packages */
+    async getEditedPackages(): Promise<EditedPackage[]> {
+        const workspaceState = await this.swiftPackage.loadWorkspaceState();
+        return (
+            workspaceState?.object.dependencies
+                .filter(item => {
+                    return item.state.name === "edited" && item.state.path;
+                })
+                .map(item => {
+                    return {
+                        identity: item.packageRef.identity,
+                        name: item.packageRef.name,
+                        folder: item.state.path!,
+                    };
+                }) ?? []
+        );
+    }
+
     /** Get list of all packages */
     async getWorkspaceDependencies(): Promise<WorkspaceStateDependency[]> {
-        const workspaceState = await SwiftPackage.loadWorkspaceState(this.folder);
+        const workspaceState = await this.swiftPackage.loadWorkspaceState();
         return workspaceState?.object?.dependencies ?? [];
     }
 

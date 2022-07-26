@@ -261,10 +261,10 @@ export class SwiftPackage implements PackageContents {
      * Load workspace-state.json file for swift package
      * @returns Workspace state
      */
-    static async loadWorkspaceState(folder: vscode.Uri): Promise<WorkspaceState | undefined> {
+    async loadWorkspaceState(): Promise<WorkspaceState | undefined> {
         try {
             const uri = vscode.Uri.joinPath(
-                vscode.Uri.file(buildDirectoryFromWorkspacePath(folder.fsPath, true)),
+                vscode.Uri.file(buildDirectoryFromWorkspacePath(this.folder.fsPath, true)),
                 "workspace-state.json"
             );
             const contents = await fs.readFile(uri.fsPath, "utf8");
