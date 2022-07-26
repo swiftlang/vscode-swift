@@ -165,8 +165,7 @@ export class SwiftPackage implements PackageContents {
         readonly folder: vscode.Uri,
         private contents: SwiftPackageState,
         public resolved: PackageResolved | undefined,
-        public plugins: PackagePlugin[],
-        public workspaceState: WorkspaceState | undefined
+        public plugins: PackagePlugin[]
     ) {}
 
     /**
@@ -178,8 +177,7 @@ export class SwiftPackage implements PackageContents {
         const contents = await SwiftPackage.loadPackage(folder);
         const resolved = await SwiftPackage.loadPackageResolved(folder);
         const plugins = await SwiftPackage.loadPlugins(folder);
-        const workspaceState = await SwiftPackage.loadWorkspaceState(folder);
-        return new SwiftPackage(folder, contents, resolved, plugins, workspaceState);
+        return new SwiftPackage(folder, contents, resolved, plugins);
     }
 
     /**
@@ -287,10 +285,6 @@ export class SwiftPackage implements PackageContents {
         this.resolved = await SwiftPackage.loadPackageResolved(this.folder);
     }
 
-    public async reloadDependencies() {
-        this.workspaceState = await SwiftPackage.loadWorkspaceState(this.folder);
-    }
-
     /** Return if has valid contents */
     public get isValid(): boolean {
         return isPackage(this.contents);
@@ -323,10 +317,6 @@ export class SwiftPackage implements PackageContents {
     /** array of dependencies in Swift Package */
     get dependencies(): Dependency[] {
         return (this.contents as PackageContents)?.dependencies ?? [];
-    }
-
-    get workspaceDependencies(): WorkspaceStateDependency[] {
-        return this.workspaceState?.object.dependencies ?? [];
     }
 
     /** array of targets in Swift Package */

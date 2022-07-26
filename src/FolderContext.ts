@@ -123,11 +123,6 @@ export class FolderContext implements vscode.Disposable {
         await this.swiftPackage.reloadPackageResolved();
     }
 
-    /** reload dependencies for workspace */
-    async reloadDependencies() {
-        await this.swiftPackage.reloadDependencies();
-    }
-
     /**
      * Fire an event to all folder observers
      * @param event event type
@@ -148,7 +143,8 @@ export class FolderContext implements vscode.Disposable {
 
     /** Get list of all packages */
     async getWorkspaceDependencies(): Promise<WorkspaceStateDependency[]> {
-        return this.swiftPackage.workspaceDependencies;
+        const workspaceState = await SwiftPackage.loadWorkspaceState(this.folder);
+        return workspaceState?.object?.dependencies ?? [];
     }
 
     static uriName(uri: vscode.Uri): string {

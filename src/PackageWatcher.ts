@@ -113,8 +113,6 @@ export class PackageWatcher {
      * This will resolve any changes in the workspace-state.json
      */
     private async handleWorkspaceStateChange() {
-        // load dependency info from workspace-state.json
-        await this.folderContext.reloadDependencies();
         this.workspaceContext.fireEvent(this.folderContext, FolderEvent.workspaceStateUpdated);
     }
 }

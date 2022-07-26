@@ -152,13 +152,8 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             return await this.getAllDependencies(folderContext);
         }
 
-        if (element instanceof PackageNode) {
-            // Read the contents of a package.
-            return this.getNodesInDirectory(element.path);
-        } else {
-            // Read the contents of a directory within a package.
-            return this.getNodesInDirectory(element.path);
-        }
+        // Read the contents of a package.
+        return this.getNodesInDirectory(element.path);
     }
 
     private async getAllDependencies(folderContext: FolderContext): Promise<PackageNode[]> {
