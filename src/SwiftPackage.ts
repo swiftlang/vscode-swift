@@ -19,6 +19,7 @@ import {
     execSwift,
     getErrorDescription,
 } from "./utilities/utilities";
+import checksum = require("checksum");
 
 /** Swift Package Manager contents */
 export interface PackageContents {
@@ -165,7 +166,9 @@ export class SwiftPackage implements PackageContents {
         readonly folder: vscode.Uri,
         private contents: SwiftPackageState,
         public resolved: PackageResolved | undefined,
-        public plugins: PackagePlugin[]
+        public plugins: PackagePlugin[],
+        public resolvedContent: string | undefined,
+        public dependencySet: Set<string>
     ) {}
 
     /**
@@ -177,7 +180,8 @@ export class SwiftPackage implements PackageContents {
         const contents = await SwiftPackage.loadPackage(folder);
         const resolved = await SwiftPackage.loadPackageResolved(folder);
         const plugins = await SwiftPackage.loadPlugins(folder);
-        return new SwiftPackage(folder, contents, resolved, plugins);
+        const resolvedContent = await SwiftPackage.loadPackageResolvedFile(folder);
+        return new SwiftPackage(folder, contents, resolved, plugins, resolvedContent, new Set());
     }
 
     /**
@@ -213,10 +217,22 @@ export class SwiftPackage implements PackageContents {
         }
     }
 
-    static async loadPackageResolved(folder: vscode.Uri): Promise<PackageResolved | undefined> {
+    static async loadPackageResolvedFile(folder: vscode.Uri): Promise<string | undefined> {
         try {
             const uri = vscode.Uri.joinPath(folder, "Package.resolved");
             const contents = await fs.readFile(uri.fsPath, "utf8");
+            return contents;
+        } catch {
+            return undefined;
+        }
+    }
+
+    static async loadPackageResolved(folder: vscode.Uri): Promise<PackageResolved | undefined> {
+        try {
+            const contents = await SwiftPackage.loadPackageResolvedFile(folder);
+            if (contents === undefined) {
+                return undefined;
+            }
             const json = JSON.parse(contents);
             const version = <{ version: number }>json;
             if (version.version === 1) {
@@ -257,6 +273,34 @@ export class SwiftPackage implements PackageContents {
         }
     }
 
+    async packageResovledHasChanged(action: any): Promise<boolean> {
+        console.log(action);
+        const resolvedContent = await SwiftPackage.loadPackageResolvedFile(this.folder);
+
+        console.log(resolvedContent);
+        console.log(this.resolvedContent);
+
+        if (resolvedContent === undefined) {
+            return false;
+        }
+        // deletion --> creation --> modification
+        // r  undefined   exists        exists
+        // pr exists      undefined     exists
+
+        if (this.resolvedContent === undefined) {
+            return true;
+        }
+
+        const oldChecksum = checksum(resolvedContent);
+        const newChecksum = checksum(this.resolvedContent);
+
+        if (oldChecksum !== newChecksum) {
+            return true;
+        }
+
+        return false;
+    }
+
     /**
      * Load workspace-state.json file for swift package
      * @returns Workspace state
@@ -275,6 +319,27 @@ export class SwiftPackage implements PackageContents {
         }
     }
 
+    /**
+     * Run `swift package describe` and return results
+     * @param folder folder package is in
+     * @returns results of `swift package describe`
+     */
+    async resolveDependencyGraph(): Promise<Set<string>> {
+        return this.dependencySet;
+    }
+
+    updateDependencySetWithStdout(stdout: string): void {
+        const lines = stdout
+            .split("\n")
+            .filter(item => item !== "")
+            .map(item => item.trim());
+        this.updateDependencySet(new Set(lines ?? []));
+    }
+
+    updateDependencySet(dependencySet: Set<string>): void {
+        this.dependencySet = dependencySet;
+    }
+
     /** Reload swift package */
     public async reload() {
         this.contents = await SwiftPackage.loadPackage(this.folder);
@@ -282,6 +347,7 @@ export class SwiftPackage implements PackageContents {
 
     /** Reload Package.resolved file */
     public async reloadPackageResolved() {
+        this.resolvedContent = await SwiftPackage.loadPackageResolvedFile(this.folder);
         this.resolved = await SwiftPackage.loadPackageResolved(this.folder);
     }
 

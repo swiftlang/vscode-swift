@@ -123,11 +123,9 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                     break;
                 case FolderEvent.unfocus:
                     treeView.title = `Package Dependencies`;
-                    this.didChangeTreeDataEmitter.fire();
+                    //this.didChangeTreeDataEmitter.fire();
                     break;
-                case FolderEvent.resolvedUpdated:
-                    break;
-                case FolderEvent.workspaceStateUpdated:
+                case FolderEvent.resolveDone:
                     if (!folder) {
                         return;
                     }
@@ -150,11 +148,19 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             // Build PackageNodes for all dependencies. Because Package.resolved might not
             // be up to date with edited dependency list, we need to remove the edited
             // dependencies from the list before adding in the edit version
-            return await this.getAllDependencies(folderContext);
+            const showingDependencies = await this.getShowingDependencies(folderContext);
+            const allDependencies = await this.getAllDependencies(folderContext);
+            return allDependencies.filter(dependency =>
+                showingDependencies.has(dependency.identity)
+            );
         }
 
         // Read the contents of a package.
         return this.getNodesInDirectory(element.path);
+    }
+
+    private async getShowingDependencies(folderContext: FolderContext): Promise<Set<string>> {
+        return await folderContext.swiftPackage.resolveDependencyGraph();
     }
 
     private async getAllDependencies(folderContext: FolderContext): Promise<PackageNode[]> {

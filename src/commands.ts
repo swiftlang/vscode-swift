@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
-import { createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
+import { createSwiftTask, createSwiftTask2, SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderContext } from "./FolderContext";
 import { PackageNode } from "./ui/PackageDependencyProvider";
 import { execSwift } from "./utilities/utilities";
@@ -50,12 +50,19 @@ export async function resolveFolderDependencies(
     folderContext: FolderContext,
     checkAlreadyRunning?: boolean
 ) {
-    const task = createSwiftTask(["package", "resolve"], SwiftTaskProvider.resolvePackageName, {
-        cwd: folderContext.folder,
-        scope: folderContext.workspaceFolder,
-        prefix: folderContext.name,
-        presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
-    });
+    const task = createSwiftTask2(
+        ["package", "show-dependencies", "--format", "flatlist"],
+        SwiftTaskProvider.resolvePackageName,
+        {
+            cwd: folderContext.folder,
+            scope: folderContext.workspaceFolder,
+            prefix: folderContext.name,
+            presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+        },
+        (stdout: string) => {
+            folderContext.swiftPackage.updateDependencySetWithStdout(stdout);
+        }
+    );
 
     await executeTaskWithUI(
         task,
@@ -436,8 +443,9 @@ function updateAfterError(result: boolean, folderContext: FolderContext) {
     // send Package.resolved updated event to trigger display of package dependencies
     // view
     if (triggerResolvedUpdatedEvent && !folderContext.hasResolveErrors) {
-        folderContext.fireEvent(FolderEvent.resolvedUpdated);
+        // TODO
     }
+    folderContext.fireEvent(FolderEvent.resolveDone);
 }
 
 /**

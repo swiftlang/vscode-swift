@@ -123,6 +123,10 @@ export class FolderContext implements vscode.Disposable {
         await this.swiftPackage.reloadPackageResolved();
     }
 
+    get resolvedContent(): string | undefined {
+        return this.resolvedContent;
+    }
+
     /**
      * Fire an event to all folder observers
      * @param event event type
