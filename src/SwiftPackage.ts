@@ -14,12 +14,12 @@
 
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
+import * as path from "path";
 import {
     buildDirectoryFromWorkspacePath,
     execSwift,
     getErrorDescription,
 } from "./utilities/utilities";
-import checksum = require("checksum");
 
 /** Swift Package Manager contents */
 export interface PackageContents {
@@ -153,6 +153,61 @@ function isError(state: SwiftPackageState): state is Error {
 }
 
 /**
+ * Get version of WorkspaceStateDependency for displaying in the tree
+ * @param dependency
+ * @return real version | edited | local
+ */
+export function dependencyVersion(dependency: WorkspaceStateDependency): string {
+    return dependency.packageRef.kind === "fileSystem"
+        ? "local"
+        : dependency.state.checkoutState?.version ??
+              dependency.state.checkoutState?.branch ??
+              "edited";
+}
+
+/**
+ * Get type of WorkspaceStateDependency for displaying in the tree: real version | edited | local
+ * @param dependency
+ * @return "local" | "remote" | "edited"
+ */
+export function dependencyType(
+    dependency: WorkspaceStateDependency
+): "local" | "remote" | "edited" {
+    return dependency.state.name === "edited"
+        ? "edited"
+        : dependency.packageRef.kind === "fileSystem"
+        ? "local"
+        : "remote";
+}
+
+/**
+ * Get type of WorkspaceStateDependency for displaying in the tree: real version | edited | local
+ * `edited`: dependency.state.path ?? workspacePath + Packages/ + dependency.subpath
+ * `local`: dependency.packageRef.location
+ * `remote`: buildDirectory + checkouts + dependency.packageRef.location
+ * @param dependency
+ * @return the package path based on the type
+ */
+export function dependencyPackagePath(
+    dependency: WorkspaceStateDependency,
+    workspaceFolder: string
+): string {
+    const type = dependencyType(dependency);
+    let packagePath = "";
+    if (type === "edited") {
+        packagePath =
+            dependency.state.path ?? path.join(workspaceFolder, "Packages", dependency.subpath);
+    } else if (type === "local") {
+        packagePath = dependency.state.path ?? dependency.packageRef.location;
+    } else {
+        // remote
+        const buildDirectory = buildDirectoryFromWorkspacePath(workspaceFolder, true);
+        packagePath = path.join(buildDirectory, "checkouts", dependency.subpath);
+    }
+    return packagePath;
+}
+
+/**
  * Class holding Swift Package Manager Package
  */
 export class SwiftPackage implements PackageContents {
@@ -166,9 +221,7 @@ export class SwiftPackage implements PackageContents {
         readonly folder: vscode.Uri,
         private contents: SwiftPackageState,
         public resolved: PackageResolved | undefined,
-        public plugins: PackagePlugin[],
-        public resolvedContent: string | undefined,
-        public dependencySet: Set<string>
+        public plugins: PackagePlugin[]
     ) {}
 
     /**
@@ -180,8 +233,7 @@ export class SwiftPackage implements PackageContents {
         const contents = await SwiftPackage.loadPackage(folder);
         const resolved = await SwiftPackage.loadPackageResolved(folder);
         const plugins = await SwiftPackage.loadPlugins(folder);
-        const resolvedContent = await SwiftPackage.loadPackageResolvedFile(folder);
-        return new SwiftPackage(folder, contents, resolved, plugins, resolvedContent, new Set());
+        return new SwiftPackage(folder, contents, resolved, plugins);
     }
 
     /**
@@ -217,19 +269,10 @@ export class SwiftPackage implements PackageContents {
         }
     }
 
-    static async loadPackageResolvedFile(folder: vscode.Uri): Promise<string | undefined> {
+    static async loadPackageResolved(folder: vscode.Uri): Promise<PackageResolved | undefined> {
         try {
             const uri = vscode.Uri.joinPath(folder, "Package.resolved");
             const contents = await fs.readFile(uri.fsPath, "utf8");
-            return contents;
-        } catch {
-            return undefined;
-        }
-    }
-
-    static async loadPackageResolved(folder: vscode.Uri): Promise<PackageResolved | undefined> {
-        try {
-            const contents = await SwiftPackage.loadPackageResolvedFile(folder);
             if (contents === undefined) {
                 return undefined;
             }
@@ -273,34 +316,6 @@ export class SwiftPackage implements PackageContents {
         }
     }
 
-    async packageResovledHasChanged(action: any): Promise<boolean> {
-        console.log(action);
-        const resolvedContent = await SwiftPackage.loadPackageResolvedFile(this.folder);
-
-        console.log(resolvedContent);
-        console.log(this.resolvedContent);
-
-        if (resolvedContent === undefined) {
-            return false;
-        }
-        // deletion --> creation --> modification
-        // r  undefined   exists        exists
-        // pr exists      undefined     exists
-
-        if (this.resolvedContent === undefined) {
-            return true;
-        }
-
-        const oldChecksum = checksum(resolvedContent);
-        const newChecksum = checksum(this.resolvedContent);
-
-        if (oldChecksum !== newChecksum) {
-            return true;
-        }
-
-        return false;
-    }
-
     /**
      * Load workspace-state.json file for swift package
      * @returns Workspace state
@@ -320,24 +335,79 @@ export class SwiftPackage implements PackageContents {
     }
 
     /**
-     * Run `swift package describe` and return results
-     * @param folder folder package is in
-     * @returns results of `swift package describe`
+     * tranverse the dependency tree
+     * in each node, call `swift package describe` to get the child dependencies and do it recursively
+     * @returns all dependencies in flat list
      */
-    async resolveDependencyGraph(): Promise<Set<string>> {
-        return this.dependencySet;
+    async resolveDependencyGraph(): Promise<WorkspaceStateDependency[]> {
+        const workspaceState = await this.loadWorkspaceState();
+        const workspaceStateDependencies = workspaceState?.object.dependencies ?? [];
+
+        if (workspaceStateDependencies.length === 0) {
+            return [];
+        }
+
+        const contents = this.contents as PackageContents;
+        console.log("== resolve graph begin");
+        const showingDependencies = new Set<string>();
+        await this.getChildDependencies(contents, workspaceStateDependencies, showingDependencies);
+
+        console.log("== resolve graph done");
+
+        // filter workspaceStateDependencies that in showingDependencies
+        return workspaceStateDependencies.filter(dependency =>
+            showingDependencies.has(dependency.packageRef.identity)
+        );
+
+        // this can filter out dependencies that are not in the workspace state
+        // filter workspaceStateDependencies that not in showingDependencies
+        //const unusedPackages = workspaceStateDependencies.filter(
+        //    dependency => !showingDependencies.has(dependency.packageRef.identity)
+        //);
     }
 
-    updateDependencySetWithStdout(stdout: string): void {
-        const lines = stdout
-            .split("\n")
-            .filter(item => item !== "")
-            .map(item => item.trim());
-        this.updateDependencySet(new Set(lines ?? []));
-    }
+    /**
+     * tranverse the dependency tree
+     * @param dependency current node
+     * @param workspaceStateDependencies all dependencies in workspace-state.json
+     * @param showingDependencies result of dependencies that are showing in the tree
+     * @returns
+     */
+    private async getChildDependencies(
+        dependency: PackageContents,
+        workspaceStateDependencies: WorkspaceStateDependency[],
+        showingDependencies: Set<string>
+    ) {
+        for (let i = 0; i < dependency.dependencies.length; i++) {
+            const childDependency = dependency.dependencies[i];
+            if (showingDependencies.has(childDependency.identity)) {
+                return;
+            }
+            showingDependencies.add(childDependency.identity);
+            const workspaceStateDependency = workspaceStateDependencies.find(
+                workspaceStateDependency =>
+                    workspaceStateDependency.packageRef.identity === childDependency.identity
+            );
+            if (workspaceStateDependency) {
+                showingDependencies.add(workspaceStateDependency.packageRef.identity);
+            }
 
-    updateDependencySet(dependencySet: Set<string>): void {
-        this.dependencySet = dependencySet;
+            if (workspaceStateDependency === undefined) {
+                return;
+            }
+
+            const packagePath = dependencyPackagePath(workspaceStateDependency, this.folder.fsPath);
+
+            const childDependencyContents = (await SwiftPackage.loadPackage(
+                vscode.Uri.file(packagePath)
+            )) as PackageContents;
+
+            await this.getChildDependencies(
+                childDependencyContents,
+                workspaceStateDependencies,
+                showingDependencies
+            );
+        }
     }
 
     /** Reload swift package */
@@ -347,7 +417,6 @@ export class SwiftPackage implements PackageContents {
 
     /** Reload Package.resolved file */
     public async reloadPackageResolved() {
-        this.resolvedContent = await SwiftPackage.loadPackageResolvedFile(this.folder);
         this.resolved = await SwiftPackage.loadPackageResolved(this.folder);
     }
 

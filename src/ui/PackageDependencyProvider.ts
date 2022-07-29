@@ -16,12 +16,12 @@ import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
 import configuration from "../configuration";
-import { buildDirectoryFromWorkspacePath } from "../utilities/utilities";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderEvent } from "../WorkspaceContext";
 import { FolderContext } from "../FolderContext";
 import contextKeys from "../contextKeys";
 import { Version } from "../utilities/version";
+import { dependencyVersion, dependencyType, dependencyPackagePath } from "../SwiftPackage";
 
 /**
  * References:
@@ -123,12 +123,13 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                     break;
                 case FolderEvent.unfocus:
                     treeView.title = `Package Dependencies`;
-                    //this.didChangeTreeDataEmitter.fire();
+                    this.didChangeTreeDataEmitter.fire();
                     break;
-                case FolderEvent.resolveDone:
+                case FolderEvent.workspaceStateUpdated:
                     if (!folder) {
                         return;
                     }
+                    treeView.title = `Package Dependencies (${folder.name})`;
                     this.didChangeTreeDataEmitter.fire();
                     break;
             }
@@ -148,52 +149,19 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             // Build PackageNodes for all dependencies. Because Package.resolved might not
             // be up to date with edited dependency list, we need to remove the edited
             // dependencies from the list before adding in the edit version
-            const showingDependencies = await this.getShowingDependencies(folderContext);
-            const allDependencies = await this.getAllDependencies(folderContext);
-            return allDependencies.filter(dependency =>
-                showingDependencies.has(dependency.identity)
-            );
+            return await this.getDependencyGraph(folderContext);
         }
 
         // Read the contents of a package.
         return this.getNodesInDirectory(element.path);
     }
 
-    private async getShowingDependencies(folderContext: FolderContext): Promise<Set<string>> {
-        return await folderContext.swiftPackage.resolveDependencyGraph();
-    }
-
-    private async getAllDependencies(folderContext: FolderContext): Promise<PackageNode[]> {
-        return (await folderContext.getWorkspaceDependencies()).map(dependency => {
-            const version =
-                dependency.packageRef.kind === "fileSystem"
-                    ? "local"
-                    : dependency.state.checkoutState?.version ??
-                      dependency.state.checkoutState?.branch ??
-                      "edited";
-
-            const type =
-                dependency.state.name === "edited"
-                    ? "edited"
-                    : dependency.packageRef.kind === "fileSystem"
-                    ? "local"
-                    : "remote";
-
-            let packagePath = "";
-            if (type === "edited") {
-                packagePath =
-                    dependency.state.path ??
-                    path.join(folderContext.folder.fsPath, "Packages", dependency.subpath);
-            } else if (type === "local") {
-                packagePath = dependency.state.path ?? dependency.packageRef.location;
-            } else {
-                // remote
-                const buildDirectory = buildDirectoryFromWorkspacePath(
-                    folderContext.folder.fsPath,
-                    true
-                );
-                packagePath = path.join(buildDirectory, "checkouts", dependency.subpath);
-            }
+    private async getDependencyGraph(folderContext: FolderContext): Promise<PackageNode[]> {
+        const graph = await folderContext.resolveDependencyGraph();
+        return graph.map(dependency => {
+            const version = dependencyVersion(dependency);
+            const type = dependencyType(dependency);
+            const packagePath = dependencyPackagePath(dependency, folderContext.folder.fsPath);
 
             return new PackageNode(
                 dependency.packageRef.identity,

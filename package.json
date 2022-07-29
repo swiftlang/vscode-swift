@@ -416,7 +416,6 @@
     "dev-package": "vsce package -o swift-lang-development.vsix"
   },
   "devDependencies": {
-    "@types/checksum": "^0.1.33",
     "@types/glob": "^7.1.4",
     "@types/mocha": "^9.0.0",
     "@types/node": "14.x",

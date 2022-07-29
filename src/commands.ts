@@ -50,19 +50,12 @@ export async function resolveFolderDependencies(
     folderContext: FolderContext,
     checkAlreadyRunning?: boolean
 ) {
-    const task = createSwiftTask2(
-        ["package", "show-dependencies", "--format", "flatlist"],
-        SwiftTaskProvider.resolvePackageName,
-        {
-            cwd: folderContext.folder,
-            scope: folderContext.workspaceFolder,
-            prefix: folderContext.name,
-            presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
-        },
-        (stdout: string) => {
-            folderContext.swiftPackage.updateDependencySetWithStdout(stdout);
-        }
-    );
+    const task = createSwiftTask(["package", "resolve"], SwiftTaskProvider.resolvePackageName, {
+        cwd: folderContext.folder,
+        scope: folderContext.workspaceFolder,
+        prefix: folderContext.name,
+        presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+    });
 
     await executeTaskWithUI(
         task,
@@ -445,7 +438,6 @@ function updateAfterError(result: boolean, folderContext: FolderContext) {
     if (triggerResolvedUpdatedEvent && !folderContext.hasResolveErrors) {
         // TODO
     }
-    folderContext.fireEvent(FolderEvent.resolveDone);
 }
 
 /**

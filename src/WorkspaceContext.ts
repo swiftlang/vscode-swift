@@ -132,7 +132,7 @@ export class WorkspaceContext implements vscode.Disposable {
                     break;
                 case FolderEvent.resolvedUpdated:
                     break;
-                case FolderEvent.resolveDone:
+                case FolderEvent.workspaceStateUpdated:
                     if (folder === this.currentFolder) {
                         this.updateContextKeys(folder);
                     }
@@ -494,8 +494,8 @@ export enum FolderEvent {
     packageUpdated = "packageUpdated",
     // Package.resolved has been updated
     resolvedUpdated = "resolvedUpdated",
-    // `swift package resolve` is done
-    resolveDone = "resolveDone",
+    // `workspace-state.json` is updated, update dependency tree only by this event
+    workspaceStateUpdated = "workspaceStateUpdated",
 }
 
 /** Workspace Folder observer function */
