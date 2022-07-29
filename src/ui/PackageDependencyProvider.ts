@@ -151,7 +151,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             // be up to date with edited dependency list, we need to remove the edited
             // dependencies from the list before adding in the edit version
             const children = [
-                ...this.getLocalDependencies(folderContext),
+                ...(await this.getLocalDependencies(folderContext)),
                 ...this.getRemoteDependencies(folderContext),
             ];
             const editedChildren = await this.getEditedDependencies(folderContext);
@@ -186,25 +186,30 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
      * Returns a {@link PackageNode} for every local dependency
      * declared in **Package.swift**.
      */
-    private getLocalDependencies(folderContext: FolderContext): PackageNode[] {
-        const swiftVersion = folderContext.workspaceContext.toolchain.swiftVersion;
-        // prior to Swift 5.6 local dependencies had no requirements
-        if (swiftVersion.isLessThan(new Version(5, 6, 0))) {
-            return folderContext.swiftPackage.dependencies
-                .filter(dependency => !dependency.requirement && dependency.url)
+    private async getLocalDependencies(folderContext: FolderContext): Promise<PackageNode[]> {
+        const workspaceState = await folderContext.swiftPackage.loadWorkspaceState();
+
+        return (
+            workspaceState?.object.dependencies
+                .filter(item => {
+                    // need to check for both "local" and "fileSystem" as swift 5.5 and earlier
+                    // use "local" while 5.6 and later use "fileSystem"
+                    return (
+                        (item.packageRef.kind === "local" ||
+                            item.packageRef.kind === "fileSystem") &&
+                        item.packageRef.location
+                    );
+                })
                 .map(
                     dependency =>
-                        new PackageNode(dependency.identity, dependency.url!, "local", "local")
-                );
-        } else {
-            // since Swift 5.6 local dependencies have `type` `fileSystem`
-            return folderContext.swiftPackage.dependencies
-                .filter(dependency => dependency.type === "fileSystem" && dependency.path)
-                .map(
-                    dependency =>
-                        new PackageNode(dependency.identity, dependency.path!, "local", "local")
-                );
-        }
+                        new PackageNode(
+                            dependency.packageRef.identity,
+                            dependency.packageRef.location,
+                            "local",
+                            "local"
+                        )
+                ) ?? []
+        );
     }
 
     /**
