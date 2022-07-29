@@ -21,7 +21,7 @@ import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderEvent } from "../WorkspaceContext";
 import { FolderContext } from "../FolderContext";
 import contextKeys from "../contextKeys";
-import { Version } from "../utilities/version";
+import { WorkspaceState } from "../SwiftPackage";
 
 /**
  * References:
@@ -147,14 +147,15 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             return [];
         }
         if (!element) {
+            const workspaceState = await folderContext.swiftPackage.loadWorkspaceState();
             // Build PackageNodes for all dependencies. Because Package.resolved might not
             // be up to date with edited dependency list, we need to remove the edited
             // dependencies from the list before adding in the edit version
             const children = [
-                ...(await this.getLocalDependencies(folderContext)),
+                ...this.getLocalDependencies(workspaceState),
                 ...this.getRemoteDependencies(folderContext),
             ];
-            const editedChildren = await this.getEditedDependencies(folderContext);
+            const editedChildren = await this.getEditedDependencies(workspaceState);
             const uneditedChildren: PackageNode[] = [];
             for (const child of children) {
                 const editedVersion = editedChildren.find(item => item.name === child.name);
@@ -186,9 +187,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
      * Returns a {@link PackageNode} for every local dependency
      * declared in **Package.swift**.
      */
-    private async getLocalDependencies(folderContext: FolderContext): Promise<PackageNode[]> {
-        const workspaceState = await folderContext.swiftPackage.loadWorkspaceState();
-
+    private getLocalDependencies(workspaceState: WorkspaceState | undefined): PackageNode[] {
         return (
             workspaceState?.object.dependencies
                 .filter(item => {
@@ -234,9 +233,21 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
      * @param folderContext Folder to get edited dependencies for
      * @returns Array of packages
      */
-    private async getEditedDependencies(folderContext: FolderContext): Promise<PackageNode[]> {
-        return (await folderContext.getEditedPackages()).map(
-            item => new PackageNode(item.name, item.folder, "local", "editing")
+    private getEditedDependencies(workspaceState: WorkspaceState | undefined): PackageNode[] {
+        return (
+            workspaceState?.object.dependencies
+                .filter(item => {
+                    return item.state.name === "edited" && item.state.path;
+                })
+                .map(
+                    item =>
+                        new PackageNode(
+                            item.packageRef.identity,
+                            item.state.path!,
+                            "local",
+                            "editing"
+                        )
+                ) ?? []
         );
     }
 
