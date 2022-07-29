@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
-import { createSwiftTask, createSwiftTask2, SwiftTaskProvider } from "./SwiftTaskProvider";
+import { createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderContext } from "./FolderContext";
 import { PackageNode } from "./ui/PackageDependencyProvider";
 import { execSwift } from "./utilities/utilities";
@@ -432,11 +432,12 @@ function updateAfterError(result: boolean, folderContext: FolderContext) {
     const triggerResolvedUpdatedEvent = folderContext.hasResolveErrors;
     // set has resolve errors flag
     folderContext.hasResolveErrors = !result;
+
     // if previous folder state was with resolve errors, and now it is without then
-    // send Package.resolved updated event to trigger display of package dependencies
+    // send workspace-state.json updated event to trigger display of package dependencies
     // view
     if (triggerResolvedUpdatedEvent && !folderContext.hasResolveErrors) {
-        // TODO
+        folderContext.fireEvent(FolderEvent.workspaceStateUpdated);
     }
 }
 

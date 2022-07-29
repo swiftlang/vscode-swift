@@ -273,9 +273,6 @@ export class SwiftPackage implements PackageContents {
         try {
             const uri = vscode.Uri.joinPath(folder, "Package.resolved");
             const contents = await fs.readFile(uri.fsPath, "utf8");
-            if (contents === undefined) {
-                return undefined;
-            }
             const json = JSON.parse(contents);
             const version = <{ version: number }>json;
             if (version.version === 1) {
@@ -320,7 +317,7 @@ export class SwiftPackage implements PackageContents {
      * Load workspace-state.json file for swift package
      * @returns Workspace state
      */
-    async loadWorkspaceState(): Promise<WorkspaceState | undefined> {
+    public async loadWorkspaceState(): Promise<WorkspaceState | undefined> {
         try {
             const uri = vscode.Uri.joinPath(
                 vscode.Uri.file(buildDirectoryFromWorkspacePath(this.folder.fsPath, true)),
@@ -348,22 +345,13 @@ export class SwiftPackage implements PackageContents {
         }
 
         const contents = this.contents as PackageContents;
-        console.log("== resolve graph begin");
         const showingDependencies = new Set<string>();
         await this.getChildDependencies(contents, workspaceStateDependencies, showingDependencies);
-
-        console.log("== resolve graph done");
 
         // filter workspaceStateDependencies that in showingDependencies
         return workspaceStateDependencies.filter(dependency =>
             showingDependencies.has(dependency.packageRef.identity)
         );
-
-        // this can filter out dependencies that are not in the workspace state
-        // filter workspaceStateDependencies that not in showingDependencies
-        //const unusedPackages = workspaceStateDependencies.filter(
-        //    dependency => !showingDependencies.has(dependency.packageRef.identity)
-        //);
     }
 
     /**

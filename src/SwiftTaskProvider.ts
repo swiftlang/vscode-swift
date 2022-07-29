@@ -18,12 +18,7 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
-import {
-    execSwift,
-    getSwiftExecutable,
-    swiftRuntimeEnv,
-    withSwiftSDKFlags,
-} from "./utilities/utilities";
+import { getSwiftExecutable, swiftRuntimeEnv, withSwiftSDKFlags } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 
 /**
@@ -217,69 +212,8 @@ export function createSwiftTask(args: string[], name: string, config: TaskConfig
         }),
         config?.problemMatcher
     );
-
     // This doesn't include any quotes added by VS Code.
     // See also: https://github.com/microsoft/vscode/issues/137895
-
-    let prefix: string;
-    if (config?.prefix) {
-        prefix = `(${config.prefix}) `;
-    } else {
-        prefix = "";
-    }
-    task.detail = `${prefix}swift ${args.join(" ")}`;
-    task.group = config?.group;
-    task.presentationOptions = config?.presentationOptions ?? {};
-    return task;
-}
-
-interface SwiftOutput {
-    (stdout: string, stderr: string): void;
-}
-
-/**
- * Helper function to create a {@link vscode.Task Task} with the given parameters.
- */
-export function createSwiftTask2(
-    args: string[],
-    name: string,
-    config: TaskConfig,
-    output: SwiftOutput
-): vscode.Task {
-    args = withSwiftSDKFlags(args);
-
-    // Add relative path current working directory
-    const cwd = config.cwd.fsPath;
-    const fullCwd = config.cwd.fsPath;
-
-    /* Currently there seems to be a bug in vscode where kicking off two tasks
-     with the same definition but different scopes messes with the task 
-     completion code. When that is resolved we will go back to the code below
-     where we only store the relative cwd instead of the full cwd
-
-    const scopeWorkspaceFolder = config.scope as vscode.WorkspaceFolder;
-    if (scopeWorkspaceFolder.uri.fsPath) {
-        cwd = path.relative(scopeWorkspaceFolder.uri.fsPath, config.cwd.fsPath);
-    } else {
-        cwd = config.cwd.fsPath;
-    }*/
-
-    const task = new vscode.Task(
-        { type: "swift", args: args, cwd: cwd },
-        config?.scope ?? vscode.TaskScope.Workspace,
-        name,
-        "swift",
-        new vscode.CustomExecution(async (): Promise<vscode.Pseudoterminal> => {
-            // When the task is executed, this callback will run. Here, we setup for running the task.
-            const { stdout, stderr } = await execSwift(args, {
-                cwd: fullCwd,
-            });
-
-            output(stdout, stderr);
-            return new CustomSwiftTaskTerminal("1");
-        }),
-        config?.problemMatcher
-    );
 
     let prefix: string;
     if (config?.prefix) {
@@ -368,38 +302,5 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         newTask.presentationOptions = task.presentationOptions;
 
         return newTask;
-    }
-}
-
-class CustomSwiftTaskTerminal implements vscode.Pseudoterminal {
-    private writeEmitter = new vscode.EventEmitter<string>();
-    onDidWrite: vscode.Event<string> = this.writeEmitter.event;
-    private closeEmitter = new vscode.EventEmitter<number>();
-    onDidClose?: vscode.Event<number> = this.closeEmitter.event;
-
-    constructor(private workspaceRoot: string) {}
-
-    open(initialDimensions: vscode.TerminalDimensions | undefined): void {
-        // At this point we can start using the
-        // print initialDimensions to set the size of the terminal.
-        console.log(initialDimensions);
-        this.resolveDependencyGraph();
-    }
-
-    close(): void {
-        // The terminal has been closed. Shutdown the build.
-    }
-
-    private async resolveDependencyGraph(): Promise<void> {
-        return new Promise<void>(resolve => {
-            this.writeEmitter.fire("Starting build...\r\n");
-
-            // Since we don't actually build anything in this example set a timeout instead.
-            setTimeout(() => {
-                this.writeEmitter.fire("Build complete.\r\n\r\n");
-                this.closeEmitter.fire(0);
-                resolve();
-            }, 1000);
-        });
     }
 }

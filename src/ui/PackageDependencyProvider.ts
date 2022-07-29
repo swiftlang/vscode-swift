@@ -129,9 +129,11 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                     if (!folder) {
                         return;
                     }
-                    treeView.title = `Package Dependencies (${folder.name})`;
-                    this.didChangeTreeDataEmitter.fire();
-                    break;
+
+                    if (folder === this.workspaceContext.currentFolder) {
+                        treeView.title = `Package Dependencies (${folder.name})`;
+                        this.didChangeTreeDataEmitter.fire();
+                    }
             }
         });
     }

@@ -434,8 +434,8 @@
   },
   "dependencies": {
     "@types/plist": "^3.0.2",
-    "checksum": "^1.0.0",
     "plist": "^3.0.5",
     "vscode-languageclient": "^8.0.0"
   }
 }
+

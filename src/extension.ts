@@ -100,7 +100,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                     if (folder.swiftPackage.foundPackage) {
                         await commands.resolveFolderDependencies(folder, true);
                     }
-                    break;
             }
         });
 

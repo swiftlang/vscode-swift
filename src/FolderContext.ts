@@ -123,10 +123,6 @@ export class FolderContext implements vscode.Disposable {
         await this.swiftPackage.reloadPackageResolved();
     }
 
-    get resolvedContent(): string | undefined {
-        return this.resolvedContent;
-    }
-
     /**
      * Fire an event to all folder observers
      * @param event event type
@@ -162,7 +158,7 @@ export class FolderContext implements vscode.Disposable {
         );
     }
 
-    /** Get list of all packages */
+    /** Get list in-use packages */
     async resolveDependencyGraph(): Promise<WorkspaceStateDependency[]> {
         return await this.swiftPackage.resolveDependencyGraph();
     }
