@@ -41,6 +41,7 @@ export class PackageNode {
     constructor(
         public name: string,
         public path: string,
+        public location: string,
         public version: string,
         public type: "local" | "remote" | "editing"
     ) {}
@@ -163,7 +164,14 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                 const type = this.dependencyType(dependency);
                 const version = this.dependencyDisplayVersion(dependency);
                 const packagePath = this.dependencyPackagePath(dependency, folderContext);
-                return new PackageNode(dependency.packageRef.identity, packagePath, version, type);
+                const location = dependency.packageRef.location;
+                return new PackageNode(
+                    dependency.packageRef.identity,
+                    packagePath,
+                    location,
+                    version,
+                    type
+                );
             }) ?? []
         );
     }
@@ -189,6 +197,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                         new PackageNode(
                             dependency.packageRef.identity,
                             dependency.packageRef.location,
+                            dependency.packageRef.location,
                             "local",
                             "local"
                         )
@@ -205,6 +214,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                 pin =>
                     new PackageNode(
                         pin.identity,
+                        pin.location,
                         pin.location,
                         pin.state.version ?? pin.state.branch ?? pin.state.revision.substring(0, 7),
                         "remote"
@@ -228,6 +238,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                     item =>
                         new PackageNode(
                             item.packageRef.identity,
+                            item.state.path!,
                             item.state.path!,
                             "local",
                             "editing"
@@ -284,6 +295,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             return "remote";
         }
     }
+
     /**
      * Get version of WorkspaceStateDependency for displaying in the tree
      * @param dependency
@@ -292,7 +304,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
     private dependencyDisplayVersion(dependency: WorkspaceStateDependency): string {
         const type = this.dependencyType(dependency);
         if (type === "editing") {
-            return "editing"; // ?TODO: get version from `baseOn` node for showing `editing 1.2.3`
+            return "editing";
         } else if (type === "local") {
             return "local";
         } else {
@@ -306,11 +318,12 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
     }
 
     /**
-     * Get type of WorkspaceStateDependency for displaying in the tree: real version | edited | local
-     * `edited`: dependency.state.path ?? workspacePath + Packages/ + dependency.subpath
+     *  * Get package source path of dependency
+     * `editing`: dependency.state.path ?? workspacePath + Packages/ + dependency.subpath
      * `local`: dependency.packageRef.location
      * `remote`: buildDirectory + checkouts + dependency.packageRef.location
      * @param dependency
+     * @param workspaceFolder
      * @return the package path based on the type
      */
     private dependencyPackagePath(
