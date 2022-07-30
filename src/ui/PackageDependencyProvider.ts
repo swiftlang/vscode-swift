@@ -292,7 +292,13 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
     private dependencyDisplayVersion(dependency: WorkspaceStateDependency): string {
         const type = this.dependencyType(dependency);
         if (type === "editing") {
-            return "editing"; // ?TODO: get version from `baseOn` node for showing `editing 1.2.3`
+            if (dependency.basedOn) {
+                const basedOnVersion = this.dependencyDisplayVersion(dependency.basedOn);
+                if (basedOnVersion.length > 0) {
+                    return "editing " + basedOnVersion;
+                }
+            }
+            return "editing";
         } else if (type === "local") {
             return "local";
         } else {
