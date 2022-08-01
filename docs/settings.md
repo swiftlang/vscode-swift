@@ -58,11 +58,22 @@ This is a list of environment variables to set when running swift (build, resolv
 
 - **Runtime Path**
 
-Where to find Swift runtime libraries. This is mainly of use when these libraries cannot be discovered via the RPATH. On Windows the runtime path is added to the `Path` environment variable. This is of less use on macOS and Linux but will be added to `DYLD_LIBRARY_PATH` and `LD_LIBRARY_PATH` environment variables respectively on each platform. This is of use when supporting non-standard SDK layouts on Windows
+Where to find Swift runtime libraries. This is mainly of use when these libraries cannot be discovered via the RPATH. On Windows the runtime path is added to the `Path` environment variable. This is of less use on macOS and Linux but will be added to `DYLD_LIBRARY_PATH` and `LD_LIBRARY_PATH` environment variables respectively on each platform.
 
-- **SDK**
+- **Destination**
 
-The path of the target SDK to compile against. The default SDK is determined by the environment on macOS and Windows. This is of use when supporting non-standard SDK layouts on Windows and using custom SDKs. This adds the `--sdk` command line parameter to the relevant `swift` calls.
+The build destination for SwiftPM projects. If the value is a string, the plugin will load the `destination.json` file at the given path. If the value is an object, the plugin will map the value as follows and generate the `destination.json` automatically.
+
+| Configuration key | Description | `destination.json` key | Default value |
+|---|---|---|---|
+| `target`| The target triple of build destination. | `target` | `null` |
+| `sdk` | The path of the SDK to build against. | `sdk` | `null` |
+| `binDir` | The path of the folder containing tool binaries. | `toolchain-bin-dir` | The `usr/bin` subdirectory of the Swift toolchain. |
+| `extraSwiftCFlags` | Additional arguments to pass to the Swift compiler. | `extra-swiftc-flags` | `[]` |
+| `extraCCFlags` | Additional arguments to pass to the C compiler. | `extra-cc-flags` | `[]` |
+| `extraCPPFlags` | Additional arguments to pass to the C++ compiler. | `extra-cpp-flags` | `[]` |
+
+Hot reload is available for either way of specifying build destination.
 
 - **Diagnostics**
 

@@ -24,6 +24,22 @@ export interface LSPConfiguration {
     readonly inlayHintsEnabled: boolean;
 }
 
+/** build destination configuration */
+export interface DestinationConfiguration {
+    /** Target triple */
+    target: string;
+    /** Path to destination SDK */
+    sdk: string;
+    /** Path to tools directory */
+    binDir: string;
+    /** Extra arguments to pass to Swift compiler */
+    extraSwiftCFlags: string[];
+    /** Extra arguments to pass to C compiler */
+    extraCCFlags: string[];
+    /** Extra arguments to pass to C++ compiler */
+    extraCPPFlags: string[];
+}
+
 /**
  * Type-safe wrapper around configuration settings.
  */
@@ -49,6 +65,24 @@ const configuration = {
         };
     },
 
+    /** build destination configuration */
+    get destination(): DestinationConfiguration | string {
+        const configuration = vscode.workspace
+            .getConfiguration("swift")
+            .get<string | DestinationConfiguration>("destination", "");
+        if (typeof configuration !== "string") {
+            return {
+                target: configuration.target ?? "",
+                sdk: configuration.sdk ?? "",
+                binDir: configuration.binDir ?? "",
+                extraSwiftCFlags: configuration.extraSwiftCFlags ?? [],
+                extraCCFlags: configuration.extraCCFlags ?? [],
+                extraCPPFlags: configuration.extraCPPFlags ?? [],
+            };
+        }
+        return configuration;
+    },
+
     /** Files and directories to exclude from the Package Dependencies view. */
     get excludePathsFromPackageDependencies(): string[] {
         return vscode.workspace
@@ -71,7 +105,8 @@ const configuration = {
     },
     /** Path to custom swift sdk */
     get sdk(): string {
-        return vscode.workspace.getConfiguration("swift").get<string>("SDK", "");
+        // FIXME(stevapple): remove the entry
+        return typeof this.destination === "object" ? this.destination.sdk : "";
     },
     /** swift build arguments */
     get buildArguments(): string[] {

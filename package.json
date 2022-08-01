@@ -216,10 +216,49 @@
             "description": "The path of the folder containing the Swift runtime libraries. Only effective when they can't be discovered by RPath.",
             "order": 2
           },
-          "swift.SDK": {
-            "type": "string",
+          "swift.destination": {
+            "type": [
+              "object",
+              "string"
+            ],
+            "properties": {
+              "target": {
+                "type": "string",
+                "default": "",
+                "description": "The target triple of build destination."
+              },
+              "sdk": {
+                "type": "string",
+                "default": "",
+                "description": "The path of the SDK to build against."
+              },
+              "binDir": {
+                "type": "string",
+                "default": "",
+                "description": "The path of the folder containing tool binaries. The default is to look in current toolchain."
+              },
+              "extraSwiftCFlags": {
+                "type": "array",
+                "items": "string",
+                "default": [],
+                "description": "Additional arguments to pass to the Swift compiler."
+              },
+              "extraCCFlags": {
+                "type": "array",
+                "items": "string",
+                "default": [],
+                "description": "Additional arguments to pass to the C compiler."
+              },
+              "extraCPPFlags": {
+                "type": "array",
+                "items": "string",
+                "default": [],
+                "description": "Additional arguments to pass to the C++ compiler."
+              }
+            },
+            "additionalProperties": false,
             "default": "",
-            "description": "The path of the SDK to compile against (`--sdk` parameter). The default SDK is determined by the environment on macOS and Windows.",
+            "markdownDescription": "Destination configuration object or path to the `destination.json` file.",
             "order": 3
           },
           "swift.diagnostics": {
