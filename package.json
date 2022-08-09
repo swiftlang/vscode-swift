@@ -84,11 +84,6 @@
         "command": "swift.openPackage",
         "title": "Open Package.swift",
         "category": "Swift"
-      },
-      {
-        "command": "swift.runPlugin",
-        "title": "Run SwiftPM Plugin",
-        "category": "Swift"
       }
     ],
     "configuration": [
