@@ -19,6 +19,7 @@ import * as path from "path";
 import * as Stream from "stream";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
+import { Destination } from "../toolchain/destination";
 
 export interface ExecError {
     error: Error;
@@ -155,7 +156,7 @@ export async function execSwift(
     folderContext?: FolderContext
 ): Promise<{ stdout: string; stderr: string }> {
     const swift = getSwiftExecutable();
-    args = withSwiftSDKFlags(args);
+    args = withSwiftFlags(args, folderContext?.workspaceContext.toolchain.destination);
     if (Object.keys(configuration.swiftEnvironmentVariables).length > 0) {
         // when adding environment vars we either combine with vars passed
         // into the function or the process environment vars
@@ -172,7 +173,8 @@ export async function execSwift(
  *
  * @param args original commandline arguments
  */
-export function withSwiftSDKFlags(args: string[]): string[] {
+export function withSwiftFlags(args: string[], destination: Destination | undefined): string[] {
+    const swiftpmDestinationFlags = destination?.extraSwiftPMFlags ?? [];
     switch (args[0]) {
         case "package": {
             const subcommand = args.splice(0, 2).concat(buildPathFlags());
@@ -183,7 +185,7 @@ export function withSwiftSDKFlags(args: string[]): string[] {
                     // These two tools require building the package, so SDK
                     // flags are needed. Destination control flags are
                     // required to be placed before subcommand options.
-                    return [...subcommand, ...swiftpmSDKFlags(), ...args];
+                    return [...subcommand, ...swiftpmDestinationFlags, ...args];
                 }
                 default:
                     // Other swift-package subcommands operate on the host,
@@ -195,23 +197,13 @@ export function withSwiftSDKFlags(args: string[]): string[] {
         case "run":
         case "test": {
             const subcommand = args.splice(0, 1).concat(buildPathFlags());
-            return [...subcommand, ...swiftpmSDKFlags(), ...args];
+            return [...subcommand, ...swiftpmDestinationFlags, ...args];
         }
         default:
             // We're not going to call the Swift compiler directly for cross-compiling
             // and the destination settings are package-only, so do nothing here.
             return args;
     }
-}
-
-/**
- * Get SDK flags for SwiftPM
- */
-export function swiftpmSDKFlags(): string[] {
-    if (configuration.sdk !== "") {
-        return ["--sdk", configuration.sdk];
-    }
-    return [];
 }
 
 /**

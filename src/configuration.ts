@@ -27,17 +27,17 @@ export interface LSPConfiguration {
 /** build destination configuration */
 export interface DestinationConfiguration {
     /** Target triple */
-    target: string;
+    target: string | undefined;
     /** Path to destination SDK */
-    sdk: string;
+    sdk: string | undefined;
     /** Path to tools directory */
-    binDir: string;
+    binDir: string | undefined;
     /** Extra arguments to pass to Swift compiler */
-    extraSwiftCFlags: string[];
+    extraSwiftCFlags: string[] | undefined;
     /** Extra arguments to pass to C compiler */
-    extraCCFlags: string[];
+    extraCCFlags: string[] | undefined;
     /** Extra arguments to pass to C++ compiler */
-    extraCPPFlags: string[];
+    extraCPPFlags: string[] | undefined;
 }
 
 /**
@@ -70,16 +70,6 @@ const configuration = {
         const configuration = vscode.workspace
             .getConfiguration("swift")
             .get<string | DestinationConfiguration>("destination", "");
-        if (typeof configuration !== "string") {
-            return {
-                target: configuration.target ?? "",
-                sdk: configuration.sdk ?? "",
-                binDir: configuration.binDir ?? "",
-                extraSwiftCFlags: configuration.extraSwiftCFlags ?? [],
-                extraCCFlags: configuration.extraCCFlags ?? [],
-                extraCPPFlags: configuration.extraCPPFlags ?? [],
-            };
-        }
         return configuration;
     },
 
@@ -102,11 +92,6 @@ const configuration = {
     /** Path to folder that include swift runtime */
     get runtimePath(): string {
         return vscode.workspace.getConfiguration("swift").get<string>("runtimePath", "");
-    },
-    /** Path to custom swift sdk */
-    get sdk(): string {
-        // FIXME(stevapple): remove the entry
-        return typeof this.destination === "object" ? this.destination.sdk : "";
     },
     /** swift build arguments */
     get buildArguments(): string[] {

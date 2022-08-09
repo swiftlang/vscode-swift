@@ -20,9 +20,10 @@ import configuration from "../configuration";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { execFile, execSwift, pathExists } from "../utilities/utilities";
 import { Version } from "../utilities/version";
+import { Destination } from "./destination";
 
 /**
- * Contents of **Info.plist** on Windows.
+ * Contents of **Info.plist** in Windows.platform
  */
 interface InfoPlist {
     DefaultProperties: {
@@ -54,24 +55,26 @@ export class SwiftToolchain {
         public swiftVersion: Version,
         public runtimePath?: string,
         private defaultTarget?: string,
-        private defaultSDK?: string,
-        private customSDK?: string,
+        public destination?: Destination,
+        private hostSDK?: string,
+        private targetSDK?: string,
         public xcTestPath?: string
     ) {}
 
-    static async create(): Promise<SwiftToolchain> {
+    static async create(storage: vscode.Uri): Promise<SwiftToolchain> {
         const swiftFolderPath = await this.getSwiftFolderPath();
         const toolchainPath = await this.getToolchainPath(swiftFolderPath);
         const targetInfo = await this.getSwiftTargetInfo();
         const swiftVersion = await this.getSwiftVersion(targetInfo);
         const runtimePath = await this.getRuntimePath(targetInfo);
-        const defaultSDK = await this.getDefaultSDK();
-        const customSDK = this.getCustomSDK();
+        const destination = await this.getDestination(toolchainPath, storage);
+        const hostSDK = await this.getHostSDK();
+        const targetSDK = this.getTargetSDK(destination);
         const xcTestPath = await this.getXCTestPath(
             targetInfo,
             swiftVersion,
             runtimePath,
-            customSDK ?? defaultSDK
+            targetSDK ?? hostSDK
         );
         return new SwiftToolchain(
             swiftFolderPath,
@@ -80,8 +83,9 @@ export class SwiftToolchain {
             swiftVersion,
             runtimePath,
             targetInfo.target?.triple,
-            defaultSDK,
-            customSDK,
+            destination,
+            hostSDK,
+            targetSDK,
             xcTestPath
         );
     }
@@ -95,11 +99,14 @@ export class SwiftToolchain {
         if (this.defaultTarget) {
             channel.logDiagnostic(`Default Target: ${this.defaultTarget}`);
         }
-        if (this.defaultSDK) {
-            channel.logDiagnostic(`Default SDK: ${this.defaultSDK}`);
+        if (this.destination) {
+            channel.logDiagnostic(`Destination File Path: ${this.destination.path}`);
         }
-        if (this.customSDK) {
-            channel.logDiagnostic(`Custom SDK: ${this.customSDK}`);
+        if (this.hostSDK) {
+            channel.logDiagnostic(`Host SDK: ${this.hostSDK}`);
+        }
+        if (this.targetSDK) {
+            channel.logDiagnostic(`Target SDK: ${this.targetSDK}`);
         }
         if (this.xcTestPath) {
             channel.logDiagnostic(`XCTest Path: ${this.xcTestPath}`);
@@ -187,29 +194,43 @@ export class SwiftToolchain {
     }
 
     /**
-     * @returns path to default SDK
+     * @returns swift build destination
      */
-    private static async getDefaultSDK(): Promise<string | undefined> {
+    private static async getDestination(
+        toolchainPath: string,
+        storage: vscode.Uri
+    ): Promise<Destination | undefined> {
+        return await Destination.create(toolchainPath, configuration.destination, storage);
+    }
+
+    /**
+     * @returns path to host SDK
+     */
+    private static async getHostSDK(): Promise<string | undefined> {
+        const env = {
+            ...process.env,
+            ...configuration.swiftEnvironmentVariables,
+        };
         switch (process.platform) {
             case "darwin": {
-                if (process.env.SDKROOT) {
-                    return process.env.SDKROOT;
+                if (env.SDKROOT) {
+                    return env.SDKROOT;
                 }
                 const { stdout } = await execFile("xcrun", ["--sdk", "macosx", "--show-sdk-path"]);
                 return path.join(stdout.trimEnd());
             }
             case "win32": {
-                return process.env.SDKROOT;
+                return env.SDKROOT;
             }
         }
         return undefined;
     }
 
     /**
-     * @returns path to custom SDK
+     * @returns path to explicit target SDK
      */
-    private static getCustomSDK(): string | undefined {
-        return configuration.sdk !== "" ? configuration.sdk : undefined;
+    private static getTargetSDK(destination?: Destination): string | undefined {
+        return destination?.sdk;
     }
 
     /**

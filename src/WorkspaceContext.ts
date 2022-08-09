@@ -157,9 +157,9 @@ export class WorkspaceContext implements vscode.Disposable {
     }
 
     /** Get swift version and create WorkspaceContext */
-    static async create(): Promise<WorkspaceContext> {
+    static async create(context: vscode.ExtensionContext): Promise<WorkspaceContext> {
         const tempFolder = await TemporaryFolder.create();
-        const toolchain = await SwiftToolchain.create();
+        const toolchain = await SwiftToolchain.create(context.storageUri!);
         return new WorkspaceContext(tempFolder, toolchain);
     }
 

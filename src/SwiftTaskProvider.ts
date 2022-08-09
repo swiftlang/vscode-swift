@@ -18,8 +18,9 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
-import { getSwiftExecutable, swiftRuntimeEnv, withSwiftSDKFlags } from "./utilities/utilities";
+import { getSwiftExecutable, swiftRuntimeEnv, withSwiftFlags } from "./utilities/utilities";
 import { Version } from "./utilities/version";
+import { Destination } from "./toolchain/destination";
 
 /**
  * References:
@@ -40,6 +41,7 @@ interface TaskConfig {
     problemMatcher?: string | string[];
     presentationOptions?: vscode.TaskPresentationOptions;
     prefix?: string;
+    destination?: Destination;
 }
 
 /** flag for enabling test discovery */
@@ -92,6 +94,7 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
                 reveal: vscode.TaskRevealKind.Silent,
             },
             problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
+            destination: folderContext.workspaceContext.toolchain.destination,
         }
     );
 }
@@ -160,6 +163,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                     reveal: vscode.TaskRevealKind.Silent,
                 },
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
+                destination: folderContext.workspaceContext.toolchain.destination,
             }
         ),
         createSwiftTask(
@@ -173,6 +177,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                     reveal: vscode.TaskRevealKind.Silent,
                 },
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
+                destination: folderContext.workspaceContext.toolchain.destination,
             }
         ),
     ];
@@ -183,7 +188,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
  */
 export function createSwiftTask(args: string[], name: string, config: TaskConfig): vscode.Task {
     const swift = getSwiftExecutable();
-    args = withSwiftSDKFlags(args);
+    args = withSwiftFlags(args, config.destination);
 
     // Add relative path current working directory
     const cwd = config.cwd.fsPath;

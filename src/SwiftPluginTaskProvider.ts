@@ -17,7 +17,7 @@ import * as path from "path";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { PackagePlugin } from "./SwiftPackage";
 import configuration from "./configuration";
-import { getSwiftExecutable, swiftRuntimeEnv, withSwiftSDKFlags } from "./utilities/utilities";
+import { getSwiftExecutable, swiftRuntimeEnv, withSwiftFlags } from "./utilities/utilities";
 
 // Interface class for defining task configuration
 interface TaskConfig {
@@ -80,7 +80,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             task.definition.command,
             ...task.definition.args,
         ];
-        swiftArgs = withSwiftSDKFlags(swiftArgs);
+        swiftArgs = withSwiftFlags(swiftArgs, undefined);
 
         const newTask = new vscode.Task(
             task.definition,
@@ -108,7 +108,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
     createSwiftPluginTask(plugin: PackagePlugin, args: string[], config: TaskConfig): vscode.Task {
         const swift = getSwiftExecutable();
         let swiftArgs = ["package", plugin.command, ...args];
-        swiftArgs = withSwiftSDKFlags(swiftArgs);
+        swiftArgs = withSwiftFlags(swiftArgs, undefined);
 
         // Add relative path current working directory
         const relativeCwd = path.relative(config.scope.uri.fsPath, config.cwd?.fsPath);
