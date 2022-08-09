@@ -95,6 +95,25 @@ export class SwiftToolchain {
         );
     }
 
+    /**
+     * Get active developer dir for Xcode
+     */
+    public static async getXcodeDeveloperDir(): Promise<string> {
+        const { stdout } = await execFile("xcode-select", ["-p"]);
+        return stdout.trimEnd();
+    }
+
+    /**
+     * Get list of Xcode versions intalled on mac
+     * @returns Folders for each Xcode install
+     */
+    public static async getXcodeInstalls(): Promise<string[]> {
+        const { stdout: xcodes } = await execFile("mdfind", [
+            `kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'`,
+        ]);
+        return xcodes.trimEnd().split("\n");
+    }
+
     logDiagnostics(channel: SwiftOutputChannel) {
         channel.logDiagnostic(`Swift Path: ${this.swiftFolderPath}`);
         channel.logDiagnostic(`Toolchain Path: ${this.toolchainPath}`);
@@ -260,8 +279,8 @@ export class SwiftToolchain {
     ): Promise<string | undefined> {
         switch (process.platform) {
             case "darwin": {
-                const { stdout } = await execFile("xcode-select", ["-p"]);
-                return path.join(stdout.trimEnd(), "usr", "bin");
+                const developerDir = await this.getXcodeDeveloperDir();
+                return path.join(developerDir, "usr", "bin");
             }
             case "win32": {
                 // look up runtime library directory for XCTest alternatively
