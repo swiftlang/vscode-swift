@@ -477,14 +477,16 @@ async function selectXcodeDeveloperDir() {
             };
         }),
         async selected => {
-            const swiftEnv = configuration.swiftEnvironmentVariables;
+            let swiftEnv = configuration.swiftEnvironmentVariables;
             const previousDeveloperDir = swiftEnv.DEVELOPER_DIR ?? defaultXcode;
             if (selected.folder) {
                 swiftEnv.DEVELOPER_DIR = selected.folder;
             } else if (swiftEnv.DEVELOPER_DIR) {
                 // if DEVELOPER_DIR was set and the new folder is the default then
                 // delete variable
-                delete swiftEnv.DEVELOPER_DIR;
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { DEVELOPER_DIR, ...rest } = swiftEnv;
+                swiftEnv = rest;
             }
             configuration.swiftEnvironmentVariables = swiftEnv;
             // if SDK is inside previous DEVELOPER_DIR then move to new DEVELOPER_DIR
