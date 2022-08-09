@@ -57,7 +57,7 @@ export class SwiftToolchain {
         private defaultTarget?: string,
         public destination?: Destination,
         private hostSDK?: string,
-        private targetSDK?: string,
+        public targetSDK?: string,
         public xcTestPath?: string
     ) {}
 

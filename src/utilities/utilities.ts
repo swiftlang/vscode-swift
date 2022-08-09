@@ -231,19 +231,6 @@ export function buildDirectoryFromWorkspacePath(workspacePath: string, absolute 
 }
 
 /**
- * Get SDK flags for swiftc
- *
- * @param indirect whether to pass the flags by -Xswiftc
- */
-export function swiftDriverSDKFlags(indirect = false): string[] {
-    if (configuration.sdk === "") {
-        return [];
-    }
-    const args = ["-sdk", configuration.sdk];
-    return indirect ? args.flatMap(arg => ["-Xswiftc", arg]) : args;
-}
-
-/**
  * Get the file name of executable
  *
  * @param exe name of executable to return

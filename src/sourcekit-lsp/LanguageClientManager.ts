@@ -20,7 +20,6 @@ import {
     filterArguments,
     getSwiftExecutable,
     isPathInsidePath,
-    swiftDriverSDKFlags,
     buildPathFlags,
     swiftRuntimeEnv,
 } from "../utilities/utilities";
@@ -29,6 +28,7 @@ import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { activateLegacyInlayHints } from "./inlayHints";
 import { FolderContext } from "../FolderContext";
 import { LanguageClient } from "vscode-languageclient/node";
+import { Destination } from "../toolchain/destination";
 
 /** Manages the creation and destruction of Language clients as we move between
  * workspace folders
@@ -80,11 +80,13 @@ export class LanguageClientManager {
     // used by single server support to keep a record of the project folders
     // that are not at the root of their workspace
     private subFolderWorkspaces: vscode.Uri[];
+    private destination?: Destination;
 
     constructor(public workspaceContext: WorkspaceContext) {
         this.singleServerSupport = workspaceContext.swiftVersion >= new Version(5, 7, 0);
         this.subscriptions = [];
         this.subFolderWorkspaces = [];
+        this.destination = workspaceContext.toolchain.destination;
         if (this.singleServerSupport) {
             // add/remove folders from server
             const observeFoldersDisposable = workspaceContext.observeFolders(
@@ -343,8 +345,8 @@ export class LanguageClientManager {
         const serverPathConfig = lspConfig.serverPath;
         const serverPath =
             serverPathConfig.length > 0 ? serverPathConfig : getSwiftExecutable("sourcekit-lsp");
-        const sdkArguments = [
-            ...swiftDriverSDKFlags(true),
+        const extraArguments = [
+            ...(this.destination?.extraSourcekitLSPFlags ?? []),
             ...filterArguments(
                 configuration.buildArguments.concat(buildPathFlags()),
                 LanguageClientManager.buildArgumentFilter
@@ -353,7 +355,7 @@ export class LanguageClientManager {
 
         const sourcekit: langclient.Executable = {
             command: serverPath,
-            args: lspConfig.serverArguments.concat(sdkArguments),
+            args: lspConfig.serverArguments.concat(extraArguments),
             options: {
                 env: {
                     ...process.env,
