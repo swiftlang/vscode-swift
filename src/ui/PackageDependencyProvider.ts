@@ -196,7 +196,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
      * Why tranverse is necessary here?
      *  * If we have an implicit local dependency of a dependency, you may not be able to see it in either `Package.swift` or `Package.resolved` unless tranversing from root Package.swift.
      * Why not using `swift package show-dependencies`?
-     *  * it costs more time and it triggers the file change of `Workspace-state.json` which is not necessary
+     *  * it costs more time and it triggers the file change of `workspace-state.json` which is not necessary
      * Why not using `workspace-state.json` directly?
      *  * `workspace-state.json` contains all necessary dependencies but it also contains dependencies that are not in use.
      * Here is the implementation details:
@@ -209,85 +209,75 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
         workspaceState: WorkspaceState,
         folderContext: FolderContext
     ): Promise<Set<string>> {
-        const localDependencies = await this.getAllLocalDependencySet(
-            workspaceState,
-            folderContext
-        );
+        const localDependencies = await this.getLocalDependencySet(workspaceState, folderContext);
         const remoteDependencies = this.getRemoteDependencySet(folderContext);
-        return new Set<string>([...localDependencies, ...remoteDependencies]);
+        const editedDependencies = this.getEditedDependencySet(workspaceState);
+        return new Set<string>([
+            ...localDependencies,
+            ...remoteDependencies,
+            ...editedDependencies,
+        ]);
     }
 
     private getRemoteDependencySet(folderContext: FolderContext | undefined): Set<string> {
         return new Set<string>(folderContext?.swiftPackage.resolved?.pins.map(pin => pin.identity));
     }
 
-    /**
-     * convert `getChildLocalDependencySet` to Promise<Set<string>>
-     * @param workspaceState the workspace state read from `Workspace-state.json`
-     * @param folderContext the folder context of the current folder
-     * @returns
-     */
-    private async getAllLocalDependencySet(
-        workspaceState: WorkspaceState,
-        folderContext: FolderContext
-    ): Promise<Set<string>> {
-        const rootDependencies = folderContext?.swiftPackage.dependencies ?? [];
-        const showingDependencies = new Set<string>();
-        await this.getChildLocalDependencySet(
-            rootDependencies,
-            workspaceState?.object.dependencies ?? [],
-            folderContext?.folder.fsPath,
-            showingDependencies
+    private getEditedDependencySet(workspaceState: WorkspaceState): Set<string> {
+        return new Set<string>(
+            workspaceState.object.dependencies
+                .filter(dependency => this.dependencyType(dependency) === "editing")
+                .map(dependency => dependency.packageRef.identity)
         );
-
-        return showingDependencies;
     }
 
     /**
-     * tranverse only local dependency tree
-     * @param dependencies depdencies of current node
-     * @param workspaceStateDependencies all dependencies in workspace-state.json
-     * @param showingDependencies result of dependencies that are showing in the tree
-     * @returns
+     * @param workspaceState the workspace state read from `Workspace-state.json`
+     * @param folderContext the folder context of the current folder
+     * @returns all local in-use dependencies
      */
-    private async getChildLocalDependencySet(
-        dependencies: Dependency[],
-        workspaceStateDependencies: WorkspaceStateDependency[],
-        workspacePath: string,
-        showingDependencies: Set<string>
-    ) {
-        for (let i = 0; i < dependencies.length; i++) {
-            const childDependency = dependencies[i];
-            if (showingDependencies.has(childDependency.identity)) {
+    private async getLocalDependencySet(
+        workspaceState: WorkspaceState,
+        folderContext: FolderContext
+    ): Promise<Set<string>> {
+        const rootDependencies = folderContext.swiftPackage.dependencies ?? [];
+        const workspaceStateDependencies = workspaceState.object.dependencies ?? [];
+        const workspacePath = folderContext.folder.fsPath;
+
+        const showingDependencies: Set<string> = new Set<string>();
+        const stack: Dependency[] = rootDependencies;
+
+        while (stack.length > 0) {
+            const top = stack.pop();
+            if (!top) {
                 continue;
             }
 
-            if (childDependency.type !== "local" && childDependency.type !== "fileSystem") {
+            if (showingDependencies.has(top.identity)) {
                 continue;
             }
 
-            showingDependencies.add(childDependency.identity);
+            if (top.type !== "local" && top.type !== "fileSystem") {
+                continue;
+            }
+
+            showingDependencies.add(top.identity);
             const workspaceStateDependency = workspaceStateDependencies.find(
                 workspaceStateDependency =>
-                    workspaceStateDependency.packageRef.identity === childDependency.identity
+                    workspaceStateDependency.packageRef.identity === top.identity
             );
             if (!workspaceStateDependency) {
                 continue;
             }
 
             const packagePath = this.dependencyPackagePath(workspaceStateDependency, workspacePath);
-
             const childDependencyContents = (await SwiftPackage.loadPackage(
                 vscode.Uri.file(packagePath)
             )) as PackageContents;
 
-            await this.getChildLocalDependencySet(
-                childDependencyContents.dependencies,
-                workspaceStateDependencies,
-                workspacePath,
-                showingDependencies
-            );
+            stack.push(...childDependencyContents.dependencies);
         }
+        return showingDependencies;
     }
 
     /**
