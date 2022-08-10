@@ -193,6 +193,13 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
 
     /**
      * * Returns a set of all dependencies that are in use in the workspace.
+     * Why tranverse is necessary here?
+     *  * If we have an implicit local dependency of a dependency, you may not be able to see it in either `Package.swift` or `Package.resolved` unless tranversing from root Package.swift.
+     * Why not using `swift package show-dependencies`?
+     *  * it costs more time and it triggers the file change of `Workspace-state.json` which is not necessary
+     * Why not using `workspace-state.json` directly?
+     *  * `workspace-state.json` contains all necessary dependencies but it also contains dependencies that are not in use.
+     * Here is the implementation details:
      * 1. local/remote/edited dependency has remote/edited dependencies, Package.resolved covers them
      * 2. remote/edited dependency has a local dependency, the local dependency must have been declared in root Package.swift
      * 3. local dependency has a local dependency, traverse it and find the local dependencies only recursively
@@ -207,18 +214,19 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             folderContext
         );
         const remoteDependencies = this.getRemoteDependencySet(folderContext);
-
-        // merge the two sets of dependencies
-        const inUseDependencies = new Set<string>();
-        localDependencies.forEach(dependency => inUseDependencies.add(dependency));
-        remoteDependencies.forEach(dependency => inUseDependencies.add(dependency));
-        return inUseDependencies;
+        return new Set<string>([...localDependencies, ...remoteDependencies]);
     }
 
     private getRemoteDependencySet(folderContext: FolderContext | undefined): Set<string> {
         return new Set<string>(folderContext?.swiftPackage.resolved?.pins.map(pin => pin.identity));
     }
 
+    /**
+     * convert `getChildLocalDependencySet` to Promise<Set<string>>
+     * @param workspaceState the workspace state read from `Workspace-state.json`
+     * @param folderContext the folder context of the current folder
+     * @returns
+     */
     private async getAllLocalDependencySet(
         workspaceState: WorkspaceState,
         folderContext: FolderContext
