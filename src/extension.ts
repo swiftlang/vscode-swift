@@ -49,18 +49,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         // listen for workspace folder changes and active text editor changes
         workspaceContext.setupEventListeners();
 
-        // Register task provider.
-        const taskProvider = vscode.tasks.registerTaskProvider(
-            "swift",
-            new SwiftTaskProvider(workspaceContext)
-        );
-        // Register swift plugin task provider.
-        const pluginTaskProvider = vscode.tasks.registerTaskProvider(
-            "swift-plugin",
-            new SwiftPluginTaskProvider(workspaceContext)
-        );
-        commands.register(workspaceContext);
-
         const commentCompletionProvider = commentCompletion.register();
 
         const languageStatusItem = new LanguageStatusItems(workspaceContext);
@@ -107,6 +95,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
 
         // setup workspace context with initial workspace folders
         workspaceContext.addWorkspaceFolders();
+
+        // Register task provider.
+        const taskProvider = vscode.tasks.registerTaskProvider(
+            "swift",
+            new SwiftTaskProvider(workspaceContext)
+        );
+        // Register swift plugin task provider.
+        const pluginTaskProvider = vscode.tasks.registerTaskProvider(
+            "swift-plugin",
+            new SwiftPluginTaskProvider(workspaceContext)
+        );
+        commands.register(workspaceContext);
 
         // Register any disposables for cleanup when the extension deactivates.
         context.subscriptions.push(
