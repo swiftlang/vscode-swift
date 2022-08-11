@@ -94,7 +94,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         const testExplorerObserver = TestExplorer.observeFolders(workspaceContext);
 
         // setup workspace context with initial workspace folders
-        workspaceContext.addWorkspaceFolders();
+        await workspaceContext.addWorkspaceFolders();
 
         // Register task provider.
         const taskProvider = vscode.tasks.registerTaskProvider(
