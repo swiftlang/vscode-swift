@@ -45,6 +45,11 @@
         "category": "Swift"
       },
       {
+        "command": "swift.switchPlatform",
+        "title": "Switch Target",
+        "category": "Swift"
+      },
+      {
         "command": "swift.resetPackage",
         "title": "Reset Package Dependencies",
         "icon": "$(clear-all)",
@@ -239,6 +244,10 @@
         {
           "command": "swift.cleanBuild",
           "when": "swift.hasPackage"
+        },
+        {
+          "command": "swift.switchPlatform",
+          "when": "isMac"
         },
         {
           "command": "swift.resetPackage",

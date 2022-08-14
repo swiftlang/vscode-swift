@@ -19,8 +19,11 @@ import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
 import { createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderContext } from "./FolderContext";
 import { PackageNode } from "./ui/PackageDependencyProvider";
+import { withQuickPick } from "./ui/QuickPick";
 import { execSwift } from "./utilities/utilities";
 import { Version } from "./utilities/version";
+import { DarwinCompatibleTarget, SwiftToolchain } from "./toolchain/toolchain";
+import configuration from "./configuration";
 
 /**
  * References:
@@ -428,6 +431,34 @@ function openInExternalEditor(packageNode: PackageNode) {
     }
 }
 
+interface DarwinQuickPickTarget extends vscode.QuickPickItem {
+    value: DarwinCompatibleTarget;
+    label: string;
+}
+
+/**
+ * Switches the target SDK to the platform selected in a QuickPick UI.
+ */
+async function switchPlatform() {
+    const onSelect = async (picked: DarwinQuickPickTarget) => {
+        const sdkForTarget = await SwiftToolchain.getSdkForTarget(picked.value);
+        if (sdkForTarget) {
+            configuration.sdk = sdkForTarget;
+        } else {
+            vscode.window.showErrorMessage("Unable to obtain requested SDK path");
+        }
+    };
+
+    await withQuickPick<DarwinQuickPickTarget>(
+        "Select a new target",
+        [
+            { value: DarwinCompatibleTarget.macOS, label: "macOS" },
+            { value: DarwinCompatibleTarget.iOS, label: "iOS" },
+        ],
+        onSelect
+    );
+}
+
 function updateAfterError(result: boolean, folderContext: FolderContext) {
     const triggerResolvedUpdatedEvent = folderContext.hasResolveErrors;
     // set has resolve errors flag
@@ -450,6 +481,8 @@ export function register(ctx: WorkspaceContext) {
         ),
         vscode.commands.registerCommand("swift.updateDependencies", () => updateDependencies(ctx)),
         vscode.commands.registerCommand("swift.cleanBuild", () => cleanBuild(ctx)),
+        // Note: This is only available on macOS (gated in `package.json`) because its the only OS that has the iOS SDK available.
+        vscode.commands.registerCommand("swift.switchPlatform", () => switchPlatform()),
         vscode.commands.registerCommand("swift.resetPackage", () => resetPackage(ctx)),
         vscode.commands.registerCommand("swift.runSingle", () => runSingleFile(ctx)),
         vscode.commands.registerCommand("swift.openPackage", () => openPackage(ctx)),
