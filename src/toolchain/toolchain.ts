@@ -14,6 +14,7 @@
 
 import * as fs from "fs/promises";
 import * as path from "path";
+import { normalize } from "path";
 import * as plist from "plist";
 import * as vscode from "vscode";
 import configuration from "../configuration";
@@ -101,6 +102,30 @@ export class SwiftToolchain {
     public static async getXcodeDeveloperDir(): Promise<string> {
         const { stdout } = await execFile("xcode-select", ["-p"]);
         return stdout.trimEnd();
+    }
+
+    /**
+     * @param target Target to obtain the SDK path for
+     * @returns path to the SDK for the target
+     */
+    public static async getSdkForTarget(
+        target: DarwinCompatibleTarget
+    ): Promise<string | undefined> {
+        let sdkType: string;
+        switch (target) {
+            case DarwinCompatibleTarget.macOS:
+                // macOS is the default target, so lets not update the SDK
+                return undefined;
+            case DarwinCompatibleTarget.iOS:
+                sdkType = "iphoneos";
+                break;
+        }
+
+        // Include custom variables so that non-standard XCode installs can be better supported.
+        const { stdout } = await execFile("xcrun", ["--sdk", sdkType, "--show-sdk-path"], {
+            env: { ...process.env, ...configuration.swiftEnvironmentVariables },
+        });
+        return path.join(stdout.trimEnd());
     }
 
     /**
@@ -231,30 +256,6 @@ export class SwiftToolchain {
             }
         }
         return undefined;
-    }
-
-    /**
-     * @param target Target to obtain the SDK path for
-     * @returns path to the SDK for the target
-     */
-    public static async getSdkForTarget(
-        target: DarwinCompatibleTarget
-    ): Promise<string | undefined> {
-        let sdkType: string;
-        switch (target) {
-            case DarwinCompatibleTarget.macOS:
-                sdkType = "macosx";
-                break;
-            case DarwinCompatibleTarget.iOS:
-                sdkType = "iphoneos";
-                break;
-        }
-
-        // Include custom variables so that non-standard XCode installs can be better supported.
-        const { stdout } = await execFile("xcrun", ["--sdk", sdkType, "--show-sdk-path"], {
-            env: { ...process.env, ...configuration.swiftEnvironmentVariables },
-        });
-        return path.join(stdout.trimEnd());
     }
 
     /**

@@ -431,31 +431,24 @@ function openInExternalEditor(packageNode: PackageNode) {
     }
 }
 
-interface DarwinQuickPickTarget extends vscode.QuickPickItem {
-    value: DarwinCompatibleTarget;
-    label: string;
-}
-
 /**
  * Switches the target SDK to the platform selected in a QuickPick UI.
  */
 async function switchPlatform() {
-    const onSelect = async (picked: DarwinQuickPickTarget) => {
-        const sdkForTarget = await SwiftToolchain.getSdkForTarget(picked.value);
-        if (sdkForTarget) {
-            configuration.sdk = sdkForTarget;
-        } else {
-            vscode.window.showErrorMessage("Unable to obtain requested SDK path");
-        }
-    };
-
-    await withQuickPick<DarwinQuickPickTarget>(
+    await withQuickPick(
         "Select a new target",
         [
             { value: DarwinCompatibleTarget.macOS, label: "macOS" },
             { value: DarwinCompatibleTarget.iOS, label: "iOS" },
         ],
-        onSelect
+        async picked => {
+            const sdkForTarget = await SwiftToolchain.getSdkForTarget(picked.value);
+            if (sdkForTarget) {
+                configuration.sdk = sdkForTarget;
+            } else {
+                vscode.window.showErrorMessage("Unable to obtain requested SDK path");
+            }
+        }
     );
 }
 
