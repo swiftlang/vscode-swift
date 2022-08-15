@@ -15,6 +15,7 @@
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
+import configuration from "./configuration";
 import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
 import { createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderContext } from "./FolderContext";
@@ -23,7 +24,6 @@ import { withQuickPick } from "./ui/QuickPick";
 import { execSwift } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 import { DarwinCompatibleTarget, SwiftToolchain } from "./toolchain/toolchain";
-import configuration from "./configuration";
 
 /**
  * References:
@@ -431,31 +431,68 @@ function openInExternalEditor(packageNode: PackageNode) {
     }
 }
 
-interface DarwinQuickPickTarget extends vscode.QuickPickItem {
-    value: DarwinCompatibleTarget;
-    label: string;
-}
-
 /**
  * Switches the target SDK to the platform selected in a QuickPick UI.
  */
 async function switchPlatform() {
-    const onSelect = async (picked: DarwinQuickPickTarget) => {
-        const sdkForTarget = await SwiftToolchain.getSdkForTarget(picked.value);
-        if (sdkForTarget) {
-            configuration.sdk = sdkForTarget;
-        } else {
-            vscode.window.showErrorMessage("Unable to obtain requested SDK path");
-        }
-    };
-
-    await withQuickPick<DarwinQuickPickTarget>(
+    await withQuickPick(
         "Select a new target",
         [
             { value: DarwinCompatibleTarget.macOS, label: "macOS" },
             { value: DarwinCompatibleTarget.iOS, label: "iOS" },
         ],
-        onSelect
+        async picked => {
+            const sdkForTarget = await SwiftToolchain.getSdkForTarget(picked.value);
+            if (sdkForTarget) {
+                configuration.sdk = sdkForTarget;
+            } else {
+                vscode.window.showErrorMessage("Unable to obtain requested SDK path");
+            }
+        }
+    );
+}
+
+/**
+ * Choose DEVELOPER_DIR
+ * @param workspaceContext
+ */
+async function selectXcodeDeveloperDir() {
+    const defaultXcode = await SwiftToolchain.getXcodeDeveloperDir();
+    const selectedXcode = configuration.swiftEnvironmentVariables.DEVELOPER_DIR;
+    const xcodes = await SwiftToolchain.getXcodeInstalls();
+    await withQuickPick(
+        selectedXcode ?? defaultXcode,
+        xcodes.map(xcode => {
+            const developerDir = `${xcode}/Contents/Developer`;
+            return {
+                label: developerDir === defaultXcode ? `${xcode} (default)` : xcode,
+                folder: developerDir === defaultXcode ? undefined : developerDir,
+            };
+        }),
+        async selected => {
+            let swiftEnv = configuration.swiftEnvironmentVariables;
+            const previousDeveloperDir = swiftEnv.DEVELOPER_DIR ?? defaultXcode;
+            if (selected.folder) {
+                swiftEnv.DEVELOPER_DIR = selected.folder;
+            } else if (swiftEnv.DEVELOPER_DIR) {
+                // if DEVELOPER_DIR was set and the new folder is the default then
+                // delete variable
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { DEVELOPER_DIR, ...rest } = swiftEnv;
+                swiftEnv = rest;
+            }
+            configuration.swiftEnvironmentVariables = swiftEnv;
+            // if SDK is inside previous DEVELOPER_DIR then move to new DEVELOPER_DIR
+            if (
+                configuration.sdk.length > 0 &&
+                configuration.sdk.startsWith(previousDeveloperDir)
+            ) {
+                configuration.sdk = configuration.sdk.replace(
+                    previousDeveloperDir,
+                    selected.folder ?? defaultXcode
+                );
+            }
+        }
     );
 }
 
@@ -510,6 +547,9 @@ export function register(ctx: WorkspaceContext) {
             if (item instanceof PackageNode) {
                 openInExternalEditor(item);
             }
-        })
+        }),
+        vscode.commands.registerCommand("swift.selectXcodeDeveloperDir", () =>
+            selectXcodeDeveloperDir()
+        )
     );
 }

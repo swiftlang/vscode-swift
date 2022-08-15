@@ -294,6 +294,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             "swift",
             new vscode.ShellExecution(swift, task.definition.args, {
                 cwd: fullCwd,
+                env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
             }),
             task.problemMatchers
         );

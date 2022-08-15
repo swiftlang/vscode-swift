@@ -14,6 +14,7 @@
 
 import * as fs from "fs/promises";
 import * as path from "path";
+import { normalize } from "path";
 import * as plist from "plist";
 import * as vscode from "vscode";
 import configuration from "../configuration";
@@ -93,6 +94,49 @@ export class SwiftToolchain {
             customSDK,
             xcTestPath
         );
+    }
+
+    /**
+     * Get active developer dir for Xcode
+     */
+    public static async getXcodeDeveloperDir(): Promise<string> {
+        const { stdout } = await execFile("xcode-select", ["-p"]);
+        return stdout.trimEnd();
+    }
+
+    /**
+     * @param target Target to obtain the SDK path for
+     * @returns path to the SDK for the target
+     */
+    public static async getSdkForTarget(
+        target: DarwinCompatibleTarget
+    ): Promise<string | undefined> {
+        let sdkType: string;
+        switch (target) {
+            case DarwinCompatibleTarget.macOS:
+                // macOS is the default target, so lets not update the SDK
+                return undefined;
+            case DarwinCompatibleTarget.iOS:
+                sdkType = "iphoneos";
+                break;
+        }
+
+        // Include custom variables so that non-standard XCode installs can be better supported.
+        const { stdout } = await execFile("xcrun", ["--sdk", sdkType, "--show-sdk-path"], {
+            env: { ...process.env, ...configuration.swiftEnvironmentVariables },
+        });
+        return path.join(stdout.trimEnd());
+    }
+
+    /**
+     * Get list of Xcode versions intalled on mac
+     * @returns Folders for each Xcode install
+     */
+    public static async getXcodeInstalls(): Promise<string[]> {
+        const { stdout: xcodes } = await execFile("mdfind", [
+            `kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'`,
+        ]);
+        return xcodes.trimEnd().split("\n");
     }
 
     logDiagnostics(channel: SwiftOutputChannel) {
@@ -215,30 +259,6 @@ export class SwiftToolchain {
     }
 
     /**
-     * @param target Target to obtain the SDK path for
-     * @returns path to the SDK for the target
-     */
-    public static async getSdkForTarget(
-        target: DarwinCompatibleTarget
-    ): Promise<string | undefined> {
-        let sdkType: string;
-        switch (target) {
-            case DarwinCompatibleTarget.macOS:
-                sdkType = "macosx";
-                break;
-            case DarwinCompatibleTarget.iOS:
-                sdkType = "iphoneos";
-                break;
-        }
-
-        // Include custom variables so that non-standard XCode installs can be better supported.
-        const { stdout } = await execFile("xcrun", ["--sdk", sdkType, "--show-sdk-path"], {
-            env: { ...process.env, ...configuration.swiftEnvironmentVariables },
-        });
-        return path.join(stdout.trimEnd());
-    }
-
-    /**
      * @returns path to custom SDK
      */
     private static getCustomSDK(): string | undefined {
@@ -260,8 +280,8 @@ export class SwiftToolchain {
     ): Promise<string | undefined> {
         switch (process.platform) {
             case "darwin": {
-                const { stdout } = await execFile("xcode-select", ["-p"]);
-                return path.join(stdout.trimEnd(), "usr", "bin");
+                const developerDir = await this.getXcodeDeveloperDir();
+                return path.join(developerDir, "usr", "bin");
             }
             case "win32": {
                 // look up runtime library directory for XCTest alternatively
