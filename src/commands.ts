@@ -438,12 +438,16 @@ async function switchPlatform() {
     await withQuickPick(
         "Select a new target",
         [
-            { value: DarwinCompatibleTarget.macOS, label: "macOS" },
+            { value: undefined, label: "macOS" },
             { value: DarwinCompatibleTarget.iOS, label: "iOS" },
+            { value: DarwinCompatibleTarget.tvOS, label: "tvOS" },
+            { value: DarwinCompatibleTarget.watchOS, label: "watchOS" },
         ],
         async picked => {
-            const sdkForTarget = await SwiftToolchain.getSdkForTarget(picked.value);
-            if (sdkForTarget) {
+            const sdkForTarget = picked.value
+                ? await SwiftToolchain.getSDKForTarget(picked.value)
+                : "";
+            if (sdkForTarget !== undefined) {
                 configuration.sdk = sdkForTarget;
             } else {
                 vscode.window.showErrorMessage("Unable to obtain requested SDK path");
