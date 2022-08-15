@@ -449,6 +449,9 @@ async function switchPlatform() {
                 : "";
             if (sdkForTarget !== undefined) {
                 configuration.sdk = sdkForTarget;
+                vscode.window.showWarningMessage(
+                    `Selecting the ${picked.label} SDK will provide code editing support, but compiling with this SDK will have undefined results.`
+                );
             } else {
                 vscode.window.showErrorMessage("Unable to obtain requested SDK path");
             }
