@@ -16,12 +16,18 @@ import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
 import configuration from "../configuration";
-import { getRepositoryName, buildDirectoryFromWorkspacePath } from "../utilities/utilities";
+import { buildDirectoryFromWorkspacePath } from "../utilities/utilities";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderEvent } from "../WorkspaceContext";
 import { FolderContext } from "../FolderContext";
 import contextKeys from "../contextKeys";
-import { WorkspaceState } from "../SwiftPackage";
+import {
+    Dependency,
+    PackageContents,
+    SwiftPackage,
+    WorkspaceState,
+    WorkspaceStateDependency,
+} from "../SwiftPackage";
 
 /**
  * References:
@@ -41,6 +47,7 @@ export class PackageNode {
     constructor(
         public name: string,
         public path: string,
+        public location: string,
         public version: string,
         public type: "local" | "remote" | "editing"
     ) {}
@@ -148,39 +155,129 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
         }
         if (!element) {
             const workspaceState = await folderContext.swiftPackage.loadWorkspaceState();
-            // Build PackageNodes for all dependencies. Because Package.resolved might not
-            // be up to date with edited dependency list, we need to remove the edited
-            // dependencies from the list before adding in the edit version
-            const children = [
-                ...this.getLocalDependencies(workspaceState),
-                ...this.getRemoteDependencies(folderContext),
-            ];
-            const editedChildren = await this.getEditedDependencies(workspaceState);
-            const uneditedChildren: PackageNode[] = [];
-            for (const child of children) {
-                const editedVersion = editedChildren.find(item => item.name === child.name);
-                if (!editedVersion) {
-                    uneditedChildren.push(child);
-                }
+            return await this.getDependencyGraph(workspaceState, folderContext);
+        }
+
+        return this.getNodesInDirectory(element.path);
+    }
+
+    private async getDependencyGraph(
+        workspaceState: WorkspaceState | undefined,
+        folderContext: FolderContext
+    ): Promise<PackageNode[]> {
+        if (!workspaceState) {
+            return [];
+        }
+        const inUseDependencies = await this.getInUseDependencies(workspaceState, folderContext);
+        return (
+            workspaceState?.object.dependencies
+                .filter(dependency => inUseDependencies.has(dependency.packageRef.identity))
+                .map(dependency => {
+                    const type = this.dependencyType(dependency);
+                    const version = this.dependencyDisplayVersion(dependency);
+                    const packagePath = this.dependencyPackagePath(
+                        dependency,
+                        folderContext.folder.fsPath
+                    );
+                    const location = dependency.packageRef.location;
+                    return new PackageNode(
+                        dependency.packageRef.identity,
+                        packagePath,
+                        location,
+                        version,
+                        type
+                    );
+                }) ?? []
+        );
+    }
+
+    /**
+     * * Returns a set of all dependencies that are in use in the workspace.
+     * Why tranverse is necessary here?
+     *  * If we have an implicit local dependency of a dependency, you may not be able to see it in either `Package.swift` or `Package.resolved` unless tranversing from root Package.swift.
+     * Why not using `swift package show-dependencies`?
+     *  * it costs more time and it triggers the file change of `workspace-state.json` which is not necessary
+     * Why not using `workspace-state.json` directly?
+     *  * `workspace-state.json` contains all necessary dependencies but it also contains dependencies that are not in use.
+     * Here is the implementation details:
+     * 1. local/remote/edited dependency has remote/edited dependencies, Package.resolved covers them
+     * 2. remote/edited dependency has a local dependency, the local dependency must have been declared in root Package.swift
+     * 3. local dependency has a local dependency, traverse it and find the local dependencies only recursively
+     * 4. pins include all remote and edited packages for 1, 2
+     */
+    private async getInUseDependencies(
+        workspaceState: WorkspaceState,
+        folderContext: FolderContext
+    ): Promise<Set<string>> {
+        const localDependencies = await this.getLocalDependencySet(workspaceState, folderContext);
+        const remoteDependencies = this.getRemoteDependencySet(folderContext);
+        const editedDependencies = this.getEditedDependencySet(workspaceState);
+        return new Set<string>([
+            ...localDependencies,
+            ...remoteDependencies,
+            ...editedDependencies,
+        ]);
+    }
+
+    private getRemoteDependencySet(folderContext: FolderContext | undefined): Set<string> {
+        return new Set<string>(folderContext?.swiftPackage.resolved?.pins.map(pin => pin.identity));
+    }
+
+    private getEditedDependencySet(workspaceState: WorkspaceState): Set<string> {
+        return new Set<string>(
+            workspaceState.object.dependencies
+                .filter(dependency => this.dependencyType(dependency) === "editing")
+                .map(dependency => dependency.packageRef.identity)
+        );
+    }
+
+    /**
+     * @param workspaceState the workspace state read from `Workspace-state.json`
+     * @param folderContext the folder context of the current folder
+     * @returns all local in-use dependencies
+     */
+    private async getLocalDependencySet(
+        workspaceState: WorkspaceState,
+        folderContext: FolderContext
+    ): Promise<Set<string>> {
+        const rootDependencies = folderContext.swiftPackage.dependencies ?? [];
+        const workspaceStateDependencies = workspaceState.object.dependencies ?? [];
+        const workspacePath = folderContext.folder.fsPath;
+
+        const showingDependencies: Set<string> = new Set<string>();
+        const stack: Dependency[] = rootDependencies;
+
+        while (stack.length > 0) {
+            const top = stack.pop();
+            if (!top) {
+                continue;
             }
-            return [...uneditedChildren, ...editedChildren].sort((first, second) =>
-                first.name.localeCompare(second.name)
+
+            if (showingDependencies.has(top.identity)) {
+                continue;
+            }
+
+            if (top.type !== "local" && top.type !== "fileSystem") {
+                continue;
+            }
+
+            showingDependencies.add(top.identity);
+            const workspaceStateDependency = workspaceStateDependencies.find(
+                workspaceStateDependency =>
+                    workspaceStateDependency.packageRef.identity === top.identity
             );
-        }
+            if (!workspaceStateDependency) {
+                continue;
+            }
 
-        const buildDirectory = buildDirectoryFromWorkspacePath(folderContext.folder.fsPath, true);
+            const packagePath = this.dependencyPackagePath(workspaceStateDependency, workspacePath);
+            const childDependencyContents = (await SwiftPackage.loadPackage(
+                vscode.Uri.file(packagePath)
+            )) as PackageContents;
 
-        if (element instanceof PackageNode) {
-            // Read the contents of a package.
-            const packagePath =
-                element.type === "remote"
-                    ? path.join(buildDirectory, "checkouts", getRepositoryName(element.path))
-                    : element.path;
-            return this.getNodesInDirectory(packagePath);
-        } else {
-            // Read the contents of a directory within a package.
-            return this.getNodesInDirectory(element.path);
+            stack.push(...childDependencyContents.dependencies);
         }
+        return showingDependencies;
     }
 
     /**
@@ -204,6 +301,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                         new PackageNode(
                             dependency.packageRef.identity,
                             dependency.packageRef.location,
+                            dependency.packageRef.location,
                             "local",
                             "local"
                         )
@@ -220,6 +318,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                 pin =>
                     new PackageNode(
                         pin.identity,
+                        pin.location,
                         pin.location,
                         pin.state.version ?? pin.state.branch ?? pin.state.revision.substring(0, 7),
                         "remote"
@@ -243,6 +342,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                     item =>
                         new PackageNode(
                             item.packageRef.identity,
+                            item.state.path!,
                             item.state.path!,
                             "local",
                             "editing"
@@ -276,5 +376,75 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                 return first.isDirectory ? -1 : 1;
             }
         });
+    }
+
+    /// - Dependency display helpers
+
+    /**
+     * Get type of WorkspaceStateDependency for displaying in the tree: real version | edited | local
+     * @param dependency
+     * @return "local" | "remote" | "editing"
+     */
+    private dependencyType(dependency: WorkspaceStateDependency): "local" | "remote" | "editing" {
+        if (dependency.state.name === "edited") {
+            return "editing";
+        } else if (
+            dependency.packageRef.kind === "local" ||
+            dependency.packageRef.kind === "fileSystem"
+        ) {
+            // need to check for both "local" and "fileSystem" as swift 5.5 and earlier
+            // use "local" while 5.6 and later use "fileSystem"
+            return "local";
+        } else {
+            return "remote";
+        }
+    }
+
+    /**
+     * Get version of WorkspaceStateDependency for displaying in the tree
+     * @param dependency
+     * @return real version | editing | local
+     */
+    private dependencyDisplayVersion(dependency: WorkspaceStateDependency): string {
+        const type = this.dependencyType(dependency);
+        if (type === "editing") {
+            return "editing";
+        } else if (type === "local") {
+            return "local";
+        } else {
+            return (
+                dependency.state.checkoutState?.version ??
+                dependency.state.checkoutState?.branch ??
+                dependency.state.checkoutState?.revision.substring(0, 7) ??
+                "unknown"
+            );
+        }
+    }
+
+    /**
+     *  * Get package source path of dependency
+     * `editing`: dependency.state.path ?? workspacePath + Packages/ + dependency.subpath
+     * `local`: dependency.packageRef.location
+     * `remote`: buildDirectory + checkouts + dependency.packageRef.location
+     * @param dependency
+     * @param workspaceFolder
+     * @return the package path based on the type
+     */
+    private dependencyPackagePath(
+        dependency: WorkspaceStateDependency,
+        workspaceFolder: string
+    ): string {
+        const type = this.dependencyType(dependency);
+        if (type === "editing") {
+            return (
+                dependency.state.path ?? path.join(workspaceFolder, "Packages", dependency.subpath)
+            );
+        } else if (type === "local") {
+            return dependency.state.path ?? dependency.packageRef.location;
+        } else {
+            // remote
+            const buildDirectory = buildDirectoryFromWorkspacePath(workspaceFolder, true);
+            return path.join(buildDirectory, "checkouts", dependency.subpath);
+        }
     }
 }

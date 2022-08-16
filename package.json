@@ -323,7 +323,7 @@
         },
         {
           "command": "swift.openExternal",
-          "when": "view == packageDependencies && viewItem == remote"
+          "when": "view == packageDependencies && viewItem != local"
         }
       ]
     },
