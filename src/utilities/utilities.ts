@@ -274,7 +274,7 @@ export function swiftDriverTargetFlags(indirect = false): string[] {
     const sdkKind = sdkKindParts[sdkKindParts.length - 1];
     for (const target of targetMap) {
         if (sdkKind.includes(target.name)) {
-            // Obtain the iOS version of the SDK.
+            // Obtain the version of the SDK.
             const version = sdkKind.substring(
                 // Trim the prefix
                 target.name.length,
