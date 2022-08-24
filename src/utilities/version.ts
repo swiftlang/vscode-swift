@@ -12,7 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-export class Version {
+export interface VersionInterface {
+    major: number;
+    minor: number;
+    patch: number;
+}
+
+export class Version implements VersionInterface {
     constructor(readonly major: number, readonly minor: number, readonly patch: number) {}
 
     static fromString(s: string): Version | undefined {
@@ -34,7 +40,7 @@ export class Version {
         return `${this.major}.${this.minor}.${this.patch}`;
     }
 
-    isLessThan(rhs: Version): boolean {
+    isLessThan(rhs: VersionInterface): boolean {
         if (this.major < rhs.major) {
             return true;
         } else if (this.major > rhs.major) {
@@ -51,7 +57,7 @@ export class Version {
         return false;
     }
 
-    isGreaterThan(rhs: Version): boolean {
+    isGreaterThan(rhs: VersionInterface): boolean {
         if (this.major > rhs.major) {
             return true;
         } else if (this.major < rhs.major) {
