@@ -32,6 +32,7 @@ import { BackgroundCompilation } from "./BackgroundCompilation";
 import { makeDebugConfigurations } from "./debugger/launch";
 import configuration from "./configuration";
 import contextKeys from "./contextKeys";
+import { setSnippetContextKey } from "./SwiftSnippets";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -40,6 +41,7 @@ import contextKeys from "./contextKeys";
 export class WorkspaceContext implements vscode.Disposable {
     public folders: FolderContext[] = [];
     public currentFolder: FolderContext | null | undefined;
+    public currentDocument: vscode.Uri | null;
     public outputChannel: SwiftOutputChannel;
     public statusItem: StatusItem;
     public languageClientManager: LanguageClientManager;
@@ -53,6 +55,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.outputChannel.log(this.toolchain.swiftVersionString);
         this.toolchain.logDiagnostics(this.outputChannel);
         this.tasks = new TaskManager();
+        this.currentDocument = null;
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
             // on toolchain config change, reload window
             if (event.affectsConfiguration("swift.path")) {
@@ -382,9 +385,12 @@ export class WorkspaceContext implements vscode.Disposable {
     /** set focus based on the file a TextEditor is editing */
     async focusTextEditor(editor?: vscode.TextEditor) {
         if (!editor || !editor.document || editor.document.uri.scheme !== "file") {
+            this.currentDocument = null;
             return;
         }
+        this.currentDocument = editor.document.uri;
         await this.focusUri(editor.document.uri);
+        setSnippetContextKey(this);
     }
 
     /** set focus based on the file */

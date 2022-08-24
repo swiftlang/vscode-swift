@@ -94,6 +94,11 @@
         "command": "swift.selectXcodeDeveloperDir",
         "title": "Select Xcode Developer Dir",
         "category": "Swift"
+      },
+      {
+        "command": "swift.runSnippet",
+        "title": "Run Swift Snippet",
+        "category": "Swift"
       }
     ],
     "configuration": [
@@ -285,6 +290,10 @@
         {
           "command": "swift.selectXcodeDeveloperDir",
           "when": "isMac"
+        },
+        {
+          "command": "swift.runSnippet",
+          "when": "swift.fileIsSnippet"
         }
       ],
       "view/title": [

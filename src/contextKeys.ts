@@ -40,10 +40,17 @@ const contextKeys = {
     },
 
     /**
-     * Whether the Swift package has any dependencies to display in the Package Dependencies view.
+     * Whether the Swift package has any plugins.
      */
     set packageHasPlugins(value: boolean) {
         vscode.commands.executeCommand("setContext", "swift.packageHasPlugins", value);
+    },
+
+    /**
+     * Whether current active file is a Snippet
+     */
+    set fileIsSnippet(value: boolean) {
+        vscode.commands.executeCommand("setContext", "swift.fileIsSnippet", value);
     },
 };
 

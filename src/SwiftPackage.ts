@@ -40,7 +40,7 @@ export interface Target {
     name: string;
     path: string;
     sources: string[];
-    type: "executable" | "test" | "library";
+    type: "executable" | "test" | "library" | "snippet";
 }
 
 /** Swift Package Manager dependency */
