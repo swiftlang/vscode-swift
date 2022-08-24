@@ -52,7 +52,6 @@ export async function runSnippet(ctx: WorkspaceContext) {
         scope: folderContext.workspaceFolder,
         presentationOptions: {
             reveal: vscode.TaskRevealKind.Always,
-            panel: vscode.TaskPanelKind.New,
         },
         problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
     });
@@ -67,35 +66,42 @@ export async function debugSnippet(ctx: WorkspaceContext) {
     }
 
     const snippetName = path.basename(ctx.currentDocument.fsPath, ".swift");
-    const snippetTask = createSwiftTask(["build", "--target", snippetName], `Run ${snippetName}`, {
-        group: vscode.TaskGroup.Build,
-        cwd: folderContext.folder,
-        scope: folderContext.workspaceFolder,
-        presentationOptions: {
-            reveal: vscode.TaskRevealKind.Always,
-            panel: vscode.TaskPanelKind.New,
-        },
-        problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
-    });
-
-    await folderContext.taskQueue.queueOperation({ task: snippetTask });
-
-    const snippetDebugConfig = createSnippetConfigurations(snippetName, folderContext);
-
-    return new Promise<void>((resolve, reject) => {
-        vscode.debug.startDebugging(folderContext.workspaceFolder, snippetDebugConfig).then(
-            started => {
-                if (started) {
-                    const terminateSession = vscode.debug.onDidTerminateDebugSession(async () => {
-                        // dispose terminate debug handler
-                        terminateSession.dispose();
-                        resolve();
-                    });
-                }
+    const snippetBuildTask = createSwiftTask(
+        ["build", "--target", snippetName],
+        `Build ${snippetName}`,
+        {
+            group: vscode.TaskGroup.Build,
+            cwd: folderContext.folder,
+            scope: folderContext.workspaceFolder,
+            presentationOptions: {
+                reveal: vscode.TaskRevealKind.Always,
             },
-            reason => {
-                reject(reason);
-            }
-        );
+            problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
+        }
+    );
+
+    await folderContext.taskQueue.queueOperation({ task: snippetBuildTask }).then(result => {
+        if (result === 0) {
+            const snippetDebugConfig = createSnippetConfigurations(snippetName, folderContext);
+
+            return new Promise<void>((resolve, reject) => {
+                vscode.debug.startDebugging(folderContext.workspaceFolder, snippetDebugConfig).then(
+                    started => {
+                        if (started) {
+                            const terminateSession = vscode.debug.onDidTerminateDebugSession(
+                                async () => {
+                                    // dispose terminate debug handler
+                                    terminateSession.dispose();
+                                    resolve();
+                                }
+                            );
+                        }
+                    },
+                    reason => {
+                        reject(reason);
+                    }
+                );
+            });
+        }
     });
 }
