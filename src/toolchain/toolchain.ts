@@ -181,7 +181,7 @@ export class SwiftToolchain {
 
     private static async getSwiftFolderPath(): Promise<string> {
         if (configuration.path !== "") {
-            return configuration.path;
+            return await this.getSwiftEnvPath(configuration.path);
         }
         try {
             let swift: string;
@@ -212,9 +212,35 @@ export class SwiftToolchain {
             }
             // swift may be a symbolic link
             const realSwift = await fs.realpath(swift);
-            return path.dirname(realSwift);
+            const swiftPath = path.dirname(realSwift);
+            return await this.getSwiftEnvPath(swiftPath);
         } catch {
             throw Error("Failed to find swift executable");
+        }
+    }
+
+    /**
+     * swiftenv is a popular way to install swift on Linux. It uses shim shell scripts
+     * for all of the swift executables. This is problematic when we are trying to find
+     * the lldb version. Also swiftenv can also change the swift version beneath which
+     * could cause problems. This function will return the actual path to the swift
+     * executable instead of the shim version
+     * @param swiftPath Path to swift folder
+     * @returns Path to swift folder installed by swiftenv
+     */
+    private static async getSwiftEnvPath(swiftPath: string): Promise<string> {
+        if (process.platform === "linux" && swiftPath.endsWith(".swiftenv/shims")) {
+            try {
+                const swiftenvPath = path.dirname(swiftPath);
+                const swiftenv = path.join(swiftenvPath, "libexec", "swiftenv");
+                const { stdout } = await execFile(swiftenv, ["which", "swift"]);
+                const swift = stdout.trimEnd();
+                return path.dirname(swift);
+            } catch {
+                return swiftPath;
+            }
+        } else {
+            return swiftPath;
         }
     }
 

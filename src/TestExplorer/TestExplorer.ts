@@ -18,6 +18,7 @@ import { execSwift, getErrorDescription, isPathInsidePath } from "../utilities/u
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { TestRunner } from "./TestRunner";
 import { LSPTestDiscovery } from "./LSPTestDiscovery";
+import { Version } from "../utilities/version";
 
 /** Build test explorer UI */
 export class TestExplorer {
@@ -118,9 +119,19 @@ export class TestExplorer {
      */
     async discoverTestsInWorkspace() {
         try {
+            let listTestArguments: string[];
+            if (
+                this.folderContext.workspaceContext.swiftVersion.isGreaterThanOrEqual(
+                    new Version(5, 8, 0)
+                )
+            ) {
+                listTestArguments = ["test", "list", "--skip-build"];
+            } else {
+                listTestArguments = ["test", "--skip-build", "--list-tests"];
+            }
             // get list of tests from `swift test --list-tests`
             const { stdout } = await execSwift(
-                ["test", "--skip-build", "--list-tests"],
+                listTestArguments,
                 {
                     cwd: this.folderContext.folder.fsPath,
                 },
