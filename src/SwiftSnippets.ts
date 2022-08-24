@@ -17,6 +17,8 @@ import * as path from "path";
 import contextKeys from "./contextKeys";
 import { createSwiftTask } from "./SwiftTaskProvider";
 import { WorkspaceContext } from "./WorkspaceContext";
+import configuration from "./configuration";
+import { createSnippetConfigurations } from "./debugger/launch";
 
 export function setSnippetContextKey(ctx: WorkspaceContext) {
     if (
@@ -52,7 +54,48 @@ export async function runSnippet(ctx: WorkspaceContext) {
             reveal: vscode.TaskRevealKind.Always,
             panel: vscode.TaskPanelKind.New,
         },
+        problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
     });
 
     await vscode.tasks.executeTask(snippetTask);
+}
+
+export async function debugSnippet(ctx: WorkspaceContext) {
+    const folderContext = ctx.currentFolder;
+    if (!ctx.currentDocument || !folderContext) {
+        return;
+    }
+
+    const snippetName = path.basename(ctx.currentDocument.fsPath, ".swift");
+    const snippetTask = createSwiftTask(["build", "--target", snippetName], `Run ${snippetName}`, {
+        group: vscode.TaskGroup.Build,
+        cwd: folderContext.folder,
+        scope: folderContext.workspaceFolder,
+        presentationOptions: {
+            reveal: vscode.TaskRevealKind.Always,
+            panel: vscode.TaskPanelKind.New,
+        },
+        problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
+    });
+
+    await folderContext.taskQueue.queueOperation({ task: snippetTask });
+
+    const snippetDebugConfig = createSnippetConfigurations(snippetName, folderContext);
+
+    return new Promise<void>((resolve, reject) => {
+        vscode.debug.startDebugging(folderContext.workspaceFolder, snippetDebugConfig).then(
+            started => {
+                if (started) {
+                    const terminateSession = vscode.debug.onDidTerminateDebugSession(async () => {
+                        // dispose terminate debug handler
+                        terminateSession.dispose();
+                        resolve();
+                    });
+                }
+            },
+            reason => {
+                reject(reason);
+            }
+        );
+    });
 }

@@ -99,6 +99,11 @@
         "command": "swift.runSnippet",
         "title": "Run Swift Snippet",
         "category": "Swift"
+      },
+      {
+        "command": "swift.debugSnippet",
+        "title": "Debug Swift Snippet",
+        "category": "Swift"
       }
     ],
     "configuration": [
@@ -293,6 +298,10 @@
         },
         {
           "command": "swift.runSnippet",
+          "when": "swift.fileIsSnippet"
+        },
+        {
+          "command": "swift.debugSnippet",
           "when": "swift.fileIsSnippet"
         }
       ],
