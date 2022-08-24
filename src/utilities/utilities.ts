@@ -19,6 +19,7 @@ import * as path from "path";
 import * as Stream from "stream";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
+import { DarwinCompatibleTarget, getDarwinTargetTriple } from "../toolchain/toolchain";
 
 export interface ExecError {
     error: Error;
@@ -209,7 +210,7 @@ export function withSwiftSDKFlags(args: string[]): string[] {
  */
 export function swiftpmSDKFlags(): string[] {
     if (configuration.sdk !== "") {
-        return ["--sdk", configuration.sdk];
+        return ["--sdk", configuration.sdk, ...swiftDriverTargetFlags(true)];
     }
     return [];
 }
@@ -257,7 +258,11 @@ export function swiftDriverSDKFlags(indirect = false): string[] {
  * @param indirect whether to pass the flags by -Xswiftc
  */
 export function swiftDriverTargetFlags(indirect = false): string[] {
-    const IPHONE_SDK_KIND = "iPhoneOS";
+    const targetMap = [
+        { name: "iPhoneOS", target: DarwinCompatibleTarget.iOS },
+        { name: "AppleTVOS", target: DarwinCompatibleTarget.tvOS },
+        { name: "WatchOS", target: DarwinCompatibleTarget.watchOS },
+    ];
 
     let args: string[] = [];
 
@@ -267,15 +272,17 @@ export function swiftDriverTargetFlags(indirect = false): string[] {
 
     const sdkKindParts = configuration.sdk.split("/");
     const sdkKind = sdkKindParts[sdkKindParts.length - 1];
-    if (sdkKind.includes(IPHONE_SDK_KIND)) {
-        // Obtain the iOS version of the SDK.
-        const version = sdkKind.substring(
-            // Trim the prefix
-            sdkKind.length - IPHONE_SDK_KIND.length,
-            // Trim the `.sdk` suffix
-            sdkKind.length - 4
-        );
-        args = ["-target", `arm64-apple-ios${version}`];
+    for (const target of targetMap) {
+        if (sdkKind.includes(target.name)) {
+            // Obtain the version of the SDK.
+            const version = sdkKind.substring(
+                // Trim the prefix
+                target.name.length,
+                // Trim the `.sdk` suffix
+                sdkKind.length - 4
+            );
+            args = ["-target", `${getDarwinTargetTriple(target.target)}${version}`];
+        }
     }
 
     return indirect ? args.flatMap(arg => ["-Xswiftc", arg]) : args;

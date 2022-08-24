@@ -14,7 +14,6 @@
 
 import * as fs from "fs/promises";
 import * as path from "path";
-import { normalize } from "path";
 import * as plist from "plist";
 import * as vscode from "vscode";
 import configuration from "../configuration";
@@ -52,8 +51,31 @@ interface SwiftTargetInfo {
  * from macOS. These are similar to XCode's target list.
  */
 export enum DarwinCompatibleTarget {
-    iOS,
-    macOS,
+    iOS = "iOS",
+    tvOS = "tvOS",
+    watchOS = "watchOS",
+}
+
+export function getDarwinSDKName(target: DarwinCompatibleTarget): string {
+    switch (target) {
+        case DarwinCompatibleTarget.iOS:
+            return "iphoneos";
+        case DarwinCompatibleTarget.tvOS:
+            return "appletvos";
+        case DarwinCompatibleTarget.watchOS:
+            return "watchos";
+    }
+}
+
+export function getDarwinTargetTriple(target: DarwinCompatibleTarget): string | undefined {
+    switch (target) {
+        case DarwinCompatibleTarget.iOS:
+            return "arm64-apple-ios";
+        case DarwinCompatibleTarget.tvOS:
+            return "arm64-apple-tvos";
+        case DarwinCompatibleTarget.watchOS:
+            return "arm64-apple-watchos";
+    }
 }
 
 export class SwiftToolchain {
@@ -108,21 +130,19 @@ export class SwiftToolchain {
      * @param target Target to obtain the SDK path for
      * @returns path to the SDK for the target
      */
-    public static async getSdkForTarget(
+    public static async getSDKForTarget(
         target: DarwinCompatibleTarget
     ): Promise<string | undefined> {
-        let sdkType: string;
-        switch (target) {
-            case DarwinCompatibleTarget.macOS:
-                // macOS is the default target, so lets not update the SDK
-                return undefined;
-            case DarwinCompatibleTarget.iOS:
-                sdkType = "iphoneos";
-                break;
-        }
+        return await this.getSDKPath(getDarwinSDKName(target));
+    }
 
+    /**
+     * @param sdk sdk name
+     * @returns path to the SDK
+     */
+    static async getSDKPath(sdk: string): Promise<string | undefined> {
         // Include custom variables so that non-standard XCode installs can be better supported.
-        const { stdout } = await execFile("xcrun", ["--sdk", sdkType, "--show-sdk-path"], {
+        const { stdout } = await execFile("xcrun", ["--sdk", sdk, "--show-sdk-path"], {
             env: { ...process.env, ...configuration.swiftEnvironmentVariables },
         });
         return path.join(stdout.trimEnd());
@@ -249,7 +269,7 @@ export class SwiftToolchain {
                     return process.env.SDKROOT;
                 }
 
-                return this.getSdkForTarget(DarwinCompatibleTarget.macOS);
+                return this.getSDKPath("macosx");
             }
             case "win32": {
                 return process.env.SDKROOT;
