@@ -122,7 +122,9 @@ export class SwiftToolchain {
      * Get active developer dir for Xcode
      */
     public static async getXcodeDeveloperDir(): Promise<string> {
-        const { stdout } = await execFile("xcode-select", ["-p"]);
+        const { stdout } = await execFile("xcode-select", ["-p"], {
+            env: configuration.swiftEnvironmentVariables,
+        });
         return stdout.trimEnd();
     }
 
@@ -254,7 +256,9 @@ export class SwiftToolchain {
         try {
             switch (process.platform) {
                 case "darwin": {
-                    const { stdout } = await execFile("xcrun", ["--find", "swift"]);
+                    const { stdout } = await execFile("xcrun", ["--find", "swift"], {
+                        env: configuration.swiftEnvironmentVariables,
+                    });
                     const swift = stdout.trimEnd();
                     return path.dirname(path.dirname(path.dirname(swift)));
                 }
