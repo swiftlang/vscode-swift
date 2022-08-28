@@ -18,6 +18,7 @@ import {
     buildDirectoryFromWorkspacePath,
     execSwift,
     getErrorDescription,
+    hashString,
 } from "./utilities/utilities";
 
 /** Swift Package Manager contents */
@@ -54,22 +55,29 @@ export interface Dependency {
 
 /** Swift Package.resolved file */
 export class PackageResolved {
-    constructor(readonly pins: PackageResolvedPin[], readonly version: number) {}
+    readonly fileHash: number;
+    readonly pins: PackageResolvedPin[];
+    readonly version: number;
 
-    static fromV1JSON(json: PackageResolvedFileV1): PackageResolved {
-        return new PackageResolved(
-            json.object.pins.map(
+    constructor(fileContents: string) {
+        const json = JSON.parse(fileContents);
+        const version = <{ version: number }>json;
+        this.version = version.version;
+        this.fileHash = hashString(fileContents);
+
+        if (this.version === 1) {
+            const v1Json = json as PackageResolvedFileV1;
+            this.pins = v1Json.object.pins.map(
                 pin => new PackageResolvedPin(pin.package, pin.repositoryURL, pin.state)
-            ),
-            json.version
-        );
-    }
-
-    static fromV2JSON(json: PackageResolvedFileV2): PackageResolved {
-        return new PackageResolved(
-            json.pins.map(pin => new PackageResolvedPin(pin.identity, pin.location, pin.state)),
-            json.version
-        );
+            );
+        } else if (this.version === 2) {
+            const v2Json = json as PackageResolvedFileV2;
+            this.pins = v2Json.pins.map(
+                pin => new PackageResolvedPin(pin.identity, pin.location, pin.state)
+            );
+        } else {
+            throw Error("Unsupported Package.resolved version");
+        }
     }
 }
 
@@ -219,15 +227,7 @@ export class SwiftPackage implements PackageContents {
         try {
             const uri = vscode.Uri.joinPath(folder, "Package.resolved");
             const contents = await fs.readFile(uri.fsPath, "utf8");
-            const json = JSON.parse(contents);
-            const version = <{ version: number }>json;
-            if (version.version === 1) {
-                return PackageResolved.fromV1JSON(json);
-            } else if (version.version === 2) {
-                return PackageResolved.fromV2JSON(json);
-            } else {
-                return undefined;
-            }
+            return new PackageResolved(contents);
         } catch {
             // failed to load resolved file return undefined
             return undefined;

@@ -85,7 +85,11 @@ export class PackageWatcher {
      * This will resolve any changes in the Package.resolved.
      */
     private async handlePackageResolvedChange() {
+        const packageResolvedHash = this.folderContext.swiftPackage.resolved?.fileHash;
         await this.folderContext.reloadPackageResolved();
-        this.workspaceContext.fireEvent(this.folderContext, FolderEvent.resolvedUpdated);
+        // if file contents has changed then send resolve updated message
+        if (this.folderContext.swiftPackage.resolved?.fileHash !== packageResolvedHash) {
+            this.workspaceContext.fireEvent(this.folderContext, FolderEvent.resolvedUpdated);
+        }
     }
 }
