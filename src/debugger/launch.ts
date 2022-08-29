@@ -133,8 +133,13 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
     });
 }
 
-// Return array of DebugConfigurations for executables based on what is in Package.swift
-export function createSnippetConfigurations(
+/**
+ * Create Debug configuration for running a Swift Snippet
+ * @param snippetName Name of Swift Snippet to run
+ * @param ctx Folder context for project
+ * @returns Debug configuration for running Swift Snippet
+ */
+export function createSnippetConfiguration(
     snippetName: string,
     ctx: FolderContext
 ): vscode.DebugConfiguration {

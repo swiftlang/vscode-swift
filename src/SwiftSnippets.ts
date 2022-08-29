@@ -18,8 +18,12 @@ import contextKeys from "./contextKeys";
 import { createSwiftTask } from "./SwiftTaskProvider";
 import { WorkspaceContext } from "./WorkspaceContext";
 import configuration from "./configuration";
-import { createSnippetConfigurations } from "./debugger/launch";
+import { createSnippetConfiguration } from "./debugger/launch";
 
+/**
+ * Set context key indicating whether current file is a Swift Snippet
+ * @param ctx Workspace context
+ */
 export function setSnippetContextKey(ctx: WorkspaceContext) {
     if (
         ctx.swiftVersion.isLessThan({ major: 5, minor: 7, patch: 0 }) ||
@@ -40,11 +44,16 @@ export function setSnippetContextKey(ctx: WorkspaceContext) {
     return;
 }
 
+/**
+ * If current file is a Swift Snippet run it
+ * @param ctx Workspace Context
+ */
 export async function runSnippet(ctx: WorkspaceContext) {
     const folderContext = ctx.currentFolder;
     if (!ctx.currentDocument || !folderContext) {
         return;
     }
+    // create run task
     const snippetName = path.basename(ctx.currentDocument.fsPath, ".swift");
     const snippetTask = createSwiftTask(["run", snippetName], `Run ${snippetName}`, {
         group: vscode.TaskGroup.Test,
@@ -59,12 +68,17 @@ export async function runSnippet(ctx: WorkspaceContext) {
     await vscode.tasks.executeTask(snippetTask);
 }
 
+/**
+ * If current file is a Swift Snippet run it in the debugger
+ * @param ctx Workspace Context
+ */
 export async function debugSnippet(ctx: WorkspaceContext) {
     const folderContext = ctx.currentFolder;
     if (!ctx.currentDocument || !folderContext) {
         return;
     }
 
+    // create build task
     const snippetName = path.basename(ctx.currentDocument.fsPath, ".swift");
     const snippetBuildTask = createSwiftTask(
         ["build", "--target", snippetName],
@@ -80,9 +94,10 @@ export async function debugSnippet(ctx: WorkspaceContext) {
         }
     );
 
+    // queue build task and when it is complete run executable in the debugger
     await folderContext.taskQueue.queueOperation({ task: snippetBuildTask }).then(result => {
         if (result === 0) {
-            const snippetDebugConfig = createSnippetConfigurations(snippetName, folderContext);
+            const snippetDebugConfig = createSnippetConfiguration(snippetName, folderContext);
 
             return new Promise<void>((resolve, reject) => {
                 vscode.debug.startDebugging(folderContext.workspaceFolder, snippetDebugConfig).then(
