@@ -24,6 +24,7 @@ import { withQuickPick } from "./ui/QuickPick";
 import { execSwift } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 import { DarwinCompatibleTarget, SwiftToolchain } from "./toolchain/toolchain";
+import { debugSnippet, runSnippet } from "./SwiftSnippets";
 
 /**
  * References:
@@ -534,6 +535,8 @@ export function register(ctx: WorkspaceContext) {
         vscode.commands.registerCommand("swift.resetPackage", () => resetPackage(ctx)),
         vscode.commands.registerCommand("swift.runSingle", () => runSingleFile(ctx)),
         vscode.commands.registerCommand("swift.openPackage", () => openPackage(ctx)),
+        vscode.commands.registerCommand("swift.runSnippet", () => runSnippet(ctx)),
+        vscode.commands.registerCommand("swift.debugSnippet", () => debugSnippet(ctx)),
         vscode.commands.registerCommand("swift.useLocalDependency", item => {
             if (item instanceof PackageNode) {
                 useLocalDependency(item.name, ctx);

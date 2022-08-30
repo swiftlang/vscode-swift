@@ -134,6 +134,38 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
 }
 
 /**
+ * Create Debug configuration for running a Swift Snippet
+ * @param snippetName Name of Swift Snippet to run
+ * @param ctx Folder context for project
+ * @returns Debug configuration for running Swift Snippet
+ */
+export function createSnippetConfiguration(
+    snippetName: string,
+    ctx: FolderContext
+): vscode.DebugConfiguration {
+    let folder: string;
+    if (ctx.relativePath.length === 0) {
+        folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}`;
+    } else {
+        folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}/${ctx.relativePath}`;
+    }
+    let buildDirectory = buildDirectoryFromWorkspacePath(folder);
+    if (!path.isAbsolute(buildDirectory)) {
+        buildDirectory = path.join(folder, buildDirectory);
+    }
+
+    return {
+        type: "lldb",
+        request: "launch",
+        name: `Run ${snippetName}`,
+        program: `${buildDirectory}/debug/${snippetName}`,
+        args: [],
+        cwd: folder,
+        env: swiftRuntimeEnv(true),
+    };
+}
+
+/**
  * Return array of DebugConfigurations for tests based on what is in Package.swift
  * @param ctx Folder context
  * @param fullPath should we return configuration with full paths instead of environment vars
