@@ -448,10 +448,14 @@ async function switchPlatform() {
                 ? await SwiftToolchain.getSDKForTarget(picked.value)
                 : "";
             if (sdkForTarget !== undefined) {
-                configuration.sdk = sdkForTarget;
-                vscode.window.showWarningMessage(
-                    `Selecting the ${picked.label} SDK will provide code editing support, but compiling with this SDK will have undefined results.`
-                );
+                if (sdkForTarget !== "") {
+                    configuration.sdk = sdkForTarget;
+                    vscode.window.showWarningMessage(
+                        `Selecting the ${picked.label} SDK will provide code editing support, but compiling with this SDK will have undefined results.`
+                    );
+                } else {
+                    configuration.sdk = undefined;
+                }
             } else {
                 vscode.window.showErrorMessage("Unable to obtain requested SDK path");
             }

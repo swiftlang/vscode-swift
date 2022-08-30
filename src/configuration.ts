@@ -73,7 +73,7 @@ const configuration = {
     get sdk(): string {
         return vscode.workspace.getConfiguration("swift").get<string>("SDK", "");
     },
-    set sdk(value: string) {
+    set sdk(value: string | undefined) {
         vscode.workspace.getConfiguration("swift").update("SDK", value);
     },
     /** swift build arguments */
