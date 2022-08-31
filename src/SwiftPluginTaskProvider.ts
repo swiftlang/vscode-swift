@@ -74,9 +74,13 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         // Reusing the task parameter doesn't seem to work.
         const swift = getSwiftExecutable();
         const sandboxArg = task.definition.disableSandbox ? ["--disable-sandbox"] : [];
+        const writingToPackageArg = task.definition.allowWritingToPackageDirectory
+            ? ["--allow-writing-to-package-directory"]
+            : [];
         let swiftArgs = [
             "package",
             ...sandboxArg,
+            ...writingToPackageArg,
             task.definition.command,
             ...task.definition.args,
         ];

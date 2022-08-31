@@ -454,6 +454,10 @@
             "description": "Plugins normally run inside a sandbox. Set this to true to disable the sandbox when running .",
             "type": "boolean"
           },
+          "allowWritingToPackageDirectory": {
+            "description": "Allow this plugin to write to the package directory.",
+            "type": "boolean"
+          },
           "cwd": {
             "description": "The folder to run the swift plugin in.",
             "type": "string"
