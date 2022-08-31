@@ -174,7 +174,7 @@ export async function folderResetPackage(folderContext: FolderContext) {
 /**
  * Run single Swift file through Swift REPL
  */
-async function runSingleFile(ctx: WorkspaceContext) {
+async function runSwiftScript(ctx: WorkspaceContext) {
     const document = vscode.window.activeTextEditor?.document;
     if (!document) {
         return;
@@ -533,7 +533,7 @@ export function register(ctx: WorkspaceContext) {
         // Note: This is only available on macOS (gated in `package.json`) because its the only OS that has the iOS SDK available.
         vscode.commands.registerCommand("swift.switchPlatform", () => switchPlatform()),
         vscode.commands.registerCommand("swift.resetPackage", () => resetPackage(ctx)),
-        vscode.commands.registerCommand("swift.runSingle", () => runSingleFile(ctx)),
+        vscode.commands.registerCommand("swift.runScript", () => runSwiftScript(ctx)),
         vscode.commands.registerCommand("swift.openPackage", () => openPackage(ctx)),
         vscode.commands.registerCommand("swift.runSnippet", () => runSnippet(ctx)),
         vscode.commands.registerCommand("swift.debugSnippet", () => debugSnippet(ctx)),

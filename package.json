@@ -51,7 +51,7 @@
         "category": "Swift"
       },
       {
-        "command": "swift.runSingle",
+        "command": "swift.runScript",
         "title": "Run Swift Script",
         "category": "Swift"
       },
@@ -312,6 +312,33 @@
           "when": "swift.fileIsSnippet"
         }
       ],
+      "editor/context": [
+        {
+          "submenu": "swift.editor"
+        }
+      ],
+      "swift.editor": [
+        {
+          "command": "swift.runScript",
+          "group": "1_file",
+          "when": "!swift.fileIsSnippet"
+        },
+        {
+          "command": "swift.runSnippet",
+          "group": "2_file",
+          "when": "swift.fileIsSnippet"
+        },
+        {
+          "command": "swift.debugSnippet",
+          "group": "3_file",
+          "when": "swift.fileIsSnippet"
+        },
+        {
+          "command": "swift.cleanBuild",
+          "group": "2_pkg@1",
+          "when": "swift.hasPackage"
+        }
+      ],
       "view/title": [
         {
           "command": "swift.updateDependencies",
@@ -352,6 +379,12 @@
         }
       ]
     },
+    "submenus": [
+      {
+        "id": "swift.editor",
+        "label": "Swift"
+      }
+    ],
     "problemMatchers": [
       {
         "name": "swiftc",
