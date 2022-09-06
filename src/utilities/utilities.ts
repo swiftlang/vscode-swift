@@ -252,22 +252,25 @@ export function swiftDriverSDKFlags(indirect = false): string[] {
     return indirect ? args.flatMap(arg => ["-Xswiftc", arg]) : args;
 }
 
+/** Target info */
+export interface DarwinTargetInfo {
+    name: string;
+    target: DarwinCompatibleTarget;
+    version: string;
+}
+
 /**
- * Get target flags for swiftc
- *
- * @param indirect whether to pass the flags by -Xswiftc
+ * @returns Darwin target information. Target id, name and version
  */
-export function swiftDriverTargetFlags(indirect = false): string[] {
+export function getDarwinTarget(): DarwinTargetInfo | undefined {
     const targetMap = [
         { name: "iPhoneOS", target: DarwinCompatibleTarget.iOS },
         { name: "AppleTVOS", target: DarwinCompatibleTarget.tvOS },
         { name: "WatchOS", target: DarwinCompatibleTarget.watchOS },
     ];
 
-    let args: string[] = [];
-
-    if (configuration.sdk === "") {
-        return args;
+    if (configuration.sdk === "" || process.platform !== "darwin") {
+        return undefined;
     }
 
     const sdkKindParts = configuration.sdk.split("/");
@@ -281,10 +284,23 @@ export function swiftDriverTargetFlags(indirect = false): string[] {
                 // Trim the `.sdk` suffix
                 sdkKind.length - 4
             );
-            args = ["-target", `${getDarwinTargetTriple(target.target)}${version}`];
+            return { ...target, version: version };
         }
     }
+    return undefined;
+}
 
+/**
+ * Get target flags for swiftc
+ *
+ * @param indirect whether to pass the flags by -Xswiftc
+ */
+export function swiftDriverTargetFlags(indirect = false): string[] {
+    const target = getDarwinTarget();
+    if (!target) {
+        return [];
+    }
+    const args = ["-target", `${getDarwinTargetTriple(target.target)}${target.version}`];
     return indirect ? args.flatMap(arg => ["-Xswiftc", arg]) : args;
 }
 
