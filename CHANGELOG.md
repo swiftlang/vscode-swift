@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
-- Support for Swift Snippets. Two new commands have been added `Run Swift Snippet` and `Debug Swift Snippet`.
+- Support for Swift Snippets (requires Swift 5.7). Two new commands have been added `Run Swift Snippet` and `Debug Swift Snippet`.
 - Sub menu to text editor right click menu. Includes commands not acccessible elsewhere `Run Swift Script`, Snippet commands and `Clean Build`.
 - macOS: Command to choose between macOS, iOS, tvOS and watchOS targets. Switching to a non macOS target will give you symbol completion for that target, but building your package will have undefined results.
 - macOS: Command to choose between Swift toolchains from all versions of Xcode installed on your system.
