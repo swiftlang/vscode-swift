@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.8.0 - 2022-09-06
+
+### Added
+
+- Support for Swift Snippets. Two new commands have been added `Run Swift Snippet` and `Debug Swift Snippet`.
+- Sub menu to text editor right click menu. Includes commands not acccessible elsewhere `Run Swift Script`, Snippet commands and `Clean Build`.
+- macOS: Command to choose between macOS, iOS, tvOS and watchOS targets. Switching to a non macOS target will give you symbol completion for that target, but building your package will have undefined results.
+- macOS: Command to choose between Swift toolchains from all versions of Xcode installed on your system.
+
+### Changed
+
+- When working out project dependencies traverse local dependencies to get full dependency chain
+- Changed settings scope for a number of settings so they can be set per workspace folder
+- Store hash of `Package.resolved` to compare with new `Package.resolved` whenever it has been updated, to ensure it has actaully changed before running `swift package resolve`.
+ 
+### Fixed
+
+- Remove `runPlugin` command stub as it does nothing
+- Get correct path for Swift when installed on Linux with `swiftenv`
+
 ## 0.7.0 - 2022-08-09
 
 ### Added
