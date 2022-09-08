@@ -18,7 +18,12 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
-import { getSwiftExecutable, swiftRuntimeEnv, withSwiftSDKFlags } from "./utilities/utilities";
+import {
+    getDarwinTarget,
+    getSwiftExecutable,
+    swiftRuntimeEnv,
+    withSwiftSDKFlags,
+} from "./utilities/utilities";
 import { Version } from "./utilities/version";
 
 /**
@@ -73,7 +78,7 @@ export function platformDebugBuildOptions(): string[] {
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
 export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
-    const additionalArgs = [...platformDebugBuildOptions()];
+    let additionalArgs = [...platformDebugBuildOptions()];
     if (folderContext.swiftPackage.getTargets("test").length > 0) {
         additionalArgs.push(...testDiscoveryFlag(folderContext));
     }
@@ -81,8 +86,12 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
     if (folderContext.relativePath.length > 0) {
         buildTaskName += ` (${folderContext.relativePath})`;
     }
+    // don't build tests for iOS etc as they don't compile
+    if (getDarwinTarget() === undefined) {
+        additionalArgs = ["--build-tests", ...additionalArgs];
+    }
     return createSwiftTask(
-        ["build", "--build-tests", ...additionalArgs, ...configuration.buildArguments],
+        ["build", ...additionalArgs, ...configuration.buildArguments],
         buildTaskName,
         {
             group: vscode.TaskGroup.Build,

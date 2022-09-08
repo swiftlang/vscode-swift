@@ -304,6 +304,10 @@
           "when": "isMac"
         },
         {
+          "command": "swift.runScript",
+          "when": "!swift.fileIsSnippet && editorLangId == swift"
+        },
+        {
           "command": "swift.runSnippet",
           "when": "swift.fileIsSnippet"
         },
@@ -321,7 +325,7 @@
         {
           "command": "swift.runScript",
           "group": "1_file",
-          "when": "!swift.fileIsSnippet"
+          "when": "!swift.fileIsSnippet && editorLangId == swift"
         },
         {
           "command": "swift.runSnippet",
