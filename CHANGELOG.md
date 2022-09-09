@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Swift submenu is not available when editing non-Swift files
 - Correctly indicate the default Xcode installation in Xcode toolchain menu
-- Don't attempt to build tests when compiling for iOS, tvOS or watchOS at they don't compile
+- Don't attempt to build tests when compiling for iOS, tvOS or watchOS as they don't compile
 
 ## 0.8.0 - 2022-09-06
 
