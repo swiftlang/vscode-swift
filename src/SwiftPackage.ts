@@ -68,7 +68,8 @@ export class PackageResolved {
         if (this.version === 1) {
             const v1Json = json as PackageResolvedFileV1;
             this.pins = v1Json.object.pins.map(
-                pin => new PackageResolvedPin(pin.package, pin.repositoryURL, pin.state)
+                pin =>
+                    new PackageResolvedPin(pin.package.toLowerCase(), pin.repositoryURL, pin.state)
             );
         } else if (this.version === 2) {
             const v2Json = json as PackageResolvedFileV2;
