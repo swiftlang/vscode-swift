@@ -63,4 +63,10 @@ suite("SwiftPackage Test Suite", () => {
         assert.strictEqual(spmPackage.isValid, true);
         assert(spmPackage.resolved !== undefined);
     }).timeout(15000);
+
+    test("Identity case-insensitivity", async () => {
+        const spmPackage = await SwiftPackage.create(testAssetUri("identity-case"));
+        assert.strictEqual(spmPackage.isValid, true);
+        assert(spmPackage.resolved !== undefined);
+    }).timeout(10000);
 });
