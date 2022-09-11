@@ -67,8 +67,9 @@ suite("SwiftPackage Test Suite", () => {
     test("Identity case-insensitivity", async () => {
         const spmPackage = await SwiftPackage.create(testAssetUri("identity-case"));
         assert.strictEqual(spmPackage.isValid, true);
+        assert.strictEqual(spmPackage.dependencies.length, 1);
         assert(spmPackage.resolved !== undefined);
-        assert(spmPackage.resolved.pins.length === 1);
-        assert(spmPackage.resolved.pins[0].identity === "yams");
+        assert.strictEqual(spmPackage.resolved.pins.length, 1);
+        assert.strictEqual(spmPackage.resolved.pins[0].identity, "yams");
     }).timeout(10000);
 });
