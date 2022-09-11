@@ -171,7 +171,9 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
         const inUseDependencies = await this.getInUseDependencies(workspaceState, folderContext);
         return (
             workspaceState?.object.dependencies
-                .filter(dependency => inUseDependencies.has(dependency.packageRef.identity))
+                .filter(dependency =>
+                    inUseDependencies.has(dependency.packageRef.identity.toLowerCase())
+                )
                 .map(dependency => {
                     const type = this.dependencyType(dependency);
                     const version = this.dependencyDisplayVersion(dependency);
