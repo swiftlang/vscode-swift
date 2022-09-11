@@ -68,5 +68,7 @@ suite("SwiftPackage Test Suite", () => {
         const spmPackage = await SwiftPackage.create(testAssetUri("identity-case"));
         assert.strictEqual(spmPackage.isValid, true);
         assert(spmPackage.resolved !== undefined);
+        assert(spmPackage.resolved.pins.length === 1);
+        assert(spmPackage.resolved.pins[0].identity === "yams");
     }).timeout(10000);
 });
