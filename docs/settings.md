@@ -30,6 +30,10 @@ This is an experimental setting which runs `swift build` whenever a file is save
 
 The path to a directory that will be used for build artifacts. This path will be added to all swift package manager commands that are executed by vscode-swift extension via `--build-path` option. When no value provided - nothing gets passed to swift package manager and it will use its default value of `.build` folder in workspace. You can use absolute path for directory or the relative path, which will use the workspace path as a base. Unfortunately, VSCode does not correctly understand and pass the tilde symbol (~) which represents user home folder under *nix systems. Thus, it should be avoided.
 
+- **Disable Auto Resolve**
+
+When the Swift extension starts up and whenever the `Package.swift` or `Package.resolved` files are updated a `swift package resolve` process is run to make sure we have the correct versions of dependencies downloaded. You can disable this process with the disable auto resolve setting.
+
 ### Sourcekit-LSP
 
 [Sourcekit-LSP](https://github.com/apple/sourcekit-lsp) is the language server used by the the Swift extension to provide symbol completion, jump to definition etc. It is developed by Apple to provide Swift and C language support for any editor that supports the Language Server Protocol.   
