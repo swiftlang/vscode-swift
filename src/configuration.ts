@@ -120,6 +120,10 @@ const configuration = {
             .getConfiguration("swift")
             .get<{ [key: string]: string }>("testEnvironmentVariables", {});
     },
+    /** disable automatic running of swift package resolve */
+    get disableAutoResolve(): boolean {
+        return vscode.workspace.getConfiguration("swift").get<boolean>("disableAutoResolve", false);
+    },
 };
 
 export default configuration;
