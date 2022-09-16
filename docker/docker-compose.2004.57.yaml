@@ -6,7 +6,8 @@ services:
     image: vscode-swift:20.04-5.7
     build:
       args:
-        base_image: "swiftlang/swift:nightly-5.7-focal"
+        ubuntu_version: "focal"
+        swift_version: "5.7"
 
   test:
     image: vscode-swift:20.04-5.7
