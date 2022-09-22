@@ -27,6 +27,7 @@ import { WorkspaceContext } from "../WorkspaceContext";
 export class TestRunner {
     private testRun: vscode.TestRun;
     private testItems: vscode.TestItem[];
+    private testArgs: string[];
     private currentTestItem?: vscode.TestItem;
 
     /**
@@ -41,7 +42,9 @@ export class TestRunner {
         private controller: vscode.TestController
     ) {
         this.testRun = this.controller.createTestRun(this.request);
-        this.testItems = this.createTestList();
+        const lists = this.createTestLists();
+        this.testItems = lists.testItems;
+        this.testArgs = lists.testArgs;
         this.currentTestItem = undefined;
     }
 
@@ -75,12 +78,14 @@ export class TestRunner {
         );
     }
 
-    /** Construct test item list from TestRequest */
-    createTestList(): vscode.TestItem[] {
+    /** Construct test item list from TestRequest
+     * @returns list of test items to run and list of test for XCTest arguments
+     */
+    createTestLists(): { testItems: vscode.TestItem[]; testArgs: string[] } {
         const queue: vscode.TestItem[] = [];
 
         // Loop through all included tests, or all known tests, and add them to our queue
-        if (this.request.include) {
+        if (this.request.include && this.request.include.length > 0) {
             this.request.include.forEach(test => queue.push(test));
         } else {
             this.controller.items.forEach(test => queue.push(test));
@@ -88,6 +93,7 @@ export class TestRunner {
 
         // create test list
         const list: vscode.TestItem[] = [];
+        const queue2: vscode.TestItem[] = [];
         while (queue.length > 0) {
             const test = queue.pop()!;
 
@@ -96,13 +102,55 @@ export class TestRunner {
                 continue;
             }
 
+            // is this a test item for a TestCase class, it has one parent
+            // (module and controller)
+            if (test.parent && !test.parent?.parent) {
+                // if this test item doesn't include an excluded test add the
+                // test item to the list and then add its children to the queue2
+                // list to be processed in the next loop
+                if (
+                    !this.request.exclude?.find(item => {
+                        return item.id.startsWith(test.id);
+                    })
+                ) {
+                    list.push(test);
+                    if (test.children.size > 0) {
+                        test.children.forEach(test => queue2.push(test));
+                    }
+                    continue;
+                }
+            }
+
             if (test.children.size > 0) {
                 test.children.forEach(test => queue.push(test));
                 continue;
             }
             list.push(test);
         }
-        return list;
+        // construct list of arguments from test item list ids
+        let argumentList: string[] = [];
+        // if test list has been filtered in some way then construct list of tests
+        // for XCTest arguments
+        if (
+            (this.request.include && this.request.include.length > 0) ||
+            (this.request.exclude && this.request.exclude.length > 0)
+        ) {
+            argumentList = list.map(item => item.id);
+        }
+
+        // add leaf test items, not added in previous loop. A full set of test
+        // items being tested is needed when parsing the test output
+        while (queue2.length > 0) {
+            const test = queue2.pop()!;
+
+            // Skip tests the user asked to exclude
+            if (this.request.exclude?.includes(test)) {
+                continue;
+            }
+
+            list.push(test);
+        }
+        return { testItems: list, testArgs: argumentList };
     }
 
     /**
@@ -166,15 +214,21 @@ export class TestRunner {
         debugging: boolean,
         outputFile: string | null = null
     ): vscode.DebugConfiguration | null {
-        const testList = this.testItems.map(item => item.id).join(",");
+        const testList = this.testArgs.join(",");
 
         if (process.platform === "darwin") {
+            let testFilterArg: string;
+            if (testList.length > 0) {
+                testFilterArg = `-XCTest ${testList}`;
+            } else {
+                testFilterArg = "";
+            }
             // if debugging on macOS need to create a custom launch configuration so we can set the
             // the system architecture
             if (debugging && outputFile) {
                 const testBuildConfig = createDarwinTestConfiguration(
                     this.folderContext,
-                    `-XCTest ${testList}`,
+                    testFilterArg,
                     outputFile
                 );
                 if (testBuildConfig === null) {
@@ -187,7 +241,9 @@ export class TestRunner {
                     return null;
                 }
 
-                testBuildConfig.args = ["-XCTest", testList, ...testBuildConfig.args];
+                if (testList.length > 0) {
+                    testBuildConfig.args = ["-XCTest", testList, ...testBuildConfig.args];
+                }
                 // send stdout to testOutputPath. Cannot send both stdout and stderr to same file as it
                 // doesn't come out in the correct order
                 testBuildConfig.stdio = [null, null, outputFile];
@@ -199,7 +255,9 @@ export class TestRunner {
                 return null;
             }
 
-            testBuildConfig.args = [testList];
+            if (testList.length > 0) {
+                testBuildConfig.args = [testList];
+            }
             // send stdout to testOutputPath. Cannot send both stdout and stderr to same file as it
             // doesn't come out in the correct order
             testBuildConfig.stdio = [null, outputFile, null];
