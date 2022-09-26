@@ -23,6 +23,7 @@ import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { LanguageStatusItems } from "./ui/LanguageStatusItems";
 import { getErrorDescription } from "./utilities/utilities";
 import { SwiftPluginTaskProvider } from "./SwiftPluginTaskProvider";
+import configuration from "./configuration";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -91,13 +92,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                 case FolderEvent.packageUpdated:
                     // Create launch.json files based on package description.
                     debug.makeDebugConfigurations(folder);
-                    if (folder.swiftPackage.foundPackage) {
+                    if (folder.swiftPackage.foundPackage && !configuration.disableAutoResolve) {
                         await commands.resolveFolderDependencies(folder, true);
                     }
                     break;
 
                 case FolderEvent.resolvedUpdated:
-                    if (folder.swiftPackage.foundPackage) {
+                    if (folder.swiftPackage.foundPackage && !configuration.disableAutoResolve) {
                         await commands.resolveFolderDependencies(folder, true);
                     }
             }
