@@ -300,7 +300,7 @@ export class TestRunner {
         vscode.commands.executeCommand("testing.showMostRecentOutput");
         await execFileStreamOutput(
             testBuildConfig.program,
-            testBuildConfig.args,
+            testBuildConfig.args ?? [],
             stdout,
             stderr,
             token,
