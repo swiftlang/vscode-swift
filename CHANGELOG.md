@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.8.2 - 2022-09-27
+
+### Added
+
+- Setting to disable automatic swift package resolve
+
+### Fixed
+
+- Swift package identity should be case-insensitive
+- Reduce command line length when running tests to ensure they run on Windows
+
 ## 0.8.1 - 2022-09-09
 
 ### Fixed
