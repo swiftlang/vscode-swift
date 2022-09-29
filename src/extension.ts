@@ -124,7 +124,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
 
         return { workspaceContext };
     } catch (error) {
-        throw Error(getErrorDescription(error));
+        const errorMessage = getErrorDescription(error);
+        // show this error message as the VSCode error message only shows when running
+        // the extension through the debugger
+        vscode.window.showErrorMessage(`Activating Swift extension failed: ${errorMessage}`);
+        throw Error(errorMessage);
     }
 }
 
