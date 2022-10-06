@@ -215,6 +215,48 @@ async function runSwiftScript(ctx: WorkspaceContext) {
     }
 }
 
+async function selectPluginTask(ctx: WorkspaceContext) {
+    // search for build all task in task.json first
+    const tasks = await vscode.tasks.fetchTasks({ type: "swift-plugin" });
+    await withQuickPick(
+        "Select Swift Plugin",
+        tasks.map(task => {
+            return {
+                task: task,
+                label: task.name,
+                detail: task.detail,
+                buttons: [
+                    {
+                        iconPath: new vscode.ThemeIcon(
+                            "debug-configure",
+                            new vscode.ThemeColor("#ffffff")
+                        ),
+                        tooltip: "Configure",
+                    },
+                ],
+            };
+        }),
+        async picked => {
+            const folder = picked.task.scope as vscode.WorkspaceFolder;
+            const folderContext = ctx.folders.find(item => item.workspaceFolder === folder);
+            if (folderContext) {
+                folderContext.taskQueue.queueOperation({
+                    task: picked.task,
+                    showStatusItem: true,
+                    log: `Run plugin ${picked.task.name}`,
+                });
+            }
+        },
+        event => {
+            //stuff
+            vscode.commands.executeCommand(
+                "workbench.action.tasks.configureTaskRunner",
+                event.item.task.name
+            );
+        }
+    );
+}
+
 /**
  * Use local version of package dependency
  *
@@ -537,6 +579,7 @@ export function register(ctx: WorkspaceContext) {
         vscode.commands.registerCommand("swift.openPackage", () => openPackage(ctx)),
         vscode.commands.registerCommand("swift.runSnippet", () => runSnippet(ctx)),
         vscode.commands.registerCommand("swift.debugSnippet", () => debugSnippet(ctx)),
+        vscode.commands.registerCommand("swift.selectPluginTask", () => selectPluginTask(ctx)),
         vscode.commands.registerCommand("swift.useLocalDependency", item => {
             if (item instanceof PackageNode) {
                 useLocalDependency(item.name, ctx);
