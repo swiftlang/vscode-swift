@@ -331,17 +331,17 @@
       "swift.editor": [
         {
           "command": "swift.runScript",
-          "group": "1_file",
+          "group": "1_file@1",
           "when": "!swift.fileIsSnippet && editorLangId == swift"
         },
         {
           "command": "swift.runSnippet",
-          "group": "2_file",
+          "group": "1_file@2",
           "when": "swift.fileIsSnippet"
         },
         {
           "command": "swift.debugSnippet",
-          "group": "3_file",
+          "group": "1_file@3",
           "when": "swift.fileIsSnippet"
         },
         {
