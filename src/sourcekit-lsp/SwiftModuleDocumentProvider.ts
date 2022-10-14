@@ -27,8 +27,9 @@ export function getSwiftModuleDocumentProvider(
         provideTextDocumentContent: async uri => {
             try {
                 return await languageClientManager.useLanguageClient(async (client, token) => {
+                    const fileUri = vscode.Uri.file(uri.fsPath);
                     const params = {
-                        textDocument: client.code2ProtocolConverter.asUri(uri),
+                        textDocument: client.code2ProtocolConverter.asUri(fileUri),
                     };
                     const response = await client.sendRequest(
                         swiftModuleDocumentRequest,
