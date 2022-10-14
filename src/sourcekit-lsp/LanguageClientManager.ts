@@ -22,6 +22,7 @@ import { activateLegacyInlayHints } from "./inlayHints";
 import { FolderContext } from "../FolderContext";
 import { LanguageClient } from "vscode-languageclient/node";
 import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
+import { getSwiftModuleDocumentProvider } from "./SwiftModuleDocumentProvider";
 
 /** Manages the creation and destruction of Language clients as we move between
  * workspace folders
@@ -166,7 +167,10 @@ export class LanguageClientManager {
                     });
             }
         });
-        this.subscriptions.push(onChangeConfig);
+        // swift module document provider
+        const swiftModuleDocumentProvider = getSwiftModuleDocumentProvider(this);
+
+        this.subscriptions.push(onChangeConfig, swiftModuleDocumentProvider);
 
         // Swift versions prior to 5.6 don't support file changes, so need to restart
         // lSP server when a file is either created or deleted
@@ -209,17 +213,23 @@ export class LanguageClientManager {
      * @returns result of process
      */
     async useLanguageClient<Return>(process: {
-        (client: langclient.LanguageClient, cancellationToken: vscode.CancellationToken): Return;
-    }) {
-        if (!this.languageClient) {
+        (
+            client: langclient.LanguageClient,
+            cancellationToken: vscode.CancellationToken
+        ): Promise<Return>;
+    }): Promise<Return> {
+        if (!this.languageClient || !this.clientReadyPromise) {
             throw LanguageClientError.LanguageClientUnavailable;
         }
-        return await this.clientReadyPromise?.then(() => {
-            if (!this.languageClient || !this.cancellationToken) {
-                throw LanguageClientError.LanguageClientUnavailable;
-            }
-            return process(this.languageClient, this.cancellationToken.token);
-        });
+        return this.clientReadyPromise.then(
+            () => {
+                if (!this.languageClient || !this.cancellationToken) {
+                    throw LanguageClientError.LanguageClientUnavailable;
+                }
+                return process(this.languageClient, this.cancellationToken.token);
+            },
+            reason => reason
+        );
     }
 
     /** Restart language client */
