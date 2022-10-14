@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import * as path from "path";
 import * as langclient from "vscode-languageclient/node";
 import configuration from "../configuration";
 import { getSwiftExecutable, isPathInsidePath, swiftRuntimeEnv } from "../utilities/utilities";
@@ -440,6 +441,18 @@ export class LanguageClientManager {
                     const documentSymbols = result as vscode.DocumentSymbol[];
                     if (this.documentSymbolWatcher && documentSymbols) {
                         this.documentSymbolWatcher(document, documentSymbols);
+                    }
+                    return result;
+                },
+                provideDefinition: async (document, position, token, next) => {
+                    const result = await next(document, position, token);
+                    const definitions = result as vscode.Location[];
+                    if (
+                        definitions &&
+                        path.extname(definitions[0].uri.path) === ".swiftinterface"
+                    ) {
+                        const uri = vscode.Uri.parse(`swiftmodule://${definitions[0].uri.fsPath}`);
+                        return new vscode.Location(uri, definitions[0].range);
                     }
                     return result;
                 },
