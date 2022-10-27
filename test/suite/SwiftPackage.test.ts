@@ -72,4 +72,13 @@ suite("SwiftPackage Test Suite", () => {
         assert.strictEqual(spmPackage.resolved.pins.length, 1);
         assert.strictEqual(spmPackage.resolved.pins[0].identity, "yams");
     }).timeout(10000);
+
+    test("Identity different from name", async () => {
+        const spmPackage = await SwiftPackage.create(testAssetUri("identity-different"));
+        assert.strictEqual(spmPackage.isValid, true);
+        assert.strictEqual(spmPackage.dependencies.length, 1);
+        assert(spmPackage.resolved !== undefined);
+        assert.strictEqual(spmPackage.resolved.pins.length, 1);
+        assert.strictEqual(spmPackage.resolved.pins[0].identity, "swift-cmark");
+    }).timeout(10000);
 });
