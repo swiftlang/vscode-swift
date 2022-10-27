@@ -14,6 +14,7 @@
 
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
+import * as path from "path";
 import {
     buildDirectoryFromWorkspacePath,
     execSwift,
@@ -69,7 +70,11 @@ export class PackageResolved {
             const v1Json = json as PackageResolvedFileV1;
             this.pins = v1Json.object.pins.map(
                 pin =>
-                    new PackageResolvedPin(pin.package.toLowerCase(), pin.repositoryURL, pin.state)
+                    new PackageResolvedPin(
+                        this.identity(pin.repositoryURL),
+                        pin.repositoryURL,
+                        pin.state
+                    )
             );
         } else if (this.version === 2) {
             const v2Json = json as PackageResolvedFileV2;
@@ -79,6 +84,13 @@ export class PackageResolved {
         } else {
             throw Error("Unsupported Package.resolved version");
         }
+    }
+
+    // Copied from `PackageIdentityParser.computeDefaultName` in
+    // https://github.com/apple/swift-package-manager/blob/main/Sources/PackageModel/PackageIdentity.swift
+    identity(url: string): string {
+        const file = path.basename(url, ".git");
+        return file.toLowerCase();
     }
 }
 
