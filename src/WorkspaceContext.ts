@@ -398,14 +398,14 @@ export class WorkspaceContext implements vscode.Disposable {
     }
 
     /** set focus based on the file */
-    async focusUri(uri: vscode.Uri, waitForInitialisation = true) {
+    async focusUri(uri: vscode.Uri) {
         const packageFolder = await this.getPackageFolder(uri);
         if (packageFolder instanceof FolderContext) {
             await this.focusFolder(packageFolder);
             // clear last focus uri as we have set focus for a folder that has already loaded
             this.lastFocusUri = undefined;
         } else if (packageFolder instanceof vscode.Uri) {
-            if (waitForInitialisation && this.initialisationFinished === false) {
+            if (this.initialisationFinished === false) {
                 // If a package takes a long time to load during initialisation, a focus event
                 // can occur prior to the package being fully loaded. At this point because the
                 // folder for that package isn't setup it will attempt to add the package again.
@@ -428,11 +428,11 @@ export class WorkspaceContext implements vscode.Disposable {
     }
 
     private initialisationComplete() {
+        this.initialisationFinished = true;
         if (this.lastFocusUri) {
-            this.focusUri(this.lastFocusUri, false);
+            this.focusUri(this.lastFocusUri);
             this.lastFocusUri = undefined;
         }
-        this.initialisationFinished = true;
     }
 
     /** return workspace folder from text editor */
