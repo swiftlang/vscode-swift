@@ -2,11 +2,11 @@
   "object": {
     "pins": [
       {
-        "package": "cmark",
+        "package": "cmark-gfm",
         "repositoryURL": "https://github.com/apple/swift-cmark.git",
         "state": {
-          "branch": "main",
-          "revision": "9c8096a23f44794bde297452d87c455fc4f76d42",
+          "branch": "gfm",
+          "revision": "bfdc057b5a02fc65af20771a7ba08f9c944eb117",
           "version": null
         }
       }
