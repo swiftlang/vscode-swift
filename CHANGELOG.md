@@ -1,8 +1,17 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+## 0.9.0 - 2022-10-29
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+### Added
+
+- Show error message when extension activation fails.
+- `allowWriteToPackageDirectory` option to plugin tasks.
+
+### Fixed
+
+- Ordering of menu entries in Swift context menu.
+- Display of package dependencies where package name is different from package identity.
+- Ensure we don't add folders twice at startup.
 
 ## 0.8.2 - 2022-09-27
 
