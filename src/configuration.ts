@@ -24,6 +24,14 @@ export interface LSPConfiguration {
     readonly inlayHintsEnabled: boolean;
 }
 
+/** workspace folder configuration */
+export interface FolderConfiguration {
+    /** Path to sourcekit-lsp executable */
+    readonly buildArguments: string[];
+    /** Environment variables to set when running tests */
+    readonly testEnvironmentVariables: { [key: string]: string };
+}
+
 /**
  * Type-safe wrapper around configuration settings.
  */
@@ -49,17 +57,28 @@ const configuration = {
         };
     },
 
+    folder(workspaceFolder: vscode.WorkspaceFolder): FolderConfiguration {
+        return {
+            /** swift build arguments */
+            get buildArguments(): string[] {
+                return vscode.workspace
+                    .getConfiguration("swift", workspaceFolder)
+                    .get<string[]>("buildArguments", []);
+            },
+            /** Environment variables to set when running tests */
+            get testEnvironmentVariables(): { [key: string]: string } {
+                return vscode.workspace
+                    .getConfiguration("swift", workspaceFolder)
+                    .get<{ [key: string]: string }>("testEnvironmentVariables", {});
+            },
+        };
+    },
+
     /** Files and directories to exclude from the Package Dependencies view. */
     get excludePathsFromPackageDependencies(): string[] {
         return vscode.workspace
             .getConfiguration("swift")
             .get<string[]>("excludePathsFromPackageDependencies", []);
-    },
-    /** Folders to exclude from package dependency view */
-    set excludePathsFromPackageDependencies(value: string[]) {
-        vscode.workspace
-            .getConfiguration("swift")
-            .update("excludePathsFromPackageDependencies", value);
     },
     /** Path to folder that include swift executable */
     get path(): string {
@@ -113,12 +132,6 @@ const configuration = {
     /** output additional diagnostics */
     get diagnostics(): boolean {
         return vscode.workspace.getConfiguration("swift").get<boolean>("diagnostics", false);
-    },
-    /** Environment variables to set when running tests */
-    get testEnvironmentVariables(): { [key: string]: string } {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<{ [key: string]: string }>("testEnvironmentVariables", {});
     },
     /** disable automatic running of swift package resolve */
     get disableAutoResolve(): boolean {

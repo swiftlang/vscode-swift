@@ -194,7 +194,7 @@ export function createTestConfiguration(
     // respect user configuration if conflicts with injected runtime path
     const testEnv = {
         ...swiftRuntimeEnv(),
-        ...configuration.testEnvironmentVariables,
+        ...configuration.folder(ctx.workspaceFolder).testEnvironmentVariables,
     };
 
     let buildDirectory = buildDirectoryFromWorkspacePath(folder);
@@ -303,7 +303,7 @@ export function createDarwinTestConfiguration(
     }
     const envCommands = Object.entries({
         ...swiftRuntimeEnv(),
-        ...configuration.testEnvironmentVariables,
+        ...configuration.folder(ctx.workspaceFolder).testEnvironmentVariables,
     }).map(([key, value]) => `settings set target.env-vars ${key}="${value}"`);
 
     return {

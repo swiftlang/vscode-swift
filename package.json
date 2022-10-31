@@ -114,7 +114,6 @@
             "type": "string",
             "default": "",
             "markdownDescription": "The path of the folder containing the Swift executables. The default is to look in **$PATH**.",
-            "scope": "machine-overridable",
             "order": 1
           },
           "swift.buildArguments": {
