@@ -7,6 +7,10 @@
 - Show error message when extension activation fails.
 - `allowWriteToPackageDirectory` option to plugin tasks.
 
+### Changed
+
+- Settings scope for a number of settings so they can be set per workspace folder. Ensure the workspace folder setting is being used. Reverted for a number of settings where per workspace folder setting was not possible.
+
 ### Fixed
 
 - Ordering of menu entries in Swift context menu.
