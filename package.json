@@ -141,6 +141,7 @@
             "type": "boolean",
             "default": true,
             "markdownDescription": "When loading a `Package.swift`, auto-generate `launch.json` configurations for running any executables.",
+            "scope": "machine-overridable",
             "order": 4
           },
           "swift.problemMatchCompileErrors": {

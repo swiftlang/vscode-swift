@@ -32,7 +32,7 @@ import {
  * @param yes automatically answer yes to dialogs
  */
 export async function makeDebugConfigurations(ctx: FolderContext, yes = false) {
-    if (!configuration.autoGenerateLaunchConfigurations) {
+    if (!configuration.folder(ctx.workspaceFolder).autoGenerateLaunchConfigurations) {
         return;
     }
     const wsLaunchSection = vscode.workspace.getConfiguration("launch", ctx.folder);

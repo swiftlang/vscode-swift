@@ -26,10 +26,10 @@ export interface LSPConfiguration {
 
 /** workspace folder configuration */
 export interface FolderConfiguration {
-    /** Path to sourcekit-lsp executable */
-    readonly buildArguments: string[];
     /** Environment variables to set when running tests */
     readonly testEnvironmentVariables: { [key: string]: string };
+    /** auto-generate launch.json configurations */
+    readonly autoGenerateLaunchConfigurations: boolean;
 }
 
 /**
@@ -59,17 +59,17 @@ const configuration = {
 
     folder(workspaceFolder: vscode.WorkspaceFolder): FolderConfiguration {
         return {
-            /** swift build arguments */
-            get buildArguments(): string[] {
-                return vscode.workspace
-                    .getConfiguration("swift", workspaceFolder)
-                    .get<string[]>("buildArguments", []);
-            },
             /** Environment variables to set when running tests */
             get testEnvironmentVariables(): { [key: string]: string } {
                 return vscode.workspace
                     .getConfiguration("swift", workspaceFolder)
                     .get<{ [key: string]: string }>("testEnvironmentVariables", {});
+            },
+            /** auto-generate launch.json configurations */
+            get autoGenerateLaunchConfigurations(): boolean {
+                return vscode.workspace
+                    .getConfiguration("swift", workspaceFolder)
+                    .get<boolean>("autoGenerateLaunchConfigurations", true);
             },
         };
     },
@@ -116,12 +116,6 @@ const configuration = {
         return vscode.workspace
             .getConfiguration("swift")
             .get<boolean>("problemMatchCompileErrors", true);
-    },
-    /** auto-generate launch.json configurations */
-    get autoGenerateLaunchConfigurations(): boolean {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<boolean>("autoGenerateLaunchConfigurations", true);
     },
     /** background compilation */
     get backgroundCompilation(): boolean {
