@@ -91,11 +91,7 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
         additionalArgs = ["--build-tests", ...additionalArgs];
     }
     return createSwiftTask(
-        [
-            "build",
-            ...additionalArgs,
-            ...configuration.folder(folderContext.workspaceFolder).buildArguments,
-        ],
+        ["build", ...additionalArgs, ...configuration.buildArguments],
         buildTaskName,
         {
             group: vscode.TaskGroup.Build,
@@ -162,7 +158,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 "--product",
                 product.name,
                 ...platformDebugBuildOptions(),
-                ...configuration.folder(folderContext.workspaceFolder).buildArguments,
+                ...configuration.buildArguments,
             ],
             `Build Debug ${product.name}${buildTaskNameSuffix}`,
             {
@@ -176,14 +172,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
             }
         ),
         createSwiftTask(
-            [
-                "build",
-                "-c",
-                "release",
-                "--product",
-                product.name,
-                ...configuration.folder(folderContext.workspaceFolder).buildArguments,
-            ],
+            ["build", "-c", "release", "--product", product.name, ...configuration.buildArguments],
             `Build Release ${product.name}${buildTaskNameSuffix}`,
             {
                 group: vscode.TaskGroup.Build,
