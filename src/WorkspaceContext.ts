@@ -47,6 +47,8 @@ export class WorkspaceContext implements vscode.Disposable {
     public languageClientManager: LanguageClientManager;
     public tasks: TaskManager;
     public subscriptions: { dispose(): unknown }[];
+    private lastFocusUri: vscode.Uri | undefined;
+    private initialisationFinished = false;
 
     private constructor(public tempFolder: TemporaryFolder, public toolchain: SwiftToolchain) {
         this.outputChannel = new SwiftOutputChannel();
@@ -56,6 +58,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.toolchain.logDiagnostics(this.outputChannel);
         this.tasks = new TaskManager();
         this.currentDocument = null;
+
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
             // on toolchain config change, reload window
             if (event.affectsConfiguration("swift.path")) {
@@ -219,6 +222,7 @@ export class WorkspaceContext implements vscode.Disposable {
                 await this.focusFolder(null);
             }
         }
+        this.initialisationComplete();
     }
 
     /**
@@ -398,16 +402,36 @@ export class WorkspaceContext implements vscode.Disposable {
         const packageFolder = await this.getPackageFolder(uri);
         if (packageFolder instanceof FolderContext) {
             await this.focusFolder(packageFolder);
+            // clear last focus uri as we have set focus for a folder that has already loaded
+            this.lastFocusUri = undefined;
         } else if (packageFolder instanceof vscode.Uri) {
-            const workspaceFolder = vscode.workspace.getWorkspaceFolder(packageFolder);
-            if (!workspaceFolder) {
-                return;
+            if (this.initialisationFinished === false) {
+                // If a package takes a long time to load during initialisation, a focus event
+                // can occur prior to the package being fully loaded. At this point because the
+                // folder for that package isn't setup it will attempt to add the package again.
+                // To avoid this if we are still initialising we store the last uri to get focus
+                // and once the initialisation is complete we call focusUri again from the function
+                // initialisationComplete.
+                this.lastFocusUri = uri;
+            } else {
+                const workspaceFolder = vscode.workspace.getWorkspaceFolder(packageFolder);
+                if (!workspaceFolder) {
+                    return;
+                }
+                await this.unfocusCurrentFolder();
+                const folderContext = await this.addPackageFolder(packageFolder, workspaceFolder);
+                await this.focusFolder(folderContext);
             }
-            await this.unfocusCurrentFolder();
-            const folderContext = await this.addPackageFolder(packageFolder, workspaceFolder);
-            await this.focusFolder(folderContext);
         } else {
             await this.focusFolder(null);
+        }
+    }
+
+    private initialisationComplete() {
+        this.initialisationFinished = true;
+        if (this.lastFocusUri) {
+            this.focusUri(this.lastFocusUri);
+            this.lastFocusUri = undefined;
         }
     }
 
