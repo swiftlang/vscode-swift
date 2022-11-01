@@ -32,7 +32,7 @@ import {
  * @param yes automatically answer yes to dialogs
  */
 export async function makeDebugConfigurations(ctx: FolderContext, yes = false) {
-    if (!configuration.autoGenerateLaunchConfigurations) {
+    if (!configuration.folder(ctx.workspaceFolder).autoGenerateLaunchConfigurations) {
         return;
     }
     const wsLaunchSection = vscode.workspace.getConfiguration("launch", ctx.folder);
@@ -194,7 +194,7 @@ export function createTestConfiguration(
     // respect user configuration if conflicts with injected runtime path
     const testEnv = {
         ...swiftRuntimeEnv(),
-        ...configuration.testEnvironmentVariables,
+        ...configuration.folder(ctx.workspaceFolder).testEnvironmentVariables,
     };
 
     let buildDirectory = buildDirectoryFromWorkspacePath(folder);
@@ -303,7 +303,7 @@ export function createDarwinTestConfiguration(
     }
     const envCommands = Object.entries({
         ...swiftRuntimeEnv(),
-        ...configuration.testEnvironmentVariables,
+        ...configuration.folder(ctx.workspaceFolder).testEnvironmentVariables,
     }).map(([key, value]) => `settings set target.env-vars ${key}="${value}"`);
 
     return {

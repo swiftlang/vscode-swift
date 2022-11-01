@@ -114,7 +114,6 @@
             "type": "string",
             "default": "",
             "markdownDescription": "The path of the folder containing the Swift executables. The default is to look in **$PATH**.",
-            "scope": "machine-overridable",
             "order": 1
           },
           "swift.buildArguments": {
@@ -124,7 +123,6 @@
               "type": "string"
             },
             "markdownDescription": "Arguments to pass to `swift build`. Keys and values should be provided as separate entries. If you have created a copy of the build task in `tasks.json` then these build arguments will not be propogated to that task.",
-            "scope": "machine-overridable",
             "order": 2
           },
           "swift.testEnvironmentVariables": {
@@ -143,6 +141,7 @@
             "type": "boolean",
             "default": true,
             "markdownDescription": "When loading a `Package.swift`, auto-generate `launch.json` configurations for running any executables.",
+            "scope": "machine-overridable",
             "order": 4
           },
           "swift.problemMatchCompileErrors": {
@@ -173,7 +172,6 @@
             "type": "string",
             "default": "",
             "markdownDescription": "Path to the build directory passed to all swift package manager commands.",
-            "scope": "machine-overridable",
             "order": 8
           },
           "swift.disableAutoResolve": {
@@ -234,21 +232,18 @@
             },
             "default": {},
             "markdownDescription": "Additional environment variables to pass to swift operations.",
-            "scope": "machine-overridable",
             "order": 1
           },
           "swift.runtimePath": {
             "type": "string",
             "default": "",
             "description": "The path of the folder containing the Swift runtime libraries. Only effective when they can't be discovered by RPath.",
-            "scope": "machine-overridable",
             "order": 2
           },
           "swift.SDK": {
             "type": "string",
             "default": "",
             "description": "The path of the SDK to compile against (`--sdk` parameter). The default SDK is determined by the environment on macOS and Windows.",
-            "scope": "machine-overridable",
             "order": 3
           },
           "swift.diagnostics": {

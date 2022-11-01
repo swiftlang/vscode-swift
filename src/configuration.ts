@@ -24,6 +24,16 @@ export interface LSPConfiguration {
     readonly inlayHintsEnabled: boolean;
 }
 
+/** workspace folder configuration */
+export interface FolderConfiguration {
+    /** Environment variables to set when running tests */
+    readonly testEnvironmentVariables: { [key: string]: string };
+    /** auto-generate launch.json configurations */
+    readonly autoGenerateLaunchConfigurations: boolean;
+    /** disable automatic running of swift package resolve */
+    readonly disableAutoResolve: boolean;
+}
+
 /**
  * Type-safe wrapper around configuration settings.
  */
@@ -49,17 +59,34 @@ const configuration = {
         };
     },
 
+    folder(workspaceFolder: vscode.WorkspaceFolder): FolderConfiguration {
+        return {
+            /** Environment variables to set when running tests */
+            get testEnvironmentVariables(): { [key: string]: string } {
+                return vscode.workspace
+                    .getConfiguration("swift", workspaceFolder)
+                    .get<{ [key: string]: string }>("testEnvironmentVariables", {});
+            },
+            /** auto-generate launch.json configurations */
+            get autoGenerateLaunchConfigurations(): boolean {
+                return vscode.workspace
+                    .getConfiguration("swift", workspaceFolder)
+                    .get<boolean>("autoGenerateLaunchConfigurations", true);
+            },
+            /** disable automatic running of swift package resolve */
+            get disableAutoResolve(): boolean {
+                return vscode.workspace
+                    .getConfiguration("swift", workspaceFolder)
+                    .get<boolean>("disableAutoResolve", false);
+            },
+        };
+    },
+
     /** Files and directories to exclude from the Package Dependencies view. */
     get excludePathsFromPackageDependencies(): string[] {
         return vscode.workspace
             .getConfiguration("swift")
             .get<string[]>("excludePathsFromPackageDependencies", []);
-    },
-    /** Folders to exclude from package dependency view */
-    set excludePathsFromPackageDependencies(value: string[]) {
-        vscode.workspace
-            .getConfiguration("swift")
-            .update("excludePathsFromPackageDependencies", value);
     },
     /** Path to folder that include swift executable */
     get path(): string {
@@ -98,12 +125,6 @@ const configuration = {
             .getConfiguration("swift")
             .get<boolean>("problemMatchCompileErrors", true);
     },
-    /** auto-generate launch.json configurations */
-    get autoGenerateLaunchConfigurations(): boolean {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<boolean>("autoGenerateLaunchConfigurations", true);
-    },
     /** background compilation */
     get backgroundCompilation(): boolean {
         return vscode.workspace
@@ -113,16 +134,6 @@ const configuration = {
     /** output additional diagnostics */
     get diagnostics(): boolean {
         return vscode.workspace.getConfiguration("swift").get<boolean>("diagnostics", false);
-    },
-    /** Environment variables to set when running tests */
-    get testEnvironmentVariables(): { [key: string]: string } {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<{ [key: string]: string }>("testEnvironmentVariables", {});
-    },
-    /** disable automatic running of swift package resolve */
-    get disableAutoResolve(): boolean {
-        return vscode.workspace.getConfiguration("swift").get<boolean>("disableAutoResolve", false);
     },
 };
 

@@ -90,7 +90,7 @@ export class WorkspaceContext implements vscode.Disposable {
             }
             // on runtime path config change, regenerate launch.json
             if (event.affectsConfiguration("swift.runtimePath")) {
-                if (!configuration.autoGenerateLaunchConfigurations) {
+                if (!this.needToAutoGenerateLaunchConfig()) {
                     return;
                 }
                 vscode.window
@@ -109,7 +109,7 @@ export class WorkspaceContext implements vscode.Disposable {
             }
             // on change of swift build path, regenerate launch.json
             if (event.affectsConfiguration("swift.buildPath")) {
-                if (!configuration.autoGenerateLaunchConfigurations) {
+                if (!this.needToAutoGenerateLaunchConfig()) {
                     return;
                 }
                 vscode.window
@@ -502,6 +502,16 @@ export class WorkspaceContext implements vscode.Disposable {
             await this.fireEvent(this.currentFolder, FolderEvent.unfocus);
         }
         this.currentFolder = undefined;
+    }
+
+    private needToAutoGenerateLaunchConfig() {
+        let autoGenerate = false;
+        this.folders.forEach(folder => {
+            autoGenerate =
+                autoGenerate ||
+                configuration.folder(folder.workspaceFolder).autoGenerateLaunchConfigurations;
+        });
+        return autoGenerate;
     }
 
     private observers: Set<WorkspaceFoldersObserver> = new Set();

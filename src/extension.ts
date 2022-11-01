@@ -92,13 +92,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                 case FolderEvent.packageUpdated:
                     // Create launch.json files based on package description.
                     debug.makeDebugConfigurations(folder);
-                    if (folder.swiftPackage.foundPackage && !configuration.disableAutoResolve) {
+                    if (
+                        folder.swiftPackage.foundPackage &&
+                        !configuration.folder(folder.workspaceFolder).disableAutoResolve
+                    ) {
                         await commands.resolveFolderDependencies(folder, true);
                     }
                     break;
 
                 case FolderEvent.resolvedUpdated:
-                    if (folder.swiftPackage.foundPackage && !configuration.disableAutoResolve) {
+                    if (
+                        folder.swiftPackage.foundPackage &&
+                        !configuration.folder(folder.workspaceFolder).disableAutoResolve
+                    ) {
                         await commands.resolveFolderDependencies(folder, true);
                     }
             }
