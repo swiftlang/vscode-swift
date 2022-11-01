@@ -38,6 +38,18 @@ export class BackgroundCompilation {
                 return;
             }
 
+            // is document a valid type for rebuild
+            const languages = ["swift", "c", "cpp", "objective-c", "objective-cpp"];
+            let foundLanguage = false;
+            languages.forEach(lang => {
+                if (event.languageId === lang) {
+                    foundLanguage = true;
+                }
+            });
+            if (foundLanguage === false) {
+                return;
+            }
+
             // is editor document in any of the current FolderContexts
             const folderContext = workspaceContext.folders.find(context => {
                 return isPathInsidePath(event.uri.fsPath, context.folder.fsPath);
