@@ -30,6 +30,8 @@ export interface FolderConfiguration {
     readonly testEnvironmentVariables: { [key: string]: string };
     /** auto-generate launch.json configurations */
     readonly autoGenerateLaunchConfigurations: boolean;
+    /** disable automatic running of swift package resolve */
+    readonly disableAutoResolve: boolean;
 }
 
 /**
@@ -70,6 +72,12 @@ const configuration = {
                 return vscode.workspace
                     .getConfiguration("swift", workspaceFolder)
                     .get<boolean>("autoGenerateLaunchConfigurations", true);
+            },
+            /** disable automatic running of swift package resolve */
+            get disableAutoResolve(): boolean {
+                return vscode.workspace
+                    .getConfiguration("swift", workspaceFolder)
+                    .get<boolean>("disableAutoResolve", false);
             },
         };
     },
@@ -126,10 +134,6 @@ const configuration = {
     /** output additional diagnostics */
     get diagnostics(): boolean {
         return vscode.workspace.getConfiguration("swift").get<boolean>("diagnostics", false);
-    },
-    /** disable automatic running of swift package resolve */
-    get disableAutoResolve(): boolean {
-        return vscode.workspace.getConfiguration("swift").get<boolean>("disableAutoResolve", false);
     },
 };
 

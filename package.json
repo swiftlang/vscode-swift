@@ -178,6 +178,7 @@
             "type": "boolean",
             "default": false,
             "markdownDescription": "Disable automatic running of `swift package resolve`.",
+            "scope": "machine-overridable",
             "order": 9
           }
         }
