@@ -182,34 +182,38 @@ export class SwiftToolchain {
     }
 
     private static async getSwiftFolderPath(): Promise<string> {
-        if (configuration.path !== "") {
-            return await this.getSwiftEnvPath(configuration.path);
-        }
         try {
             let swift: string;
-            switch (process.platform) {
-                case "darwin": {
-                    const { stdout } = await execFile("which", ["swift"]);
-                    swift = stdout.trimEnd();
-                    break;
-                }
-                case "win32": {
-                    const { stdout } = await execFile("where", ["swift"]);
-                    swift = stdout.trimEnd();
-                    break;
-                }
-                default: {
-                    // use `type swift` to find `swift`. Run inside /bin/sh to ensure
-                    // we get consistent output as different shells output a different
-                    // format. Tried running with `-p` but that is not available in /bin/sh
-                    const { stdout } = await execFile("/bin/sh", ["-c", "LCMESSAGES=C type swift"]);
-                    const swiftMatch = /^swift is (.*)$/.exec(stdout.trimEnd());
-                    if (swiftMatch) {
-                        swift = swiftMatch[1];
-                    } else {
-                        throw Error("Failed to find swift executable");
+            if (configuration.path !== "") {
+                swift = path.join(configuration.path, "swift");
+            } else {
+                switch (process.platform) {
+                    case "darwin": {
+                        const { stdout } = await execFile("which", ["swift"]);
+                        swift = stdout.trimEnd();
+                        break;
                     }
-                    break;
+                    case "win32": {
+                        const { stdout } = await execFile("where", ["swift"]);
+                        swift = stdout.trimEnd();
+                        break;
+                    }
+                    default: {
+                        // use `type swift` to find `swift`. Run inside /bin/sh to ensure
+                        // we get consistent output as different shells output a different
+                        // format. Tried running with `-p` but that is not available in /bin/sh
+                        const { stdout } = await execFile("/bin/sh", [
+                            "-c",
+                            "LCMESSAGES=C type swift",
+                        ]);
+                        const swiftMatch = /^swift is (.*)$/.exec(stdout.trimEnd());
+                        if (swiftMatch) {
+                            swift = swiftMatch[1];
+                        } else {
+                            throw Error("Failed to find swift executable");
+                        }
+                        break;
+                    }
                 }
             }
             // swift may be a symbolic link
