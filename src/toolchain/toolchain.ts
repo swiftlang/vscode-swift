@@ -267,7 +267,7 @@ export class SwiftToolchain {
                     return path.dirname(path.dirname(path.dirname(swift)));
                 }
                 default: {
-                    return path.dirname(path.dirname(path.dirname(swiftPath)));
+                    return path.dirname(path.dirname(swiftPath));
                 }
             }
         } catch {
