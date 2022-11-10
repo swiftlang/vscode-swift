@@ -254,12 +254,12 @@ export class SwiftToolchain {
      * @returns path to Toolchain folder
      */
     private static async getToolchainPath(swiftPath: string): Promise<string> {
-        if (configuration.path !== "") {
-            return path.dirname(path.dirname(configuration.path));
-        }
         try {
             switch (process.platform) {
                 case "darwin": {
+                    if (configuration.path !== "") {
+                        return path.dirname(path.dirname(configuration.path));
+                    }
                     const { stdout } = await execFile("xcrun", ["--find", "swift"], {
                         env: configuration.swiftEnvironmentVariables,
                     });
