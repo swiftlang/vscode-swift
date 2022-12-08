@@ -44,6 +44,23 @@ export class StatusItem {
     }
 
     /**
+     * Display status item while running a process/task
+     * @param task Task or process name to display status of
+     * @param process Code to run while displaying status
+     */
+    async showStatusWhileRunning<Return>(task: vscode.Task | string, process: { (): Return }) {
+        this.start(task);
+        try {
+            const value = await process();
+            this.end(task);
+            return value;
+        } catch (error) {
+            this.end(task);
+            throw error;
+        }
+    }
+
+    /**
      * Signals the start of a {@link vscode.Task Task}.
      *
      * This will display the name of the task, preceded by a spinner animation.
