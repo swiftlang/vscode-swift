@@ -19,6 +19,7 @@ import { PackageDependenciesProvider } from "./ui/PackageDependencyProvider";
 import * as commentCompletion from "./editor/CommentCompletion";
 import { SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
+import { FolderContext } from "./FolderContext";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { LanguageStatusItems } from "./ui/LanguageStatusItems";
 import { getErrorDescription } from "./utilities/utilities";
@@ -83,32 +84,52 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         dependenciesProvider.observeFolders(dependenciesView);
 
         // observer that will resolve package and build launch configurations
-        const resolvePackageObserver = workspaceContext.observeFolders(async (folder, event) => {
-            if (!folder) {
-                return;
-            }
-            switch (event) {
-                case FolderEvent.add:
-                case FolderEvent.packageUpdated:
-                    // Create launch.json files based on package description.
-                    debug.makeDebugConfigurations(folder);
-                    if (
-                        folder.swiftPackage.foundPackage &&
-                        !configuration.folder(folder.workspaceFolder).disableAutoResolve
-                    ) {
-                        await commands.resolveFolderDependencies(folder, true);
-                    }
-                    break;
+        const resolvePackageObserver = workspaceContext.observeFolders(
+            async (folder, event, workspace) => {
+                if (!folder) {
+                    return;
+                }
+                switch (event) {
+                    case FolderEvent.add:
+                        // Create launch.json files based on package description.
+                        debug.makeDebugConfigurations(folder);
+                        if (
+                            folder.swiftPackage.foundPackage &&
+                            !configuration.folder(folder.workspaceFolder).disableAutoResolve
+                        ) {
+                            await commands.resolveFolderDependencies(folder, true);
+                            await workspace.statusItem.showStatusWhileRunning(
+                                `Loading Swift Plugins (${FolderContext.uriName(
+                                    folder.workspaceFolder.uri
+                                )})`,
+                                async () => {
+                                    await folder.loadSwiftPlugins();
+                                }
+                            );
+                        }
+                        break;
 
-                case FolderEvent.resolvedUpdated:
-                    if (
-                        folder.swiftPackage.foundPackage &&
-                        !configuration.folder(folder.workspaceFolder).disableAutoResolve
-                    ) {
-                        await commands.resolveFolderDependencies(folder, true);
-                    }
+                    case FolderEvent.packageUpdated:
+                        // Create launch.json files based on package description.
+                        debug.makeDebugConfigurations(folder);
+                        if (
+                            folder.swiftPackage.foundPackage &&
+                            !configuration.folder(folder.workspaceFolder).disableAutoResolve
+                        ) {
+                            await commands.resolveFolderDependencies(folder, true);
+                        }
+                        break;
+
+                    case FolderEvent.resolvedUpdated:
+                        if (
+                            folder.swiftPackage.foundPackage &&
+                            !configuration.folder(folder.workspaceFolder).disableAutoResolve
+                        ) {
+                            await commands.resolveFolderDependencies(folder, true);
+                        }
+                }
             }
-        });
+        );
 
         const testExplorerObserver = TestExplorer.observeFolders(workspaceContext);
 

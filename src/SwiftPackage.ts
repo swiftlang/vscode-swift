@@ -178,6 +178,7 @@ function isError(state: SwiftPackageState): state is Error {
  * Class holding Swift Package Manager Package
  */
 export class SwiftPackage implements PackageContents {
+    public plugins: PackagePlugin[] = [];
     /**
      * SwiftPackage Constructor
      * @param folder folder package is in
@@ -187,8 +188,7 @@ export class SwiftPackage implements PackageContents {
     private constructor(
         readonly folder: vscode.Uri,
         private contents: SwiftPackageState,
-        public resolved: PackageResolved | undefined,
-        public plugins: PackagePlugin[]
+        public resolved: PackageResolved | undefined
     ) {}
 
     /**
@@ -199,8 +199,7 @@ export class SwiftPackage implements PackageContents {
     static async create(folder: vscode.Uri): Promise<SwiftPackage> {
         const contents = await SwiftPackage.loadPackage(folder);
         const resolved = await SwiftPackage.loadPackageResolved(folder);
-        const plugins = await SwiftPackage.loadPlugins(folder);
-        return new SwiftPackage(folder, contents, resolved, plugins);
+        return new SwiftPackage(folder, contents, resolved);
     }
 
     /**
