@@ -25,6 +25,7 @@ import { LanguageStatusItems } from "./ui/LanguageStatusItems";
 import { getErrorDescription } from "./utilities/utilities";
 import { SwiftPluginTaskProvider } from "./SwiftPluginTaskProvider";
 import configuration from "./configuration";
+import { Version } from "./utilities/version";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -98,14 +99,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                             !configuration.folder(folder.workspaceFolder).disableAutoResolve
                         ) {
                             await commands.resolveFolderDependencies(folder, true);
-                            await workspace.statusItem.showStatusWhileRunning(
-                                `Loading Swift Plugins (${FolderContext.uriName(
-                                    folder.workspaceFolder.uri
-                                )})`,
-                                async () => {
-                                    await folder.loadSwiftPlugins();
-                                }
-                            );
+                            if (workspace.swiftVersion >= new Version(5, 6, 0)) {
+                                await workspace.statusItem.showStatusWhileRunning(
+                                    `Loading Swift Plugins (${FolderContext.uriName(
+                                        folder.workspaceFolder.uri
+                                    )})`,
+                                    async () => {
+                                        await folder.loadSwiftPlugins();
+                                    }
+                                );
+                            }
                         }
                         break;
 
