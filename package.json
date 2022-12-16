@@ -22,7 +22,8 @@
   "preview": true,
   "activationEvents": [
     "onLanguage:swift",
-    "workspaceContains:Package.swift"
+    "workspaceContains:Package.swift",
+    "workspaceContains:compile_commands.json"
   ],
   "main": "./dist/extension.js",
   "contributes": {
