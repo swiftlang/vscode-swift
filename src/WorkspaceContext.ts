@@ -496,7 +496,7 @@ export class WorkspaceContext implements vscode.Disposable {
     }
 
     /**
-     * Return is folder is considered a valid root folder ie does it contain a SwiftPM
+     * Return if folder is considered a valid root folder ie does it contain a SwiftPM
      * Package.swift or a CMake compile_commands.json
      */
     async isValidWorkspaceFolder(folder: string): Promise<boolean> {
