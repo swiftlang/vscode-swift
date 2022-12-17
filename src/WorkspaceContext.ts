@@ -277,8 +277,8 @@ export class WorkspaceContext implements vscode.Disposable {
      * @param folder folder being added
      */
     async addWorkspaceFolder(folder: vscode.WorkspaceFolder) {
-        // add folder if Package.swift exists
-        if (await pathExists(folder.uri.fsPath, "Package.swift")) {
+        // add folder if Package.swift/compile_commands.json exists
+        if (await this.isValidWorkspaceFolder(folder.uri.fsPath)) {
             await this.addPackageFolder(folder.uri, folder);
         }
 
@@ -476,14 +476,14 @@ export class WorkspaceContext implements vscode.Disposable {
         let packagePath: string | undefined = undefined;
         let currentFolder = path.dirname(url.fsPath);
         // does Package.swift exist in this folder
-        if (await pathExists(currentFolder, "Package.swift")) {
+        if (await this.isValidWorkspaceFolder(currentFolder)) {
             packagePath = currentFolder;
         }
         // does Package.swift exist in any parent folders up to the root of the
         // workspace
         while (currentFolder !== workspacePath) {
             currentFolder = path.dirname(currentFolder);
-            if (await pathExists(currentFolder, "Package.swift")) {
+            if (await this.isValidWorkspaceFolder(currentFolder)) {
                 packagePath = currentFolder;
             }
         }
@@ -493,6 +493,17 @@ export class WorkspaceContext implements vscode.Disposable {
         } else {
             return;
         }
+    }
+
+    /**
+     * Return if folder is considered a valid root folder ie does it contain a SwiftPM
+     * Package.swift or a CMake compile_commands.json
+     */
+    async isValidWorkspaceFolder(folder: string): Promise<boolean> {
+        return (
+            (await pathExists(folder, "Package.swift")) ||
+            (await pathExists(folder, "compile_commands.json"))
+        );
     }
 
     /** send unfocus event to current focussed folder and clear current folder */
