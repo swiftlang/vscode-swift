@@ -272,8 +272,8 @@ export class TestRunner {
             return;
         }
 
-        // Use WriteStream to log results
-        const writeStream = new stream.Writable({
+        // Parse output from stream and output to log
+        const parsedOutputStream = new stream.Writable({
             write: (chunk, encoding, next) => {
                 const text = chunk.toString();
                 this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
@@ -286,11 +286,29 @@ export class TestRunner {
             },
         });
 
-        const stdout: stream.Writable = writeStream;
-        const stderr: stream.Writable = writeStream;
+        // Output test from stream
+        const outputStream = new stream.Writable({
+            write: (chunk, encoding, next) => {
+                const text = chunk.toString();
+                this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
+                next();
+            },
+        });
+
+        // Darwin outputs XCTest output to stderr, Linux outputs XCTest output to stdout
+        let stdout: stream.Writable;
+        let stderr: stream.Writable;
+        if (process.platform === "darwin") {
+            stdout = outputStream;
+            stderr = parsedOutputStream;
+        } else {
+            stdout = parsedOutputStream;
+            stderr = outputStream;
+        }
 
         if (token.isCancellationRequested) {
-            writeStream.end();
+            parsedOutputStream.end();
+            outputStream.end();
             return;
         }
 
@@ -311,6 +329,9 @@ export class TestRunner {
             this.folderContext,
             false
         );
+
+        parsedOutputStream.end();
+        outputStream.end();
     }
 
     /** Run test session inside debugger */
