@@ -28,7 +28,6 @@ export class TestRunner {
     private testRun: vscode.TestRun;
     private testItems: vscode.TestItem[];
     private testArgs: string[];
-    private currentTestItem?: vscode.TestItem;
 
     /**
      * Constructor for TestRunner
@@ -45,7 +44,6 @@ export class TestRunner {
         const lists = this.createTestLists();
         this.testItems = lists.testItems;
         this.testArgs = lists.testArgs;
-        this.currentTestItem = undefined;
     }
 
     get workspaceContext(): WorkspaceContext {
@@ -160,6 +158,7 @@ export class TestRunner {
      * @returns When complete
      */
     async runHandler(shouldDebug: boolean, token: vscode.CancellationToken) {
+        const runState = new TestRunState();
         try {
             // run associated build task
             const task = await getBuildAllTask(this.folderContext);
@@ -177,9 +176,9 @@ export class TestRunner {
             this.setTestsEnqueued();
 
             if (shouldDebug) {
-                await this.debugSession(token);
+                await this.debugSession(token, runState);
             } else {
-                await this.runSession(token);
+                await this.runSession(token, runState);
             }
         } catch (error) {
             // is error returned from child_process.exec call and command failed then
@@ -194,9 +193,9 @@ export class TestRunner {
                 return;
             }
             // report error
-            if (this.currentTestItem) {
+            if (runState.currentTestItem) {
                 const message = new vscode.TestMessage(getErrorDescription(error));
-                this.testRun.errored(this.currentTestItem, message);
+                this.testRun.errored(runState.currentTestItem, message);
             }
             this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
         }
@@ -266,7 +265,7 @@ export class TestRunner {
     }
 
     /** Run test session without attaching to a debugger */
-    async runSession(token: vscode.CancellationToken) {
+    async runSession(token: vscode.CancellationToken, runState: TestRunState) {
         // create launch config for testing
         const testBuildConfig = this.createLaunchConfigurationForTesting(false);
         if (testBuildConfig === null) {
@@ -279,9 +278,9 @@ export class TestRunner {
                 const text = chunk.toString();
                 this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
                 if (process.platform === "darwin") {
-                    this.parseResultDarwin(text);
+                    this.parseResultDarwin(text, runState);
                 } else {
-                    this.parseResultNonDarwin(text);
+                    this.parseResultNonDarwin(text, runState);
                 }
                 next();
             },
@@ -315,7 +314,7 @@ export class TestRunner {
     }
 
     /** Run test session inside debugger */
-    async debugSession(token: vscode.CancellationToken) {
+    async debugSession(token: vscode.CancellationToken, runState: TestRunState) {
         const testOutputPath = this.workspaceContext.tempFolder.filename("TestOutput", "txt");
         // create launch config for testing
         const testBuildConfig = this.createLaunchConfigurationForTesting(true, testOutputPath);
@@ -379,9 +378,9 @@ export class TestRunner {
                                             debugOutput.replace(/\n/g, "\r\n")
                                         );
                                         if (process.platform === "darwin") {
-                                            this.parseResultDarwin(debugOutput);
+                                            this.parseResultDarwin(debugOutput, runState);
                                         } else {
-                                            this.parseResultNonDarwin(debugOutput);
+                                            this.parseResultNonDarwin(debugOutput, runState);
                                         }
                                     }
                                     asyncfs.rm(testOutputPath);
@@ -413,7 +412,7 @@ export class TestRunner {
      * Parse results from `swift test` and update tests accordingly for Darwin platforms
      * @param output Output from `swift test`
      */
-    private parseResultDarwin(output: string) {
+    private parseResultDarwin(output: string, runState: TestRunState) {
         const lines = output.split("\n").map(item => item.trim());
 
         for (const line of lines) {
@@ -421,11 +420,7 @@ export class TestRunner {
             const startedMatch = /^Test Case '-\[(\S+)\s(.*)\]' started./.exec(line);
             if (startedMatch) {
                 const testId = `${startedMatch[1]}/${startedMatch[2]}`;
-                const startedTestIndex = this.testItems.findIndex(item => item.id === testId);
-                if (startedTestIndex !== -1) {
-                    this.testRun.started(this.testItems[startedTestIndex]);
-                    this.currentTestItem = this.testItems[startedTestIndex];
-                }
+                this.startTest(this.getTestItemIndexDarwin(testId), runState);
                 continue;
             }
             // Regex "Test Case '-[<test target> <class.function>]' passed (<duration> seconds)"
@@ -435,41 +430,45 @@ export class TestRunner {
             if (passedMatch) {
                 const testId = `${passedMatch[1]}/${passedMatch[2]}`;
                 const duration: number = +passedMatch[3];
-                const passedTestIndex = this.testItems.findIndex(item => item.id === testId);
-                if (passedTestIndex !== -1) {
-                    this.testRun.passed(this.testItems[passedTestIndex], duration * 1000);
-                    this.testItems.splice(passedTestIndex, 1);
-                }
-                this.currentTestItem = undefined;
+                this.passTest(this.getTestItemIndexDarwin(testId), duration, runState);
                 continue;
             }
             // Regex "<path/to/test>:<line number>: error: -[<test target> <class.function>] : <error>"
             const failedMatch = /^(.+):(\d+):\serror:\s-\[(\S+)\s(.*)\] : (.*)$/.exec(line);
             if (failedMatch) {
                 const testId = `${failedMatch[3]}/${failedMatch[4]}`;
-                const failedTestIndex = this.testItems.findIndex(item => item.id === testId);
-                if (failedTestIndex !== -1) {
-                    const message = new vscode.TestMessage(failedMatch[5]);
-                    message.location = new vscode.Location(
-                        vscode.Uri.file(failedMatch[1]),
-                        new vscode.Position(parseInt(failedMatch[2]) - 1, 0)
-                    );
-                    this.testRun.failed(this.testItems[failedTestIndex], message);
-                    this.testItems.splice(failedTestIndex, 1);
-                }
-                this.currentTestItem = undefined;
+                this.failTest(
+                    this.getTestItemIndexDarwin(testId),
+                    failedMatch[5],
+                    failedMatch[1],
+                    failedMatch[2],
+                    runState
+                );
                 continue;
             }
             // Regex "<path/to/test>:<line number>: -[<test target> <class.function>] : Test skipped"
             const skippedMatch = /^(.+):(\d+):\s-\[(\S+)\s(.*)\] : Test skipped/.exec(line);
             if (skippedMatch) {
                 const testId = `${skippedMatch[3]}/${skippedMatch[4]}`;
-                const skippedTestIndex = this.testItems.findIndex(item => item.id === testId);
-                if (skippedTestIndex !== -1) {
-                    this.testRun.skipped(this.testItems[skippedTestIndex]);
-                    this.testItems.splice(skippedTestIndex, 1);
-                }
-                this.currentTestItem = undefined;
+                this.skipTest(this.getTestItemIndexDarwin(testId), runState);
+                continue;
+            }
+            // Regex "Test Suite '-[<test target> <class.function>]' started"
+            const startedSuiteMatch = /^Test Suite '(.*)' started/.exec(line);
+            if (startedSuiteMatch) {
+                this.startTestSuite(startedSuiteMatch[1], runState);
+                continue;
+            }
+            // Regex "Test Suite '-[<test target> <class.function>]' passed"
+            const passedSuiteMatch = /^Test Suite '(.*)' passed/.exec(line);
+            if (passedSuiteMatch) {
+                this.passTestSuite(passedSuiteMatch[1], runState);
+                continue;
+            }
+            // Regex "Test Suite '-[<test target> <class.function>]' failed"
+            const failedSuiteMatch = /^Test Suite '(.*)' failed/.exec(line);
+            if (failedSuiteMatch) {
+                this.failTestSuite(failedSuiteMatch[1], runState);
                 continue;
             }
         }
@@ -480,7 +479,7 @@ export class TestRunner {
      * platforms eg Linux and Windows
      * @param output Output from `swift test`
      */
-    private parseResultNonDarwin(output: string) {
+    private parseResultNonDarwin(output: string, runState: TestRunState) {
         const lines = output.split("\n").map(item => item.trim());
 
         // Non-Darwin test output does not include the test target name. The only way to find out
@@ -495,77 +494,150 @@ export class TestRunner {
             const startedMatch = /^Test Case '(.*)\.(.*)' started/.exec(line);
             if (startedMatch) {
                 const testName = `${startedMatch[1]}/${startedMatch[2]}`;
-                const startedTestIndex = this.testItems.findIndex(item =>
-                    item.id.endsWith(testName)
-                );
-                if (startedTestIndex !== -1) {
-                    this.testRun.started(this.testItems[startedTestIndex]);
-                    this.currentTestItem = this.testItems[startedTestIndex];
-                }
+                const startedTestIndex = this.getTestItemIndexNonDarwin(testName, undefined);
+                this.startTest(startedTestIndex, runState);
                 continue;
             }
             // Regex "<path/to/test>:<line number>: error: <class>.<function> : <error>"
             const failedMatch = /^(.+):(\d+):\serror:\s*(.*)\.(.*) : (.*)/.exec(line);
             if (failedMatch) {
                 const testName = `${failedMatch[3]}/${failedMatch[4]}`;
-                let failedTestIndex = this.testItems.findIndex(item =>
-                    this.isTestWithFilenameInTarget(testName, failedMatch[1], item)
+                const failedTestIndex = this.getTestItemIndexNonDarwin(testName, failedMatch[1]);
+                this.failTest(
+                    failedTestIndex,
+                    failedMatch[5],
+                    failedMatch[1],
+                    failedMatch[2],
+                    runState
                 );
-                // didn't find failed test so just search using class name and test function name
-                if (failedTestIndex === -1) {
-                    failedTestIndex = this.testItems.findIndex(item => item.id.endsWith(testName));
-                }
-                if (failedTestIndex !== -1) {
-                    const message = new vscode.TestMessage(failedMatch[5]);
-                    message.location = new vscode.Location(
-                        vscode.Uri.file(failedMatch[1]),
-                        new vscode.Position(parseInt(failedMatch[2]), 0)
-                    );
-                    this.testRun.failed(this.testItems[failedTestIndex], message);
-                    // remove from test item list as its status has been set
-                    this.testItems.splice(failedTestIndex, 1);
-                }
-                this.currentTestItem = undefined;
                 continue;
             }
             // Regex "<path/to/test>:<line number>: <class>.<function> : Test skipped:"
             const skippedMatch = /^(.+):(\d+):\s*(.*)\.(.*) : Test skipped:/.exec(line);
             if (skippedMatch) {
                 const testName = `${skippedMatch[3]}/${skippedMatch[4]}`;
-                let skippedTestIndex = this.testItems.findIndex(item =>
-                    this.isTestWithFilenameInTarget(testName, skippedMatch[1], item)
-                );
-                if (skippedTestIndex === -1) {
-                    skippedTestIndex = this.testItems.findIndex(item => item.id.endsWith(testName));
-                }
-                if (skippedTestIndex !== -1) {
-                    this.testRun.skipped(this.testItems[skippedTestIndex]);
-                    // remove from test item list as its status has been set
-                    this.testItems.splice(skippedTestIndex, 1);
-                }
-                this.currentTestItem = undefined;
+                const skippedTestIndex = this.getTestItemIndexNonDarwin(testName, skippedMatch[1]);
+                this.skipTest(skippedTestIndex, runState);
+                continue;
+            }
+            // Regex "Test Suite '-[<test target> <class.function>]' started"
+            const startedSuiteMatch = /^Test Suite '(.*)' started/.exec(line);
+            if (startedSuiteMatch) {
+                this.startTestSuite(startedSuiteMatch[1], runState);
+                continue;
+            }
+            // Regex "Test Suite '-[<test target> <class.function>]' passed"
+            const passedSuiteMatch = /^Test Suite '(.*)' passed/.exec(line);
+            if (passedSuiteMatch) {
+                this.passTestSuite(passedSuiteMatch[1], runState);
+                continue;
+            }
+            // Regex "Test Suite '-[<test target> <class.function>]' failed"
+            const failedSuiteMatch = /^Test Suite '(.*)' failed/.exec(line);
+            if (failedSuiteMatch) {
+                this.failTestSuite(failedSuiteMatch[1], runState);
                 continue;
             }
         }
 
+        // We need to run the passed checks in a separate pass to ensure we aren't in the situation
+        // where there is a symbol clash between different test targets and set the wrong test
+        // to be passed.
         for (const line of lines) {
             // Regex "Test Case '<class>.<function>' passed"
             const passedMatch = /^Test Case '(.*)\.(.*)' passed \((\d.*) seconds\)/.exec(line);
             if (passedMatch) {
                 const testName = `${passedMatch[1]}/${passedMatch[2]}`;
                 const duration: number = +passedMatch[3];
-                const passedTestIndex = this.testItems.findIndex(item =>
-                    item.id.endsWith(testName)
-                );
-                if (passedTestIndex !== -1) {
-                    this.testRun.passed(this.testItems[passedTestIndex], duration);
-                    // remove from test item list as its status has been set
-                    this.testItems.splice(passedTestIndex, 1);
-                }
-                this.currentTestItem = undefined;
+                const passedTestIndex = this.getTestItemIndexNonDarwin(testName, undefined);
+                this.passTest(passedTestIndex, duration, runState);
                 continue;
             }
         }
+    }
+
+    /** Get test item index from id for Darwin platforms */
+    private getTestItemIndexDarwin(id: string): number {
+        return this.testItems.findIndex(item => item.id === id);
+    }
+
+    /**
+     * Get test item index from id for non Darwin platforms. It is a little harder to
+     * be certain we have the correct test item on non Darwin platforms as the target
+     * name is not included in the id
+     */
+    private getTestItemIndexNonDarwin(name: string, filename?: string): number {
+        let testIndex = -1;
+        if (filename) {
+            testIndex = this.testItems.findIndex(item =>
+                this.isTestWithFilenameInTarget(name, filename, item)
+            );
+        }
+        if (testIndex === -1) {
+            testIndex = this.testItems.findIndex(item => item.id.endsWith(name));
+        }
+        return testIndex;
+    }
+
+    /** Flag a test suite has started */
+    private startTestSuite(name: string, runState: TestRunState) {
+        runState.suiteStack.push(name);
+    }
+
+    /** Flag a test suite has passed */
+    private passTestSuite(name: string, runState: TestRunState) {
+        runState.suiteStack.pop();
+    }
+
+    /** Flag a test suite has failed */
+    private failTestSuite(name: string, runState: TestRunState) {
+        runState.suiteStack.pop();
+    }
+
+    /** Flag we have started a test */
+    private startTest(testIndex: number, runState: TestRunState) {
+        if (testIndex !== -1) {
+            this.testRun.started(this.testItems[testIndex]);
+            runState.currentTestItem = this.testItems[testIndex];
+        }
+    }
+
+    /** Flag we have passed a test */
+    private passTest(testIndex: number, duration: number, runState: TestRunState) {
+        if (testIndex !== -1) {
+            this.testRun.passed(this.testItems[testIndex], duration * 1000);
+            this.testItems.splice(testIndex, 1);
+        }
+        runState.currentTestItem = undefined;
+    }
+
+    /** Flag we have failed a test */
+    private failTest(
+        testIndex: number,
+        message: string,
+        file: string,
+        lineNumber: string,
+        runState: TestRunState
+    ) {
+        if (testIndex !== -1) {
+            const testMessage = new vscode.TestMessage(message);
+            testMessage.location = new vscode.Location(
+                vscode.Uri.file(file),
+                new vscode.Position(parseInt(lineNumber) - 1, 0)
+            );
+            this.testRun.failed(this.testItems[testIndex], testMessage);
+            this.testItems.splice(testIndex, 1);
+        }
+        runState.currentTestItem = undefined;
+    }
+
+    /** Flag we have skipped a test */
+    private skipTest(testIndex: number, runState: TestRunState) {
+        if (testIndex !== -1) {
+            this.testRun.skipped(this.testItems[testIndex]);
+            this.testItems.splice(testIndex, 1);
+        }
+        runState.currentTestItem = undefined;
     }
 
     /**
@@ -609,4 +681,12 @@ export class TestRunner {
             this.testRun.enqueued(test);
         }
     }
+}
+
+/**
+ * Store state of current test run output parse
+ */
+class TestRunState {
+    public currentTestItem?: vscode.TestItem;
+    public suiteStack: string[] = [];
 }
