@@ -594,7 +594,7 @@ export class TestRunner {
         runState.suiteStack.pop();
     }
 
-    /** Flag we have start a test */
+    /** Flag we have started a test */
     private startTest(testIndex: number, runState: TestRunState) {
         if (testIndex !== -1) {
             this.testRun.started(this.testItems[testIndex]);
