@@ -142,7 +142,7 @@ export class TestExplorer {
             this.deleteErrorTestItem();
 
             // extract tests from `swift test --list-tests` output
-            const results = stdout.match(/^.*\.[a-zA-Z0-9_]*\/[a-zA-Z0-9_]*$/gm);
+            const results = stdout.match(/^.*\.[a-zA-Z0-9_]*\/.*$/gm);
             if (!results) {
                 return;
             }
@@ -172,7 +172,7 @@ export class TestExplorer {
 
             for (const result of results) {
                 // Regex "<testTarget>.<class>/<function>"
-                const groups = /^([\w\d_]*)\.([\w\d_]*)\/([\w\d_]*)/.exec(result);
+                const groups = /^([\w\d_]*)\.([\w\d_]*)\/(.*)$/.exec(result);
                 if (!groups) {
                     continue;
                 }
