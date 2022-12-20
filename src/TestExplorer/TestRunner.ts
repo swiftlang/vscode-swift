@@ -484,20 +484,23 @@ export class TestRunner {
             this.folderContext.folder.fsPath,
             true
         );
-        const xctestFile = `${buildDirectory}/debug/${packageName}PackageTests.xctest`;
         const lcovFileName = `${buildDirectory}/debug/codecov/lcov.info`;
 
         // Use WriteStream to log results
         const lcovStream = fs.createWriteStream(lcovFileName);
 
         try {
+            let xctestFile = `${buildDirectory}/debug/${packageName}PackageTests.xctest`;
+            if (process.platform === "darwin") {
+                xctestFile += `/Contents/MacOs/${packageName}PackageTests`;
+            }
             await execFileStreamOutput(
                 llvmCov,
                 [
                     "export",
                     "-format",
                     "lcov",
-                    `${xctestFile}/Contents/MacOs/${packageName}PackageTests`,
+                    xctestFile,
                     '-ignore-filename-regex="Tests|.build|Snippets|Plugins"',
                     `-instr-profile=${buildDirectory}/debug/codecov/default.profdata`,
                 ],
