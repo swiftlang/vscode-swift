@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import * as fs from "fs";
 import * as asyncfs from "fs/promises";
 import * as path from "path";
 import * as stream from "stream";
@@ -21,7 +22,6 @@ import { FolderContext } from "../FolderContext";
 import {
     buildDirectoryFromWorkspacePath,
     ExecError,
-    execFile,
     execFileStreamOutput,
     getErrorDescription,
     getSwiftExecutable,
@@ -65,7 +65,7 @@ export class TestRunner {
     static setupProfiles(controller: vscode.TestController, folderContext: FolderContext) {
         // Add non-debug profile
         controller.createRunProfile(
-            "Run",
+            "Run Tests",
             vscode.TestRunProfileKind.Run,
             async (request, token) => {
                 const runner = new TestRunner(request, folderContext, controller);
@@ -75,7 +75,7 @@ export class TestRunner {
         );
         // Add coverage profile
         controller.createRunProfile(
-            "Coverage",
+            "Test Coverage",
             vscode.TestRunProfileKind.Run,
             async (request, token) => {
                 const runner = new TestRunner(request, folderContext, controller);
@@ -84,7 +84,7 @@ export class TestRunner {
         );
         // Add debug profile
         controller.createRunProfile(
-            "Debug",
+            "Debug Tests",
             vscode.TestRunProfileKind.Debug,
             async (request, token) => {
                 const runner = new TestRunner(request, folderContext, controller);
@@ -348,31 +348,34 @@ export class TestRunner {
         if (generateCoverage) {
             args.push("--enable-code-coverage");
         }
-        await execFileStreamOutput(
-            getSwiftExecutable(),
-            [...args, ...filterArgs],
-            stdout,
-            stderr,
-            token,
-            {
-                cwd: testBuildConfig.cwd,
-                env: { ...process.env, ...testBuildConfig.env },
-                maxBuffer: 16 * 1024 * 1024,
-            },
-            this.folderContext,
-            false
-        );
-
-        parsedOutputStream.end();
-        outputStream.end();
-
-        if (generateCoverage) {
-            await this.folderContext.workspaceContext.statusItem.showStatusWhileRunning(
-                `Generating coverage data`,
-                async () => {
-                    await this.generateCodeCoverage();
-                }
+        try {
+            await execFileStreamOutput(
+                getSwiftExecutable(),
+                [...args, ...filterArgs],
+                stdout,
+                stderr,
+                token,
+                {
+                    cwd: testBuildConfig.cwd,
+                    env: { ...process.env, ...testBuildConfig.env },
+                    maxBuffer: 16 * 1024 * 1024,
+                },
+                this.folderContext,
+                false
             );
+        } catch (error) {
+            outputStream.end();
+            parsedOutputStream.end();
+            if (generateCoverage) {
+                await this.generateCodeCoverage();
+            }
+            throw error;
+        }
+
+        outputStream.end();
+        parsedOutputStream.end();
+        if (generateCoverage) {
+            await this.generateCodeCoverage();
         }
     }
 
@@ -481,22 +484,33 @@ export class TestRunner {
             true
         );
         const xctestFile = `${buildDirectory}/debug/${packageName}PackageTests.xctest`;
+        const lcovFileName = `${buildDirectory}/debug/codecov/lcov.info`;
 
-        const { stdout } = await execFile(
-            "xcrun",
-            [
-                "llvm-cov",
-                "export",
-                "-format",
-                "lcov",
-                `${xctestFile}/Contents/MacOs/${packageName}PackageTests`,
-                '-ignore-filename-regex="Tests|.build|Snippets|Plugins"',
-                `-instr-profile=${buildDirectory}/debug/codecov/default.profdata`,
-            ],
-            {},
-            this.folderContext
-        );
-        await asyncfs.writeFile(`${buildDirectory}/debug/codecov/lcov.info`, stdout);
+        // Use WriteStream to log results
+        const lcovStream = fs.createWriteStream(lcovFileName);
+
+        try {
+            await execFileStreamOutput(
+                "xcrun",
+                [
+                    "llvm-cov",
+                    "export",
+                    "-format",
+                    "lcov",
+                    `${xctestFile}/Contents/MacOs/${packageName}PackageTests`,
+                    '-ignore-filename-regex="Tests|.build|Snippets|Plugins"',
+                    `-instr-profile=${buildDirectory}/debug/codecov/default.profdata`,
+                ],
+                lcovStream,
+                lcovStream,
+                null,
+                {},
+                this.folderContext
+            );
+        } catch (error) {
+            this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
+        }
+        lcovStream.end();
     }
 
     /**
