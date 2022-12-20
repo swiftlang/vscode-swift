@@ -18,7 +18,14 @@ import * as path from "path";
 import * as stream from "stream";
 import { createTestConfiguration, createDarwinTestConfiguration } from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
-import { ExecError, execFileStreamOutput, getErrorDescription } from "../utilities/utilities";
+import {
+    buildDirectoryFromWorkspacePath,
+    ExecError,
+    execFile,
+    execFileStreamOutput,
+    getErrorDescription,
+    getSwiftExecutable,
+} from "../utilities/utilities";
 import { getBuildAllTask } from "../SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
@@ -62,7 +69,17 @@ export class TestRunner {
             vscode.TestRunProfileKind.Run,
             async (request, token) => {
                 const runner = new TestRunner(request, folderContext, controller);
-                await runner.runHandler(false, token);
+                await runner.runHandler(false, false, token);
+            },
+            true
+        );
+        // Add coverage profile
+        controller.createRunProfile(
+            "Coverage",
+            vscode.TestRunProfileKind.Run,
+            async (request, token) => {
+                const runner = new TestRunner(request, folderContext, controller);
+                await runner.runHandler(false, true, token);
             }
         );
         // Add debug profile
@@ -71,7 +88,7 @@ export class TestRunner {
             vscode.TestRunProfileKind.Debug,
             async (request, token) => {
                 const runner = new TestRunner(request, folderContext, controller);
-                await runner.runHandler(true, token);
+                await runner.runHandler(true, false, token);
             }
         );
     }
@@ -157,28 +174,35 @@ export class TestRunner {
      * @param token Cancellation token
      * @returns When complete
      */
-    async runHandler(shouldDebug: boolean, token: vscode.CancellationToken) {
+    async runHandler(
+        shouldDebug: boolean,
+        generateCoverage: boolean,
+        token: vscode.CancellationToken
+    ) {
         const runState = new TestRunState();
         try {
             // run associated build task
-            const task = await getBuildAllTask(this.folderContext);
-            const exitCode = await this.folderContext.taskQueue.queueOperation(
-                { task: task },
-                token
-            );
+            // don't do this if generating code test coverage data as it
+            // will rebuild everything again
+            if (!generateCoverage) {
+                const task = await getBuildAllTask(this.folderContext);
+                const exitCode = await this.folderContext.taskQueue.queueOperation(
+                    { task: task },
+                    token
+                );
 
-            // if build failed then exit
-            if (exitCode === undefined || exitCode !== 0) {
-                this.testRun.end();
-                return;
+                // if build failed then exit
+                if (exitCode === undefined || exitCode !== 0) {
+                    this.testRun.end();
+                    return;
+                }
             }
-
             this.setTestsEnqueued();
 
             if (shouldDebug) {
                 await this.debugSession(token, runState);
             } else {
-                await this.runSession(token, runState);
+                await this.runSession(token, generateCoverage, runState);
             }
         } catch (error) {
             // is error returned from child_process.exec call and command failed then
@@ -265,7 +289,11 @@ export class TestRunner {
     }
 
     /** Run test session without attaching to a debugger */
-    async runSession(token: vscode.CancellationToken, runState: TestRunState) {
+    async runSession(
+        token: vscode.CancellationToken,
+        generateCoverage: boolean,
+        runState: TestRunState
+    ) {
         // create launch config for testing
         const testBuildConfig = this.createLaunchConfigurationForTesting(false);
         if (testBuildConfig === null) {
@@ -315,9 +343,14 @@ export class TestRunner {
         this.testRun.appendOutput(`> Test run started at ${new Date().toLocaleString()} <\r\n\r\n`);
         // show test results pane
         vscode.commands.executeCommand("testing.showMostRecentOutput");
+        const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
+        const args = ["test"];
+        if (generateCoverage) {
+            args.push("--enable-code-coverage");
+        }
         await execFileStreamOutput(
-            testBuildConfig.program,
-            testBuildConfig.args ?? [],
+            getSwiftExecutable(),
+            [...args, ...filterArgs],
             stdout,
             stderr,
             token,
@@ -332,6 +365,15 @@ export class TestRunner {
 
         parsedOutputStream.end();
         outputStream.end();
+
+        if (generateCoverage) {
+            await this.folderContext.workspaceContext.statusItem.showStatusWhileRunning(
+                `Generating coverage data`,
+                async () => {
+                    await this.generateCodeCoverage();
+                }
+            );
+        }
     }
 
     /** Run test session inside debugger */
@@ -427,6 +469,34 @@ export class TestRunner {
                 }
             );
         });
+    }
+
+    /**
+     * Generate Code Coverage lcov file
+     */
+    async generateCodeCoverage() {
+        const packageName = this.folderContext.swiftPackage.name;
+        const buildDirectory = buildDirectoryFromWorkspacePath(
+            this.folderContext.folder.fsPath,
+            true
+        );
+        const xctestFile = `${buildDirectory}/debug/${packageName}PackageTests.xctest`;
+
+        const { stdout } = await execFile(
+            "xcrun",
+            [
+                "llvm-cov",
+                "export",
+                "-format",
+                "lcov",
+                `${xctestFile}/Contents/MacOs/${packageName}PackageTests`,
+                '-ignore-filename-regex="Tests|.build|Snippets|Plugins"',
+                `-instr-profile=${buildDirectory}/debug/codecov/default.profdata`,
+            ],
+            {},
+            this.folderContext
+        );
+        await asyncfs.writeFile(`${buildDirectory}/debug/codecov/lcov.info`, stdout);
     }
 
     /**
