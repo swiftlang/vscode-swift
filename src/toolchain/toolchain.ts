@@ -161,6 +161,13 @@ export class SwiftToolchain {
         return xcodes.trimEnd().split("\n");
     }
 
+    /**
+     * Return fullpath for toolchain executable
+     */
+    public getToolchainExecutable(exe: string): string {
+        return `${this.toolchainPath}/usr/bin/${exe}`;
+    }
+
     logDiagnostics(channel: SwiftOutputChannel) {
         channel.logDiagnostic(`Swift Path: ${this.swiftFolderPath}`);
         channel.logDiagnostic(`Toolchain Path: ${this.toolchainPath}`);

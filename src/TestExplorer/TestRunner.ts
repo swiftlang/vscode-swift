@@ -478,6 +478,7 @@ export class TestRunner {
      * Generate Code Coverage lcov file
      */
     async generateCodeCoverage() {
+        const llvmCov = this.workspaceContext.toolchain.getToolchainExecutable("llvm-cov");
         const packageName = this.folderContext.swiftPackage.name;
         const buildDirectory = buildDirectoryFromWorkspacePath(
             this.folderContext.folder.fsPath,
@@ -491,9 +492,8 @@ export class TestRunner {
 
         try {
             await execFileStreamOutput(
-                "xcrun",
+                llvmCov,
                 [
-                    "llvm-cov",
                     "export",
                     "-format",
                     "lcov",
@@ -504,7 +504,9 @@ export class TestRunner {
                 lcovStream,
                 lcovStream,
                 null,
-                {},
+                {
+                    env: { ...process.env, ...configuration.swiftEnvironmentVariables },
+                },
                 this.folderContext
             );
         } catch (error) {
