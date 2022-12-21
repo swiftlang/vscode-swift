@@ -106,8 +106,8 @@
         "category": "Swift"
       },
       {
-        "command": "swift.selectPluginTask",
-        "title": "Select Plugin Task",
+        "command": "swift.runPluginTask",
+        "title": "Run Command Plugin",
         "category": "Swift"
       }
     ],
@@ -323,7 +323,7 @@
           "when": "swift.fileIsSnippet"
         },
         {
-          "command": "swift.selectPluginTask",
+          "command": "swift.runPluginTask",
           "when": "swift.packageHasPlugins"
         }
       ],
