@@ -272,8 +272,8 @@ export class TestRunner {
             return;
         }
 
-        // Use WriteStream to log results
-        const writeStream = new stream.Writable({
+        // Parse output from stream and output to log
+        const parsedOutputStream = new stream.Writable({
             write: (chunk, encoding, next) => {
                 const text = chunk.toString();
                 this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
@@ -286,11 +286,29 @@ export class TestRunner {
             },
         });
 
-        const stdout: stream.Writable = writeStream;
-        const stderr: stream.Writable = writeStream;
+        // Output test from stream
+        const outputStream = new stream.Writable({
+            write: (chunk, encoding, next) => {
+                const text = chunk.toString();
+                this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
+                next();
+            },
+        });
+
+        // Darwin outputs XCTest output to stderr, Linux outputs XCTest output to stdout
+        let stdout: stream.Writable;
+        let stderr: stream.Writable;
+        if (process.platform === "darwin") {
+            stdout = outputStream;
+            stderr = parsedOutputStream;
+        } else {
+            stdout = parsedOutputStream;
+            stderr = outputStream;
+        }
 
         if (token.isCancellationRequested) {
-            writeStream.end();
+            parsedOutputStream.end();
+            outputStream.end();
             return;
         }
 
@@ -311,6 +329,9 @@ export class TestRunner {
             this.folderContext,
             false
         );
+
+        parsedOutputStream.end();
+        outputStream.end();
     }
 
     /** Run test session inside debugger */
@@ -433,15 +454,25 @@ export class TestRunner {
                 this.passTest(this.getTestItemIndexDarwin(testId), duration, runState);
                 continue;
             }
-            // Regex "<path/to/test>:<line number>: error: -[<test target> <class.function>] : <error>"
-            const failedMatch = /^(.+):(\d+):\serror:\s-\[(\S+)\s(.*)\] : (.*)$/.exec(line);
+            // Regex "Test Case '-[<test target> <class.function>]' failed (<duration> seconds)"
+            const failedMatch = /^Test Case '-\[(\S+)\s(.*)\]' failed \((\d.*) seconds\)/.exec(
+                line
+            );
             if (failedMatch) {
-                const testId = `${failedMatch[3]}/${failedMatch[4]}`;
-                this.failTest(
+                const testId = `${failedMatch[1]}/${failedMatch[2]}`;
+                const duration: number = +failedMatch[3];
+                this.failTest(this.getTestItemIndexDarwin(testId), duration, runState);
+                continue;
+            }
+            // Regex "<path/to/test>:<line number>: error: -[<test target> <class.function>] : <error>"
+            const errorMatch = /^(.+):(\d+):\serror:\s-\[(\S+)\s(.*)\] : (.*)$/.exec(line);
+            if (errorMatch) {
+                const testId = `${errorMatch[3]}/${errorMatch[4]}`;
+                this.startErrorMessage(
                     this.getTestItemIndexDarwin(testId),
-                    failedMatch[5],
-                    failedMatch[1],
-                    failedMatch[2],
+                    errorMatch[5],
+                    errorMatch[1],
+                    errorMatch[2],
                     runState
                 );
                 continue;
@@ -471,6 +502,8 @@ export class TestRunner {
                 this.failTestSuite(failedSuiteMatch[1], runState);
                 continue;
             }
+            // unrecognised output could be the continuation of a previous error message
+            this.continueErrorMessage(line, runState);
         }
     }
 
@@ -498,16 +531,24 @@ export class TestRunner {
                 this.startTest(startedTestIndex, runState);
                 continue;
             }
-            // Regex "<path/to/test>:<line number>: error: <class>.<function> : <error>"
-            const failedMatch = /^(.+):(\d+):\serror:\s*(.*)\.(.*) : (.*)/.exec(line);
+            // Regex "Test Case '-[<test target> <class.function>]' failed (<duration> seconds)"
+            const failedMatch = /^Test Case '(.*)\.(.*)' failed \((\d.*) seconds\)/.exec(line);
             if (failedMatch) {
-                const testName = `${failedMatch[3]}/${failedMatch[4]}`;
-                const failedTestIndex = this.getTestItemIndexNonDarwin(testName, failedMatch[1]);
-                this.failTest(
+                const testName = `${failedMatch[1]}/${failedMatch[2]}`;
+                const failedTestIndex = this.getTestItemIndexNonDarwin(testName, undefined);
+                this.failTest(failedTestIndex, +failedMatch[3], runState);
+                continue;
+            }
+            // Regex "<path/to/test>:<line number>: error: <class>.<function> : <error>"
+            const errorMatch = /^(.+):(\d+):\serror:\s*(.*)\.(.*) : (.*)/.exec(line);
+            if (errorMatch) {
+                const testName = `${errorMatch[3]}/${errorMatch[4]}`;
+                const failedTestIndex = this.getTestItemIndexNonDarwin(testName, errorMatch[1]);
+                this.startErrorMessage(
                     failedTestIndex,
-                    failedMatch[5],
-                    failedMatch[1],
-                    failedMatch[2],
+                    errorMatch[5],
+                    errorMatch[1],
+                    errorMatch[2],
                     runState
                 );
                 continue;
@@ -538,13 +579,15 @@ export class TestRunner {
                 this.failTestSuite(failedSuiteMatch[1], runState);
                 continue;
             }
+            // unrecognised output could be the continuation of a previous error message
+            this.continueErrorMessage(line, runState);
         }
 
         // We need to run the passed checks in a separate pass to ensure we aren't in the situation
         // where there is a symbol clash between different test targets and set the wrong test
         // to be passed.
         for (const line of lines) {
-            // Regex "Test Case '<class>.<function>' passed"
+            // Regex "Test Case '<class>.<function>' passed (<duration> seconds)"
             const passedMatch = /^Test Case '(.*)\.(.*)' passed \((\d.*) seconds\)/.exec(line);
             if (passedMatch) {
                 const testName = `${passedMatch[1]}/${passedMatch[2]}`;
@@ -599,6 +642,8 @@ export class TestRunner {
         if (testIndex !== -1) {
             this.testRun.started(this.testItems[testIndex]);
             runState.currentTestItem = this.testItems[testIndex];
+            // clear error state
+            runState.failedTest = undefined;
         }
     }
 
@@ -609,25 +654,56 @@ export class TestRunner {
             this.testItems.splice(testIndex, 1);
         }
         runState.currentTestItem = undefined;
+        runState.failedTest = undefined;
     }
 
-    /** Flag we have failed a test */
-    private failTest(
+    /** Start capture error message */
+    private startErrorMessage(
         testIndex: number,
         message: string,
         file: string,
         lineNumber: string,
         runState: TestRunState
     ) {
+        // if we have already found an error then skip this error
+        if (runState.failedTest) {
+            runState.currentTestItem === undefined;
+            runState.failedTest.complete = true;
+            return;
+        }
+        runState.failedTest = {
+            testIndex: testIndex,
+            message: message,
+            file: file,
+            lineNumber: parseInt(lineNumber) - 1,
+            complete: false,
+        };
+    }
+
+    /** continue capturing error message */
+    private continueErrorMessage(message: string, runState: TestRunState) {
+        // if we have a failed test message and it isn't complete
+        if (runState.failedTest && runState.failedTest.complete !== true) {
+            runState.failedTest.message += `\n${message}`;
+        }
+    }
+
+    /** Flag we have failed a test */
+    private failTest(testIndex: number, duration: number, runState: TestRunState) {
         if (testIndex !== -1) {
-            const testMessage = new vscode.TestMessage(message);
-            testMessage.location = new vscode.Location(
-                vscode.Uri.file(file),
-                new vscode.Position(parseInt(lineNumber) - 1, 0)
-            );
-            this.testRun.failed(this.testItems[testIndex], testMessage);
+            if (runState.failedTest) {
+                const testMessage = new vscode.TestMessage(runState.failedTest.message);
+                testMessage.location = new vscode.Location(
+                    vscode.Uri.file(runState.failedTest.file),
+                    new vscode.Position(runState.failedTest.lineNumber, 0)
+                );
+                this.testRun.failed(this.testItems[testIndex], testMessage);
+            } else {
+                this.testRun.failed(this.testItems[testIndex], new vscode.TestMessage("Failed"));
+            }
             this.testItems.splice(testIndex, 1);
         }
+        runState.failedTest = undefined;
         runState.currentTestItem = undefined;
     }
 
@@ -637,6 +713,7 @@ export class TestRunner {
             this.testRun.skipped(this.testItems[testIndex]);
             this.testItems.splice(testIndex, 1);
         }
+        runState.failedTest = undefined;
         runState.currentTestItem = undefined;
     }
 
@@ -689,4 +766,11 @@ export class TestRunner {
 class TestRunState {
     public currentTestItem?: vscode.TestItem;
     public suiteStack: string[] = [];
+    public failedTest?: {
+        testIndex: number;
+        message: string;
+        file: string;
+        lineNumber: number;
+        complete: boolean;
+    };
 }
