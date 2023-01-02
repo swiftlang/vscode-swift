@@ -189,8 +189,10 @@ export class TestExplorer {
                     );
                     targetItem.children.add(classItem);
                 }
-                const item = this.controller.createTestItem(result, groups[3]);
-                classItem.children.add(item);
+                if (!classItem.children.get(result)) {
+                    const item = this.controller.createTestItem(result, groups[3]);
+                    classItem.children.add(item);
+                }
             }
 
             // add items to target test item as the setActive call above may not have done this
