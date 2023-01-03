@@ -10,7 +10,7 @@
     "url": "https://github.com/swift-server/vscode-swift"
   },
   "engines": {
-    "vscode": "^1.65.0"
+    "vscode": "^1.71.0"
   },
   "categories": [
     "Programming Languages"
@@ -104,6 +104,11 @@
       {
         "command": "swift.debugSnippet",
         "title": "Debug Swift Snippet",
+        "category": "Swift"
+      },
+      {
+        "command": "swift.runPluginTask",
+        "title": "Run Command Plugin",
         "category": "Swift"
       }
     ],
@@ -317,6 +322,10 @@
         {
           "command": "swift.debugSnippet",
           "when": "swift.fileIsSnippet"
+        },
+        {
+          "command": "swift.runPluginTask",
+          "when": "swift.packageHasPlugins"
         }
       ],
       "editor/context": [
@@ -497,7 +506,7 @@
     "@types/glob": "^7.1.4",
     "@types/mocha": "^10.0.0",
     "@types/node": "14.x",
-    "@types/vscode": "^1.65.0",
+    "@types/vscode": "^1.71.0",
     "@typescript-eslint/eslint-plugin": "^5.1.0",
     "@typescript-eslint/parser": "^5.1.0",
     "@vscode/test-electron": "^1.6.2",

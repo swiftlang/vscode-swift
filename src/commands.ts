@@ -215,6 +215,12 @@ async function runSwiftScript(ctx: WorkspaceContext) {
     }
 }
 
+async function runPluginTask() {
+    vscode.commands.executeCommand("workbench.action.tasks.runTask", {
+        type: "swift-plugin",
+    });
+}
+
 /**
  * Use local version of package dependency
  *
@@ -537,6 +543,7 @@ export function register(ctx: WorkspaceContext) {
         vscode.commands.registerCommand("swift.openPackage", () => openPackage(ctx)),
         vscode.commands.registerCommand("swift.runSnippet", () => runSnippet(ctx)),
         vscode.commands.registerCommand("swift.debugSnippet", () => debugSnippet(ctx)),
+        vscode.commands.registerCommand("swift.runPluginTask", () => runPluginTask()),
         vscode.commands.registerCommand("swift.useLocalDependency", item => {
             if (item instanceof PackageNode) {
                 useLocalDependency(item.name, ctx);

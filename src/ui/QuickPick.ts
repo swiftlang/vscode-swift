@@ -21,7 +21,10 @@ import * as vscode from "vscode";
 export async function withQuickPick<T extends vscode.QuickPickItem>(
     placeholder: string,
     options: T[],
-    onSelect: (picked: T) => Promise<void>
+    onSelect: (picked: T) => Promise<void>,
+    onButtonPressed: (event: vscode.QuickPickItemButtonEvent<T>) => void = () => {
+        /* empty */
+    }
 ) {
     const picker = vscode.window.createQuickPick<T>();
 
@@ -32,6 +35,10 @@ export async function withQuickPick<T extends vscode.QuickPickItem>(
 
     const pickedItem = await new Promise<T | undefined>(resolve => {
         picker.onDidAccept(() => resolve(picker.selectedItems[0]));
+        picker.onDidTriggerItemButton(event => {
+            onButtonPressed(event);
+            resolve(undefined);
+        });
         picker.onDidHide(() => resolve(undefined));
     });
 
