@@ -327,8 +327,8 @@ export class TestRunner {
         let stdout: stream.Writable;
         let stderr: stream.Writable;
         if (process.platform === "darwin") {
-            stdout = outputStream;
-            stderr = parsedOutputStream;
+            stdout = parsedOutputStream;
+            stderr = outputStream;
         } else {
             stdout = parsedOutputStream;
             stderr = outputStream;
