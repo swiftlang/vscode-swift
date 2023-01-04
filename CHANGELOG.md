@@ -10,16 +10,16 @@
 
 ### Changed
 
-- Reorder plugin command loading to run after package resolve when loading package
+- Reorder command plugin loading to run after package resolve when loading package.
 - Relax rules for test names. Old style linux tests can include spaces, commas in their names.
-- Cleaned up XCTest output parsing to reduce duplicated code
-- Update node modules mocha and qs
+- Cleaned up XCTest output parsing to reduce duplicated code.
+- Update node modules mocha and qs.
 
 ### Fixed
 
 - Parsing of multiline error messages in XCTest. Although there are occasions where this will consider too many lines as error output.
-- Losing of test item location after building package
-- Finding swift.exe if swift.path is a symbolic link
+- Losing of test item location after building package.
+- Finding swift.exe if swift.path is a symbolic link.
 
 ## 0.9.0 - 2022-11-01
 
