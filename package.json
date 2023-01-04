@@ -2,7 +2,7 @@
   "name": "swift-lang",
   "displayName": "Swift",
   "description": "Swift Language Support for Visual Studio Code.",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "publisher": "sswg",
   "icon": "icon.png",
   "repository": {
@@ -406,9 +406,7 @@
         "name": "swiftc",
         "owner": "swift",
         "source": "swiftc",
-        "fileLocation": [
-          "absolute"
-        ],
+        "fileLocation": "absolute",
         "pattern": [
           {
             "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error|note):\\s+(.*)$",
