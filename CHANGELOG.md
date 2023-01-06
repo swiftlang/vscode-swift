@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.10.0 - 2023-01-04
+
+### Added
+
+- Support for CMake projects. Initiates extension based off existence of compile_commands.json file.
+- `Run command plugin` command. Brings up list of available command plugins with options to edit their parameters.
+- TestExplorer run profile to generate Code Coverage lcov files.
+
+### Changed
+
+- Reorder command plugin loading to run after package resolve when loading package.
+- Relax rules for test names. Old style linux tests can include spaces, commas in their names.
+- Cleaned up XCTest output parsing to reduce duplicated code.
+- Update node modules mocha and qs.
+
+### Fixed
+
+- Parsing of multiline error messages in XCTest. Although there are occasions where this will consider too many lines as error output.
+- Losing of test item location after building package.
+- Finding swift.exe if swift.path is a symbolic link.
+
 ## 0.9.0 - 2022-11-01
 
 ### Added
