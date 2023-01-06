@@ -519,6 +519,17 @@ async function selectXcodeDeveloperDir() {
     );
 }
 
+async function showTestCoverageReport(workspaceContext: WorkspaceContext) {
+    // show test coverage report
+    if (workspaceContext.currentFolder) {
+        const testCoverageUri = vscode.Uri.parse(
+            `swiftTestCoverage://report/${workspaceContext.currentFolder.name}.md`
+        );
+        workspaceContext.testCoverageDocumentProvider.onDidChangeEmitter.fire(testCoverageUri);
+        vscode.commands.executeCommand("markdown.showPreview", testCoverageUri);
+    }
+}
+
 function updateAfterError(result: boolean, folderContext: FolderContext) {
     const triggerResolvedUpdatedEvent = folderContext.hasResolveErrors;
     // set has resolve errors flag
@@ -550,6 +561,9 @@ export function register(ctx: WorkspaceContext) {
         vscode.commands.registerCommand("swift.debugSnippet", () => debugSnippet(ctx)),
         vscode.commands.registerCommand("swift.runPluginTask", () => runPluginTask()),
         vscode.commands.registerCommand("swift.restartLSPServer", () => restartLSPServer(ctx)),
+        vscode.commands.registerCommand("swift.showTestCoverageReport", () =>
+            showTestCoverageReport(ctx)
+        ),
         vscode.commands.registerCommand("swift.useLocalDependency", item => {
             if (item instanceof PackageNode) {
                 useLocalDependency(item.name, ctx);

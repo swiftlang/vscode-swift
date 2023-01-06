@@ -115,6 +115,11 @@
         "command": "swift.runPluginTask",
         "title": "Run Command Plugin",
         "category": "Swift"
+      },
+      {
+        "command": "swift.showTestCoverageReport",
+        "title": "Show Test Coverage Report",
+        "category": "Swift"
       }
     ],
     "configuration": [
