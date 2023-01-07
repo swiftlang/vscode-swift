@@ -381,6 +381,7 @@ export class TestRunner {
         parsedOutputStream.end();
         if (generateCoverage) {
             await this.generateCodeCoverage();
+            this.workspaceContext.testCoverageDocumentProvider.show(this.folderContext);
         }
     }
 

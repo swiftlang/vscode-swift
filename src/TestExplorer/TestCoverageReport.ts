@@ -66,6 +66,12 @@ export class TestCoverageReportProvider implements vscode.Disposable {
         this.onDidChangeEmitter.dispose();
     }
 
+    show(folder: FolderContext) {
+        const testCoverageUri = vscode.Uri.parse(`swiftTestCoverage://report/${folder.name}.md`);
+        this.onDidChangeEmitter.fire(testCoverageUri);
+        vscode.commands.executeCommand("markdown.showPreview", testCoverageUri);
+    }
+
     generateMarkdownReport(report: TestCoverageReportJson, folder: FolderContext): string {
         const header = `
 ## Test coverage report for ${folder.name}

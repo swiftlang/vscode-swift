@@ -519,14 +519,10 @@ async function selectXcodeDeveloperDir() {
     );
 }
 
-async function showTestCoverageReport(workspaceContext: WorkspaceContext) {
+export async function showTestCoverageReport(workspaceContext: WorkspaceContext) {
     // show test coverage report
     if (workspaceContext.currentFolder) {
-        const testCoverageUri = vscode.Uri.parse(
-            `swiftTestCoverage://report/${workspaceContext.currentFolder.name}.md`
-        );
-        workspaceContext.testCoverageDocumentProvider.onDidChangeEmitter.fire(testCoverageUri);
-        vscode.commands.executeCommand("markdown.showPreview", testCoverageUri);
+        workspaceContext.testCoverageDocumentProvider.show(workspaceContext.currentFolder);
     }
 }
 
