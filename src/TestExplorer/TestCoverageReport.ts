@@ -81,7 +81,7 @@ export class TestCoverageReportProvider implements vscode.Disposable {
                 const hit = entry.summary.lines.covered;
                 const missed = entry.summary.lines.count - entry.summary.lines.covered;
                 const percent = +entry.summary.lines.percent.toFixed(2);
-                return `|${filename}|${total}|${hit}|${missed}|${percent}|`;
+                return `|[${filename}](vscode://file${entry.filename})|${total}|${hit}|${missed}|${percent}|`;
             });
             const total = section.totals.lines.count;
             const hit = section.totals.lines.covered;
