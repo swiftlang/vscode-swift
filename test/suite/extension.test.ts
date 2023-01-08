@@ -20,7 +20,7 @@ import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { testAssetPath } from "../fixtures";
 import { getBuildAllTask } from "../../src/SwiftTaskProvider";
 
-/*suite("Extension Test Suite", () => {
+suite("Extension Test Suite", () => {
     let workspaceContext: WorkspaceContext;
 
     suiteSetup(async () => {
@@ -43,7 +43,7 @@ import { getBuildAllTask } from "../../src/SwiftTaskProvider";
         }).timeout(5000);
     });
 
-    suite("Workspace", () => {
+    /*suite("Workspace", () => {
         // test adding FolderContext based on active file
         test("Active Document", async () => {
             // This makes sure that we set the focus on the opened files which then
@@ -78,7 +78,7 @@ import { getBuildAllTask } from "../../src/SwiftTaskProvider";
             assert.strictEqual(buildAllTask.name, "Build All (package2)");
             assert.notStrictEqual(execution?.args, ["build", "--build-tests", "--verbose"]);
         });
-    });
+    });*/
 });
 
 async function sleep(ms: number): Promise<void> {
@@ -86,4 +86,3 @@ async function sleep(ms: number): Promise<void> {
         setTimeout(resolve, ms);
     });
 }
-*/
