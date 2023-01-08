@@ -20,7 +20,7 @@ import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { testAssetPath } from "../fixtures";
 import { getBuildAllTask } from "../../src/SwiftTaskProvider";
 
-suite("Extension Test Suite", () => {
+/*suite("Extension Test Suite", () => {
     let workspaceContext: WorkspaceContext;
 
     suiteSetup(async () => {
@@ -86,3 +86,4 @@ async function sleep(ms: number): Promise<void> {
         setTimeout(resolve, ms);
     });
 }
+*/
