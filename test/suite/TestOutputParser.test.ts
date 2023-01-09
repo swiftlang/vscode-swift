@@ -73,9 +73,6 @@ class TestRunState implements iTestRunState {
     skipped(index: number): void {
         this.tests[index].status = TestStatus.skipped;
     }
-    delete(index: number): void {
-        this.tests.splice(index, 1);
-    }
 }
 
 suite("TestOutputParser Suite", () => {

@@ -230,7 +230,6 @@ export class TestOutputParser {
     private passTest(testIndex: number, duration: number, runState: iTestRunState) {
         if (testIndex !== -1) {
             runState.passed(testIndex, duration);
-            runState.delete(testIndex);
         }
         runState.failedTest = undefined;
     }
@@ -276,7 +275,6 @@ export class TestOutputParser {
             } else {
                 runState.failed(testIndex, "Failed");
             }
-            runState.delete(testIndex);
         }
         runState.failedTest = undefined;
     }
@@ -285,15 +283,20 @@ export class TestOutputParser {
     private skipTest(testIndex: number, runState: iTestRunState) {
         if (testIndex !== -1) {
             runState.skipped(testIndex);
-            runState.delete(testIndex);
         }
         runState.failedTest = undefined;
     }
 }
 
+/**
+ * Interface for setting this test runs state
+ */
 export interface iTestRunState {
+    // excess data from previous parse that was not processed
     excess?: string;
+    // stack of test suites
     suiteStack: string[];
+    // failed test state
     failedTest?: {
         testIndex: number;
         message: string;
@@ -302,11 +305,16 @@ export interface iTestRunState {
         complete: boolean;
     };
 
+    // get test item index from test name on Darwin platforms
     getTestItemIndexDarwin(id: string): number;
+    // get test item index from test name on non Darwin platforms
     getTestItemIndexNonDarwin(id: string, filename: string | undefined): number;
+    // set test index to be started
     started(index: number): void;
+    // set test index to have passed
     passed(index: number, duration: number): void;
+    // set test index to have failed
     failed(index: number, message: string, location?: { file: string; line: number }): void;
+    // set test index to have been skipped
     skipped(index: number): void;
-    delete(index: number): void;
 }

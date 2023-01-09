@@ -580,16 +580,20 @@ class TestRunState implements iTestRunState {
         return testIndex;
     }
 
+    // set test item to be started
     started(index: number): void {
         this.testRun.started(this.testItems[index]);
         this.currentTestItem = this.testItems[index];
     }
 
+    // set test item to have passed
     passed(index: number, duration: number): void {
         this.testRun.passed(this.testItems[index], duration * 1000);
+        this.testItems.splice(index, 1);
         this.currentTestItem = undefined;
     }
 
+    // set test item to be failed
     failed(index: number, message: string, location?: { file: string; line: number }): void {
         if (location) {
             const testMessage = new vscode.TestMessage(message);
@@ -601,16 +605,15 @@ class TestRunState implements iTestRunState {
         } else {
             this.testRun.failed(this.testItems[index], new vscode.TestMessage(message));
         }
+        this.testItems.splice(index, 1);
         this.currentTestItem = undefined;
     }
 
+    // set test item to have been skipped
     skipped(index: number): void {
         this.testRun.skipped(this.testItems[index]);
-        this.currentTestItem = undefined;
-    }
-
-    delete(index: number): void {
         this.testItems.splice(index, 1);
+        this.currentTestItem = undefined;
     }
 
     /**
