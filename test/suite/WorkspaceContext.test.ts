@@ -113,5 +113,16 @@ suite("WorkspaceContext Test Suite", () => {
             const lspWorkspaceFolder = workspaceContext.languageClientManager.workspaceFolder;
             assert.notStrictEqual(lspWorkspaceFolder, testAssetUri("package1"));
         }).timeout(10000);
+
+        test("CMake", async () => {
+            const cmakeFolder = testAssetWorkspaceFolder("cmake");
+            await workspaceContext?.addWorkspaceFolder(cmakeFolder);
+            const folder = workspaceContext.folders.find(f => f.workspaceFolder === cmakeFolder);
+            assert(folder);
+            await workspaceContext.focusFolder(folder);
+            const lspWorkspaceFolder = workspaceContext.languageClientManager.workspaceFolder;
+            assert.notStrictEqual(lspWorkspaceFolder, testAssetUri("cmake"));
+            await workspaceContext?.removeFolder(cmakeFolder);
+        }).timeout(10000);
     });
 }).timeout(5000);
