@@ -604,7 +604,7 @@
   "dependencies": {
     "@types/plist": "^3.0.2",
     "plist": "^3.0.5",
-    "vscode-languageclient": "^8.0.0",
+    "vscode-languageclient": "^8.1.0",
     "@types/lcov-parse": "1.0.0",
     "lcov-parse": "1.0.0"
   }
