@@ -36,7 +36,6 @@ suite("WorkspaceContext Test Suite", () => {
 
     suite("Folder Events", () => {
         test("Add/Remove", async () => {
-            assert.strictEqual(workspaceContext.folders.length, 1);
             let count = 0;
             const observer = workspaceContext?.observeFolders((folder, operation) => {
                 assert(folder !== null);
@@ -108,9 +107,11 @@ suite("WorkspaceContext Test Suite", () => {
 
     suite("Language Server", async () => {
         test("Server Start", async () => {
-            await workspaceContext.focusFolder(workspaceContext.folders[0]);
+            const folder = workspaceContext.folders.find(f => f.workspaceFolder === packageFolder);
+            assert(folder);
+            await workspaceContext.focusFolder(folder);
             const lspWorkspaceFolder = workspaceContext.languageClientManager.workspaceFolder;
             assert.notStrictEqual(lspWorkspaceFolder, testAssetUri("package1"));
-        });
+        }).timeout(10000);
     });
 }).timeout(5000);

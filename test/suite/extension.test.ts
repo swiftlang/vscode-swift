@@ -17,8 +17,9 @@ import * as assert from "assert";
 import * as fs from "fs/promises";
 import * as swiftExtension from "../../src/extension";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
-import { testAssetPath } from "../fixtures";
+import { testAssetPath, testAssetUri } from "../fixtures";
 import { getBuildAllTask } from "../../src/SwiftTaskProvider";
+import { stringify } from "querystring";
 
 suite("Extension Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -43,46 +44,29 @@ suite("Extension Test Suite", () => {
         }).timeout(5000);
     });
 
-    /*suite("Workspace", () => {
-        // test adding FolderContext based on active file
-        test("Active Document", async () => {
-            // This makes sure that we set the focus on the opened files which then
-            // adds the related package
-            await vscode.commands.executeCommand(
-                "workbench.action.quickOpen",
-                testAssetPath("package2/Sources/package2/package2.swift")
-            );
-            await sleep(500);
-
-            await vscode.commands.executeCommand("workbench.action.acceptSelectedQuickOpenItem");
-
-            // wait for results (allow for 7 seconds), check result every 100ms
-            let i = 0;
-            while (i < 70) {
-                await sleep(100);
-                if (workspaceContext.currentFolder) {
-                    assert.strictEqual(workspaceContext.currentFolder.name, "test/package2");
-                    break;
-                }
-                i++;
+    suite("Workspace", () => {
+        /** Load extension-tests package */
+        suiteSetup(async () => {
+            const package2Folder = testAssetUri("extension-tests");
+            const workspaceFolder = vscode.workspace.workspaceFolders?.values().next().value;
+            try {
+                await workspaceContext.addPackageFolder(package2Folder, workspaceFolder);
+            } catch (error) {
+                assert(false, JSON.stringify(error));
             }
-            assert.notStrictEqual(i, 70);
-        }).timeout(10000);
+        });
 
+        /** Verify tasks.json is being loaded */
         test("Tasks.json", async () => {
-            const folder = workspaceContext.folders.find(f => f.name === "test/package2");
+            const folder = workspaceContext.folders.find(f => f.name === "test/extension-tests");
             assert(folder);
             const buildAllTask = await getBuildAllTask(folder);
             const execution = buildAllTask.execution as vscode.ShellExecution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
-            assert.strictEqual(buildAllTask.name, "Build All (package2)");
-            assert.notStrictEqual(execution?.args, ["build", "--build-tests", "--verbose"]);
+            assert.strictEqual(buildAllTask.name, "swift: Build All (extension-tests)");
+            for (const arg of ["build", "--build-tests", "--verbose"]) {
+                assert(execution?.args.find(item => item === arg));
+            }
         });
-    });*/
-});
-
-async function sleep(ms: number): Promise<void> {
-    return new Promise(resolve => {
-        setTimeout(resolve, ms);
     });
-}
+});
