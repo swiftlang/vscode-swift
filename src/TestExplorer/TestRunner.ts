@@ -547,6 +547,7 @@ class TestRunState implements iTestRunState {
     ) {}
 
     public currentTestItem?: vscode.TestItem;
+    public excess?: string;
     public suiteStack: string[] = [];
     public failedTest?: {
         testIndex: number;
@@ -585,7 +586,7 @@ class TestRunState implements iTestRunState {
     }
 
     passed(index: number, duration: number): void {
-        this.testRun.passed(this.testItems[index], duration);
+        this.testRun.passed(this.testItems[index], duration * 1000);
         this.currentTestItem = undefined;
     }
 
@@ -594,7 +595,7 @@ class TestRunState implements iTestRunState {
             const testMessage = new vscode.TestMessage(message);
             testMessage.location = new vscode.Location(
                 vscode.Uri.file(location.file),
-                new vscode.Position(location.line, 0)
+                new vscode.Position(location.line - 1, 0)
             );
             this.testRun.failed(this.testItems[index], testMessage);
         } else {

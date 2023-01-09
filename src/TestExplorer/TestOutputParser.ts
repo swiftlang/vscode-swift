@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021-2022 the VSCode Swift project authors
+// Copyright (c) 2021-2023 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -18,7 +18,15 @@ export class TestOutputParser {
      * @param output Output from `swift test`
      */
     public parseResultDarwin(output: string, runState: iTestRunState) {
-        const lines = output.split("\n").map(item => item.trim());
+        const lines = output.split("\n");
+        if (runState.excess) {
+            lines[0] = runState.excess + lines[0];
+        }
+        if (output[output.length - 1] !== "\n") {
+            runState.excess = lines.pop();
+        } else {
+            runState.excess = undefined;
+        }
 
         for (const line of lines) {
             // Regex "Test Case '-[<test target> <class.function>]' started"
@@ -97,7 +105,15 @@ export class TestOutputParser {
      * @param output Output from `swift test`
      */
     public parseResultNonDarwin(output: string, runState: iTestRunState) {
-        const lines = output.split("\n").map(item => item.trim());
+        const lines = output.split("\n");
+        if (runState.excess) {
+            lines[0] = runState.excess + lines[0];
+        }
+        if (output[output.length - 1] !== "\n") {
+            runState.excess = lines.pop();
+        } else {
+            runState.excess = undefined;
+        }
 
         // Non-Darwin test output does not include the test target name. The only way to find out
         // the target for a test is when it fails and returns a file name. If we find failed tests
@@ -213,7 +229,7 @@ export class TestOutputParser {
     /** Flag we have passed a test */
     private passTest(testIndex: number, duration: number, runState: iTestRunState) {
         if (testIndex !== -1) {
-            runState.passed(testIndex, duration * 1000);
+            runState.passed(testIndex, duration);
             runState.delete(testIndex);
         }
         runState.failedTest = undefined;
@@ -236,7 +252,7 @@ export class TestOutputParser {
             testIndex: testIndex,
             message: message,
             file: file,
-            lineNumber: parseInt(lineNumber) - 1,
+            lineNumber: parseInt(lineNumber),
             complete: false,
         };
     }
@@ -276,6 +292,7 @@ export class TestOutputParser {
 }
 
 export interface iTestRunState {
+    excess?: string;
     suiteStack: string[];
     failedTest?: {
         testIndex: number;
