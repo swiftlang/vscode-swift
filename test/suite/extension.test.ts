@@ -17,9 +17,8 @@ import * as assert from "assert";
 import * as fs from "fs/promises";
 import * as swiftExtension from "../../src/extension";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
-import { testAssetPath, testAssetUri } from "../fixtures";
+import { testAssetUri } from "../fixtures";
 import { getBuildAllTask } from "../../src/SwiftTaskProvider";
-import { stringify } from "querystring";
 
 suite("Extension Test Suite", () => {
     let workspaceContext: WorkspaceContext;
