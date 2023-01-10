@@ -153,8 +153,8 @@ export class TestOutputParser {
                 );
                 continue;
             }
-            // Regex "<path/to/test>:<line number>: <class>.<function> : Test skipped:"
-            const skippedMatch = /^(.+):(\d+):\s*(.*)\.(.*) : Test skipped:/.exec(line);
+            // Regex "<path/to/test>:<line number>: <class>.<function> : Test skipped"
+            const skippedMatch = /^(.+):(\d+):\s*(.*)\.(.*) : Test skipped/.exec(line);
             if (skippedMatch) {
                 const testName = `${skippedMatch[3]}/${skippedMatch[4]}`;
                 const skippedTestIndex = runState.getTestItemIndexNonDarwin(

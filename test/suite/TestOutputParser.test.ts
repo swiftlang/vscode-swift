@@ -56,7 +56,16 @@ class TestRunState implements iTestRunState {
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     getTestItemIndexNonDarwin(id: string, _filename: string | undefined): number {
-        return this.tests.findIndex(item => item.name === id);
+        let testIndex = -1;
+        /*if (filename) {
+            testIndex = this.testItems.findIndex(item =>
+                this.isTestWithFilenameInTarget(id, filename, item)
+            );
+        }*/
+        if (testIndex === -1) {
+            testIndex = this.tests.findIndex(item => item.name.endsWith(id));
+        }
+        return testIndex;
     }
     started(index: number): void {
         this.tests[index].status = TestStatus.started;
@@ -185,6 +194,56 @@ Test Case '-[MyTests.MyTests`,
             );
             assert.strictEqual(runState.status, TestStatus.passed);
             assert.strictEqual(runState.duration, 0.006);
+        });
+    });
+
+    suite("Linux", () => {
+        test("Passed Test", async () => {
+            const testRunState = new TestRunState(["MyTests.MyTests/testPass"]);
+            const runState = testRunState.tests[0];
+            outputParser.parseResultNonDarwin(
+                `Test Case 'MyTests.testPass' started.
+Test Case 'MyTests.testPass' passed (0.001 seconds).
+`,
+                testRunState
+            );
+            assert.strictEqual(runState.status, TestStatus.passed);
+            assert.strictEqual(runState.duration, 0.001);
+        });
+
+        test("Failed Test", async () => {
+            const testRunState = new TestRunState(["MyTests.MyTests/testFail"]);
+            const runState = testRunState.tests[0];
+            outputParser.parseResultNonDarwin(
+                `Test Case 'MyTests.testFail' started.
+/Users/user/Developer/MyTests/MyTests.swift:59: error: MyTests.testFail : XCTAssertEqual failed: ("1") is not equal to ("2")
+Test Case 'MyTests.testFail' failed (0.106 seconds).                
+`,
+                testRunState
+            );
+            assert.strictEqual(runState.status, TestStatus.failed);
+            assert.strictEqual(
+                runState.message,
+                `XCTAssertEqual failed: ("1") is not equal to ("2")`
+            );
+            assert.strictEqual(
+                runState.location?.file,
+                "/Users/user/Developer/MyTests/MyTests.swift"
+            );
+            assert.strictEqual(runState.location?.line, 59);
+        });
+
+        test("Skipped Test", async () => {
+            const testRunState = new TestRunState(["MyTests.MyTests/testSkip"]);
+            const runState = testRunState.tests[0];
+            outputParser.parseResultNonDarwin(
+                `Test Case 'MyTests.testSkip' started.
+/Users/user/Developer/MyTests/MyTests.swift:90: MyTests.testSkip : Test skipped
+Test Case 'MyTests.testSkip' skipped (0.002 seconds).              
+`,
+                testRunState
+            );
+            assert.strictEqual(runState.status, TestStatus.skipped);
         });
     });
 });
