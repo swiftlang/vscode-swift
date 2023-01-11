@@ -87,6 +87,11 @@
         "category": "Swift"
       },
       {
+        "command": "swift.restartLSPServer",
+        "title": "Restart LSP Server",
+        "category": "Swift"
+      },
+      {
         "command": "swift.switchPlatform",
         "title": "Select Target Platform",
         "category": "Swift"
