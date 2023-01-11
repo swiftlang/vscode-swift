@@ -287,7 +287,7 @@ export class WorkspaceContext implements vscode.Disposable {
         }
     }
 
-    async addPackageFolder(
+    public async addPackageFolder(
         folder: vscode.Uri,
         workspaceFolder: vscode.WorkspaceFolder
     ): Promise<FolderContext> {

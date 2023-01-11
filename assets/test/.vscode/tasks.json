@@ -3,18 +3,17 @@
 	"tasks": [
 		{
 			"type": "swift",
-			"command": "",
 			"args": [
 				"build",
 				"--build-tests",
                 "--verbose"
 			],
-			"cwd": "",
+			"cwd": "extension-tests",
 			"problemMatcher": [
 				"$swiftc"
 			],
 			"group": "build",
-			"label": "swift: Build All (package2)",
+			"label": "swift: Build All (extension-tests)",
 			"detail": "swift build --build-tests --verbose"
 		}
 	]
