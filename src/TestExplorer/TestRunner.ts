@@ -342,6 +342,8 @@ export class TestRunner {
         const args = ["test"];
         if (generateCoverage) {
             args.push("--enable-code-coverage");
+        } else {
+            args.push("--skip-build");
         }
         try {
             await execFileStreamOutput(
