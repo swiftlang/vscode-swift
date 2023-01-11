@@ -216,11 +216,6 @@ export class TestRunner {
                 this.testRun.end();
                 return;
             }
-            // report error
-            if (runState.currentTestItem) {
-                const message = new vscode.TestMessage(getErrorDescription(error));
-                this.testRun.errored(runState.currentTestItem, message);
-            }
             this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
         }
 
@@ -368,6 +363,11 @@ export class TestRunner {
             parsedOutputStream.end();
             if (generateCoverage) {
                 await this.generateCodeCoverage();
+            }
+            // report error
+            if (runState.currentTestItem) {
+                const message = new vscode.TestMessage(getErrorDescription(error));
+                this.testRun.errored(runState.currentTestItem, message);
             }
             throw error;
         }
