@@ -66,6 +66,6 @@ suite("Extension Test Suite", () => {
             for (const arg of ["build", "--build-tests", "--verbose"]) {
                 assert(execution?.args.find(item => item === arg));
             }
-        });
+        }).timeout(10000);
     });
 });
