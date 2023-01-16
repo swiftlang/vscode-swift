@@ -56,15 +56,9 @@ class TestRunState implements iTestRunState {
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     getTestItemIndexNonDarwin(id: string, _filename: string | undefined): number {
-        let testIndex = -1;
-        /*if (filename) {
-            testIndex = this.testItems.findIndex(item =>
-                this.isTestWithFilenameInTarget(id, filename, item)
-            );
-        }*/
-        if (testIndex === -1) {
-            testIndex = this.tests.findIndex(item => item.name.endsWith(id));
-        }
+        const testIndex = this.tests.findIndex(item => item.name.endsWith(id));
+        // to properly test Linux we should be checking filenames, but the test framework
+        // doesn't have a concept of targets with files in them
         return testIndex;
     }
     started(index: number): void {
