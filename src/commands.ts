@@ -394,6 +394,11 @@ async function openPackage(workspaceContext: WorkspaceContext) {
     }
 }
 
+/** Restart the SourceKit-LSP server */
+function restartLSPServer(workspaceContext: WorkspaceContext) {
+    workspaceContext.languageClientManager.restart();
+}
+
 /** Execute task and show UI while running */
 async function executeTaskWithUI(
     task: vscode.Task,
@@ -544,6 +549,7 @@ export function register(ctx: WorkspaceContext) {
         vscode.commands.registerCommand("swift.runSnippet", () => runSnippet(ctx)),
         vscode.commands.registerCommand("swift.debugSnippet", () => debugSnippet(ctx)),
         vscode.commands.registerCommand("swift.runPluginTask", () => runPluginTask()),
+        vscode.commands.registerCommand("swift.restartLSPServer", () => restartLSPServer(ctx)),
         vscode.commands.registerCommand("swift.useLocalDependency", item => {
             if (item instanceof PackageNode) {
                 useLocalDependency(item.name, ctx);
