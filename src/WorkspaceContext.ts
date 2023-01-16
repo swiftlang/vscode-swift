@@ -33,6 +33,7 @@ import { makeDebugConfigurations } from "./debugger/launch";
 import configuration from "./configuration";
 import contextKeys from "./contextKeys";
 import { setSnippetContextKey } from "./SwiftSnippets";
+import { TestCoverageReportProvider } from "./TestExplorer/TestCoverageReport";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -47,6 +48,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public languageClientManager: LanguageClientManager;
     public tasks: TaskManager;
     public subscriptions: { dispose(): unknown }[];
+    public testCoverageDocumentProvider: TestCoverageReportProvider;
     private lastFocusUri: vscode.Uri | undefined;
     private initialisationFinished = false;
 
@@ -58,6 +60,8 @@ export class WorkspaceContext implements vscode.Disposable {
         this.toolchain.logDiagnostics(this.outputChannel);
         this.tasks = new TaskManager();
         this.currentDocument = null;
+        // test coverage document provider
+        this.testCoverageDocumentProvider = new TestCoverageReportProvider(this);
 
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
             // on toolchain config change, reload window
