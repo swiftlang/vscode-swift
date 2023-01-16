@@ -82,7 +82,6 @@ export class TestCoverageReportProvider implements vscode.Disposable {
         const sections = report.data.map(section => {
             const lines = section.files.map(entry => {
                 const filename = path.basename(entry.filename);
-                //const relativeFilename = path.relative(folder.folder.fsPath, entry.filename);
                 const total = entry.summary.lines.count;
                 const hit = entry.summary.lines.covered;
                 const missed = entry.summary.lines.count - entry.summary.lines.covered;
