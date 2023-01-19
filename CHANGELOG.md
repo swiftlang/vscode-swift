@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.0 - 2023-01-19
+
+### Added
+
+- Command to restart SourceKit-LSP server.
+- Test Coverage Report, shown after test coverage has run. Also added command to show reports from previous text coverage runs.
+
+### Fixed
+
+- Setting of error in Test Explorer when test crashes.
+- Skip second attempt at building tests when running tests. 
+- Parsing of test output when line is split across two text buffers.
+- Parsing of skipped tests on Linux.
+
 ## 0.10.0 - 2023-01-04
 
 ### Added

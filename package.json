@@ -2,7 +2,7 @@
   "name": "swift-lang",
   "displayName": "Swift",
   "description": "Swift Language Support for Visual Studio Code.",
-  "version": "0.10.0",
+  "version": "1.0.0",
   "publisher": "sswg",
   "icon": "icon.png",
   "repository": {
@@ -19,7 +19,6 @@
     "swift",
     "sswg"
   ],
-  "preview": true,
   "activationEvents": [
     "onLanguage:swift",
     "workspaceContains:Package.swift",
@@ -508,7 +507,7 @@
     "pretest": "npm run compile && npm run lint",
     "test": "tsc -p ./ && node ./out/test/runTest.js",
     "package": "vsce package",
-    "dev-package": "vsce package -o swift-lang-development.vsix"
+    "dev-package": "vsce package --no-update-package-json 1.0.0-dev"
   },
   "devDependencies": {
     "@types/glob": "^7.1.4",
