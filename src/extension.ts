@@ -16,7 +16,6 @@ import * as vscode from "vscode";
 import * as commands from "./commands";
 import * as debug from "./debugger/launch";
 import { PackageDependenciesProvider } from "./ui/PackageDependencyProvider";
-import * as commentCompletion from "./editor/CommentCompletion";
 import { SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
@@ -63,8 +62,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             new SwiftPluginTaskProvider(workspaceContext)
         );
         commands.register(workspaceContext);
-
-        const commentCompletionProvider = commentCompletion.register();
 
         const languageStatusItem = new LanguageStatusItems(workspaceContext);
 
@@ -147,7 +144,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             dependenciesProvider,
             logObserver,
             languageStatusItem,
-            commentCompletionProvider,
             pluginTaskProvider,
             taskProvider
         );

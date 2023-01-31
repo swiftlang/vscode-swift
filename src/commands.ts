@@ -394,6 +394,15 @@ async function openPackage(workspaceContext: WorkspaceContext) {
     }
 }
 
+function insertFunctionComment(workspaceContext: WorkspaceContext) {
+    const activeEditor = vscode.window.activeTextEditor;
+    if (!activeEditor) {
+        return;
+    }
+    const line = activeEditor.selection.active.line;
+    workspaceContext.commentCompletionProvider.insert(activeEditor, line);
+}
+
 /** Restart the SourceKit-LSP server */
 function restartLSPServer(workspaceContext: WorkspaceContext) {
     workspaceContext.languageClientManager.restart();
@@ -557,6 +566,9 @@ export function register(ctx: WorkspaceContext) {
         vscode.commands.registerCommand("swift.debugSnippet", () => debugSnippet(ctx)),
         vscode.commands.registerCommand("swift.runPluginTask", () => runPluginTask()),
         vscode.commands.registerCommand("swift.restartLSPServer", () => restartLSPServer(ctx)),
+        vscode.commands.registerCommand("swift.insertFunctionComment", () =>
+            insertFunctionComment(ctx)
+        ),
         vscode.commands.registerCommand("swift.showTestCoverageReport", () =>
             showTestCoverageReport(ctx)
         ),
