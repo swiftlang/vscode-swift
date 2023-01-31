@@ -116,6 +116,11 @@
         "category": "Swift"
       },
       {
+        "command": "swift.insertFunctionComment",
+        "title": "Insert Function Comment",
+        "category": "Swift"
+      },
+      {
         "command": "swift.showTestCoverageReport",
         "title": "Show Test Coverage Report",
         "category": "Swift"
@@ -268,6 +273,14 @@
             "order": 100
           }
         }
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "swift.insertFunctionComment",
+        "key": "Alt+Ctrl+/",
+        "mac": "Alt+Cmd+/",
+        "when": "editorTextFocus"
       }
     ],
     "menus": {

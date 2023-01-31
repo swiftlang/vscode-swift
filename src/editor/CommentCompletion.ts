@@ -57,6 +57,7 @@ class CommentCompletionProvider implements vscode.CompletionItemProvider {
 }
 
 interface FunctionDetails {
+    indent: number;
     parameters: string[];
     returns: boolean;
     throws: boolean;
@@ -78,13 +79,13 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
         }
 
         // is it above function definition
-        const details = this.getFunctionDetails(document, position);
+        const funcPosition = new vscode.Position(position.line + 1, 0);
+        const details = this.getFunctionDetails(document, funcPosition);
         if (details) {
             if (details.parameters.length === 0 && details.returns === false) {
                 return undefined;
             }
-            const snippetString = this.constructSnippetString(details);
-            const snippet = new vscode.SnippetString(snippetString);
+            const snippet = this.constructSnippet(details, false);
             const completion = new CommentCompletion(
                 snippet,
                 "/// - parameters:",
@@ -94,6 +95,22 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
         }
 
         return undefined;
+    }
+
+    /**
+     * Insert function header comment text snippet
+     * @param editor text editor to edit
+     * @param line line number of function
+     */
+    async insert(editor: vscode.TextEditor, line: number) {
+        const position = new vscode.Position(line, 0);
+        const document = editor.document;
+        const details = this.getFunctionDetails(document, position);
+        if (details) {
+            const snippet = this.constructSnippet(details, true);
+            const insertPosition = new vscode.Position(line, details.indent);
+            editor.insertSnippet(snippet, insertPosition);
+        }
     }
 
     private isLineComment(document: vscode.TextDocument, line: number): boolean {
@@ -112,7 +129,7 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
         document: vscode.TextDocument,
         position: vscode.Position
     ): FunctionDetails | null {
-        const parser = new DocumentParser(document, new vscode.Position(position.line + 1, 0));
+        const parser = new DocumentParser(document, position);
         if (!parser.match(/(?:func|init)/)) {
             return null;
         }
@@ -164,14 +181,22 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
         const returns = parser.match(/^\s*->/) !== null;
         // read function
         return {
+            indent: document.lineAt(position.line).firstNonWhitespaceCharacterIndex,
             parameters: parameters,
             returns: returns,
             throws: throws,
         };
     }
 
-    private constructSnippetString(details: FunctionDetails): string {
-        let string = " $1";
+    private constructSnippet(
+        details: FunctionDetails,
+        completeSnippet: boolean
+    ): vscode.SnippetString {
+        let string = "";
+        if (completeSnippet) {
+            string += "/// ";
+        }
+        string += " $1";
         let snippetIndex = 2;
         if (details.parameters.length === 1) {
             string += `\n/// - Parameter ${details.parameters[0]}: $${snippetIndex}`;
@@ -190,25 +215,46 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
         if (details.returns) {
             string += `\n/// - Returns: $${snippetIndex}`;
         }
-        return string;
+        if (completeSnippet) {
+            string += "\n";
+        }
+        return new vscode.SnippetString(string);
     }
 }
 
-export function register(): vscode.Disposable {
-    const functionCommentCompletion = vscode.languages.registerCompletionItemProvider(
-        "swift",
-        new FunctionDocumentationCompletionProvider(),
-        "/"
-    );
-    const commentCompletion = vscode.languages.registerCompletionItemProvider(
-        "swift",
-        new CommentCompletionProvider(),
-        "\n"
-    );
-    return {
-        dispose: () => {
-            functionCommentCompletion.dispose();
-            commentCompletion.dispose();
-        },
-    };
+/**
+ * Interface to comment completion providers
+ */
+export class CommentCompletionProviders implements vscode.Disposable {
+    functionCommentCompletion: FunctionDocumentationCompletionProvider;
+    functionCommentCompletionProvider: vscode.Disposable;
+    commentCompletionProvider: vscode.Disposable;
+
+    constructor() {
+        this.functionCommentCompletion = new FunctionDocumentationCompletionProvider();
+        this.functionCommentCompletionProvider = vscode.languages.registerCompletionItemProvider(
+            "swift",
+            this.functionCommentCompletion,
+            "/"
+        );
+        this.commentCompletionProvider = vscode.languages.registerCompletionItemProvider(
+            "swift",
+            new CommentCompletionProvider(),
+            "\n"
+        );
+    }
+
+    /**
+     * Insert function header comment text snippet
+     * @param editor text editor to edit
+     * @param line line number of function
+     */
+    async insert(editor: vscode.TextEditor, line: number) {
+        await this.functionCommentCompletion.insert(editor, line);
+    }
+
+    dispose() {
+        this.functionCommentCompletionProvider.dispose();
+        this.commentCompletionProvider.dispose();
+    }
 }
