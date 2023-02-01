@@ -144,6 +144,11 @@ const configuration = {
             .getConfiguration("swift")
             .get<boolean>("coverage.displayReportAfterRun", true);
     },
+    get alwaysShowCoverageStatusItem(): boolean {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<boolean>("coverage.alwaysShowStatusItem", true);
+    },
     get coverageHitColorLightMode(): string {
         return vscode.workspace
             .getConfiguration("swift")

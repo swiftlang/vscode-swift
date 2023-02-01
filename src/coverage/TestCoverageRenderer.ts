@@ -35,7 +35,7 @@ export class TestCoverageRenderer implements vscode.Disposable {
         this.coverageMissDecorationType = vscode.window.createTextEditorDecorationType(miss);
 
         // status bar item displaying percentage of coverage for the current file
-        this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+        this.statusBarItem = this.createCoverageStatusItem();
 
         // set observer on all currently loaded folders lcov results
         workspaceContext.folders.forEach(folder => {
@@ -70,13 +70,11 @@ export class TestCoverageRenderer implements vscode.Disposable {
             if (event.affectsConfiguration("swift.coverage.colors")) {
                 this.resetTestCoverageEditorColors();
             }
+            if (event.affectsConfiguration("swift.coverage.alwaysShowStatusItem")) {
+                this.updateCoverageStatusItem();
+            }
         });
-        this.subscriptions = [
-            folderAddedObserver,
-            onDidChangeActiveWindow,
-            onChangeConfig,
-            this.statusBarItem,
-        ];
+        this.subscriptions = [folderAddedObserver, onDidChangeActiveWindow, onChangeConfig];
     }
 
     dispose() {
@@ -85,6 +83,28 @@ export class TestCoverageRenderer implements vscode.Disposable {
         this.coverageMissDecorationType.dispose();
     }
 
+    private createCoverageStatusItem(): vscode.StatusBarItem {
+        // status bar item displaying percentage of coverage for the current file
+        const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+        if (configuration.alwaysShowCoverageStatusItem) {
+            statusBarItem.text = "Coverage: Off";
+            statusBarItem.command = "swift.toggleTestCoverage";
+            statusBarItem.show();
+        }
+        return statusBarItem;
+    }
+
+    /** Update coverage status bar item after configuration has changed */
+    private updateCoverageStatusItem() {
+        if (configuration.alwaysShowCoverageStatusItem) {
+            this.statusBarItem.text = this.statusItemCoverageOffText();
+            this.statusBarItem.command = "swift.toggleTestCoverage";
+            this.statusBarItem.show();
+        } else {
+            this.statusBarItem.command = undefined;
+            this.statusBarItem.hide();
+        }
+    }
     /** Reset test coverage colors. Most likely because they have been edited in the settings */
     private resetTestCoverageEditorColors() {
         if (this.currentEditor) {
@@ -135,11 +155,15 @@ export class TestCoverageRenderer implements vscode.Disposable {
             this.displayResults = false;
             if (this.currentEditor) {
                 this.clear(this.currentEditor);
+            } else {
+                this.statusBarItem.text = this.statusItemCoverageOffText();
             }
         } else {
             this.displayResults = true;
             if (this.currentEditor) {
                 this.render(this.currentEditor);
+            } else {
+                this.statusBarItem.text = this.statusItemCoverageOffText();
             }
         }
     }
@@ -229,6 +253,18 @@ export class TestCoverageRenderer implements vscode.Disposable {
     private clear(editor: vscode.TextEditor) {
         editor.setDecorations(this.coverageHitDecorationType, []);
         editor.setDecorations(this.coverageMissDecorationType, []);
-        this.statusBarItem.hide();
+        if (configuration.alwaysShowCoverageStatusItem) {
+            this.statusBarItem.text = this.statusItemCoverageOffText();
+        } else {
+            this.statusBarItem.hide();
+        }
+    }
+
+    private statusItemCoverageOffText(): string {
+        if (this.displayResults) {
+            return "Coverage: Unavailable";
+        } else {
+            return "Coverage: Off";
+        }
     }
 }

@@ -254,25 +254,35 @@
             "description": "Should test coverage report be shown after running tests",
             "order": 1
           },
+          "swift.coverage.alwaysShowStatusItem": {
+            "type": "boolean",
+            "default": true,
+            "description": "Always show the test coverage status item. If this is set to true the status item can be clicked on to toggle test coverage display on and off.",
+            "order": 2
+          },
           "swift.coverage.colors.lightMode.hit": {
             "type": "string",
             "default": "#c0ffc0",
-            "description": "Light mode theme background color for line of code hit during test coverage."
+            "description": "Light mode theme background color for line of code hit during test coverage.",
+            "order": 3
           },
           "swift.coverage.colors.lightMode.miss": {
             "type": "string",
             "default": "#ffc0c0",
-            "description": "Light mode theme background color for line of code missed during test coverage."
+            "description": "Light mode theme background color for line of code missed during test coverage.",
+            "order": 4
           },
           "swift.coverage.colors.darkMode.hit": {
             "type": "string",
             "default": "#003000",
-            "description": "Dark mode theme background color for line of code hit during test coverage."
+            "description": "Dark mode theme background color for line of code hit during test coverage.",
+            "order": 5
           },
           "swift.coverage.colors.darkMode.miss": {
             "type": "string",
             "default": "#400000",
-            "description": "Dark mode theme background color for line of code missed during test coverage."
+            "description": "Dark mode theme background color for line of code missed during test coverage.",
+            "order": 6
           }
         }
       },

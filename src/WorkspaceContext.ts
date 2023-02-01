@@ -52,7 +52,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public subscriptions: { dispose(): unknown }[];
     public testCoverageDocumentProvider: TestCoverageReportProvider;
     public commentCompletionProvider: CommentCompletionProviders;
-    public testCoverageRenderer: TestCoverageRenderer | undefined;
+    public testCoverageRenderer: TestCoverageRenderer;
     private lastFocusUri: vscode.Uri | undefined;
     private initialisationFinished = false;
 
@@ -67,6 +67,7 @@ export class WorkspaceContext implements vscode.Disposable {
         // test coverage document provider
         this.testCoverageDocumentProvider = new TestCoverageReportProvider(this);
         this.commentCompletionProvider = new CommentCompletionProviders();
+        this.testCoverageRenderer = new TestCoverageRenderer(this);
 
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
             // on toolchain config change, reload window
@@ -154,6 +155,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.subscriptions = [
             this.commentCompletionProvider,
             this.testCoverageDocumentProvider,
+            this.testCoverageRenderer,
             backgroundCompilationOnDidSave,
             contextKeysUpdate,
             onChangeConfig,
