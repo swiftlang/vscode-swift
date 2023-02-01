@@ -35,6 +35,7 @@ import contextKeys from "./contextKeys";
 import { setSnippetContextKey } from "./SwiftSnippets";
 import { TestCoverageReportProvider } from "./coverage/TestCoverageReport";
 import { CommentCompletionProviders } from "./editor/CommentCompletion";
+import { TestCoverageRenderer } from "./coverage/TestCoverageRenderer";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -51,7 +52,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public subscriptions: { dispose(): unknown }[];
     public testCoverageDocumentProvider: TestCoverageReportProvider;
     public commentCompletionProvider: CommentCompletionProviders;
-
+    public testCoverageRenderer: TestCoverageRenderer;
     private lastFocusUri: vscode.Uri | undefined;
     private initialisationFinished = false;
 
@@ -66,6 +67,7 @@ export class WorkspaceContext implements vscode.Disposable {
         // test coverage document provider
         this.testCoverageDocumentProvider = new TestCoverageReportProvider(this);
         this.commentCompletionProvider = new CommentCompletionProviders();
+        this.testCoverageRenderer = new TestCoverageRenderer(this);
 
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
             // on toolchain config change, reload window
@@ -152,6 +154,8 @@ export class WorkspaceContext implements vscode.Disposable {
         });
         this.subscriptions = [
             this.commentCompletionProvider,
+            this.testCoverageRenderer,
+            this.testCoverageDocumentProvider,
             backgroundCompilationOnDidSave,
             contextKeysUpdate,
             onChangeConfig,

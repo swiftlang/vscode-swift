@@ -535,6 +535,10 @@ export async function showTestCoverageReport(workspaceContext: WorkspaceContext)
     }
 }
 
+function toggleTestCoverageDisplay(workspaceContext: WorkspaceContext) {
+    workspaceContext.testCoverageRenderer.toggleDisplayResults();
+}
+
 function updateAfterError(result: boolean, folderContext: FolderContext) {
     const triggerResolvedUpdatedEvent = folderContext.hasResolveErrors;
     // set has resolve errors flag
@@ -571,6 +575,9 @@ export function register(ctx: WorkspaceContext) {
         ),
         vscode.commands.registerCommand("swift.showTestCoverageReport", () =>
             showTestCoverageReport(ctx)
+        ),
+        vscode.commands.registerCommand("swift.toggleTestCoverage", () =>
+            toggleTestCoverageDisplay(ctx)
         ),
         vscode.commands.registerCommand("swift.useLocalDependency", item => {
             if (item instanceof PackageNode) {

@@ -28,7 +28,6 @@ import { getBuildAllTask } from "../SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { iTestRunState, TestOutputParser } from "./TestOutputParser";
-import { generateLcovFile } from "../coverage/lcov";
 
 /** Class used to run tests */
 export class TestRunner {
@@ -366,7 +365,7 @@ export class TestRunner {
             outputStream.end();
             parsedOutputStream.end();
             if (generateCoverage) {
-                await generateLcovFile(this.folderContext);
+                await this.folderContext.lcovResults.generate();
                 this.workspaceContext.testCoverageDocumentProvider.show(this.folderContext);
             }
             // report error
@@ -380,7 +379,7 @@ export class TestRunner {
         outputStream.end();
         parsedOutputStream.end();
         if (generateCoverage) {
-            await generateLcovFile(this.folderContext);
+            await this.folderContext.lcovResults.generate();
             this.workspaceContext.testCoverageDocumentProvider.show(this.folderContext);
         }
     }
