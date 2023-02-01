@@ -52,7 +52,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public subscriptions: { dispose(): unknown }[];
     public testCoverageDocumentProvider: TestCoverageReportProvider;
     public commentCompletionProvider: CommentCompletionProviders;
-    public testCoverageRenderer: TestCoverageRenderer;
+    public testCoverageRenderer: TestCoverageRenderer | undefined;
     private lastFocusUri: vscode.Uri | undefined;
     private initialisationFinished = false;
 
@@ -67,7 +67,6 @@ export class WorkspaceContext implements vscode.Disposable {
         // test coverage document provider
         this.testCoverageDocumentProvider = new TestCoverageReportProvider(this);
         this.commentCompletionProvider = new CommentCompletionProviders();
-        this.testCoverageRenderer = new TestCoverageRenderer(this);
 
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
             // on toolchain config change, reload window
@@ -154,7 +153,6 @@ export class WorkspaceContext implements vscode.Disposable {
         });
         this.subscriptions = [
             this.commentCompletionProvider,
-            this.testCoverageRenderer,
             this.testCoverageDocumentProvider,
             backgroundCompilationOnDidSave,
             contextKeysUpdate,
@@ -438,6 +436,14 @@ export class WorkspaceContext implements vscode.Disposable {
         } else {
             await this.focusFolder(null);
         }
+    }
+
+    public toggleTestCoverageDisplay() {
+        if (!this.testCoverageRenderer) {
+            this.testCoverageRenderer = new TestCoverageRenderer(this);
+            this.subscriptions.push(this.testCoverageRenderer);
+        }
+        this.testCoverageRenderer.toggleDisplayResults();
     }
 
     private initialisationComplete() {

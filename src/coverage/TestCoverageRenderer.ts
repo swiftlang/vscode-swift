@@ -53,6 +53,13 @@ export class TestCoverageRenderer implements vscode.Disposable {
         this.noCoverageDecorationType =
             vscode.window.createTextEditorDecorationType(noCoverageDecorationType);
 
+        // set observer on all currently loaded folders lcov results
+        workspaceContext.folders.forEach(folder => {
+            folder.lcovResults.observer = results => {
+                this.resultsChanged(results);
+            };
+        });
+        // whenever a new folder is added set observer on lcov results
         const folderAddedObserver = workspaceContext.observeFolders((folder, event) => {
             if (!folder) {
                 return;

@@ -536,7 +536,7 @@ export async function showTestCoverageReport(workspaceContext: WorkspaceContext)
 }
 
 function toggleTestCoverageDisplay(workspaceContext: WorkspaceContext) {
-    workspaceContext.testCoverageRenderer.toggleDisplayResults();
+    workspaceContext.toggleTestCoverageDisplay();
 }
 
 function updateAfterError(result: boolean, folderContext: FolderContext) {
