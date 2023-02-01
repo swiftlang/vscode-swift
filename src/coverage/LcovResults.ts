@@ -82,6 +82,10 @@ export class LcovResults implements vscode.Disposable {
         }
     }
 
+    get exist(): boolean {
+        return this.contents !== undefined;
+    }
+
     /**
      * Get the code coverage results for a specified file
      * @param filename File we want code coverage data for

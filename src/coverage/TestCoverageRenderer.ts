@@ -29,10 +29,12 @@ export class TestCoverageRenderer implements vscode.Disposable {
         this.displayResults = false;
         this.currentEditor = vscode.window.activeTextEditor;
 
+        // decoration types for hit and missed lines of code
         const { hit, miss } = this.getTestCoverageDecorationTypes();
         this.coverageHitDecorationType = vscode.window.createTextEditorDecorationType(hit);
         this.coverageMissDecorationType = vscode.window.createTextEditorDecorationType(miss);
 
+        // status bar item displaying percentage of coverage for the current file
         this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
 
         // set observer on all currently loaded folders lcov results
@@ -63,7 +65,7 @@ export class TestCoverageRenderer implements vscode.Disposable {
                 this.currentEditor = editor;
             }
         });
-        // configuration change
+        // on configuration change rebuild test coverage decorations with new colors
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
             if (event.affectsConfiguration("swift.coverage.colors")) {
                 this.resetTestCoverageEditorColors();
@@ -156,6 +158,12 @@ export class TestCoverageRenderer implements vscode.Disposable {
         if (!folder || !this.displayResults) {
             return;
         }
+
+        if (!folder.lcovResults.exist) {
+            vscode.window.showInformationMessage("Test coverage results are unavailable.");
+            this.displayResults = false;
+        }
+
         const results = folder.lcovResults.resultsForFile(editor?.document.fileName);
         if (!results) {
             return;
