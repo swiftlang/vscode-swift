@@ -33,7 +33,7 @@ import { makeDebugConfigurations } from "./debugger/launch";
 import configuration from "./configuration";
 import contextKeys from "./contextKeys";
 import { setSnippetContextKey } from "./SwiftSnippets";
-import { TestCoverageReportProvider } from "./TestExplorer/TestCoverageReport";
+import { TestCoverageReportProvider } from "./coverage/TestCoverageReport";
 import { CommentCompletionProviders } from "./editor/CommentCompletion";
 
 /**
