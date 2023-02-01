@@ -21,38 +21,16 @@ export class TestCoverageRenderer implements vscode.Disposable {
     private displayResults: boolean;
     private subscriptions: { dispose(): unknown }[];
     private currentEditor: vscode.TextEditor | undefined;
-    private coverageDecorationType: vscode.TextEditorDecorationType;
-    private noCoverageDecorationType: vscode.TextEditorDecorationType;
+    private coverageHitDecorationType: vscode.TextEditorDecorationType;
+    private coverageMissDecorationType: vscode.TextEditorDecorationType;
 
     constructor(private workspaceContext: WorkspaceContext) {
         this.displayResults = false;
         this.currentEditor = vscode.window.activeTextEditor;
-        const coverageDecorationType: vscode.DecorationRenderOptions = {
-            isWholeLine: true,
-            dark: {
-                backgroundColor: configuration.coverageHitColorDarkMode,
-                overviewRulerColor: configuration.coverageHitColorDarkMode,
-            },
-            light: {
-                backgroundColor: configuration.coverageHitColorLightMode,
-                overviewRulerColor: configuration.coverageHitColorLightMode,
-            },
-        };
-        const noCoverageDecorationType: vscode.DecorationRenderOptions = {
-            isWholeLine: true,
-            dark: {
-                backgroundColor: configuration.coverageMissColorDarkMode,
-                overviewRulerColor: configuration.coverageMissColorDarkMode,
-            },
-            light: {
-                backgroundColor: configuration.coverageMissColorLightMode,
-                overviewRulerColor: configuration.coverageMissColorLightMode,
-            },
-        };
-        this.coverageDecorationType =
-            vscode.window.createTextEditorDecorationType(coverageDecorationType);
-        this.noCoverageDecorationType =
-            vscode.window.createTextEditorDecorationType(noCoverageDecorationType);
+
+        const { hit, miss } = this.getTestCoverageDecorationTypes();
+        this.coverageHitDecorationType = vscode.window.createTextEditorDecorationType(hit);
+        this.coverageMissDecorationType = vscode.window.createTextEditorDecorationType(miss);
 
         // set observer on all currently loaded folders lcov results
         workspaceContext.folders.forEach(folder => {
@@ -82,16 +60,60 @@ export class TestCoverageRenderer implements vscode.Disposable {
                 this.currentEditor = editor;
             }
         });
-        this.subscriptions = [
-            folderAddedObserver,
-            onDidChangeActiveWindow,
-            this.coverageDecorationType,
-            this.noCoverageDecorationType,
-        ];
+        // configuration change
+        const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
+            if (event.affectsConfiguration("swift.coverage.colors")) {
+                this.resetTestCoverageEditorColors();
+            }
+        });
+        this.subscriptions = [folderAddedObserver, onDidChangeActiveWindow, onChangeConfig];
     }
 
     dispose() {
         this.subscriptions.forEach(item => item.dispose());
+        this.coverageHitDecorationType.dispose();
+        this.coverageMissDecorationType.dispose();
+    }
+
+    /** Reset test coverage colors. Most likely because they have been edited in the settings */
+    private resetTestCoverageEditorColors() {
+        if (this.currentEditor) {
+            this.clear(this.currentEditor);
+        }
+        this.coverageHitDecorationType.dispose();
+        this.coverageMissDecorationType.dispose();
+        const { hit, miss } = this.getTestCoverageDecorationTypes();
+        this.coverageHitDecorationType = vscode.window.createTextEditorDecorationType(hit);
+        this.coverageMissDecorationType = vscode.window.createTextEditorDecorationType(miss);
+    }
+
+    private getTestCoverageDecorationTypes(): {
+        hit: vscode.DecorationRenderOptions;
+        miss: vscode.DecorationRenderOptions;
+    } {
+        const hitDecorationType: vscode.DecorationRenderOptions = {
+            isWholeLine: true,
+            dark: {
+                backgroundColor: configuration.coverageHitColorDarkMode,
+                overviewRulerColor: configuration.coverageHitColorDarkMode,
+            },
+            light: {
+                backgroundColor: configuration.coverageHitColorLightMode,
+                overviewRulerColor: configuration.coverageHitColorLightMode,
+            },
+        };
+        const missDecorationType: vscode.DecorationRenderOptions = {
+            isWholeLine: true,
+            dark: {
+                backgroundColor: configuration.coverageMissColorDarkMode,
+                overviewRulerColor: configuration.coverageMissColorDarkMode,
+            },
+            light: {
+                backgroundColor: configuration.coverageMissColorLightMode,
+                overviewRulerColor: configuration.coverageMissColorLightMode,
+            },
+        };
+        return { hit: hitDecorationType, miss: missDecorationType };
     }
 
     /**
@@ -139,7 +161,7 @@ export class TestCoverageRenderer implements vscode.Disposable {
                 );
             });
             const combinedRanges = this.combineRanges(ranges);
-            editor.setDecorations(this.coverageDecorationType, combinedRanges);
+            editor.setDecorations(this.coverageHitDecorationType, combinedRanges);
         }
         if (misses.length > 0) {
             const ranges = misses.map(line => {
@@ -149,7 +171,7 @@ export class TestCoverageRenderer implements vscode.Disposable {
                 );
             });
             const combinedRanges = this.combineRanges(ranges);
-            editor.setDecorations(this.noCoverageDecorationType, combinedRanges);
+            editor.setDecorations(this.coverageMissDecorationType, combinedRanges);
         }
     }
 
@@ -181,7 +203,7 @@ export class TestCoverageRenderer implements vscode.Disposable {
     }
 
     private clear(editor: vscode.TextEditor) {
-        editor.setDecorations(this.coverageDecorationType, []);
-        editor.setDecorations(this.noCoverageDecorationType, []);
+        editor.setDecorations(this.coverageHitDecorationType, []);
+        editor.setDecorations(this.coverageMissDecorationType, []);
     }
 }

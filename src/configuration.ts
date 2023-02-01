@@ -142,27 +142,27 @@ const configuration = {
     get displayCoverageReportAfterRun(): boolean {
         return vscode.workspace
             .getConfiguration("swift")
-            .get<boolean>("displayCoverageReportAfterRun", true);
+            .get<boolean>("coverage.displayReportAfterRun", true);
     },
     get coverageHitColorLightMode(): string {
         return vscode.workspace
             .getConfiguration("swift")
-            .get<string>("coverageHitColorLightMode", "#c0ffc0");
+            .get<string>("coverage.colors.lightMode.hit", "#c0ffc0");
     },
     get coverageMissColorLightMode(): string {
         return vscode.workspace
             .getConfiguration("swift")
-            .get<string>("coverageMissColorLightMode", "#ffc0c0");
+            .get<string>("coverage.colors.lightMode.miss", "#ffc0c0");
     },
     get coverageHitColorDarkMode(): string {
         return vscode.workspace
             .getConfiguration("swift")
-            .get<string>("coverageHitColorDarkMode", "#004000");
+            .get<string>("coverage.colors.darkMode.hit", "#003000");
     },
     get coverageMissColorDarkMode(): string {
         return vscode.workspace
             .getConfiguration("swift")
-            .get<string>("coverageMissColorDarkMode", "#400000");
+            .get<string>("coverage.colors.darkMode.miss", "#400000");
     },
 };
 

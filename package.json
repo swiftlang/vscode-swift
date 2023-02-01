@@ -248,28 +248,28 @@
       {
         "title": "Test Coverage",
         "properties": {
-          "swift.displayCoverageReportAfterRun": {
+          "swift.coverage.displayReportAfterRun": {
             "type": "boolean",
             "default": true,
             "description": "Should test coverage report be shown after running tests",
             "order": 1
           },
-          "swift.coverageHitColorLightMode": {
+          "swift.coverage.colors.lightMode.hit": {
             "type": "string",
             "default": "#c0ffc0",
             "description": "Light mode theme background color for line of code hit during test coverage."
           },
-          "swift.coverageMissColorLightMode": {
+          "swift.coverage.colors.lightMode.miss": {
             "type": "string",
             "default": "#ffc0c0",
             "description": "Light mode theme background color for line of code missed during test coverage."
           },
-          "swift.coverageHitColorDarkMode": {
+          "swift.coverage.colors.darkMode.hit": {
             "type": "string",
-            "default": "#004000",
+            "default": "#003000",
             "description": "Dark mode theme background color for line of code hit during test coverage."
           },
-          "swift.coverageMissColorDarkMode": {
+          "swift.coverage.colors.darkMode.miss": {
             "type": "string",
             "default": "#400000",
             "description": "Dark mode theme background color for line of code missed during test coverage."
