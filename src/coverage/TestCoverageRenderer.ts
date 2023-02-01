@@ -93,6 +93,9 @@ export class TestCoverageRenderer implements vscode.Disposable {
         this.subscriptions.forEach(item => item.dispose());
     }
 
+    /**
+     * Toggle display of coverage results
+     */
     toggleDisplayResults() {
         if (this.displayResults === true) {
             this.displayResults = false;
@@ -134,7 +137,8 @@ export class TestCoverageRenderer implements vscode.Disposable {
                     new vscode.Position(line.line - 1, 0)
                 );
             });
-            editor.setDecorations(this.coverageDecorationType, ranges);
+            const combinedRanges = this.combineRanges(ranges);
+            editor.setDecorations(this.coverageDecorationType, combinedRanges);
         }
         if (misses.length > 0) {
             const ranges = misses.map(line => {
@@ -143,8 +147,36 @@ export class TestCoverageRenderer implements vscode.Disposable {
                     new vscode.Position(line.line - 1, 0)
                 );
             });
-            editor.setDecorations(this.noCoverageDecorationType, ranges);
+            const combinedRanges = this.combineRanges(ranges);
+            editor.setDecorations(this.noCoverageDecorationType, combinedRanges);
         }
+    }
+
+    /**
+     * Combine any ranges that are next to each other
+     * @param ranges List of ranges
+     * @returns Combined ranges
+     */
+    combineRanges(ranges: vscode.Range[]): vscode.Range[] {
+        let lastRange = ranges[0];
+        const combinedRanges: vscode.Range[] = [];
+        // if ranges length is less than 2 there aren't any ranges to combine
+        if (ranges.length < 2) {
+            return ranges;
+        }
+        for (let i = 1; i < ranges.length; i++) {
+            if (ranges[i].start.line === lastRange.end.line + 1) {
+                lastRange = new vscode.Range(
+                    new vscode.Position(lastRange.start.line, 0),
+                    new vscode.Position(ranges[i].end.line, 0)
+                );
+            } else {
+                combinedRanges.push(lastRange);
+                lastRange = ranges[i];
+            }
+        }
+        combinedRanges.push(lastRange);
+        return combinedRanges;
     }
 
     private clear(editor: vscode.TextEditor) {
