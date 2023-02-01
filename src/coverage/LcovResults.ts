@@ -90,6 +90,9 @@ export class LcovResults implements vscode.Disposable {
 
     private async lcovFileChanged() {
         await this.load();
+        if (this.observer) {
+            this.observer(this);
+        }
     }
 
     private async load() {

@@ -29,19 +29,23 @@ export class TestCoverageRenderer implements vscode.Disposable {
         const coverageDecorationType: vscode.DecorationRenderOptions = {
             isWholeLine: true,
             dark: {
-                backgroundColor: "green",
+                backgroundColor: "#004000",
+                overviewRulerColor: "#004000",
             },
             light: {
-                backgroundColor: "green",
+                backgroundColor: "#c0ffc0",
+                overviewRulerColor: "#c0ffc0",
             },
         };
         const noCoverageDecorationType: vscode.DecorationRenderOptions = {
             isWholeLine: true,
             dark: {
-                backgroundColor: "red",
+                backgroundColor: "#400000",
+                overviewRulerColor: "#400000",
             },
             light: {
-                backgroundColor: "red",
+                backgroundColor: "#ffc0c0",
+                overviewRulerColor: "#ffc0c0",
             },
         };
         this.coverageDecorationType =
@@ -55,7 +59,9 @@ export class TestCoverageRenderer implements vscode.Disposable {
             }
             switch (event) {
                 case FolderEvent.add:
-                    folder.lcovResults.observer = this.resultsChanged;
+                    folder.lcovResults.observer = results => {
+                        this.resultsChanged(results);
+                    };
             }
         });
         // add event listener for when the active edited text document changes
