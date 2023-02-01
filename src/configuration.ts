@@ -135,6 +135,35 @@ const configuration = {
     get diagnostics(): boolean {
         return vscode.workspace.getConfiguration("swift").get<boolean>("diagnostics", false);
     },
+    /**
+     *  Test coverage settings
+     */
+    /** Should test coverage report be displayed after running test coverage */
+    get displayCoverageReportAfterRun(): boolean {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<boolean>("displayCoverageReportAfterRun", true);
+    },
+    get coverageHitColorLightMode(): string {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<string>("coverageHitColorLightMode", "#c0ffc0");
+    },
+    get coverageMissColorLightMode(): string {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<string>("coverageMissColorLightMode", "#ffc0c0");
+    },
+    get coverageHitColorDarkMode(): string {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<string>("coverageHitColorDarkMode", "#004000");
+    },
+    get coverageMissColorDarkMode(): string {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<string>("coverageMissColorDarkMode", "#400000");
+    },
 };
 
 export default configuration;

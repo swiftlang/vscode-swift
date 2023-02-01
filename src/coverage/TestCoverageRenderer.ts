@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import configuration from "../configuration";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { LcovResults } from "./LcovResults";
 
@@ -29,23 +30,23 @@ export class TestCoverageRenderer implements vscode.Disposable {
         const coverageDecorationType: vscode.DecorationRenderOptions = {
             isWholeLine: true,
             dark: {
-                backgroundColor: "#004000",
-                overviewRulerColor: "#004000",
+                backgroundColor: configuration.coverageHitColorDarkMode,
+                overviewRulerColor: configuration.coverageHitColorDarkMode,
             },
             light: {
-                backgroundColor: "#c0ffc0",
-                overviewRulerColor: "#c0ffc0",
+                backgroundColor: configuration.coverageHitColorLightMode,
+                overviewRulerColor: configuration.coverageHitColorLightMode,
             },
         };
         const noCoverageDecorationType: vscode.DecorationRenderOptions = {
             isWholeLine: true,
             dark: {
-                backgroundColor: "#400000",
-                overviewRulerColor: "#400000",
+                backgroundColor: configuration.coverageMissColorDarkMode,
+                overviewRulerColor: configuration.coverageMissColorDarkMode,
             },
             light: {
-                backgroundColor: "#ffc0c0",
-                overviewRulerColor: "#ffc0c0",
+                backgroundColor: configuration.coverageMissColorLightMode,
+                overviewRulerColor: configuration.coverageMissColorLightMode,
             },
         };
         this.coverageDecorationType =

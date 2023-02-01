@@ -366,7 +366,9 @@ export class TestRunner {
             parsedOutputStream.end();
             if (generateCoverage) {
                 await this.folderContext.lcovResults.generate();
-                this.workspaceContext.testCoverageDocumentProvider.show(this.folderContext);
+                if (configuration.displayCoverageReportAfterRun) {
+                    this.workspaceContext.testCoverageDocumentProvider.show(this.folderContext);
+                }
             }
             // report error
             if (runState.currentTestItem) {
@@ -380,7 +382,9 @@ export class TestRunner {
         parsedOutputStream.end();
         if (generateCoverage) {
             await this.folderContext.lcovResults.generate();
-            this.workspaceContext.testCoverageDocumentProvider.show(this.folderContext);
+            if (configuration.displayCoverageReportAfterRun) {
+                this.workspaceContext.testCoverageDocumentProvider.show(this.folderContext);
+            }
         }
     }
 
