@@ -23,6 +23,7 @@ export class TestCoverageRenderer implements vscode.Disposable {
     private currentEditor: vscode.TextEditor | undefined;
     private coverageHitDecorationType: vscode.TextEditorDecorationType;
     private coverageMissDecorationType: vscode.TextEditorDecorationType;
+    private statusBarItem: vscode.StatusBarItem;
 
     constructor(private workspaceContext: WorkspaceContext) {
         this.displayResults = false;
@@ -31,6 +32,8 @@ export class TestCoverageRenderer implements vscode.Disposable {
         const { hit, miss } = this.getTestCoverageDecorationTypes();
         this.coverageHitDecorationType = vscode.window.createTextEditorDecorationType(hit);
         this.coverageMissDecorationType = vscode.window.createTextEditorDecorationType(miss);
+
+        this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
 
         // set observer on all currently loaded folders lcov results
         workspaceContext.folders.forEach(folder => {
@@ -66,7 +69,12 @@ export class TestCoverageRenderer implements vscode.Disposable {
                 this.resetTestCoverageEditorColors();
             }
         });
-        this.subscriptions = [folderAddedObserver, onDidChangeActiveWindow, onChangeConfig];
+        this.subscriptions = [
+            folderAddedObserver,
+            onDidChangeActiveWindow,
+            onChangeConfig,
+            this.statusBarItem,
+        ];
     }
 
     dispose() {
@@ -87,6 +95,7 @@ export class TestCoverageRenderer implements vscode.Disposable {
         this.coverageMissDecorationType = vscode.window.createTextEditorDecorationType(miss);
     }
 
+    /** Return decoration render options for hit and miss decorations */
     private getTestCoverageDecorationTypes(): {
         hit: vscode.DecorationRenderOptions;
         miss: vscode.DecorationRenderOptions;
@@ -173,6 +182,13 @@ export class TestCoverageRenderer implements vscode.Disposable {
             const combinedRanges = this.combineRanges(ranges);
             editor.setDecorations(this.coverageMissDecorationType, combinedRanges);
         }
+
+        const coveragePercentage = (100.0 * results.lines.hit) / results.lines.found;
+        this.statusBarItem.text = `Coverage: ${coveragePercentage.toLocaleString(undefined, {
+            maximumFractionDigits: 1,
+            minimumFractionDigits: 1,
+        })}%`;
+        this.statusBarItem.show();
     }
 
     /**
@@ -205,5 +221,6 @@ export class TestCoverageRenderer implements vscode.Disposable {
     private clear(editor: vscode.TextEditor) {
         editor.setDecorations(this.coverageHitDecorationType, []);
         editor.setDecorations(this.coverageMissDecorationType, []);
+        this.statusBarItem.hide();
     }
 }

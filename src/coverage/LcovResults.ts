@@ -20,6 +20,9 @@ import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
 import { buildDirectoryFromWorkspacePath, execFileStreamOutput } from "../utilities/utilities";
 
+/**
+ * Class keeping a record of the latest test coverage results for a package
+ */
 export class LcovResults implements vscode.Disposable {
     private contents: lcov.LcovFile[] | undefined;
     public observer: ((results: LcovResults) => unknown) | undefined;
@@ -86,6 +89,19 @@ export class LcovResults implements vscode.Disposable {
      */
     resultsForFile(filename: string): lcov.LcovFile | undefined {
         return this.contents?.find(item => item.file === filename);
+    }
+
+    get totals(): { hit: number; found: number } | undefined {
+        if (!this.contents) {
+            return undefined;
+        }
+        let hit = 0;
+        let found = 0;
+        this.contents.forEach(file => {
+            hit += file.lines.hit;
+            found += file.lines.found;
+        });
+        return { hit: hit, found: found };
     }
 
     private async lcovFileChanged() {
