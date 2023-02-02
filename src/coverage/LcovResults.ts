@@ -24,7 +24,7 @@ import { buildDirectoryFromWorkspacePath, execFileStreamOutput } from "../utilit
  * Class keeping a record of the latest test coverage results for a package
  */
 export class LcovResults implements vscode.Disposable {
-    private contents: lcov.LcovFile[] | undefined;
+    public contents: lcov.LcovFile[] | undefined;
     public observer: ((results: LcovResults) => unknown) | undefined;
 
     constructor(public folderContext: FolderContext) {

@@ -216,10 +216,7 @@ export class TestCoverageRenderer implements vscode.Disposable {
         }
 
         const coveragePercentage = (100.0 * results.lines.hit) / results.lines.found;
-        this.statusBarItem.text = `Coverage: ${coveragePercentage.toLocaleString(undefined, {
-            maximumFractionDigits: 1,
-            minimumFractionDigits: 1,
-        })}%`;
+        this.statusBarItem.text = `Coverage: ${coveragePercentage.toFixed(1)}%`;
         this.statusBarItem.show();
     }
 

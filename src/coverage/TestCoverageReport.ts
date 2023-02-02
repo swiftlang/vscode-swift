@@ -14,29 +14,8 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
-import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
-import { buildDirectoryFromWorkspacePath, execFile } from "../utilities/utilities";
 import { WorkspaceContext } from "../WorkspaceContext";
-
-interface TestCoverageReportJson {
-    data: TestCoverageReportData[];
-}
-
-interface TestCoverageReportData {
-    files: { filename: string; summary: TestCoverageReportSummary }[];
-    totals: TestCoverageReportSummary;
-}
-
-interface TestCoverageReportSummary {
-    lines: TestCoverageReportCoverage;
-}
-
-interface TestCoverageReportCoverage {
-    count: number;
-    covered: number;
-    percent: number;
-}
 
 export class TestCoverageReportProvider implements vscode.Disposable {
     provider: vscode.Disposable;
@@ -44,18 +23,14 @@ export class TestCoverageReportProvider implements vscode.Disposable {
     constructor(private ctx: WorkspaceContext) {
         this.onDidChangeEmitter = new vscode.EventEmitter<vscode.Uri>();
         this.provider = vscode.workspace.registerTextDocumentContentProvider("swiftTestCoverage", {
-            provideTextDocumentContent: async uri => {
-                const folderName = path.basename(uri.path, ".md");
+            provideTextDocumentContent: uri => {
+                const folderName = path.basename(uri.path, " coverage");
                 const folder = ctx.folders.find(folder => folder.name === folderName);
                 if (!folder) {
                     return `Test coverage report for ${folderName} is unavailable`;
                 }
-                try {
-                    const report = await this.generateCodeCoverageReport(folder);
-                    return this.generateMarkdownReport(report, folder); //`<html><body>${report}</body></html>`;
-                } catch {
-                    return `Failed to generate test coverage report for ${folderName}`;
-                }
+                const report = this.generateMarkdownReport(folder);
+                return report ?? `Failed to generate test coverage report for ${folderName}`;
             },
             onDidChange: this.onDidChangeEmitter.event,
         });
@@ -67,64 +42,41 @@ export class TestCoverageReportProvider implements vscode.Disposable {
     }
 
     show(folder: FolderContext) {
-        const testCoverageUri = vscode.Uri.parse(`swiftTestCoverage://report/${folder.name}.md`);
+        const testCoverageUri = vscode.Uri.parse(
+            `swiftTestCoverage://report/${folder.name} coverage`
+        );
         this.onDidChangeEmitter.fire(testCoverageUri);
         vscode.commands.executeCommand("markdown.showPreview", testCoverageUri);
+        vscode.commands.executeCommand("markdown.refreshPreview", testCoverageUri);
     }
 
-    generateMarkdownReport(report: TestCoverageReportJson, folder: FolderContext): string {
+    generateMarkdownReport(folder: FolderContext): string | undefined {
+        const lcov = folder.lcovResults;
+        if (!lcov.contents) {
+            return undefined;
+        }
         const header = `
 ## Test coverage report for ${folder.name}
 
 |File|Total lines| Hit|Missed|Coverage %|
 |----|----------:|---:|-----:|---------:|
 `;
-        const sections = report.data.map(section => {
-            const lines = section.files.map(entry => {
-                const filename = path.basename(entry.filename);
-                const total = entry.summary.lines.count;
-                const hit = entry.summary.lines.covered;
-                const missed = entry.summary.lines.count - entry.summary.lines.covered;
-                const percent = +entry.summary.lines.percent.toFixed(2);
-                return `|[${filename}](vscode://file${entry.filename})|${total}|${hit}|${missed}|${percent}|`;
-            });
-            const total = section.totals.lines.count;
-            const hit = section.totals.lines.covered;
-            const missed = section.totals.lines.count - section.totals.lines.covered;
-            const percent = +section.totals.lines.percent.toFixed(2);
-            const totals = `|**Totals**|${total}|${hit}|${missed}|${percent}|\n`;
-            return `${lines.join("\n")}\n| | | | |\n${totals}`;
+        const files = lcov.contents.map(file => {
+            const filename = path.basename(file.file);
+            const total = file.lines.found;
+            const hit = file.lines.hit;
+            const missed = total - hit;
+            const percent = ((100.0 * hit) / total).toFixed(2);
+            return `|[${filename}](vscode://file${file.file})|${total}|${hit}|${missed}|${percent}|`;
         });
-        return header + sections.join("\n");
-    }
+        const lcovTotals = lcov.totals;
 
-    async generateCodeCoverageReport(
-        folderContext: FolderContext
-    ): Promise<TestCoverageReportJson> {
-        const workspaceContext = folderContext.workspaceContext;
-        const llvmCov = workspaceContext.toolchain.getToolchainExecutable("llvm-cov");
-        const packageName = folderContext.swiftPackage.name;
-        const buildDirectory = buildDirectoryFromWorkspacePath(folderContext.folder.fsPath, true);
+        const total = lcovTotals!.found;
+        const hit = lcovTotals!.hit;
+        const missed = total - hit;
+        const percent = ((100.0 * hit) / total).toFixed(2);
+        const totals = `\n| | | | |\n|**Totals**|${total}|${hit}|${missed}|${percent}|\n`;
 
-        let xctestFile = `${buildDirectory}/debug/${packageName}PackageTests.xctest`;
-        if (process.platform === "darwin") {
-            xctestFile += `/Contents/MacOs/${packageName}PackageTests`;
-        }
-        const { stdout } = await execFile(
-            llvmCov,
-            [
-                "export",
-                "-format=text",
-                "-summary-only",
-                xctestFile,
-                "-ignore-filename-regex=Tests|.build|Snippets|Plugins",
-                `-instr-profile=${buildDirectory}/debug/codecov/default.profdata`,
-            ],
-            {
-                env: { ...process.env, ...configuration.swiftEnvironmentVariables },
-            },
-            folderContext
-        );
-        return JSON.parse(stdout);
+        return header + files.join("\n") + totals;
     }
 }
