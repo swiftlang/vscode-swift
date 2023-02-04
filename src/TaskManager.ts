@@ -18,12 +18,17 @@ import * as vscode from "vscode";
 export class TaskManager implements vscode.Disposable {
     constructor() {
         this.onDidEndTaskProcessDisposible = vscode.tasks.onDidEndTaskProcess(event => {
-            this.observers.forEach(observer => observer(event));
+            this.taskEndObservers.forEach(observer => observer(event));
         });
         this.onDidEndTaskDisposible = vscode.tasks.onDidEndTaskProcess(event => {
-            this.observers.forEach(observer =>
+            this.taskEndObservers.forEach(observer =>
                 observer({ execution: event.execution, exitCode: undefined })
             );
+        });
+        this.onDidStartTaskDisposible = vscode.tasks.onDidStartTask(event => {
+            if (this.taskStartObserver) {
+                this.taskStartObserver(event);
+            }
         });
     }
 
@@ -37,8 +42,8 @@ export class TaskManager implements vscode.Disposable {
      * @param observer function called when task completes
      * @returns disposable handle. Once you have finished with the observer call dispose on this
      */
-    onDidEndTaskProcess(observer: TaskObserver): vscode.Disposable {
-        this.observers.add(observer);
+    onDidEndTaskProcess(observer: TaskEndObserver): vscode.Disposable {
+        this.taskEndObservers.add(observer);
         return {
             dispose: () => {
                 this.removeObserver(observer);
@@ -61,36 +66,76 @@ export class TaskManager implements vscode.Disposable {
         task.definition.id = this.taskId;
         this.taskId += 1;
         return new Promise<number | undefined>(resolve => {
-            const disposable = this.onDidEndTaskProcess(event => {
-                if (event.execution.task.definition.id === task.definition.id) {
-                    disposable.dispose();
-                    resolve(event.exitCode);
-                }
-            });
-            vscode.tasks.executeTask(task).then(execution => {
+            // There is a bug in the vscode task execution code where if you start two
+            // tasks with the name but different scopes at the same time the second one
+            // will not start. If you wait until the first one has started the second
+            // one will run. The startingTaskPromise is setup when a executeTask is
+            // called and resolved at the point it actually starts
+            if (this.startingTaskPromise) {
+                this.startingTaskPromise.then(() => {
+                    this.executeTaskAndResolve(task, resolve, token);
+                });
+            } else {
+                this.executeTaskAndResolve(task, resolve, token);
+            }
+        });
+    }
+
+    private executeTaskAndResolve(
+        task: vscode.Task,
+        resolve: (result: number | undefined) => void,
+        token?: vscode.CancellationToken
+    ) {
+        const disposable = this.onDidEndTaskProcess(event => {
+            if (event.execution.task.definition.id === task.definition.id) {
+                disposable.dispose();
+                resolve(event.exitCode);
+            }
+        });
+        // setup startingTaskPromise to be resolved one task has started
+        if (this.startingTaskPromise !== undefined) {
+            console.warn("TaskManager: Starting promise shoujld be zero if we reach here.");
+        }
+        this.startingTaskPromise = new Promise<void>(resolve => {
+            this.taskStartObserver = () => {
+                this.taskStartObserver = undefined;
+                this.startingTaskPromise = undefined;
+                resolve();
+            };
+        });
+        vscode.tasks.executeTask(task).then(
+            execution => {
                 token?.onCancellationRequested(() => {
                     execution.terminate();
                     disposable.dispose();
                     resolve(undefined);
                 });
-            });
-        });
+            },
+            error => {
+                console.log(error);
+            }
+        );
     }
 
-    private removeObserver(observer: TaskObserver) {
-        this.observers.delete(observer);
+    private removeObserver(observer: TaskEndObserver) {
+        this.taskEndObservers.delete(observer);
     }
 
     dispose() {
         this.onDidEndTaskDisposible.dispose();
         this.onDidEndTaskProcessDisposible.dispose();
+        this.onDidStartTaskDisposible.dispose();
     }
 
-    private observers: Set<TaskObserver> = new Set();
+    private taskEndObservers: Set<TaskEndObserver> = new Set();
     private onDidEndTaskProcessDisposible: vscode.Disposable;
     private onDidEndTaskDisposible: vscode.Disposable;
+    private onDidStartTaskDisposible: vscode.Disposable;
+    private taskStartObserver: TaskStartObserver | undefined;
     private taskId = 0;
+    private startingTaskPromise: Promise<void> | undefined;
 }
 
 /** Workspace Folder observer function */
-export type TaskObserver = (execution: vscode.TaskProcessEndEvent) => unknown;
+export type TaskStartObserver = (event: vscode.TaskStartEvent) => unknown;
+export type TaskEndObserver = (execution: vscode.TaskProcessEndEvent) => unknown;
