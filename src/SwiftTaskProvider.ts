@@ -122,7 +122,7 @@ export async function getBuildAllTask(folderContext: FolderContext): Promise<vsc
     let task = tasks.find(
         task =>
             task.name === `swift: ${buildTaskName}` &&
-            (task.execution as vscode.ShellExecution).options?.cwd ===
+            (task.execution as vscode.ProcessExecution).options?.cwd ===
                 folderContext.folder.fsPath &&
             task.source === "Workspace"
     );
@@ -133,7 +133,7 @@ export async function getBuildAllTask(folderContext: FolderContext): Promise<vsc
     task = tasks.find(
         task =>
             task.name === buildTaskName &&
-            (task.execution as vscode.ShellExecution).options?.cwd ===
+            (task.execution as vscode.ProcessExecution).options?.cwd ===
                 folderContext.folder.fsPath &&
             task.source === "swift"
     );
@@ -215,7 +215,7 @@ export function createSwiftTask(args: string[], name: string, config: TaskConfig
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
         "swift",
-        new vscode.ShellExecution(swift, args, {
+        new vscode.ProcessExecution(swift, args, {
             cwd: fullCwd,
             env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
         }),
@@ -301,7 +301,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             task.scope ?? vscode.TaskScope.Workspace,
             task.name ?? "Swift Custom Task",
             "swift",
-            new vscode.ShellExecution(swift, task.definition.args, {
+            new vscode.ProcessExecution(swift, task.definition.args, {
                 cwd: fullCwd,
                 env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
             }),
