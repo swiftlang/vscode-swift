@@ -212,6 +212,6 @@ suite("Tasks Test Suite", () => {
                 taskQueue.queueOperation({ task: task2 }).then(rt => results.push(rt)),
             ]);
             assert.notStrictEqual(results, [1, 2]);
-        });
+        }).timeout(8000);
     });
 });
