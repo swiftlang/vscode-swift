@@ -91,7 +91,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             task.scope ?? vscode.TaskScope.Workspace,
             task.definition.command,
             "swift-plugin",
-            new vscode.ShellExecution(swift, swiftArgs, {
+            new vscode.ProcessExecution(swift, swiftArgs, {
                 cwd: task.definition.cwd,
             }),
             task.problemMatchers
@@ -130,7 +130,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             config.scope ?? vscode.TaskScope.Workspace,
             plugin.name,
             "swift-plugin",
-            new vscode.ShellExecution(swift, swiftArgs, {
+            new vscode.ProcessExecution(swift, swiftArgs, {
                 cwd: cwd,
                 env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
             })
