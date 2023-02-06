@@ -117,8 +117,12 @@ export class LcovResults implements vscode.Disposable {
 
     private async load() {
         const lcovFile = this.lcovFilename();
-        const buffer = await asyncfs.readFile(lcovFile, "utf8");
-        this.contents = await this.loadLcov(buffer);
+        try {
+            const buffer = await asyncfs.readFile(lcovFile, "utf8");
+            this.contents = await this.loadLcov(buffer);
+        } catch {
+            // LCOV file failed to load, but that's ok
+        }
     }
 
     private async loadLcov(lcovContents: string): Promise<lcov.LcovFile[] | undefined> {
