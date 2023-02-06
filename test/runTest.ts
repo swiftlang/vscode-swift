@@ -37,7 +37,7 @@ async function main() {
         console.log(`${cliPath} --install-extension vadimcn.vscode-lldb`);
         const { stdout, stderr } = cp.spawnSync(
             cliPath,
-            ["--install-extension", "vadimcn.vscode-lldb"],
+            ["--install-extension", "vadimcn.vscode-lldb", "--disable-gpu"],
             {
                 encoding: "utf-8",
                 stdio: "inherit",

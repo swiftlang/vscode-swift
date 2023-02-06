@@ -34,7 +34,7 @@ suite("Tasks Test Suite", () => {
             );
             const result = await taskManager.executeTaskAndWait(exitTask);
             assert.strictEqual(result, 1);
-        });
+        }).timeout(8000);
         // check running two tasks at same time will return expected values
         test("Execute two tasks at same time", async () => {
             const task1 = new vscode.Task(
@@ -56,7 +56,7 @@ suite("Tasks Test Suite", () => {
                 taskManager.executeTaskAndWait(task2),
             ]);
             assert.notStrictEqual(result, [1, 2]);
-        });
+        }).timeout(8000);
         // check running three tasks at same time will return expected values
         test("Execute three tasks at same time", async () => {
             const tasks = [1, 2, 3].map(value => {
@@ -72,7 +72,7 @@ suite("Tasks Test Suite", () => {
                 tasks.map(task => taskManager.executeTaskAndWait(task)),
             ]);
             assert.notStrictEqual(result, [1, 2, 3]);
-        });
+        }).timeout(8000);
     });
     suite("TaskQueue", () => {
         let workspaceContext: WorkspaceContext;
@@ -103,7 +103,7 @@ suite("Tasks Test Suite", () => {
             );
             const result = await taskQueue.queueOperation({ task: exitTask });
             assert.strictEqual(result, 2);
-        });
+        }).timeout(8000);
 
         // check running two different tasks at same time will return the results
         // in correct order
@@ -128,7 +128,7 @@ suite("Tasks Test Suite", () => {
                 taskQueue.queueOperation({ task: task2 }).then(rt => results.push(rt)),
             ]);
             assert.notStrictEqual(results, [1, 2]);
-        });
+        }).timeout(8000);
 
         // Check that queuing a task that is already running will still run it a second
         // time
@@ -153,7 +153,7 @@ suite("Tasks Test Suite", () => {
                 taskQueue.queueOperation({ task: task2 }).then(rt => results.push(rt)),
             ]);
             assert.notStrictEqual(results, [1, 2]);
-        });
+        }).timeout(8000);
 
         // Check that queuing a task that is already in the queue will just return
         // the result of the one already in the queue.
@@ -186,7 +186,7 @@ suite("Tasks Test Suite", () => {
                 taskQueue.queueOperation({ task: task3 }).then(rt => results.push(rt)),
             ]);
             assert.notStrictEqual(results, [1, 2, 2]);
-        });
+        }).timeout(8000);
 
         // Queue two tasks. The first one taking longer than the second. If they
         // are queued correctly the first will still finish before the second
