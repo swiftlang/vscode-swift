@@ -13,14 +13,12 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as fs from "fs";
 import * as asyncfs from "fs/promises";
 import * as path from "path";
 import * as stream from "stream";
 import { createTestConfiguration, createDarwinTestConfiguration } from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
 import {
-    buildDirectoryFromWorkspacePath,
     ExecError,
     execFileStreamOutput,
     getErrorDescription,
@@ -367,7 +365,10 @@ export class TestRunner {
             outputStream.end();
             parsedOutputStream.end();
             if (generateCoverage) {
-                await this.generateCodeCoverage();
+                await this.folderContext.lcovResults.generate();
+                if (configuration.displayCoverageReportAfterRun) {
+                    this.workspaceContext.testCoverageDocumentProvider.show(this.folderContext);
+                }
             }
             // report error
             if (runState.currentTestItem) {
@@ -380,8 +381,10 @@ export class TestRunner {
         outputStream.end();
         parsedOutputStream.end();
         if (generateCoverage) {
-            await this.generateCodeCoverage();
-            this.workspaceContext.testCoverageDocumentProvider.show(this.folderContext);
+            await this.folderContext.lcovResults.generate();
+            if (configuration.displayCoverageReportAfterRun) {
+                this.workspaceContext.testCoverageDocumentProvider.show(this.folderContext);
+            }
         }
     }
 
@@ -484,50 +487,6 @@ export class TestRunner {
                 }
             );
         });
-    }
-
-    /**
-     * Generate Code Coverage lcov file
-     */
-    async generateCodeCoverage() {
-        const llvmCov = this.workspaceContext.toolchain.getToolchainExecutable("llvm-cov");
-        const packageName = this.folderContext.swiftPackage.name;
-        const buildDirectory = buildDirectoryFromWorkspacePath(
-            this.folderContext.folder.fsPath,
-            true
-        );
-        const lcovFileName = `${buildDirectory}/debug/codecov/lcov.info`;
-
-        // Use WriteStream to log results
-        const lcovStream = fs.createWriteStream(lcovFileName);
-
-        try {
-            let xctestFile = `${buildDirectory}/debug/${packageName}PackageTests.xctest`;
-            if (process.platform === "darwin") {
-                xctestFile += `/Contents/MacOs/${packageName}PackageTests`;
-            }
-            await execFileStreamOutput(
-                llvmCov,
-                [
-                    "export",
-                    "-format",
-                    "lcov",
-                    xctestFile,
-                    "-ignore-filename-regex=Tests|.build|Snippets|Plugins",
-                    `-instr-profile=${buildDirectory}/debug/codecov/default.profdata`,
-                ],
-                lcovStream,
-                lcovStream,
-                null,
-                {
-                    env: { ...process.env, ...configuration.swiftEnvironmentVariables },
-                },
-                this.folderContext
-            );
-        } catch (error) {
-            this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
-        }
-        lcovStream.end();
     }
 
     setTestsEnqueued() {
