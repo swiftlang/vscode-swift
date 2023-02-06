@@ -71,7 +71,12 @@ export class StatusItem {
         }
         const runningTask = new RunningTask(task);
         this.runningTasks.push(runningTask);
-        this.show(`$(sync~spin) ${runningTask.name}`);
+
+        if (task instanceof vscode.Task) {
+            this.show(`$(sync~spin) ${runningTask.name}`, "workbench.action.tasks.showTasks");
+        } else {
+            this.show(`$(sync~spin) ${runningTask.name}`);
+        }
     }
 
     /**
@@ -97,8 +102,9 @@ export class StatusItem {
     /**
      * Shows the {@link vscode.StatusBarItem StatusBarItem} with the provided message.
      */
-    private show(message: string) {
+    private show(message: string, command: string | undefined = undefined) {
         this.item.text = message;
+        this.item.command = command;
         this.item.show();
     }
 
