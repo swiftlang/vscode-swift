@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import * as assert from "assert";
 import { TaskManager } from "../../src/TaskManager";
-import { testAssetPath, testAssetUri, testAssetWorkspaceFolder } from "../fixtures";
+import { testAssetPath, testAssetWorkspaceFolder } from "../fixtures";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { TaskQueue } from "../../src/TaskQueue";
 
