@@ -46,8 +46,9 @@ export class TestCoverageReportProvider implements vscode.Disposable {
             `swiftTestCoverage://report/${folder.name} coverage`
         );
         this.onDidChangeEmitter.fire(testCoverageUri);
-        vscode.commands.executeCommand("markdown.showPreview", testCoverageUri);
-        vscode.commands.executeCommand("markdown.refreshPreview", testCoverageUri);
+        vscode.commands.executeCommand("markdown.showPreview", testCoverageUri).then(() => {
+            vscode.commands.executeCommand("markdown.preview.refresh", testCoverageUri);
+        });
     }
 
     generateMarkdownReport(folder: FolderContext): string | undefined {
@@ -67,7 +68,8 @@ export class TestCoverageReportProvider implements vscode.Disposable {
             const hit = file.lines.hit;
             const missed = total - hit;
             const percent = ((100.0 * hit) / total).toFixed(2);
-            return `|[${filename}](vscode://file${file.file})|${total}|${hit}|${missed}|${percent}|`;
+            const fullFilename = encodeURI(`vscode://file${file.file}`);
+            return `|[${filename}](${fullFilename})|${total}|${hit}|${missed}|${percent}|`;
         });
         const lcovTotals = lcov.totals;
 
