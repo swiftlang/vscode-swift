@@ -232,6 +232,12 @@
             "markdownDeprecationMessage": "**Deprecated**: Please use `#editor.inlayHints.enabled#` instead.",
             "order": 3
           },
+          "sourcekit-lsp.support-c-cpp": {
+            "type": "boolean",
+            "default": true,
+            "description": "Add support for LSP functionality for C and C++ files. If you already have the C/C++ extension installed you may want to disable the SourceKit-LSP support for C and C++ files.",
+            "order": 4
+          },
           "sourcekit-lsp.trace.server": {
             "type": "string",
             "default": "off",
@@ -241,7 +247,7 @@
               "verbose"
             ],
             "description": "Traces the communication between VS Code and the SourceKit-LSP language server.",
-            "order": 4
+            "order": 5
           }
         }
       },

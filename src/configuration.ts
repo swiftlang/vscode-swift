@@ -22,6 +22,8 @@ export interface LSPConfiguration {
     readonly serverArguments: string[];
     /** Are inlay hints enabled */
     readonly inlayHintsEnabled: boolean;
+    /** Support C Family source files */
+    readonly supportCFamily: boolean;
 }
 
 /** workspace folder configuration */
@@ -55,6 +57,11 @@ const configuration = {
                 return vscode.workspace
                     .getConfiguration("sourcekit-lsp")
                     .get<boolean>("inlayHints.enabled", true);
+            },
+            get supportCFamily(): boolean {
+                return vscode.workspace
+                    .getConfiguration("sourcekit-lsp")
+                    .get<boolean>("support-c-cpp", true);
             },
         };
     },
