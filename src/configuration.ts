@@ -14,6 +14,8 @@
 
 import * as vscode from "vscode";
 
+type CFamilySupportOptions = "enable" | "disable" | "cpptools-inactive";
+
 /** sourcekit-lsp configuration */
 export interface LSPConfiguration {
     /** Path to sourcekit-lsp executable */
@@ -23,7 +25,7 @@ export interface LSPConfiguration {
     /** Are inlay hints enabled */
     readonly inlayHintsEnabled: boolean;
     /** Support C Family source files */
-    readonly supportCFamily: boolean;
+    readonly supportCFamily: CFamilySupportOptions;
 }
 
 /** workspace folder configuration */
@@ -58,10 +60,10 @@ const configuration = {
                     .getConfiguration("sourcekit-lsp")
                     .get<boolean>("inlayHints.enabled", true);
             },
-            get supportCFamily(): boolean {
+            get supportCFamily(): CFamilySupportOptions {
                 return vscode.workspace
                     .getConfiguration("sourcekit-lsp")
-                    .get<boolean>("support-c-cpp", true);
+                    .get<CFamilySupportOptions>("support-c-cpp", "cpptools-inactive");
             },
         };
     },

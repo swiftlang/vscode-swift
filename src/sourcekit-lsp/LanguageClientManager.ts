@@ -392,13 +392,32 @@ export class LanguageClientManager {
         if (folder) {
             workspaceFolder = { uri: folder, name: FolderContext.uriName(folder), index: 0 };
         }
+        let documentSelector: { scheme: string; language: string }[];
+        switch (configuration.lsp.supportCFamily) {
+            case "enable":
+                documentSelector = [
+                    ...LanguageClientManager.appleLangDocumentSelector,
+                    ...LanguageClientManager.cFamilyDocumentSelector,
+                ];
+                break;
 
-        const documentSelector = configuration.lsp.supportCFamily
-            ? [
-                  ...LanguageClientManager.appleLangDocumentSelector,
-                  ...LanguageClientManager.cFamilyDocumentSelector,
-              ]
-            : LanguageClientManager.appleLangDocumentSelector;
+            case "disable":
+                documentSelector = LanguageClientManager.appleLangDocumentSelector;
+                break;
+
+            case "cpptools-inactive": {
+                const cppToolsActive =
+                    vscode.extensions.getExtension("ms-vscode.cpptools")?.isActive;
+                documentSelector =
+                    cppToolsActive === true
+                        ? LanguageClientManager.appleLangDocumentSelector
+                        : [
+                              ...LanguageClientManager.appleLangDocumentSelector,
+                              ...LanguageClientManager.cFamilyDocumentSelector,
+                          ];
+            }
+        }
+
         const clientOptions: langclient.LanguageClientOptions = {
             documentSelector: documentSelector,
             revealOutputChannelOn: langclient.RevealOutputChannelOn.Never,
