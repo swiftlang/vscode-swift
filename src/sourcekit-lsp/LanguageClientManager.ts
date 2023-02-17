@@ -51,6 +51,35 @@ export class LanguageClientManager {
         { scheme: "file", language: "cpp" },
         { scheme: "untitled", language: "cpp" },
     ];
+    static get documentSelector(): { scheme: string; language: string }[] {
+        let documentSelector: { scheme: string; language: string }[];
+        switch (configuration.lsp.supportCFamily) {
+            case "enable":
+                documentSelector = [
+                    ...LanguageClientManager.appleLangDocumentSelector,
+                    ...LanguageClientManager.cFamilyDocumentSelector,
+                ];
+                break;
+
+            case "disable":
+                documentSelector = LanguageClientManager.appleLangDocumentSelector;
+                break;
+
+            case "cpptools-inactive": {
+                const cppToolsActive =
+                    vscode.extensions.getExtension("ms-vscode.cpptools")?.isActive;
+                documentSelector =
+                    cppToolsActive === true
+                        ? LanguageClientManager.appleLangDocumentSelector
+                        : [
+                              ...LanguageClientManager.appleLangDocumentSelector,
+                              ...LanguageClientManager.cFamilyDocumentSelector,
+                          ];
+            }
+        }
+        return documentSelector;
+    }
+
     // build argument to sourcekit-lsp filter
     static buildArgumentFilter: ArgumentFilter[] = [
         { argument: "--build-path", include: 1 },
@@ -392,34 +421,9 @@ export class LanguageClientManager {
         if (folder) {
             workspaceFolder = { uri: folder, name: FolderContext.uriName(folder), index: 0 };
         }
-        let documentSelector: { scheme: string; language: string }[];
-        switch (configuration.lsp.supportCFamily) {
-            case "enable":
-                documentSelector = [
-                    ...LanguageClientManager.appleLangDocumentSelector,
-                    ...LanguageClientManager.cFamilyDocumentSelector,
-                ];
-                break;
-
-            case "disable":
-                documentSelector = LanguageClientManager.appleLangDocumentSelector;
-                break;
-
-            case "cpptools-inactive": {
-                const cppToolsActive =
-                    vscode.extensions.getExtension("ms-vscode.cpptools")?.isActive;
-                documentSelector =
-                    cppToolsActive === true
-                        ? LanguageClientManager.appleLangDocumentSelector
-                        : [
-                              ...LanguageClientManager.appleLangDocumentSelector,
-                              ...LanguageClientManager.cFamilyDocumentSelector,
-                          ];
-            }
-        }
 
         const clientOptions: langclient.LanguageClientOptions = {
-            documentSelector: documentSelector,
+            documentSelector: LanguageClientManager.documentSelector,
             revealOutputChannelOn: langclient.RevealOutputChannelOn.Never,
             workspaceFolder: workspaceFolder,
             middleware: {
