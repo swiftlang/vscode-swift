@@ -34,10 +34,17 @@ async function main() {
         const cliPath = resolveCliPathFromVSCodeExecutablePath(vscodeExecutablePath);
 
         // Use cp.spawn / cp.exec for custom setup
-        console.log(`${cliPath} --install-extension vadimcn.vscode-lldb`);
         const { stdout, stderr } = cp.spawnSync(
             cliPath,
-            ["--install-extension", "vadimcn.vscode-lldb", "--disable-gpu"],
+            [
+                "--install-extension",
+                "vadimcn.vscode-lldb",
+                "--disable-extensions",
+                "--disable-workspace-trust",
+                "--disable-gpu",
+                "--no-sandbox",
+                "--no-xshm",
+            ],
             {
                 encoding: "utf-8",
                 stdio: "inherit",
