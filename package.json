@@ -232,6 +232,22 @@
             "markdownDeprecationMessage": "**Deprecated**: Please use `#editor.inlayHints.enabled#` instead.",
             "order": 3
           },
+          "sourcekit-lsp.support-c-cpp": {
+            "type": "string",
+            "default": "cpptools-inactive",
+            "enum": [
+              "enable",
+              "disable",
+              "cpptools-inactive"
+            ],
+            "enumDescriptions": [
+              "Always enable",
+              "Always disable",
+              "Disable when C/C++ extension is active"
+            ],
+            "description": "Add LSP functionality for C/C++ files. By default this is set to disable when the C/C++ extension is active.",
+            "order": 4
+          },
           "sourcekit-lsp.trace.server": {
             "type": "string",
             "default": "off",
@@ -241,7 +257,7 @@
               "verbose"
             ],
             "description": "Traces the communication between VS Code and the SourceKit-LSP language server.",
-            "order": 4
+            "order": 5
           }
         }
       },

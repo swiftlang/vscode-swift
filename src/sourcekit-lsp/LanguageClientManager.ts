@@ -36,18 +36,50 @@ import { LanguageClient } from "vscode-languageclient/node";
  */
 export class LanguageClientManager {
     // document selector used by language client
-    static documentSelector = [
+    static appleLangDocumentSelector = [
         { scheme: "file", language: "swift" },
         { scheme: "untitled", language: "swift" },
-        { scheme: "file", language: "c" },
-        { scheme: "untitled", language: "c" },
-        { scheme: "file", language: "cpp" },
-        { scheme: "untitled", language: "cpp" },
         { scheme: "file", language: "objective-c" },
         { scheme: "untitled", language: "objective-c" },
         { scheme: "file", language: "objective-cpp" },
         { scheme: "untitled", language: "objective-cpp" },
     ];
+    // document selector used by language client
+    static cFamilyDocumentSelector = [
+        { scheme: "file", language: "c" },
+        { scheme: "untitled", language: "c" },
+        { scheme: "file", language: "cpp" },
+        { scheme: "untitled", language: "cpp" },
+    ];
+    static get documentSelector(): { scheme: string; language: string }[] {
+        let documentSelector: { scheme: string; language: string }[];
+        switch (configuration.lsp.supportCFamily) {
+            case "enable":
+                documentSelector = [
+                    ...LanguageClientManager.appleLangDocumentSelector,
+                    ...LanguageClientManager.cFamilyDocumentSelector,
+                ];
+                break;
+
+            case "disable":
+                documentSelector = LanguageClientManager.appleLangDocumentSelector;
+                break;
+
+            case "cpptools-inactive": {
+                const cppToolsActive =
+                    vscode.extensions.getExtension("ms-vscode.cpptools")?.isActive;
+                documentSelector =
+                    cppToolsActive === true
+                        ? LanguageClientManager.appleLangDocumentSelector
+                        : [
+                              ...LanguageClientManager.appleLangDocumentSelector,
+                              ...LanguageClientManager.cFamilyDocumentSelector,
+                          ];
+            }
+        }
+        return documentSelector;
+    }
+
     // build argument to sourcekit-lsp filter
     static buildArgumentFilter: ArgumentFilter[] = [
         { argument: "--build-path", include: 1 },
@@ -128,10 +160,10 @@ export class LanguageClientManager {
         }
         // on change config restart server
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
-            if (event.affectsConfiguration("sourcekit-lsp.serverPath")) {
+            if (event.affectsConfiguration("sourcekit-lsp")) {
                 vscode.window
                     .showInformationMessage(
-                        "Changing LSP server path requires the language server be restarted.",
+                        "Changing LSP settings requires the language server be restarted.",
                         "Ok"
                     )
                     .then(selected => {
@@ -389,6 +421,7 @@ export class LanguageClientManager {
         if (folder) {
             workspaceFolder = { uri: folder, name: FolderContext.uriName(folder), index: 0 };
         }
+
         const clientOptions: langclient.LanguageClientOptions = {
             documentSelector: LanguageClientManager.documentSelector,
             revealOutputChannelOn: langclient.RevealOutputChannelOn.Never,
