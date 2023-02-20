@@ -13,6 +13,7 @@
 
 - Clicking on task status item will show terminal output for task.
 - Tasks are run using `ProcessExecution` instead of `ShellExecution`.
+- When SourceKit-LSP crashes multiple times, display a dialog asking if the user wants to restart it.
 
 ### Fixed
 
