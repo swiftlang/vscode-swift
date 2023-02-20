@@ -1,12 +1,13 @@
 # Changelog
 
-## 1.1.0 - 2023-02-07
+## 1.1.0 - 2023-02-20
 
 ### Added
 
-- In editor display of test coverage results.
+- In-editor display of test coverage results.
 - Status Item showing test coverage percentage for current file. Can also be used to toggle display of results.
 - Command `Insert Function Comment` that will add function documentation comment.
+- Option to disable LSP functionality for C/C++ files. Defaults to disable if C/C++ extension is active.
 
 ### Changed
 
@@ -16,6 +17,7 @@
 ### Fixed
 
 - Added workaround for bug in VS Code where starting two similar tasks at the same time would only start one of the tasks.
+- Don't parse functions inside parenthesis' when constructing function comment headers.
 
 ## 1.0.0 - 2023-01-19
 
