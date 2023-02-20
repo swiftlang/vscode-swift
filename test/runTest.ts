@@ -34,30 +34,20 @@ async function main() {
         const cliPath = resolveCliPathFromVSCodeExecutablePath(vscodeExecutablePath);
 
         // Use cp.spawn / cp.exec for custom setup
-        const { stdout, stderr } = cp.spawnSync(
-            cliPath,
-            [
-                "--install-extension",
-                "vadimcn.vscode-lldb",
-                "--disable-extensions",
-                "--disable-workspace-trust",
-                "--disable-gpu",
-                "--no-sandbox",
-                "--no-xshm",
-            ],
-            {
-                encoding: "utf-8",
-                stdio: "inherit",
-            }
-        );
-        console.log(stdout);
-        console.log(stderr);
+        cp.spawnSync(cliPath, ["--install-extension", "vadimcn.vscode-lldb"], {
+            encoding: "utf-8",
+            stdio: "inherit",
+        });
 
         // Download VS Code, unzip it and run the integration test
         await runTests({
             extensionDevelopmentPath,
             extensionTestsPath,
             launchArgs: [
+                "--disable-workspace-trust",
+                "--disable-gpu",
+                "--no-sandbox",
+                "--no-xshm",
                 // Already start in the fixtures dir because we lose debugger connection
                 // once we re-open a different folder due to window reloading
                 path.join(extensionDevelopmentPath, "assets/test"),
