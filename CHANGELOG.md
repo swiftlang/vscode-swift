@@ -18,7 +18,7 @@
 ### Fixed
 
 - Added workaround for bug in VS Code where starting two similar tasks at the same time would only start one of the tasks.
-- Don't parse functions inside parenthesis' when constructing function comment headers.
+- Don't parse functions inside parenthesis when constructing function comment headers.
 
 ## 1.0.0 - 2023-01-19
 
