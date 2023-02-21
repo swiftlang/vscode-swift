@@ -12,7 +12,7 @@ This is a list of additional arguments passed to the `swift build` calls the ext
 
 - **Test Environment Variables**
 
-This is a list of environment variables to set when running tests. To set environment variables when running an application you should set the `env` field in its launch.json file. The launch.json is not available for tests so instead you should use this settings.
+This is a list of environment variables to set when running tests. To set environment variables when running an application you should set the `env` field in its launch.json file. The `launch.json` is not available for tests so instead you should use this settings.
 
 - **Auto Generate Launch Configurations**
 
