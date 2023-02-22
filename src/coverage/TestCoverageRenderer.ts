@@ -88,6 +88,10 @@ export class TestCoverageRenderer implements vscode.Disposable {
         const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
         if (configuration.alwaysShowCoverageStatusItem) {
             statusBarItem.text = "Coverage: Off";
+            statusBarItem.accessibilityInformation = {
+                label: "Coverage: Off",
+                role: "button",
+            };
             statusBarItem.command = "swift.toggleTestCoverage";
             statusBarItem.show();
         }
@@ -97,7 +101,7 @@ export class TestCoverageRenderer implements vscode.Disposable {
     /** Update coverage status bar item after configuration has changed */
     private updateCoverageStatusItem() {
         if (configuration.alwaysShowCoverageStatusItem) {
-            this.statusBarItem.text = this.statusItemCoverageOffText();
+            this.updateCoverageStatusItemText(this.statusItemCoverageOffText());
             this.statusBarItem.command = "swift.toggleTestCoverage";
             this.statusBarItem.show();
         } else {
@@ -105,6 +109,16 @@ export class TestCoverageRenderer implements vscode.Disposable {
             this.statusBarItem.hide();
         }
     }
+
+    /** Update text and accessibility data for test coverage status item */
+    private updateCoverageStatusItemText(text: string) {
+        this.statusBarItem.text = text;
+        this.statusBarItem.accessibilityInformation = {
+            label: text,
+            role: configuration.alwaysShowCoverageStatusItem ? "button" : undefined,
+        };
+    }
+
     /** Reset test coverage colors. Most likely because they have been edited in the settings */
     private resetTestCoverageEditorColors() {
         if (this.currentEditor) {
@@ -156,14 +170,14 @@ export class TestCoverageRenderer implements vscode.Disposable {
             if (this.currentEditor) {
                 this.clear(this.currentEditor);
             } else {
-                this.statusBarItem.text = this.statusItemCoverageOffText();
+                this.updateCoverageStatusItemText(this.statusItemCoverageOffText());
             }
         } else {
             this.displayResults = true;
             if (this.currentEditor) {
                 this.render(this.currentEditor);
             } else {
-                this.statusBarItem.text = this.statusItemCoverageOffText();
+                this.updateCoverageStatusItemText(this.statusItemCoverageOffText());
             }
         }
     }
@@ -216,7 +230,7 @@ export class TestCoverageRenderer implements vscode.Disposable {
         }
 
         const coveragePercentage = (100.0 * results.lines.hit) / results.lines.found;
-        this.statusBarItem.text = `Coverage: ${coveragePercentage.toFixed(1)}%`;
+        this.updateCoverageStatusItemText(`Coverage: ${coveragePercentage.toFixed(1)}%`);
         this.statusBarItem.show();
     }
 
@@ -251,7 +265,7 @@ export class TestCoverageRenderer implements vscode.Disposable {
         editor.setDecorations(this.coverageHitDecorationType, []);
         editor.setDecorations(this.coverageMissDecorationType, []);
         if (configuration.alwaysShowCoverageStatusItem) {
-            this.statusBarItem.text = this.statusItemCoverageOffText();
+            this.updateCoverageStatusItemText(this.statusItemCoverageOffText());
         } else {
             this.statusBarItem.hide();
         }
