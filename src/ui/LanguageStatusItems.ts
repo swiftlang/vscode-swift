@@ -27,6 +27,9 @@ export class LanguageStatusItems implements vscode.Disposable {
             LanguageClientManager.documentSelector
         );
         swiftVersionItem.text = workspaceContext.toolchain.swiftVersionString;
+        swiftVersionItem.accessibilityInformation = {
+            label: `Swift Version ${workspaceContext.toolchain.swiftVersion.toString()}`,
+        };
 
         // Package.swift item
         this.packageSwiftItem = vscode.languages.createLanguageStatusItem("swiftlang-package", [
@@ -34,6 +37,7 @@ export class LanguageStatusItems implements vscode.Disposable {
             ...LanguageClientManager.cFamilyDocumentSelector,
         ]);
         this.packageSwiftItem.text = "No Package.swift";
+        this.packageSwiftItem.accessibilityInformation = { label: "There is no Package.swift" };
 
         // Update Package.swift item based on current focus
         const onFocus = workspaceContext.observeFolders(async (folder, event) => {
@@ -45,8 +49,14 @@ export class LanguageStatusItems implements vscode.Disposable {
                             "Open Package",
                             "swift.openPackage"
                         );
+                        this.packageSwiftItem.accessibilityInformation = {
+                            label: "Open Package.swift",
+                        };
                     } else {
                         this.packageSwiftItem.text = "No Package.swift";
+                        this.packageSwiftItem.accessibilityInformation = {
+                            label: "There is no Package.swift",
+                        };
                         this.packageSwiftItem.command = undefined;
                     }
             }
