@@ -258,6 +258,12 @@
             ],
             "description": "Traces the communication between VS Code and the SourceKit-LSP language server.",
             "order": 5
+          },
+          "sourcekit-lsp.disable": {
+            "type": "boolean",
+            "default": false,
+            "description": "Disable the running of SourceKit-LSP.",
+            "order": 6
           }
         }
       },

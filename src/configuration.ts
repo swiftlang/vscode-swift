@@ -26,6 +26,8 @@ export interface LSPConfiguration {
     readonly inlayHintsEnabled: boolean;
     /** Support C Family source files */
     readonly supportCFamily: CFamilySupportOptions;
+    /** Is SourceKit-LSP disabled */
+    readonly disable: boolean;
 }
 
 /** workspace folder configuration */
@@ -64,6 +66,11 @@ const configuration = {
                 return vscode.workspace
                     .getConfiguration("sourcekit-lsp")
                     .get<CFamilySupportOptions>("support-c-cpp", "cpptools-inactive");
+            },
+            get disable(): boolean {
+                return vscode.workspace
+                    .getConfiguration("sourcekit-lsp")
+                    .get<boolean>("disable", false);
             },
         };
     },
