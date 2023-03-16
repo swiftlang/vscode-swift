@@ -26,20 +26,29 @@ import { SwiftToolchain } from "../toolchain/toolchain";
  * Check if CodeLLDB extension is installed and offer to install it if it is not.
  * @returns Whether extension was installed
  */
-export async function checkLLDBInstalled(): Promise<boolean> {
+export async function checkLLDBInstalled(workspaceState: vscode.Memento): Promise<boolean> {
     const lldbExtension = vscode.extensions.getExtension("vadimcn.vscode-lldb");
     // if extension is in list return true
     if (lldbExtension) {
+        // reset skip check flag
+        workspaceState.update("skip-check-lldb", false);
         return true;
     }
-
+    // if workspace is set to ignore LLDB check then return
+    if (workspaceState.get("skip-check-lldb") === true) {
+        return false;
+    }
     // otherwise display menu asking if user wants to install it
     return new Promise<boolean>((resolve, reject) => {
         vscode.window
             .showWarningMessage(
-                "The Swift extension requires the CodeLLDB extension to enable debugging. Do you want to install it?",
+                "Do you want to install the CodeLLDB extension?",
+                {
+                    modal: true,
+                    detail: "The Swift extension requires it to enable debugging.",
+                },
                 "Yes",
-                "No"
+                "Never"
             )
             .then(async result => {
                 switch (result) {
@@ -51,7 +60,10 @@ export async function checkLLDBInstalled(): Promise<boolean> {
                             return reject(error);
                         }
                         break;
-                    case "No":
+                    case "Never":
+                        workspaceState.update("skip-check-lldb", true);
+                        break;
+                    case undefined:
                         break;
                 }
                 return resolve(false);
