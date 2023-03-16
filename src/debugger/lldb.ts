@@ -15,11 +15,59 @@
 // Based on code taken from CodeLLDB https://github.com/vadimcn/vscode-lldb/
 // LICENSED with MIT License
 
+import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs/promises";
 import { execFile } from "../utilities/utilities";
 import { Result } from "../utilities/result";
 import { SwiftToolchain } from "../toolchain/toolchain";
+
+/**
+ * Check if CodeLLDB extension is installed and offer to install it if it is not.
+ * @returns Whether extension was installed
+ */
+export async function checkLLDBInstalled(): Promise<boolean> {
+    const lldbExtension = vscode.extensions.getExtension("vadimcn.vscode-lldb");
+    // if extension is in list return true
+    if (lldbExtension) {
+        return true;
+    }
+
+    // otherwise display menu asking if user wants to install it
+    return new Promise<boolean>((resolve, reject) => {
+        vscode.window
+            .showWarningMessage(
+                "The Swift extension requires the CodeLLDB extension to enable debugging. Do you want to install it?",
+                "Yes",
+                "No"
+            )
+            .then(async result => {
+                switch (result) {
+                    case "Yes":
+                        try {
+                            await installCodeLLDB();
+                            return resolve(true);
+                        } catch (error) {
+                            return reject(error);
+                        }
+                        break;
+                    case "No":
+                        break;
+                }
+                return resolve(false);
+            });
+    });
+}
+
+/**
+ * Install CodeLLDB extension
+ */
+async function installCodeLLDB() {
+    await vscode.commands.executeCommand(
+        "workbench.extensions.installExtension",
+        "vadimcn.vscode-lldb"
+    );
+}
 
 /**
  * Get LLDB library for given LLDB executable

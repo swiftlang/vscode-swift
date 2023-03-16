@@ -567,9 +567,6 @@
       ]
     }
   },
-  "extensionDependencies": [
-    "vadimcn.vscode-lldb"
-  ],
   "scripts": {
     "vscode:prepublish": "npm run esbuild-base -- --minify",
     "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node16",
