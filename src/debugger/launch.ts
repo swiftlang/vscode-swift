@@ -112,6 +112,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
             {
                 type: "lldb",
                 request: "launch",
+                sourceLanguages: ["swift"],
                 name: `Debug ${product.name}${nameSuffix}`,
                 program: `${buildDirectory}/debug/` + product.name,
                 args: [],
@@ -122,6 +123,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
             {
                 type: "lldb",
                 request: "launch",
+                sourceLanguages: ["swift"],
                 name: `Release ${product.name}${nameSuffix}`,
                 program: `${buildDirectory}/release/` + product.name,
                 args: [],
@@ -157,6 +159,7 @@ export function createSnippetConfiguration(
     return {
         type: "lldb",
         request: "launch",
+        sourceLanguages: ["swift"],
         name: `Run ${snippetName}`,
         program: `${buildDirectory}/debug/${snippetName}`,
         args: [],
@@ -211,6 +214,7 @@ export function createTestConfiguration(
         return {
             type: "lldb",
             request: "launch",
+            sourceLanguages: ["swift"],
             name: `Test ${ctx.swiftPackage.name}`,
             program: `${xctestPath}/xctest`,
             args: [`${buildDirectory}/debug/${ctx.swiftPackage.name}PackageTests.xctest`],
@@ -240,6 +244,7 @@ export function createTestConfiguration(
         return {
             type: "lldb",
             request: "launch",
+            sourceLanguages: ["swift"],
             name: `Test ${ctx.swiftPackage.name}`,
             program: `${buildDirectory}/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
             cwd: folder,
@@ -252,6 +257,7 @@ export function createTestConfiguration(
         return {
             type: "lldb",
             request: "launch",
+            sourceLanguages: ["swift"],
             name: `Test ${ctx.swiftPackage.name}`,
             program: `${buildDirectory}/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
             cwd: folder,
@@ -309,6 +315,7 @@ export function createDarwinTestConfiguration(
     return {
         type: "lldb",
         request: "custom",
+        sourceLanguages: ["swift"],
         name: `Test ${ctx.swiftPackage.name}`,
         targetCreateCommands: [`file -a ${arch} ${xctestPath}/xctest`],
         processCreateCommands: [
