@@ -366,7 +366,11 @@ export class LanguageClientManager {
         return false;
     }
 
-    private setupLanguageClient(folder?: vscode.Uri): Promise<void> {
+    private async setupLanguageClient(folder?: vscode.Uri) {
+        if (configuration.lsp.disable) {
+            this.languageClient = undefined;
+            return;
+        }
         const client = this.createLSPClient(folder);
         return this.startClient(client);
     }
