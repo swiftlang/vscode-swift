@@ -72,11 +72,7 @@ export class StatusItem {
         const runningTask = new RunningTask(task);
         this.runningTasks.push(runningTask);
 
-        if (task instanceof vscode.Task) {
-            this.show(`$(sync~spin) ${runningTask.name}`, "workbench.action.tasks.showTasks");
-        } else {
-            this.show(`$(sync~spin) ${runningTask.name}`);
-        }
+        this.showTask(runningTask);
     }
 
     /**
@@ -95,15 +91,32 @@ export class StatusItem {
             this.hide();
         } else {
             const taskToDisplay = this.runningTasks[this.runningTasks.length - 1];
-            this.show(`$(sync~spin) ${taskToDisplay.name}`);
+            this.showTask(taskToDisplay);
+        }
+    }
+
+    /**
+     * Show status item for task
+     * @param task task to show status item for
+     */
+    private showTask(task: RunningTask) {
+        if (task.task instanceof vscode.Task) {
+            this.show(`$(sync~spin) ${task.name}`, task.name, "workbench.action.tasks.showTasks");
+        } else {
+            this.show(`$(sync~spin) ${task.name}`, task.name);
         }
     }
 
     /**
      * Shows the {@link vscode.StatusBarItem StatusBarItem} with the provided message.
      */
-    private show(message: string, command: string | undefined = undefined) {
+    private show(
+        message: string,
+        accessibilityMessage: string | undefined = undefined,
+        command: string | undefined = undefined
+    ) {
         this.item.text = message;
+        this.item.accessibilityInformation = { label: accessibilityMessage ?? message };
         this.item.command = command;
         this.item.show();
     }

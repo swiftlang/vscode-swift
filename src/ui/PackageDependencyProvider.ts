@@ -61,6 +61,7 @@ export class PackageNode {
                 ? new vscode.ThemeIcon("edit")
                 : new vscode.ThemeIcon("package");
         item.contextValue = this.type;
+        item.accessibilityInformation = { label: `Package ${this.name}` };
         return item;
     }
 }
@@ -86,6 +87,9 @@ class FileNode {
                 arguments: [item.resourceUri],
                 title: "Open File",
             };
+            item.accessibilityInformation = { label: `File ${this.name}` };
+        } else {
+            item.accessibilityInformation = { label: `Folder ${this.name}` };
         }
         return item;
     }
