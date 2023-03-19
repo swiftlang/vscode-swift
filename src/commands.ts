@@ -12,19 +12,20 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
+import * as vscode from "vscode";
 import configuration from "./configuration";
-import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
-import { createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderContext } from "./FolderContext";
+import { goToRelatedFile } from "./goToTestImplementationFile";
+import { debugSnippet, runSnippet } from "./SwiftSnippets";
+import { createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
+import { DarwinCompatibleTarget, SwiftToolchain } from "./toolchain/toolchain";
 import { PackageNode } from "./ui/PackageDependencyProvider";
 import { withQuickPick } from "./ui/QuickPick";
 import { execSwift } from "./utilities/utilities";
 import { Version } from "./utilities/version";
-import { DarwinCompatibleTarget, SwiftToolchain } from "./toolchain/toolchain";
-import { debugSnippet, runSnippet } from "./SwiftSnippets";
+import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
 
 /**
  * References:
@@ -539,6 +540,13 @@ function toggleTestCoverageDisplay(workspaceContext: WorkspaceContext) {
     workspaceContext.toggleTestCoverageDisplay();
 }
 
+/**
+ * Go to test/implementation file
+ */
+async function goToTestOrImplementationFile() {
+    goToRelatedFile(vscode.window.activeTextEditor?.document);
+}
+
 function updateAfterError(result: boolean, folderContext: FolderContext) {
     const triggerResolvedUpdatedEvent = folderContext.hasResolveErrors;
     // set has resolve errors flag
@@ -606,6 +614,9 @@ export function register(ctx: WorkspaceContext) {
         }),
         vscode.commands.registerCommand("swift.selectXcodeDeveloperDir", () =>
             selectXcodeDeveloperDir()
+        ),
+        vscode.commands.registerCommand("swift.goToTestOrImplementationFile", () =>
+            goToTestOrImplementationFile()
         )
     );
 }
