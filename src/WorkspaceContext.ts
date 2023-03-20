@@ -140,6 +140,9 @@ export class WorkspaceContext implements vscode.Disposable {
         const backgroundCompilationOnDidSave = BackgroundCompilation.start(this);
         const contextKeysUpdate = this.observeFolders((folder, event) => {
             switch (event) {
+                case FolderEvent.remove:
+                    this.updatePluginContextKey();
+                    break;
                 case FolderEvent.focus:
                     this.updateContextKeys(folder);
                     break;
@@ -189,12 +192,24 @@ export class WorkspaceContext implements vscode.Disposable {
         if (!folderContext || !folderContext.swiftPackage.foundPackage) {
             contextKeys.hasPackage = false;
             contextKeys.packageHasDependencies = false;
-            contextKeys.packageHasPlugins = false;
             return;
         }
         contextKeys.hasPackage = true;
         contextKeys.packageHasDependencies = folderContext.swiftPackage.dependencies.length > 0;
-        contextKeys.packageHasPlugins = folderContext.swiftPackage.plugins.length > 0;
+    }
+
+    /**
+     * Update hasPlugins context key
+     */
+    updatePluginContextKey() {
+        let hasPlugins = false;
+        for (const folder of this.folders) {
+            if (folder.swiftPackage.plugins.length > 0) {
+                hasPlugins = true;
+                break;
+            }
+        }
+        contextKeys.packageHasPlugins = hasPlugins;
     }
 
     /** Setup the vscode event listeners to catch folder changes and active window changes */
