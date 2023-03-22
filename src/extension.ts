@@ -103,6 +103,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                                     )})`,
                                     async () => {
                                         await folder.loadSwiftPlugins();
+                                        workspace.updatePluginContextKey();
                                     }
                                 );
                             }
