@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.2.0 - 2023-03-22
+
+### Added
+
+- Accessibilty info to UI elements.
+- `sourceLanguage` element to generated launch configurations.
+- Option to disable SourceKit-LSP.
+
+### Changed
+
+- Availability of `Run Swift Plugin` command is based off all SwiftPM projects in the workspace, not just the active one.
+
+### Fixed
+
+- Only display link to Package.swift if it exists.
+
 ## 1.1.0 - 2023-02-21
 
 ### Added
