@@ -368,7 +368,15 @@ export class SwiftToolchain {
                     return undefined;
                 }
                 const data = await fs.readFile(platformManifest, "utf8");
-                const infoPlist = plist.parse(data) as unknown as InfoPlist;
+                let infoPlist;
+                try {
+                    infoPlist = plist.parse(data) as unknown as InfoPlist;
+                } catch (error) {
+                    vscode.window.showWarningMessage(
+                        `Unable to parse ${platformManifest}: ${error}`
+                    );
+                    return undefined;
+                }
                 const version = infoPlist.DefaultProperties.XCTEST_VERSION;
                 if (!version) {
                     throw Error("Info.plist is missing the XCTEST_VERSION key.");
