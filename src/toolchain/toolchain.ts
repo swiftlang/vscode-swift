@@ -373,7 +373,7 @@ export class SwiftToolchain {
                     infoPlist = plist.parse(data) as unknown as InfoPlist;
                 } catch (error) {
                     vscode.window.showWarningMessage(
-                        `unable to parse ${platformManifest}: ${error}`
+                        `Unable to parse ${platformManifest}: ${error}`
                     );
                     return undefined;
                 }
