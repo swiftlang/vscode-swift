@@ -21,21 +21,20 @@ import * as fs from "fs/promises";
 import { execFile } from "../utilities/utilities";
 import { Result } from "../utilities/result";
 import { SwiftToolchain } from "../toolchain/toolchain";
+import configuration from "../configuration";
 
 /**
  * Check if CodeLLDB extension is installed and offer to install it if it is not.
  * @returns Whether extension was installed
  */
-export async function checkLLDBInstalled(workspaceState: vscode.Memento): Promise<boolean> {
+export async function checkLLDBInstalled(): Promise<boolean> {
     const lldbExtension = vscode.extensions.getExtension("vadimcn.vscode-lldb");
     // if extension is in list return true
     if (lldbExtension) {
-        // reset skip check flag
-        workspaceState.update("skip-check-lldb", false);
         return true;
     }
     // if workspace is set to ignore LLDB check then return
-    if (workspaceState.get("skip-check-lldb") === true) {
+    if (configuration.skipCodeLLDBCheck === true) {
         return false;
     }
     // otherwise display menu asking if user wants to install it
@@ -47,22 +46,17 @@ export async function checkLLDBInstalled(workspaceState: vscode.Memento): Promis
                     modal: true,
                     detail: "The Swift extension requires it to enable debugging.",
                 },
-                "Yes",
-                "Never"
+                "Install"
             )
             .then(async result => {
                 switch (result) {
-                    case "Yes":
+                    case "Install":
                         try {
                             await installCodeLLDB();
                             return resolve(true);
                         } catch (error) {
                             return reject(error);
                         }
-                        break;
-                    case "Never":
-                        workspaceState.update("skip-check-lldb", true);
-                        break;
                     case undefined:
                         break;
                 }

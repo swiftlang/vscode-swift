@@ -350,8 +350,8 @@ export class WorkspaceContext implements vscode.Disposable {
         return { dispose: () => this.observers.delete(fn) };
     }
 
-    async setupLLDB(extContext: vscode.ExtensionContext) {
-        await checkLLDBInstalled(extContext.globalState).then(
+    async setupLLDB() {
+        await checkLLDBInstalled().then(
             async result => {
                 if (result) {
                     this.setLLDBVersion();
