@@ -108,7 +108,8 @@ export async function execFileStreamOutput(
     token: vscode.CancellationToken | null,
     options: cp.ExecFileOptions = {},
     folderContext?: FolderContext,
-    customSwiftRuntime = true
+    customSwiftRuntime = true,
+    killSignal: NodeJS.Signals = "SIGTERM"
 ): Promise<void> {
     folderContext?.workspaceContext.outputChannel.logDiagnostic(
         `Exec: ${executable} ${args.join(" ")}`,
@@ -135,7 +136,8 @@ export async function execFileStreamOutput(
         }
         if (token) {
             const cancellation = token.onCancellationRequested(() => {
-                p.kill();
+                // given we are running the process using `swift run`
+                p.kill(killSignal);
                 cancellation.dispose();
             });
         }

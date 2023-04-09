@@ -339,28 +339,46 @@ export class TestRunner {
         this.testRun.appendOutput(`> Test run started at ${new Date().toLocaleString()} <\r\n\r\n`);
         // show test results pane
         vscode.commands.executeCommand("testing.showMostRecentOutput");
-        const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
-        const args = ["test"];
-        if (generateCoverage) {
-            args.push("--enable-code-coverage");
-        } else {
-            args.push("--skip-build");
-        }
         try {
-            await execFileStreamOutput(
-                getSwiftExecutable(),
-                [...args, ...filterArgs],
-                stdout,
-                stderr,
-                token,
-                {
-                    cwd: testBuildConfig.cwd,
-                    env: { ...process.env, ...testBuildConfig.env },
-                    maxBuffer: 16 * 1024 * 1024,
-                },
-                this.folderContext,
-                false
-            );
+            if (generateCoverage) {
+                const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
+                const args = ["test", "--enable-code-coverage"];
+                await execFileStreamOutput(
+                    getSwiftExecutable(),
+                    [...args, ...filterArgs],
+                    stdout,
+                    stderr,
+                    token,
+                    {
+                        cwd: testBuildConfig.cwd,
+                        env: { ...process.env, ...testBuildConfig.env },
+                        maxBuffer: 16 * 1024 * 1024,
+                    },
+                    this.folderContext,
+                    false,
+                    "SIGINT" // use SIGINT to kill process as it is a child process of `swift test`
+                );
+            } else {
+                if (process.platform === "darwin") {
+                    stdout = outputStream;
+                    stderr = parsedOutputStream;
+                }
+                await execFileStreamOutput(
+                    testBuildConfig.program,
+                    testBuildConfig.args ?? [],
+                    stdout,
+                    stderr,
+                    token,
+                    {
+                        cwd: testBuildConfig.cwd,
+                        env: { ...process.env, ...testBuildConfig.env },
+                        maxBuffer: 16 * 1024 * 1024,
+                    },
+                    this.folderContext,
+                    false,
+                    "SIGKILL"
+                );
+            }
         } catch (error) {
             outputStream.end();
             parsedOutputStream.end();
