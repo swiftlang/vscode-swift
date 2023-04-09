@@ -141,7 +141,6 @@ export async function execFileStreamOutput(
         }
         if (token) {
             cancellation = token.onCancellationRequested(() => {
-                // given we are running the process using `swift run`
                 p.kill(killSignal);
             });
         }
