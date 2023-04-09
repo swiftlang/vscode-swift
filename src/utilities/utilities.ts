@@ -122,11 +122,16 @@ export async function execFileStreamOutput(
         }
     }
     return new Promise<void>((resolve, reject) => {
+        let cancellation: vscode.Disposable;
         const p = cp.execFile(executable, args, options, error => {
             if (error) {
                 reject({ error });
+            } else {
+                resolve();
             }
-            resolve();
+            if (cancellation) {
+                cancellation.dispose();
+            }
         });
         if (stdout) {
             p.stdout?.pipe(stdout);
@@ -135,10 +140,9 @@ export async function execFileStreamOutput(
             p.stderr?.pipe(stderr);
         }
         if (token) {
-            const cancellation = token.onCancellationRequested(() => {
+            cancellation = token.onCancellationRequested(() => {
                 // given we are running the process using `swift run`
                 p.kill(killSignal);
-                cancellation.dispose();
             });
         }
     });
