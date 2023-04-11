@@ -353,7 +353,10 @@ export class LanguageClientManager {
                 .then(async () => {
                     await this.setupLanguageClient(workspaceFolder?.uri);
                 })
-                .catch(reason => {
+                .catch(async reason => {
+                    if (reason.message === "Stopping the server timed out") {
+                        await this.setupLanguageClient(workspaceFolder?.uri);
+                    }
                     this.workspaceContext.outputChannel.log(`${reason}`);
                 });
         }
