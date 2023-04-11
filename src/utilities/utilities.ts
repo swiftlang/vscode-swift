@@ -108,7 +108,8 @@ export async function execFileStreamOutput(
     token: vscode.CancellationToken | null,
     options: cp.ExecFileOptions = {},
     folderContext?: FolderContext,
-    customSwiftRuntime = true
+    customSwiftRuntime = true,
+    killSignal: NodeJS.Signals = "SIGTERM"
 ): Promise<void> {
     folderContext?.workspaceContext.outputChannel.logDiagnostic(
         `Exec: ${executable} ${args.join(" ")}`,
@@ -121,11 +122,16 @@ export async function execFileStreamOutput(
         }
     }
     return new Promise<void>((resolve, reject) => {
+        let cancellation: vscode.Disposable;
         const p = cp.execFile(executable, args, options, error => {
             if (error) {
                 reject({ error });
+            } else {
+                resolve();
             }
-            resolve();
+            if (cancellation) {
+                cancellation.dispose();
+            }
         });
         if (stdout) {
             p.stdout?.pipe(stdout);
@@ -134,9 +140,8 @@ export async function execFileStreamOutput(
             p.stderr?.pipe(stderr);
         }
         if (token) {
-            const cancellation = token.onCancellationRequested(() => {
-                p.kill();
-                cancellation.dispose();
+            cancellation = token.onCancellationRequested(() => {
+                p.kill(killSignal);
             });
         }
     });
