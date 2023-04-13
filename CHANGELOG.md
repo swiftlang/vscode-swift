@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.1 - 2023-04-13
+
+### Changed
+
+- Run the test executable directly when running tests instead of via `swift test`.
+
+### Fixed
+
+- Ensure we catch errors when decoding `Info.plist` on Windows.
+- Killing of `xctest` process if testing is cancelled.
+
 ## 1.2.0 - 2023-03-22
 
 ### Added
