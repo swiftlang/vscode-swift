@@ -4,7 +4,7 @@
 
 ### Changed
 
-- Run `xctest` directly when running tests instead of via `swift test`.
+- Run the test executable directly when running tests instead of via `swift test`.
 
 ### Fixed
 
