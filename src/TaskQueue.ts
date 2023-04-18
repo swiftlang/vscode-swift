@@ -116,8 +116,9 @@ export class TaskQueue {
             if (operation) {
                 const task = operation.task;
                 this.activeOperation = operation;
-                // wait for `disableTaskQueue` to be false before running task
+                // wait while queue is disabled before running task
                 await this.waitWhileDisabled();
+                // show active task status item
                 if (operation.showStatusItem === true) {
                     this.workspaceContext.statusItem.start(task);
                 }
