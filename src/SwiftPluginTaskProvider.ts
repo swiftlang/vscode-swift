@@ -126,6 +126,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
                 disableSandbox: false,
                 allowWritingToPackageDirectory: false,
                 cwd: cwd,
+                disableTaskQueue: false,
             },
             config.scope ?? vscode.TaskScope.Workspace,
             plugin.name,
