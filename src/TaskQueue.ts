@@ -108,12 +108,14 @@ export class TaskQueue {
 
     /** If there is no active operation then run the task at the top of the queue */
     private async processQueue() {
-        await poll(() => !this.workspaceContext.tasks.disableTaskQueue, 1000);
         if (!this.activeOperation) {
+            // get task from queue
             const operation = this.queue.shift();
             if (operation) {
                 const task = operation.task;
                 this.activeOperation = operation;
+                // wait for `disableTaskQueue` to be false before running task
+                await poll(() => !this.workspaceContext.tasks.disableTaskQueue, 1000);
                 if (operation.showStatusItem === true) {
                     this.workspaceContext.statusItem.start(task);
                 }
