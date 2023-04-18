@@ -53,11 +53,13 @@ export class TaskQueue {
     queue: QueuedOperation[];
     activeOperation?: QueuedOperation;
     workspaceContext: WorkspaceContext;
+    disabled: boolean;
 
     constructor(private folderContext: FolderContext) {
         this.queue = [];
         this.workspaceContext = folderContext.workspaceContext;
         this.activeOperation = undefined;
+        this.disabled = false;
     }
 
     /**
@@ -115,7 +117,7 @@ export class TaskQueue {
                 const task = operation.task;
                 this.activeOperation = operation;
                 // wait for `disableTaskQueue` to be false before running task
-                await poll(() => !this.workspaceContext.tasks.disableTaskQueue, 1000);
+                await this.waitWhileDisabled();
                 if (operation.showStatusItem === true) {
                     this.workspaceContext.statusItem.start(task);
                 }
@@ -172,5 +174,9 @@ export class TaskQueue {
                 return queuedOperation;
             }
         }
+    }
+
+    private async waitWhileDisabled() {
+        await poll(() => !this.disabled, 1000);
     }
 }

@@ -13,10 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import { WorkspaceContext } from "./WorkspaceContext";
 
 /** Manage task execution and completion handlers */
 export class TaskManager implements vscode.Disposable {
-    constructor() {
+    constructor(private workspaceContext: WorkspaceContext) {
         this.onDidEndTaskProcessDisposible = vscode.tasks.onDidEndTaskProcess(event => {
             this.taskEndObservers.forEach(observer => observer(event));
         });
@@ -24,19 +25,20 @@ export class TaskManager implements vscode.Disposable {
             this.taskEndObservers.forEach(observer =>
                 observer({ execution: event.execution, exitCode: undefined })
             );
+            // if task disabled the task queue then re-enable it
             if (event.execution.task.definition.disableTaskQueue) {
-                this.disableTaskQueue = false;
+                this.disableTaskQueue(event.execution.task, false);
             }
         });
         this.onDidStartTaskDisposible = vscode.tasks.onDidStartTask(event => {
             if (this.taskStartObserver) {
                 this.taskStartObserver(event);
             }
+            // if task is set to disable the task queue then disable it
             if (event.execution.task.definition.disableTaskQueue) {
-                this.disableTaskQueue = true;
+                this.disableTaskQueue(event.execution.task, true);
             }
         });
-        this.disableTaskQueue = false;
     }
 
     /**
@@ -128,13 +130,23 @@ export class TaskManager implements vscode.Disposable {
         this.taskEndObservers.delete(observer);
     }
 
+    /** Find folderContext based on task an then disable/enable its task queue */
+    private disableTaskQueue(task: vscode.Task, disable: boolean) {
+        const index = this.workspaceContext.folders.findIndex(
+            context => context.folder.fsPath === task.definition.cwd
+        );
+        if (index === -1) {
+            return;
+        }
+        this.workspaceContext.folders[index].taskQueue.disabled = disable;
+    }
+
     dispose() {
         this.onDidEndTaskDisposible.dispose();
         this.onDidEndTaskProcessDisposible.dispose();
         this.onDidStartTaskDisposible.dispose();
     }
 
-    public disableTaskQueue: boolean;
     private taskEndObservers: Set<TaskEndObserver> = new Set();
     private onDidEndTaskProcessDisposible: vscode.Disposable;
     private onDidEndTaskDisposible: vscode.Disposable;

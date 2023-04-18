@@ -62,7 +62,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.languageClientManager = new LanguageClientManager(this);
         this.outputChannel.log(this.toolchain.swiftVersionString);
         this.toolchain.logDiagnostics(this.outputChannel);
-        this.tasks = new TaskManager();
+        this.tasks = new TaskManager(this);
         this.currentDocument = null;
         // test coverage document provider
         this.testCoverageDocumentProvider = new TestCoverageReportProvider(this);
