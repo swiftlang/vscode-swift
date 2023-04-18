@@ -125,7 +125,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                         if (
                             folder.swiftPackage.foundPackage &&
                             !configuration.folder(folder.workspaceFolder).disableAutoResolve &&
-                            !workspace.tasks.disableAutoResolve
+                            !workspace.tasks.disableTaskQueue
                         ) {
                             await commands.resolveFolderDependencies(folder, true);
                         }

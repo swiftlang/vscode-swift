@@ -211,7 +211,7 @@ export function createSwiftTask(args: string[], name: string, config: TaskConfig
     }*/
 
     const task = new vscode.Task(
-        { type: "swift", args: args, cwd: cwd, disableAutoResolve: true },
+        { type: "swift", args: args, cwd: cwd, disableTaskQueue: true },
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
         "swift",

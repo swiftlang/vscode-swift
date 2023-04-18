@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { FolderContext } from "./FolderContext";
 import { WorkspaceContext } from "./WorkspaceContext";
+import { poll } from "./utilities/utilities";
 
 /** Swift operation to add to TaskQueue */
 export interface SwiftOperation {
@@ -106,7 +107,8 @@ export class TaskQueue {
     }
 
     /** If there is no active operation then run the task at the top of the queue */
-    private processQueue() {
+    private async processQueue() {
+        await poll(() => !this.workspaceContext.tasks.disableTaskQueue, 1000);
         if (!this.activeOperation) {
             const operation = this.queue.shift();
             if (operation) {

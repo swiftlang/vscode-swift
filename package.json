@@ -524,8 +524,8 @@
             "description": "The folder to run the task in.",
             "type": "string"
           },
-          "disableAutoResolve": {
-            "description": "Disable the automatic resolve while running this task.",
+          "disableTaskQueue": {
+            "description": "Disable any queued tasks while running this task.",
             "type": "boolean"
           }
         },
@@ -559,8 +559,8 @@
             "description": "The folder to run the swift plugin in.",
             "type": "string"
           },
-          "disableAutoResolve": {
-            "description": "Disable the automatic resolve while running this task.",
+          "disableTaskQueue": {
+            "description": "Disable any queued tasks while running this task.",
             "type": "boolean"
           }
         },
