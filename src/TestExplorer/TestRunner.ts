@@ -525,8 +525,8 @@ class TestRunState implements iTestRunState {
     ) {}
 
     public currentTestItem?: vscode.TestItem;
+    public lastTestItem?: vscode.TestItem;
     public excess?: string;
-    public suiteStack: string[] = [];
     public failedTest?: {
         testIndex: number;
         message: string;
@@ -553,7 +553,7 @@ class TestRunState implements iTestRunState {
             );
         }
         if (testIndex === -1) {
-            testIndex = this.testItems.findIndex(item => item.id.endsWith(id));
+            testIndex = this.testItems.findIndex(item => item.id.endsWith(`/${id}`));
         }
         return testIndex;
     }
@@ -568,6 +568,7 @@ class TestRunState implements iTestRunState {
     passed(index: number, duration: number): void {
         this.testRun.passed(this.testItems[index], duration * 1000);
         this.testItems.splice(index, 1);
+        this.lastTestItem = this.currentTestItem;
         this.currentTestItem = undefined;
     }
 
@@ -584,6 +585,7 @@ class TestRunState implements iTestRunState {
             this.testRun.failed(this.testItems[index], new vscode.TestMessage(message));
         }
         this.testItems.splice(index, 1);
+        this.lastTestItem = this.currentTestItem;
         this.currentTestItem = undefined;
     }
 
@@ -591,7 +593,27 @@ class TestRunState implements iTestRunState {
     skipped(index: number): void {
         this.testRun.skipped(this.testItems[index]);
         this.testItems.splice(index, 1);
+        this.lastTestItem = this.currentTestItem;
         this.currentTestItem = undefined;
+    }
+
+    // started suite
+    startedSuite() {
+        //
+    }
+    // started suite
+    passedSuite(name: string) {
+        const lastClassTestItem = this.lastTestItem?.parent;
+        if (lastClassTestItem && lastClassTestItem.id.endsWith(`.${name}`)) {
+            this.testRun.passed(lastClassTestItem);
+        }
+    }
+    // started suite
+    failedSuite(name: string) {
+        const lastClassTestItem = this.lastTestItem?.parent;
+        if (lastClassTestItem && lastClassTestItem.id.endsWith(`.${name}`)) {
+            this.testRun.failed(lastClassTestItem, []);
+        }
     }
 
     /**
