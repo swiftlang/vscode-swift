@@ -24,12 +24,19 @@ export class TaskManager implements vscode.Disposable {
             this.taskEndObservers.forEach(observer =>
                 observer({ execution: event.execution, exitCode: undefined })
             );
+            if (event.execution.task.definition.disableAutoResolve) {
+                this.disableAutoResolve = false;
+            }
         });
         this.onDidStartTaskDisposible = vscode.tasks.onDidStartTask(event => {
             if (this.taskStartObserver) {
                 this.taskStartObserver(event);
             }
+            if (event.execution.task.definition.disableAutoResolve) {
+                this.disableAutoResolve = true;
+            }
         });
+        this.disableAutoResolve = false;
     }
 
     /**
@@ -127,6 +134,7 @@ export class TaskManager implements vscode.Disposable {
         this.onDidStartTaskDisposible.dispose();
     }
 
+    public disableAutoResolve: boolean;
     private taskEndObservers: Set<TaskEndObserver> = new Set();
     private onDidEndTaskProcessDisposible: vscode.Disposable;
     private onDidEndTaskDisposible: vscode.Disposable;
