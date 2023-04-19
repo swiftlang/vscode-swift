@@ -317,7 +317,7 @@ export interface iTestRunState {
     skipped(index: number): void;
     // started suite
     startedSuite(name: string): void;
-    // started suite
+    // passed suite
     passedSuite(name: string): void;
     // started suite
     failedSuite(name: string): void;
