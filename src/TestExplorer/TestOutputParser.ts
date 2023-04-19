@@ -319,6 +319,6 @@ export interface iTestRunState {
     startedSuite(name: string): void;
     // passed suite
     passedSuite(name: string): void;
-    // started suite
+    // failed suite
     failedSuite(name: string): void;
 }
