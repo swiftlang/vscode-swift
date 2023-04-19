@@ -601,7 +601,7 @@ class TestRunState implements iTestRunState {
     startedSuite() {
         //
     }
-    // started suite
+    // passed suite
     passedSuite(name: string) {
         const lastClassTestItem = this.lastTestItem?.parent;
         if (lastClassTestItem && lastClassTestItem.id.endsWith(`.${name}`)) {
