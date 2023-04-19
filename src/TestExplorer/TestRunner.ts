@@ -599,7 +599,7 @@ class TestRunState implements iTestRunState {
 
     // started suite
     startedSuite() {
-        //
+        // Nothing to do here
     }
     // passed suite
     passedSuite(name: string) {
