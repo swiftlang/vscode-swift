@@ -204,17 +204,17 @@ export class TestOutputParser {
 
     /** Flag a test suite has started */
     private startTestSuite(name: string, runState: iTestRunState) {
-        runState.suiteStack.push(name);
+        runState.startedSuite(name);
     }
 
     /** Flag a test suite has passed */
     private passTestSuite(name: string, runState: iTestRunState) {
-        runState.suiteStack.pop();
+        runState.passedSuite(name);
     }
 
     /** Flag a test suite has failed */
     private failTestSuite(name: string, runState: iTestRunState) {
-        runState.suiteStack.pop();
+        runState.failedSuite(name);
     }
 
     /** Flag we have started a test */
@@ -294,8 +294,6 @@ export class TestOutputParser {
 export interface iTestRunState {
     // excess data from previous parse that was not processed
     excess?: string;
-    // stack of test suites
-    suiteStack: string[];
     // failed test state
     failedTest?: {
         testIndex: number;
@@ -317,4 +315,10 @@ export interface iTestRunState {
     failed(index: number, message: string, location?: { file: string; line: number }): void;
     // set test index to have been skipped
     skipped(index: number): void;
+    // started suite
+    startedSuite(name: string): void;
+    // passed suite
+    passedSuite(name: string): void;
+    // failed suite
+    failedSuite(name: string): void;
 }

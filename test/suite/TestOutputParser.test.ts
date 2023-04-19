@@ -36,7 +36,6 @@ interface TestItem {
 /** Test implementation of iTestRunState */
 class TestRunState implements iTestRunState {
     excess?: string;
-    suiteStack: string[] = [];
     failedTest?: {
         testIndex: number;
         message: string;
@@ -75,6 +74,19 @@ class TestRunState implements iTestRunState {
     }
     skipped(index: number): void {
         this.tests[index].status = TestStatus.skipped;
+    }
+
+    // started suite
+    startedSuite(name: string) {
+        //
+    }
+    // passed suite
+    passedSuite(name: string) {
+        //
+    }
+    // failed suite
+    failedSuite(name: string) {
+        //
     }
 }
 
