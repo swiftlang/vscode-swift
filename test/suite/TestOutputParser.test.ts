@@ -80,7 +80,7 @@ class TestRunState implements iTestRunState {
     startedSuite(name: string) {
         //
     }
-    // started suite
+    // passed suite
     passedSuite(name: string) {
         //
     }
