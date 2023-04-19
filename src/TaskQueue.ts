@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { FolderContext } from "./FolderContext";
 import { WorkspaceContext } from "./WorkspaceContext";
+import { poll } from "./utilities/utilities";
 
 /** Swift operation to add to TaskQueue */
 export interface SwiftOperation {
@@ -52,11 +53,13 @@ export class TaskQueue {
     queue: QueuedOperation[];
     activeOperation?: QueuedOperation;
     workspaceContext: WorkspaceContext;
+    disabled: boolean;
 
     constructor(private folderContext: FolderContext) {
         this.queue = [];
         this.workspaceContext = folderContext.workspaceContext;
         this.activeOperation = undefined;
+        this.disabled = false;
     }
 
     /**
@@ -106,12 +109,16 @@ export class TaskQueue {
     }
 
     /** If there is no active operation then run the task at the top of the queue */
-    private processQueue() {
+    private async processQueue() {
         if (!this.activeOperation) {
+            // get task from queue
             const operation = this.queue.shift();
             if (operation) {
                 const task = operation.task;
                 this.activeOperation = operation;
+                // wait while queue is disabled before running task
+                await this.waitWhileDisabled();
+                // show active task status item
                 if (operation.showStatusItem === true) {
                     this.workspaceContext.statusItem.start(task);
                 }
@@ -168,5 +175,9 @@ export class TaskQueue {
                 return queuedOperation;
             }
         }
+    }
+
+    private async waitWhileDisabled() {
+        await poll(() => !this.disabled, 1000);
     }
 }

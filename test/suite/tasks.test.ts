@@ -15,12 +15,23 @@
 import * as vscode from "vscode";
 import * as assert from "assert";
 import { TaskManager } from "../../src/TaskManager";
-import { testAssetPath, testAssetUri, testAssetWorkspaceFolder } from "../fixtures";
+import { testAssetPath, testAssetWorkspaceFolder } from "../fixtures";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { TaskQueue } from "../../src/TaskQueue";
 
 suite("Tasks Test Suite", () => {
-    const taskManager = new TaskManager();
+    let workspaceContext: WorkspaceContext;
+    let taskManager: TaskManager;
+
+    suiteSetup(async () => {
+        workspaceContext = await WorkspaceContext.create();
+        taskManager = new TaskManager(workspaceContext);
+    });
+
+    suiteTeardown(async () => {
+        taskManager.dispose();
+        workspaceContext.dispose();
+    });
 
     suite("TaskManager", () => {
         // check running task will return expected value

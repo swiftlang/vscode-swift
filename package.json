@@ -523,6 +523,10 @@
           "cwd": {
             "description": "The folder to run the task in.",
             "type": "string"
+          },
+          "disableTaskQueue": {
+            "description": "Disable any queued tasks while running the task. This includes the auto resolve when Packages.resolved is updated.",
+            "type": "boolean"
           }
         },
         "required": [
@@ -554,6 +558,10 @@
           "cwd": {
             "description": "The folder to run the swift plugin in.",
             "type": "string"
+          },
+          "disableTaskQueue": {
+            "description": "Disable any queued tasks while running this command plugin. This includes the auto resolve when Packages.resolved is updated.",
+            "type": "boolean"
           }
         },
         "required": [

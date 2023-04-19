@@ -45,6 +45,7 @@ interface TaskConfig {
     problemMatcher?: string | string[];
     presentationOptions?: vscode.TaskPresentationOptions;
     prefix?: string;
+    disableTaskQueue?: boolean;
 }
 
 /** flag for enabling test discovery */
@@ -101,6 +102,7 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
                 reveal: vscode.TaskRevealKind.Silent,
             },
             problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
+            disableTaskQueue: true,
         }
     );
 }
@@ -169,6 +171,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                     reveal: vscode.TaskRevealKind.Silent,
                 },
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
+                disableTaskQueue: true,
             }
         ),
         createSwiftTask(
@@ -182,6 +185,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                     reveal: vscode.TaskRevealKind.Silent,
                 },
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
+                disableTaskQueue: true,
             }
         ),
     ];
@@ -211,7 +215,7 @@ export function createSwiftTask(args: string[], name: string, config: TaskConfig
     }*/
 
     const task = new vscode.Task(
-        { type: "swift", args: args, cwd: cwd },
+        { type: "swift", args: args, cwd: cwd, disableTaskQueue: config.disableTaskQueue },
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
         "swift",

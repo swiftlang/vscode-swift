@@ -174,6 +174,25 @@ export async function execSwift(
 }
 
 /**
+ * Keep calling a function until it returns true
+ * @param fn function to test
+ * @param everyMilliseconds Time period between each call of the function
+ */
+export async function poll(fn: () => boolean, everyMilliseconds: number) {
+    while (!fn()) {
+        await wait(everyMilliseconds);
+    }
+}
+
+/**
+ * Wait for amount of time
+ * @param milliseconds Amount of time to wait
+ */
+export function wait(milliseconds: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, milliseconds));
+}
+
+/**
  * Get modified swift arguments with SDK flags.
  *
  * @param args original commandline arguments
