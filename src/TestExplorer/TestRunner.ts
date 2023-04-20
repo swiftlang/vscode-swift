@@ -553,7 +553,7 @@ class TestRunState implements iTestRunState {
             );
         }
         if (testIndex === -1) {
-            testIndex = this.testItems.findIndex(item => item.id.endsWith(`/${id}`));
+            testIndex = this.testItems.findIndex(item => item.id.endsWith(`${id}`));
         }
         return testIndex;
     }
