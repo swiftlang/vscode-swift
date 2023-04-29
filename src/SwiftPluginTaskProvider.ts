@@ -111,15 +111,27 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
      */
     createSwiftPluginTask(plugin: PackagePlugin, config: TaskConfig): vscode.Task {
         const swift = getSwiftExecutable();
-        let swiftArgs = ["package", plugin.command];
-        swiftArgs = withSwiftSDKFlags(swiftArgs);
 
         // Add relative path current working directory
         const relativeCwd = path.relative(config.scope.uri.fsPath, config.cwd?.fsPath);
         const cwd = relativeCwd !== "" ? relativeCwd : undefined;
+        const definition = this.getTaskDefinition(plugin, cwd);
+        // Add arguments based on definition
+        const sandboxArg = definition.disableSandbox ? ["--disable-sandbox"] : [];
+        const writingToPackageArg = definition.allowWritingToPackageDirectory
+            ? ["--allow-writing-to-package-directory"]
+            : [];
+        let swiftArgs = [
+            "package",
+            ...sandboxArg,
+            ...writingToPackageArg,
+            plugin.command,
+            ...definition.args,
+        ];
+        swiftArgs = withSwiftSDKFlags(swiftArgs);
 
         const task = new vscode.Task(
-            this.getTaskDefinition(plugin, cwd),
+            definition,
             config.scope ?? vscode.TaskScope.Workspace,
             plugin.name,
             "swift-plugin",
@@ -149,13 +161,13 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         const definition = {
             type: "swift-plugin",
             command: plugin.command,
-            args: [],
+            args: [""],
             disableSandbox: false,
             allowWritingToPackageDirectory: false,
             cwd: cwd,
             disableTaskQueue: false,
         };
-
+        definition.args.length = 0;
         // There are common command plugins used across the package eco-system eg for docc generation
         // Everytime these are run they need the same default setup.
         switch (`${plugin.package}, ${plugin.command}`) {
@@ -170,6 +182,10 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
 
             case "SwiftDocCPlugin, preview-documentation":
                 definition.disableSandbox = true;
+                definition.allowWritingToPackageDirectory = true;
+                break;
+
+            case "SwiftFormat, swiftformat":
                 definition.allowWritingToPackageDirectory = true;
                 break;
 
