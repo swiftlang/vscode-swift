@@ -161,13 +161,12 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         const definition = {
             type: "swift-plugin",
             command: plugin.command,
-            args: [""],
+            args: [],
             disableSandbox: false,
             allowWritingToPackageDirectory: false,
             cwd: cwd,
             disableTaskQueue: false,
         };
-        definition.args.length = 0;
         // There are common command plugins used across the package eco-system eg for docc generation
         // Everytime these are run they need the same default setup.
         switch (`${plugin.package}, ${plugin.command}`) {
