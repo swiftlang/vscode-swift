@@ -15,6 +15,7 @@
 import * as path from "path";
 import configuration from "../configuration";
 import { SwiftToolchain, DarwinCompatibleTarget, getDarwinTargetTriple } from "./toolchain";
+import { Version } from "../utilities/version";
 
 /** Target info */
 export interface DarwinTargetInfo {
@@ -83,7 +84,11 @@ export class BuildFlags {
      */
     buildPathFlags(): string[] {
         if (configuration.buildPath && configuration.buildPath.length > 0) {
-            return ["--build-path", configuration.buildPath];
+            if (this.toolchain.swiftVersion < new Version(5, 7, 0)) {
+                return ["--build-path", configuration.buildPath];
+            } else {
+                return ["--scratch-path", configuration.buildPath];
+            }
         } else {
             return [];
         }

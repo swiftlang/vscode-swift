@@ -16,6 +16,7 @@ import * as assert from "assert";
 import * as vscode from "vscode";
 import { SwiftToolchain } from "../../src/toolchain/toolchain";
 import { ArgumentFilter, BuildFlags } from "../../src/toolchain/BuildFlags";
+import { Version } from "../../src/utilities/version";
 
 suite("BuildFlags Test Suite", () => {
     let toolchain: SwiftToolchain;
@@ -41,10 +42,17 @@ suite("BuildFlags Test Suite", () => {
             .getConfiguration("swift")
             .update("buildPath", "/some/other/full/test/path");
 
-        assert.deepStrictEqual(buildFlags.buildPathFlags(), [
-            "--build-path",
-            "/some/other/full/test/path",
-        ]);
+        if (toolchain.swiftVersion < new Version(5, 7, 0)) {
+            assert.deepStrictEqual(buildFlags.buildPathFlags(), [
+                "--build-path",
+                "/some/other/full/test/path",
+            ]);
+        } else {
+            assert.deepStrictEqual(buildFlags.buildPathFlags(), [
+                "--scratch-path",
+                "/some/other/full/test/path",
+            ]);
+        }
     });
 
     test("buildDirectoryFromWorkspacePath", async () => {

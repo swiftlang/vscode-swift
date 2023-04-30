@@ -32,7 +32,7 @@ This is an experimental setting which runs `swift build` whenever a file is save
 
 - **Build path**
 
-The path to a directory that will be used for build artifacts. This path will be added to all swift package manager commands that are executed by vscode-swift extension via `--build-path` option. When no value provided - nothing gets passed to swift package manager and it will use its default value of `.build` folder in workspace. You can use absolute path for directory or the relative path, which will use the workspace path as a base. Unfortunately, VSCode does not correctly understand and pass the tilde symbol (~) which represents user home folder under *nix systems. Thus, it should be avoided.
+The path to a directory that will be used for build artifacts. This path will be added to all swift package manager commands that are executed by vscode-swift extension via `--scratch-path` option. When no value provided - nothing gets passed to swift package manager and it will use its default value of `.build` folder in workspace. You can use absolute path for directory or the relative path, which will use the workspace path as a base. Unfortunately, VSCode does not correctly understand and pass the tilde symbol (~) which represents user home folder under *nix systems. Thus, it should be avoided.
 
 - **Disable Auto Resolve**
 
