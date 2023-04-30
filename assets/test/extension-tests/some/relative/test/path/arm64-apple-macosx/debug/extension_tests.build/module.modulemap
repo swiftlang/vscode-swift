@@ -1,4 +1,0 @@
-module extension_tests {
-    header "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/extension_tests.build/extension-tests-Swift.h"
-    requires objc
-}
