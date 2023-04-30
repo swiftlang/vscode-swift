@@ -18,7 +18,7 @@ import { SwiftPackage } from "../../src/SwiftPackage";
 import { SwiftToolchain } from "../../src/toolchain/toolchain";
 import { Version } from "../../src/utilities/version";
 
-let toolchain: SwiftToolchain | undefined;
+let toolchain: SwiftToolchain;
 
 suite("SwiftPackage Test Suite", () => {
     setup(async () => {
@@ -26,18 +26,18 @@ suite("SwiftPackage Test Suite", () => {
     });
 
     test("No package", async () => {
-        const spmPackage = await SwiftPackage.create(testAssetUri("empty-folder"));
+        const spmPackage = await SwiftPackage.create(testAssetUri("empty-folder"), toolchain);
         assert.strictEqual(spmPackage.foundPackage, false);
     }).timeout(10000);
 
     test("Invalid package", async () => {
-        const spmPackage = await SwiftPackage.create(testAssetUri("invalid-package"));
+        const spmPackage = await SwiftPackage.create(testAssetUri("invalid-package"), toolchain);
         assert.strictEqual(spmPackage.foundPackage, true);
         assert.strictEqual(spmPackage.isValid, false);
     }).timeout(10000);
 
     test("Executable package", async () => {
-        const spmPackage = await SwiftPackage.create(testAssetUri("package1"));
+        const spmPackage = await SwiftPackage.create(testAssetUri("package1"), toolchain);
         assert.strictEqual(spmPackage.isValid, true);
         assert.strictEqual(spmPackage.executableProducts.length, 1);
         assert.strictEqual(spmPackage.executableProducts[0].name, "package1");
@@ -47,7 +47,7 @@ suite("SwiftPackage Test Suite", () => {
     }).timeout(10000);
 
     test("Library package", async () => {
-        const spmPackage = await SwiftPackage.create(testAssetUri("package2"));
+        const spmPackage = await SwiftPackage.create(testAssetUri("package2"), toolchain);
         assert.strictEqual(spmPackage.isValid, true);
         assert.strictEqual(spmPackage.libraryProducts.length, 1);
         assert.strictEqual(spmPackage.libraryProducts[0].name, "package2");
@@ -59,13 +59,13 @@ suite("SwiftPackage Test Suite", () => {
         if (toolchain && toolchain.swiftVersion < new Version(5, 6, 0)) {
             return;
         }
-        const spmPackage = await SwiftPackage.create(testAssetUri("package5.6"));
+        const spmPackage = await SwiftPackage.create(testAssetUri("package5.6"), toolchain);
         assert.strictEqual(spmPackage.isValid, true);
         assert(spmPackage.resolved !== undefined);
     }).timeout(15000);
 
     test("Identity case-insensitivity", async () => {
-        const spmPackage = await SwiftPackage.create(testAssetUri("identity-case"));
+        const spmPackage = await SwiftPackage.create(testAssetUri("identity-case"), toolchain);
         assert.strictEqual(spmPackage.isValid, true);
         assert.strictEqual(spmPackage.dependencies.length, 1);
         assert(spmPackage.resolved !== undefined);
@@ -74,7 +74,7 @@ suite("SwiftPackage Test Suite", () => {
     }).timeout(10000);
 
     test("Identity different from name", async () => {
-        const spmPackage = await SwiftPackage.create(testAssetUri("identity-different"));
+        const spmPackage = await SwiftPackage.create(testAssetUri("identity-different"), toolchain);
         assert.strictEqual(spmPackage.isValid, true);
         assert.strictEqual(spmPackage.dependencies.length, 1);
         assert(spmPackage.resolved !== undefined);

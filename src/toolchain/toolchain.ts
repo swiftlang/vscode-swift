@@ -20,6 +20,7 @@ import configuration from "../configuration";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { execFile, execSwift, pathExists } from "../utilities/utilities";
 import { Version } from "../utilities/version";
+import { BuildFlags } from "./BuildFlags";
 
 /**
  * Contents of **Info.plist** on Windows.
@@ -116,6 +117,11 @@ export class SwiftToolchain {
             customSDK,
             xcTestPath
         );
+    }
+
+    /** build flags */
+    public get buildFlags(): BuildFlags {
+        return new BuildFlags(this);
     }
 
     /**
@@ -424,11 +430,11 @@ export class SwiftToolchain {
     /** @returns swift target info */
     private static async getSwiftTargetInfo(): Promise<SwiftTargetInfo> {
         try {
-            const { stdout } = await execSwift(["-print-target-info"]);
+            const { stdout } = await execSwift(["-print-target-info"], "default");
             const targetInfo = JSON.parse(stdout.trimEnd()) as SwiftTargetInfo;
             // workaround for Swift 5.3 and older toolchains
             if (targetInfo.compilerVersion === undefined) {
-                const { stdout } = await execSwift(["--version"]);
+                const { stdout } = await execSwift(["--version"], "default");
                 targetInfo.compilerVersion = stdout.split("\n", 1)[0];
             }
             return targetInfo;

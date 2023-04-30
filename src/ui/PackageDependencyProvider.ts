@@ -16,7 +16,6 @@ import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
 import configuration from "../configuration";
-import { buildDirectoryFromWorkspacePath } from "../utilities/utilities";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderEvent } from "../WorkspaceContext";
 import { FolderContext } from "../FolderContext";
@@ -28,6 +27,7 @@ import {
     WorkspaceState,
     WorkspaceStateDependency,
 } from "../SwiftPackage";
+import { BuildFlags } from "../toolchain/BuildFlags";
 
 /**
  * References:
@@ -278,7 +278,8 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
 
             const packagePath = this.dependencyPackagePath(workspaceStateDependency, workspacePath);
             const childDependencyContents = (await SwiftPackage.loadPackage(
-                vscode.Uri.file(packagePath)
+                vscode.Uri.file(packagePath),
+                this.workspaceContext.toolchain
             )) as PackageContents;
 
             stack.push(...childDependencyContents.dependencies);
@@ -449,7 +450,10 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             return dependency.state.path ?? dependency.packageRef.location;
         } else {
             // remote
-            const buildDirectory = buildDirectoryFromWorkspacePath(workspaceFolder, true);
+            const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(
+                workspaceFolder,
+                true
+            );
             return path.join(buildDirectory, "checkouts", dependency.subpath);
         }
     }

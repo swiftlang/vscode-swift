@@ -18,7 +18,8 @@ import * as fs from "fs";
 import * as asyncfs from "fs/promises";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
-import { buildDirectoryFromWorkspacePath, execFileStreamOutput } from "../utilities/utilities";
+import { execFileStreamOutput } from "../utilities/utilities";
+import { BuildFlags } from "../toolchain/BuildFlags";
 
 /**
  * Class keeping a record of the latest test coverage results for a package
@@ -43,7 +44,7 @@ export class LcovResults implements vscode.Disposable {
         const llvmCov =
             this.folderContext.workspaceContext.toolchain.getToolchainExecutable("llvm-cov");
         const packageName = this.folderContext.swiftPackage.name;
-        const buildDirectory = buildDirectoryFromWorkspacePath(
+        const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(
             this.folderContext.folder.fsPath,
             true
         );
@@ -138,7 +139,7 @@ export class LcovResults implements vscode.Disposable {
     }
 
     private lcovFilename() {
-        const buildDirectory = buildDirectoryFromWorkspacePath(
+        const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(
             this.folderContext.folder.fsPath,
             true
         );

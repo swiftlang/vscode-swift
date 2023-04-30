@@ -55,15 +55,20 @@ export async function runSnippet(ctx: WorkspaceContext) {
     }
     // create run task
     const snippetName = path.basename(ctx.currentDocument.fsPath, ".swift");
-    const snippetTask = createSwiftTask(["run", snippetName], `Run ${snippetName}`, {
-        group: vscode.TaskGroup.Test,
-        cwd: folderContext.folder,
-        scope: folderContext.workspaceFolder,
-        presentationOptions: {
-            reveal: vscode.TaskRevealKind.Always,
+    const snippetTask = createSwiftTask(
+        ["run", snippetName],
+        `Run ${snippetName}`,
+        {
+            group: vscode.TaskGroup.Test,
+            cwd: folderContext.folder,
+            scope: folderContext.workspaceFolder,
+            presentationOptions: {
+                reveal: vscode.TaskRevealKind.Always,
+            },
+            problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
         },
-        problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
-    });
+        ctx.toolchain
+    );
 
     await vscode.tasks.executeTask(snippetTask);
 }
@@ -91,7 +96,8 @@ export async function debugSnippet(ctx: WorkspaceContext) {
                 reveal: vscode.TaskRevealKind.Always,
             },
             problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
-        }
+        },
+        ctx.toolchain
     );
 
     // queue build task and when it is complete run executable in the debugger

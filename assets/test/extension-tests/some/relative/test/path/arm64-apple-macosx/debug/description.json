@@ -1,0 +1,243 @@
+{
+  "builtTestProducts" : [
+    {
+      "binaryPath" : "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/extension-testsPackageTests.xctest/Contents/MacOS/extension-testsPackageTests",
+      "productName" : "extension-testsPackageTests"
+    }
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.extension-tests-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "importPath" : "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/Sources/extension-tests/extension_tests.swift"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "extension_tests",
+      "moduleOutputPath" : "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/extension_tests.swiftmodule",
+      "objects" : [
+        "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/extension_tests.build/extension_tests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx10.13",
+        "-swift-version",
+        "5",
+        "-enable-batch-mode",
+        "-index-store-path",
+        "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-g",
+        "-j10",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-module-cache-path",
+        "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/extension_tests.build/extension-tests-Swift.h",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.3.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib"
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/extension_tests.build/extension_tests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/extension_tests.swiftmodule"
+        }
+      ],
+      "sources" : [
+        "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/Sources/extension-tests/extension_tests.swift"
+      ],
+      "tempsPath" : "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/extension_tests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.extension-testsTests-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "importPath" : "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/Tests/extension-testsTests/extension_testsTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/extension_tests.swiftmodule"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "extension_testsTests",
+      "moduleOutputPath" : "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/extension_testsTests.swiftmodule",
+      "objects" : [
+        "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/extension_testsTests.build/extension_testsTests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx12.0",
+        "-swift-version",
+        "5",
+        "-enable-batch-mode",
+        "-index-store-path",
+        "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-g",
+        "-j10",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-module-cache-path",
+        "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.3.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib"
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/extension_testsTests.build/extension_testsTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/extension_testsTests.swiftmodule"
+        }
+      ],
+      "sources" : [
+        "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/Tests/extension-testsTests/extension_testsTests.swift"
+      ],
+      "tempsPath" : "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/extension_testsTests.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "extension_tests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "extension_tests",
+      "-incremental",
+      "-c",
+      "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/Sources/extension-tests/extension_tests.swift",
+      "-I",
+      "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug",
+      "-target",
+      "arm64-apple-macosx10.13",
+      "-swift-version",
+      "5",
+      "-enable-batch-mode",
+      "-index-store-path",
+      "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-g",
+      "-j10",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-module-cache-path",
+      "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/extension_tests.build/extension-tests-Swift.h",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.3.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "extension_testsTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "extension_testsTests",
+      "-incremental",
+      "-c",
+      "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/Tests/extension-testsTests/extension_testsTests.swift",
+      "-I",
+      "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug",
+      "-target",
+      "arm64-apple-macosx12.0",
+      "-swift-version",
+      "5",
+      "-enable-batch-mode",
+      "-index-store-path",
+      "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-g",
+      "-j10",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-module-cache-path",
+      "/Users/adamfowler/Developer/tools/vscode-swift/assets/test/extension-tests/some/relative/test/path/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.3.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "extension_tests" : [
+
+    ],
+    "extension_testsTests" : [
+      "extension_tests"
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+
+  }
+}

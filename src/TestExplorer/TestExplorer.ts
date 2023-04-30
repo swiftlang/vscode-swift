@@ -132,6 +132,7 @@ export class TestExplorer {
             // get list of tests from `swift test --list-tests`
             const { stdout } = await execSwift(
                 listTestArguments,
+                this.folderContext.workspaceContext.toolchain,
                 {
                     cwd: this.folderContext.folder.fsPath,
                 },

@@ -17,12 +17,8 @@ import path = require("path");
 import * as vscode from "vscode";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
-import {
-    buildDirectoryFromWorkspacePath,
-    stringArrayInEnglish,
-    swiftLibraryPathKey,
-    swiftRuntimeEnv,
-} from "../utilities/utilities";
+import { BuildFlags } from "../toolchain/BuildFlags";
+import { stringArrayInEnglish, swiftLibraryPathKey, swiftRuntimeEnv } from "../utilities/utilities";
 
 /**
  * Edit launch.json based on contents of Swift Package.
@@ -103,7 +99,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
         folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}/${ctx.relativePath}`;
         nameSuffix = ` (${ctx.relativePath})`;
     }
-    let buildDirectory = buildDirectoryFromWorkspacePath(folder);
+    let buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder);
     if (!path.isAbsolute(buildDirectory)) {
         buildDirectory = path.join(folder, buildDirectory);
     }
@@ -151,7 +147,7 @@ export function createSnippetConfiguration(
     } else {
         folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}/${ctx.relativePath}`;
     }
-    let buildDirectory = buildDirectoryFromWorkspacePath(folder);
+    let buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder);
     if (!path.isAbsolute(buildDirectory)) {
         buildDirectory = path.join(folder, buildDirectory);
     }
@@ -200,7 +196,7 @@ export function createTestConfiguration(
         ...configuration.folder(ctx.workspaceFolder).testEnvironmentVariables,
     };
 
-    let buildDirectory = buildDirectoryFromWorkspacePath(folder);
+    let buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder);
     if (!path.isAbsolute(buildDirectory)) {
         buildDirectory = path.join(folder, buildDirectory);
     }
@@ -289,7 +285,7 @@ export function createDarwinTestConfiguration(
         folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}/${ctx.relativePath}`;
         nameSuffix = ` (${ctx.relativePath})`;
     }
-    const buildDirectory = buildDirectoryFromWorkspacePath(folder);
+    const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder);
     // On macOS, find the path to xctest
     // and point it at the .xctest bundle from the configured build directory.
     const xctestPath = ctx.workspaceContext.toolchain.xcTestPath;

@@ -19,7 +19,7 @@ import * as path from "path";
 import * as Stream from "stream";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
-import { DarwinCompatibleTarget, getDarwinTargetTriple } from "../toolchain/toolchain";
+import { SwiftToolchain } from "../toolchain/toolchain";
 
 export interface ExecError {
     error: Error;
@@ -157,11 +157,14 @@ export async function execFileStreamOutput(
  */
 export async function execSwift(
     args: string[],
+    toolchain: SwiftToolchain | "default",
     options: cp.ExecFileOptions = {},
     folderContext?: FolderContext
 ): Promise<{ stdout: string; stderr: string }> {
     const swift = getSwiftExecutable();
-    args = withSwiftSDKFlags(args);
+    if (toolchain !== "default") {
+        args = toolchain.buildFlags.withSwiftSDKFlags(args);
+    }
     if (Object.keys(configuration.swiftEnvironmentVariables).length > 0) {
         // when adding environment vars we either combine with vars passed
         // into the function or the process environment vars
@@ -190,142 +193,6 @@ export async function poll(fn: () => boolean, everyMilliseconds: number) {
  */
 export function wait(milliseconds: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
-}
-
-/**
- * Get modified swift arguments with SDK flags.
- *
- * @param args original commandline arguments
- */
-export function withSwiftSDKFlags(args: string[]): string[] {
-    switch (args[0]) {
-        case "package": {
-            const subcommand = args.splice(0, 2).concat(buildPathFlags());
-            switch (subcommand[1]) {
-                case "dump-symbol-graph":
-                case "diagnose-api-breaking-changes":
-                case "resolve": {
-                    // These two tools require building the package, so SDK
-                    // flags are needed. Destination control flags are
-                    // required to be placed before subcommand options.
-                    return [...subcommand, ...swiftpmSDKFlags(), ...args];
-                }
-                default:
-                    // Other swift-package subcommands operate on the host,
-                    // so it doesn't need to know about the destination.
-                    return subcommand.concat(args);
-            }
-        }
-        case "build":
-        case "run":
-        case "test": {
-            const subcommand = args.splice(0, 1).concat(buildPathFlags());
-            return [...subcommand, ...swiftpmSDKFlags(), ...args];
-        }
-        default:
-            // We're not going to call the Swift compiler directly for cross-compiling
-            // and the destination settings are package-only, so do nothing here.
-            return args;
-    }
-}
-
-/**
- * Get SDK flags for SwiftPM
- */
-export function swiftpmSDKFlags(): string[] {
-    if (configuration.sdk !== "") {
-        return ["--sdk", configuration.sdk, ...swiftDriverTargetFlags(true)];
-    }
-    return [];
-}
-
-/**
- * Get build path flags to be passed to swift package manager and sourcekit-lsp server
- */
-export function buildPathFlags(): string[] {
-    if (configuration.buildPath && configuration.buildPath.length > 0) {
-        return ["--build-path", configuration.buildPath];
-    } else {
-        return [];
-    }
-}
-
-/**
- * Get build path from configuration if exists or return a fallback .build directory in given workspace
- * @param filesystem path to workspace that will be used as a fallback loacation with .build directory
- */
-export function buildDirectoryFromWorkspacePath(workspacePath: string, absolute = false): string {
-    const buildPath = configuration.buildPath.length > 0 ? configuration.buildPath : ".build";
-    if (!path.isAbsolute(buildPath) && absolute) {
-        return path.join(workspacePath, buildPath);
-    } else {
-        return buildPath;
-    }
-}
-
-/**
- * Get SDK flags for swiftc
- *
- * @param indirect whether to pass the flags by -Xswiftc
- */
-export function swiftDriverSDKFlags(indirect = false): string[] {
-    if (configuration.sdk === "") {
-        return [];
-    }
-    const args = ["-sdk", configuration.sdk];
-    return indirect ? args.flatMap(arg => ["-Xswiftc", arg]) : args;
-}
-
-/** Target info */
-export interface DarwinTargetInfo {
-    name: string;
-    target: DarwinCompatibleTarget;
-    version: string;
-}
-
-/**
- * @returns Darwin target information. Target id, name and version
- */
-export function getDarwinTarget(): DarwinTargetInfo | undefined {
-    const targetMap = [
-        { name: "iPhoneOS", target: DarwinCompatibleTarget.iOS },
-        { name: "AppleTVOS", target: DarwinCompatibleTarget.tvOS },
-        { name: "WatchOS", target: DarwinCompatibleTarget.watchOS },
-    ];
-
-    if (configuration.sdk === "" || process.platform !== "darwin") {
-        return undefined;
-    }
-
-    const sdkKindParts = configuration.sdk.split("/");
-    const sdkKind = sdkKindParts[sdkKindParts.length - 1];
-    for (const target of targetMap) {
-        if (sdkKind.includes(target.name)) {
-            // Obtain the version of the SDK.
-            const version = sdkKind.substring(
-                // Trim the prefix
-                target.name.length,
-                // Trim the `.sdk` suffix
-                sdkKind.length - 4
-            );
-            return { ...target, version: version };
-        }
-    }
-    return undefined;
-}
-
-/**
- * Get target flags for swiftc
- *
- * @param indirect whether to pass the flags by -Xswiftc
- */
-export function swiftDriverTargetFlags(indirect = false): string[] {
-    const target = getDarwinTarget();
-    if (!target) {
-        return [];
-    }
-    const args = ["-target", `${getDarwinTargetTriple(target.target)}${target.version}`];
-    return indirect ? args.flatMap(arg => ["-Xswiftc", arg]) : args;
 }
 
 /**
@@ -428,43 +295,6 @@ export function stringArrayInEnglish(strings: string[]): string {
     return strings.length === 1
         ? strings[0]
         : [strings.slice(0, -1).join(", "), strings[strings.length - 1]].join(" and ");
-}
-
-export interface ArgumentFilter {
-    argument: string;
-    include: number;
-}
-
-/**
- *  Filter argument list
- * @param args argument list
- * @param filter argument list filter
- * @returns filtered argument list
- */
-export function filterArguments(args: string[], filter: ArgumentFilter[]): string[] {
-    const filteredArguments: string[] = [];
-    let includeCount = 0;
-    for (const arg of args) {
-        if (includeCount > 0) {
-            filteredArguments.push(arg);
-            includeCount -= 1;
-            continue;
-        }
-        const argFilter = filter.find(item => item.argument === arg);
-        if (argFilter) {
-            filteredArguments.push(arg);
-            includeCount = argFilter.include;
-            continue;
-        }
-        // find arguments of form arg=value
-        const argFilter2 = filter.find(
-            item => item.include === 1 && arg.startsWith(item.argument + "=")
-        );
-        if (argFilter2) {
-            filteredArguments.push(arg);
-        }
-    }
-    return filteredArguments;
 }
 
 /**
