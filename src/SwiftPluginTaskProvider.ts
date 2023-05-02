@@ -128,7 +128,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             plugin.command,
             ...definition.args,
         ];
-        swiftArgs = withSwiftSDKFlags(swiftArgs);
+        swiftArgs = this.workspaceContext.toolchain.buildFlags.withSwiftSDKFlags(swiftArgs);
 
         const task = new vscode.Task(
             definition,

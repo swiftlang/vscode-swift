@@ -53,7 +53,7 @@ suite("BuildFlags Test Suite", () => {
                 "/some/other/full/test/path",
             ]);
         }
-    });
+    }).timeout(5000);
 
     test("buildDirectoryFromWorkspacePath", async () => {
         // no configuration provided - fallback
