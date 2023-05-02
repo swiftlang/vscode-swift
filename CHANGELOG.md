@@ -4,7 +4,7 @@
 
 ### Added
 
-- Flag to Swift tasks and Swift command plugin tasks that disables queued tasks (eg resolve, update) while task is running. Build tasks have this set to true by default.
+- Flag to Swift tasks and Swift command plugin tasks that delays queued tasks (eg resolve, update) while task is running. Build tasks have this set to true by default.
 - Default settings for popular Swift command plugins (Docc, lambda, SwiftFormat).
 
 ### Changed
