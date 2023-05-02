@@ -15,12 +15,9 @@
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
-import {
-    buildDirectoryFromWorkspacePath,
-    execSwift,
-    getErrorDescription,
-    hashString,
-} from "./utilities/utilities";
+import { execSwift, getErrorDescription, hashString } from "./utilities/utilities";
+import { SwiftToolchain } from "./toolchain/toolchain";
+import { BuildFlags } from "./toolchain/BuildFlags";
 
 /** Swift Package Manager contents */
 export interface PackageContents {
@@ -196,8 +193,8 @@ export class SwiftPackage implements PackageContents {
      * @param folder folder package is in
      * @returns new SwiftPackage
      */
-    static async create(folder: vscode.Uri): Promise<SwiftPackage> {
-        const contents = await SwiftPackage.loadPackage(folder);
+    static async create(folder: vscode.Uri, toolchain: SwiftToolchain): Promise<SwiftPackage> {
+        const contents = await SwiftPackage.loadPackage(folder, toolchain);
         const resolved = await SwiftPackage.loadPackageResolved(folder);
         return new SwiftPackage(folder, contents, resolved);
     }
@@ -207,9 +204,12 @@ export class SwiftPackage implements PackageContents {
      * @param folder folder package is in
      * @returns results of `swift package describe`
      */
-    static async loadPackage(folder: vscode.Uri): Promise<SwiftPackageState> {
+    static async loadPackage(
+        folder: vscode.Uri,
+        toolchain: SwiftToolchain
+    ): Promise<SwiftPackageState> {
         try {
-            let { stdout } = await execSwift(["package", "describe", "--type", "json"], {
+            let { stdout } = await execSwift(["package", "describe", "--type", "json"], toolchain, {
                 cwd: folder.fsPath,
             });
             // remove lines from `swift package describe` until we find a "{"
@@ -246,9 +246,12 @@ export class SwiftPackage implements PackageContents {
         }
     }
 
-    static async loadPlugins(folder: vscode.Uri): Promise<PackagePlugin[]> {
+    static async loadPlugins(
+        folder: vscode.Uri,
+        toolchain: SwiftToolchain
+    ): Promise<PackagePlugin[]> {
         try {
-            const { stdout } = await execSwift(["package", "plugin", "--list"], {
+            const { stdout } = await execSwift(["package", "plugin", "--list"], toolchain, {
                 cwd: folder.fsPath,
             });
             const plugins: PackagePlugin[] = [];
@@ -278,7 +281,9 @@ export class SwiftPackage implements PackageContents {
     public async loadWorkspaceState(): Promise<WorkspaceState | undefined> {
         try {
             const uri = vscode.Uri.joinPath(
-                vscode.Uri.file(buildDirectoryFromWorkspacePath(this.folder.fsPath, true)),
+                vscode.Uri.file(
+                    BuildFlags.buildDirectoryFromWorkspacePath(this.folder.fsPath, true)
+                ),
                 "workspace-state.json"
             );
             const contents = await fs.readFile(uri.fsPath, "utf8");
@@ -290,8 +295,8 @@ export class SwiftPackage implements PackageContents {
     }
 
     /** Reload swift package */
-    public async reload() {
-        this.contents = await SwiftPackage.loadPackage(this.folder);
+    public async reload(toolchain: SwiftToolchain) {
+        this.contents = await SwiftPackage.loadPackage(this.folder, toolchain);
     }
 
     /** Reload Package.resolved file */

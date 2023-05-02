@@ -54,12 +54,17 @@ export async function resolveFolderDependencies(
     folderContext: FolderContext,
     checkAlreadyRunning?: boolean
 ) {
-    const task = createSwiftTask(["package", "resolve"], SwiftTaskProvider.resolvePackageName, {
-        cwd: folderContext.folder,
-        scope: folderContext.workspaceFolder,
-        prefix: folderContext.name,
-        presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
-    });
+    const task = createSwiftTask(
+        ["package", "resolve"],
+        SwiftTaskProvider.resolvePackageName,
+        {
+            cwd: folderContext.folder,
+            scope: folderContext.workspaceFolder,
+            prefix: folderContext.name,
+            presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+        },
+        folderContext.workspaceContext.toolchain
+    );
 
     await executeTaskWithUI(
         task,
@@ -89,12 +94,17 @@ export async function updateDependencies(ctx: WorkspaceContext) {
  * @returns
  */
 export async function updateFolderDependencies(folderContext: FolderContext) {
-    const task = createSwiftTask(["package", "update"], SwiftTaskProvider.updatePackageName, {
-        cwd: folderContext.folder,
-        scope: folderContext.workspaceFolder,
-        prefix: folderContext.name,
-        presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
-    });
+    const task = createSwiftTask(
+        ["package", "update"],
+        SwiftTaskProvider.updatePackageName,
+        {
+            cwd: folderContext.folder,
+            scope: folderContext.workspaceFolder,
+            prefix: folderContext.name,
+            presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+        },
+        folderContext.workspaceContext.toolchain
+    );
 
     await executeTaskWithUI(task, "Updating Dependencies", folderContext).then(result => {
         updateAfterError(result, folderContext);
@@ -117,13 +127,18 @@ export async function cleanBuild(ctx: WorkspaceContext) {
  * @param folderContext folder to run update inside
  */
 export async function folderCleanBuild(folderContext: FolderContext) {
-    const task = createSwiftTask(["package", "clean"], SwiftTaskProvider.cleanBuildName, {
-        cwd: folderContext.folder,
-        scope: folderContext.workspaceFolder,
-        prefix: folderContext.name,
-        presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
-        group: vscode.TaskGroup.Clean,
-    });
+    const task = createSwiftTask(
+        ["package", "clean"],
+        SwiftTaskProvider.cleanBuildName,
+        {
+            cwd: folderContext.folder,
+            scope: folderContext.workspaceFolder,
+            prefix: folderContext.name,
+            presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+            group: vscode.TaskGroup.Clean,
+        },
+        folderContext.workspaceContext.toolchain
+    );
 
     await executeTaskWithUI(task, "Clean Build", folderContext);
 }
@@ -144,13 +159,18 @@ export async function resetPackage(ctx: WorkspaceContext) {
  * @param folderContext folder to run update inside
  */
 export async function folderResetPackage(folderContext: FolderContext) {
-    const task = createSwiftTask(["package", "reset"], "Reset Package Dependencies", {
-        cwd: folderContext.folder,
-        scope: folderContext.workspaceFolder,
-        prefix: folderContext.name,
-        presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
-        group: vscode.TaskGroup.Clean,
-    });
+    const task = createSwiftTask(
+        ["package", "reset"],
+        "Reset Package Dependencies",
+        {
+            cwd: folderContext.folder,
+            scope: folderContext.workspaceFolder,
+            prefix: folderContext.name,
+            presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+            group: vscode.TaskGroup.Clean,
+        },
+        folderContext.workspaceContext.toolchain
+    );
 
     await executeTaskWithUI(task, "Reset Package", folderContext).then(async success => {
         if (!success) {
@@ -164,7 +184,8 @@ export async function folderResetPackage(folderContext: FolderContext) {
                 scope: folderContext.workspaceFolder,
                 prefix: folderContext.name,
                 presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
-            }
+            },
+            folderContext.workspaceContext.toolchain
         );
 
         await executeTaskWithUI(resolveTask, "Resolving Dependencies", folderContext);
@@ -202,11 +223,16 @@ async function runSwiftScript(ctx: WorkspaceContext) {
         await document.save();
     }
 
-    const runTask = createSwiftTask([filename], `Run ${filename}`, {
-        scope: vscode.TaskScope.Global,
-        cwd: vscode.Uri.file(path.dirname(filename)),
-        presentationOptions: { reveal: vscode.TaskRevealKind.Always, clear: true },
-    });
+    const runTask = createSwiftTask(
+        [filename],
+        `Run ${filename}`,
+        {
+            scope: vscode.TaskScope.Global,
+            cwd: vscode.Uri.file(path.dirname(filename)),
+            presentationOptions: { reveal: vscode.TaskRevealKind.Always, clear: true },
+        },
+        ctx.toolchain
+    );
     await ctx.tasks.executeTaskAndWait(runTask);
 
     // delete file after running swift
@@ -254,7 +280,8 @@ async function useLocalDependency(identifier: string, ctx: WorkspaceContext) {
                     scope: currentFolder.workspaceFolder,
                     cwd: currentFolder.folder,
                     prefix: currentFolder.name,
-                }
+                },
+                ctx.toolchain
             );
             await executeTaskWithUI(
                 task,
@@ -279,11 +306,16 @@ async function editDependency(identifier: string, ctx: WorkspaceContext) {
     if (!currentFolder) {
         return;
     }
-    const task = createSwiftTask(["package", "edit", identifier], "Edit Package Dependency", {
-        scope: currentFolder.workspaceFolder,
-        cwd: currentFolder.folder,
-        prefix: currentFolder.name,
-    });
+    const task = createSwiftTask(
+        ["package", "edit", identifier],
+        "Edit Package Dependency",
+        {
+            scope: currentFolder.workspaceFolder,
+            cwd: currentFolder.folder,
+            prefix: currentFolder.name,
+        },
+        ctx.toolchain
+    );
     await executeTaskWithUI(task, `edit locally ${identifier}`, currentFolder, true).then(
         result => {
             if (result) {
@@ -325,6 +357,7 @@ async function uneditFolderDependency(
     try {
         await execSwift(
             ["package", "unedit", ...args, identifier],
+            ctx.toolchain,
             {
                 cwd: folder.folder.fsPath,
             },

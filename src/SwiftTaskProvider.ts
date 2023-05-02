@@ -18,13 +18,9 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
-import {
-    getDarwinTarget,
-    getSwiftExecutable,
-    swiftRuntimeEnv,
-    withSwiftSDKFlags,
-} from "./utilities/utilities";
+import { getSwiftExecutable, swiftRuntimeEnv } from "./utilities/utilities";
 import { Version } from "./utilities/version";
+import { SwiftToolchain } from "./toolchain/toolchain";
 
 /**
  * References:
@@ -88,7 +84,7 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
         buildTaskName += ` (${folderContext.relativePath})`;
     }
     // don't build tests for iOS etc as they don't compile
-    if (getDarwinTarget() === undefined) {
+    if (folderContext.workspaceContext.toolchain.buildFlags.getDarwinTarget() === undefined) {
         additionalArgs = ["--build-tests", ...additionalArgs];
     }
     return createSwiftTask(
@@ -103,7 +99,8 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
             },
             problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
             disableTaskQueue: true,
-        }
+        },
+        folderContext.workspaceContext.toolchain
     );
 }
 
@@ -172,7 +169,8 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 },
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
                 disableTaskQueue: true,
-            }
+            },
+            folderContext.workspaceContext.toolchain
         ),
         createSwiftTask(
             ["build", "-c", "release", "--product", product.name, ...configuration.buildArguments],
@@ -186,7 +184,8 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 },
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
                 disableTaskQueue: true,
-            }
+            },
+            folderContext.workspaceContext.toolchain
         ),
     ];
 }
@@ -194,9 +193,14 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
 /**
  * Helper function to create a {@link vscode.Task Task} with the given parameters.
  */
-export function createSwiftTask(args: string[], name: string, config: TaskConfig): vscode.Task {
+export function createSwiftTask(
+    args: string[],
+    name: string,
+    config: TaskConfig,
+    toolchain: SwiftToolchain
+): vscode.Task {
     const swift = getSwiftExecutable();
-    args = withSwiftSDKFlags(args);
+    args = toolchain.buildFlags.withSwiftSDKFlags(args);
 
     // Add relative path current working directory
     const cwd = config.cwd.fsPath;

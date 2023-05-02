@@ -17,7 +17,7 @@ import * as path from "path";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { PackagePlugin } from "./SwiftPackage";
 import configuration from "./configuration";
-import { getSwiftExecutable, swiftRuntimeEnv, withSwiftSDKFlags } from "./utilities/utilities";
+import { getSwiftExecutable, swiftRuntimeEnv } from "./utilities/utilities";
 
 // Interface class for defining task configuration
 interface TaskConfig {
@@ -84,7 +84,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             task.definition.command,
             ...task.definition.args,
         ];
-        swiftArgs = withSwiftSDKFlags(swiftArgs);
+        swiftArgs = this.workspaceContext.toolchain.buildFlags.withSwiftSDKFlags(swiftArgs);
 
         const newTask = new vscode.Task(
             task.definition,
@@ -128,7 +128,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             plugin.command,
             ...definition.args,
         ];
-        swiftArgs = withSwiftSDKFlags(swiftArgs);
+        swiftArgs = this.workspaceContext.toolchain.buildFlags.withSwiftSDKFlags(swiftArgs);
 
         const task = new vscode.Task(
             definition,
@@ -138,7 +138,8 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             new vscode.ProcessExecution(swift, swiftArgs, {
                 cwd: cwd,
                 env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
-            })
+            }),
+            []
         );
         let prefix: string;
         if (config.prefix) {

@@ -15,14 +15,10 @@
 import * as assert from "assert";
 import * as Stream from "stream";
 import {
-    ArgumentFilter,
     execFileStreamOutput,
-    filterArguments,
     getRepositoryName,
     getSwiftExecutable,
     isPathInsidePath,
-    buildPathFlags,
-    buildDirectoryFromWorkspacePath,
     execSwift,
 } from "../../src/utilities/utilities";
 import * as vscode from "vscode";
@@ -84,115 +80,10 @@ suite("Utilities Test Suite", () => {
             writeStream.end();
         });
 
-        const { stdout } = await execSwift(["--version"]);
+        const { stdout } = await execSwift(["--version"], "default");
         await execFileStreamOutput(swift, ["--version"], writeStream, null, null);
         assert(result.length > 0);
         assert(result.includes("Swift version"));
         assert.strictEqual(result, stdout);
-    });
-
-    test("filterArguments", () => {
-        const argumentFilter: ArgumentFilter[] = [
-            { argument: "-one", include: 1 },
-            { argument: "-1", include: 1 },
-            { argument: "-zero", include: 0 },
-            { argument: "-two", include: 2 },
-        ];
-        assert.notStrictEqual(filterArguments(["-test", "this"], argumentFilter), []);
-        assert.notStrictEqual(filterArguments(["-test", "-zero"], argumentFilter), ["-zero"]);
-        assert.notStrictEqual(filterArguments(["-one", "inc1", "test"], argumentFilter), [
-            "-one",
-            "inc1",
-        ]);
-        assert.notStrictEqual(filterArguments(["-two", "inc1", "inc2"], argumentFilter), [
-            "-one",
-            "inc1",
-            "inc2",
-        ]);
-        assert.notStrictEqual(
-            filterArguments(["-ignore", "-one", "inc1", "test"], argumentFilter),
-            ["-one", "inc1"]
-        );
-        assert.notStrictEqual(
-            filterArguments(["-one", "inc1", "test", "-1", "inc2"], argumentFilter),
-            ["-one", "inc1", "-1", "inc2"]
-        );
-        assert.notStrictEqual(filterArguments(["-one=1", "-zero=0", "-one1=1"], argumentFilter), [
-            "-one=1",
-        ]);
-    });
-
-    test("buildPathFlags", async () => {
-        // no configuration provided - fallback
-        await vscode.workspace.getConfiguration("swift").update("buildPath", undefined);
-
-        assert.deepStrictEqual(buildPathFlags(), []);
-
-        await vscode.workspace.getConfiguration("swift").update("buildPath", "");
-
-        assert.deepStrictEqual(buildPathFlags(), []);
-
-        // configuration provided
-        await vscode.workspace
-            .getConfiguration("swift")
-            .update("buildPath", "/some/other/full/test/path");
-
-        assert.deepStrictEqual(buildPathFlags(), ["--build-path", "/some/other/full/test/path"]);
-    });
-
-    test("buildDirectoryFromWorkspacePath", async () => {
-        // no configuration provided - fallback
-        await vscode.workspace.getConfiguration("swift").update("buildPath", undefined);
-
-        assert.strictEqual(
-            buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false),
-            ".build"
-        );
-
-        assert.strictEqual(
-            buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true),
-            "/some/full/workspace/test/path/.build"
-        );
-
-        await vscode.workspace.getConfiguration("swift").update("buildPath", "");
-
-        assert.strictEqual(
-            buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false),
-            ".build"
-        );
-
-        assert.strictEqual(
-            buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true),
-            "/some/full/workspace/test/path/.build"
-        );
-
-        // configuration provided
-        await vscode.workspace
-            .getConfiguration("swift")
-            .update("buildPath", "/some/other/full/test/path");
-
-        assert.strictEqual(
-            buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false),
-            "/some/other/full/test/path"
-        );
-
-        assert.strictEqual(
-            buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true),
-            "/some/other/full/test/path"
-        );
-
-        await vscode.workspace
-            .getConfiguration("swift")
-            .update("buildPath", "some/relative/test/path");
-
-        assert.strictEqual(
-            buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false),
-            "some/relative/test/path"
-        );
-
-        assert.strictEqual(
-            buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true),
-            "/some/full/workspace/test/path/some/relative/test/path"
-        );
     });
 });

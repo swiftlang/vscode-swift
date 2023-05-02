@@ -15,21 +15,13 @@
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 import configuration from "../configuration";
-import {
-    ArgumentFilter,
-    filterArguments,
-    getSwiftExecutable,
-    isPathInsidePath,
-    swiftDriverSDKFlags,
-    buildPathFlags,
-    swiftRuntimeEnv,
-    swiftDriverTargetFlags,
-} from "../utilities/utilities";
+import { getSwiftExecutable, isPathInsidePath, swiftRuntimeEnv } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { activateLegacyInlayHints } from "./inlayHints";
 import { FolderContext } from "../FolderContext";
 import { LanguageClient } from "vscode-languageclient/node";
+import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
 
 /** Manages the creation and destruction of Language clients as we move between
  * workspace folders
@@ -83,6 +75,7 @@ export class LanguageClientManager {
     // build argument to sourcekit-lsp filter
     static buildArgumentFilter: ArgumentFilter[] = [
         { argument: "--build-path", include: 1 },
+        { argument: "--scratch-path", include: 1 },
         { argument: "-Xswiftc", include: 1 },
         { argument: "-Xcc", include: 1 },
         { argument: "-Xcxx", include: 1 },
@@ -380,11 +373,12 @@ export class LanguageClientManager {
         const serverPathConfig = lspConfig.serverPath;
         const serverPath =
             serverPathConfig.length > 0 ? serverPathConfig : getSwiftExecutable("sourcekit-lsp");
+        const buildFlags = this.workspaceContext.toolchain.buildFlags;
         const sdkArguments = [
-            ...swiftDriverSDKFlags(true),
-            ...swiftDriverTargetFlags(true),
-            ...filterArguments(
-                configuration.buildArguments.concat(buildPathFlags()),
+            ...buildFlags.swiftDriverSDKFlags(true),
+            ...buildFlags.swiftDriverTargetFlags(true),
+            ...BuildFlags.filterArguments(
+                configuration.buildArguments.concat(buildFlags.buildPathFlags()),
                 LanguageClientManager.buildArgumentFilter
             ),
         ];

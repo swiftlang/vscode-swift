@@ -76,7 +76,7 @@ export class FolderContext implements vscode.Disposable {
         const { linuxMain, swiftPackage } =
             await workspaceContext.statusItem.showStatusWhileRunning(statusItemText, async () => {
                 const linuxMain = await LinuxMain.create(folder);
-                const swiftPackage = await SwiftPackage.create(folder);
+                const swiftPackage = await SwiftPackage.create(folder, workspaceContext.toolchain);
                 return { linuxMain, swiftPackage };
             });
 
@@ -123,7 +123,7 @@ export class FolderContext implements vscode.Disposable {
 
     /** reload swift package for this folder */
     async reload() {
-        await this.swiftPackage.reload();
+        await this.swiftPackage.reload(this.workspaceContext.toolchain);
     }
 
     /** reload Package.resolved for this folder */
@@ -133,7 +133,10 @@ export class FolderContext implements vscode.Disposable {
 
     /** Load Swift Plugins and store in Package */
     async loadSwiftPlugins() {
-        const plugins = await SwiftPackage.loadPlugins(this.workspaceFolder.uri);
+        const plugins = await SwiftPackage.loadPlugins(
+            this.workspaceFolder.uri,
+            this.workspaceContext.toolchain
+        );
         this.swiftPackage.plugins = plugins;
     }
 
