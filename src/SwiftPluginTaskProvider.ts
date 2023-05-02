@@ -138,7 +138,8 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             new vscode.ProcessExecution(swift, swiftArgs, {
                 cwd: cwd,
                 env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
-            })
+            }),
+            []
         );
         let prefix: string;
         if (config.prefix) {
