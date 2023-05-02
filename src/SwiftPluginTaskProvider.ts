@@ -49,7 +49,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         for (const folderContext of this.workspaceContext.folders) {
             for (const plugin of folderContext.swiftPackage.plugins) {
                 tasks.push(
-                    this.createSwiftPluginTask(plugin, [], {
+                    this.createSwiftPluginTask(plugin, {
                         cwd: folderContext.folder,
                         scope: folderContext.workspaceFolder,
                         presentationOptions: {
@@ -89,7 +89,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         const newTask = new vscode.Task(
             task.definition,
             task.scope ?? vscode.TaskScope.Workspace,
-            task.definition.command,
+            task.name,
             "swift-plugin",
             new vscode.ProcessExecution(swift, swiftArgs, {
                 cwd: task.definition.cwd,
@@ -109,25 +109,29 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
      * @param config
      * @returns
      */
-    createSwiftPluginTask(plugin: PackagePlugin, args: string[], config: TaskConfig): vscode.Task {
+    createSwiftPluginTask(plugin: PackagePlugin, config: TaskConfig): vscode.Task {
         const swift = getSwiftExecutable();
-        let swiftArgs = ["package", plugin.command, ...args];
-        swiftArgs = withSwiftSDKFlags(swiftArgs);
 
         // Add relative path current working directory
         const relativeCwd = path.relative(config.scope.uri.fsPath, config.cwd?.fsPath);
         const cwd = relativeCwd !== "" ? relativeCwd : undefined;
+        const definition = this.getTaskDefinition(plugin, cwd);
+        // Add arguments based on definition
+        const sandboxArg = definition.disableSandbox ? ["--disable-sandbox"] : [];
+        const writingToPackageArg = definition.allowWritingToPackageDirectory
+            ? ["--allow-writing-to-package-directory"]
+            : [];
+        let swiftArgs = [
+            "package",
+            ...sandboxArg,
+            ...writingToPackageArg,
+            plugin.command,
+            ...definition.args,
+        ];
+        swiftArgs = withSwiftSDKFlags(swiftArgs);
 
         const task = new vscode.Task(
-            {
-                type: "swift-plugin",
-                command: plugin.command,
-                args: args,
-                disableSandbox: false,
-                allowWritingToPackageDirectory: false,
-                cwd: cwd,
-                disableTaskQueue: false,
-            },
+            definition,
             config.scope ?? vscode.TaskScope.Workspace,
             plugin.name,
             "swift-plugin",
@@ -145,5 +149,48 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         task.detail = `${prefix}swift ${swiftArgs.join(" ")}`;
         task.presentationOptions = config?.presentationOptions ?? {};
         return task;
+    }
+
+    /**
+     * Get task definition for a command plugin
+     */
+    private getTaskDefinition(
+        plugin: PackagePlugin,
+        cwd: string | undefined
+    ): vscode.TaskDefinition {
+        const definition = {
+            type: "swift-plugin",
+            command: plugin.command,
+            args: [],
+            disableSandbox: false,
+            allowWritingToPackageDirectory: false,
+            cwd: cwd,
+            disableTaskQueue: false,
+        };
+        // There are common command plugins used across the package eco-system eg for docc generation
+        // Everytime these are run they need the same default setup.
+        switch (`${plugin.package}, ${plugin.command}`) {
+            case "swift-aws-lambda-runtime, archive":
+                definition.disableSandbox = true;
+                definition.disableTaskQueue = true;
+                break;
+
+            case "SwiftDocCPlugin, generate-documentation":
+                definition.allowWritingToPackageDirectory = true;
+                break;
+
+            case "SwiftDocCPlugin, preview-documentation":
+                definition.disableSandbox = true;
+                definition.allowWritingToPackageDirectory = true;
+                break;
+
+            case "SwiftFormat, swiftformat":
+                definition.allowWritingToPackageDirectory = true;
+                break;
+
+            default:
+                break;
+        }
+        return definition;
     }
 }
