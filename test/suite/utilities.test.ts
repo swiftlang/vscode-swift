@@ -24,10 +24,6 @@ import {
 import * as vscode from "vscode";
 
 suite("Utilities Test Suite", () => {
-    suiteTeardown(async () => {
-        await vscode.workspace.getConfiguration("swift").update("buildPath", undefined);
-    });
-
     test("getRepositoryName", () => {
         // Regular case.
         assert.strictEqual(
