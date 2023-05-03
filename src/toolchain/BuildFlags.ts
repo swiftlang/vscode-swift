@@ -84,7 +84,7 @@ export class BuildFlags {
      */
     buildPathFlags(): string[] {
         if (configuration.buildPath && configuration.buildPath.length > 0) {
-            if (this.toolchain.swiftVersion < new Version(5, 7, 0)) {
+            if (this.toolchain.swiftVersion < new Version(5, 8, 0)) {
                 return ["--build-path", configuration.buildPath];
             } else {
                 return ["--scratch-path", configuration.buildPath];

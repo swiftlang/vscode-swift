@@ -42,7 +42,7 @@ suite("BuildFlags Test Suite", () => {
             .getConfiguration("swift")
             .update("buildPath", "/some/other/full/test/path");
 
-        if (toolchain.swiftVersion < new Version(5, 7, 0)) {
+        if (toolchain.swiftVersion < new Version(5, 8, 0)) {
             assert.deepStrictEqual(buildFlags.buildPathFlags(), [
                 "--build-path",
                 "/some/other/full/test/path",
