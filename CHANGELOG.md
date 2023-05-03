@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.3.0 - 2023-05-02
+
+### Added
+
+- Flag to Swift tasks and Swift command plugin tasks that delays queued tasks (eg resolve, update) while task is running. Build tasks have this set to true by default.
+- Default settings for popular Swift command plugins (Docc, lambda, SwiftFormat).
+
+### Changed
+
+- Class TestItems status is updated once all the tests inside have completed, instead of once test run has completed.
+- Use `--scratch-path` argument instead of `--build-path` when running on Swift 5.8 or later.
+
 ## 1.2.1 - 2023-04-13
 
 ### Changed
