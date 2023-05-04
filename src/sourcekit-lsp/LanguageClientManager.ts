@@ -23,7 +23,6 @@ import { activateLegacyInlayHints } from "./inlayHints";
 import { FolderContext } from "../FolderContext";
 import { LanguageClient } from "vscode-languageclient/node";
 import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
-import { getSwiftModuleDocumentProvider } from "./SwiftModuleDocumentProvider";
 
 /** Manages the creation and destruction of Language clients as we move between
  * workspace folders
@@ -168,10 +167,8 @@ export class LanguageClientManager {
                     });
             }
         });
-        // swift module document provider
-        const swiftModuleDocumentProvider = getSwiftModuleDocumentProvider(this);
 
-        this.subscriptions.push(onChangeConfig, swiftModuleDocumentProvider);
+        this.subscriptions.push(onChangeConfig);
 
         // Swift versions prior to 5.6 don't support file changes, so need to restart
         // lSP server when a file is either created or deleted
@@ -451,7 +448,7 @@ export class LanguageClientManager {
                         definitions &&
                         path.extname(definitions[0].uri.path) === ".swiftinterface"
                     ) {
-                        const uri = vscode.Uri.parse(`swiftmodule://${definitions[0].uri.fsPath}`);
+                        const uri = vscode.Uri.parse(`readonly://${definitions[0].uri.fsPath}`);
                         return new vscode.Location(uri, definitions[0].range);
                     }
                     return result;
