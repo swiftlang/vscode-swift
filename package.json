@@ -26,6 +26,14 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "languages": [
+      {
+        "id": "swift",
+        "extensions": [
+          "swiftinterface"
+        ]
+      }
+    ],
     "commands": [
       {
         "command": "swift.updateDependencies",
