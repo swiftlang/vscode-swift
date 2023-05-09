@@ -26,6 +26,9 @@ suite("BuildFlags Test Suite", () => {
         toolchain = await SwiftToolchain.create();
         buildFlags = toolchain.buildFlags;
     });
+    suiteTeardown(async () => {
+        await vscode.workspace.getConfiguration("swift").update("buildPath", undefined);
+    });
 
     test("buildPathFlags", async () => {
         // no configuration provided - fallback
