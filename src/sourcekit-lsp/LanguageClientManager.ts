@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021 the VSCode Swift project authors
+// Copyright (c) 2021-2023 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import * as path from "path";
 import * as langclient from "vscode-languageclient/node";
 import configuration from "../configuration";
 import { getSwiftExecutable, isPathInsidePath, swiftRuntimeEnv } from "../utilities/utilities";
@@ -166,6 +167,7 @@ export class LanguageClientManager {
                     });
             }
         });
+
         this.subscriptions.push(onChangeConfig);
 
         // Swift versions prior to 5.6 don't support file changes, so need to restart
@@ -209,17 +211,23 @@ export class LanguageClientManager {
      * @returns result of process
      */
     async useLanguageClient<Return>(process: {
-        (client: langclient.LanguageClient, cancellationToken: vscode.CancellationToken): Return;
-    }) {
-        if (!this.languageClient) {
+        (
+            client: langclient.LanguageClient,
+            cancellationToken: vscode.CancellationToken
+        ): Promise<Return>;
+    }): Promise<Return> {
+        if (!this.languageClient || !this.clientReadyPromise) {
             throw LanguageClientError.LanguageClientUnavailable;
         }
-        return await this.clientReadyPromise?.then(() => {
-            if (!this.languageClient || !this.cancellationToken) {
-                throw LanguageClientError.LanguageClientUnavailable;
-            }
-            return process(this.languageClient, this.cancellationToken.token);
-        });
+        return this.clientReadyPromise.then(
+            () => {
+                if (!this.languageClient || !this.cancellationToken) {
+                    throw LanguageClientError.LanguageClientUnavailable;
+                }
+                return process(this.languageClient, this.cancellationToken.token);
+            },
+            reason => reason
+        );
     }
 
     /** Restart language client */
@@ -430,6 +438,18 @@ export class LanguageClientManager {
                     const documentSymbols = result as vscode.DocumentSymbol[];
                     if (this.documentSymbolWatcher && documentSymbols) {
                         this.documentSymbolWatcher(document, documentSymbols);
+                    }
+                    return result;
+                },
+                provideDefinition: async (document, position, token, next) => {
+                    const result = await next(document, position, token);
+                    const definitions = result as vscode.Location[];
+                    if (
+                        definitions &&
+                        path.extname(definitions[0].uri.path) === ".swiftinterface"
+                    ) {
+                        const uri = vscode.Uri.parse(`readonly://${definitions[0].uri.fsPath}`);
+                        return new vscode.Location(uri, definitions[0].range);
                     }
                     return result;
                 },

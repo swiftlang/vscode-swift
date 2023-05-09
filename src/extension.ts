@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021-2022 the VSCode Swift project authors
+// Copyright (c) 2021-2023 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -25,6 +25,7 @@ import { getErrorDescription } from "./utilities/utilities";
 import { SwiftPluginTaskProvider } from "./SwiftPluginTaskProvider";
 import configuration from "./configuration";
 import { Version } from "./utilities/version";
+import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -64,6 +65,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         commands.register(workspaceContext);
 
         const languageStatusItem = new LanguageStatusItems(workspaceContext);
+
+        // swift module document provider
+        const swiftModuleDocumentProvider = getReadOnlyDocumentProvider();
 
         // observer for logging workspace folder addition/removal
         const logObserver = workspaceContext.observeFolders((folderContext, event) => {
@@ -141,6 +145,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         context.subscriptions.push(
             resolvePackageObserver,
             testExplorerObserver,
+            swiftModuleDocumentProvider,
             dependenciesView,
             dependenciesProvider,
             logObserver,
