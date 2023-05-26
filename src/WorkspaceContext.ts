@@ -384,14 +384,15 @@ export class WorkspaceContext implements vscode.Disposable {
         const libPath = libPathResult.success;
         const lldbConfig = vscode.workspace.getConfiguration("lldb");
         const configLLDBPath = lldbConfig.get<string>("library");
-        if (configLLDBPath === libPath) {
+        const expressions = lldbConfig.get<string>("launch.expressions");
+        if (configLLDBPath === libPath && expressions === "native") {
             return;
         }
 
         // show dialog for setting up LLDB
         vscode.window
             .showInformationMessage(
-                "CodeLLDB requires the correct Swift version of LLDB for debugging. Do you want to set this up in your global settings or the workspace settings?",
+                "The Swift extension needs to update some CodeLLDB settings to enable debugging features. Do you want to set this up in your global settings or the workspace settings?",
                 "Global",
                 "Workspace",
                 "Cancel"
@@ -400,6 +401,11 @@ export class WorkspaceContext implements vscode.Disposable {
                 switch (result) {
                     case "Global":
                         lldbConfig.update("library", libPath, vscode.ConfigurationTarget.Global);
+                        lldbConfig.update(
+                            "launch.expressions",
+                            "native",
+                            vscode.ConfigurationTarget.Global
+                        );
                         // clear workspace setting
                         lldbConfig.update(
                             "library",
@@ -409,6 +415,11 @@ export class WorkspaceContext implements vscode.Disposable {
                         break;
                     case "Workspace":
                         lldbConfig.update("library", libPath, vscode.ConfigurationTarget.Workspace);
+                        lldbConfig.update(
+                            "launch.expressions",
+                            "native",
+                            vscode.ConfigurationTarget.Workspace
+                        );
                         break;
                 }
             });
