@@ -179,7 +179,7 @@
               "address"
             ],
             "description": "Runtime sanitizer instrumentation. Requires a re-compilation.",
-            "scope": "resource",
+            "scope": "machine-overridable",
             "order": 4
           },
           "swift.autoGenerateLaunchConfigurations": {
