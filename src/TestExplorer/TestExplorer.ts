@@ -19,6 +19,8 @@ import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { TestRunner } from "./TestRunner";
 import { LSPTestDiscovery } from "./LSPTestDiscovery";
 import { Version } from "../utilities/version";
+import configuration from "../configuration";
+import { buildOptions } from "../SwiftTaskProvider";
 
 /** Build test explorer UI */
 export class TestExplorer {
@@ -119,20 +121,25 @@ export class TestExplorer {
      */
     async discoverTestsInWorkspace() {
         try {
-            let listTestArguments: string[];
-            if (
-                this.folderContext.workspaceContext.swiftVersion.isGreaterThanOrEqual(
-                    new Version(5, 8, 0)
-                )
-            ) {
-                listTestArguments = ["test", "list", "--skip-build"];
-            } else {
-                listTestArguments = ["test", "--skip-build", "--list-tests"];
-            }
+            const toolchain = this.folderContext.workspaceContext.toolchain;
+            // normally we would skip the build here, but you can hang swiftPM on macOS
+            // if you try and list tests while skipping the build if you are using a different
+            // sanitizer settings
+            const skipBuild =
+                process.platform !== "darwin" || configuration.sanitizer === "off"
+                    ? ["--skip-build"]
+                    : [];
             // get list of tests from `swift test --list-tests`
+            let listTestArguments: string[];
+            if (toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 8, 0))) {
+                listTestArguments = ["test", "list"];
+            } else {
+                listTestArguments = ["test", "--list-tests"];
+            }
+            listTestArguments = [...listTestArguments, ...skipBuild, ...buildOptions(toolchain)];
             const { stdout } = await execSwift(
                 listTestArguments,
-                this.folderContext.workspaceContext.toolchain,
+                toolchain,
                 {
                     cwd: this.folderContext.folder.fsPath,
                 },

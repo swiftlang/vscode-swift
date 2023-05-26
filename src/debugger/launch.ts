@@ -207,6 +207,8 @@ export function createTestConfiguration(
         if (xctestPath === undefined) {
             return null;
         }
+        const sanitizer = ctx.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
+        const env = { ...testEnv, ...sanitizer?.runtimeEnvironment };
         return {
             type: "lldb",
             request: "launch",
@@ -215,7 +217,7 @@ export function createTestConfiguration(
             program: `${xctestPath}/xctest`,
             args: [`${buildDirectory}/debug/${ctx.swiftPackage.name}PackageTests.xctest`],
             cwd: folder,
-            env: testEnv,
+            env: env,
             preLaunchTask: `swift: Build All${nameSuffix}`,
         };
     } else if (process.platform === "win32") {
@@ -303,9 +305,11 @@ export function createDarwinTestConfiguration(
         default:
             return null;
     }
+    const sanitizer = ctx.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
     const envCommands = Object.entries({
         ...swiftRuntimeEnv(),
         ...configuration.folder(ctx.workspaceFolder).testEnvironmentVariables,
+        ...sanitizer?.runtimeEnvironment,
     }).map(([key, value]) => `settings set target.env-vars ${key}="${value}"`);
 
     return {

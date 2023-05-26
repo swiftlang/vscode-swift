@@ -71,11 +71,25 @@ export function platformDebugBuildOptions(): string[] {
     return [];
 }
 
+/** Return swift build options */
+export function buildOptions(toolchain: SwiftToolchain, debug = true): string[] {
+    const args: string[] = [];
+    if (debug) {
+        args.push(...platformDebugBuildOptions());
+    }
+    const sanitizer = toolchain.sanitizer(configuration.sanitizer);
+    if (sanitizer) {
+        args.push(...sanitizer.buildFlags);
+    }
+    args.push(...configuration.buildArguments);
+    return args;
+}
+
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
 export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
-    let additionalArgs = [...platformDebugBuildOptions()];
+    let additionalArgs = buildOptions(folderContext.workspaceContext.toolchain);
     if (folderContext.swiftPackage.getTargets("test").length > 0) {
         additionalArgs.push(...testDiscoveryFlag(folderContext));
     }
@@ -88,7 +102,7 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
         additionalArgs = ["--build-tests", ...additionalArgs];
     }
     return createSwiftTask(
-        ["build", ...additionalArgs, ...configuration.buildArguments],
+        ["build", ...additionalArgs],
         buildTaskName,
         {
             group: vscode.TaskGroup.Build,
@@ -146,19 +160,14 @@ export async function getBuildAllTask(folderContext: FolderContext): Promise<vsc
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
 function createBuildTasks(product: Product, folderContext: FolderContext): vscode.Task[] {
+    const toolchain = folderContext.workspaceContext.toolchain;
     let buildTaskNameSuffix = "";
     if (folderContext.relativePath.length > 0) {
         buildTaskNameSuffix = ` (${folderContext.relativePath})`;
     }
     return [
         createSwiftTask(
-            [
-                "build",
-                "--product",
-                product.name,
-                ...platformDebugBuildOptions(),
-                ...configuration.buildArguments,
-            ],
+            ["build", "--product", product.name, ...buildOptions(toolchain)],
             `Build Debug ${product.name}${buildTaskNameSuffix}`,
             {
                 group: vscode.TaskGroup.Build,
