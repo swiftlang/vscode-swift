@@ -20,7 +20,7 @@ import { TestRunner } from "./TestRunner";
 import { LSPTestDiscovery } from "./LSPTestDiscovery";
 import { Version } from "../utilities/version";
 import configuration from "../configuration";
-import { buildOptions } from "../SwiftTaskProvider";
+import { buildOptions, getBuildAllTask } from "../SwiftTaskProvider";
 
 /** Build test explorer UI */
 export class TestExplorer {
@@ -54,7 +54,8 @@ export class TestExplorer {
                 task.scope === this.folderContext.workspaceFolder &&
                 task.group === vscode.TaskGroup.Build &&
                 execution?.options?.cwd === this.folderContext.folder.fsPath &&
-                event.exitCode === 0
+                event.exitCode === 0 &&
+                task.definition.dontTriggerTestDiscovery !== true
             ) {
                 this.discoverTestsInWorkspace();
             }
@@ -122,21 +123,29 @@ export class TestExplorer {
     async discoverTestsInWorkspace() {
         try {
             const toolchain = this.folderContext.workspaceContext.toolchain;
-            // normally we would skip the build here, but you can hang swiftPM on macOS
+            // get build options before build is run so we can be sure they aren't changed
+            // mid-build
+            const testBuildOptions = buildOptions(toolchain);
+            // normally we wouldn't run the build here, but you can hang swiftPM on macOS
             // if you try and list tests while skipping the build if you are using a different
             // sanitizer settings
-            const skipBuild =
-                process.platform !== "darwin" || configuration.sanitizer === "off"
-                    ? ["--skip-build"]
-                    : [];
+            if (process.platform === "darwin" && configuration.sanitizer !== "off") {
+                const task = await getBuildAllTask(this.folderContext);
+                task.definition.dontTriggerTestDiscovery = true;
+                const exitCode = await this.folderContext.taskQueue.queueOperation({ task: task });
+                if (exitCode === undefined || exitCode !== 0) {
+                    this.setErrorTestItem("Build the project to enable test discovery.");
+                    return;
+                }
+            }
             // get list of tests from `swift test --list-tests`
             let listTestArguments: string[];
             if (toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 8, 0))) {
-                listTestArguments = ["test", "list"];
+                listTestArguments = ["test", "list", "--skip-build"];
             } else {
-                listTestArguments = ["test", "--list-tests"];
+                listTestArguments = ["test", "--list-tests", "--skip-build"];
             }
-            listTestArguments = [...listTestArguments, ...skipBuild, ...buildOptions(toolchain)];
+            listTestArguments = [...listTestArguments, ...testBuildOptions];
             const { stdout } = await execSwift(
                 listTestArguments,
                 toolchain,
