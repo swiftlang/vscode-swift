@@ -7,7 +7,7 @@ services:
     build:
       args:
         ubuntu_version: "focal"
-        swift_version: "5.7"
+        swift_version: "5.8"
 
   test:
     image: vscode-swift:20.04-5.8
