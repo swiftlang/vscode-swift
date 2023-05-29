@@ -21,6 +21,7 @@ import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { execFile, execSwift, pathExists } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { BuildFlags } from "./BuildFlags";
+import { Sanitizer } from "./Sanitizer";
 
 /**
  * Contents of **Info.plist** on Windows.
@@ -122,6 +123,11 @@ export class SwiftToolchain {
     /** build flags */
     public get buildFlags(): BuildFlags {
         return new BuildFlags(this);
+    }
+
+    /** build flags */
+    public sanitizer(name: string): Sanitizer | undefined {
+        return Sanitizer.create(name, this);
     }
 
     /**

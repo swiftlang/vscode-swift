@@ -123,6 +123,10 @@ const configuration = {
     get buildArguments(): string[] {
         return vscode.workspace.getConfiguration("swift").get<string[]>("buildArguments", []);
     },
+    /** thread/address sanitizer */
+    get sanitizer(): string {
+        return vscode.workspace.getConfiguration("swift").get<string>("sanitizer", "off");
+    },
     get buildPath(): string {
         return vscode.workspace.getConfiguration("swift").get<string>("buildPath", "");
     },
