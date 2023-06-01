@@ -296,7 +296,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
                         args: [],
                     },
                     folderContext.workspaceFolder,
-                    `${folderContext.name} build tasks disabled`,
+                    `Build tasks disabled`,
                     "swift",
                     new vscode.CustomExecution(() => {
                         throw Error("Task disabled.");
