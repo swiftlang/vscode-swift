@@ -74,7 +74,7 @@ export class TaskManager implements vscode.Disposable {
         // set id on definition to catch this task when completing
         task.definition.id = this.taskId;
         this.taskId += 1;
-        return new Promise<number | undefined>(resolve => {
+        return new Promise<number | undefined>((resolve, reject) => {
             // There is a bug in the vscode task execution code where if you start two
             // tasks with the name but different scopes at the same time the second one
             // will not start. If you wait until the first one has started the second
@@ -82,10 +82,10 @@ export class TaskManager implements vscode.Disposable {
             // called and resolved at the point it actually starts
             if (this.startingTaskPromise) {
                 this.startingTaskPromise.then(() => {
-                    this.executeTaskAndResolve(task, resolve, token);
+                    this.executeTaskAndResolve(task, resolve, reject, token);
                 });
             } else {
-                this.executeTaskAndResolve(task, resolve, token);
+                this.executeTaskAndResolve(task, resolve, reject, token);
             }
         });
     }
@@ -93,6 +93,7 @@ export class TaskManager implements vscode.Disposable {
     private executeTaskAndResolve(
         task: vscode.Task,
         resolve: (result: number | undefined) => void,
+        reject: (reason?: Error) => void,
         token?: vscode.CancellationToken
     ) {
         const disposable = this.onDidEndTaskProcess(event => {
@@ -122,6 +123,9 @@ export class TaskManager implements vscode.Disposable {
             },
             error => {
                 console.log(error);
+                disposable.dispose();
+                this.startingTaskPromise = undefined;
+                reject(error);
             }
         );
     }
