@@ -286,10 +286,14 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             if (!folderContext.swiftPackage.foundPackage) {
                 continue;
             }
+            const activeOperation = folderContext.taskQueue.activeOperation;
             // if there is an active task running on the folder task queue (eg resolve or update)
             // then don't add build tasks for this folder instead create a dummy task indicating why
             // the build tasks are unavailable
-            if (folderContext.taskQueue.activeOperation) {
+            //
+            // Ignore an active build task, it could be the build task that has just been
+            // initiated.
+            if (activeOperation && activeOperation.task.group !== vscode.TaskGroup.Build) {
                 const task = new vscode.Task(
                     {
                         type: "swift",
@@ -303,7 +307,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
                     })
                 );
                 task.group = vscode.TaskGroup.Build;
-                task.detail = `While ${folderContext.taskQueue.activeOperation.task.name} is running.`;
+                task.detail = `While ${activeOperation.task.name} is running.`;
                 tasks.push(task);
                 continue;
             }
