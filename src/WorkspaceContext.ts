@@ -412,6 +412,12 @@ export class WorkspaceContext implements vscode.Disposable {
                             undefined,
                             vscode.ConfigurationTarget.Workspace
                         );
+                        // clear workspace setting
+                        lldbConfig.update(
+                            "launch.expressions",
+                            undefined,
+                            vscode.ConfigurationTarget.Workspace
+                        );
                         break;
                     case "Workspace":
                         lldbConfig.update("library", libPath, vscode.ConfigurationTarget.Workspace);
