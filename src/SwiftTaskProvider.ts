@@ -286,6 +286,28 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             if (!folderContext.swiftPackage.foundPackage) {
                 continue;
             }
+            // if there is an active task running on the folder task queue (eg resolve or update)
+            // then don't add build tasks for this folder instead create a dummy task indicating why
+            // the build tasks are unavailable
+            if (folderContext.taskQueue.activeOperation) {
+                const task = new vscode.Task(
+                    {
+                        type: "swift",
+                        args: [],
+                    },
+                    folderContext.workspaceFolder,
+                    `Build tasks disabled`,
+                    "swift",
+                    new vscode.CustomExecution(() => {
+                        throw Error("Task disabled.");
+                    })
+                );
+                task.group = vscode.TaskGroup.Build;
+                task.detail = `While ${folderContext.taskQueue.activeOperation.task.name} is running.`;
+                tasks.push(task);
+                continue;
+            }
+
             tasks.push(createBuildAllTask(folderContext));
             const executables = folderContext.swiftPackage.executableProducts;
             for (const executable of executables) {
