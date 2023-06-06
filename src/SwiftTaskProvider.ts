@@ -308,6 +308,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
                 );
                 task.group = vscode.TaskGroup.Build;
                 task.detail = `While ${activeOperation.task.name} is running.`;
+                task.presentationOptions = { reveal: vscode.TaskRevealKind.Never, echo: false };
                 tasks.push(task);
                 continue;
             }
