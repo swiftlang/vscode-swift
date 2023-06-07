@@ -64,9 +64,13 @@ function testDiscoveryFlag(ctx: FolderContext): string[] {
 }
 
 /** arguments for generating debug builds */
-export function platformDebugBuildOptions(): string[] {
+export function platformDebugBuildOptions(toolchain: SwiftToolchain): string[] {
     if (process.platform === "win32") {
-        return ["-Xswiftc", "-g", "-Xswiftc", "-use-ld=lld", "-Xlinker", "-debug:dwarf"];
+        if (toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 9, 0))) {
+            return ["-Xlinker", "-debug:dwarf"];
+        } else {
+            return ["-Xswiftc", "-g", "-Xswiftc", "-use-ld=lld", "-Xlinker", "-debug:dwarf"];
+        }
     }
     return [];
 }
@@ -75,7 +79,7 @@ export function platformDebugBuildOptions(): string[] {
 export function buildOptions(toolchain: SwiftToolchain, debug = true): string[] {
     const args: string[] = [];
     if (debug) {
-        args.push(...platformDebugBuildOptions());
+        args.push(...platformDebugBuildOptions(toolchain));
     }
     const sanitizer = toolchain.sanitizer(configuration.sanitizer);
     if (sanitizer) {
