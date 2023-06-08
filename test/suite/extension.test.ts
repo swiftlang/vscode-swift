@@ -44,8 +44,8 @@ suite("Extension Test Suite", () => {
     });
 
     suite("Workspace", () => {
-        /** Load extension-tests package */
-        suiteSetup(async () => {
+        /** Verify tasks.json is being loaded */
+        test("Tasks.json", async () => {
             const package2Folder = testAssetUri("extension-tests");
             const workspaceFolder = vscode.workspace.workspaceFolders?.values().next().value;
             try {
@@ -53,10 +53,6 @@ suite("Extension Test Suite", () => {
             } catch (error) {
                 assert(false, JSON.stringify(error));
             }
-        });
-
-        /** Verify tasks.json is being loaded */
-        test("Tasks.json", async () => {
             const folder = workspaceContext.folders.find(f => f.name === "test/extension-tests");
             assert(folder);
             const buildAllTask = await getBuildAllTask(folder);

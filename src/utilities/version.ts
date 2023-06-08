@@ -74,11 +74,11 @@ export class Version implements VersionInterface {
         return false;
     }
 
-    isLessThanOrEqual(rhs: Version): boolean {
+    isLessThanOrEqual(rhs: VersionInterface): boolean {
         return !this.isGreaterThan(rhs);
     }
 
-    isGreaterThanOrEqual(rhs: Version): boolean {
+    isGreaterThanOrEqual(rhs: VersionInterface): boolean {
         return !this.isLessThan(rhs);
     }
 }

@@ -76,7 +76,7 @@ suite("WorkspaceContext Test Suite", () => {
             assert.notStrictEqual(execution?.args, [
                 "build",
                 "--build-tests",
-                ...platformDebugBuildOptions(),
+                ...platformDebugBuildOptions(workspaceContext.toolchain),
             ]);
             assert.strictEqual(buildAllTask.scope, packageFolder);
         });
@@ -90,7 +90,7 @@ suite("WorkspaceContext Test Suite", () => {
             assert.notStrictEqual(execution?.args, [
                 "build",
                 "--build-tests",
-                ...platformDebugBuildOptions(),
+                ...platformDebugBuildOptions(workspaceContext.toolchain),
                 "--sanitize=thread",
             ]);
         });
