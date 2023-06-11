@@ -266,6 +266,7 @@
               "Disable when C/C++ extension is active"
             ],
             "description": "Add LSP functionality for C/C++ files. By default this is set to disable when the C/C++ extension is active.",
+            "markdownDeprecationMessage": "**Deprecated**: Please use `#sourcekit-lsp.supported-languages#` instead.",
             "order": 4
           },
           "sourcekit-lsp.trace.server": {
@@ -284,6 +285,28 @@
             "default": false,
             "description": "Disable the running of SourceKit-LSP.",
             "order": 6
+          },
+          "sourcekit-lsp.supported-languages": {
+            "type": "array",
+            "default": [
+              "swift",
+              "objective-c",
+              "objective-cpp",
+              "c",
+              "cpp"
+            ],
+            "description": "List of languages supported by SourceKit-LSP. This is used to determine when to start the SourceKit-LSP server.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "swift",
+                "objective-c",
+                "objective-cpp",
+                "c",
+                "cpp"
+              ]
+            },
+            "order": 7
           }
         }
       },

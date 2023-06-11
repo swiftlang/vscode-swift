@@ -54,6 +54,10 @@ This is a list of arguments that will be passed to the SourceKit-LSP. Argument k
 
 This controls the display of Inlay Hints. Inlay Hints are variable annotations indicating their inferred type. They are only available if you are using Swift 5.6 or later. This setting has been deprecated and now you should use `Editor > Inlay Hints: Enabled`.
 
+- **Supported Languages**
+  
+  This is a configuration setting that allows you to specify the list of languages that the SourceKit-LSP extension should support. The setting accepts an array of language identifiers.e.g. `["swift", "objective-c", "objective-cpp"]` The primary purpose of this configuration is to mitigate conflicts between the SourceKit-LSP and other extensions, such as clangd
+
 - **Trace: Server**
 
 Trace the communication between Visual Studio Code and the SourceKit-LSP server. The output from this is sent to an Output Window called "Sourcekit Language Server"

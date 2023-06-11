@@ -70,6 +70,9 @@ export class LanguageClientManager {
                           ];
             }
         }
+        documentSelector = documentSelector.filter(doc =>
+            configuration.lsp.supportedLanguages.includes(doc.language)
+        );
         return documentSelector;
     }
 
