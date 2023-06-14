@@ -557,6 +557,14 @@ async function selectXcodeDeveloperDir() {
                     selected.folder ?? defaultXcode
                 );
             }
+            vscode.window
+                .showInformationMessage(
+                    "Changing the Xcode Developer Directory requires the project be reloaded.",
+                    "Ok"
+                )
+                .then(() => {
+                    vscode.commands.executeCommand("workbench.action.reloadWindow");
+                });
         }
     );
 }
