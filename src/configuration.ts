@@ -26,6 +26,8 @@ export interface LSPConfiguration {
     readonly inlayHintsEnabled: boolean;
     /** Support C Family source files */
     readonly supportCFamily: CFamilySupportOptions;
+    /** Support Languages */
+    readonly supportedLanguages: string[];
     /** Is SourceKit-LSP disabled */
     readonly disable: boolean;
 }
@@ -66,6 +68,17 @@ const configuration = {
                 return vscode.workspace
                     .getConfiguration("sourcekit-lsp")
                     .get<CFamilySupportOptions>("support-c-cpp", "cpptools-inactive");
+            },
+            get supportedLanguages() {
+                return vscode.workspace
+                    .getConfiguration("sourcekit-lsp")
+                    .get("supported-languages", [
+                        "swift",
+                        "c",
+                        "cpp",
+                        "objective-c",
+                        "objective-cpp",
+                    ]);
             },
             get disable(): boolean {
                 return vscode.workspace

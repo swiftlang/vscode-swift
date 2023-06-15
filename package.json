@@ -252,6 +252,28 @@
             "markdownDeprecationMessage": "**Deprecated**: Please use `#editor.inlayHints.enabled#` instead.",
             "order": 3
           },
+          "sourcekit-lsp.supported-languages": {
+            "type": "array",
+            "default": [
+              "swift",
+              "objective-c",
+              "objective-cpp",
+              "c",
+              "cpp"
+            ],
+            "description": "List of languages supported by SourceKit-LSP. This is used to determine whether SourceKit-LSP should provide language features for a particular file type.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "swift",
+                "objective-c",
+                "objective-cpp",
+                "c",
+                "cpp"
+              ]
+            },
+            "order": 4
+          },
           "sourcekit-lsp.support-c-cpp": {
             "type": "string",
             "default": "cpptools-inactive",
@@ -266,7 +288,8 @@
               "Disable when C/C++ extension is active"
             ],
             "description": "Add LSP functionality for C/C++ files. By default this is set to disable when the C/C++ extension is active.",
-            "order": 4
+            "markdownDeprecationMessage": "**Deprecated**: Please use `#sourcekit-lsp.supported-languages#` instead.",
+            "order": 5
           },
           "sourcekit-lsp.trace.server": {
             "type": "string",
@@ -277,13 +300,13 @@
               "verbose"
             ],
             "description": "Traces the communication between VS Code and the SourceKit-LSP language server.",
-            "order": 5
+            "order": 6
           },
           "sourcekit-lsp.disable": {
             "type": "boolean",
             "default": false,
             "description": "Disable the running of SourceKit-LSP.",
-            "order": 6
+            "order": 7
           }
         }
       },
