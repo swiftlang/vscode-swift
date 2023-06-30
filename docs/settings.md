@@ -4,7 +4,7 @@ The Visual Studio Code Swift extension comes with a number of settings you can u
 
 - **Path**
 
-This is the folder that the `swift` executable can be found in. If this is not set then the extension will look for executables in the `$PATH`. The extension will also use this setting when looking for other executables it requires like `sourcekit-lsp` and `lldb`.
+This is the folder that the `swift` executable can be found in. If this is not set then the extension will look for executables in the PATH environment variable. The extension will also use this setting when looking for other executables it requires like `sourcekit-lsp` and `lldb`.
 
 - **Build Arguments**
 
@@ -80,7 +80,7 @@ This is a list of environment variables to set when running swift (build, resolv
 
 - **Runtime Path**
 
-Where to find Swift runtime libraries. This is mainly of use when these libraries cannot be discovered via the RPATH. On Windows the runtime path is added to the `Path` environment variable. This is of less use on macOS and Linux but will be added to `DYLD_LIBRARY_PATH` and `LD_LIBRARY_PATH` environment variables respectively on each platform. This is of use when supporting non-standard SDK layouts on Windows
+Where to find Swift runtime libraries. On Windows the runtime path is added to the `Path` environment variable. This is of less use on macOS and Linux but will be added to `DYLD_LIBRARY_PATH` and `LD_LIBRARY_PATH` environment variables respectively on each platform. This is of use when supporting non-standard SDK layouts on Windows
 
 - **SDK**
 
