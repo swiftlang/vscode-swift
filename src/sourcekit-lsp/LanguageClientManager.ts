@@ -456,6 +456,13 @@ export class LanguageClientManager {
                     }
                     return result;
                 },
+                // temporarily remove text edit from Inlay hints while SourceKit-LSP
+                // returns invalid replacement text
+                provideInlayHints: async (document, position, token, next) => {
+                    const result = await next(document, position, token);
+                    result?.forEach(r => (r.textEdits = undefined));
+                    return result;
+                },
             },
             errorHandler: new SourceKitLSPErrorHandler(5),
         };
