@@ -51,12 +51,12 @@ const configuration = {
         return {
             get serverPath(): string {
                 return vscode.workspace
-                    .getConfiguration("sourcekit-lsp")
+                    .getConfiguration("swift.sourcekit-lsp")
                     .get<string>("serverPath", "");
             },
             get serverArguments(): string[] {
                 return vscode.workspace
-                    .getConfiguration("sourcekit-lsp")
+                    .getConfiguration("swift.sourcekit-lsp")
                     .get<string[]>("serverArguments", []);
             },
             get inlayHintsEnabled(): boolean {
@@ -71,7 +71,7 @@ const configuration = {
             },
             get supportedLanguages() {
                 return vscode.workspace
-                    .getConfiguration("sourcekit-lsp")
+                    .getConfiguration("swift.sourcekit-lsp")
                     .get("supported-languages", [
                         "swift",
                         "c",
@@ -82,7 +82,7 @@ const configuration = {
             },
             get disable(): boolean {
                 return vscode.workspace
-                    .getConfiguration("sourcekit-lsp")
+                    .getConfiguration("swift.sourcekit-lsp")
                     .get<boolean>("disable", false);
             },
         };

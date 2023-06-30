@@ -157,7 +157,7 @@ export class LanguageClientManager {
         }
         // on change config restart server
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
-            if (event.affectsConfiguration("sourcekit-lsp")) {
+            if (event.affectsConfiguration("swift.sourcekit-lsp")) {
                 vscode.window
                     .showInformationMessage(
                         "Changing LSP settings requires the language server be restarted.",
@@ -461,7 +461,7 @@ export class LanguageClientManager {
         };
 
         return new langclient.LanguageClient(
-            "sourcekit-lsp",
+            "swift.sourcekit-lsp",
             "SourceKit Language Server",
             serverOptions,
             clientOptions
