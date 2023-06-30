@@ -146,7 +146,7 @@
           "swift.path": {
             "type": "string",
             "default": "",
-            "markdownDescription": "The path of the folder containing the Swift executables. The default is to look in **$PATH**.",
+            "markdownDescription": "The path of the folder containing the Swift executables. The default is to look in the PATH environment variable.",
             "order": 1
           },
           "swift.buildArguments": {
@@ -368,7 +368,7 @@
           "swift.runtimePath": {
             "type": "string",
             "default": "",
-            "description": "The path of the folder containing the Swift runtime libraries. Only effective when they can't be discovered by RPath.",
+            "description": "The path of the folder containing the Swift runtime libraries.",
             "order": 2
           },
           "swift.SDK": {
