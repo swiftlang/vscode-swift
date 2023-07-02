@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.4.0 - 2023-07-05
+
+### Added
+- Add sanitizer build setting
+- Build tasks are not available while other tasks are running on the package
+- Add read only document provider for swiftinterface files in prepartion for go to definition for stdlib/framework symbols.
+
+### Changed
+- Add supported language configuration setting to replace Support C/C++ setting
+- deprecate Support C/C++ setting
+- Remove a number of unnecessary build arguments for Windows when using Swift 5.9 or later
+- Configure vscode-lldb to use native expressions
+
+### Fixed
+- Require a reload when using the select Xcode developer directory command
+
 ## 1.3.0 - 2023-05-03
 
 ### Added
