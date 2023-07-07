@@ -15,6 +15,7 @@
 
 ### Fixed
 - Require a reload when using the select Xcode developer directory command
+- Reporting of errors returned by the compiler without a column number
 
 ## 1.3.0 - 2023-05-03
 

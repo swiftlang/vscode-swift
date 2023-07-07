@@ -15,8 +15,10 @@ needs to be listed here.
 - Ryan Wang <wanglun02@gmail.com>
 - Saleem Abdulrasool <compnerd@compnerd.org>
 - Serhii Mumriak <sergiy.mumryak@gmail.com>
+- Shu Long <86326526@qq.com>
 - Steven Van Impe <steven.vanimpe@icloud.com>
 - Tim Condon <0xtimc@gmail.com>
+- Tristan Labelle <github@tristanlabelle.com>
 - YR Chen <stevapple@icloud.com>
 - kelvin <kelvin13ma@gmail.com>
 **Updating this list**
