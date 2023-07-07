@@ -542,7 +542,7 @@
         "fileLocation": "absolute",
         "pattern": [
           {
-            "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error|note):\\s+(.*)$",
+            "regexp": "^(.*?):(\\d+)(?::(\\d+))?:\\s+(warning|error|note):\\s+(.*)$",
             "file": 1,
             "line": 2,
             "column": 3,
