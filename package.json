@@ -2,7 +2,7 @@
   "name": "swift-lang",
   "displayName": "Swift",
   "description": "Swift Language Support for Visual Studio Code.",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "publisher": "sswg",
   "icon": "icon.png",
   "repository": {
@@ -639,7 +639,7 @@
     "pretest": "npm run compile && npm run lint",
     "test": "tsc -p ./ && node ./out/test/runTest.js",
     "package": "vsce package",
-    "dev-package": "vsce package --no-update-package-json 1.3.1-dev"
+    "dev-package": "vsce package --no-update-package-json 1.4.1-dev"
   },
   "devDependencies": {
     "@types/glob": "^7.1.4",
@@ -656,7 +656,7 @@
     "mocha": "^9.1.3",
     "prettier": "2.5.1",
     "typescript": "^4.4.4",
-    "@vscode/vsce": "^2.15.0"
+    "@vscode/vsce": "^2.19.0"
   },
   "dependencies": {
     "@types/plist": "^3.0.2",

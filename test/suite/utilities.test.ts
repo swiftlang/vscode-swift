@@ -21,7 +21,6 @@ import {
     isPathInsidePath,
     execSwift,
 } from "../../src/utilities/utilities";
-import * as vscode from "vscode";
 
 suite("Utilities Test Suite", () => {
     test("getRepositoryName", () => {
