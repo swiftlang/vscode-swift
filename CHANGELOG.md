@@ -5,7 +5,7 @@
 ### Added
 - Add sanitizer build setting
 - Build tasks are not available while other tasks are running on the package
-- Add read only document provider for swiftinterface files in prepartion for go to definition for stdlib/framework symbols.
+- Add read-only document provider for swiftinterface files in preparation for go to definition for stdlib/framework symbols.
 
 ### Changed
 - Add supported language configuration setting to replace Support C/C++ setting
