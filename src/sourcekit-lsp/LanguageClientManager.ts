@@ -354,6 +354,7 @@ export class LanguageClientManager {
                     await this.setupLanguageClient(workspaceFolder?.uri);
                 })
                 .catch(async reason => {
+                    // error message matches code here https://github.com/microsoft/vscode-languageserver-node/blob/2041784436fed53f4e77267a49396bca22a7aacf/client/src/common/client.ts#L1409C1-L1409C54
                     if (reason.message === "Stopping the server timed out") {
                         await this.setupLanguageClient(workspaceFolder?.uri);
                     }
