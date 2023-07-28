@@ -84,6 +84,6 @@ export class BackgroundCompilation {
         if (!backgroundTask) {
             return;
         }
-        this.folderContext.taskQueue.queueOperation({ task: backgroundTask });
+        await this.folderContext.taskQueue.queueOperation({ task: backgroundTask });
     }
 }
