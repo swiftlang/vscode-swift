@@ -95,21 +95,27 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                     case FolderEvent.add:
                         // Create launch.json files based on package description.
                         debug.makeDebugConfigurations(folder);
-                        if (
-                            folder.swiftPackage.foundPackage &&
-                            !configuration.folder(folder.workspaceFolder).disableAutoResolve
-                        ) {
-                            await commands.resolveFolderDependencies(folder, true);
-                            if (workspace.swiftVersion >= new Version(5, 6, 0)) {
-                                await workspace.statusItem.showStatusWhileRunning(
-                                    `Loading Swift Plugins (${FolderContext.uriName(
-                                        folder.workspaceFolder.uri
-                                    )})`,
-                                    async () => {
-                                        await folder.loadSwiftPlugins();
-                                        workspace.updatePluginContextKey();
-                                    }
-                                );
+                        if (folder.swiftPackage.foundPackage) {
+                            if (
+                                !configuration.folder(folder.workspaceFolder).disableAutoResolve ||
+                                configuration.backgroundCompilation
+                            ) {
+                                if (configuration.backgroundCompilation) {
+                                    await folder.backgroundCompilation.runTask();
+                                } else {
+                                    await commands.resolveFolderDependencies(folder, true);
+                                }
+                                if (workspace.swiftVersion >= new Version(5, 6, 0)) {
+                                    await workspace.statusItem.showStatusWhileRunning(
+                                        `Loading Swift Plugins (${FolderContext.uriName(
+                                            folder.workspaceFolder.uri
+                                        )})`,
+                                        async () => {
+                                            await folder.loadSwiftPlugins();
+                                            workspace.updatePluginContextKey();
+                                        }
+                                    );
+                                }
                             }
                         }
                         break;
