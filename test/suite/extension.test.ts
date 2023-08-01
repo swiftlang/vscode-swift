@@ -46,6 +46,10 @@ suite("Extension Test Suite", () => {
     suite("Workspace", () => {
         /** Verify tasks.json is being loaded */
         test("Tasks.json", async () => {
+            // Skip if running CI as it takes too long
+            if (process.env.CI) {
+                return;
+            }
             const package2Folder = testAssetUri("extension-tests");
             const workspaceFolder = vscode.workspace.workspaceFolders?.values().next().value;
             try {

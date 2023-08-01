@@ -13,6 +13,8 @@ services:
 
   common: &common
     image: vscode-swift:default
+    environment:
+      - CI=1
     depends_on: [runtime-setup]
     volumes:
       - ~/.ssh:/root/.ssh

@@ -436,16 +436,25 @@ export class SwiftToolchain {
     /** @returns swift target info */
     private static async getSwiftTargetInfo(): Promise<SwiftTargetInfo> {
         try {
-            const { stdout } = await execSwift(["-print-target-info"], "default");
-            const targetInfo = JSON.parse(stdout.trimEnd()) as SwiftTargetInfo;
-            // workaround for Swift 5.3 and older toolchains
-            if (targetInfo.compilerVersion === undefined) {
-                const { stdout } = await execSwift(["--version"], "default");
-                targetInfo.compilerVersion = stdout.split("\n", 1)[0];
+            try {
+                const { stdout } = await execSwift(["-print-target-info"], "default");
+                const targetInfo = JSON.parse(stdout.trimEnd()) as SwiftTargetInfo;
+                if (targetInfo.compilerVersion) {
+                    return targetInfo;
+                }
+            } catch {
+                // hit error while running `swift -print-target-info`. We are possibly running
+                // a version of swift 5.3 or older
             }
-            return targetInfo;
+            const { stdout } = await execSwift(["--version"], "default");
+            return {
+                compilerVersion: stdout.split("\n", 1)[0],
+                paths: { runtimeLibraryPaths: [""] },
+            };
         } catch {
-            throw Error("Cannot parse swift target info output.");
+            throw Error(
+                "Failed to get swift version from either '-print-target-info' or '--version'."
+            );
         }
     }
 
