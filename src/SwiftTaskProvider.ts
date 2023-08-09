@@ -133,20 +133,30 @@ export async function getBuildAllTask(folderContext: FolderContext): Promise<vsc
         buildTaskName += ` (${folderContext.relativePath})`;
     }
 
-    // search for build all task in task.json first
-    const workspaceTasks = await vscode.tasks.fetchTasks();
-    let task = workspaceTasks.find(task => {
-        if (task.source !== "Workspace" || task.name !== `swift: ${buildTaskName}`) {
+    const folderWorkingDir = folderContext.workspaceFolder.uri.fsPath;
+    // search for build all task in task.json first, that are valid for folder
+    const workspaceTasks = (await vscode.tasks.fetchTasks()).filter(task => {
+        if (task.source !== "Workspace" || task.scope !== folderContext.workspaceFolder) {
             return false;
         }
         const processExecutionOptions = (task.execution as vscode.ProcessExecution).options;
         const shellExecutionOptions = (task.execution as vscode.ShellExecution).options;
         let cwd = processExecutionOptions?.cwd ?? shellExecutionOptions?.cwd;
-        if (cwd === "${workspaceFolder}") {
-            cwd = folderContext.workspaceFolder.uri.fsPath;
+        if (cwd === "${workspaceFolder}" || cwd === undefined) {
+            cwd = folderWorkingDir;
         }
         return cwd === folderContext.folder.fsPath;
     });
+
+    // find default build task
+    let task = workspaceTasks.find(
+        task => task.group?.id === vscode.TaskGroup.Build.id && task.group?.isDefault === true
+    );
+    if (task) {
+        return task;
+    }
+    // find task with name "swift: Build All"
+    task = workspaceTasks.find(task => task.name === `swift: ${buildTaskName}`);
     if (task) {
         return task;
     }
