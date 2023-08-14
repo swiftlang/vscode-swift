@@ -145,6 +145,7 @@ export class WorkspaceContext implements vscode.Disposable {
                     break;
                 case FolderEvent.focus:
                     this.updateContextKeys(folder);
+                    this.updateContextKeysForFile();
                     break;
                 case FolderEvent.unfocus:
                     this.updateContextKeys(folder);
@@ -167,6 +168,7 @@ export class WorkspaceContext implements vscode.Disposable {
             this.outputChannel,
             this.statusItem,
         ];
+        this.lastFocusUri = vscode.window.activeTextEditor?.document.uri;
     }
 
     dispose() {
@@ -196,6 +198,20 @@ export class WorkspaceContext implements vscode.Disposable {
         }
         contextKeys.hasPackage = true;
         contextKeys.packageHasDependencies = folderContext.swiftPackage.dependencies.length > 0;
+    }
+
+    /**
+     * Update context keys based on package contents
+     */
+    updateContextKeysForFile() {
+        if (this.currentDocument) {
+            contextKeys.currentTargetType = this.currentFolder?.swiftPackage.getTarget(
+                this.currentDocument?.fsPath
+            )?.type;
+        } else {
+            contextKeys.currentTargetType = undefined;
+        }
+        setSnippetContextKey(this);
     }
 
     /**
@@ -433,17 +449,19 @@ export class WorkspaceContext implements vscode.Disposable {
 
     /** set focus based on the file a TextEditor is editing */
     async focusTextEditor(editor?: vscode.TextEditor) {
-        if (!editor || !editor.document || editor.document.uri.scheme !== "file") {
-            this.currentDocument = null;
-            return;
+        this.focusUri(editor?.document.uri);
+    }
+
+    async focusUri(uri?: vscode.Uri) {
+        this.currentDocument = uri ?? null;
+        this.updateContextKeysForFile();
+        if (this.currentDocument?.scheme === "file") {
+            await this.focusPackageUri(this.currentDocument);
         }
-        this.currentDocument = editor.document.uri;
-        await this.focusUri(editor.document.uri);
-        setSnippetContextKey(this);
     }
 
     /** set focus based on the file */
-    async focusUri(uri: vscode.Uri) {
+    async focusPackageUri(uri: vscode.Uri) {
         const packageFolder = await this.getPackageFolder(uri);
         if (packageFolder instanceof FolderContext) {
             await this.focusFolder(packageFolder);

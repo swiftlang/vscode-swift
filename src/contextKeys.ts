@@ -47,6 +47,13 @@ const contextKeys = {
     },
 
     /**
+     * Whether current active file is in a SwiftPM source target folder
+     */
+    set currentTargetType(value: string | undefined) {
+        vscode.commands.executeCommand("setContext", "swift.currentTargetType", value ?? "none");
+    },
+
+    /**
      * Whether current active file is a Snippet
      */
     set fileIsSnippet(value: boolean) {

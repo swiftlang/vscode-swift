@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021 the VSCode Swift project authors
+// Copyright (c) 2021-2023 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -15,7 +15,12 @@
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { execSwift, getErrorDescription, hashString } from "./utilities/utilities";
+import {
+    execSwift,
+    getErrorDescription,
+    hashString,
+    isPathInsidePath,
+} from "./utilities/utilities";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { BuildFlags } from "./toolchain/BuildFlags";
 
@@ -360,5 +365,13 @@ export class SwiftPackage implements PackageContents {
      */
     getTargets(type: "executable" | "library" | "test"): Target[] {
         return this.targets.filter(target => target.type === type);
+    }
+
+    /**
+     * Get target for file
+     */
+    getTarget(file: string): Target | undefined {
+        const filePath = path.relative(this.folder.fsPath, file);
+        return this.targets.find(target => isPathInsidePath(filePath, target.path));
     }
 }

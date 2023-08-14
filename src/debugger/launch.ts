@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021 the VSCode Swift project authors
+// Copyright (c) 2021-2023 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as os from "os";
-import path = require("path");
 import * as vscode from "vscode";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
@@ -87,22 +86,23 @@ export async function makeDebugConfigurations(ctx: FolderContext, yes = false) {
     }
 }
 
+// Return debug launch configuration for an executable in the given folder
+export function getLaunchConfiguration(
+    target: string,
+    folderCtx: FolderContext
+): vscode.DebugConfiguration | undefined {
+    const wsLaunchSection = vscode.workspace.getConfiguration("launch", folderCtx.folder);
+    const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
+    const { folder } = getFolderAndNameSuffix(folderCtx);
+    const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
+    return launchConfigs.find(config => config.program === `${buildDirectory}/debug/` + target);
+}
+
 // Return array of DebugConfigurations for executables based on what is in Package.swift
 function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfiguration[] {
     const executableProducts = ctx.swiftPackage.executableProducts;
-    let folder: string;
-    let nameSuffix: string;
-    if (ctx.relativePath.length === 0) {
-        folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}`;
-        nameSuffix = "";
-    } else {
-        folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}/${ctx.relativePath}`;
-        nameSuffix = ` (${ctx.relativePath})`;
-    }
-    let buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder);
-    if (!path.isAbsolute(buildDirectory)) {
-        buildDirectory = path.join(folder, buildDirectory);
-    }
+    const { folder, nameSuffix } = getFolderAndNameSuffix(ctx);
+    const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
     return executableProducts.flatMap(product => {
         return [
             {
@@ -141,16 +141,8 @@ export function createSnippetConfiguration(
     snippetName: string,
     ctx: FolderContext
 ): vscode.DebugConfiguration {
-    let folder: string;
-    if (ctx.relativePath.length === 0) {
-        folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}`;
-    } else {
-        folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}/${ctx.relativePath}`;
-    }
-    let buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder);
-    if (!path.isAbsolute(buildDirectory)) {
-        buildDirectory = path.join(folder, buildDirectory);
-    }
+    const { folder } = getFolderAndNameSuffix(ctx);
+    const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
 
     return {
         type: "lldb",
@@ -172,34 +164,20 @@ export function createSnippetConfiguration(
  */
 export function createTestConfiguration(
     ctx: FolderContext,
-    fullPath = false
+    expandEnvVariables = false
 ): vscode.DebugConfiguration | null {
     if (ctx.swiftPackage.getTargets("test").length === 0) {
         return null;
     }
-    const workspaceFolder = fullPath
-        ? ctx.workspaceFolder.uri.fsPath
-        : `\${workspaceFolder:${ctx.workspaceFolder.name}}`;
 
-    let folder: string;
-    let nameSuffix: string;
-    if (ctx.relativePath.length === 0) {
-        folder = workspaceFolder;
-        nameSuffix = "";
-    } else {
-        folder = `${workspaceFolder}/${ctx.relativePath}`;
-        nameSuffix = ` (${ctx.relativePath})`;
-    }
     // respect user configuration if conflicts with injected runtime path
     const testEnv = {
         ...swiftRuntimeEnv(),
         ...configuration.folder(ctx.workspaceFolder).testEnvironmentVariables,
     };
+    const { folder, nameSuffix } = getFolderAndNameSuffix(ctx, expandEnvVariables);
+    const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
 
-    let buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder);
-    if (!path.isAbsolute(buildDirectory)) {
-        buildDirectory = path.join(folder, buildDirectory);
-    }
     if (process.platform === "darwin") {
         // On macOS, find the path to xctest
         // and point it at the .xctest bundle from the configured build directory.
@@ -278,16 +256,8 @@ export function createDarwinTestConfiguration(
         return null;
     }
 
-    let folder: string;
-    let nameSuffix: string;
-    if (ctx.relativePath.length === 0) {
-        folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}`;
-        nameSuffix = "";
-    } else {
-        folder = `\${workspaceFolder:${ctx.workspaceFolder.name}}/${ctx.relativePath}`;
-        nameSuffix = ` (${ctx.relativePath})`;
-    }
-    const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder);
+    const { folder, nameSuffix } = getFolderAndNameSuffix(ctx, true);
+    const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
     // On macOS, find the path to xctest
     // and point it at the .xctest bundle from the configured build directory.
     const xctestPath = ctx.workspaceContext.toolchain.xcTestPath;
@@ -326,6 +296,33 @@ export function createDarwinTestConfiguration(
     };
 }
 
+/**
+ * Run debugger for given configuration
+ * @param config Debug configuration
+ * @param workspaceFolder Workspace to run debugger in
+ */
+export async function debugLaunchConfig(
+    config: vscode.DebugConfiguration,
+    workspaceFolder: vscode.WorkspaceFolder
+) {
+    return new Promise<void>((resolve, reject) => {
+        vscode.debug.startDebugging(workspaceFolder, config).then(
+            started => {
+                if (started) {
+                    const terminateSession = vscode.debug.onDidTerminateDebugSession(async () => {
+                        // dispose terminate debug handler
+                        terminateSession.dispose();
+                        resolve();
+                    });
+                }
+            },
+            reason => {
+                reject(reason);
+            }
+        );
+    });
+}
+
 /** Return the base configuration with (nested) keys updated with the new one. */
 function updateConfigWithNewKeys(
     baseConfiguration: vscode.DebugConfiguration,
@@ -358,4 +355,23 @@ function updateConfigWithNewKeys(
             baseConfiguration[key] = newConfiguration[key];
         }
     });
+}
+
+function getFolderAndNameSuffix(
+    ctx: FolderContext,
+    expandEnvVariables = false
+): { folder: string; nameSuffix: string } {
+    const workspaceFolder = expandEnvVariables
+        ? ctx.workspaceFolder.uri.fsPath
+        : `\${workspaceFolder:${ctx.workspaceFolder.name}}`;
+    let folder: string;
+    let nameSuffix: string;
+    if (ctx.relativePath.length === 0) {
+        folder = workspaceFolder;
+        nameSuffix = "";
+    } else {
+        folder = `${workspaceFolder}/${ctx.relativePath}`;
+        nameSuffix = ` (${ctx.relativePath})`;
+    }
+    return { folder: folder, nameSuffix: nameSuffix };
 }

@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021-2022 the VSCode Swift project authors
+// Copyright (c) 2021-2023 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -25,6 +25,7 @@ import { execSwift } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 import { DarwinCompatibleTarget, SwiftToolchain } from "./toolchain/toolchain";
 import { debugSnippet, runSnippet } from "./SwiftSnippets";
+import { debugLaunchConfig, getLaunchConfiguration } from "./debugger/launch";
 
 /**
  * References:
@@ -109,6 +110,60 @@ export async function updateFolderDependencies(folderContext: FolderContext) {
     await executeTaskWithUI(task, "Updating Dependencies", folderContext).then(result => {
         updateAfterError(result, folderContext);
     });
+}
+
+/**
+ * Executes a {@link vscode.Task task} to run swift target.
+ */
+export async function runBuild(ctx: WorkspaceContext) {
+    const current = ctx.currentFolder;
+    if (!current) {
+        return;
+    }
+    const file = vscode.window.activeTextEditor?.document.fileName;
+    if (!file) {
+        return;
+    }
+    const target = current.swiftPackage.getTarget(file);
+    if (!target || target.type !== "executable") {
+        return;
+    }
+    const task = createSwiftTask(
+        ["run", target.name],
+        `Run ${target.name}`,
+        {
+            cwd: current.folder,
+            scope: current.workspaceFolder,
+            prefix: current.name,
+            presentationOptions: { reveal: vscode.TaskRevealKind.Always },
+            problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
+        },
+        ctx.toolchain
+    );
+
+    await vscode.tasks.executeTask(task);
+}
+
+/**
+ * Executes a {@link vscode.Task task} to debug swift target.
+ */
+export async function debugBuild(ctx: WorkspaceContext) {
+    const current = ctx.currentFolder;
+    if (!current) {
+        return;
+    }
+    const file = vscode.window.activeTextEditor?.document.fileName;
+    if (!file) {
+        return;
+    }
+    const target = current.swiftPackage.getTarget(file);
+    if (!target || target.type !== "executable") {
+        return;
+    }
+    const launchConfig = getLaunchConfiguration(target.name, current);
+    if (launchConfig) {
+        return debugLaunchConfig(launchConfig, current.workspaceFolder);
+    }
 }
 
 /**
@@ -601,6 +656,8 @@ export function register(ctx: WorkspaceContext) {
             resolveDependencies(ctx)
         ),
         vscode.commands.registerCommand("swift.updateDependencies", () => updateDependencies(ctx)),
+        vscode.commands.registerCommand("swift.run", () => runBuild(ctx)),
+        vscode.commands.registerCommand("swift.debug", () => debugBuild(ctx)),
         vscode.commands.registerCommand("swift.cleanBuild", () => cleanBuild(ctx)),
         // Note: This is only available on macOS (gated in `package.json`) because its the only OS that has the iOS SDK available.
         vscode.commands.registerCommand("swift.switchPlatform", () => switchPlatform()),
