@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2022 the VSCode Swift project authors
+// Copyright (c) 2022-2023 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -18,7 +18,7 @@ import contextKeys from "./contextKeys";
 import { createSwiftTask } from "./SwiftTaskProvider";
 import { WorkspaceContext } from "./WorkspaceContext";
 import configuration from "./configuration";
-import { createSnippetConfiguration } from "./debugger/launch";
+import { createSnippetConfiguration, debugLaunchConfig } from "./debugger/launch";
 
 /**
  * Set context key indicating whether current file is a Swift Snippet
@@ -104,25 +104,7 @@ export async function debugSnippet(ctx: WorkspaceContext) {
     await folderContext.taskQueue.queueOperation({ task: snippetBuildTask }).then(result => {
         if (result === 0) {
             const snippetDebugConfig = createSnippetConfiguration(snippetName, folderContext);
-
-            return new Promise<void>((resolve, reject) => {
-                vscode.debug.startDebugging(folderContext.workspaceFolder, snippetDebugConfig).then(
-                    started => {
-                        if (started) {
-                            const terminateSession = vscode.debug.onDidTerminateDebugSession(
-                                async () => {
-                                    // dispose terminate debug handler
-                                    terminateSession.dispose();
-                                    resolve();
-                                }
-                            );
-                        }
-                    },
-                    reason => {
-                        reject(reason);
-                    }
-                );
-            });
+            return debugLaunchConfig(snippetDebugConfig, folderContext.workspaceFolder);
         }
     });
 }

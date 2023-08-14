@@ -53,6 +53,16 @@
         "category": "Swift"
       },
       {
+        "command": "swift.run",
+        "title": "Run Build",
+        "category": "Swift"
+      },
+      {
+        "command": "swift.debug",
+        "title": "Debug Build",
+        "category": "Swift"
+      },
+      {
         "command": "swift.resetPackage",
         "title": "Reset Package Dependencies",
         "icon": "$(clear-all)",
@@ -406,6 +416,14 @@
         },
         {
           "command": "swift.cleanBuild",
+          "when": "swift.hasPackage"
+        },
+        {
+          "command": "swift.run",
+          "when": "swift.hasPackage"
+        },
+        {
+          "command": "swift.debug",
           "when": "swift.hasPackage"
         },
         {
