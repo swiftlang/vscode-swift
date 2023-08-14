@@ -419,14 +419,6 @@
           "when": "swift.hasPackage"
         },
         {
-          "command": "swift.run",
-          "when": "swift.hasPackage"
-        },
-        {
-          "command": "swift.debug",
-          "when": "swift.hasPackage"
-        },
-        {
           "command": "swift.switchPlatform",
           "when": "isMac"
         },
@@ -463,8 +455,16 @@
           "when": "isMac"
         },
         {
+          "command": "swift.run",
+          "when": "editorLangId == swift && swift.currentTargetType == 'executable'"
+        },
+        {
+          "command": "swift.debug",
+          "when": "editorLangId == swift && swift.currentTargetType == 'executable'"
+        },
+        {
           "command": "swift.runScript",
-          "when": "!swift.fileIsSnippet && editorLangId == swift"
+          "when": "!swift.fileIsSnippet && editorLangId == swift && swift.currentTargetType == 'none'"
         },
         {
           "command": "swift.runSnippet",
@@ -486,18 +486,28 @@
       ],
       "swift.editor": [
         {
-          "command": "swift.runScript",
+          "command": "swift.run",
           "group": "1_file@1",
-          "when": "!swift.fileIsSnippet && editorLangId == swift"
+          "when": "editorLangId == swift && swift.currentTargetType == 'executable'"
+        },
+        {
+          "command": "swift.debug",
+          "group": "1_file@2",
+          "when": "editorLangId == swift && swift.currentTargetType == 'executable'"
+        },
+        {
+          "command": "swift.runScript",
+          "group": "1_file@3",
+          "when": "!swift.fileIsSnippet && editorLangId == swift && swift.currentTargetType == 'none'"
         },
         {
           "command": "swift.runSnippet",
-          "group": "1_file@2",
+          "group": "1_file@4",
           "when": "swift.fileIsSnippet"
         },
         {
           "command": "swift.debugSnippet",
-          "group": "1_file@3",
+          "group": "1_file@5",
           "when": "swift.fileIsSnippet"
         },
         {
