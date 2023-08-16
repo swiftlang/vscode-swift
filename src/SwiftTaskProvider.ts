@@ -128,26 +128,41 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
  * @returns Build All Task
  */
 export async function getBuildAllTask(folderContext: FolderContext): Promise<vscode.Task> {
-    const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
-
     let buildTaskName = SwiftTaskProvider.buildAllName;
     if (folderContext.relativePath.length > 0) {
         buildTaskName += ` (${folderContext.relativePath})`;
     }
 
-    // search for build all task in task.json first
-    let task = tasks.find(
-        task =>
-            task.name === `swift: ${buildTaskName}` &&
-            (task.execution as vscode.ProcessExecution).options?.cwd ===
-                folderContext.folder.fsPath &&
-            task.source === "Workspace"
+    const folderWorkingDir = folderContext.workspaceFolder.uri.fsPath;
+    // search for build all task in task.json first, that are valid for folder
+    const workspaceTasks = (await vscode.tasks.fetchTasks()).filter(task => {
+        if (task.source !== "Workspace" || task.scope !== folderContext.workspaceFolder) {
+            return false;
+        }
+        const processExecutionOptions = (task.execution as vscode.ProcessExecution).options;
+        const shellExecutionOptions = (task.execution as vscode.ShellExecution).options;
+        let cwd = processExecutionOptions?.cwd ?? shellExecutionOptions?.cwd;
+        if (cwd === "${workspaceFolder}" || cwd === undefined) {
+            cwd = folderWorkingDir;
+        }
+        return cwd === folderContext.folder.fsPath;
+    });
+
+    // find default build task
+    let task = workspaceTasks.find(
+        task => task.group?.id === vscode.TaskGroup.Build.id && task.group?.isDefault === true
     );
     if (task) {
         return task;
     }
+    // find task with name "swift: Build All"
+    task = workspaceTasks.find(task => task.name === `swift: ${buildTaskName}`);
+    if (task) {
+        return task;
+    }
     // search for generated tasks
-    task = tasks.find(
+    const swiftTasks = await vscode.tasks.fetchTasks({ type: "swift" });
+    task = swiftTasks.find(
         task =>
             task.name === buildTaskName &&
             (task.execution as vscode.ProcessExecution).options?.cwd ===
