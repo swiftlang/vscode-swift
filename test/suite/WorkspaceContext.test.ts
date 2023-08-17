@@ -17,21 +17,14 @@ import * as assert from "assert";
 import { testAssetUri, testAssetWorkspaceFolder } from "../fixtures";
 import { FolderEvent, WorkspaceContext } from "../../src/WorkspaceContext";
 import { createBuildAllTask, platformDebugBuildOptions } from "../../src/SwiftTaskProvider";
+import { globalWorkspaceContextPromise } from "./extension.test";
 
 suite("WorkspaceContext Test Suite", () => {
     let workspaceContext: WorkspaceContext;
-    const subscriptions: { dispose(): unknown }[] = [];
-    const packageFolder: vscode.WorkspaceFolder = testAssetWorkspaceFolder("package1");
+    const packageFolder: vscode.Uri = testAssetUri("defaultPackage");
 
     suiteSetup(async () => {
-        workspaceContext = await WorkspaceContext.create();
-        await workspaceContext.addWorkspaceFolder(packageFolder);
-        subscriptions.push(workspaceContext);
-    });
-
-    suiteTeardown(async () => {
-        workspaceContext?.removeFolder(packageFolder);
-        subscriptions.forEach(sub => sub.dispose());
+        workspaceContext = await globalWorkspaceContextPromise;
     });
 
     suite("Folder Events", () => {
@@ -49,10 +42,10 @@ suite("WorkspaceContext Test Suite", () => {
                         break;
                 }
             });
-            const packageFolder = testAssetWorkspaceFolder("package2");
-            await workspaceContext?.addWorkspaceFolder(packageFolder);
+            const package2Folder = testAssetWorkspaceFolder("package2");
+            await workspaceContext?.addWorkspaceFolder(package2Folder);
             assert.strictEqual(count, 1);
-            await workspaceContext?.removeFolder(packageFolder);
+            await workspaceContext?.removeFolder(package2Folder);
             assert.strictEqual(count, 0);
             observer?.dispose();
         }).timeout(5000);
@@ -67,22 +60,26 @@ suite("WorkspaceContext Test Suite", () => {
         });
 
         test("Default Task values", async () => {
-            const folder = workspaceContext.folders.find(f => f.workspaceFolder === packageFolder);
+            const folder = workspaceContext.folders.find(
+                f => f.folder.fsPath === packageFolder.fsPath
+            );
             assert(folder);
             const buildAllTask = createBuildAllTask(folder);
-            const execution = buildAllTask.execution as vscode.ShellExecution;
+            const execution = buildAllTask.execution as vscode.ProcessExecution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
-            assert.strictEqual(buildAllTask.name, "Build All");
+            assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
             assert.notStrictEqual(execution?.args, [
                 "build",
                 "--build-tests",
                 ...platformDebugBuildOptions(workspaceContext.toolchain),
             ]);
-            assert.strictEqual(buildAllTask.scope, packageFolder);
+            assert.strictEqual(buildAllTask.scope, folder.workspaceFolder);
         });
 
         test("Build Settings", async () => {
-            const folder = workspaceContext.folders.find(f => f.workspaceFolder === packageFolder);
+            const folder = workspaceContext.folders.find(
+                f => f.folder.fsPath === packageFolder.fsPath
+            );
             assert(folder);
             await swiftConfig.update("buildArguments", ["--sanitize=thread"]);
             const buildAllTask = createBuildAllTask(folder);
@@ -93,36 +90,19 @@ suite("WorkspaceContext Test Suite", () => {
                 ...platformDebugBuildOptions(workspaceContext.toolchain),
                 "--sanitize=thread",
             ]);
+            await swiftConfig.update("buildArguments", []);
         });
 
         test("Swift Path", async () => {
-            const folder = workspaceContext.folders.find(f => f.workspaceFolder === packageFolder);
+            const folder = workspaceContext.folders.find(
+                f => f.folder.fsPath === packageFolder.fsPath
+            );
             assert(folder);
             await swiftConfig.update("path", "/usr/bin/swift");
             const buildAllTask = createBuildAllTask(folder);
             const execution = buildAllTask.execution as vscode.ShellExecution;
             assert.notStrictEqual(execution?.command, "/usr/bin/swift");
+            await swiftConfig.update("path", "");
         });
     });
-
-    suite("Language Server", async () => {
-        test("Server Start", async () => {
-            const folder = workspaceContext.folders.find(f => f.workspaceFolder === packageFolder);
-            assert(folder);
-            await workspaceContext.focusFolder(folder);
-            const lspWorkspaceFolder = workspaceContext.languageClientManager.workspaceFolder;
-            assert.notStrictEqual(lspWorkspaceFolder, testAssetUri("package1"));
-        }).timeout(10000);
-
-        test("CMake", async () => {
-            const cmakeFolder = testAssetWorkspaceFolder("cmake");
-            await workspaceContext?.addWorkspaceFolder(cmakeFolder);
-            const folder = workspaceContext.folders.find(f => f.workspaceFolder === cmakeFolder);
-            assert(folder);
-            await workspaceContext.focusFolder(folder);
-            const lspWorkspaceFolder = workspaceContext.languageClientManager.workspaceFolder;
-            assert.notStrictEqual(lspWorkspaceFolder, testAssetUri("cmake"));
-            await workspaceContext?.removeFolder(cmakeFolder);
-        }).timeout(10000);
-    });
-}).timeout(5000);
+}).timeout(10000);

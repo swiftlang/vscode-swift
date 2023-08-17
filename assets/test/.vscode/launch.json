@@ -1,0 +1,28 @@
+{
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "sourceLanguages": [
+                "swift"
+            ],
+            "name": "Debug PackageExe (defaultPackage)",
+            "program": "${workspaceFolder:test}/defaultPackage/.build/debug/PackageExe",
+            "args": [],
+            "cwd": "${workspaceFolder:test}/defaultPackage",
+            "preLaunchTask": "swift: Build Debug PackageExe (defaultPackage)"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "sourceLanguages": [
+                "swift"
+            ],
+            "name": "Release PackageExe (defaultPackage)",
+            "program": "${workspaceFolder:test}/defaultPackage/.build/release/PackageExe",
+            "args": [],
+            "cwd": "${workspaceFolder:test}/defaultPackage",
+            "preLaunchTask": "swift: Build Release PackageExe (defaultPackage)"
+        }
+    ]
+}

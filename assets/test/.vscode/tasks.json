@@ -8,12 +8,12 @@
 				"--build-tests",
                 "--verbose"
 			],
-			"cwd": "extension-tests",
+			"cwd": "defaultPackage",
 			"problemMatcher": [
 				"$swiftc"
 			],
 			"group": "build",
-			"label": "swift: Build All (extension-tests)",
+			"label": "swift: Build All (defaultPackage)",
 			"detail": "swift build --build-tests --verbose"
 		}
 	]
