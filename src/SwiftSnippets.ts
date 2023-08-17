@@ -49,28 +49,7 @@ export function setSnippetContextKey(ctx: WorkspaceContext) {
  * @param ctx Workspace Context
  */
 export async function runSnippet(ctx: WorkspaceContext) {
-    const folderContext = ctx.currentFolder;
-    if (!ctx.currentDocument || !folderContext) {
-        return;
-    }
-    // create run task
-    const snippetName = path.basename(ctx.currentDocument.fsPath, ".swift");
-    const snippetTask = createSwiftTask(
-        ["run", snippetName],
-        `Run ${snippetName}`,
-        {
-            group: vscode.TaskGroup.Test,
-            cwd: folderContext.folder,
-            scope: folderContext.workspaceFolder,
-            presentationOptions: {
-                reveal: vscode.TaskRevealKind.Always,
-            },
-            problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
-        },
-        ctx.toolchain
-    );
-
-    await vscode.tasks.executeTask(snippetTask);
+    await debugSnippetWithOptions(ctx, { noDebug: true });
 }
 
 /**
@@ -78,6 +57,13 @@ export async function runSnippet(ctx: WorkspaceContext) {
  * @param ctx Workspace Context
  */
 export async function debugSnippet(ctx: WorkspaceContext) {
+    await debugSnippetWithOptions(ctx, {});
+}
+
+export async function debugSnippetWithOptions(
+    ctx: WorkspaceContext,
+    options: vscode.DebugSessionOptions
+) {
     const folderContext = ctx.currentFolder;
     if (!ctx.currentDocument || !folderContext) {
         return;
@@ -104,7 +90,7 @@ export async function debugSnippet(ctx: WorkspaceContext) {
     await folderContext.taskQueue.queueOperation({ task: snippetBuildTask }).then(result => {
         if (result === 0) {
             const snippetDebugConfig = createSnippetConfiguration(snippetName, folderContext);
-            return debugLaunchConfig(snippetDebugConfig, folderContext.workspaceFolder);
+            return debugLaunchConfig(folderContext.workspaceFolder, snippetDebugConfig, options);
         }
     });
 }
