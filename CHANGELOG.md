@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.5.0 - 2023-08-18
+
+### Added
+
+- Run/Debug commands that will run/debug executable associated with current active file.
+- Run/Debug context menu entries for files that have an associated executable.
+
+### Changes
+
+- **Breaking Change**: SourceKit-LSP configuration settings have been renamed to include a `swift.` prefix to avoid clashes with the original SourceKit-LSP extension.
+- If background compilation is enabled, then run build as startup.
+- Removed `Run Script` context menu entry when editing a file that is part of a Package.
+- Use `tasks.json` default build task, if setup, for Test explorer and background compilation.
+- Only use custom macOS test debug configuration, which was added to fix an issue in Swift 5.6, when using Swift 5.6. 
+
+### Fixed
+
+- If LSP server shutdown times out, still restart the server.
+- Fix version check for versions of Swift prior to 5.4.
+
 ## 1.4.0 - 2023-07-05
 
 ### Added
