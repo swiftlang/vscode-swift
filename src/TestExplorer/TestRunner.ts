@@ -28,6 +28,7 @@ import { getBuildAllTask } from "../SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { iTestRunState, TestOutputParser } from "./TestOutputParser";
+import { Version } from "../utilities/version";
 
 /** Class used to run tests */
 export class TestRunner {
@@ -236,15 +237,21 @@ export class TestRunner {
         const testList = this.testArgs.join(",");
 
         if (process.platform === "darwin") {
-            let testFilterArg: string;
-            if (testList.length > 0) {
-                testFilterArg = `-XCTest ${testList}`;
-            } else {
-                testFilterArg = "";
-            }
-            // if debugging on macOS need to create a custom launch configuration so we can set the
-            // the system architecture
-            if (debugging && outputFile) {
+            // if debugging on macOS with Swift 5.6 we need to create a custom launch
+            // configuration so we can set the system architecture
+            const swiftVersion = this.workspaceContext.toolchain.swiftVersion;
+            if (
+                debugging &&
+                outputFile &&
+                swiftVersion.isLessThan(new Version(5, 7, 0)) &&
+                swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))
+            ) {
+                let testFilterArg: string;
+                if (testList.length > 0) {
+                    testFilterArg = `-XCTest ${testList}`;
+                } else {
+                    testFilterArg = "";
+                }
                 const testBuildConfig = createDarwinTestConfiguration(
                     this.folderContext,
                     testFilterArg,
