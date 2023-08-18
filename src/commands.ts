@@ -116,38 +116,20 @@ export async function updateFolderDependencies(folderContext: FolderContext) {
  * Executes a {@link vscode.Task task} to run swift target.
  */
 export async function runBuild(ctx: WorkspaceContext) {
-    const current = ctx.currentFolder;
-    if (!current) {
-        return;
-    }
-    const file = vscode.window.activeTextEditor?.document.fileName;
-    if (!file) {
-        return;
-    }
-    const target = current.swiftPackage.getTarget(file);
-    if (!target || target.type !== "executable") {
-        return;
-    }
-    const task = createSwiftTask(
-        ["run", target.name],
-        `Run ${target.name}`,
-        {
-            cwd: current.folder,
-            scope: current.workspaceFolder,
-            prefix: current.name,
-            presentationOptions: { reveal: vscode.TaskRevealKind.Always },
-            problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
-        },
-        ctx.toolchain
-    );
-
-    await vscode.tasks.executeTask(task);
+    await debugBuildWithOptions(ctx, { noDebug: true });
 }
 
 /**
  * Executes a {@link vscode.Task task} to debug swift target.
  */
 export async function debugBuild(ctx: WorkspaceContext) {
+    await debugBuildWithOptions(ctx, {});
+}
+
+/**
+ * Executes a {@link vscode.Task task} to debug swift target.
+ */
+async function debugBuildWithOptions(ctx: WorkspaceContext, options: vscode.DebugSessionOptions) {
     const current = ctx.currentFolder;
     if (!current) {
         return;
@@ -162,7 +144,7 @@ export async function debugBuild(ctx: WorkspaceContext) {
     }
     const launchConfig = getLaunchConfiguration(target.name, current);
     if (launchConfig) {
-        return debugLaunchConfig(launchConfig, current.workspaceFolder);
+        return debugLaunchConfig(current.workspaceFolder, launchConfig, options);
     }
 }
 

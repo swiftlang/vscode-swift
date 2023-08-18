@@ -302,11 +302,12 @@ export function createDarwinTestConfiguration(
  * @param workspaceFolder Workspace to run debugger in
  */
 export async function debugLaunchConfig(
+    workspaceFolder: vscode.WorkspaceFolder,
     config: vscode.DebugConfiguration,
-    workspaceFolder: vscode.WorkspaceFolder
+    options: vscode.DebugSessionOptions = {}
 ) {
     return new Promise<void>((resolve, reject) => {
-        vscode.debug.startDebugging(workspaceFolder, config).then(
+        vscode.debug.startDebugging(workspaceFolder, config, options).then(
             started => {
                 if (started) {
                     const terminateSession = vscode.debug.onDidTerminateDebugSession(async () => {
