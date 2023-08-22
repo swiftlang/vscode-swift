@@ -246,8 +246,7 @@ export function createTestConfiguration(
 /** Return custom Darwin test configuration that works with Swift 5.6 */
 export function createDarwinTestConfiguration(
     ctx: FolderContext,
-    args: string,
-    outputFile: string
+    args: string
 ): vscode.DebugConfiguration | null {
     if (ctx.swiftPackage.getTargets("test").length === 0) {
         return null;
@@ -290,7 +289,7 @@ export function createDarwinTestConfiguration(
         targetCreateCommands: [`file -a ${arch} ${xctestPath}/xctest`],
         processCreateCommands: [
             ...envCommands,
-            `process launch -e ${outputFile} -w ${folder} -- ${args} ${buildDirectory}/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
+            `process launch -w ${folder} -- ${args} ${buildDirectory}/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
         ],
         preLaunchTask: `swift: Build All${nameSuffix}`,
     };

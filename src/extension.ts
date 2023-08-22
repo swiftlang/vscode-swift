@@ -26,6 +26,7 @@ import { SwiftPluginTaskProvider } from "./SwiftPluginTaskProvider";
 import configuration from "./configuration";
 import { Version } from "./utilities/version";
 import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
+import { LoggingDebugAdapterTrackerFactory } from "./debugger/logTracker";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -142,6 +143,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             }
         );
 
+        const loggingDebugAdapter = vscode.debug.registerDebugAdapterTrackerFactory(
+            "lldb",
+            new LoggingDebugAdapterTrackerFactory()
+        );
         const testExplorerObserver = TestExplorer.observeFolders(workspaceContext);
 
         // setup workspace context with initial workspace folders
@@ -149,6 +154,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
 
         // Register any disposables for cleanup when the extension deactivates.
         context.subscriptions.push(
+            loggingDebugAdapter,
             resolvePackageObserver,
             testExplorerObserver,
             swiftModuleDocumentProvider,
