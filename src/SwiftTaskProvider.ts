@@ -18,7 +18,7 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { Product } from "./SwiftPackage";
 import configuration from "./configuration";
-import { getSwiftExecutable, swiftRuntimeEnv } from "./utilities/utilities";
+import { swiftRuntimeEnv } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 import { SwiftToolchain } from "./toolchain/toolchain";
 
@@ -227,7 +227,7 @@ export function createSwiftTask(
     config: TaskConfig,
     toolchain: SwiftToolchain
 ): vscode.Task {
-    const swift = getSwiftExecutable();
+    const swift = toolchain.getToolchainExecutable("swift");
     args = toolchain.buildFlags.withSwiftSDKFlags(args);
 
     // Add relative path current working directory
@@ -351,8 +351,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
     resolveTask(task: vscode.Task, token: vscode.CancellationToken): vscode.Task {
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
-        const swift = getSwiftExecutable();
-
+        const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
         const scopeWorkspaceFolder = task.scope as vscode.WorkspaceFolder;
         let fullCwd = task.definition.cwd;
         if (!path.isAbsolute(fullCwd) && scopeWorkspaceFolder.uri.fsPath) {

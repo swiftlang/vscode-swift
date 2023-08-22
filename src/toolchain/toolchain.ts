@@ -177,7 +177,9 @@ export class SwiftToolchain {
      * Return fullpath for toolchain executable
      */
     public getToolchainExecutable(exe: string): string {
-        return `${this.toolchainPath}/usr/bin/${exe}`;
+        // should we add `.exe` at the end of the executable name
+        const windowsExeSuffix = process.platform === "win32" ? ".exe" : "";
+        return `${this.toolchainPath}/usr/bin/${exe}${windowsExeSuffix}`;
     }
 
     logDiagnostics(channel: SwiftOutputChannel) {

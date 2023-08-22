@@ -18,12 +18,7 @@ import * as path from "path";
 import * as stream from "stream";
 import { createTestConfiguration, createDarwinTestConfiguration } from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
-import {
-    ExecError,
-    execFileStreamOutput,
-    getErrorDescription,
-    getSwiftExecutable,
-} from "../utilities/utilities";
+import { ExecError, execFileStreamOutput, getErrorDescription } from "../utilities/utilities";
 import { getBuildAllTask } from "../SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
@@ -351,7 +346,7 @@ export class TestRunner {
                 const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
                 const args = ["test", "--enable-code-coverage"];
                 await execFileStreamOutput(
-                    getSwiftExecutable(),
+                    this.workspaceContext.toolchain.getToolchainExecutable("swift"),
                     [...args, ...filterArgs],
                     stdout,
                     stderr,

@@ -17,7 +17,7 @@ import * as path from "path";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { PackagePlugin } from "./SwiftPackage";
 import configuration from "./configuration";
-import { getSwiftExecutable, swiftRuntimeEnv } from "./utilities/utilities";
+import { swiftRuntimeEnv } from "./utilities/utilities";
 
 // Interface class for defining task configuration
 interface TaskConfig {
@@ -72,7 +72,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
     resolveTask(task: vscode.Task, token: vscode.CancellationToken): vscode.Task {
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
-        const swift = getSwiftExecutable();
+        const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
         const sandboxArg = task.definition.disableSandbox ? ["--disable-sandbox"] : [];
         const writingToPackageArg = task.definition.allowWritingToPackageDirectory
             ? ["--allow-writing-to-package-directory"]
@@ -110,7 +110,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
      * @returns
      */
     createSwiftPluginTask(plugin: PackagePlugin, config: TaskConfig): vscode.Task {
-        const swift = getSwiftExecutable();
+        const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
 
         // Add relative path current working directory
         const relativeCwd = path.relative(config.scope.uri.fsPath, config.cwd?.fsPath);

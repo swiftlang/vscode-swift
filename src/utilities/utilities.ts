@@ -161,7 +161,12 @@ export async function execSwift(
     options: cp.ExecFileOptions = {},
     folderContext?: FolderContext
 ): Promise<{ stdout: string; stderr: string }> {
-    const swift = getSwiftExecutable();
+    let swift: string;
+    if (toolchain === "default") {
+        swift = getSwiftExecutable();
+    } else {
+        swift = toolchain.getToolchainExecutable("swift");
+    }
     if (toolchain !== "default") {
         args = toolchain.buildFlags.withSwiftSDKFlags(args);
     }
@@ -196,21 +201,14 @@ export function wait(milliseconds: number): Promise<void> {
 }
 
 /**
- * Get the file name of executable
- *
- * @param exe name of executable to return
- */
-export function getExecutableName(exe: string): string {
-    return process.platform === "win32" ? `${exe}.exe` : exe;
-}
-
-/**
  * Get path to swift executable, or executable in swift bin folder
  *
  * @param exe name of executable to return
  */
 export function getSwiftExecutable(exe = "swift"): string {
-    return path.join(configuration.path, getExecutableName(exe));
+    // should we add `.exe` at the end of the executable name
+    const windowsExeSuffix = process.platform === "win32" ? ".exe" : "";
+    return path.join(configuration.path, `${exe}${windowsExeSuffix}`);
 }
 
 /**
