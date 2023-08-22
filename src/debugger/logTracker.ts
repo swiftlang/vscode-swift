@@ -25,16 +25,16 @@ export class LoggingDebugAdapterTrackerFactory implements vscode.DebugAdapterTra
     }
 }
 
-interface iOutputEventBody {
+interface OutputEventBody {
     category: string;
     output: string;
 }
 
-interface iDebugMessage {
+interface DebugMessage {
     seq: number;
     type: string;
     event: string;
-    body: iOutputEventBody;
+    body: OutputEventBody;
 }
 
 /**
@@ -50,7 +50,7 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
         LoggingDebugAdapterTracker.debugSessionIdMap[id] = this;
     }
 
-    static addDebugSessionCallback(session: vscode.DebugSession, cb: (log: string) => void) {
+    static setDebugSessionCallback(session: vscode.DebugSession, cb: (log: string) => void) {
         const loggingDebugAdapter = this.debugSessionIdMap[session.id];
         if (loggingDebugAdapter) {
             loggingDebugAdapter.cb = cb;
@@ -62,7 +62,7 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
      * it is a output message and is not being sent to the console
      */
     onDidSendMessage(message: unknown): void {
-        const debugMessage = message as iDebugMessage;
+        const debugMessage = message as DebugMessage;
         if (
             this.cb &&
             debugMessage &&

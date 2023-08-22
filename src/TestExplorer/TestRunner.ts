@@ -436,7 +436,7 @@ export class TestRunner {
                 "Start Test Debugging",
                 this.folderContext.name
             );
-            LoggingDebugAdapterTracker.addDebugSessionCallback(session, output => {
+            LoggingDebugAdapterTracker.setDebugSessionCallback(session, output => {
                 this.testRun.appendOutput(output);
                 if (process.platform === "darwin") {
                     this.testOutputParser.parseResultDarwin(output, runState);
