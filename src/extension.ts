@@ -27,6 +27,7 @@ import configuration from "./configuration";
 import { Version } from "./utilities/version";
 import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
 import { LoggingDebugAdapterTrackerFactory } from "./debugger/logTracker";
+import { registerLLDBDebugAdapter } from "./debugger/debugAdapterFactory";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -160,6 +161,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             new LoggingDebugAdapterTrackerFactory()
         );
         const testExplorerObserver = TestExplorer.observeFolders(workspaceContext);
+
+        if (configuration.debugger.useDebugAdapterInToolchain) {
+            const lldbDebugAdapter = registerLLDBDebugAdapter(workspaceContext);
+            context.subscriptions.push(lldbDebugAdapter);
+        }
 
         // setup workspace context with initial workspace folders
         workspaceContext.addWorkspaceFolders();
