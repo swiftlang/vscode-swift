@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as asyncfs from "fs/promises";
 import * as path from "path";
 import * as stream from "stream";
 import { createTestConfiguration, createDarwinTestConfiguration } from "../debugger/launch";
@@ -24,6 +23,7 @@ import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { iTestRunState, TestOutputParser } from "./TestOutputParser";
 import { Version } from "../utilities/version";
+import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
 
 /** Class used to run tests */
 export class TestRunner {
@@ -226,8 +226,7 @@ export class TestRunner {
      * @returns
      */
     private createLaunchConfigurationForTesting(
-        debugging: boolean,
-        outputFile: string | null = null
+        debugging: boolean
     ): vscode.DebugConfiguration | null {
         const testList = this.testArgs.join(",");
 
@@ -237,7 +236,6 @@ export class TestRunner {
             const swiftVersion = this.workspaceContext.toolchain.swiftVersion;
             if (
                 debugging &&
-                outputFile &&
                 swiftVersion.isLessThan(new Version(5, 7, 0)) &&
                 swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))
             ) {
@@ -249,8 +247,7 @@ export class TestRunner {
                 }
                 const testBuildConfig = createDarwinTestConfiguration(
                     this.folderContext,
-                    testFilterArg,
-                    outputFile
+                    testFilterArg
                 );
                 if (testBuildConfig === null) {
                     return null;
@@ -265,9 +262,8 @@ export class TestRunner {
                 if (testList.length > 0) {
                     testBuildConfig.args = ["-XCTest", testList, ...testBuildConfig.args];
                 }
-                // send stdout to testOutputPath. Cannot send both stdout and stderr to same file as it
-                // doesn't come out in the correct order
-                testBuildConfig.stdio = [null, null, outputFile];
+                // output test logging to debug console so we can catch it with a tracker
+                testBuildConfig.terminal = "console";
                 return testBuildConfig;
             }
         } else {
@@ -279,9 +275,8 @@ export class TestRunner {
             if (testList.length > 0) {
                 testBuildConfig.args = [testList];
             }
-            // send stdout to testOutputPath. Cannot send both stdout and stderr to same file as it
-            // doesn't come out in the correct order
-            testBuildConfig.stdio = [null, outputFile, null];
+            // output test logging to debug console so we can catch it with a tracker
+            testBuildConfig.terminal = "console";
             return testBuildConfig;
         }
     }
@@ -410,9 +405,8 @@ export class TestRunner {
 
     /** Run test session inside debugger */
     async debugSession(token: vscode.CancellationToken, runState: TestRunState) {
-        const testOutputPath = this.workspaceContext.tempFolder.filename("TestOutput", "txt");
         // create launch config for testing
-        const testBuildConfig = this.createLaunchConfigurationForTesting(true, testOutputPath);
+        const testBuildConfig = this.createLaunchConfigurationForTesting(true);
         if (testBuildConfig === null) {
             return;
         }
@@ -437,6 +431,14 @@ export class TestRunner {
                 "Start Test Debugging",
                 this.folderContext.name
             );
+            LoggingDebugAdapterTracker.setDebugSessionCallback(session, output => {
+                this.testRun.appendOutput(output);
+                if (process.platform === "darwin") {
+                    this.testOutputParser.parseResultDarwin(output, runState);
+                } else {
+                    this.testOutputParser.parseResultNonDarwin(output, runState);
+                }
+            });
             const cancellation = token.onCancellationRequested(() => {
                 this.workspaceContext.outputChannel.logDiagnostic(
                     "Test Debugging Cancelled",
@@ -464,30 +466,6 @@ export class TestRunner {
                                     "Stop Test Debugging",
                                     this.folderContext.name
                                 );
-                                try {
-                                    if (!token.isCancellationRequested) {
-                                        const debugOutput = await asyncfs.readFile(testOutputPath, {
-                                            encoding: "utf8",
-                                        });
-                                        this.testRun.appendOutput(
-                                            debugOutput.replace(/\n/g, "\r\n")
-                                        );
-                                        if (process.platform === "darwin") {
-                                            this.testOutputParser.parseResultDarwin(
-                                                debugOutput,
-                                                runState
-                                            );
-                                        } else {
-                                            this.testOutputParser.parseResultNonDarwin(
-                                                debugOutput,
-                                                runState
-                                            );
-                                        }
-                                    }
-                                    asyncfs.rm(testOutputPath);
-                                } catch {
-                                    // ignore error
-                                }
                                 // dispose terminate debug handler
                                 subscriptions.forEach(sub => sub.dispose());
                                 resolve();
@@ -495,13 +473,11 @@ export class TestRunner {
                         );
                         subscriptions.push(terminateSession);
                     } else {
-                        asyncfs.rm(testOutputPath);
                         subscriptions.forEach(sub => sub.dispose());
                         reject();
                     }
                 },
                 reason => {
-                    asyncfs.rm(testOutputPath);
                     subscriptions.forEach(sub => sub.dispose());
                     reject(reason);
                 }
