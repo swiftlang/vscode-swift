@@ -38,7 +38,7 @@ interface DebugMessage {
 }
 
 /**
- * Debug Adapter tracker that track debuggee output to stdout and stderr and returns it
+ * Debug Adapter tracker that tracks debugger output to stdout and stderr and returns it
  */
 export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
     // keep a track of the logging debug trackers, so we can set the callback later on
