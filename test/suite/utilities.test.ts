@@ -17,9 +17,9 @@ import * as Stream from "stream";
 import {
     execFileStreamOutput,
     getRepositoryName,
-    getSwiftExecutable,
     isPathInsidePath,
     execSwift,
+    getSwiftExecutable,
 } from "../../src/utilities/utilities";
 
 suite("Utilities Test Suite", () => {
@@ -62,7 +62,7 @@ suite("Utilities Test Suite", () => {
     });
 
     test("execFileStreamOutput", async () => {
-        const swift = await getSwiftExecutable();
+        const swift = getSwiftExecutable();
         let result = "";
         // Use WriteStream to log results
         const writeStream = new Stream.Writable();
