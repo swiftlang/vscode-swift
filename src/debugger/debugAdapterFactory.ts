@@ -42,10 +42,20 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
         }
     }
 
-    return vscode.debug.registerDebugAdapterDescriptorFactory(
+    const debugAdpaterFactory = vscode.debug.registerDebugAdapterDescriptorFactory(
         "swift-lldb",
         new LLDBDebugAdapterExecutableFactory()
     );
+    const debugConfigProvider = vscode.debug.registerDebugConfigurationProvider(
+        "swift-lldb",
+        new LLDBDebugConfigurationProvider()
+    );
+    return {
+        dispose: () => {
+            debugConfigProvider.dispose();
+            debugAdpaterFactory.dispose();
+        },
+    };
 }
 
 async function isFileExists(path: string): Promise<boolean> {
@@ -64,4 +74,25 @@ export async function verifyDebugAdapterExists(toolchain: SwiftToolchain): Promi
         return false;
     }
     return true;
+}
+
+class LLDBDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
+    async resolveDebugConfiguration(
+        folder: vscode.WorkspaceFolder | undefined,
+        launchConfig: vscode.DebugConfiguration,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        cancellation?: vscode.CancellationToken
+    ): Promise<vscode.DebugConfiguration> {
+        launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
+        return launchConfig;
+    }
+
+    convertEnvironmentVariables(
+        map: { [key: string]: string } | undefined
+    ): { [key: string]: string } | string[] | undefined {
+        if (map === undefined) {
+            return undefined;
+        }
+        return Object.entries(map).map(([key, value]) => `${key}=${value}`);
+    }
 }

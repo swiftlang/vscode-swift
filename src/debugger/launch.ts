@@ -120,7 +120,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
                 args: [],
                 cwd: folder,
                 preLaunchTask: `swift: Build Debug ${product.name}${nameSuffix}`,
-                env: convertEnvironmentVariables(swiftRuntimeEnv(true)),
+                env: swiftRuntimeEnv(true),
             },
             {
                 type: configuration.debugger.debugAdapterName,
@@ -131,7 +131,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
                 args: [],
                 cwd: folder,
                 preLaunchTask: `swift: Build Release ${product.name}${nameSuffix}`,
-                env: convertEnvironmentVariables(swiftRuntimeEnv(true)),
+                env: swiftRuntimeEnv(true),
             },
         ];
     });
@@ -158,7 +158,7 @@ export function createSnippetConfiguration(
         program: `${buildDirectory}/debug/${snippetName}`,
         args: [],
         cwd: folder,
-        env: convertEnvironmentVariables(swiftRuntimeEnv(true)),
+        env: swiftRuntimeEnv(true),
     };
 }
 
@@ -201,7 +201,7 @@ export function createTestConfiguration(
             program: `${xctestPath}/xctest`,
             args: [`${buildDirectory}/debug/${ctx.swiftPackage.name}PackageTests.xctest`],
             cwd: folder,
-            env: convertEnvironmentVariables(env),
+            env: env,
             preLaunchTask: `swift: Build All${nameSuffix}`,
         };
     } else if (process.platform === "win32") {
@@ -233,7 +233,7 @@ export function createTestConfiguration(
             name: `Test ${ctx.swiftPackage.name}`,
             program: `${buildDirectory}/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
             cwd: folder,
-            env: convertEnvironmentVariables(testEnv),
+            env: testEnv,
             preRunCommands: preRunCommands,
             preLaunchTask: `swift: Build All${nameSuffix}`,
         };
@@ -246,7 +246,7 @@ export function createTestConfiguration(
             name: `Test ${ctx.swiftPackage.name}`,
             program: `${buildDirectory}/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
             cwd: folder,
-            env: convertEnvironmentVariables(testEnv),
+            env: testEnv,
             preLaunchTask: `swift: Build All${nameSuffix}`,
         };
     }
@@ -383,15 +383,4 @@ function getFolderAndNameSuffix(
         nameSuffix = ` (${ctx.relativePath})`;
     }
     return { folder: folder, nameSuffix: nameSuffix };
-}
-
-function convertEnvironmentVariables(
-    map: { [key: string]: string } | undefined
-): { [key: string]: string } | string[] | undefined {
-    if (map === undefined) {
-        return undefined;
-    } else if (configuration.debugger.useDebugAdapterFromToolchain) {
-        return Object.entries(map).map(([key, value]) => `${key}=${value}`);
-    }
-    return map;
 }
