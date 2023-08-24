@@ -221,7 +221,7 @@ export function createTestConfiguration(
         }
         let preRunCommands: string[] | undefined;
         if (
-            configuration.debugger.useDebugAdapterInToolchain ||
+            configuration.debugger.useDebugAdapterFromToolchain ||
             vscode.workspace.getConfiguration("lldb")?.get<string>("library")
         ) {
             preRunCommands = [`settings set target.sdk-path ${sdkroot}`];
@@ -390,7 +390,7 @@ function convertEnvironmentVariables(
 ): { [key: string]: string } | string[] | undefined {
     if (map === undefined) {
         return undefined;
-    } else if (configuration.debugger.useDebugAdapterInToolchain) {
+    } else if (configuration.debugger.useDebugAdapterFromToolchain) {
         return Object.entries(map).map(([key, value]) => `${key}=${value}`);
     }
     return map;

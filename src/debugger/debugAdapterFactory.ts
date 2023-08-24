@@ -13,7 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import * as fs from "fs";
 import { WorkspaceContext } from "../WorkspaceContext";
+import { SwiftToolchain } from "../toolchain/toolchain";
 
 export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
     class LLDBDebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFactory {
@@ -44,4 +46,22 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
         "swift-lldb",
         new LLDBDebugAdapterExecutableFactory()
     );
+}
+
+async function isFileExists(path: string): Promise<boolean> {
+    try {
+        return (await fs.promises.stat(path)).isFile();
+    } catch (e) {
+        return false;
+    }
+}
+export async function verifyDebugAdapterExists(toolchain: SwiftToolchain): Promise<boolean> {
+    const lldbDebugAdapterPath = toolchain.getToolchainExecutable("lldb-vscode");
+    if (!(await isFileExists(lldbDebugAdapterPath))) {
+        vscode.window.showInformationMessage(
+            "Cannot find lldb-vscode debug adapter in your Swift toolchain."
+        );
+        return false;
+    }
+    return true;
 }
