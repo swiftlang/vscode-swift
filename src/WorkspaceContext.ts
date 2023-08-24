@@ -136,6 +136,25 @@ export class WorkspaceContext implements vscode.Disposable {
                         }
                     });
             }
+            // on change of swift debugger type
+            if (event.affectsConfiguration("swift.debugger.useDebugAdapterFromToolchain")) {
+                if (!this.needToAutoGenerateLaunchConfig()) {
+                    return;
+                }
+                vscode.window
+                    .showInformationMessage(
+                        `Launch configurations need to be updated after changing the debug adapter. Do you want to update?`,
+                        "Update",
+                        "Cancel"
+                    )
+                    .then(async selected => {
+                        if (selected === "Update") {
+                            this.folders.forEach(
+                                async ctx => await makeDebugConfigurations(ctx, true)
+                            );
+                        }
+                    });
+            }
         });
         const backgroundCompilationOnDidSave = BackgroundCompilation.start(this);
         const contextKeysUpdate = this.observeFolders((folder, event) => {
