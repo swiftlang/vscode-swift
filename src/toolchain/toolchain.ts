@@ -206,7 +206,8 @@ export class SwiftToolchain {
         try {
             let swift: string;
             if (configuration.path !== "") {
-                swift = path.join(configuration.path, "swift");
+                const windowsExeSuffix = process.platform === "win32" ? ".exe" : "";
+                swift = path.join(configuration.path, "swift${windowsExeSuffix}");
             } else {
                 switch (process.platform) {
                     case "darwin": {
