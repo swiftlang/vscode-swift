@@ -35,7 +35,7 @@ export interface LSPConfiguration {
 /** debugger configuration */
 export interface DebuggerConfiguration {
     /** Are we using debug adapter provided with Toolchain */
-    readonly useDebugAdapterInToolchain: boolean;
+    readonly useDebugAdapterFromToolchain: boolean;
     /** Return debug adapter name */
     readonly debugAdapterName: string;
 }
@@ -131,13 +131,13 @@ const configuration = {
     get debugger(): DebuggerConfiguration {
         return {
             /** Should we use the debug adapter included in the Toolchain or CodeLLDB */
-            get useDebugAdapterInToolchain(): boolean {
+            get useDebugAdapterFromToolchain(): boolean {
                 return vscode.workspace
                     .getConfiguration("swift.debugger")
-                    .get<boolean>("useDebugAdapterInToolchain", false);
+                    .get<boolean>("useDebugAdapterFromToolchain", false);
             },
             get debugAdapterName(): string {
-                return this.useDebugAdapterInToolchain ? "swift-lldb" : "lldb";
+                return this.useDebugAdapterFromToolchain ? "swift-lldb" : "lldb";
             },
         };
     },

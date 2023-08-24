@@ -407,7 +407,7 @@
       {
         "title": "Debugger",
         "properties": {
-          "swift.debugger.useDebugAdapterInToolchain": {
+          "swift.debugger.useDebugAdapterFromToolchain": {
             "type": "boolean",
             "default": false,
             "description": "Use lldb-vscode packaged with Swift toolchain as your debug adapter. This is currently only available on Windows platforms",
