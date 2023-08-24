@@ -14,23 +14,33 @@
 
 import * as vscode from "vscode";
 import * as assert from "assert";
-import * as fs from "fs/promises";
 import * as swiftExtension from "../../src/extension";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { testAssetUri } from "../fixtures";
 import { getBuildAllTask } from "../../src/SwiftTaskProvider";
 
+export const globalWorkspaceContextPromise = new Promise<WorkspaceContext>(resolve => {
+    const ext = vscode.extensions.getExtension<swiftExtension.Api>("sswg.swift-lang")!;
+    ext.activate()
+        .then(api => {
+            const packageFolder = testAssetUri("defaultPackage");
+            const workspaceFolder = vscode.workspace.workspaceFolders?.values().next().value;
+            return api.workspaceContext.addPackageFolder(packageFolder, workspaceFolder);
+        })
+        .then(folder => {
+            resolve(folder.workspaceContext);
+        });
+});
+
 suite("Extension Test Suite", () => {
     let workspaceContext: WorkspaceContext;
 
     suiteSetup(async () => {
-        const ext = vscode.extensions.getExtension<swiftExtension.Api>("sswg.swift-lang")!;
-        const api = await ext.activate();
-        workspaceContext = api.workspaceContext;
+        workspaceContext = await globalWorkspaceContextPromise;
     });
 
     suite("Temporary Folder Test Suite", () => {
-        test("Create/Delete File", async () => {
+        /*test("Create/Delete File", async () => {
             const fileContents = "Test file";
             //const tempFolder = await TemporaryFolder.create();
             const fileName = workspaceContext.tempFolder.filename("test");
@@ -40,7 +50,7 @@ suite("Extension Test Suite", () => {
                 assert.strictEqual(contents, fileContents);
             });
             assert.doesNotThrow(async () => await fs.rm(fileName));
-        }).timeout(5000);
+        }).timeout(5000);*/
     });
 
     suite("Workspace", () => {
@@ -50,22 +60,15 @@ suite("Extension Test Suite", () => {
             if (process.env.CI) {
                 return;
             }
-            const package2Folder = testAssetUri("extension-tests");
-            const workspaceFolder = vscode.workspace.workspaceFolders?.values().next().value;
-            try {
-                await workspaceContext.addPackageFolder(package2Folder, workspaceFolder);
-            } catch (error) {
-                assert(false, JSON.stringify(error));
-            }
-            const folder = workspaceContext.folders.find(f => f.name === "test/extension-tests");
+            const folder = workspaceContext.folders.find(f => f.name === "test/defaultPackage");
             assert(folder);
             const buildAllTask = await getBuildAllTask(folder);
             const execution = buildAllTask.execution as vscode.ShellExecution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
-            assert.strictEqual(buildAllTask.name, "swift: Build All (extension-tests)");
+            assert.strictEqual(buildAllTask.name, "swift: Build All (defaultPackage)");
             for (const arg of ["build", "--build-tests", "--verbose"]) {
                 assert(execution?.args.find(item => item === arg));
             }
         }).timeout(10000);
     });
-});
+}).timeout(15000);

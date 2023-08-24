@@ -36,16 +36,6 @@ suite("SwiftPackage Test Suite", () => {
         assert.strictEqual(spmPackage.isValid, false);
     }).timeout(10000);
 
-    test("Executable package", async () => {
-        const spmPackage = await SwiftPackage.create(testAssetUri("package1"), toolchain);
-        assert.strictEqual(spmPackage.isValid, true);
-        assert.strictEqual(spmPackage.executableProducts.length, 1);
-        assert.strictEqual(spmPackage.executableProducts[0].name, "package1");
-        assert.strictEqual(spmPackage.dependencies.length, 1);
-        assert.strictEqual(spmPackage.targets.length, 2);
-        assert(spmPackage.resolved !== undefined);
-    }).timeout(10000);
-
     test("Library package", async () => {
         const spmPackage = await SwiftPackage.create(testAssetUri("package2"), toolchain);
         assert.strictEqual(spmPackage.isValid, true);

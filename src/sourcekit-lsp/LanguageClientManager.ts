@@ -109,7 +109,7 @@ export class LanguageClientManager {
     private singleServerSupport: boolean;
     // used by single server support to keep a record of the project folders
     // that are not at the root of their workspace
-    private subFolderWorkspaces: vscode.Uri[];
+    public subFolderWorkspaces: vscode.Uri[];
 
     constructor(public workspaceContext: WorkspaceContext) {
         this.singleServerSupport = workspaceContext.swiftVersion >= new Version(5, 7, 0);
@@ -199,11 +199,6 @@ export class LanguageClientManager {
         this.legacyInlayHints?.dispose();
         this.subscriptions.forEach(item => item.dispose());
         this.languageClient?.stop();
-    }
-
-    /** workspace folder of current client */
-    get workspaceFolder(): vscode.Uri | undefined {
-        return this.languageClient?.clientOptions?.workspaceFolder?.uri;
     }
 
     /**

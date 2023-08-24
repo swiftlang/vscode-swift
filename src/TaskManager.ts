@@ -21,7 +21,7 @@ export class TaskManager implements vscode.Disposable {
         this.onDidEndTaskProcessDisposible = vscode.tasks.onDidEndTaskProcess(event => {
             this.taskEndObservers.forEach(observer => observer(event));
         });
-        this.onDidEndTaskDisposible = vscode.tasks.onDidEndTaskProcess(event => {
+        this.onDidEndTaskDisposible = vscode.tasks.onDidEndTask(event => {
             this.taskEndObservers.forEach(observer =>
                 observer({ execution: event.execution, exitCode: undefined })
             );
@@ -104,7 +104,7 @@ export class TaskManager implements vscode.Disposable {
         });
         // setup startingTaskPromise to be resolved one task has started
         if (this.startingTaskPromise !== undefined) {
-            console.warn("TaskManager: Starting promise shoujld be zero if we reach here.");
+            console.warn("TaskManager: Starting promise should be undefined if we reach here.");
         }
         this.startingTaskPromise = new Promise<void>(resolve => {
             this.taskStartObserver = () => {
