@@ -26,7 +26,7 @@ import { SwiftPluginTaskProvider } from "./SwiftPluginTaskProvider";
 import configuration from "./configuration";
 import { Version } from "./utilities/version";
 import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
-import { LoggingDebugAdapterTrackerFactory } from "./debugger/logTracker";
+import { registerLoggingDebugAdapterTracker } from "./debugger/logTracker";
 import { registerLLDBDebugAdapter } from "./debugger/debugAdapterFactory";
 
 /**
@@ -156,16 +156,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             }
         );
 
-        const loggingDebugAdapter = vscode.debug.registerDebugAdapterTrackerFactory(
-            "lldb",
-            new LoggingDebugAdapterTrackerFactory()
-        );
         const testExplorerObserver = TestExplorer.observeFolders(workspaceContext);
 
         if (configuration.debugger.useDebugAdapterInToolchain) {
             const lldbDebugAdapter = registerLLDBDebugAdapter(workspaceContext);
             context.subscriptions.push(lldbDebugAdapter);
         }
+        const loggingDebugAdapter = registerLoggingDebugAdapterTracker();
 
         // setup workspace context with initial workspace folders
         workspaceContext.addWorkspaceFolders();
