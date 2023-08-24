@@ -707,9 +707,6 @@
     },
     "breakpoints": [
       {
-        "language": "arm"
-      },
-      {
         "language": "asm"
       },
       {
@@ -734,7 +731,7 @@
     "debuggers": [
       {
         "type": "swift-lldb",
-        "label": "Native Swift LLDB Debugger",
+        "label": "Swift LLDB Debugger",
         "configurationAttributes": {
           "launch": {
             "required": [

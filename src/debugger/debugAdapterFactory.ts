@@ -58,7 +58,7 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
     };
 }
 
-async function isFileExists(path: string): Promise<boolean> {
+async function doesFileExist(path: string): Promise<boolean> {
     try {
         return (await fs.promises.stat(path)).isFile();
     } catch (e) {
@@ -67,7 +67,7 @@ async function isFileExists(path: string): Promise<boolean> {
 }
 export async function verifyDebugAdapterExists(toolchain: SwiftToolchain): Promise<boolean> {
     const lldbDebugAdapterPath = toolchain.getToolchainExecutable("lldb-vscode");
-    if (!(await isFileExists(lldbDebugAdapterPath))) {
+    if (!(await doesFileExist(lldbDebugAdapterPath))) {
         vscode.window.showInformationMessage(
             "Cannot find lldb-vscode debug adapter in your Swift toolchain."
         );
@@ -76,6 +76,10 @@ export async function verifyDebugAdapterExists(toolchain: SwiftToolchain): Promi
     return true;
 }
 
+/** Provide configurations for lldb-vscode
+ *
+ * Converts environment variables from Object to array of strings in format "var=value"
+ */
 class LLDBDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
     async resolveDebugConfiguration(
         folder: vscode.WorkspaceFolder | undefined,
