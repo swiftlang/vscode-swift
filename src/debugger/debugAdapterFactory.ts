@@ -16,28 +16,24 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { SwiftToolchain } from "../toolchain/toolchain";
+import configuration from "../configuration";
 
 export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
     class LLDBDebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFactory {
-        // The following use of a DebugAdapter factory shows how to control what debug adapter executable is used.
-        // Since the code implements the default behavior, it is absolutely not neccessary and we show it here only for educational purpose.
-
         createDebugAdapterDescriptor(
             _session: vscode.DebugSession,
             executable: vscode.DebugAdapterExecutable | undefined
         ): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
-            // param "executable" contains the executable optionally specified in the package.json (if any)
-
-            // use the executable specified in the package.json if it exists or determine it based on some other information (e.g. the session)
+            // use the executable specified in the settings or use version in toolchain
             if (!executable) {
-                executable = new vscode.DebugAdapterExecutable(
-                    workspaceContext.toolchain.getToolchainExecutable("lldb-vscode"),
-                    [],
-                    {}
-                );
+                const lldbDebugAdapterPath =
+                    configuration.debugger.debugAdapterPath.length > 0
+                        ? configuration.debugger.debugAdapterPath
+                        : workspaceContext.toolchain.getToolchainExecutable("lldb-vscode");
+                executable = new vscode.DebugAdapterExecutable(lldbDebugAdapterPath, [], {});
             }
 
-            // make VS Code launch the DA executable
+            // make VS Code launch the debug adapter executable
             return executable;
         }
     }

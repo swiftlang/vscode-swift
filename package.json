@@ -405,13 +405,19 @@
         }
       },
       {
-        "title": "Debugger",
+        "title": "Debugger (Windows)",
         "properties": {
           "swift.debugger.useDebugAdapterFromToolchain": {
             "type": "boolean",
             "default": false,
             "description": "Use lldb-vscode packaged with Swift toolchain as your debug adapter. This is currently only available on Windows platforms",
             "order": 1
+          },
+          "swift.debugger.path": {
+            "type": "string",
+            "default": "",
+            "description": "Path to lldb-vscode debug adapter.",
+            "order": 2
           }
         }
       },

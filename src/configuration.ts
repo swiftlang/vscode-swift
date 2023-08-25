@@ -38,6 +38,8 @@ export interface DebuggerConfiguration {
     readonly useDebugAdapterFromToolchain: boolean;
     /** Return debug adapter name */
     readonly debugAdapterName: string;
+    /** Return path to debug adapter */
+    readonly debugAdapterPath: string;
 }
 
 /** workspace folder configuration */
@@ -138,6 +140,9 @@ const configuration = {
             },
             get debugAdapterName(): string {
                 return this.useDebugAdapterFromToolchain ? "swift-lldb" : "lldb";
+            },
+            get debugAdapterPath(): string {
+                return vscode.workspace.getConfiguration("swift.debugger").get<string>("path", "");
             },
         };
     },
