@@ -49,7 +49,7 @@ export class TestExplorer {
         // it is the build task for this folder then update the tests
         const onDidEndTask = folderContext.workspaceContext.tasks.onDidEndTaskProcess(event => {
             const task = event.execution.task;
-            const execution = task.execution as vscode.ShellExecution;
+            const execution = task.execution as vscode.ProcessExecution;
             if (
                 task.scope === this.folderContext.workspaceFolder &&
                 task.group === vscode.TaskGroup.Build &&
