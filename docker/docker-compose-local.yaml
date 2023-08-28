@@ -1,0 +1,29 @@
+# this file is not designed to be run directly
+# instead, use the docker-compose.<os>.<swift> files
+# eg docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.1804.50.yaml run test
+version: "3"
+
+services:
+
+  common: &common
+    build:
+      args:
+        ubuntu_version: "jammy"
+        swift_version: "5.8"
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - CI=1
+    volumes:
+      - ~/.ssh:/root/.ssh
+      - ..:/code:z
+    working_dir: /code
+    user: vscode:vscode
+
+  test:
+    <<: *common
+    command: /bin/bash -xcl "mkdir /tmp/code && cp -r ./ /tmp/code/ && cd /tmp/code && ./docker/test.sh"
+
+  shell:
+    <<: *common
+    entrypoint: /bin/bash

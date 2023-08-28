@@ -48,6 +48,8 @@ async function main() {
                 "--disable-gpu",
                 "--no-sandbox",
                 "--no-xshm",
+                "--crash-reporter-directory",
+                "/code/",
                 // Already start in the fixtures dir because we lose debugger connection
                 // once we re-open a different folder due to window reloading
                 path.join(extensionDevelopmentPath, "assets/test"),
