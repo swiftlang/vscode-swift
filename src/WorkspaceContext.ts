@@ -312,7 +312,7 @@ export class WorkspaceContext implements vscode.Disposable {
         }
 
         for (const folder of event.removed) {
-            await this.removeFolder(folder);
+            await this.removeWorkspaceFolder(folder);
         }
     }
 
@@ -347,28 +347,25 @@ export class WorkspaceContext implements vscode.Disposable {
      * called when a folder is removed from workspace
      * @param folder folder being removed
      */
-    async removeFolder(folder: vscode.WorkspaceFolder) {
-        // find context with root folder
-        const index = this.folders.findIndex(context => context.workspaceFolder === folder);
-        if (index === -1) {
-            console.error(`Trying to delete folder ${folder} which has no record`);
-            return;
-        }
-        const context = this.folders[index];
-        // if current folder is this folder send unfocus event by setting
-        // current folder to undefined
-        if (this.currentFolder === context) {
-            this.focusFolder(null);
-        }
-        // run observer functions in reverse order when removing
-        const observersReversed = [...this.observers];
-        observersReversed.reverse();
-        for (const observer of observersReversed) {
-            await observer(context, FolderEvent.remove, this);
-        }
-        context.dispose();
-        // remove context
-        this.folders.splice(index, 1);
+    async removeWorkspaceFolder(workspaceFolder: vscode.WorkspaceFolder) {
+        this.folders.forEach(async folder => {
+            if (folder.workspaceFolder !== workspaceFolder) {
+                return;
+            }
+            // if current folder is this folder send unfocus event by setting
+            // current folder to undefined
+            if (this.currentFolder === folder) {
+                this.focusFolder(null);
+            }
+            // run observer functions in reverse order when removing
+            const observersReversed = [...this.observers];
+            observersReversed.reverse();
+            for (const observer of observersReversed) {
+                await observer(folder, FolderEvent.remove, this);
+            }
+            folder.dispose();
+        });
+        this.folders = this.folders.filter(folder => folder.workspaceFolder !== workspaceFolder);
     }
 
     /**
