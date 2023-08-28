@@ -1,3 +1,4 @@
 {
-    "swift.disableAutoResolve": true
+    "swift.disableAutoResolve": true,
+    "swift.backgroundCompilation": false
 }
