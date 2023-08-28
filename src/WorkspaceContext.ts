@@ -320,21 +320,51 @@ export class WorkspaceContext implements vscode.Disposable {
      * Called whenever a folder is added to the workspace
      * @param folder folder being added
      */
-    async addWorkspaceFolder(folder: vscode.WorkspaceFolder) {
-        // add folder if Package.swift/compile_commands.json exists
-        if (await this.isValidWorkspaceFolder(folder.uri.fsPath)) {
-            await this.addPackageFolder(folder.uri, folder);
-        }
+    async addWorkspaceFolder(workspaceFolder: vscode.WorkspaceFolder) {
+        await this.searchForPackages(workspaceFolder.uri, workspaceFolder);
 
-        if (this.getActiveWorkspaceFolder(vscode.window.activeTextEditor) === folder) {
+        if (this.getActiveWorkspaceFolder(vscode.window.activeTextEditor) === workspaceFolder) {
             await this.focusTextEditor(vscode.window.activeTextEditor);
         }
+    }
+
+    async searchForPackages(folder: vscode.Uri, workspaceFolder: vscode.WorkspaceFolder) {
+        // add folder if Package.swift/compile_commands.json exists
+        if (await this.isValidWorkspaceFolder(folder.fsPath)) {
+            await this.addPackageFolder(folder, workspaceFolder);
+            return;
+        }
+        // should I search sub-folders for more Swift Packages
+        if (!configuration.folder(workspaceFolder).searchSubfoldersForPackages) {
+            return;
+        }
+
+        await vscode.workspace.fs.readDirectory(folder).then(async entries => {
+            for (const entry of entries) {
+                if (
+                    entry[1] === vscode.FileType.Directory &&
+                    entry[0][0] !== "." &&
+                    entry[0] !== "Packages"
+                ) {
+                    await this.searchForPackages(
+                        vscode.Uri.joinPath(folder, entry[0]),
+                        workspaceFolder
+                    );
+                }
+            }
+        });
     }
 
     public async addPackageFolder(
         folder: vscode.Uri,
         workspaceFolder: vscode.WorkspaceFolder
     ): Promise<FolderContext> {
+        // find context with root folder
+        const index = this.folders.findIndex(context => context.folder.fsPath === folder.fsPath);
+        if (index !== -1) {
+            console.error(`Adding package folder ${folder} twice`);
+            return this.folders[index];
+        }
         const folderContext = await FolderContext.create(folder, workspaceFolder, this);
         this.folders.push(folderContext);
 
@@ -446,7 +476,7 @@ export class WorkspaceContext implements vscode.Disposable {
 
     /** set focus based on the file a TextEditor is editing */
     async focusTextEditor(editor?: vscode.TextEditor) {
-        this.focusUri(editor?.document.uri);
+        await this.focusUri(editor?.document.uri);
     }
 
     async focusUri(uri?: vscode.Uri) {

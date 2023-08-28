@@ -192,18 +192,32 @@
             "scope": "machine-overridable",
             "order": 4
           },
+          "swift.searchSubfoldersForPackages": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Search sub-folders of workspace folder for Swift Packages at start up.",
+            "scope": "machine-overridable",
+            "order": 5
+          },
           "swift.autoGenerateLaunchConfigurations": {
             "type": "boolean",
             "default": true,
             "markdownDescription": "When loading a `Package.swift`, auto-generate `launch.json` configurations for running any executables.",
             "scope": "machine-overridable",
-            "order": 5
+            "order": 6
+          },
+          "swift.disableAutoResolve": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Disable automatic running of `swift package resolve`.",
+            "scope": "machine-overridable",
+            "order": 7
           },
           "swift.problemMatchCompileErrors": {
             "type": "boolean",
             "default": true,
             "description": "List compile errors in the Problems View.",
-            "order": 6
+            "order": 8
           },
           "swift.excludePathsFromPackageDependencies": {
             "description": "A list of paths to exclude from the Package Dependencies view.",
@@ -215,26 +229,19 @@
               ".git",
               ".github"
             ],
-            "order": 7
+            "order": 9
           },
           "swift.backgroundCompilation": {
             "type": "boolean",
             "default": false,
             "markdownDescription": "**Experimental**: Run `swift build` in the background whenever a file is saved.",
-            "order": 8
+            "order": 10
           },
           "swift.buildPath": {
             "type": "string",
             "default": "",
             "markdownDescription": "Path to the build directory passed to all swift package manager commands.",
-            "order": 9
-          },
-          "swift.disableAutoResolve": {
-            "type": "boolean",
-            "default": false,
-            "markdownDescription": "Disable automatic running of `swift package resolve`.",
-            "scope": "machine-overridable",
-            "order": 10
+            "order": 11
           }
         }
       },

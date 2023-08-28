@@ -36,6 +36,8 @@ export interface LSPConfiguration {
 export interface FolderConfiguration {
     /** Environment variables to set when running tests */
     readonly testEnvironmentVariables: { [key: string]: string };
+    /** search sub-folder of workspace folder for Swift Packages */
+    readonly searchSubfoldersForPackages: boolean;
     /** auto-generate launch.json configurations */
     readonly autoGenerateLaunchConfigurations: boolean;
     /** disable automatic running of swift package resolve */
@@ -107,6 +109,12 @@ const configuration = {
                 return vscode.workspace
                     .getConfiguration("swift", workspaceFolder)
                     .get<boolean>("disableAutoResolve", false);
+            },
+            /** search sub-folder of workspace folder for Swift Packages */
+            get searchSubfoldersForPackages(): boolean {
+                return vscode.workspace
+                    .getConfiguration("swift", workspaceFolder)
+                    .get<boolean>("searchSubfoldersForPackages", false);
             },
         };
     },

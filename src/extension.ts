@@ -89,6 +89,37 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         // observer that will resolve package and build launch configurations
         const resolvePackageObserver = workspaceContext.observeFolders(
             async (folder, event, workspace) => {
+                // function called when a folder is added. I broke this out so we can trigger it
+                // without having to await for it.
+                async function folderAdded(folder: FolderContext, workspace: WorkspaceContext) {
+                    if (
+                        !configuration.folder(folder.workspaceFolder).disableAutoResolve ||
+                        configuration.backgroundCompilation
+                    ) {
+                        // if background compilation is set then run compile at startup unless
+                        // this folder is a sub-folder of the workspace folder. This is to avoid
+                        // kicking off compile for multiple projects at the same time
+                        if (
+                            configuration.backgroundCompilation &&
+                            folder.workspaceFolder.uri === folder.folder
+                        ) {
+                            await folder.backgroundCompilation.runTask();
+                        } else {
+                            await commands.resolveFolderDependencies(folder, true);
+                        }
+                        if (workspace.swiftVersion >= new Version(5, 6, 0)) {
+                            await workspace.statusItem.showStatusWhileRunning(
+                                `Loading Swift Plugins (${FolderContext.uriName(
+                                    folder.workspaceFolder.uri
+                                )})`,
+                                async () => {
+                                    await folder.loadSwiftPlugins();
+                                    workspace.updatePluginContextKey();
+                                }
+                            );
+                        }
+                    }
+                }
                 if (!folder) {
                     return;
                 }
@@ -97,27 +128,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                         // Create launch.json files based on package description.
                         debug.makeDebugConfigurations(folder);
                         if (folder.swiftPackage.foundPackage) {
-                            if (
-                                !configuration.folder(folder.workspaceFolder).disableAutoResolve ||
-                                configuration.backgroundCompilation
-                            ) {
-                                if (configuration.backgroundCompilation) {
-                                    await folder.backgroundCompilation.runTask();
-                                } else {
-                                    await commands.resolveFolderDependencies(folder, true);
-                                }
-                                if (workspace.swiftVersion >= new Version(5, 6, 0)) {
-                                    await workspace.statusItem.showStatusWhileRunning(
-                                        `Loading Swift Plugins (${FolderContext.uriName(
-                                            folder.workspaceFolder.uri
-                                        )})`,
-                                        async () => {
-                                            await folder.loadSwiftPlugins();
-                                            workspace.updatePluginContextKey();
-                                        }
-                                    );
-                                }
-                            }
+                            // do not await for this, let packages resolve in parallel
+                            folderAdded(folder, workspace);
                         }
                         break;
 
