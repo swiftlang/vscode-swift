@@ -435,6 +435,10 @@ export class WorkspaceContext implements vscode.Disposable {
 
     /** find LLDB version and setup path in CodeLLDB */
     async setLLDBVersion() {
+        // this is not needed if we are using the toolchain debug adapter
+        if (configuration.debugger.useDebugAdapterFromToolchain) {
+            return;
+        }
         const libPathResult = await getLLDBLibPath(this.toolchain);
         if (!libPathResult.success) {
             // if failure message is undefined then fail silently
