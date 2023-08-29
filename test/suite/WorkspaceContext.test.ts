@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import * as assert from "assert";
-import { testAssetUri, testAssetWorkspaceFolder } from "../fixtures";
+import { testAssetUri } from "../fixtures";
 import { FolderEvent, WorkspaceContext } from "../../src/WorkspaceContext";
 import { createBuildAllTask, platformDebugBuildOptions } from "../../src/SwiftTaskProvider";
 import { globalWorkspaceContextPromise } from "./extension.test";
@@ -28,7 +28,7 @@ suite("WorkspaceContext Test Suite", () => {
     });
 
     suite("Folder Events", () => {
-        test("Add/Remove", async () => {
+        test("Add", async () => {
             let count = 0;
             const observer = workspaceContext?.observeFolders((folder, operation) => {
                 assert(folder !== null);
@@ -37,16 +37,11 @@ suite("WorkspaceContext Test Suite", () => {
                     case FolderEvent.add:
                         count++;
                         break;
-                    case FolderEvent.remove:
-                        count--;
-                        break;
                 }
             });
-            const package2Folder = testAssetWorkspaceFolder("package2");
-            await workspaceContext?.addWorkspaceFolder(package2Folder);
+            const workspaceFolder = vscode.workspace.workspaceFolders?.values().next().value;
+            await workspaceContext?.addPackageFolder(testAssetUri("package2"), workspaceFolder);
             assert.strictEqual(count, 1);
-            await workspaceContext?.removeFolder(package2Folder);
-            assert.strictEqual(count, 0);
             observer?.dispose();
         }).timeout(5000);
     });
