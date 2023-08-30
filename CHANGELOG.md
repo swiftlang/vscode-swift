@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.5.1 - 2023-08-30
+
+### Added
+
+- Support for automatic search of sub-folders for Swift packages. Defaulted to off.
+- Debug adapter tracker to catch logging to stdout and stderr. Test output is now visible while debugging tests.
+
+### Fixed
+
+- Removal of workspace folders, now removes all packages associated with the workspace not just the one at the root of the folder.
+- Custom Swift path on Windows. 
+- Fixed adding of packages in sub-folders twice at startup.
+
 ## 1.5.0 - 2023-08-18
 
 ### Added
