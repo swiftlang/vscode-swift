@@ -1,1 +1,1 @@
-xvfb-run -a npm run test
+xvfb-run -a -e /code/xvfb-errors.log npm run test
