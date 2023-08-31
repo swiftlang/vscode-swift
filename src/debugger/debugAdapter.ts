@@ -27,27 +27,25 @@ export class DebugAdapter {
             : "lldb";
     }
 
-    static async verifyDebugAdapterExists(workspace: WorkspaceContext): Promise<boolean> {
-        if (configuration.debugger.debugAdapterPath.length > 0) {
-            const lldbDebugAdapterPath = configuration.debugger.debugAdapterPath;
-            if (!(await this.doesFileExist(lldbDebugAdapterPath))) {
+    static async verifyDebugAdapterExists(
+        workspace: WorkspaceContext,
+        quiet = false
+    ): Promise<boolean> {
+        const useCustom = configuration.debugger.debugAdapterPath.length > 0;
+        const lldbDebugAdapterPath = useCustom
+            ? configuration.debugger.debugAdapterPath
+            : workspace.toolchain.getToolchainExecutable("lldb-vscode");
+        if (!(await this.doesFileExist(lldbDebugAdapterPath))) {
+            if (!quiet) {
                 vscode.window.showInformationMessage(
-                    "Cannot find lldb-vscode debug adapter specified in setting Swift.Debugger.Path."
+                    useCustom
+                        ? "Cannot find lldb-vscode debug adapter specified in setting Swift.Debugger.Path."
+                        : "Cannot find lldb-vscode debug adapter in your Swift toolchain."
                 );
-                workspace.outputChannel.log(`Failed to find ${lldbDebugAdapterPath}`);
-                this.debugAdapaterExists = false;
-                return false;
             }
-        } else {
-            const lldbDebugAdapterPath = workspace.toolchain.getToolchainExecutable("lldb-vscode");
-            if (!(await this.doesFileExist(lldbDebugAdapterPath))) {
-                vscode.window.showInformationMessage(
-                    "Cannot find lldb-vscode debug adapter in your Swift toolchain."
-                );
-                workspace.outputChannel.log(`Failed to find ${lldbDebugAdapterPath}`);
-                this.debugAdapaterExists = false;
-                return false;
-            }
+            workspace.outputChannel.log(`Failed to find ${lldbDebugAdapterPath}`);
+            this.debugAdapaterExists = false;
+            return false;
         }
         this.debugAdapaterExists = true;
         return true;

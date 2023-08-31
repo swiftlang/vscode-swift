@@ -113,7 +113,7 @@ export class WorkspaceContext implements vscode.Disposable {
                     .then(async selected => {
                         if (selected === "Update") {
                             this.folders.forEach(
-                                async ctx => await makeDebugConfigurations(ctx, true)
+                                async ctx => await makeDebugConfigurations(ctx, undefined, true)
                             );
                         }
                     });
@@ -132,34 +132,28 @@ export class WorkspaceContext implements vscode.Disposable {
                     .then(async selected => {
                         if (selected === "Update") {
                             this.folders.forEach(
-                                async ctx => await makeDebugConfigurations(ctx, true)
+                                async ctx => await makeDebugConfigurations(ctx, undefined, true)
                             );
                         }
                     });
             }
             // on change of swift debugger type
-            if (event.affectsConfiguration("swift.debugger.useDebugAdapterFromToolchain")) {
+            if (
+                event.affectsConfiguration("swift.debugger.useDebugAdapterFromToolchain") ||
+                event.affectsConfiguration("swift.debugger.path")
+            ) {
                 if (configuration.debugger.useDebugAdapterFromToolchain) {
                     if (!(await DebugAdapter.verifyDebugAdapterExists(this))) {
                         return;
                     }
                 }
-                if (!this.needToAutoGenerateLaunchConfig()) {
-                    return;
-                }
-                vscode.window
-                    .showInformationMessage(
-                        `Launch configurations need to be updated after changing the debug adapter. Do you want to update?`,
-                        "Update",
-                        "Cancel"
-                    )
-                    .then(async selected => {
-                        if (selected === "Update") {
-                            this.folders.forEach(
-                                async ctx => await makeDebugConfigurations(ctx, true)
-                            );
-                        }
-                    });
+                this.folders.forEach(
+                    async ctx =>
+                        await makeDebugConfigurations(
+                            ctx,
+                            "Launch configurations need to be updated after changing the debug adapter."
+                        )
+                );
             }
             // on change of swift debugger type
             if (event.affectsConfiguration("swift.debugger.path")) {
@@ -446,7 +440,7 @@ export class WorkspaceContext implements vscode.Disposable {
         // this is not needed if we are using the toolchain debug adapter
         if (
             configuration.debugger.useDebugAdapterFromToolchain &&
-            (await DebugAdapter.verifyDebugAdapterExists(this))
+            (await DebugAdapter.verifyDebugAdapterExists(this, true))
         ) {
             return;
         }

@@ -27,7 +27,7 @@ import { DebugAdapter } from "./debugAdapter";
  * @param ctx folder context to create launch configurations for
  * @param yes automatically answer yes to dialogs
  */
-export async function makeDebugConfigurations(ctx: FolderContext, yes = false) {
+export async function makeDebugConfigurations(ctx: FolderContext, message?: string, yes = false) {
     if (!configuration.folder(ctx.workspaceFolder).autoGenerateLaunchConfigurations) {
         return;
     }
@@ -69,8 +69,11 @@ export async function makeDebugConfigurations(ctx: FolderContext, yes = false) {
             const configUpdateNames = stringArrayInEnglish(
                 configUpdates.map(update => update.config.name)
             );
+            const warningMessage =
+                message ??
+                `The Swift extension would like to update launch configurations '${configUpdateNames}'.`;
             const answer = await vscode.window.showWarningMessage(
-                `${ctx.name}: The Swift extension would like to update launch configurations '${configUpdateNames}'. Do you want to update?`,
+                `${ctx.name}: ${warningMessage} Do you want to update?`,
                 "Update",
                 "Cancel"
             );
