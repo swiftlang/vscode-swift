@@ -155,14 +155,6 @@ export class WorkspaceContext implements vscode.Disposable {
                         )
                 );
             }
-            // on change of swift debugger type
-            if (event.affectsConfiguration("swift.debugger.path")) {
-                if (configuration.debugger.useDebugAdapterFromToolchain) {
-                    if (!(await DebugAdapter.verifyDebugAdapterExists(this))) {
-                        return;
-                    }
-                }
-            }
         });
         const backgroundCompilationOnDidSave = BackgroundCompilation.start(this);
         const contextKeysUpdate = this.observeFolders((folder, event) => {

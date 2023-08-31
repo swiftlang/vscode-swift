@@ -54,7 +54,12 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
 
 /** Provide configurations for lldb-vscode
  *
- * Converts environment variables from Object to array of strings in format "var=value"
+ * Converts launch configuration that user supplies into a version that the lldb-vscode
+ * debug adapter will use. Primarily it converts the environment variables from Object
+ * to an array of strings in format "var=value".
+ *
+ * This could also be used to augment the configuration with values from the settings
+ * althought it isn't at the moment.
  */
 class LLDBDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
     async resolveDebugConfiguration(

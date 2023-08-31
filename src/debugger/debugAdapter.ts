@@ -17,6 +17,9 @@ import * as fs from "fs";
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
 
+/**
+ * Class managing which debug adapter we are using. Will only setup lldb-vscode if it is available.
+ */
 export class DebugAdapter {
     static debugAdapaterExists = false;
 
@@ -27,6 +30,12 @@ export class DebugAdapter {
             : "lldb";
     }
 
+    /**
+     * Verify that the toolchain debug adapter exists
+     * @param workspace WorkspaceContext
+     * @param quiet Should dialog be displayed
+     * @returns Is debugger available
+     */
     static async verifyDebugAdapterExists(
         workspace: WorkspaceContext,
         quiet = false
