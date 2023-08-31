@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import configuration from "../configuration";
+import { DebugAdapter } from "./debugAdapter";
 
 /**
  * Factory class for building LoggingDebugAdapterTracker
@@ -40,7 +40,7 @@ interface DebugMessage {
 
 export function registerLoggingDebugAdapterTracker(): vscode.Disposable {
     return vscode.debug.registerDebugAdapterTrackerFactory(
-        configuration.debugger.debugAdapterName,
+        DebugAdapter.adapterName,
         new LoggingDebugAdapterTrackerFactory()
     );
 }

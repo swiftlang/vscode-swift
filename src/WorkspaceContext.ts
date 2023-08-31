@@ -36,7 +36,7 @@ import { setSnippetContextKey } from "./SwiftSnippets";
 import { TestCoverageReportProvider } from "./coverage/TestCoverageReport";
 import { CommentCompletionProviders } from "./editor/CommentCompletion";
 import { TestCoverageRenderer } from "./coverage/TestCoverageRenderer";
-import { verifyDebugAdapterExists } from "./debugger/debugAdapterFactory";
+import { DebugAdapter } from "./debugger/debugAdapter";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -140,7 +140,7 @@ export class WorkspaceContext implements vscode.Disposable {
             // on change of swift debugger type
             if (event.affectsConfiguration("swift.debugger.useDebugAdapterFromToolchain")) {
                 if (configuration.debugger.useDebugAdapterFromToolchain) {
-                    if (!(await verifyDebugAdapterExists(this.toolchain))) {
+                    if (!(await DebugAdapter.verifyDebugAdapterExists(this))) {
                         return;
                     }
                 }
@@ -160,6 +160,14 @@ export class WorkspaceContext implements vscode.Disposable {
                             );
                         }
                     });
+            }
+            // on change of swift debugger type
+            if (event.affectsConfiguration("swift.debugger.path")) {
+                if (configuration.debugger.useDebugAdapterFromToolchain) {
+                    if (!(await DebugAdapter.verifyDebugAdapterExists(this))) {
+                        return;
+                    }
+                }
             }
         });
         const backgroundCompilationOnDidSave = BackgroundCompilation.start(this);
@@ -436,7 +444,10 @@ export class WorkspaceContext implements vscode.Disposable {
     /** find LLDB version and setup path in CodeLLDB */
     async setLLDBVersion() {
         // this is not needed if we are using the toolchain debug adapter
-        if (configuration.debugger.useDebugAdapterFromToolchain) {
+        if (
+            configuration.debugger.useDebugAdapterFromToolchain &&
+            (await DebugAdapter.verifyDebugAdapterExists(this))
+        ) {
             return;
         }
         const libPathResult = await getLLDBLibPath(this.toolchain);

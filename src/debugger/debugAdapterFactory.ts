@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021-2023 the VSCode Swift project authors
+// Copyright (c) 2023 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -13,9 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as fs from "fs";
 import { WorkspaceContext } from "../WorkspaceContext";
-import { SwiftToolchain } from "../toolchain/toolchain";
 import configuration from "../configuration";
 
 export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
@@ -52,24 +50,6 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
             debugAdpaterFactory.dispose();
         },
     };
-}
-
-async function doesFileExist(path: string): Promise<boolean> {
-    try {
-        return (await fs.promises.stat(path)).isFile();
-    } catch (e) {
-        return false;
-    }
-}
-export async function verifyDebugAdapterExists(toolchain: SwiftToolchain): Promise<boolean> {
-    const lldbDebugAdapterPath = toolchain.getToolchainExecutable("lldb-vscode");
-    if (!(await doesFileExist(lldbDebugAdapterPath))) {
-        vscode.window.showInformationMessage(
-            "Cannot find lldb-vscode debug adapter in your Swift toolchain."
-        );
-        return false;
-    }
-    return true;
 }
 
 /** Provide configurations for lldb-vscode
