@@ -18,6 +18,7 @@ services:
       - ~/.ssh:/root/.ssh
       - ..:/code:z
     working_dir: /code
+    user: vscode:vscode
 
   test:
     <<: *common
