@@ -28,6 +28,7 @@ import { Version } from "./utilities/version";
 import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
 import { registerLoggingDebugAdapterTracker } from "./debugger/logTracker";
 import { registerLLDBDebugAdapter } from "./debugger/debugAdapterFactory";
+import { DebugAdapter } from "./debugger/debugAdapter";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -49,6 +50,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         context.subscriptions.push(workspaceContext);
 
         // setup swift version of LLDB. Don't await on this as it can run in the background
+        await DebugAdapter.verifyDebugAdapterExists(workspaceContext, true);
         workspaceContext.setLLDBVersion();
 
         // listen for workspace folder changes and active text editor changes
