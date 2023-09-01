@@ -46,6 +46,7 @@ async function main() {
             launchArgs: [
                 "--disable-workspace-trust",
                 "--disable-gpu",
+                "--disable-gpu-sandbox",
                 "--no-sandbox",
                 "--no-xshm",
                 //"--crash-reporter-directory",
