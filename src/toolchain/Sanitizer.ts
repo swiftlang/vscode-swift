@@ -25,12 +25,12 @@ export class Sanitizer {
         }
     }
 
-    /** Return runtime environment variables */
+    /** Return runtime environment variables for macOS */
     get runtimeEnvironment(): Record<string, string> | undefined {
         if (!this.toolchain.toolchainPath) {
             return undefined;
         }
-        const lib = `/usr/lib/swift/clang/lib/darwin/libclang_rt.${this.clangName}_osx_dynamic.dylib`;
+        const lib = `/lib/swift/clang/lib/darwin/libclang_rt.${this.clangName}_osx_dynamic.dylib`;
         const libFullPath = path.join(this.toolchain.toolchainPath, lib);
         return { DYLD_INSERT_LIBRARIES: libFullPath };
     }

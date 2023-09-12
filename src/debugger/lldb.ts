@@ -27,6 +27,7 @@ import { SwiftToolchain } from "../toolchain/toolchain";
  * @returns Library path for LLDB
  */
 export async function getLLDBLibPath(toolchain: SwiftToolchain): Promise<Result<string>> {
+    // can't use toolchain path here as LLDB is not in macOS toolchain path
     const executable = path.join(toolchain.swiftFolderPath, "lldb");
     let pathHint = path.dirname(toolchain.swiftFolderPath);
     try {

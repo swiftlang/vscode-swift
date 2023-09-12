@@ -82,11 +82,11 @@ export function getDarwinTargetTriple(target: DarwinCompatibleTarget): string | 
 
 export class SwiftToolchain {
     constructor(
-        public swiftFolderPath: string,
-        public toolchainPath: string,
-        public swiftVersionString: string,
-        public swiftVersion: Version,
-        public runtimePath?: string,
+        public swiftFolderPath: string, // folder swift executable in $PATH was found in
+        public toolchainPath: string, // toolchain folder. One folder up from swift bin folder. This is to support toolchains without usr folder
+        public swiftVersionString: string, // Swift version as a string, including description
+        public swiftVersion: Version, // Swift version as semVar variable
+        public runtimePath?: string, // runtime library included in output from `swift -print-target-info`
         private defaultTarget?: string,
         private defaultSDK?: string,
         private customSDK?: string,
@@ -179,7 +179,7 @@ export class SwiftToolchain {
     public getToolchainExecutable(exe: string): string {
         // should we add `.exe` at the end of the executable name
         const windowsExeSuffix = process.platform === "win32" ? ".exe" : "";
-        return `${this.toolchainPath}/usr/bin/${exe}${windowsExeSuffix}`;
+        return `${this.toolchainPath}/bin/${exe}${windowsExeSuffix}`;
     }
 
     logDiagnostics(channel: SwiftOutputChannel) {
@@ -286,10 +286,10 @@ export class SwiftToolchain {
                         env: configuration.swiftEnvironmentVariables,
                     });
                     const swift = stdout.trimEnd();
-                    return path.dirname(path.dirname(path.dirname(swift)));
+                    return path.dirname(path.dirname(swift));
                 }
                 default: {
-                    return path.dirname(path.dirname(swiftPath));
+                    return path.dirname(swiftPath);
                 }
             }
         } catch {
