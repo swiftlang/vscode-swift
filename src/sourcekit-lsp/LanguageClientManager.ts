@@ -413,16 +413,13 @@ export class LanguageClientManager {
             configuration.path.length > 0 &&
             serverPathConfig !== toolchainSourceKitLSP
         ) {
-            // if configuration has custom swift path then set toolchain path
-            if (configuration.path) {
-                // eslint-disable-next-line @typescript-eslint/naming-convention
-                sourcekit.options = {
-                    env: {
-                        ...sourcekit.options?.env,
-                        SOURCEKIT_TOOLCHAIN_PATH: this.workspaceContext.toolchain.toolchainPath,
-                    },
-                };
-            }
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            sourcekit.options = {
+                env: {
+                    ...sourcekit.options?.env,
+                    SOURCEKIT_TOOLCHAIN_PATH: this.workspaceContext.toolchain.toolchainPath,
+                },
+            };
         }
 
         const serverOptions: langclient.ServerOptions = sourcekit;
