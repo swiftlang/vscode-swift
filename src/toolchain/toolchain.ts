@@ -280,7 +280,7 @@ export class SwiftToolchain {
             switch (process.platform) {
                 case "darwin": {
                     if (configuration.path !== "") {
-                        return path.dirname(path.dirname(configuration.path));
+                        return path.dirname(configuration.path);
                     }
                     const { stdout } = await execFile("xcrun", ["--find", "swift"], {
                         env: configuration.swiftEnvironmentVariables,
