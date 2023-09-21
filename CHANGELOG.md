@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.2 - 2023-09-21
+
+### Fixed
+
+- Toolchain setup for installs that don't include a `usr` folder.
+
 ## 1.5.1 - 2023-08-30
 
 ### Added
