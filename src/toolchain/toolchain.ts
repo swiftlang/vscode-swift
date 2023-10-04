@@ -397,7 +397,7 @@ export class SwiftToolchain {
                     throw Error("Info.plist is missing the XCTEST_VERSION key.");
                 }
 
-                if (swiftVersion >= new Version(5, 7, 0)) {
+                if (swiftVersion.isGreaterThanOrEqual(new Version(5, 7, 0))) {
                     let bindir: string;
                     const arch = targetInfo.target?.triple.split("-", 1)[0];
                     switch (arch) {
