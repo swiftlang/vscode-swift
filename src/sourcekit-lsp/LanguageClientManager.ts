@@ -112,7 +112,9 @@ export class LanguageClientManager {
     public subFolderWorkspaces: vscode.Uri[];
 
     constructor(public workspaceContext: WorkspaceContext) {
-        this.singleServerSupport = workspaceContext.swiftVersion >= new Version(5, 7, 0);
+        this.singleServerSupport = workspaceContext.swiftVersion.isGreaterThanOrEqual(
+            new Version(5, 7, 0)
+        );
         this.subscriptions = [];
         this.subFolderWorkspaces = [];
         if (this.singleServerSupport) {
@@ -175,7 +177,7 @@ export class LanguageClientManager {
 
         // Swift versions prior to 5.6 don't support file changes, so need to restart
         // lSP server when a file is either created or deleted
-        if (workspaceContext.swiftVersion < new Version(5, 6, 0)) {
+        if (workspaceContext.swiftVersion.isLessThan(new Version(5, 6, 0))) {
             workspaceContext.outputChannel.logDiagnostic("LSP: Adding new/delete file handlers");
             // restart LSP server on creation of a new file
             const onDidCreateFileDisposable = vscode.workspace.onDidCreateFiles(() => {
