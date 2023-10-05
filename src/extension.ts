@@ -107,7 +107,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                         } else {
                             await commands.resolveFolderDependencies(folder, true);
                         }
-                        if (workspace.swiftVersion >= new Version(5, 6, 0)) {
+                        if (workspace.swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))) {
                             await workspace.statusItem.showStatusWhileRunning(
                                 `Loading Swift Plugins (${FolderContext.uriName(
                                     folder.workspaceFolder.uri

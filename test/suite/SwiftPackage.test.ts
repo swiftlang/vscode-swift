@@ -46,7 +46,7 @@ suite("SwiftPackage Test Suite", () => {
     }).timeout(10000);
 
     test("Package resolve v2", async () => {
-        if (toolchain && toolchain.swiftVersion < new Version(5, 6, 0)) {
+        if (toolchain && toolchain.swiftVersion.isLessThan(new Version(5, 6, 0))) {
             return;
         }
         const spmPackage = await SwiftPackage.create(testAssetUri("package5.6"), toolchain);
