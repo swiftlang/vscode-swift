@@ -13,11 +13,13 @@
 //===----------------------------------------------------------------------===//
 
 import * as os from "os";
+import * as path from "path";
 import * as vscode from "vscode";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
 import { BuildFlags } from "../toolchain/BuildFlags";
 import { stringArrayInEnglish, swiftLibraryPathKey, swiftRuntimeEnv } from "../utilities/utilities";
+import { DebugAdapter } from "./debugAdapter";
 
 /**
  * Edit launch.json based on contents of Swift Package.
@@ -26,14 +28,20 @@ import { stringArrayInEnglish, swiftLibraryPathKey, swiftRuntimeEnv } from "../u
  * @param ctx folder context to create launch configurations for
  * @param yes automatically answer yes to dialogs
  */
-export async function makeDebugConfigurations(ctx: FolderContext, yes = false) {
+export async function makeDebugConfigurations(ctx: FolderContext, message?: string, yes = false) {
     if (!configuration.folder(ctx.workspaceFolder).autoGenerateLaunchConfigurations) {
         return;
     }
     const wsLaunchSection = vscode.workspace.getConfiguration("launch", ctx.folder);
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
     // list of keys that can be updated in config merge
-    const keysToUpdate = ["program", "cwd", "preLaunchTask", `env.${swiftLibraryPathKey()}`];
+    const keysToUpdate = [
+        "program",
+        "cwd",
+        "preLaunchTask",
+        "type",
+        `env.${swiftLibraryPathKey()}`,
+    ];
     const configUpdates: { index: number; config: vscode.DebugConfiguration }[] = [];
 
     const configs = createExecutableConfigurations(ctx);
@@ -62,8 +70,11 @@ export async function makeDebugConfigurations(ctx: FolderContext, yes = false) {
             const configUpdateNames = stringArrayInEnglish(
                 configUpdates.map(update => update.config.name)
             );
+            const warningMessage =
+                message ??
+                `The Swift extension would like to update launch configurations '${configUpdateNames}'.`;
             const answer = await vscode.window.showWarningMessage(
-                `${ctx.name}: The Swift extension would like to update launch configurations '${configUpdateNames}'. Do you want to update?`,
+                `${ctx.name}: ${warningMessage} Do you want to update?`,
                 "Update",
                 "Cancel"
             );
@@ -103,25 +114,26 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
     const executableProducts = ctx.swiftPackage.executableProducts;
     const { folder, nameSuffix } = getFolderAndNameSuffix(ctx);
     const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
+    const binaryExtension = process.platform === "win32" ? ".exe" : "";
     return executableProducts.flatMap(product => {
         return [
             {
-                type: "lldb",
+                type: DebugAdapter.adapterName,
                 request: "launch",
                 sourceLanguages: ["swift"],
                 name: `Debug ${product.name}${nameSuffix}`,
-                program: `${buildDirectory}/debug/` + product.name,
+                program: path.join(buildDirectory, "debug", product.name + binaryExtension),
                 args: [],
                 cwd: folder,
                 preLaunchTask: `swift: Build Debug ${product.name}${nameSuffix}`,
                 env: swiftRuntimeEnv(true),
             },
             {
-                type: "lldb",
+                type: DebugAdapter.adapterName,
                 request: "launch",
                 sourceLanguages: ["swift"],
                 name: `Release ${product.name}${nameSuffix}`,
-                program: `${buildDirectory}/release/` + product.name,
+                program: path.join(buildDirectory, "release", product.name + binaryExtension),
                 args: [],
                 cwd: folder,
                 preLaunchTask: `swift: Build Release ${product.name}${nameSuffix}`,
@@ -145,11 +157,11 @@ export function createSnippetConfiguration(
     const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
 
     return {
-        type: "lldb",
+        type: DebugAdapter.adapterName,
         request: "launch",
         sourceLanguages: ["swift"],
         name: `Run ${snippetName}`,
-        program: `${buildDirectory}/debug/${snippetName}`,
+        program: path.join(buildDirectory, "debug", snippetName),
         args: [],
         cwd: folder,
         env: swiftRuntimeEnv(true),
@@ -188,7 +200,7 @@ export function createTestConfiguration(
         const sanitizer = ctx.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
         const env = { ...testEnv, ...sanitizer?.runtimeEnvironment };
         return {
-            type: "lldb",
+            type: DebugAdapter.adapterName,
             request: "launch",
             sourceLanguages: ["swift"],
             name: `Test ${ctx.swiftPackage.name}`,
@@ -214,15 +226,22 @@ export function createTestConfiguration(
             return null;
         }
         let preRunCommands: string[] | undefined;
-        if (vscode.workspace.getConfiguration("lldb")?.get<string>("library")) {
+        if (
+            configuration.debugger.useDebugAdapterFromToolchain ||
+            vscode.workspace.getConfiguration("lldb")?.get<string>("library")
+        ) {
             preRunCommands = [`settings set target.sdk-path ${sdkroot}`];
         }
         return {
-            type: "lldb",
+            type: DebugAdapter.adapterName,
             request: "launch",
             sourceLanguages: ["swift"],
             name: `Test ${ctx.swiftPackage.name}`,
-            program: `${buildDirectory}/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
+            program: path.join(
+                buildDirectory,
+                "debug",
+                ctx.swiftPackage.name + "PackageTests.xctest"
+            ),
             cwd: folder,
             env: testEnv,
             preRunCommands: preRunCommands,
@@ -231,7 +250,7 @@ export function createTestConfiguration(
     } else {
         // On Linux, just run the .xctest executable from the configured build directory.
         return {
-            type: "lldb",
+            type: DebugAdapter.adapterName,
             request: "launch",
             sourceLanguages: ["swift"],
             name: `Test ${ctx.swiftPackage.name}`,
@@ -282,7 +301,7 @@ export function createDarwinTestConfiguration(
     }).map(([key, value]) => `settings set target.env-vars ${key}="${value}"`);
 
     return {
-        type: "lldb",
+        type: DebugAdapter.adapterName,
         request: "custom",
         sourceLanguages: ["swift"],
         name: `Test ${ctx.swiftPackage.name}`,

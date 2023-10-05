@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.6.1 - 2023-10-04 (Toolchain debug adapter preview)
+
+### Added
+
+- Command `swift.attachDebugger` to attach debugger to process
+
+### Fixed
+
+- Path construction on Windows in `launch.json`
+
+## 1.6.0 - 2023-08-31 (Toolchain debug adapter preview)
+
+### Added
+
+- Support for using debug adapter included in Swift toolchain instead of CodeLLDB extension. Currently this is only available in the Windows toolchain. Setting for this is disabled by default. 
+
 ## 1.5.2 - 2023-09-21
 
 ### Fixed
