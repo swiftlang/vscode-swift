@@ -50,7 +50,7 @@
       },
       {
         "command": "swift.cleanBuild",
-        "title": "Clean Build",
+        "title": "Clean Build Folder",
         "category": "Swift"
       },
       {
