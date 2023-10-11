@@ -60,3 +60,28 @@ export const legacyInlayHintsRequest = new langclient.RequestType<
     LegacyInlayHint[],
     unknown
 >("sourcekit-lsp/inlayHints");
+
+export interface MacroExpansionParams {
+    /**
+     * The text document.
+     */
+    textDocument: langclient.TextDocumentIdentifier;
+
+    /**
+     * The position within the code at which the macro is used.
+     */
+    position: langclient.Position;
+}
+
+export interface MacroExpansion {
+    /**
+     * The source text of the expansion.
+     */
+    sourceText: string;
+}
+
+export const macroExpansionRequest = new langclient.RequestType<
+    MacroExpansionParams,
+    MacroExpansion | null,
+    unknown
+>("sourcekit-lsp/macroExpansion");
