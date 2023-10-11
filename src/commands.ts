@@ -27,6 +27,7 @@ import { DarwinCompatibleTarget, SwiftToolchain } from "./toolchain/toolchain";
 import { debugSnippet, runSnippet } from "./SwiftSnippets";
 import { debugLaunchConfig, getLaunchConfiguration } from "./debugger/launch";
 import { execFile } from "./utilities/utilities";
+import { macroExpansionRequest } from "./sourcekit-lsp/lspExtensions";
 
 /**
  * References:
@@ -477,6 +478,29 @@ function insertFunctionComment(workspaceContext: WorkspaceContext) {
     workspaceContext.commentCompletionProvider.insert(activeEditor, line);
 }
 
+function expandMacro(workspaceContext: WorkspaceContext) {
+    const activeEditor = vscode.window.activeTextEditor;
+    const document = activeEditor?.document;
+    const position = activeEditor?.selection.active;
+    if (!document || !position) {
+        return;
+    }
+    return workspaceContext.languageClientManager.useLanguageClient(async (client, token) => {
+        const params = {
+            textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(document),
+            position: client.code2ProtocolConverter.asPosition(position),
+        };
+        const result = await client.sendRequest(macroExpansionRequest, params, token);
+        const sourceText = result?.sourceText;
+        // TODO: Find a better way to present the expansion
+        if (sourceText) {
+            vscode.window.showInformationMessage(sourceText);
+        } else {
+            vscode.window.showWarningMessage("Could not find a macro expansion.");
+        }
+    });
+}
+
 /** Restart the SourceKit-LSP server */
 function restartLSPServer(workspaceContext: WorkspaceContext) {
     workspaceContext.languageClientManager.restart();
@@ -690,6 +714,9 @@ export function register(ctx: WorkspaceContext) {
         vscode.commands.registerCommand("swift.insertFunctionComment", () =>
             insertFunctionComment(ctx)
         ),
+        vscode.commands.registerCommand("swift.expandMacro", () => {
+            expandMacro(ctx);
+        }),
         vscode.commands.registerCommand("swift.showTestCoverageReport", () =>
             showTestCoverageReport(ctx)
         ),
