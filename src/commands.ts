@@ -27,7 +27,7 @@ import { DarwinCompatibleTarget, SwiftToolchain } from "./toolchain/toolchain";
 import { debugSnippet, runSnippet } from "./SwiftSnippets";
 import { debugLaunchConfig, getLaunchConfiguration } from "./debugger/launch";
 import { execFile } from "./utilities/utilities";
-import { macroExpansionRequest } from "./sourcekit-lsp/lspExtensions";
+import { MacroExpansionParams, macroExpansionRequest } from "./sourcekit-lsp/lspExtensions";
 
 /**
  * References:
@@ -481,14 +481,14 @@ function insertFunctionComment(workspaceContext: WorkspaceContext) {
 function expandMacro(workspaceContext: WorkspaceContext) {
     const activeEditor = vscode.window.activeTextEditor;
     const document = activeEditor?.document;
-    const position = activeEditor?.selection.active;
-    if (!document || !position) {
+    const selection = activeEditor?.selection;
+    if (!document || !selection) {
         return;
     }
     return workspaceContext.languageClientManager.useLanguageClient(async (client, token) => {
-        const params = {
+        const params: MacroExpansionParams = {
             textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(document),
-            position: client.code2ProtocolConverter.asPosition(position),
+            range: client.code2ProtocolConverter.asRange(selection),
         };
         const result = await client.sendRequest(macroExpansionRequest, params, token);
         const sourceText = result?.sourceText;

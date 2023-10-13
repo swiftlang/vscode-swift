@@ -68,9 +68,9 @@ export interface MacroExpansionParams {
     textDocument: langclient.TextDocumentIdentifier;
 
     /**
-     * The position within the code at which the macro is used.
+     * The range within the code at which the macro is used.
      */
-    position: langclient.Position;
+    range: langclient.Range;
 }
 
 export interface MacroExpansion {
