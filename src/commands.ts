@@ -490,9 +490,8 @@ function expandMacro(workspaceContext: WorkspaceContext) {
             textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(document),
             range: client.code2ProtocolConverter.asRange(selection),
         };
-        const result = await client.sendRequest(macroExpansionRequest, params, token);
-        const sourceText = result?.sourceText;
-        if (sourceText) {
+        const expansion = await client.sendRequest(macroExpansionRequest, params, token);
+        if (expansion) {
             // Present the macro expansion using a custom in-memory URI scheme
             // TODO: This will currently reregister the provider for this scheme
             // every time a new macro expansion is requested. It looks like the
@@ -500,7 +499,7 @@ function expandMacro(workspaceContext: WorkspaceContext) {
             // a more elegant solution to this?
             const scheme = "swift-macro-expansion";
             const provider = vscode.workspace.registerTextDocumentContentProvider(scheme, {
-                provideTextDocumentContent: async () => sourceText,
+                provideTextDocumentContent: async () => expansion.sourceText,
             });
             workspaceContext.subscriptions.push(provider);
             const location = new vscode.Location(
@@ -510,7 +509,7 @@ function expandMacro(workspaceContext: WorkspaceContext) {
             await vscode.commands.executeCommand(
                 "editor.action.peekLocations",
                 document.uri,
-                selection.active,
+                client.protocol2CodeConverter.asPosition(expansion.position),
                 [location],
                 "peek"
             );

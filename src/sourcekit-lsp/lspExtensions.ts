@@ -75,6 +75,11 @@ export interface MacroExpansionParams {
 
 export interface MacroExpansion {
     /**
+     * The position in the source file where the expansion would be inserted.
+     */
+    position: langclient.Position;
+
+    /**
      * The source text of the expansion.
      */
     sourceText: string;
