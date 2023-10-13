@@ -492,9 +492,28 @@ function expandMacro(workspaceContext: WorkspaceContext) {
         };
         const result = await client.sendRequest(macroExpansionRequest, params, token);
         const sourceText = result?.sourceText;
-        // TODO: Find a better way to present the expansion
         if (sourceText) {
-            vscode.window.showInformationMessage(sourceText);
+            // Present the macro expansion using a custom in-memory URI scheme
+            // TODO: This will currently reregister the provider for this scheme
+            // every time a new macro expansion is requested. It looks like the
+            // old expansions will be kept open correctly, but perhaps there's
+            // a more elegant solution to this?
+            const scheme = "swift-macro-expansion";
+            const provider = vscode.workspace.registerTextDocumentContentProvider(scheme, {
+                provideTextDocumentContent: async () => sourceText,
+            });
+            workspaceContext.subscriptions.push(provider);
+            const location = new vscode.Location(
+                vscode.Uri.from({ scheme }),
+                new vscode.Position(0, 0)
+            );
+            await vscode.commands.executeCommand(
+                "editor.action.peekLocations",
+                document.uri,
+                selection.active,
+                [location],
+                "peek"
+            );
         } else {
             vscode.window.showWarningMessage("Could not find a macro expansion.");
         }
