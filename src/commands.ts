@@ -495,7 +495,7 @@ function expandMacro(workspaceContext: WorkspaceContext) {
             // Present the macro expansion using a custom in-memory URI scheme
             // TODO: This will currently reregister the provider for this scheme
             // every time a new macro expansion is requested. It looks like the
-            // old expansions will be kept open correctly, but perhaps there's
+            // old expansions will be closed correctly, but perhaps there's
             // a more elegant solution to this?
             const scheme = "swift-macro-expansion";
             const provider = vscode.workspace.registerTextDocumentContentProvider(scheme, {
