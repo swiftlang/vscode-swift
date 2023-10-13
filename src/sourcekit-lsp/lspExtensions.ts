@@ -87,6 +87,6 @@ export interface MacroExpansion {
 
 export const macroExpansionRequest = new langclient.RequestType<
     MacroExpansionParams,
-    MacroExpansion | null,
+    MacroExpansion[],
     unknown
 >("sourcekit-lsp/macroExpansion");
