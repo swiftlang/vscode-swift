@@ -503,7 +503,7 @@ function expandMacro(workspaceContext: WorkspaceContext) {
             });
             workspaceContext.subscriptions.push(provider);
             const location = new vscode.Location(
-                vscode.Uri.from({ scheme }),
+                vscode.Uri.from({ scheme, path: "Macro Expansion.swift" }),
                 new vscode.Position(0, 0)
             );
             await vscode.commands.executeCommand(
