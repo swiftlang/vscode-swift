@@ -72,7 +72,7 @@ export async function debugSnippetWithOptions(
     // create build task
     const snippetName = path.basename(ctx.currentDocument.fsPath, ".swift");
     const snippetBuildTask = createSwiftTask(
-        ["build", "--target", snippetName],
+        ["build", "--product", snippetName],
         `Build ${snippetName}`,
         {
             group: vscode.TaskGroup.Build,
