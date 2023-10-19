@@ -106,7 +106,9 @@ export function getLaunchConfiguration(
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
     const { folder } = getFolderAndNameSuffix(folderCtx);
     const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
-    return launchConfigs.find(config => config.program === `${buildDirectory}/debug/` + target);
+    return launchConfigs.find(
+        config => config.program === path.join(buildDirectory, "debug", target)
+    );
 }
 
 // Return array of DebugConfigurations for executables based on what is in Package.swift
@@ -116,28 +118,26 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
     const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
     const binaryExtension = process.platform === "win32" ? ".exe" : "";
     return executableProducts.flatMap(product => {
+        const baseConfig = {
+            type: DebugAdapter.adapterName,
+            request: "launch",
+            sourceLanguages: ["swift"],
+            args: [],
+            cwd: folder,
+            env: swiftRuntimeEnv(true),
+        };
         return [
             {
-                type: DebugAdapter.adapterName,
-                request: "launch",
-                sourceLanguages: ["swift"],
+                ...baseConfig,
                 name: `Debug ${product.name}${nameSuffix}`,
                 program: path.join(buildDirectory, "debug", product.name + binaryExtension),
-                args: [],
-                cwd: folder,
                 preLaunchTask: `swift: Build Debug ${product.name}${nameSuffix}`,
-                env: swiftRuntimeEnv(true),
             },
             {
-                type: DebugAdapter.adapterName,
-                request: "launch",
-                sourceLanguages: ["swift"],
+                ...baseConfig,
                 name: `Release ${product.name}${nameSuffix}`,
                 program: path.join(buildDirectory, "release", product.name + binaryExtension),
-                args: [],
-                cwd: folder,
                 preLaunchTask: `swift: Build Release ${product.name}${nameSuffix}`,
-                env: swiftRuntimeEnv(true),
             },
         ];
     });
@@ -190,6 +190,14 @@ export function createTestConfiguration(
     const { folder, nameSuffix } = getFolderAndNameSuffix(ctx, expandEnvVariables);
     const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
 
+    const baseConfig = {
+        type: DebugAdapter.adapterName,
+        request: "launch",
+        sourceLanguages: ["swift"],
+        name: `Test ${ctx.swiftPackage.name}`,
+        cwd: folder,
+        preLaunchTask: `swift: Build All${nameSuffix}`,
+    };
     if (process.platform === "darwin") {
         // On macOS, find the path to xctest
         // and point it at the .xctest bundle from the configured build directory.
@@ -198,17 +206,13 @@ export function createTestConfiguration(
             return null;
         }
         const sanitizer = ctx.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
-        const env = { ...testEnv, ...sanitizer?.runtimeEnvironment };
         return {
-            type: DebugAdapter.adapterName,
-            request: "launch",
-            sourceLanguages: ["swift"],
-            name: `Test ${ctx.swiftPackage.name}`,
-            program: `${xctestPath}/xctest`,
-            args: [`${buildDirectory}/debug/${ctx.swiftPackage.name}PackageTests.xctest`],
-            cwd: folder,
-            env: env,
-            preLaunchTask: `swift: Build All${nameSuffix}`,
+            ...baseConfig,
+            program: path.join(xctestPath, "xctest"),
+            args: [
+                path.join(buildDirectory, "debug", ctx.swiftPackage.name + "PackageTests.xctest"),
+            ],
+            env: { ...testEnv, ...sanitizer?.runtimeEnvironment },
         };
     } else if (process.platform === "win32") {
         // On Windows, add XCTest.dll to the Path
@@ -233,31 +237,25 @@ export function createTestConfiguration(
             preRunCommands = [`settings set target.sdk-path ${sdkroot}`];
         }
         return {
-            type: DebugAdapter.adapterName,
-            request: "launch",
-            sourceLanguages: ["swift"],
-            name: `Test ${ctx.swiftPackage.name}`,
+            ...baseConfig,
             program: path.join(
                 buildDirectory,
                 "debug",
                 ctx.swiftPackage.name + "PackageTests.xctest"
             ),
-            cwd: folder,
             env: testEnv,
             preRunCommands: preRunCommands,
-            preLaunchTask: `swift: Build All${nameSuffix}`,
         };
     } else {
         // On Linux, just run the .xctest executable from the configured build directory.
         return {
-            type: DebugAdapter.adapterName,
-            request: "launch",
-            sourceLanguages: ["swift"],
-            name: `Test ${ctx.swiftPackage.name}`,
-            program: `${buildDirectory}/debug/${ctx.swiftPackage.name}PackageTests.xctest`,
-            cwd: folder,
+            ...baseConfig,
+            program: path.join(
+                buildDirectory,
+                "debug",
+                ctx.swiftPackage.name + "PackageTests.xctest"
+            ),
             env: testEnv,
-            preLaunchTask: `swift: Build All${nameSuffix}`,
         };
     }
 }
@@ -389,7 +387,7 @@ function getFolderAndNameSuffix(
         folder = workspaceFolder;
         nameSuffix = "";
     } else {
-        folder = `${workspaceFolder}/${ctx.relativePath}`;
+        folder = path.join(workspaceFolder, ctx.relativePath);
         nameSuffix = ` (${ctx.relativePath})`;
     }
     return { folder: folder, nameSuffix: nameSuffix };
