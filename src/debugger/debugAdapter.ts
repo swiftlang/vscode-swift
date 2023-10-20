@@ -19,7 +19,7 @@ import configuration from "../configuration";
 import contextKeys from "../contextKeys";
 
 /**
- * Class managing which debug adapter we are using. Will only setup lldb-vscode if it is available.
+ * Class managing which debug adapter we are using. Will only setup lldb-dap if it is available.
  */
 export class DebugAdapter {
     private static debugAdapaterExists = false;
@@ -44,13 +44,13 @@ export class DebugAdapter {
         const useCustom = configuration.debugger.debugAdapterPath.length > 0;
         const lldbDebugAdapterPath = useCustom
             ? configuration.debugger.debugAdapterPath
-            : workspace.toolchain.getToolchainExecutable("lldb-vscode");
+            : workspace.toolchain.getToolchainExecutable("lldb-dap");
         if (!(await this.doesFileExist(lldbDebugAdapterPath))) {
             if (!quiet) {
                 vscode.window.showInformationMessage(
                     useCustom
-                        ? "Cannot find lldb-vscode debug adapter specified in setting Swift.Debugger.Path."
-                        : "Cannot find lldb-vscode debug adapter in your Swift toolchain."
+                        ? "Cannot find debug adapter binary specified in setting Swift.Debugger.Path."
+                        : "Cannot find lldb-dap in your Swift toolchain."
                 );
             }
             workspace.outputChannel.log(`Failed to find ${lldbDebugAdapterPath}`);

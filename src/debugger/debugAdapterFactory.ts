@@ -27,7 +27,7 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
                 const lldbDebugAdapterPath =
                     configuration.debugger.debugAdapterPath.length > 0
                         ? configuration.debugger.debugAdapterPath
-                        : workspaceContext.toolchain.getToolchainExecutable("lldb-vscode");
+                        : workspaceContext.toolchain.getToolchainExecutable("lldb-dap");
                 executable = new vscode.DebugAdapterExecutable(lldbDebugAdapterPath, [], {});
             }
 
@@ -52,9 +52,9 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
     };
 }
 
-/** Provide configurations for lldb-vscode
+/** Provide configurations for lldb-dap
  *
- * Converts launch configuration that user supplies into a version that the lldb-vscode
+ * Converts launch configuration that user supplies into a version that the lldb-dap
  * debug adapter will use. Primarily it converts the environment variables from Object
  * to an array of strings in format "var=value".
  *
