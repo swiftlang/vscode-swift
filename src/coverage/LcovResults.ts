@@ -65,7 +65,7 @@ export class LcovResults implements vscode.Disposable {
                     "-format",
                     "lcov",
                     xctestFile,
-                    "-ignore-filename-regex=Tests|.build|Snippets|Plugins",
+                    '-ignore-filename-regex="Tests|.build|Snippets|Plugins"',
                     `-instr-profile=${buildDirectory}/debug/codecov/default.profdata`,
                 ],
                 lcovStream,
