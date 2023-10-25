@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.7.0
+
+Merge debug adapter changes from v1.6.x prerelease builds into main release.
+
+### Changes
+
+- Consolidate common debug configurations when building debug configurations.
+
+### Fixed
+
+- Fix version comparisons for swift versions 5.10 or greater.
+- Increase the size of stdout available to `llvm-cov` process. This fixes displaying test coverage for larger projects.
+- Build product instead of target when compiling Swift Snippets. This fixes running of Snippets on macOS.
+
+### Fixed
+
 ## 1.6.1 - 2023-10-04 (Toolchain debug adapter preview)
 
 ### Added
