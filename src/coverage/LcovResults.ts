@@ -73,6 +73,7 @@ export class LcovResults implements vscode.Disposable {
                 null,
                 {
                     env: { ...process.env, ...configuration.swiftEnvironmentVariables },
+                    maxBuffer: 16 * 1024 * 1024,
                 },
                 this.folderContext
             );
