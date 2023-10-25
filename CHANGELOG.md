@@ -10,7 +10,7 @@ Merge debug adapter changes from v1.6.x prerelease builds into main release.
 
 ### Fixed
 
-- Fix version comparisons for swift versions 5.10 or greater.
+- Fix version comparisons for Swift versions 5.10 or greater.
 - Increase the size of stdout available to `llvm-cov` process. This fixes displaying test coverage for larger projects.
 - Build product instead of target when compiling Swift Snippets. This fixes running of Snippets on macOS.
 
