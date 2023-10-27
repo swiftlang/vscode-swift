@@ -266,10 +266,30 @@ export function createSwiftTask(
     } else {
         prefix = "";
     }
+    const envVarFilterPrefix = filterEnvironmentVariablePrefix();
+    if (envVarFilterPrefix !== null) {
+        prefix = prefix + envVarFilterPrefix;
+    }
     task.detail = `${prefix}swift ${args.join(" ")}`;
     task.group = config?.group;
     task.presentationOptions = config?.presentationOptions ?? {};
     return task;
+}
+
+/**
+ * Helper function to return a prefix for swift execution tasks
+ * when running in a WSL environment. This prevents swift's package
+ * manager manifest cache from being invalidated, speeding up incremental
+ * builds considerably. See https://github.com/swift-server/vscode-swift/issues/625
+ */
+function filterEnvironmentVariablePrefix(): string | undefined {
+    if (vscode.env.remoteName === "wsl") {
+        // This removes an env var that is unique per invocation from VSCode,
+        // and is not necessary to the swift package manager process
+        return "VSCODE_IPC_HOOK_CLI= ";
+    } else {
+        return undefined;
+    }
 }
 
 /**
