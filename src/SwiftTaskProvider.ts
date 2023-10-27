@@ -245,13 +245,13 @@ export function createSwiftTask(
     } else {
         cwd = config.cwd.fsPath;
     }*/
-
+    const commandLine = environmentVariableFilterPrefix() + swift + " " + args.join(" ");
     const task = new vscode.Task(
         { type: "swift", args: args, cwd: cwd, disableTaskQueue: config.disableTaskQueue },
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
         "swift",
-        new vscode.ProcessExecution(swift, args, {
+        new vscode.ShellExecution(commandLine, {
             cwd: fullCwd,
             env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
         }),
@@ -266,10 +266,6 @@ export function createSwiftTask(
     } else {
         prefix = "";
     }
-    const envVarFilterPrefix = filterEnvironmentVariablePrefix();
-    if (envVarFilterPrefix !== null) {
-        prefix = prefix + envVarFilterPrefix;
-    }
     task.detail = `${prefix}swift ${args.join(" ")}`;
     task.group = config?.group;
     task.presentationOptions = config?.presentationOptions ?? {};
@@ -277,18 +273,19 @@ export function createSwiftTask(
 }
 
 /**
- * Helper function to return a prefix for swift execution tasks
+ * Helper function to filter environment variables for swift execution tasks
  * when running in a WSL environment. This prevents swift's package
  * manager manifest cache from being invalidated, speeding up incremental
  * builds considerably. See https://github.com/swift-server/vscode-swift/issues/625
  */
-function filterEnvironmentVariablePrefix(): string | undefined {
+function environmentVariableFilterPrefix(): string {
     if (vscode.env.remoteName === "wsl") {
         // This removes an env var that is unique per invocation from VSCode,
         // and is not necessary to the swift package manager process
+        //return "export VSCODE_IPC_HOOK_CLI= && ";
         return "VSCODE_IPC_HOOK_CLI= ";
     } else {
-        return undefined;
+        return "";
     }
 }
 
