@@ -52,8 +52,6 @@ export interface FolderConfiguration {
     readonly disableAutoResolve: boolean;
     /** automatically discover tests */
     readonly autoDiscoverTests: boolean;
-    /** expose Package.swift plugins as tasks */
-    readonly pluginTasks: boolean;
 }
 
 /**
