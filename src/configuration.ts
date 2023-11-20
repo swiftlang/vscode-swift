@@ -50,6 +50,10 @@ export interface FolderConfiguration {
     readonly autoGenerateLaunchConfigurations: boolean;
     /** disable automatic running of swift package resolve */
     readonly disableAutoResolve: boolean;
+    /** automatically discover tests */
+    readonly autoDiscoverTests: boolean;
+    /** expose Package.swift plugins as tasks */
+    readonly pluginTasks: boolean;
 }
 
 /**
@@ -123,6 +127,12 @@ const configuration = {
                 return vscode.workspace
                     .getConfiguration("swift", workspaceFolder)
                     .get<boolean>("searchSubfoldersForPackages", false);
+            },
+            /** automatically discover tests */
+            get autoDiscoverTests(): boolean {
+                return vscode.workspace
+                    .getConfiguration("swift", workspaceFolder)
+                    .get<boolean>("autoDiscoverTests", true);
             },
         };
     },

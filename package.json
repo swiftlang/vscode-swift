@@ -248,6 +248,13 @@
             "default": "",
             "markdownDescription": "Path to the build directory passed to all swift package manager commands.",
             "order": 11
+          },
+          "swift.autoDiscoverTests": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Automatically discover Swift tests and show them in the test explorer.",
+            "scope": "machine-overridable",
+            "order": 12
           }
         }
       },

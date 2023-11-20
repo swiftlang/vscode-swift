@@ -27,13 +27,14 @@ export class TestExplorer {
     static errorTestItemId = "#Error#";
     public controller: vscode.TestController;
     private lspFunctionParser?: LSPTestDiscovery;
-    private subscriptions: { dispose(): unknown }[];
+    private subscriptions: { dispose(): unknown }[] = [];
 
     constructor(public folderContext: FolderContext) {
         this.controller = vscode.tests.createTestController(
             folderContext.name,
             `${folderContext.name} Tests`
         );
+        this.subscriptions.push(this.controller);
 
         this.controller.resolveHandler = async item => {
             if (!item) {
@@ -45,23 +46,25 @@ export class TestExplorer {
 
         TestRunner.setupProfiles(this.controller, this.folderContext);
 
-        // add end of task handler to be called whenever a build task has finished. If
-        // it is the build task for this folder then update the tests
-        const onDidEndTask = folderContext.workspaceContext.tasks.onDidEndTaskProcess(event => {
-            const task = event.execution.task;
-            const execution = task.execution as vscode.ProcessExecution;
-            if (
-                task.scope === this.folderContext.workspaceFolder &&
-                task.group === vscode.TaskGroup.Build &&
-                execution?.options?.cwd === this.folderContext.folder.fsPath &&
-                event.exitCode === 0 &&
-                task.definition.dontTriggerTestDiscovery !== true
-            ) {
-                this.discoverTestsInWorkspace();
-            }
-        });
+        if (configuration.folder(folderContext.workspaceFolder).autoDiscoverTests) {
+            // add end of task handler to be called whenever a build task has finished. If
+            // it is the build task for this folder then update the tests
+            const onDidEndTask = folderContext.workspaceContext.tasks.onDidEndTaskProcess(event => {
+                const task = event.execution.task;
+                const execution = task.execution as vscode.ProcessExecution;
+                if (
+                    task.scope === this.folderContext.workspaceFolder &&
+                    task.group === vscode.TaskGroup.Build &&
+                    execution?.options?.cwd === this.folderContext.folder.fsPath &&
+                    event.exitCode === 0 &&
+                    task.definition.dontTriggerTestDiscovery !== true
+                ) {
+                    this.discoverTestsInWorkspace();
+                }
+            });
 
-        this.subscriptions = [onDidEndTask, this.controller];
+            this.subscriptions.push(onDidEndTask);
+        }
     }
 
     dispose() {
@@ -76,18 +79,19 @@ export class TestExplorer {
      */
     static observeFolders(workspaceContext: WorkspaceContext): vscode.Disposable {
         return workspaceContext.observeFolders((folder, event, workspace) => {
+            if (!folder) {
+                return;
+            }
             switch (event) {
                 case FolderEvent.add:
-                    folder?.addTestExplorer();
-                    folder?.testExplorer?.discoverTestsInWorkspace();
+                    folder.addTestExplorer();
+                    if (configuration.folder(folder.workspaceFolder).autoDiscoverTests) {
+                        folder.testExplorer?.discoverTestsInWorkspace();
+                    }
                     break;
                 case FolderEvent.focus:
-                    if (folder) {
-                        workspace.languageClientManager.documentSymbolWatcher = (
-                            document,
-                            symbols
-                        ) => TestExplorer.onDocumentSymbols(folder, document, symbols);
-                    }
+                    workspace.languageClientManager.documentSymbolWatcher = (document, symbols) =>
+                        TestExplorer.onDocumentSymbols(folder, document, symbols);
             }
         });
     }
