@@ -215,7 +215,7 @@
           "swift.disableAutoResolve": {
             "type": "boolean",
             "default": false,
-            "markdownDescription": "Disable automatic running of `swift package resolve`.",
+            "markdownDescription": "Disable automatic running of `swift package resolve`. This will also disable searching for command plugins and the initial test discovery process as both of these can kick of a resolve.",
             "scope": "machine-overridable",
             "order": 7
           },

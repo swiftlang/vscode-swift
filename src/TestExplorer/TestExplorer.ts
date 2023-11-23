@@ -78,8 +78,14 @@ export class TestExplorer {
         return workspaceContext.observeFolders((folder, event, workspace) => {
             switch (event) {
                 case FolderEvent.add:
-                    folder?.addTestExplorer();
-                    folder?.testExplorer?.discoverTestsInWorkspace();
+                    if (folder) {
+                        folder.addTestExplorer();
+                        // discover tests in workspace but only if disableAutoResolve is not on.
+                        // discover tests will kick off a resolve if required
+                        if (!configuration.folder(folder.workspaceFolder).disableAutoResolve) {
+                            folder?.testExplorer?.discoverTestsInWorkspace();
+                        }
+                    }
                     break;
                 case FolderEvent.focus:
                     if (folder) {
