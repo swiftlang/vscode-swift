@@ -19,6 +19,7 @@ import { createSwiftTask } from "./SwiftTaskProvider";
 import { WorkspaceContext } from "./WorkspaceContext";
 import configuration from "./configuration";
 import { createSnippetConfiguration, debugLaunchConfig } from "./debugger/launch";
+import { TaskOperation } from "./TaskQueue";
 
 /**
  * Set context key indicating whether current file is a Swift Snippet
@@ -87,10 +88,16 @@ export async function debugSnippetWithOptions(
     );
 
     // queue build task and when it is complete run executable in the debugger
-    await folderContext.taskQueue.queueOperation({ task: snippetBuildTask }).then(result => {
-        if (result === 0) {
-            const snippetDebugConfig = createSnippetConfiguration(snippetName, folderContext);
-            return debugLaunchConfig(folderContext.workspaceFolder, snippetDebugConfig, options);
-        }
-    });
+    await folderContext.taskQueue
+        .queueOperation(new TaskOperation(snippetBuildTask))
+        .then(result => {
+            if (result === 0) {
+                const snippetDebugConfig = createSnippetConfiguration(snippetName, folderContext);
+                return debugLaunchConfig(
+                    folderContext.workspaceFolder,
+                    snippetDebugConfig,
+                    options
+                );
+            }
+        });
 }

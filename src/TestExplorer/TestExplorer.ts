@@ -21,6 +21,7 @@ import { LSPTestDiscovery } from "./LSPTestDiscovery";
 import { Version } from "../utilities/version";
 import configuration from "../configuration";
 import { buildOptions, getBuildAllTask } from "../SwiftTaskProvider";
+import { TaskOperation } from "../TaskQueue";
 
 /** Build test explorer UI */
 export class TestExplorer {
@@ -132,7 +133,9 @@ export class TestExplorer {
             if (process.platform === "darwin" && configuration.sanitizer !== "off") {
                 const task = await getBuildAllTask(this.folderContext);
                 task.definition.dontTriggerTestDiscovery = true;
-                const exitCode = await this.folderContext.taskQueue.queueOperation({ task: task });
+                const exitCode = await this.folderContext.taskQueue.queueOperation(
+                    new TaskOperation(task)
+                );
                 if (exitCode === undefined || exitCode !== 0) {
                     this.setErrorTestItem("Build the project to enable test discovery.");
                     return;

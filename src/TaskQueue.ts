@@ -5,42 +5,94 @@ import { poll } from "./utilities/utilities";
 
 /** Swift operation to add to TaskQueue */
 export interface SwiftOperation {
-    task: vscode.Task;
-    showStatusItem?: boolean;
+    // Should I show a status item
+    showStatusItem: boolean;
+    // Should I check if an instance of this task is already running
+    checkAlreadyRunning: boolean;
+    // log output
     log?: string;
-    checkAlreadyRunning?: boolean;
+    // identifier for statusitem
+    statusItemId: vscode.Task | string;
+    // operation name
+    name: string;
+    // internally used identifier
+    id: string;
+    // is task a build operation
+    isBuildOperation: boolean;
+    // run operation
+    run(
+        workspaceContext: WorkspaceContext,
+        token: vscode.CancellationToken | undefined
+    ): Promise<number | undefined>;
+}
+
+/** Operation that wraps a vscode Task */
+export class TaskOperation implements SwiftOperation {
+    constructor(
+        public task: vscode.Task,
+        public showStatusItem: boolean = false,
+        public checkAlreadyRunning: boolean = false,
+        public log?: string
+    ) {}
+
+    get name(): string {
+        return this.task.name;
+    }
+
+    get id(): string {
+        let scopeString: string;
+        if (
+            this.task.scope === vscode.TaskScope.Workspace ||
+            this.task.scope === vscode.TaskScope.Global
+        ) {
+            scopeString = vscode.TaskScope[this.task.scope];
+        } else if (this.task.scope) {
+            scopeString = `,${this.task.scope.name}`;
+        } else {
+            scopeString = "*undefined*";
+        }
+        return this.task.definition.args.join() + scopeString;
+    }
+
+    get statusItemId(): vscode.Task | string {
+        return this.task;
+    }
+
+    get isBuildOperation(): boolean {
+        return this.task.group === vscode.TaskGroup.Build;
+    }
+
+    run(
+        workspaceContext: WorkspaceContext,
+        token?: vscode.CancellationToken
+    ): Promise<number | undefined> {
+        return workspaceContext.tasks.executeTaskAndWait(this.task, token);
+    }
 }
 
 /**
  * Operation added to queue.
  */
-class QueuedOperation implements SwiftOperation {
-    task: vscode.Task;
-    showStatusItem?: boolean;
-    log?: string;
+class QueuedOperation {
+    get id(): string {
+        return this.operation.id;
+    }
+    get showStatusItem(): boolean {
+        return this.operation.showStatusItem;
+    }
+    get log(): string | undefined {
+        return this.operation.log;
+    }
 
     public promise?: Promise<number | undefined> = undefined;
     constructor(
-        operation: SwiftOperation,
+        public operation: SwiftOperation,
         public cb: (result: number | undefined) => void,
         public token?: vscode.CancellationToken
-    ) {
-        this.task = operation.task;
-        this.showStatusItem = operation.showStatusItem;
-        this.log = operation.log;
-    }
+    ) {}
 
-    /** Compare queued operation to operation */
-    isEqual(operation: SwiftOperation): boolean {
-        const args1: string[] = operation.task.definition.args;
-        const args2: string[] = this.task.definition.args;
-        if (args1.length !== args2.length) {
-            return false;
-        }
-        return (
-            args1.every((value, index) => value === args2[index]) &&
-            operation.task.scope === this.task.scope
-        );
+    run(workspaceContext: WorkspaceContext): Promise<number | undefined> {
+        return this.operation.run(workspaceContext, this.token);
     }
 }
 
@@ -84,7 +136,7 @@ export class TaskQueue {
             operation.checkAlreadyRunning === true &&
             this.activeOperation &&
             this.activeOperation.promise &&
-            this.activeOperation.isEqual(operation)
+            this.activeOperation.id === operation.id
         ) {
             return this.activeOperation.promise;
         }
@@ -114,14 +166,14 @@ export class TaskQueue {
             // get task from queue
             const operation = this.queue.shift();
             if (operation) {
-                const task = operation.task;
+                //const task = operation.task;
                 this.activeOperation = operation;
-                // wait while queue is disabled before running task
-                await this.waitWhileDisabled();
                 // show active task status item
                 if (operation.showStatusItem === true) {
-                    this.workspaceContext.statusItem.start(task);
+                    this.workspaceContext.statusItem.start(operation.operation.statusItemId);
                 }
+                // wait while queue is disabled before running task
+                await this.waitWhileDisabled();
                 // log start
                 if (operation.log) {
                     this.workspaceContext.outputChannel.logStart(
@@ -129,8 +181,8 @@ export class TaskQueue {
                         this.folderContext.name
                     );
                 }
-                this.workspaceContext.tasks
-                    .executeTaskAndWait(task, operation.token)
+                operation
+                    .run(this.workspaceContext)
                     .then(result => {
                         // log result
                         if (operation.log) {
@@ -162,7 +214,7 @@ export class TaskQueue {
     private finishTask(operation: QueuedOperation, result: number | undefined) {
         operation.cb(result);
         if (operation.showStatusItem === true) {
-            this.workspaceContext.statusItem.end(operation.task);
+            this.workspaceContext.statusItem.end(operation.operation.statusItemId);
         }
         this.activeOperation = undefined;
         this.processQueue();
@@ -171,7 +223,7 @@ export class TaskQueue {
     /** Return if we already have an operation in the queue */
     findQueuedOperation(operation: SwiftOperation): QueuedOperation | undefined {
         for (const queuedOperation of this.queue) {
-            if (queuedOperation.isEqual(operation)) {
+            if (queuedOperation.id === operation.id) {
                 return queuedOperation;
             }
         }

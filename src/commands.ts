@@ -27,6 +27,7 @@ import { DarwinCompatibleTarget, SwiftToolchain } from "./toolchain/toolchain";
 import { debugSnippet, runSnippet } from "./SwiftSnippets";
 import { debugLaunchConfig, getLaunchConfiguration } from "./debugger/launch";
 import { execFile } from "./utilities/utilities";
+import { TaskOperation } from "./TaskQueue";
 
 /**
  * References:
@@ -491,12 +492,9 @@ async function executeTaskWithUI(
     checkAlreadyRunning?: boolean
 ): Promise<boolean> {
     try {
-        const exitCode = await folderContext.taskQueue.queueOperation({
-            task: task,
-            showStatusItem: true,
-            log: description,
-            checkAlreadyRunning: checkAlreadyRunning,
-        });
+        const exitCode = await folderContext.taskQueue.queueOperation(
+            new TaskOperation(task, true, checkAlreadyRunning, description)
+        );
         if (exitCode === 0) {
             return true;
         } else {

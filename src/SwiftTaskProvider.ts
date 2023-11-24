@@ -312,7 +312,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             //
             // Ignore an active build task, it could be the build task that has just been
             // initiated.
-            if (activeOperation && activeOperation.task.group !== vscode.TaskGroup.Build) {
+            if (activeOperation && !activeOperation.operation.isBuildOperation) {
                 const task = new vscode.Task(
                     {
                         type: "swift",
@@ -326,7 +326,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
                     })
                 );
                 task.group = vscode.TaskGroup.Build;
-                task.detail = `While ${activeOperation.task.name} is running.`;
+                task.detail = `While ${activeOperation.operation.name} is running.`;
                 task.presentationOptions = { reveal: vscode.TaskRevealKind.Never, echo: false };
                 tasks.push(task);
                 continue;
