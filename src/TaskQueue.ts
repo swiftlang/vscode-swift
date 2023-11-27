@@ -90,7 +90,7 @@ export class SwiftExecOperation implements SwiftOperation {
     }
 
     get statusItemId(): vscode.Task | string {
-        return this.id;
+        return this.name;
     }
 
     get isBuildOperation(): boolean {
