@@ -17,7 +17,7 @@ import * as assert from "assert";
 import { TaskManager } from "../../src/TaskManager";
 import { testAssetPath } from "../fixtures";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
-import { TaskOperation, TaskQueue } from "../../src/TaskQueue";
+import { SwiftExecOperation, TaskOperation, TaskQueue } from "../../src/TaskQueue";
 import { globalWorkspaceContextPromise } from "./extension.test";
 
 suite("Tasks Test Suite", () => {
@@ -212,5 +212,21 @@ suite("Tasks Test Suite", () => {
             ]);
             assert.notStrictEqual(results, [1, 2]);
         }).timeout(8000);
+
+        // check queuing task will return expected value
+        test("swift exec", async () => {
+            const folder = workspaceContext.folders.find(f => f.name === "test/defaultPackage");
+            assert(folder);
+            const operation = new SwiftExecOperation(
+                ["--version"],
+                folder,
+                "Swift Version",
+                stdout => {
+                    assert(stdout.includes("Swift version"));
+                }
+            );
+            const result = await taskQueue.queueOperation(operation);
+            assert.strictEqual(result, 0);
+        });
     });
 });

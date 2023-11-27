@@ -1,7 +1,8 @@
 import * as vscode from "vscode";
+import * as cp from "child_process";
 import { FolderContext } from "./FolderContext";
 import { WorkspaceContext } from "./WorkspaceContext";
-import { poll } from "./utilities/utilities";
+import { execSwift, poll } from "./utilities/utilities";
 
 /** Swift operation to add to TaskQueue */
 export interface SwiftOperation {
@@ -67,6 +68,47 @@ export class TaskOperation implements SwiftOperation {
         token?: vscode.CancellationToken
     ): Promise<number | undefined> {
         return workspaceContext.tasks.executeTaskAndWait(this.task, token);
+    }
+}
+
+/** Operation that runs the swift executable and then parses the result */
+export class SwiftExecOperation implements SwiftOperation {
+    constructor(
+        public args: string[],
+        public folderContext: FolderContext,
+        public name: string,
+        public process: (stdout: string, stderr: string) => Promise<void> | void,
+        public options: cp.ExecFileOptions = {},
+        public showStatusItem: boolean = false,
+        public checkAlreadyRunning: boolean = false,
+        public log?: string
+    ) {}
+
+    get id(): string {
+        return `${this.args.join()},${this.folderContext?.folder.path}`;
+    }
+
+    get statusItemId(): vscode.Task | string {
+        return this.id;
+    }
+
+    get isBuildOperation(): boolean {
+        return false;
+    }
+
+    async run(workspaceContext: WorkspaceContext): Promise<number | undefined> {
+        try {
+            const { stdout, stderr } = await execSwift(
+                this.args,
+                workspaceContext.toolchain,
+                { cwd: this.folderContext.folder.fsPath },
+                this.folderContext
+            );
+            await this.process(stdout, stderr);
+            return 0;
+        } catch {
+            return -1;
+        }
     }
 }
 
