@@ -24,6 +24,7 @@ import { WorkspaceContext } from "../WorkspaceContext";
 import { iTestRunState, TestOutputParser } from "./TestOutputParser";
 import { Version } from "../utilities/version";
 import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
+import { TaskOperation } from "../TaskQueue";
 
 /** Class used to run tests */
 export class TestRunner {
@@ -184,7 +185,7 @@ export class TestRunner {
             if (!generateCoverage) {
                 const task = await getBuildAllTask(this.folderContext);
                 const exitCode = await this.folderContext.taskQueue.queueOperation(
-                    { task: task },
+                    new TaskOperation(task),
                     token
                 );
 

@@ -19,6 +19,7 @@ import { getBuildAllTask } from "./SwiftTaskProvider";
 import configuration from "./configuration";
 import { FolderContext } from "./FolderContext";
 import { WorkspaceContext } from "./WorkspaceContext";
+import { TaskOperation } from "./TaskQueue";
 
 export class BackgroundCompilation {
     private waitingToRun = false;
@@ -84,6 +85,10 @@ export class BackgroundCompilation {
         if (!backgroundTask) {
             return;
         }
-        await this.folderContext.taskQueue.queueOperation({ task: backgroundTask });
+        try {
+            await this.folderContext.taskQueue.queueOperation(new TaskOperation(backgroundTask));
+        } catch {
+            // can ignore if running task fails
+        }
     }
 }

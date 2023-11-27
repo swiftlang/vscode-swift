@@ -17,7 +17,7 @@ import * as assert from "assert";
 import { TaskManager } from "../../src/TaskManager";
 import { testAssetPath } from "../fixtures";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
-import { TaskQueue } from "../../src/TaskQueue";
+import { SwiftExecOperation, TaskOperation, TaskQueue } from "../../src/TaskQueue";
 import { globalWorkspaceContextPromise } from "./extension.test";
 
 suite("Tasks Test Suite", () => {
@@ -100,7 +100,7 @@ suite("Tasks Test Suite", () => {
                 "testTaskQueue",
                 new vscode.ShellExecution("exit", ["2"])
             );
-            const result = await taskQueue.queueOperation({ task: exitTask });
+            const result = await taskQueue.queueOperation(new TaskOperation(exitTask));
             assert.strictEqual(result, 2);
         });
 
@@ -123,8 +123,8 @@ suite("Tasks Test Suite", () => {
                 new vscode.ShellExecution("exit", ["2"])
             );
             await Promise.all([
-                taskQueue.queueOperation({ task: task1 }).then(rt => results.push(rt)),
-                taskQueue.queueOperation({ task: task2 }).then(rt => results.push(rt)),
+                taskQueue.queueOperation(new TaskOperation(task1)).then(rt => results.push(rt)),
+                taskQueue.queueOperation(new TaskOperation(task2)).then(rt => results.push(rt)),
             ]);
             assert.notStrictEqual(results, [1, 2]);
         });
@@ -148,8 +148,8 @@ suite("Tasks Test Suite", () => {
                 new vscode.ShellExecution("exit", ["2"])
             );
             await Promise.all([
-                taskQueue.queueOperation({ task: task1 }).then(rt => results.push(rt)),
-                taskQueue.queueOperation({ task: task2 }).then(rt => results.push(rt)),
+                taskQueue.queueOperation(new TaskOperation(task1)).then(rt => results.push(rt)),
+                taskQueue.queueOperation(new TaskOperation(task2)).then(rt => results.push(rt)),
             ]);
             assert.notStrictEqual(results, [1, 2]);
         });
@@ -180,9 +180,9 @@ suite("Tasks Test Suite", () => {
                 new vscode.ShellExecution("exit", ["3"])
             );
             await Promise.all([
-                taskQueue.queueOperation({ task: task1 }).then(rt => results.push(rt)),
-                taskQueue.queueOperation({ task: task2 }).then(rt => results.push(rt)),
-                taskQueue.queueOperation({ task: task3 }).then(rt => results.push(rt)),
+                taskQueue.queueOperation(new TaskOperation(task1)).then(rt => results.push(rt)),
+                taskQueue.queueOperation(new TaskOperation(task2)).then(rt => results.push(rt)),
+                taskQueue.queueOperation(new TaskOperation(task3)).then(rt => results.push(rt)),
             ]);
             assert.notStrictEqual(results, [1, 2, 2]);
         });
@@ -207,10 +207,51 @@ suite("Tasks Test Suite", () => {
                 new vscode.ShellExecution(sleepScript, ["0.01", "2"])
             );
             await Promise.all([
-                taskQueue.queueOperation({ task: task1 }).then(rt => results.push(rt)),
-                taskQueue.queueOperation({ task: task2 }).then(rt => results.push(rt)),
+                taskQueue.queueOperation(new TaskOperation(task1)).then(rt => results.push(rt)),
+                taskQueue.queueOperation(new TaskOperation(task2)).then(rt => results.push(rt)),
             ]);
             assert.notStrictEqual(results, [1, 2]);
         }).timeout(8000);
+
+        // check queuing task will return expected value
+        test("swift exec", async () => {
+            const folder = workspaceContext.folders.find(f => f.name === "test/defaultPackage");
+            assert(folder);
+            const operation = new SwiftExecOperation(
+                ["--version"],
+                folder,
+                "Swift Version",
+                { showStatusItem: false, checkAlreadyRunning: true },
+                stdout => {
+                    assert(stdout.includes("Swift version"));
+                }
+            );
+            const result = await taskQueue.queueOperation(operation);
+            assert.strictEqual(result, 0);
+        });
+
+        // check queuing swift exec operation will throw expected error
+        test("swift exec error", async () => {
+            const folder = workspaceContext.folders.find(f => f.name === "test/defaultPackage");
+            assert(folder);
+            const operation = new SwiftExecOperation(
+                ["--version"],
+                folder,
+                "Throw error",
+                { showStatusItem: false, checkAlreadyRunning: true },
+                () => {
+                    throw Error("SwiftExecOperation error");
+                }
+            );
+            try {
+                await taskQueue.queueOperation(operation);
+                assert(false);
+            } catch (error) {
+                assert.strictEqual(
+                    (error as { message: string }).message,
+                    "SwiftExecOperation error"
+                );
+            }
+        });
     });
 });

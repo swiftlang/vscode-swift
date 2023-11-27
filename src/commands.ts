@@ -21,12 +21,13 @@ import { createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderContext } from "./FolderContext";
 import { PackageNode } from "./ui/PackageDependencyProvider";
 import { withQuickPick } from "./ui/QuickPick";
-import { execSwift, getErrorDescription } from "./utilities/utilities";
+import { getErrorDescription } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 import { DarwinCompatibleTarget, SwiftToolchain } from "./toolchain/toolchain";
 import { debugSnippet, runSnippet } from "./SwiftSnippets";
 import { debugLaunchConfig, getLaunchConfiguration } from "./debugger/launch";
 import { execFile } from "./utilities/utilities";
+import { SwiftExecOperation, TaskOperation } from "./TaskQueue";
 
 /**
  * References:
@@ -396,14 +397,18 @@ async function uneditFolderDependency(
     args: string[] = []
 ) {
     try {
-        await execSwift(
+        const uneditOperation = new SwiftExecOperation(
             ["package", "unedit", ...args, identifier],
-            ctx.toolchain,
-            {
-                cwd: folder.folder.fsPath,
-            },
-            folder
+            folder,
+            "Unedit",
+            { showStatusItem: true, checkAlreadyRunning: false, log: "Unedit" },
+            () => {
+                // do nothing. Just want to run the process on the Task queue to ensure it
+                // doesn't clash with another swifr process
+            }
         );
+        await folder.taskQueue.queueOperation(uneditOperation);
+
         ctx.fireEvent(folder, FolderEvent.resolvedUpdated);
         // find workspace folder, and check folder still exists
         const folderIndex = vscode.workspace.workspaceFolders?.findIndex(
@@ -491,12 +496,13 @@ async function executeTaskWithUI(
     checkAlreadyRunning?: boolean
 ): Promise<boolean> {
     try {
-        const exitCode = await folderContext.taskQueue.queueOperation({
-            task: task,
-            showStatusItem: true,
-            log: description,
-            checkAlreadyRunning: checkAlreadyRunning,
-        });
+        const exitCode = await folderContext.taskQueue.queueOperation(
+            new TaskOperation(task, {
+                showStatusItem: true,
+                checkAlreadyRunning: checkAlreadyRunning ?? false,
+                log: description,
+            })
+        );
         if (exitCode === 0) {
             return true;
         } else {

@@ -14,13 +14,14 @@
 
 import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
-import { execSwift, getErrorDescription, isPathInsidePath } from "../utilities/utilities";
+import { getErrorDescription, isPathInsidePath } from "../utilities/utilities";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { TestRunner } from "./TestRunner";
 import { LSPTestDiscovery } from "./LSPTestDiscovery";
 import { Version } from "../utilities/version";
 import configuration from "../configuration";
 import { buildOptions, getBuildAllTask } from "../SwiftTaskProvider";
+import { SwiftExecOperation, TaskOperation } from "../TaskQueue";
 
 /** Build test explorer UI */
 export class TestExplorer {
@@ -138,7 +139,9 @@ export class TestExplorer {
             if (process.platform === "darwin" && configuration.sanitizer !== "off") {
                 const task = await getBuildAllTask(this.folderContext);
                 task.definition.dontTriggerTestDiscovery = true;
-                const exitCode = await this.folderContext.taskQueue.queueOperation({ task: task });
+                const exitCode = await this.folderContext.taskQueue.queueOperation(
+                    new TaskOperation(task)
+                );
                 if (exitCode === undefined || exitCode !== 0) {
                     this.setErrorTestItem("Build the project to enable test discovery.");
                     return;
@@ -152,71 +155,71 @@ export class TestExplorer {
                 listTestArguments = ["test", "--list-tests", "--skip-build"];
             }
             listTestArguments = [...listTestArguments, ...testBuildOptions];
-            const { stdout } = await execSwift(
+            const listTestsOperation = new SwiftExecOperation(
                 listTestArguments,
-                toolchain,
-                {
-                    cwd: this.folderContext.folder.fsPath,
-                },
-                this.folderContext
-            );
+                this.folderContext,
+                "Listing Tests",
+                { showStatusItem: true, checkAlreadyRunning: false, log: "Listing tests" },
+                stdout => {
+                    // if we got to this point we can get rid of any error test item
+                    this.deleteErrorTestItem();
 
-            // if we got to this point we can get rid of any error test item
-            this.deleteErrorTestItem();
-
-            // extract tests from `swift test --list-tests` output
-            const results = stdout.match(/^.*\.[a-zA-Z0-9_]*\/.*$/gm);
-            if (!results) {
-                return;
-            }
-
-            // remove TestItems that aren't in either the swift test output or the LSP symbol list
-            this.controller.items.forEach(targetItem => {
-                targetItem.children.forEach(classItem => {
-                    classItem.children.forEach(funcItem => {
-                        const testName = `${targetItem.label}.${classItem.label}/${funcItem.label}`;
-                        if (
-                            !results.find(item => item === testName) &&
-                            !this.lspFunctionParser?.includesFunction(
-                                targetItem.label,
-                                classItem.label,
-                                funcItem.label
-                            )
-                        ) {
-                            classItem.children.delete(funcItem.id);
-                        }
-                    });
-                    // delete class if it is empty
-                    if (classItem.children.size === 0) {
-                        targetItem.children.delete(classItem.id);
+                    // extract tests from `swift test --list-tests` output
+                    const results = stdout.match(/^.*\.[a-zA-Z0-9_]*\/.*$/gm);
+                    if (!results) {
+                        return;
                     }
-                });
-            });
 
-            for (const result of results) {
-                // Regex "<testTarget>.<class>/<function>"
-                const groups = /^([\w\d_]*)\.([\w\d_]*)\/(.*)$/.exec(result);
-                if (!groups) {
-                    continue;
+                    // remove TestItems that aren't in either the swift test output or the LSP symbol list
+                    this.controller.items.forEach(targetItem => {
+                        targetItem.children.forEach(classItem => {
+                            classItem.children.forEach(funcItem => {
+                                const testName = `${targetItem.label}.${classItem.label}/${funcItem.label}`;
+                                if (
+                                    !results.find(item => item === testName) &&
+                                    !this.lspFunctionParser?.includesFunction(
+                                        targetItem.label,
+                                        classItem.label,
+                                        funcItem.label
+                                    )
+                                ) {
+                                    classItem.children.delete(funcItem.id);
+                                }
+                            });
+                            // delete class if it is empty
+                            if (classItem.children.size === 0) {
+                                targetItem.children.delete(classItem.id);
+                            }
+                        });
+                    });
+
+                    for (const result of results) {
+                        // Regex "<testTarget>.<class>/<function>"
+                        const groups = /^([\w\d_]*)\.([\w\d_]*)\/(.*)$/.exec(result);
+                        if (!groups) {
+                            continue;
+                        }
+                        let targetItem = this.controller.items.get(groups[1]);
+                        if (!targetItem) {
+                            targetItem = this.controller.createTestItem(groups[1], groups[1]);
+                            this.controller.items.add(targetItem);
+                        }
+                        let classItem = targetItem.children.get(`${groups[1]}.${groups[2]}`);
+                        if (!classItem) {
+                            classItem = this.controller.createTestItem(
+                                `${groups[1]}.${groups[2]}`,
+                                groups[2]
+                            );
+                            targetItem.children.add(classItem);
+                        }
+                        if (!classItem.children.get(result)) {
+                            const item = this.controller.createTestItem(result, groups[3]);
+                            classItem.children.add(item);
+                        }
+                    }
                 }
-                let targetItem = this.controller.items.get(groups[1]);
-                if (!targetItem) {
-                    targetItem = this.controller.createTestItem(groups[1], groups[1]);
-                    this.controller.items.add(targetItem);
-                }
-                let classItem = targetItem.children.get(`${groups[1]}.${groups[2]}`);
-                if (!classItem) {
-                    classItem = this.controller.createTestItem(
-                        `${groups[1]}.${groups[2]}`,
-                        groups[2]
-                    );
-                    targetItem.children.add(classItem);
-                }
-                if (!classItem.children.get(result)) {
-                    const item = this.controller.createTestItem(result, groups[3]);
-                    classItem.children.add(item);
-                }
-            }
+            );
+            await this.folderContext.taskQueue.queueOperation(listTestsOperation);
 
             // add items to target test item as the setActive call above may not have done this
             // because the test target item did not exist when it was called

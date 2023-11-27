@@ -1,46 +1,142 @@
 import * as vscode from "vscode";
 import { FolderContext } from "./FolderContext";
 import { WorkspaceContext } from "./WorkspaceContext";
-import { poll } from "./utilities/utilities";
+import { execSwift, poll } from "./utilities/utilities";
 
+export interface SwiftOperationOptions {
+    // Should I show a status item
+    showStatusItem: boolean;
+    // Should I check if an instance of this task is already running
+    checkAlreadyRunning: boolean;
+    // log output
+    log?: string;
+}
 /** Swift operation to add to TaskQueue */
 export interface SwiftOperation {
-    task: vscode.Task;
-    showStatusItem?: boolean;
-    log?: string;
-    checkAlreadyRunning?: boolean;
+    // options
+    options: SwiftOperationOptions;
+    // identifier for statusitem
+    statusItemId: vscode.Task | string;
+    // operation name
+    name: string;
+    // internally used identifier
+    id: string;
+    // is task a build operation
+    isBuildOperation: boolean;
+    // run operation
+    run(
+        workspaceContext: WorkspaceContext,
+        token: vscode.CancellationToken | undefined
+    ): Promise<number | undefined>;
+}
+
+/** Operation that wraps a vscode Task */
+export class TaskOperation implements SwiftOperation {
+    constructor(
+        public task: vscode.Task,
+        public options: SwiftOperationOptions = {
+            showStatusItem: false,
+            checkAlreadyRunning: false,
+        }
+    ) {}
+
+    get name(): string {
+        return this.task.name;
+    }
+
+    get id(): string {
+        let scopeString: string;
+        if (
+            this.task.scope === vscode.TaskScope.Workspace ||
+            this.task.scope === vscode.TaskScope.Global
+        ) {
+            scopeString = vscode.TaskScope[this.task.scope];
+        } else if (this.task.scope) {
+            scopeString = `,${this.task.scope.name}`;
+        } else {
+            scopeString = "*undefined*";
+        }
+        return this.task.definition.args.join() + scopeString;
+    }
+
+    get statusItemId(): vscode.Task | string {
+        return this.task;
+    }
+
+    get isBuildOperation(): boolean {
+        return this.task.group === vscode.TaskGroup.Build;
+    }
+
+    run(
+        workspaceContext: WorkspaceContext,
+        token?: vscode.CancellationToken
+    ): Promise<number | undefined> {
+        return workspaceContext.tasks.executeTaskAndWait(this.task, token);
+    }
+}
+
+/** Operation that runs the swift executable and then parses the result */
+export class SwiftExecOperation implements SwiftOperation {
+    constructor(
+        public args: string[],
+        public folderContext: FolderContext,
+        public name: string,
+        public options: SwiftOperationOptions,
+        public process: (stdout: string, stderr: string) => Promise<void> | void
+    ) {}
+
+    get id(): string {
+        return `${this.args.join()},${this.folderContext?.folder.path}`;
+    }
+
+    get statusItemId(): vscode.Task | string {
+        return `${this.name} (${this.folderContext.name})`;
+    }
+
+    get isBuildOperation(): boolean {
+        return false;
+    }
+
+    async run(workspaceContext: WorkspaceContext): Promise<number | undefined> {
+        const { stdout, stderr } = await execSwift(
+            this.args,
+            workspaceContext.toolchain,
+            { cwd: this.folderContext.folder.fsPath },
+            this.folderContext
+        );
+        await this.process(stdout, stderr);
+        return 0;
+    }
+}
+
+interface TaskQueueResult {
+    success?: number;
+    fail?: unknown;
 }
 
 /**
  * Operation added to queue.
  */
-class QueuedOperation implements SwiftOperation {
-    task: vscode.Task;
-    showStatusItem?: boolean;
-    log?: string;
+class QueuedOperation {
+    get id(): string {
+        return this.operation.id;
+    }
+    get showStatusItem(): boolean {
+        return this.operation.options.showStatusItem;
+    }
+    get log(): string | undefined {
+        return this.operation.options.log;
+    }
 
     public promise?: Promise<number | undefined> = undefined;
     constructor(
-        operation: SwiftOperation,
-        public cb: (result: number | undefined) => void,
+        public operation: SwiftOperation,
+        public cb: (result: TaskQueueResult) => void,
         public token?: vscode.CancellationToken
-    ) {
-        this.task = operation.task;
-        this.showStatusItem = operation.showStatusItem;
-        this.log = operation.log;
-    }
+    ) {}
 
-    /** Compare queued operation to operation */
-    isEqual(operation: SwiftOperation): boolean {
-        const args1: string[] = operation.task.definition.args;
-        const args2: string[] = this.task.definition.args;
-        if (args1.length !== args2.length) {
-            return false;
-        }
-        return (
-            args1.every((value, index) => value === args2[index]) &&
-            operation.task.scope === this.task.scope
-        );
+    run(workspaceContext: WorkspaceContext): Promise<number | undefined> {
+        return this.operation.run(workspaceContext, this.token);
     }
 }
 
@@ -81,19 +177,25 @@ export class TaskQueue {
         }
         // if checkAlreadyRunning is set then check the active operation is not the same
         if (
-            operation.checkAlreadyRunning === true &&
+            operation.options.checkAlreadyRunning === true &&
             this.activeOperation &&
             this.activeOperation.promise &&
-            this.activeOperation.isEqual(operation)
+            this.activeOperation.id === operation.id
         ) {
             return this.activeOperation.promise;
         }
 
-        const promise = new Promise<number | undefined>(resolve => {
+        const promise = new Promise<number | undefined>((resolve, fail) => {
             queuedOperation = new QueuedOperation(
                 operation,
                 result => {
-                    resolve(result);
+                    if (result.success !== undefined) {
+                        resolve(result.success);
+                    } else if (result.fail !== undefined) {
+                        fail(result.fail);
+                    } else {
+                        resolve(undefined);
+                    }
                 },
                 token
             );
@@ -114,14 +216,14 @@ export class TaskQueue {
             // get task from queue
             const operation = this.queue.shift();
             if (operation) {
-                const task = operation.task;
+                //const task = operation.task;
                 this.activeOperation = operation;
-                // wait while queue is disabled before running task
-                await this.waitWhileDisabled();
                 // show active task status item
                 if (operation.showStatusItem === true) {
-                    this.workspaceContext.statusItem.start(task);
+                    this.workspaceContext.statusItem.start(operation.operation.statusItemId);
                 }
+                // wait while queue is disabled before running task
+                await this.waitWhileDisabled();
                 // log start
                 if (operation.log) {
                     this.workspaceContext.outputChannel.logStart(
@@ -129,8 +231,8 @@ export class TaskQueue {
                         this.folderContext.name
                     );
                 }
-                this.workspaceContext.tasks
-                    .executeTaskAndWait(task, operation.token)
+                operation
+                    .run(this.workspaceContext)
                     .then(result => {
                         // log result
                         if (operation.log) {
@@ -146,23 +248,23 @@ export class TaskQueue {
                                     break;
                             }
                         }
-                        this.finishTask(operation, result);
+                        this.finishTask(operation, { success: result });
                     })
                     .catch(error => {
                         // log error
                         if (operation.log) {
                             this.workspaceContext.outputChannel.logEnd(`${error}`);
                         }
-                        this.finishTask(operation, undefined);
+                        this.finishTask(operation, { fail: error });
                     });
             }
         }
     }
 
-    private finishTask(operation: QueuedOperation, result: number | undefined) {
+    private finishTask(operation: QueuedOperation, result: TaskQueueResult) {
         operation.cb(result);
         if (operation.showStatusItem === true) {
-            this.workspaceContext.statusItem.end(operation.task);
+            this.workspaceContext.statusItem.end(operation.operation.statusItemId);
         }
         this.activeOperation = undefined;
         this.processQueue();
@@ -171,7 +273,7 @@ export class TaskQueue {
     /** Return if we already have an operation in the queue */
     findQueuedOperation(operation: SwiftOperation): QueuedOperation | undefined {
         for (const queuedOperation of this.queue) {
-            if (queuedOperation.isEqual(operation)) {
+            if (queuedOperation.id === operation.id) {
                 return queuedOperation;
             }
         }
