@@ -1,17 +1,20 @@
 import * as vscode from "vscode";
-import * as cp from "child_process";
 import { FolderContext } from "./FolderContext";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { execSwift, poll } from "./utilities/utilities";
 
-/** Swift operation to add to TaskQueue */
-export interface SwiftOperation {
+export interface SwiftOperationOptions {
     // Should I show a status item
     showStatusItem: boolean;
     // Should I check if an instance of this task is already running
     checkAlreadyRunning: boolean;
     // log output
     log?: string;
+}
+/** Swift operation to add to TaskQueue */
+export interface SwiftOperation {
+    // options
+    options: SwiftOperationOptions;
     // identifier for statusitem
     statusItemId: vscode.Task | string;
     // operation name
@@ -31,9 +34,10 @@ export interface SwiftOperation {
 export class TaskOperation implements SwiftOperation {
     constructor(
         public task: vscode.Task,
-        public showStatusItem: boolean = false,
-        public checkAlreadyRunning: boolean = false,
-        public log?: string
+        public options: SwiftOperationOptions = {
+            showStatusItem: false,
+            checkAlreadyRunning: false,
+        }
     ) {}
 
     get name(): string {
@@ -77,11 +81,8 @@ export class SwiftExecOperation implements SwiftOperation {
         public args: string[],
         public folderContext: FolderContext,
         public name: string,
-        public process: (stdout: string, stderr: string) => Promise<void> | void,
-        public options: cp.ExecFileOptions = {},
-        public showStatusItem: boolean = false,
-        public checkAlreadyRunning: boolean = false,
-        public log?: string
+        public options: SwiftOperationOptions,
+        public process: (stdout: string, stderr: string) => Promise<void> | void
     ) {}
 
     get id(): string {
@@ -120,10 +121,10 @@ class QueuedOperation {
         return this.operation.id;
     }
     get showStatusItem(): boolean {
-        return this.operation.showStatusItem;
+        return this.operation.options.showStatusItem;
     }
     get log(): string | undefined {
-        return this.operation.log;
+        return this.operation.options.log;
     }
 
     public promise?: Promise<number | undefined> = undefined;
@@ -175,7 +176,7 @@ export class TaskQueue {
         }
         // if checkAlreadyRunning is set then check the active operation is not the same
         if (
-            operation.checkAlreadyRunning === true &&
+            operation.options.checkAlreadyRunning === true &&
             this.activeOperation &&
             this.activeOperation.promise &&
             this.activeOperation.id === operation.id

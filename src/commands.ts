@@ -493,7 +493,11 @@ async function executeTaskWithUI(
 ): Promise<boolean> {
     try {
         const exitCode = await folderContext.taskQueue.queueOperation(
-            new TaskOperation(task, true, checkAlreadyRunning, description)
+            new TaskOperation(task, {
+                showStatusItem: true,
+                checkAlreadyRunning: checkAlreadyRunning ?? false,
+                log: description,
+            })
         );
         if (exitCode === 0) {
             return true;

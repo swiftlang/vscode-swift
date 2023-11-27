@@ -221,6 +221,7 @@ suite("Tasks Test Suite", () => {
                 ["--version"],
                 folder,
                 "Swift Version",
+                { showStatusItem: false, checkAlreadyRunning: true },
                 stdout => {
                     assert(stdout.includes("Swift version"));
                 }
