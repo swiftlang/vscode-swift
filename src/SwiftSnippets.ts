@@ -87,17 +87,24 @@ export async function debugSnippetWithOptions(
         ctx.toolchain
     );
 
-    // queue build task and when it is complete run executable in the debugger
-    await folderContext.taskQueue
-        .queueOperation(new TaskOperation(snippetBuildTask))
-        .then(result => {
-            if (result === 0) {
-                const snippetDebugConfig = createSnippetConfiguration(snippetName, folderContext);
-                return debugLaunchConfig(
-                    folderContext.workspaceFolder,
-                    snippetDebugConfig,
-                    options
-                );
-            }
-        });
+    try {
+        // queue build task and when it is complete run executable in the debugger
+        await folderContext.taskQueue
+            .queueOperation(new TaskOperation(snippetBuildTask))
+            .then(result => {
+                if (result === 0) {
+                    const snippetDebugConfig = createSnippetConfiguration(
+                        snippetName,
+                        folderContext
+                    );
+                    return debugLaunchConfig(
+                        folderContext.workspaceFolder,
+                        snippetDebugConfig,
+                        options
+                    );
+                }
+            });
+    } catch {
+        // ignore error if task failed to run
+    }
 }

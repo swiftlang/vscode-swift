@@ -85,6 +85,10 @@ export class BackgroundCompilation {
         if (!backgroundTask) {
             return;
         }
-        await this.folderContext.taskQueue.queueOperation(new TaskOperation(backgroundTask));
+        try {
+            await this.folderContext.taskQueue.queueOperation(new TaskOperation(backgroundTask));
+        } catch {
+            // can ignore if running task fails
+        }
     }
 }

@@ -229,5 +229,29 @@ suite("Tasks Test Suite", () => {
             const result = await taskQueue.queueOperation(operation);
             assert.strictEqual(result, 0);
         });
+
+        // check queuing swift exec operation will throw expected error
+        test("swift exec error", async () => {
+            const folder = workspaceContext.folders.find(f => f.name === "test/defaultPackage");
+            assert(folder);
+            const operation = new SwiftExecOperation(
+                ["--version"],
+                folder,
+                "Throw error",
+                { showStatusItem: false, checkAlreadyRunning: true },
+                () => {
+                    throw Error("SwiftExecOperation error");
+                }
+            );
+            try {
+                await taskQueue.queueOperation(operation);
+                assert(false);
+            } catch (error) {
+                assert.strictEqual(
+                    (error as { message: string }).message,
+                    "SwiftExecOperation error"
+                );
+            }
+        });
     });
 });

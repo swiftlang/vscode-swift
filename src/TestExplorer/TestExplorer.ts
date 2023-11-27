@@ -153,7 +153,7 @@ export class TestExplorer {
                 listTestArguments,
                 this.folderContext,
                 "Listing Tests",
-                { showStatusItem: true, checkAlreadyRunning: false },
+                { showStatusItem: true, checkAlreadyRunning: false, log: "Listing tests" },
                 stdout => {
                     // if we got to this point we can get rid of any error test item
                     this.deleteErrorTestItem();

@@ -90,7 +90,7 @@ export class SwiftExecOperation implements SwiftOperation {
     }
 
     get statusItemId(): vscode.Task | string {
-        return this.name;
+        return `${this.name} (${this.folderContext.name})`;
     }
 
     get isBuildOperation(): boolean {
@@ -98,19 +98,20 @@ export class SwiftExecOperation implements SwiftOperation {
     }
 
     async run(workspaceContext: WorkspaceContext): Promise<number | undefined> {
-        try {
-            const { stdout, stderr } = await execSwift(
-                this.args,
-                workspaceContext.toolchain,
-                { cwd: this.folderContext.folder.fsPath },
-                this.folderContext
-            );
-            await this.process(stdout, stderr);
-            return 0;
-        } catch {
-            return -1;
-        }
+        const { stdout, stderr } = await execSwift(
+            this.args,
+            workspaceContext.toolchain,
+            { cwd: this.folderContext.folder.fsPath },
+            this.folderContext
+        );
+        await this.process(stdout, stderr);
+        return 0;
     }
+}
+
+interface TaskQueueResult {
+    success?: number;
+    fail?: unknown;
 }
 
 /**
@@ -130,7 +131,7 @@ class QueuedOperation {
     public promise?: Promise<number | undefined> = undefined;
     constructor(
         public operation: SwiftOperation,
-        public cb: (result: number | undefined) => void,
+        public cb: (result: TaskQueueResult) => void,
         public token?: vscode.CancellationToken
     ) {}
 
@@ -184,11 +185,17 @@ export class TaskQueue {
             return this.activeOperation.promise;
         }
 
-        const promise = new Promise<number | undefined>(resolve => {
+        const promise = new Promise<number | undefined>((resolve, fail) => {
             queuedOperation = new QueuedOperation(
                 operation,
                 result => {
-                    resolve(result);
+                    if (result.success !== undefined) {
+                        resolve(result.success);
+                    } else if (result.fail !== undefined) {
+                        fail(result.fail);
+                    } else {
+                        resolve(undefined);
+                    }
                 },
                 token
             );
@@ -241,20 +248,20 @@ export class TaskQueue {
                                     break;
                             }
                         }
-                        this.finishTask(operation, result);
+                        this.finishTask(operation, { success: result });
                     })
                     .catch(error => {
                         // log error
                         if (operation.log) {
                             this.workspaceContext.outputChannel.logEnd(`${error}`);
                         }
-                        this.finishTask(operation, undefined);
+                        this.finishTask(operation, { fail: error });
                     });
             }
         }
     }
 
-    private finishTask(operation: QueuedOperation, result: number | undefined) {
+    private finishTask(operation: QueuedOperation, result: TaskQueueResult) {
         operation.cb(result);
         if (operation.showStatusItem === true) {
             this.workspaceContext.statusItem.end(operation.operation.statusItemId);
