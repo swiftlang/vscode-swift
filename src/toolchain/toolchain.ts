@@ -56,6 +56,7 @@ export enum DarwinCompatibleTarget {
     iOS = "iOS",
     tvOS = "tvOS",
     watchOS = "watchOS",
+    visionOS = "xrOS",
 }
 
 export function getDarwinSDKName(target: DarwinCompatibleTarget): string {
@@ -66,6 +67,8 @@ export function getDarwinSDKName(target: DarwinCompatibleTarget): string {
             return "appletvos";
         case DarwinCompatibleTarget.watchOS:
             return "watchos";
+        case DarwinCompatibleTarget.visionOS:
+            return "xros";
     }
 }
 
@@ -77,6 +80,8 @@ export function getDarwinTargetTriple(target: DarwinCompatibleTarget): string | 
             return "arm64-apple-tvos";
         case DarwinCompatibleTarget.watchOS:
             return "arm64-apple-watchos";
+        case DarwinCompatibleTarget.visionOS:
+            return "arm64-apple-xros";
     }
 }
 

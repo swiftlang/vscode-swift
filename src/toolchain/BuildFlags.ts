@@ -128,6 +128,7 @@ export class BuildFlags {
             { name: "iPhoneOS", target: DarwinCompatibleTarget.iOS },
             { name: "AppleTVOS", target: DarwinCompatibleTarget.tvOS },
             { name: "WatchOS", target: DarwinCompatibleTarget.watchOS },
+            { name: "XROS", target: DarwinCompatibleTarget.visionOS },
         ];
 
         if (configuration.sdk === "" || process.platform !== "darwin") {
