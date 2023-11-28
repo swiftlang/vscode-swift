@@ -543,21 +543,26 @@ async function switchPlatform() {
             { value: DarwinCompatibleTarget.iOS, label: "iOS" },
             { value: DarwinCompatibleTarget.tvOS, label: "tvOS" },
             { value: DarwinCompatibleTarget.watchOS, label: "watchOS" },
+            { value: DarwinCompatibleTarget.visionOS, label: "visionOS" },
         ],
         async picked => {
-            const sdkForTarget = picked.value
-                ? await SwiftToolchain.getSDKForTarget(picked.value)
-                : "";
-            if (sdkForTarget !== undefined) {
-                if (sdkForTarget !== "") {
-                    configuration.sdk = sdkForTarget;
-                    vscode.window.showWarningMessage(
-                        `Selecting the ${picked.label} SDK will provide code editing support, but compiling with this SDK will have undefined results.`
-                    );
+            try {
+                const sdkForTarget = picked.value
+                    ? await SwiftToolchain.getSDKForTarget(picked.value)
+                    : "";
+                if (sdkForTarget !== undefined) {
+                    if (sdkForTarget !== "") {
+                        configuration.sdk = sdkForTarget;
+                        vscode.window.showWarningMessage(
+                            `Selecting the ${picked.label} SDK will provide code editing support, but compiling with this SDK will have undefined results.`
+                        );
+                    } else {
+                        configuration.sdk = undefined;
+                    }
                 } else {
-                    configuration.sdk = undefined;
+                    vscode.window.showErrorMessage("Unable to obtain requested SDK path");
                 }
-            } else {
+            } catch {
                 vscode.window.showErrorMessage("Unable to obtain requested SDK path");
             }
         }
