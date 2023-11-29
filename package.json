@@ -980,7 +980,8 @@
     "test": "tsc -p ./ && node ./out/test/runTest.js",
     "package": "vsce package",
     "dev-package": "vsce package --no-update-package-json 1.7.2-dev",
-    "preview-package": "vsce package --pre-release"
+    "preview-package": "vsce package --pre-release",
+    "tag": "node ./scripts/tag_release.js"
   },
   "devDependencies": {
     "@types/glob": "^7.1.4",
