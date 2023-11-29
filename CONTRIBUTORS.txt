@@ -18,7 +18,7 @@ needs to be listed here.
 - Shu Long <86326526@qq.com>
 - Steven Van Impe <steven.vanimpe@icloud.com>
 - Tim Condon <0xtimc@gmail.com>
-- Tristan Labelle <github@tristanlabelle.com>
+- Tristan Labelle <tristan@thebrowser.company>
 - YR Chen <stevapple@icloud.com>
 - kelvin <kelvin13ma@gmail.com>
 **Updating this list**
