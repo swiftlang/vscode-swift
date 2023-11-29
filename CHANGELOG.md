@@ -1,6 +1,16 @@
 # Changelog
 
-## 1.7.0
+## 1.7.1 - 2023-11-29
+
+### Added
+- Task queue operation to spawn a process and parse its output. Using this ensures a build task does not run at the same time.
+- Use spawn process task queue operation in test discovery and unedit of modules.
+
+### Changes
+- Don't wait for SwiftPM plugin listing to finish before allowing build and run.
+- If auto-resolve is disabled then also disable the initial test discovery as this can cause a resolve
+
+## 1.7.0 - 2023-10-25
 
 Merge debug adapter changes from v1.6.x prerelease builds into main release.
 
