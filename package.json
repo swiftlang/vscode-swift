@@ -981,7 +981,7 @@
     "package": "vsce package",
     "dev-package": "vsce package --no-update-package-json 1.7.2-dev",
     "preview-package": "vsce package --pre-release",
-    "tag": "node ./scripts/tag_release.js"
+    "tag": "./scripts/tag_release.sh $npm_package_version"
   },
   "devDependencies": {
     "@types/glob": "^7.1.4",
