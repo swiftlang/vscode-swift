@@ -400,7 +400,7 @@ async function uneditFolderDependency(
         const uneditOperation = new SwiftExecOperation(
             ["package", "unedit", ...args, identifier],
             folder,
-            "Unedit",
+            `Finish editing ${identifier}`,
             { showStatusItem: true, checkAlreadyRunning: false, log: "Unedit" },
             () => {
                 // do nothing. Just want to run the process on the Task queue to ensure it
