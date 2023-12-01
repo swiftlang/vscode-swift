@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021 the VSCode Swift project authors
+// Copyright (c) 2021-2023 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -231,7 +231,7 @@ export class SwiftToolchain {
                         // format. Tried running with `-p` but that is not available in /bin/sh
                         const { stdout } = await execFile("/bin/sh", [
                             "-c",
-                            "LCMESSAGES=C type swift",
+                            "LC_MESSAGES=C type swift",
                         ]);
                         const swiftMatch = /^swift is (.*)$/.exec(stdout.trimEnd());
                         if (swiftMatch) {
