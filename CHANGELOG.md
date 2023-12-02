@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.7.1 - 2023-11-29
+## 1.7.1 - 2023-12-02
 
 ### Added
 - Task queue operation to spawn a process and parse its output. Using this ensures a build task does not run at the same time.
@@ -9,6 +9,9 @@
 ### Changes
 - Don't wait for SwiftPM plugin listing to finish before allowing build and run.
 - If auto-resolve is disabled then also disable the initial test discovery as this can cause a resolve
+
+### Fixed
+- Finding swift executable on non-english installs of Linux
 
 ## 1.7.0 - 2023-10-25
 
