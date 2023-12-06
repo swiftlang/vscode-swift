@@ -175,7 +175,22 @@ export class WorkspaceContext implements vscode.Disposable {
                     }
             }
         });
+        // add end of task handler to be called whenever a build task has finished. If
+        // it is the build task for this folder then focus on the problems view
+        const onDidEndTask = this.tasks.onDidEndTaskProcess(event => {
+            const task = event.execution.task;
+            if (
+                task.group === vscode.TaskGroup.Build &&
+                event.exitCode !== 0 &&
+                event.exitCode !== undefined &&
+                configuration.focusOnProblems
+            ) {
+                vscode.commands.executeCommand("workbench.panel.markers.view.focus");
+            }
+        });
+
         this.subscriptions = [
+            onDidEndTask,
             this.commentCompletionProvider,
             this.testCoverageDocumentProvider,
             this.testCoverageRenderer,

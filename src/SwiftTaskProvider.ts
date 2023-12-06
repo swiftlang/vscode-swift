@@ -193,7 +193,9 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 cwd: folderContext.folder,
                 scope: folderContext.workspaceFolder,
                 presentationOptions: {
-                    reveal: vscode.TaskRevealKind.Silent,
+                    reveal: configuration.focusOnProblems
+                        ? vscode.TaskRevealKind.Never
+                        : vscode.TaskRevealKind.Silent,
                 },
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
                 disableTaskQueue: true,

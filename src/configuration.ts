@@ -195,6 +195,10 @@ const configuration = {
             .getConfiguration("swift")
             .get<boolean>("backgroundCompilation", false);
     },
+    /** focus on problems view whenever there is a build error */
+    get focusOnProblems(): boolean {
+        return vscode.workspace.getConfiguration("swift").get<boolean>("focusOnProblems", false);
+    },
     /** output additional diagnostics */
     get diagnostics(): boolean {
         return vscode.workspace.getConfiguration("swift").get<boolean>("diagnostics", false);

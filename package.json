@@ -243,11 +243,17 @@
             "markdownDescription": "**Experimental**: Run `swift build` in the background whenever a file is saved.",
             "order": 10
           },
+          "swift.focusOnProblems": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Focus on Problems view whenever build task returns an error.",
+            "order": 11
+          },
           "swift.buildPath": {
             "type": "string",
             "default": "",
             "markdownDescription": "Path to the build directory passed to all swift package manager commands.",
-            "order": 11
+            "order": 12
           }
         }
       },
