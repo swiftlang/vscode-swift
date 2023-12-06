@@ -15,6 +15,7 @@
 import * as vscode from "vscode";
 
 type CFamilySupportOptions = "enable" | "disable" | "cpptools-inactive";
+type ActionAfterBuildError = "Focus Problems" | "Focus Terminal" | "Do Nothing";
 
 /** sourcekit-lsp configuration */
 export interface LSPConfiguration {
@@ -194,6 +195,12 @@ const configuration = {
         return vscode.workspace
             .getConfiguration("swift")
             .get<boolean>("backgroundCompilation", false);
+    },
+    /** focus on problems view whenever there is a build error */
+    get actionAfterBuildError(): ActionAfterBuildError {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<ActionAfterBuildError>("actionAfterBuildError", "Focus Terminal");
     },
     /** output additional diagnostics */
     get diagnostics(): boolean {

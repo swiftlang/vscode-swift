@@ -243,11 +243,26 @@
             "markdownDescription": "**Experimental**: Run `swift build` in the background whenever a file is saved.",
             "order": 10
           },
+          "swift.actionAfterBuildError": {
+            "type": "string",
+            "default": "Focus Terminal",
+            "enum": [
+              "Focus Problems",
+              "Focus Terminal",
+              "Do Nothing"
+            ],
+            "enumDescriptions": [
+              "Focus on Problems View",
+              "Focus on Build Task Terminal"
+            ],
+            "markdownDescription": "Action after a Build task generates errors.",
+            "order": 11
+          },
           "swift.buildPath": {
             "type": "string",
             "default": "",
             "markdownDescription": "Path to the build directory passed to all swift package manager commands.",
-            "order": 11
+            "order": 12
           }
         }
       },
