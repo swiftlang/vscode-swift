@@ -90,6 +90,15 @@ export function buildOptions(toolchain: SwiftToolchain, debug = true): string[] 
 }
 
 /**
+ * Get task reveal kind based off configuration
+ */
+function getBuildRevealOption(): vscode.TaskRevealKind {
+    return configuration.actionAfterBuildError === "Focus Terminal"
+        ? vscode.TaskRevealKind.Silent
+        : vscode.TaskRevealKind.Never;
+}
+
+/**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
 export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
@@ -113,7 +122,7 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
             cwd: folderContext.folder,
             scope: folderContext.workspaceFolder,
             presentationOptions: {
-                reveal: vscode.TaskRevealKind.Silent,
+                reveal: getBuildRevealOption(),
             },
             problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
             disableTaskQueue: true,
@@ -193,9 +202,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 cwd: folderContext.folder,
                 scope: folderContext.workspaceFolder,
                 presentationOptions: {
-                    reveal: configuration.focusOnProblems
-                        ? vscode.TaskRevealKind.Never
-                        : vscode.TaskRevealKind.Silent,
+                    reveal: getBuildRevealOption(),
                 },
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
                 disableTaskQueue: true,
@@ -210,7 +217,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 cwd: folderContext.folder,
                 scope: folderContext.workspaceFolder,
                 presentationOptions: {
-                    reveal: vscode.TaskRevealKind.Silent,
+                    reveal: getBuildRevealOption(),
                 },
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
                 disableTaskQueue: true,

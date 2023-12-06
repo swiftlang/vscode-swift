@@ -183,7 +183,7 @@ export class WorkspaceContext implements vscode.Disposable {
                 task.group === vscode.TaskGroup.Build &&
                 event.exitCode !== 0 &&
                 event.exitCode !== undefined &&
-                configuration.focusOnProblems
+                configuration.actionAfterBuildError === "Focus Problems"
             ) {
                 vscode.commands.executeCommand("workbench.panel.markers.view.focus");
             }

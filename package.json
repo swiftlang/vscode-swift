@@ -243,10 +243,19 @@
             "markdownDescription": "**Experimental**: Run `swift build` in the background whenever a file is saved.",
             "order": 10
           },
-          "swift.focusOnProblems": {
-            "type": "boolean",
-            "default": false,
-            "markdownDescription": "Focus on Problems view whenever build task returns an error.",
+          "swift.actionAfterBuildError": {
+            "type": "string",
+            "default": "Focus Terminal",
+            "enum": [
+              "Focus Problems",
+              "Focus Terminal",
+              "Do Nothing"
+            ],
+            "enumDescriptions": [
+              "Focus on Problems View",
+              "Focus on Build Task Terminal"
+            ],
+            "markdownDescription": "Action after a Build task generates errors.",
             "order": 11
           },
           "swift.buildPath": {
