@@ -335,8 +335,6 @@ export class TestRunner {
         }
 
         this.testRun.appendOutput(`> Test run started at ${new Date().toLocaleString()} <\r\n\r\n`);
-        // show test results pane
-        vscode.commands.executeCommand("testing.showMostRecentOutput");
         try {
             if (generateCoverage) {
                 const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
