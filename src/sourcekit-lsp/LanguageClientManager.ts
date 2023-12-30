@@ -450,7 +450,7 @@ export class LanguageClientManager {
                         definitions &&
                         path.extname(definitions[0].uri.path) === ".swiftinterface"
                     ) {
-                        const uri = vscode.Uri.parse(`readonly://${definitions[0].uri.fsPath}`);
+                        const uri = definitions[0].uri.with({ scheme: "readonly" });
                         return new vscode.Location(uri, definitions[0].range);
                     }
                     return result;
