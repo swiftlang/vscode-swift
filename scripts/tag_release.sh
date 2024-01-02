@@ -20,5 +20,6 @@ if [[ -z $tag ]]; then
     exit -1
 fi
 
+echo "Tagging v$tag"
 git tag "$tag"
 git push upstream "$tag"
