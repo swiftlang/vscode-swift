@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.7.2 - 2024-01-03
+
+### Added
+- Setting to control action after a build error: focus on problems pane, focus on terminal or do nothing.
+
+### Changes
+- Don't force show test pane when testing starts. Let `Testing: Open Testing` define when test pane should open.
+
+### Fixed
+- Setup of URI on readonly document viewer. This fixes jump to symbol in a swiftinterface on Windows
+
 ## 1.7.1 - 2023-12-02
 
 ### Added
