@@ -675,6 +675,16 @@
               "type": "string"
             }
           },
+          "env": {
+            "type": "object",
+            "patternProperties": {
+              ".*": {
+                "type": "string"
+              }
+            },
+            "description": "Additional environment variables to set when running the task.",
+            "default": {}
+          },
           "cwd": {
             "description": "The folder to run the task in.",
             "type": "string"
@@ -694,6 +704,16 @@
                   "type": "string"
                 }
               },
+              "env": {
+                "type": "object",
+                "patternProperties": {
+                  ".*": {
+                    "type": "string"
+                  }
+                },
+                "description": "Additional environment variables to set when running the task.",
+                "default": {}
+              },
               "cwd": {
                 "description": "The folder to run the task in.",
                 "type": "string"
@@ -711,6 +731,16 @@
                   "type": "string"
                 }
               },
+              "env": {
+                "type": "object",
+                "patternProperties": {
+                  ".*": {
+                    "type": "string"
+                  }
+                },
+                "description": "Additional environment variables to set when running the task.",
+                "default": {}
+              },
               "cwd": {
                 "description": "The folder to run the task in.",
                 "type": "string"
@@ -727,6 +757,16 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "env": {
+                "type": "object",
+                "patternProperties": {
+                  ".*": {
+                    "type": "string"
+                  }
+                },
+                "description": "Additional environment variables to set when running the task.",
+                "default": {}
               },
               "cwd": {
                 "description": "The folder to run the task in.",

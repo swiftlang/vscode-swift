@@ -47,6 +47,7 @@ interface TaskConfig {
 interface TaskPlatformSpecificConfig {
     args?: string[];
     cwd?: string;
+    env?: { [name: string]: unknown };
 }
 
 /** flag for enabling test discovery */
@@ -378,6 +379,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         }
         // get args and cwd values from either platform specific block or base
         const args = platform?.args ?? task.definition.args;
+        const env = platform?.env ?? task.definition.env;
         let fullCwd = platform?.cwd ?? task.definition.cwd ?? "";
         if (!path.isAbsolute(fullCwd) && scopeWorkspaceFolder.uri.fsPath) {
             fullCwd = path.join(scopeWorkspaceFolder.uri.fsPath, fullCwd);
@@ -390,7 +392,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             "swift",
             new vscode.ProcessExecution(swift, args, {
                 cwd: fullCwd,
-                env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
+                env: { ...env, ...swiftRuntimeEnv() },
             }),
             task.problemMatchers
         );
