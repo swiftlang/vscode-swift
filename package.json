@@ -23,7 +23,8 @@
   "activationEvents": [
     "onLanguage:swift",
     "workspaceContains:Package.swift",
-    "workspaceContains:compile_commands.json"
+    "workspaceContains:compile_commands.json",
+    "onDebugResolve:swift-lldb"
   ],
   "main": "./dist/extension.js",
   "contributes": {
