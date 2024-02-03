@@ -20,6 +20,7 @@ import {
     isPathInsidePath,
     execSwift,
     getSwiftExecutable,
+    expandFilePathTilda,
 } from "../../src/utilities/utilities";
 
 suite("Utilities Test Suite", () => {
@@ -59,6 +60,13 @@ suite("Utilities Test Suite", () => {
         assert(!isPathInsidePath("/home/user/package", "/home/user/package2"));
         assert(!isPathInsidePath("/home/user/package/.build", "/home/user/package2/.build"));
         assert(!isPathInsidePath("/home/user/package/", "/home/user/package/.build"));
+    });
+
+    test("expandFilePathTilda", () => {
+        const homeDir = process.env.HOME;
+        assert(expandFilePathTilda("~/Test"), `${homeDir}/Test`);
+        assert(expandFilePathTilda("/Users/John/Test"), `/Users/John/Test`);
+        assert(expandFilePathTilda("/Users/~/Test"), `/Users/~/Test`);
     });
 
     test("execFileStreamOutput", async () => {
