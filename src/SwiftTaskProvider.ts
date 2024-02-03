@@ -44,6 +44,11 @@ interface TaskConfig {
     disableTaskQueue?: boolean;
 }
 
+interface TaskPlatformSpecificConfig {
+    args?: string[];
+    cwd?: string;
+}
+
 /** flag for enabling test discovery */
 function testDiscoveryFlag(ctx: FolderContext): string[] {
     // Test discovery is only available in SwiftPM 5.1 and later.
@@ -362,7 +367,18 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         // Reusing the task parameter doesn't seem to work.
         const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
         const scopeWorkspaceFolder = task.scope as vscode.WorkspaceFolder;
-        let fullCwd = task.definition.cwd;
+        // platform specific
+        let platform: TaskPlatformSpecificConfig | undefined;
+        if (process.platform === "win32") {
+            platform = task.definition.windows;
+        } else if (process.platform === "linux") {
+            platform = task.definition.linux;
+        } else if (process.platform === "darwin") {
+            platform = task.definition.macos;
+        }
+        // get args and cwd values from either platform specific block or base
+        const args = platform?.args ?? task.definition.args;
+        let fullCwd = platform?.cwd ?? task.definition.cwd ?? "";
         if (!path.isAbsolute(fullCwd) && scopeWorkspaceFolder.uri.fsPath) {
             fullCwd = path.join(scopeWorkspaceFolder.uri.fsPath, fullCwd);
         }
@@ -372,13 +388,13 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             task.scope ?? vscode.TaskScope.Workspace,
             task.name ?? "Swift Custom Task",
             "swift",
-            new vscode.ProcessExecution(swift, task.definition.args, {
+            new vscode.ProcessExecution(swift, args, {
                 cwd: fullCwd,
                 env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
             }),
             task.problemMatchers
         );
-        newTask.detail = task.detail ?? `swift ${task.definition.args.join(" ")}`;
+        newTask.detail = task.detail ?? `swift ${args.join(" ")}`;
         newTask.group = task.group;
         newTask.presentationOptions = task.presentationOptions;
 
