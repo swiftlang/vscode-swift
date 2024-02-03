@@ -260,15 +260,21 @@ export function createSwiftTask(
     } else {
         cwd = config.cwd.fsPath;
     }*/
-
+    const env = { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() };
     const task = new vscode.Task(
-        { type: "swift", args: args, cwd: cwd, disableTaskQueue: config.disableTaskQueue },
+        {
+            type: "swift",
+            args: args,
+            env: env,
+            cwd: cwd,
+            disableTaskQueue: config.disableTaskQueue,
+        },
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
         "swift",
         new vscode.ProcessExecution(swift, args, {
             cwd: fullCwd,
-            env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
+            env: env,
         }),
         config?.problemMatcher
     );
@@ -380,8 +386,8 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         // get args and cwd values from either platform specific block or base
         const args = platform?.args ?? task.definition.args;
         const env = platform?.env ?? task.definition.env;
-        let fullCwd = platform?.cwd ?? task.definition.cwd ?? "";
-        if (!path.isAbsolute(fullCwd) && scopeWorkspaceFolder.uri.fsPath) {
+        let fullCwd = platform?.cwd ?? task.definition.cwd;
+        if (fullCwd && !path.isAbsolute(fullCwd) && scopeWorkspaceFolder.uri.fsPath) {
             fullCwd = path.join(scopeWorkspaceFolder.uri.fsPath, fullCwd);
         }
 
