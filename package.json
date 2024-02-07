@@ -695,7 +695,7 @@
           },
           "macos": {
             "type": "object",
-            "description": "MacOS specific task configuration",
+            "description": "macOS specific task configuration",
             "properties": {
               "args": {
                 "description": "An array of arguments for the command. Each argument will be quoted separately.",
