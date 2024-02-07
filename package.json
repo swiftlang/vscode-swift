@@ -676,6 +676,16 @@
               "type": "string"
             }
           },
+          "env": {
+            "type": "object",
+            "patternProperties": {
+              ".*": {
+                "type": "string"
+              }
+            },
+            "description": "Additional environment variables to set when running the task.",
+            "default": {}
+          },
           "cwd": {
             "description": "The folder to run the task in.",
             "type": "string"
@@ -683,6 +693,87 @@
           "disableTaskQueue": {
             "description": "Disable any queued tasks while running the task. This includes the auto resolve when Packages.resolved is updated.",
             "type": "boolean"
+          },
+          "macos": {
+            "type": "object",
+            "description": "macOS specific task configuration",
+            "properties": {
+              "args": {
+                "description": "An array of arguments for the command. Each argument will be quoted separately.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "env": {
+                "type": "object",
+                "patternProperties": {
+                  ".*": {
+                    "type": "string"
+                  }
+                },
+                "description": "Additional environment variables to set when running the task.",
+                "default": {}
+              },
+              "cwd": {
+                "description": "The folder to run the task in.",
+                "type": "string"
+              }
+            }
+          },
+          "linux": {
+            "type": "object",
+            "description": "Linux specific task configuration",
+            "properties": {
+              "args": {
+                "description": "An array of arguments for the command. Each argument will be quoted separately.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "env": {
+                "type": "object",
+                "patternProperties": {
+                  ".*": {
+                    "type": "string"
+                  }
+                },
+                "description": "Additional environment variables to set when running the task.",
+                "default": {}
+              },
+              "cwd": {
+                "description": "The folder to run the task in.",
+                "type": "string"
+              }
+            }
+          },
+          "windows": {
+            "type": "object",
+            "description": "Windows specific task configuration",
+            "properties": {
+              "args": {
+                "description": "An array of arguments for the command. Each argument will be quoted separately.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "env": {
+                "type": "object",
+                "patternProperties": {
+                  ".*": {
+                    "type": "string"
+                  }
+                },
+                "description": "Additional environment variables to set when running the task.",
+                "default": {}
+              },
+              "cwd": {
+                "description": "The folder to run the task in.",
+                "type": "string"
+              }
+            }
           }
         },
         "required": [
