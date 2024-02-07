@@ -313,3 +313,15 @@ export function hashString(str: string, seed = 0) {
     h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
     return 4294967296 * (2097151 & h2) + (h1 >>> 0);
 }
+
+/**
+ * Expand ~ in file path to full $HOME folder
+ * @param filepath File path
+ * @returns full path
+ */
+export function expandFilePathTilda(filepath: string): string {
+    if (process.platform !== "win32" && filepath[0] === "~" && process.env.HOME) {
+        return path.join(process.env.HOME, filepath.slice(1));
+    }
+    return filepath;
+}

@@ -18,7 +18,7 @@ import * as plist from "plist";
 import * as vscode from "vscode";
 import configuration from "../configuration";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
-import { execFile, execSwift, pathExists } from "../utilities/utilities";
+import { execFile, execSwift, expandFilePathTilda, pathExists } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { BuildFlags } from "./BuildFlags";
 import { Sanitizer } from "./Sanitizer";
@@ -245,7 +245,7 @@ export class SwiftToolchain {
             }
             // swift may be a symbolic link
             const realSwift = await fs.realpath(swift);
-            const swiftPath = path.dirname(realSwift);
+            const swiftPath = expandFilePathTilda(path.dirname(realSwift));
             return await this.getSwiftEnvPath(swiftPath);
         } catch {
             throw Error("Failed to find swift executable");
