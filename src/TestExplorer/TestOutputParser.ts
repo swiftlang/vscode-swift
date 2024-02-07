@@ -18,11 +18,18 @@ export class TestOutputParser {
      * @param output Output from `swift test`
      */
     public parseResultDarwin(output: string, runState: iTestRunState) {
-        const lines = output.split("\n");
+        const output2 = output.replace(/\r\n/g, "\n");
+        const lines = output2.split("\n");
         if (runState.excess) {
             lines[0] = runState.excess + lines[0];
         }
-        if (output[output.length - 1] !== "\n") {
+        // pop empty string off the end of the lines array
+        if (lines.length > 0 && lines[lines.length - 1] === "") {
+            lines.pop();
+        }
+        // if submitted text does not end with a newline then pop that off and store in excess
+        // for next call of parseResultDarwin
+        if (output2[output2.length - 1] !== "\n") {
             runState.excess = lines.pop();
         } else {
             runState.excess = undefined;
@@ -105,11 +112,18 @@ export class TestOutputParser {
      * @param output Output from `swift test`
      */
     public parseResultNonDarwin(output: string, runState: iTestRunState) {
-        const lines = output.split("\n");
+        const output2 = output.replace(/\r\n/g, "\n");
+        const lines = output2.split("\n");
         if (runState.excess) {
             lines[0] = runState.excess + lines[0];
         }
-        if (output[output.length - 1] !== "\n") {
+        // pop empty string off the end of the lines array
+        if (lines.length > 0 && lines[lines.length - 1] === "") {
+            lines.pop();
+        }
+        // if submitted text does not end with a newline then pop that off and store in excess
+        // for next call of parseResultDarwin
+        if (output2[output2.length - 1] !== "\n") {
             runState.excess = lines.pop();
         } else {
             runState.excess = undefined;
