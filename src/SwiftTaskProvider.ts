@@ -42,6 +42,7 @@ interface TaskConfig {
     presentationOptions?: vscode.TaskPresentationOptions;
     prefix?: string;
     disableTaskQueue?: boolean;
+    dontTriggerTestDiscovery?: boolean;
 }
 
 interface TaskPlatformSpecificConfig {
@@ -212,6 +213,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 },
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
                 disableTaskQueue: true,
+                dontTriggerTestDiscovery: true,
             },
             folderContext.workspaceContext.toolchain
         ),
@@ -227,6 +229,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 },
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
                 disableTaskQueue: true,
+                dontTriggerTestDiscovery: true,
             },
             folderContext.workspaceContext.toolchain
         ),
@@ -268,6 +271,7 @@ export function createSwiftTask(
             env: env,
             cwd: cwd,
             disableTaskQueue: config.disableTaskQueue,
+            dontTriggerTestDiscovery: config.dontTriggerTestDiscovery,
         },
         config?.scope ?? vscode.TaskScope.Workspace,
         name,

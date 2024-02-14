@@ -58,7 +58,10 @@ export class TestExplorer {
                 event.exitCode === 0 &&
                 task.definition.dontTriggerTestDiscovery !== true
             ) {
-                this.discoverTestsInWorkspace();
+                // only run discover tests if the library has tests
+                if (this.folderContext.swiftPackage.getTargets("test").length > 0) {
+                    this.discoverTestsInWorkspace();
+                }
             }
         });
 

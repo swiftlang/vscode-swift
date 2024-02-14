@@ -694,6 +694,10 @@
             "description": "Disable any queued tasks while running the task. This includes the auto resolve when Packages.resolved is updated.",
             "type": "boolean"
           },
+          "dontTriggerTestDiscovery": {
+            "description": "Don't trigger the test discovery process.",
+            "type": "boolean"
+          },
           "macos": {
             "type": "object",
             "description": "macOS specific task configuration",
