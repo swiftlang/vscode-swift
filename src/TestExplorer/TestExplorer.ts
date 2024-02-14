@@ -80,11 +80,28 @@ export class TestExplorer {
             switch (event) {
                 case FolderEvent.add:
                     if (folder) {
-                        folder.addTestExplorer();
-                        // discover tests in workspace but only if disableAutoResolve is not on.
-                        // discover tests will kick off a resolve if required
-                        if (!configuration.folder(folder.workspaceFolder).disableAutoResolve) {
-                            folder?.testExplorer?.discoverTestsInWorkspace();
+                        if (folder.swiftPackage.getTargets("test").length > 0) {
+                            folder.addTestExplorer();
+                            // discover tests in workspace but only if disableAutoResolve is not on.
+                            // discover tests will kick off a resolve if required
+                            if (!configuration.folder(folder.workspaceFolder).disableAutoResolve) {
+                                folder.testExplorer?.discoverTestsInWorkspace();
+                            }
+                        }
+                    }
+                    break;
+                case FolderEvent.packageUpdated:
+                    if (folder) {
+                        const testTargets = folder.swiftPackage.getTargets("test");
+                        if (testTargets.length > 0 && !folder.hasTestExplorer()) {
+                            folder.addTestExplorer();
+                            // discover tests in workspace but only if disableAutoResolve is not on.
+                            // discover tests will kick off a resolve if required
+                            if (!configuration.folder(folder.workspaceFolder).disableAutoResolve) {
+                                folder.testExplorer?.discoverTestsInWorkspace();
+                            }
+                        } else if (testTargets.length === 0 && folder.hasTestExplorer()) {
+                            folder.removeTestExplorer();
                         }
                     }
                     break;
