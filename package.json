@@ -264,6 +264,12 @@
             "default": "",
             "markdownDescription": "Path to the build directory passed to all swift package manager commands.",
             "order": 12
+          },
+          "swift.disableSwiftPackageManagerIntegration": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Disables automated Build Tasks, Package Dependency view, Launch configuration generation and TestExplorer.",
+            "order": 13
           }
         }
       },

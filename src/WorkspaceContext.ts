@@ -637,7 +637,8 @@ export class WorkspaceContext implements vscode.Disposable {
      */
     async isValidWorkspaceFolder(folder: string): Promise<boolean> {
         return (
-            (await pathExists(folder, "Package.swift")) ||
+            ((await pathExists(folder, "Package.swift")) &&
+                !configuration.disableSwiftPMIntegration) ||
             (await pathExists(folder, "compile_commands.json"))
         );
     }

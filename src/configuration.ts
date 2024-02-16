@@ -175,6 +175,11 @@ const configuration = {
     get buildPath(): string {
         return vscode.workspace.getConfiguration("swift").get<string>("buildPath", "");
     },
+    get disableSwiftPMIntegration(): boolean {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<boolean>("disableSwiftPackageManagerIntegration", false);
+    },
     /** Environment variables to set when building */
     get swiftEnvironmentVariables(): { [key: string]: string } {
         return vscode.workspace
