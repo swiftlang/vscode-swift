@@ -95,15 +95,15 @@ export class TestExplorer {
                     break;
                 case FolderEvent.packageUpdated:
                     if (folder) {
-                        const testTargets = folder.swiftPackage.getTargets("test");
-                        if (testTargets.length > 0 && !folder.hasTestExplorer()) {
+                        const hasTestTargets = folder.swiftPackage.getTargets("test").length > 0;
+                        if (hasTestTargets && !folder.hasTestExplorer()) {
                             folder.addTestExplorer();
                             // discover tests in workspace but only if disableAutoResolve is not on.
                             // discover tests will kick off a resolve if required
                             if (!configuration.folder(folder.workspaceFolder).disableAutoResolve) {
                                 folder.testExplorer?.discoverTestsInWorkspace();
                             }
-                        } else if (testTargets.length === 0 && folder.hasTestExplorer()) {
+                        } else if (!hasTestTargets && folder.hasTestExplorer()) {
                             folder.removeTestExplorer();
                         }
                     }
