@@ -58,7 +58,10 @@ export class TestExplorer {
                 event.exitCode === 0 &&
                 task.definition.dontTriggerTestDiscovery !== true
             ) {
-                this.discoverTestsInWorkspace();
+                // only run discover tests if the library has tests
+                if (this.folderContext.swiftPackage.getTargets("test").length > 0) {
+                    this.discoverTestsInWorkspace();
+                }
             }
         });
 
@@ -80,11 +83,28 @@ export class TestExplorer {
             switch (event) {
                 case FolderEvent.add:
                     if (folder) {
-                        folder.addTestExplorer();
-                        // discover tests in workspace but only if disableAutoResolve is not on.
-                        // discover tests will kick off a resolve if required
-                        if (!configuration.folder(folder.workspaceFolder).disableAutoResolve) {
-                            folder?.testExplorer?.discoverTestsInWorkspace();
+                        if (folder.swiftPackage.getTargets("test").length > 0) {
+                            folder.addTestExplorer();
+                            // discover tests in workspace but only if disableAutoResolve is not on.
+                            // discover tests will kick off a resolve if required
+                            if (!configuration.folder(folder.workspaceFolder).disableAutoResolve) {
+                                folder.testExplorer?.discoverTestsInWorkspace();
+                            }
+                        }
+                    }
+                    break;
+                case FolderEvent.packageUpdated:
+                    if (folder) {
+                        const hasTestTargets = folder.swiftPackage.getTargets("test").length > 0;
+                        if (hasTestTargets && !folder.hasTestExplorer()) {
+                            folder.addTestExplorer();
+                            // discover tests in workspace but only if disableAutoResolve is not on.
+                            // discover tests will kick off a resolve if required
+                            if (!configuration.folder(folder.workspaceFolder).disableAutoResolve) {
+                                folder.testExplorer?.discoverTestsInWorkspace();
+                            }
+                        } else if (!hasTestTargets && folder.hasTestExplorer()) {
+                            folder.removeTestExplorer();
                         }
                     }
                     break;

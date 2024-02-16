@@ -385,9 +385,9 @@ async function uneditDependency(identifier: string, ctx: WorkspaceContext) {
     }
     ctx.outputChannel.log(`unedit dependency ${identifier}`, currentFolder.name);
     const status = `Reverting edited dependency ${identifier} (${currentFolder.name})`;
-    ctx.statusItem.start(status);
-    await uneditFolderDependency(currentFolder, identifier, ctx);
-    ctx.statusItem.end(status);
+    ctx.statusItem.showStatusWhileRunning(status, async () => {
+        await uneditFolderDependency(currentFolder, identifier, ctx);
+    });
 }
 
 async function uneditFolderDependency(

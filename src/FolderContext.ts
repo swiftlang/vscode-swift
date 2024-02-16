@@ -158,6 +158,17 @@ export class FolderContext implements vscode.Disposable {
         this.testExplorer = new TestExplorer(this);
     }
 
+    /** Create Test explorer for this folder */
+    removeTestExplorer() {
+        this.testExplorer?.dispose();
+        this.testExplorer = undefined;
+    }
+
+    /** Return if package folder has a test explorer */
+    hasTestExplorer() {
+        return this.testExplorer !== undefined;
+    }
+
     static uriName(uri: vscode.Uri): string {
         return path.basename(uri.fsPath);
     }

@@ -667,9 +667,9 @@ export class WorkspaceContext implements vscode.Disposable {
 
 /** Workspace Folder events */
 export enum FolderEvent {
-    // Workspace folder has been added
+    // Package folder has been added
     add = "add",
-    // Workspace folder has been removed
+    // Package folder has been removed
     remove = "remove",
     // Workspace folder has gained focus via a file inside the folder becoming the actively edited file
     focus = "focus",

@@ -37,14 +37,14 @@ class LSPFunction {
 export class LSPTestDiscovery {
     private classes: LSPClass[];
     private functions: LSPFunction[];
-    private targetName?: string;
+    private testTargetName?: string;
 
     constructor(
         public uri: vscode.Uri,
         private folderContext: FolderContext,
         private controller: vscode.TestController
     ) {
-        this.targetName = this.getTarget(uri)?.name;
+        this.testTargetName = this.getTestTarget(uri)?.name;
         this.classes = [];
         this.functions = [];
     }
@@ -57,7 +57,7 @@ export class LSPTestDiscovery {
      * @returns Function from by LSP server symbol search
      */
     includesFunction(targetName: string, className: string, funcName: string): boolean {
-        if (targetName !== this.targetName) {
+        if (targetName !== this.testTargetName) {
             return false;
         }
         return (
@@ -71,10 +71,10 @@ export class LSPTestDiscovery {
      * Add test items for the symbols we have found so far
      */
     addTestItems() {
-        if (!this.targetName) {
+        if (!this.testTargetName) {
             return;
         }
-        const targetItem = this.controller.items.get(this.targetName);
+        const targetItem = this.controller.items.get(this.testTargetName);
         if (!targetItem) {
             return;
         }
@@ -86,13 +86,13 @@ export class LSPTestDiscovery {
      * @param symbols Document symbols returned from LSP server
      */
     updateTestItems(symbols: vscode.DocumentSymbol[]) {
-        if (!this.targetName) {
+        if (!this.testTargetName) {
             return;
         }
 
         const results = this.parseSymbolList(symbols);
 
-        const targetItem = this.controller.items.get(this.targetName);
+        const targetItem = this.controller.items.get(this.testTargetName);
         if (!targetItem) {
             // if didn't find target item it probably hasn't been constructed yet
             // store the results for later use and return
@@ -120,12 +120,12 @@ export class LSPTestDiscovery {
 
         // delete functions that are no longer here
         for (const f of deletedFunctions) {
-            const classId = `${this.targetName}.${f.className}`;
+            const classId = `${this.testTargetName}.${f.className}`;
             const classItem = targetItem.children.get(classId);
             if (!classItem) {
                 continue;
             }
-            const funcId = `${this.targetName}.${f.className}/${f.funcName}`;
+            const funcId = `${this.testTargetName}.${f.className}/${f.funcName}`;
             classItem.children.delete(funcId);
         }
 
@@ -234,7 +234,7 @@ export class LSPTestDiscovery {
      * @param uri URI to find target for
      * @returns Target
      */
-    getTarget(uri: vscode.Uri): Target | undefined {
+    getTestTarget(uri: vscode.Uri): Target | undefined {
         if (!isPathInsidePath(uri.fsPath, this.folderContext.folder.fsPath)) {
             return undefined;
         }
