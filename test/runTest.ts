@@ -55,6 +55,7 @@ async function main() {
                 // once we re-open a different folder due to window reloading
                 path.join(extensionDevelopmentPath, "assets/test"),
             ],
+            reuseMachineInstall: true,
         });
     } catch (err) {
         console.error("Failed to run tests");
