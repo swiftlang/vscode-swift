@@ -1071,7 +1071,7 @@
   ],
   "scripts": {
     "vscode:prepublish": "npm run esbuild-base -- --minify",
-    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node20",
+    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18",
     "esbuild": "npm run esbuild-base -- --sourcemap",
     "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
     "compile": "tsc",
@@ -1089,7 +1089,7 @@
   "devDependencies": {
     "@types/glob": "^7.1.6",
     "@types/mocha": "^10.0.1",
-    "@types/node": "^20.11.1",
+    "@types/node": "^18.15.0",
     "@types/vscode": "^1.71.0",
     "@typescript-eslint/eslint-plugin": "^6.1.0",
     "@typescript-eslint/parser": "^6.1.0",
