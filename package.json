@@ -2,7 +2,7 @@
   "name": "swift-lang",
   "displayName": "Swift",
   "description": "Swift Language Support for Visual Studio Code.",
-  "version": "1.7.2",
+  "version": "1.8.0",
   "publisher": "sswg",
   "icon": "icon.png",
   "repository": {
@@ -1071,7 +1071,7 @@
   ],
   "scripts": {
     "vscode:prepublish": "npm run esbuild-base -- --minify",
-    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node16",
+    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node20",
     "esbuild": "npm run esbuild-base -- --sourcemap",
     "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
     "compile": "tsc",
@@ -1081,7 +1081,7 @@
     "pretest": "npm run compile && npm run lint",
     "test": "tsc -p ./ && node ./out/test/runTest.js",
     "package": "vsce package",
-    "dev-package": "vsce package --no-update-package-json 1.7.3-dev",
+    "dev-package": "vsce package --no-update-package-json 1.8.1-dev",
     "preview-package": "vsce package --pre-release",
     "tag": "./scripts/tag_release.sh $npm_package_version",
     "contributors": "./scripts/generate_contributors_list.sh"

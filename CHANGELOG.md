@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.8.0 - 2024-02-19
+
+### Added
+- Platform specific settings in the swift task definition.
+- Environment variables to set while running a swift task.
+- Setting to disable all Swift Package Manager integration.
+- Activate extension when debugging.
+
+### Changed
+- Expand `~` in swift file path setting to home directory.
+- Don't create test explorer if project has no tests.
+- Only run test discovery after a build all task.
+
+### Fixed
+- Parsing of test output while debugging tests.
+
 ## 1.7.2 - 2024-01-03
 
 ### Added
