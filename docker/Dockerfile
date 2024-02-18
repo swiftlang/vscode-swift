@@ -15,13 +15,13 @@ ENV LANGUAGE en_US.UTF-8
 # dependencies
 RUN apt-get update && apt-get install -y curl gpg libasound2 libgbm1 libgtk-3-0 libnss3 xvfb
 
-# install NodeJS 16
+# install NodeJS 20
 # Add the NodeSource package signing key
 ENV KEYRING /usr/share/keyrings/nodesource.gpg
 RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | gpg --dearmor | tee "$KEYRING" >/dev/null
 RUN gpg --no-default-keyring --keyring "$KEYRING" --list-keys
 # Add the desired NodeSource repository
-ENV VERSION node_16.x
+ENV VERSION node_20.x
 ENV DISTRO $ubuntu_version
 RUN echo "deb [signed-by=$KEYRING] https://deb.nodesource.com/$VERSION $DISTRO main" | tee /etc/apt/sources.list.d/nodesource.list
 RUN echo "deb-src [signed-by=$KEYRING] https://deb.nodesource.com/$VERSION $DISTRO main" | tee -a /etc/apt/sources.list.d/nodesource.list
