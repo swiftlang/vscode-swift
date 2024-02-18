@@ -1097,7 +1097,7 @@
     "esbuild": "^0.19.0",
     "eslint": "^8.1.0",
     "eslint-config-prettier": "^8.3.0",
-    "glob": "^10.0.0",
+    "glob": "^7.1.7",
     "mocha": "^10.2.0",
     "prettier": "2.5.1",
     "typescript": "^5.1.3",
