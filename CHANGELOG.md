@@ -7,6 +7,7 @@
 - Environment variables to set while running a swift task.
 - Setting to disable all Swift Package Manager integration.
 - Activate extension when debugging.
+- Watch for changes to swift files in test targets and flag test discovery is required if one changes or is deleted.
 
 ### Changed
 - Expand `~` in swift file path setting to home directory.
