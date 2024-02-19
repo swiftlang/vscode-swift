@@ -29,6 +29,7 @@ export class TestExplorer {
     public controller: vscode.TestController;
     private lspFunctionParser?: LSPTestDiscovery;
     private subscriptions: { dispose(): unknown }[];
+    private testFileEdited = true;
 
     constructor(public folderContext: FolderContext) {
         this.controller = vscode.tests.createTestController(
@@ -56,8 +57,10 @@ export class TestExplorer {
                 task.group === vscode.TaskGroup.Build &&
                 execution?.options?.cwd === this.folderContext.folder.fsPath &&
                 event.exitCode === 0 &&
-                task.definition.dontTriggerTestDiscovery !== true
+                task.definition.dontTriggerTestDiscovery !== true &&
+                this.testFileEdited
             ) {
+                this.testFileEdited = false;
                 // only run discover tests if the library has tests
                 if (this.folderContext.swiftPackage.getTargets("test").length > 0) {
                     this.discoverTestsInWorkspace();
@@ -65,7 +68,13 @@ export class TestExplorer {
             }
         });
 
-        this.subscriptions = [onDidEndTask, this.controller];
+        // add file watcher to catch changes to swift test files
+        const fileWatcher = this.folderContext.workspaceContext.observeSwiftFiles(uri => {
+            if (this.testFileEdited === false && this.folderContext.getTestTarget(uri)) {
+                this.testFileEdited = true;
+            }
+        });
+        this.subscriptions = [fileWatcher, onDidEndTask, this.controller];
     }
 
     dispose() {
