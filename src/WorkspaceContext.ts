@@ -188,8 +188,19 @@ export class WorkspaceContext implements vscode.Disposable {
                 vscode.commands.executeCommand("workbench.panel.markers.view.focus");
             }
         });
+        const swiftFileWatcher = vscode.workspace.createFileSystemWatcher("**/*.swift");
+        swiftFileWatcher.onDidCreate(uri => {
+            this.swiftFileObservers.forEach(observer => observer(uri, FileEvent.created));
+        });
+        swiftFileWatcher.onDidChange(uri => {
+            this.swiftFileObservers.forEach(observer => observer(uri, FileEvent.changed));
+        });
+        swiftFileWatcher.onDidDelete(uri => {
+            this.swiftFileObservers.forEach(observer => observer(uri, FileEvent.deleted));
+        });
 
         this.subscriptions = [
+            swiftFileWatcher,
             onDidEndTask,
             this.commentCompletionProvider,
             this.testCoverageDocumentProvider,
@@ -442,6 +453,16 @@ export class WorkspaceContext implements vscode.Disposable {
         return { dispose: () => this.observers.delete(fn) };
     }
 
+    /**
+     * Add swift file event observer
+     * @param fn observer function to be called when event occurs
+     * @returns disposable object
+     */
+    observeSwiftFiles(fn: SwiftFileObserver): vscode.Disposable {
+        this.swiftFileObservers.add(fn);
+        return { dispose: () => this.swiftFileObservers.delete(fn) };
+    }
+
     /** find LLDB version and setup path in CodeLLDB */
     async setLLDBVersion() {
         // check we are using CodeLLDB
@@ -664,6 +685,7 @@ export class WorkspaceContext implements vscode.Disposable {
     }
 
     private observers: Set<WorkspaceFoldersObserver> = new Set();
+    private swiftFileObservers: Set<SwiftFileObserver> = new Set();
 }
 
 /** Workspace Folder events */
@@ -688,3 +710,16 @@ export type WorkspaceFoldersObserver = (
     operation: FolderEvent,
     workspace: WorkspaceContext
 ) => unknown;
+
+/** File events */
+export enum FileEvent {
+    // File has been created
+    created = "created",
+    // File has been changed
+    changed = "changed",
+    // File was deleted
+    deleted = "deleted",
+}
+
+/** Swift File observer function */
+export type SwiftFileObserver = (uri: vscode.Uri, event: FileEvent) => unknown;

@@ -16,12 +16,13 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { LinuxMain } from "./LinuxMain";
 import { PackageWatcher } from "./PackageWatcher";
-import { SwiftPackage } from "./SwiftPackage";
+import { SwiftPackage, Target } from "./SwiftPackage";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { WorkspaceContext, FolderEvent } from "./WorkspaceContext";
 import { BackgroundCompilation } from "./BackgroundCompilation";
 import { TaskQueue } from "./TaskQueue";
 import { LcovResults } from "./coverage/LcovResults";
+import { isPathInsidePath } from "./utilities/utilities";
 
 export class FolderContext implements vscode.Disposable {
     private packageWatcher: PackageWatcher;
@@ -171,6 +172,26 @@ export class FolderContext implements vscode.Disposable {
 
     static uriName(uri: vscode.Uri): string {
         return path.basename(uri.fsPath);
+    }
+
+    /**
+     * Find testTarget for URI
+     * @param uri URI to find target for
+     * @returns Target
+     */
+    getTestTarget(uri: vscode.Uri): Target | undefined {
+        if (!isPathInsidePath(uri.fsPath, this.folder.fsPath)) {
+            return undefined;
+        }
+        const testTargets = this.swiftPackage.getTargets("test");
+        const target = testTargets.find(element => {
+            const relativeUri = path.relative(
+                path.join(this.folder.fsPath, element.path),
+                uri.fsPath
+            );
+            return element.sources.find(file => file === relativeUri) !== undefined;
+        });
+        return target;
     }
 }
 

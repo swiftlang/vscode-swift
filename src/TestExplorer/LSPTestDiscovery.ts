@@ -13,10 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as path from "path";
 import { FolderContext } from "../FolderContext";
-import { isPathInsidePath } from "../utilities/utilities";
-import { Target } from "../SwiftPackage";
 
 class LSPClass {
     constructor(public className: string, public range?: vscode.Range) {}
@@ -44,7 +41,7 @@ export class LSPTestDiscovery {
         private folderContext: FolderContext,
         private controller: vscode.TestController
     ) {
-        this.testTargetName = this.getTestTarget(uri)?.name;
+        this.testTargetName = this.folderContext.getTestTarget(uri)?.name;
         this.classes = [];
         this.functions = [];
     }
@@ -227,25 +224,5 @@ export class LSPTestDiscovery {
             });
         });
         return { classes: resultClasses, functions: results };
-    }
-
-    /**
-     * Find testTarget for URI
-     * @param uri URI to find target for
-     * @returns Target
-     */
-    getTestTarget(uri: vscode.Uri): Target | undefined {
-        if (!isPathInsidePath(uri.fsPath, this.folderContext.folder.fsPath)) {
-            return undefined;
-        }
-        const testTargets = this.folderContext.swiftPackage.getTargets("test");
-        const target = testTargets.find(element => {
-            const relativeUri = path.relative(
-                path.join(this.folderContext.folder.fsPath, element.path),
-                uri.fsPath
-            );
-            return element.sources.find(file => file === relativeUri) !== undefined;
-        });
-        return target;
     }
 }
