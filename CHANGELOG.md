@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.8.0 - 2024-02-19
+## 1.8.0 - 2024-02-21
 
 ### Added
 - Platform specific settings in the swift task definition.
