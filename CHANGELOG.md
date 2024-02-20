@@ -5,7 +5,7 @@
 ### Added
 - Platform specific settings in the swift task definition.
 - Environment variables to set while running a swift task.
-- Setting to disable all Swift Package Manager integration.
+- Setting to disable all Swift Package Manager integrations.
 - Activate extension when debugging.
 - Watch for changes to swift files in test targets and flag test discovery is required if one changes or is deleted.
 
