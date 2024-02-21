@@ -6,7 +6,7 @@ updates:
       interval: "daily"
     open-pull-requests-limit: 5
     allow:
-      - dependency-type: all
+      - dependency-type: direct
     groups:
       all-dependencies:
         patterns:
