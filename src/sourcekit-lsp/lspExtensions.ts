@@ -16,6 +16,7 @@ import * as langclient from "vscode-languageclient/node";
 
 // Definitions for non-standard requests used by sourcekit-lsp
 
+// Inlay Hints (pre Swift 5.6)
 export interface LegacyInlayHintsParams {
     /**
      * The text document.
@@ -60,3 +61,12 @@ export const legacyInlayHintsRequest = new langclient.RequestType<
     LegacyInlayHint[],
     unknown
 >("sourcekit-lsp/inlayHints");
+
+// Listing tests
+//export interface WorkspaceTestsParams {}
+
+export const workspaceTestsRequest = new langclient.RequestType<
+    Record<string, never>,
+    langclient.SymbolInformation[],
+    unknown
+>("workspace/tests");

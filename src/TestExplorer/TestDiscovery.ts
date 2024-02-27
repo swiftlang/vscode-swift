@@ -1,0 +1,135 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the VSCode Swift open source project
+//
+// Copyright (c) 2024 the VSCode Swift project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.txt for the list of VSCode Swift project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+import * as vscode from "vscode";
+import { FolderContext } from "../FolderContext";
+
+export interface TestFunction {
+    name: string;
+    location: vscode.Location;
+}
+
+export interface TestClass {
+    name: string;
+    location: vscode.Location;
+    functions: TestFunction[];
+}
+
+export interface TestTarget {
+    name: string;
+    folder: vscode.Uri;
+    classes: TestClass[];
+}
+
+export function updateTestsFromClasses(folderContext: FolderContext, testClasses: TestClass[]) {
+    const testExplorer = folderContext.testExplorer;
+    if (!testExplorer) {
+        return;
+    }
+    const targets = folderContext.swiftPackage.getTargets("test").map(target => {
+        const classes = testClasses.filter(
+            testClass =>
+                folderContext.swiftPackage.getTarget(testClass.location.uri.fsPath) === target
+        );
+        return {
+            name: target.name,
+            folder: vscode.Uri.file(target.path),
+            classes: classes,
+        };
+    });
+    updateTests(testExplorer.controller, targets);
+}
+
+export function updateTests(testController: vscode.TestController, testTargets: TestTarget[]) {
+    // remove TestItems that aren't in testTarget list
+    testController.items.forEach(targetItem => {
+        const testTarget = testTargets.find(item => item.name === targetItem.label);
+        if (testTarget) {
+            targetItem.children.forEach(classItem => {
+                const testClass = testTarget.classes.find(item => item.name === classItem.id);
+                if (testClass) {
+                    classItem.children.forEach(functionItem => {
+                        const testFunction = testClass.functions.find(
+                            item => item.name === functionItem.label
+                        );
+                        if (!testFunction) {
+                            classItem.children.delete(functionItem.id);
+                        }
+                    });
+                } else {
+                    targetItem.children.delete(classItem.id);
+                }
+            });
+        } else {
+            testController.items.delete(targetItem.id);
+        }
+    });
+
+    // Add in new items, update items already in place
+    testTargets.forEach(testTarget => {
+        const targetItem =
+            testController.items.get(testTarget.name) ??
+            createTopLevelTestItem(testController, testTarget.name, testTarget.folder);
+        testTarget.classes.forEach(testClass => {
+            const classItem = updateChildTestItem(
+                testController,
+                targetItem,
+                testClass.name,
+                ".",
+                testClass.location
+            );
+            testClass.functions.forEach(testFunction => {
+                updateChildTestItem(
+                    testController,
+                    classItem,
+                    testFunction.name,
+                    "/",
+                    testFunction.location
+                );
+            });
+        });
+    });
+}
+
+function createTopLevelTestItem(
+    testController: vscode.TestController,
+    name: string,
+    uri?: vscode.Uri
+): vscode.TestItem {
+    const testItem = testController.createTestItem(name, name, uri);
+    testController.items.add(testItem);
+    return testItem;
+}
+
+function updateChildTestItem(
+    testController: vscode.TestController,
+    parent: vscode.TestItem,
+    name: string,
+    separator: string,
+    location?: vscode.Location
+): vscode.TestItem {
+    const id = `${parent.id}${separator}${name}`;
+    const testItem = parent.children.get(id);
+    if (testItem) {
+        if (testItem.uri === location?.uri) {
+            testItem.range = location?.range;
+            return testItem;
+        }
+        parent.children.delete(testItem.id);
+    }
+    const newTestItem = testController.createTestItem(id, name, location?.uri);
+    newTestItem.range = location?.range;
+    parent.children.add(newTestItem);
+    return newTestItem;
+}

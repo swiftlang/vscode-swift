@@ -22,6 +22,7 @@ import { Version } from "../utilities/version";
 import configuration from "../configuration";
 import { buildOptions, getBuildAllTask } from "../SwiftTaskProvider";
 import { SwiftExecOperation, TaskOperation } from "../TaskQueue";
+import { updateTestsFromClasses } from "./TestDiscovery";
 
 /** Build test explorer UI */
 export class TestExplorer {
@@ -60,7 +61,7 @@ export class TestExplorer {
                 task.definition.dontTriggerTestDiscovery !== true &&
                 this.testFileEdited
             ) {
-                this.testFileEdited = false;
+                //this.testFileEdited = false;
                 // only run discover tests if the library has tests
                 if (this.folderContext.swiftPackage.getTargets("test").length > 0) {
                     this.discoverTestsInWorkspace();
@@ -154,9 +155,25 @@ export class TestExplorer {
 
     /**
      * Discover tests
-     * Uses `swift test --list-tests` to get the list of tests
      */
     async discoverTestsInWorkspace() {
+        const toolchain = this.folderContext.workspaceContext.toolchain;
+        if (toolchain.swiftVersion.isLessThan(new Version(5, 11, 0))) {
+            await this.discoverTestsInWorkspaceSPM();
+        } else {
+            try {
+                await this.discoverTestsInWorkspaceLSP();
+            } catch {
+                await this.discoverTestsInWorkspaceSPM();
+            }
+        }
+    }
+
+    /**
+     * Discover tests
+     * Uses `swift test --list-tests` to get the list of tests
+     */
+    async discoverTestsInWorkspaceSPM() {
         try {
             const toolchain = this.folderContext.workspaceContext.toolchain;
             // get build options before build is run so we can be sure they aren't changed
@@ -274,6 +291,17 @@ export class TestExplorer {
                 this.folderContext.name
             );
         }
+    }
+
+    /**
+     * Discover tests
+     */
+    async discoverTestsInWorkspaceLSP() {
+        const testClasses =
+            await this.folderContext.workspaceContext.languageClientManager.getWorkspaceTests(
+                this.folderContext.workspaceFolder.uri
+            );
+        updateTestsFromClasses(this.folderContext, testClasses);
     }
 
     /** Delete TestItem with error id */
