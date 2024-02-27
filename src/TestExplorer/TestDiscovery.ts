@@ -32,7 +32,11 @@ export interface TestTarget {
     classes: TestClass[];
 }
 
-export function updateTestsFromClasses(folderContext: FolderContext, testClasses: TestClass[]) {
+export function updateTestsFromClasses(
+    folderContext: FolderContext,
+    testClasses: TestClass[],
+    filterFile?: vscode.Uri
+) {
     const testExplorer = folderContext.testExplorer;
     if (!testExplorer) {
         return;
@@ -48,30 +52,43 @@ export function updateTestsFromClasses(folderContext: FolderContext, testClasses
             classes: classes,
         };
     });
-    updateTests(testExplorer.controller, targets);
+    updateTests(testExplorer.controller, targets, filterFile);
 }
 
-export function updateTests(testController: vscode.TestController, testTargets: TestTarget[]) {
+export function updateTests(
+    testController: vscode.TestController,
+    testTargets: TestTarget[],
+    filterFile?: vscode.Uri
+) {
     // remove TestItems that aren't in testTarget list
     testController.items.forEach(targetItem => {
-        const testTarget = testTargets.find(item => item.name === targetItem.label);
+        const testTarget = testTargets.find(item => item.name === targetItem.id);
         if (testTarget) {
+            const targetId = testTarget.name;
             targetItem.children.forEach(classItem => {
-                const testClass = testTarget.classes.find(item => item.name === classItem.id);
+                const testClass = testTarget.classes.find(
+                    item => `${targetId}.${item.name}` === classItem.id
+                );
                 if (testClass) {
+                    const classId = `${targetId}.${testClass.name}`;
                     classItem.children.forEach(functionItem => {
+                        // if we are filtering based on targets being one file and this
+                        // function isn't in the file then ignore
+                        if (filterFile && functionItem.uri !== filterFile) {
+                            return;
+                        }
                         const testFunction = testClass.functions.find(
-                            item => item.name === functionItem.label
+                            item => `${classId}/${item.name}` === functionItem.id
                         );
                         if (!testFunction) {
                             classItem.children.delete(functionItem.id);
                         }
                     });
-                } else {
+                } else if (!filterFile) {
                     targetItem.children.delete(classItem.id);
                 }
             });
-        } else {
+        } else if (!filterFile) {
             testController.items.delete(targetItem.id);
         }
     });

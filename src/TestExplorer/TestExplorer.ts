@@ -22,13 +22,13 @@ import { Version } from "../utilities/version";
 import configuration from "../configuration";
 import { buildOptions, getBuildAllTask } from "../SwiftTaskProvider";
 import { SwiftExecOperation, TaskOperation } from "../TaskQueue";
-import { updateTestsFromClasses } from "./TestDiscovery";
+import * as TestDiscovery from "./TestDiscovery";
 
 /** Build test explorer UI */
 export class TestExplorer {
     static errorTestItemId = "#Error#";
     public controller: vscode.TestController;
-    private lspFunctionParser?: LSPTestDiscovery;
+    private lspTestDiscovery: LSPTestDiscovery;
     private subscriptions: { dispose(): unknown }[];
     private testFileEdited = true;
 
@@ -47,6 +47,10 @@ export class TestExplorer {
         };
 
         TestRunner.setupProfiles(this.controller, this.folderContext);
+
+        this.lspTestDiscovery = new LSPTestDiscovery(
+            folderContext.workspaceContext.languageClientManager
+        );
 
         // add end of task handler to be called whenever a build task has finished. If
         // it is the build task for this folder then update the tests
@@ -139,16 +143,8 @@ export class TestExplorer {
         const testExplorer = folder?.testExplorer;
         if (testExplorer && symbols && uri && uri.scheme === "file") {
             if (isPathInsidePath(uri.fsPath, folder.folder.fsPath)) {
-                if (testExplorer.lspFunctionParser?.uri === uri) {
-                    testExplorer.lspFunctionParser.updateTestItems(symbols);
-                } else {
-                    testExplorer.lspFunctionParser = new LSPTestDiscovery(
-                        uri,
-                        folder,
-                        testExplorer.controller
-                    );
-                    testExplorer.lspFunctionParser.updateTestItems(symbols);
-                }
+                const tests = testExplorer.lspTestDiscovery.getTests(symbols, uri);
+                TestDiscovery.updateTestsFromClasses(folder, tests, uri);
             }
         }
     }
@@ -222,12 +218,12 @@ export class TestExplorer {
                             classItem.children.forEach(funcItem => {
                                 const testName = `${targetItem.label}.${classItem.label}/${funcItem.label}`;
                                 if (
-                                    !results.find(item => item === testName) &&
+                                    !results.find(item => item === testName) /* &&
                                     !this.lspFunctionParser?.includesFunction(
                                         targetItem.label,
                                         classItem.label,
                                         funcItem.label
-                                    )
+                                    )*/
                                 ) {
                                     classItem.children.delete(funcItem.id);
                                 }
@@ -269,7 +265,7 @@ export class TestExplorer {
 
             // add items to target test item as the setActive call above may not have done this
             // because the test target item did not exist when it was called
-            this.lspFunctionParser?.addTestItems();
+            //this.lspFunctionParser?.addTestItems();
         } catch (error) {
             const errorDescription = getErrorDescription(error);
             if (
@@ -297,11 +293,10 @@ export class TestExplorer {
      * Discover tests
      */
     async discoverTestsInWorkspaceLSP() {
-        const testClasses =
-            await this.folderContext.workspaceContext.languageClientManager.getWorkspaceTests(
-                this.folderContext.workspaceFolder.uri
-            );
-        updateTestsFromClasses(this.folderContext, testClasses);
+        const tests = await this.lspTestDiscovery.getWorkspaceTests(
+            this.folderContext.workspaceFolder.uri
+        );
+        TestDiscovery.updateTestsFromClasses(this.folderContext, tests);
     }
 
     /** Delete TestItem with error id */

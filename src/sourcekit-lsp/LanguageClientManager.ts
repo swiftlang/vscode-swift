@@ -23,8 +23,6 @@ import { activateLegacyInlayHints } from "./inlayHints";
 import { FolderContext } from "../FolderContext";
 import { LanguageClient } from "vscode-languageclient/node";
 import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
-import { workspaceTestsRequest } from "./lspExtensions";
-import { TestClass } from "../TestExplorer/TestDiscovery";
 
 /** Manages the creation and destruction of Language clients as we move between
  * workspace folders
@@ -282,54 +280,6 @@ export class LanguageClientManager {
                 event: { added: [workspaceFolder], removed: [] },
             });
         }
-    }
-
-    /**
-     * Return list of workspace tests
-     * @param workspaceRoot Root of current workspace folder
-     */
-    async getWorkspaceTests(workspaceRoot: vscode.Uri): Promise<TestClass[]> {
-        return await this.useLanguageClient(async (client, token) => {
-            const tests = await client.sendRequest(workspaceTestsRequest, {}, token);
-            const testsInWorkspace = tests.filter(item =>
-                isPathInsidePath(
-                    client.protocol2CodeConverter.asLocation(item.location).uri.fsPath,
-                    workspaceRoot.fsPath
-                )
-            );
-            const classes = testsInWorkspace
-                .filter(item => {
-                    return (
-                        item.kind === langclient.SymbolKind.Class &&
-                        isPathInsidePath(
-                            client.protocol2CodeConverter.asLocation(item.location).uri.fsPath,
-                            workspaceRoot.fsPath
-                        )
-                    );
-                })
-                .map(item => {
-                    const functions = testsInWorkspace
-                        .filter(func => func.containerName === item.name)
-                        .map(func => {
-                            const openBrackets = func.name.indexOf("(");
-                            let funcName = func.name;
-                            if (openBrackets) {
-                                funcName = func.name.slice(0, openBrackets);
-                            }
-                            return {
-                                name: funcName,
-                                location: client.protocol2CodeConverter.asLocation(func.location),
-                            };
-                        });
-                    return {
-                        name: item.name,
-                        location: client.protocol2CodeConverter.asLocation(item.location),
-                        functions: functions,
-                    };
-                });
-            console.log(classes);
-            return classes;
-        });
     }
 
     /** Set folder for LSP server
