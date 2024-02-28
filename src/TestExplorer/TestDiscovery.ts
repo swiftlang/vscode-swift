@@ -79,17 +79,17 @@ export function updateTests(
     testController.items.forEach(targetItem => {
         const testTarget = testTargets.find(item => item.name === targetItem.id);
         if (testTarget) {
-            const targetId = testTarget.name;
+            const targetId = targetItem.id;
             targetItem.children.forEach(classItem => {
                 const testClass = testTarget.classes.find(
                     item => `${targetId}.${item.name}` === classItem.id
                 );
                 if (testClass) {
-                    const classId = `${targetId}.${testClass.name}`;
+                    const classId = classItem.id;
                     classItem.children.forEach(functionItem => {
                         // if we are filtering based on targets being one file and this
                         // function isn't in the file then ignore
-                        if (filterFile && functionItem.uri !== filterFile) {
+                        if (filterFile && functionItem.uri?.fsPath !== filterFile.fsPath) {
                             return;
                         }
                         const testFunction = testClass.functions.find(
@@ -102,8 +102,22 @@ export function updateTests(
                     if (classItem.children.size === 0) {
                         targetItem.children.delete(classItem.id);
                     }
-                } else if (!filterFile) {
-                    targetItem.children.delete(classItem.id);
+                } else {
+                    if (!filterFile) {
+                        targetItem.children.delete(classItem.id);
+                    } else if (classItem.uri?.fsPath === filterFile.fsPath) {
+                        // If filtering on a file and a class is in that file and all its
+                        // functions are in that file then delete the class
+                        let allInFilteredFile = true;
+                        classItem.children.forEach(func => {
+                            if (func.uri?.fsPath !== filterFile.fsPath) {
+                                allInFilteredFile = false;
+                            }
+                        });
+                        if (allInFilteredFile) {
+                            targetItem.children.delete(classItem.id);
+                        }
+                    }
                 }
             });
             if (targetItem.children.size === 0) {
