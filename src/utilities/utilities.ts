@@ -21,10 +21,6 @@ import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
 import { SwiftToolchain } from "../toolchain/toolchain";
 
-export interface ExecError {
-    error: Error;
-}
-
 /**
  * Get required environment variable for Swift product
  *
@@ -125,7 +121,7 @@ export async function execFileStreamOutput(
         let cancellation: vscode.Disposable;
         const p = cp.execFile(executable, args, options, error => {
             if (error) {
-                reject({ error });
+                reject(error);
             } else {
                 resolve();
             }

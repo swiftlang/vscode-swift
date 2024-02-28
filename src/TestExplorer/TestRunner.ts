@@ -15,9 +15,10 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as stream from "stream";
+import * as cp from "child_process";
 import { createTestConfiguration, createDarwinTestConfiguration } from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
-import { ExecError, execFileStreamOutput, getErrorDescription } from "../utilities/utilities";
+import { execFileStreamOutput, getErrorDescription } from "../utilities/utilities";
 import { getBuildAllTask } from "../SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
@@ -203,17 +204,6 @@ export class TestRunner {
                 await this.runSession(token, generateCoverage, runState);
             }
         } catch (error) {
-            // is error returned from child_process.exec call and command failed then
-            // skip reporting error
-            const execError = error as ExecError;
-            if (
-                execError &&
-                execError.error &&
-                execError.error.message.startsWith("Command failed")
-            ) {
-                this.testRun.end();
-                return;
-            }
             this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
         }
 
@@ -375,25 +365,43 @@ export class TestRunner {
                     "SIGKILL"
                 );
             }
+            outputStream.end();
+            parsedOutputStream.end();
         } catch (error) {
             outputStream.end();
             parsedOutputStream.end();
-            if (generateCoverage) {
-                await this.folderContext.lcovResults.generate();
-                if (configuration.displayCoverageReportAfterRun) {
-                    this.workspaceContext.testCoverageDocumentProvider.show(this.folderContext);
+            const execError = error as cp.ExecFileException;
+            if (execError.code === 1 && execError.killed === false) {
+                // Process returned an error code
+            } else if (execError.killed === true) {
+                // Process was killed
+                this.testRun.appendOutput(`\r\nProcess killed.`);
+                return;
+            } else if (execError.signal === "SIGILL") {
+                // Process crashed
+                this.testRun.appendOutput(`\r\nProcess crashed.`);
+                if (runState.currentTestItem) {
+                    const errorMessagesLines = execError.message.match(/[^\r\n]+/g);
+                    if (errorMessagesLines) {
+                        const message = new vscode.TestMessage(
+                            getErrorDescription(errorMessagesLines[errorMessagesLines.length - 1])
+                        );
+                        this.testRun.errored(runState.currentTestItem, message);
+                    } else {
+                        const message = new vscode.TestMessage(
+                            getErrorDescription(execError.message)
+                        );
+                        this.testRun.errored(runState.currentTestItem, message);
+                    }
                 }
+                return;
+            } else {
+                // Unrecognised error
+                this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
+                return;
             }
-            // report error
-            if (runState.currentTestItem) {
-                const message = new vscode.TestMessage(getErrorDescription(error));
-                this.testRun.errored(runState.currentTestItem, message);
-            }
-            throw error;
         }
 
-        outputStream.end();
-        parsedOutputStream.end();
         if (generateCoverage) {
             await this.folderContext.lcovResults.generate();
             if (configuration.displayCoverageReportAfterRun) {
