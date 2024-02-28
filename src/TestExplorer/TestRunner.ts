@@ -351,21 +351,29 @@ export class TestRunner {
                 await this.workspaceContext.tempFolder.withTemporaryFile("xml", async filename => {
                     const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
                     const args = ["test", "--parallel", "--xunit-output", filename];
-                    await execFileStreamOutput(
-                        this.workspaceContext.toolchain.getToolchainExecutable("swift"),
-                        [...args, ...filterArgs],
-                        stdout,
-                        stderr,
-                        token,
-                        {
-                            cwd: testBuildConfig.cwd,
-                            env: { ...process.env, ...testBuildConfig.env },
-                            maxBuffer: 16 * 1024 * 1024,
-                        },
-                        this.folderContext,
-                        false,
-                        "SIGINT" // use SIGINT to kill process as it is a child process of `swift test`
-                    );
+                    try {
+                        await execFileStreamOutput(
+                            this.workspaceContext.toolchain.getToolchainExecutable("swift"),
+                            [...args, ...filterArgs],
+                            stdout,
+                            stderr,
+                            token,
+                            {
+                                cwd: testBuildConfig.cwd,
+                                env: { ...process.env, ...testBuildConfig.env },
+                                maxBuffer: 16 * 1024 * 1024,
+                            },
+                            this.folderContext,
+                            false,
+                            "SIGINT" // use SIGINT to kill process as it is a child process of `swift test`
+                        );
+                    } catch (error) {
+                        const execError = error as cp.ExecFileException;
+                        if (!execError || execError.code !== 1 || execError.killed === true) {
+                            throw error;
+                        }
+                    }
+                    console.log("Done");
                 });
             } else {
                 if (process.platform === "darwin") {
