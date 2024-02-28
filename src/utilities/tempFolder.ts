@@ -37,6 +37,32 @@ export class TemporaryFolder {
     }
 
     /**
+     * Generate temporary filename, run process and delete file with filename once that
+     * process has finished
+     *
+     * @param prefix File prefix
+     * @param extension File extension
+     * @param process Process to run
+     * @returns return value of process
+     */
+    async withTemporaryFile<Return>(
+        extension: string,
+        process: {
+            (filename: string): Promise<Return>;
+        }
+    ): Promise<Return> {
+        const filename = this.filename("", extension);
+        try {
+            const rt = await process(filename);
+            await fs.rm(filename, { force: true });
+            return rt;
+        } catch (error) {
+            await fs.rm(filename, { force: true });
+            throw error;
+        }
+    }
+
+    /**
      * Create Temporary folder
      * @returns Temporary folder class
      */

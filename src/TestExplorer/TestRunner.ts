@@ -284,6 +284,7 @@ export class TestRunner {
         generateCoverage: boolean,
         runState: TestRunnerTestRunState
     ) {
+        const parallel = true;
         // create launch config for testing
         const testBuildConfig = this.createLaunchConfigurationForTesting(false);
         if (testBuildConfig === null) {
@@ -346,6 +347,26 @@ export class TestRunner {
                     false,
                     "SIGINT" // use SIGINT to kill process as it is a child process of `swift test`
                 );
+            } else if (parallel) {
+                await this.workspaceContext.tempFolder.withTemporaryFile("xml", async filename => {
+                    const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
+                    const args = ["test", "--parallel", "--xunit-output", filename];
+                    await execFileStreamOutput(
+                        this.workspaceContext.toolchain.getToolchainExecutable("swift"),
+                        [...args, ...filterArgs],
+                        stdout,
+                        stderr,
+                        token,
+                        {
+                            cwd: testBuildConfig.cwd,
+                            env: { ...process.env, ...testBuildConfig.env },
+                            maxBuffer: 16 * 1024 * 1024,
+                        },
+                        this.folderContext,
+                        false,
+                        "SIGINT" // use SIGINT to kill process as it is a child process of `swift test`
+                    );
+                });
             } else {
                 if (process.platform === "darwin") {
                     stdout = outputStream;
