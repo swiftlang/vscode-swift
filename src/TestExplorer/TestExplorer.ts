@@ -224,6 +224,7 @@ export class TestExplorer {
                         return;
                     }
 
+                    // Build target array from test list output by `swift test list`
                     const targets = new Array<TestDiscovery.TestTarget>();
                     for (const line of lines) {
                         // Regex "<testTarget>.<class>/<function>"
@@ -247,6 +248,7 @@ export class TestExplorer {
                         const testFunc = { name: funcName, location: undefined };
                         testClass.functions.push(testFunc);
                     }
+                    // Update tests from target array
                     TestDiscovery.updateTests(this.controller, targets);
                 }
             );
