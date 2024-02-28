@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
-import { TestClass } from "./TestDiscovery";
+import * as TestDiscovery from "./TestDiscovery";
 import { workspaceTestsRequest } from "../sourcekit-lsp/lspExtensions";
 import { isPathInsidePath } from "../utilities/utilities";
 import { LanguageClientManager } from "../sourcekit-lsp/LanguageClientManager";
@@ -35,7 +35,7 @@ export class LSPTestDiscovery {
      * Parses result of any document symbol request to add/remove tests from
      * the current file.
      */
-    getTests(symbols: vscode.DocumentSymbol[], uri: vscode.Uri): TestClass[] {
+    getTests(symbols: vscode.DocumentSymbol[], uri: vscode.Uri): TestDiscovery.TestClass[] {
         return symbols
             .filter(
                 symbol =>
@@ -52,20 +52,24 @@ export class LSPTestDiscovery {
                         if (openBrackets) {
                             funcName = func.name.slice(0, openBrackets);
                         }
-                        return { name: funcName, location: new vscode.Location(uri, func.range) };
+                        return {
+                            name: funcName,
+                            location: new vscode.Location(uri, func.range),
+                        };
                     });
                 const location =
                     symbol.kind === vscode.SymbolKind.Class
                         ? new vscode.Location(uri, symbol.range)
                         : undefined;
+                // As we cannot recognise if a symbol is a new XCTestCase class we have
+                // to treat everything as an extension of existing classes
                 return {
                     name: symbol.name,
                     location: location,
-                    extension: symbol.kind === vscode.SymbolKind.Namespace,
+                    extension: true, //symbol.kind === vscode.SymbolKind.Namespace
                     functions: functions,
                 };
             })
-            .filter(testClass => testClass.functions.length > 0)
             .reduce((result, current) => {
                 const index = result.findIndex(item => item.name === current.name);
                 if (index !== -1) {
@@ -76,14 +80,14 @@ export class LSPTestDiscovery {
                 } else {
                     return [...result, current];
                 }
-            }, new Array<TestClass>());
+            }, new Array<TestDiscovery.TestClass>());
     }
 
     /**
      * Return list of workspace tests
      * @param workspaceRoot Root of current workspace folder
      */
-    async getWorkspaceTests(workspaceRoot: vscode.Uri): Promise<TestClass[]> {
+    async getWorkspaceTests(workspaceRoot: vscode.Uri): Promise<TestDiscovery.TestClass[]> {
         return await this.languageClient.useLanguageClient(async (client, token) => {
             const tests = await client.sendRequest(workspaceTestsRequest, {}, token);
             const testsInWorkspace = tests.filter(item =>
@@ -122,7 +126,6 @@ export class LSPTestDiscovery {
                         functions: functions,
                     };
                 });
-            console.log(classes);
             return classes;
         });
     }
