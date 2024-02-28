@@ -158,6 +158,7 @@ export function updateTests(
     });
 }
 
+/** Create top level test item and add it to the test controller */
 function createTopLevelTestItem(
     testController: vscode.TestController,
     name: string,
@@ -168,6 +169,7 @@ function createTopLevelTestItem(
     return testItem;
 }
 
+/** Update a child test item or if it doesn't exist create a new test item  */
 function updateChildTestItem(
     testController: vscode.TestController,
     parent: vscode.TestItem,
