@@ -143,8 +143,21 @@ export class TestExplorer {
         const testExplorer = folder?.testExplorer;
         if (testExplorer && symbols && uri && uri.scheme === "file") {
             if (isPathInsidePath(uri.fsPath, folder.folder.fsPath)) {
-                const tests = testExplorer.lspTestDiscovery.getTests(symbols, uri);
-                TestDiscovery.updateTestsFromClasses(folder, tests, uri);
+                const target = folder.swiftPackage.getTarget(uri.fsPath);
+                if (target && target.type === "test") {
+                    const tests = testExplorer.lspTestDiscovery.getTests(symbols, uri);
+                    TestDiscovery.updateTests(
+                        testExplorer.controller,
+                        [
+                            {
+                                name: target.name,
+                                folder: vscode.Uri.file(target.path),
+                                classes: tests,
+                            },
+                        ],
+                        uri
+                    );
+                }
             }
         }
     }

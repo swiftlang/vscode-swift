@@ -29,7 +29,12 @@ import { LanguageClientManager } from "../sourcekit-lsp/LanguageClientManager";
  */
 export class LSPTestDiscovery {
     constructor(private languageClient: LanguageClientManager) {}
-
+    /**
+     * Used to augment test discovery via `swift test --list-tests`.
+     *
+     * Parses result of any document symbol request to add/remove tests from
+     * the current file.
+     */
     getTests(symbols: vscode.DocumentSymbol[], uri: vscode.Uri): TestClass[] {
         return symbols
             .filter(
@@ -40,6 +45,7 @@ export class LSPTestDiscovery {
             .map(symbol => {
                 const functions = symbol.children
                     .filter(func => func.kind === vscode.SymbolKind.Method)
+                    .filter(func => func.name.match(/^test.*\(\)/))
                     .map(func => {
                         const openBrackets = func.name.indexOf("(");
                         let funcName = func.name;
@@ -48,16 +54,24 @@ export class LSPTestDiscovery {
                         }
                         return { name: funcName, location: new vscode.Location(uri, func.range) };
                     });
+                const location =
+                    symbol.kind === vscode.SymbolKind.Class
+                        ? new vscode.Location(uri, symbol.range)
+                        : undefined;
                 return {
                     name: symbol.name,
-                    location: new vscode.Location(uri, symbol.range),
+                    location: location,
+                    extension: symbol.kind === vscode.SymbolKind.Namespace,
                     functions: functions,
                 };
             })
+            .filter(testClass => testClass.functions.length > 0)
             .reduce((result, current) => {
                 const index = result.findIndex(item => item.name === current.name);
                 if (index !== -1) {
                     result[index].functions = [...result[index].functions, ...current.functions];
+                    result[index].location = result[index].location ?? current.location;
+                    result[index].extension = result[index].extension || current.extension;
                     return result;
                 } else {
                     return [...result, current];

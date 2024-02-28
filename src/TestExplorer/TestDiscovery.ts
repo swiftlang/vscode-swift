@@ -15,28 +15,36 @@
 import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 
+/** Test function definition */
 export interface TestFunction {
     name: string;
-    location: vscode.Location;
+    location?: vscode.Location;
 }
 
+/** Test class definition */
 export interface TestClass {
     name: string;
-    location: vscode.Location;
+    location?: vscode.Location;
+    extension?: boolean;
     functions: TestFunction[];
 }
 
+/** Test target definition */
 export interface TestTarget {
     name: string;
     folder: vscode.Uri;
     classes: TestClass[];
 }
 
-export function updateTestsFromClasses(
-    folderContext: FolderContext,
-    testClasses: TestClass[],
-    filterFile?: vscode.Uri
-) {
+/**
+ * Update Test Controller TestItems based off array of TestClasses.
+ *
+ * The function creates the TestTargets based off the test targets in the Swift
+ * Package
+ * @param folderContext Folder test classes came
+ * @param testClasses Array of test classes
+ */
+export function updateTestsFromClasses(folderContext: FolderContext, testClasses: TestClass[]) {
     const testExplorer = folderContext.testExplorer;
     if (!testExplorer) {
         return;
@@ -44,6 +52,7 @@ export function updateTestsFromClasses(
     const targets = folderContext.swiftPackage.getTargets("test").map(target => {
         const classes = testClasses.filter(
             testClass =>
+                testClass.location &&
                 folderContext.swiftPackage.getTarget(testClass.location.uri.fsPath) === target
         );
         return {
@@ -52,9 +61,15 @@ export function updateTestsFromClasses(
             classes: classes,
         };
     });
-    updateTests(testExplorer.controller, targets, filterFile);
+    updateTests(testExplorer.controller, targets);
 }
 
+/**
+ * Update Test Controller TestItems based off array of TestTargets
+ * @param testController Test controller
+ * @param testTargets Array of TestTargets
+ * @param filterFile Filter test deletion just for tests in the one file
+ */
 export function updateTests(
     testController: vscode.TestController,
     testTargets: TestTarget[],
@@ -84,10 +99,16 @@ export function updateTests(
                             classItem.children.delete(functionItem.id);
                         }
                     });
+                    if (classItem.children.size === 0) {
+                        targetItem.children.delete(classItem.id);
+                    }
                 } else if (!filterFile) {
                     targetItem.children.delete(classItem.id);
                 }
             });
+            if (targetItem.children.size === 0) {
+                testController.items.delete(targetItem.id);
+            }
         } else if (!filterFile) {
             testController.items.delete(targetItem.id);
         }
@@ -104,17 +125,21 @@ export function updateTests(
                 targetItem,
                 testClass.name,
                 ".",
+                testClass.extension !== true,
                 testClass.location
             );
-            testClass.functions.forEach(testFunction => {
-                updateChildTestItem(
-                    testController,
-                    classItem,
-                    testFunction.name,
-                    "/",
-                    testFunction.location
-                );
-            });
+            if (classItem) {
+                testClass.functions.forEach(testFunction => {
+                    updateChildTestItem(
+                        testController,
+                        classItem,
+                        testFunction.name,
+                        "/",
+                        true,
+                        testFunction.location
+                    );
+                });
+            }
         });
     });
 }
@@ -134,16 +159,19 @@ function updateChildTestItem(
     parent: vscode.TestItem,
     name: string,
     separator: string,
+    addNewItem: boolean,
     location?: vscode.Location
-): vscode.TestItem {
+): vscode.TestItem | undefined {
     const id = `${parent.id}${separator}${name}`;
     const testItem = parent.children.get(id);
     if (testItem) {
-        if (testItem.uri === location?.uri) {
+        if (testItem.uri?.fsPath === location?.uri.fsPath || location === undefined) {
             testItem.range = location?.range;
             return testItem;
         }
         parent.children.delete(testItem.id);
+    } else if (addNewItem === false) {
+        return undefined;
     }
     const newTestItem = testController.createTestItem(id, name, location?.uri);
     newTestItem.range = location?.range;
