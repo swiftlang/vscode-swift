@@ -219,66 +219,38 @@ export class TestExplorer {
                     // if we got to this point we can get rid of any error test item
                     this.deleteErrorTestItem();
 
-                    // extract tests from `swift test --list-tests` output
-                    const results = stdout.match(/^.*\.[a-zA-Z0-9_]*\/.*$/gm);
-                    if (!results) {
+                    const lines = stdout.match(/[^\r\n]+/g);
+                    if (!lines) {
                         return;
                     }
 
-                    // remove TestItems that aren't in either the swift test output or the LSP symbol list
-                    this.controller.items.forEach(targetItem => {
-                        targetItem.children.forEach(classItem => {
-                            classItem.children.forEach(funcItem => {
-                                const testName = `${targetItem.label}.${classItem.label}/${funcItem.label}`;
-                                if (
-                                    !results.find(item => item === testName) /* &&
-                                    !this.lspFunctionParser?.includesFunction(
-                                        targetItem.label,
-                                        classItem.label,
-                                        funcItem.label
-                                    )*/
-                                ) {
-                                    classItem.children.delete(funcItem.id);
-                                }
-                            });
-                            // delete class if it is empty
-                            if (classItem.children.size === 0) {
-                                targetItem.children.delete(classItem.id);
-                            }
-                        });
-                    });
-
-                    for (const result of results) {
+                    const targets = new Array<TestDiscovery.TestTarget>();
+                    for (const line of lines) {
                         // Regex "<testTarget>.<class>/<function>"
-                        const groups = /^([\w\d_]*)\.([\w\d_]*)\/(.*)$/.exec(result);
+                        const groups = /^([\w\d_]*)\.([\w\d_]*)\/(.*)$/.exec(line);
                         if (!groups) {
                             continue;
                         }
-                        let targetItem = this.controller.items.get(groups[1]);
-                        if (!targetItem) {
-                            targetItem = this.controller.createTestItem(groups[1], groups[1]);
-                            this.controller.items.add(targetItem);
+                        const targetName = groups[1];
+                        const className = groups[2];
+                        const funcName = groups[3];
+                        let target = targets.find(item => item.name === targetName);
+                        if (!target) {
+                            target = { name: targetName, folder: undefined, classes: [] };
+                            targets.push(target);
                         }
-                        let classItem = targetItem.children.get(`${groups[1]}.${groups[2]}`);
-                        if (!classItem) {
-                            classItem = this.controller.createTestItem(
-                                `${groups[1]}.${groups[2]}`,
-                                groups[2]
-                            );
-                            targetItem.children.add(classItem);
+                        let testClass = target.classes.find(item => item.name === className);
+                        if (!testClass) {
+                            testClass = { name: className, location: undefined, functions: [] };
+                            target.classes.push(testClass);
                         }
-                        if (!classItem.children.get(result)) {
-                            const item = this.controller.createTestItem(result, groups[3]);
-                            classItem.children.add(item);
-                        }
+                        const testFunc = { name: funcName, location: undefined };
+                        testClass.functions.push(testFunc);
                     }
+                    TestDiscovery.updateTests(this.controller, targets);
                 }
             );
             await this.folderContext.taskQueue.queueOperation(listTestsOperation);
-
-            // add items to target test item as the setActive call above may not have done this
-            // because the test target item did not exist when it was called
-            //this.lspFunctionParser?.addTestItems();
         } catch (error) {
             const errorDescription = getErrorDescription(error);
             if (
