@@ -13,15 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { FolderContext } from "../FolderContext";
-
-class LSPClass {
-    constructor(public className: string, public range?: vscode.Range) {}
-}
-
-class LSPFunction {
-    constructor(public className: string, public funcName: string, public range?: vscode.Range) {}
-}
+import * as langclient from "vscode-languageclient/node";
+import * as TestDiscovery from "./TestDiscovery";
+import { workspaceTestsRequest } from "../sourcekit-lsp/lspExtensions";
+import { isPathInsidePath } from "../utilities/utilities";
+import { LanguageClientManager } from "../sourcekit-lsp/LanguageClientManager";
 
 /**
  * Used to augment test discovery via `swift test --list-tests`.
@@ -32,197 +28,105 @@ class LSPFunction {
  * these results.
  */
 export class LSPTestDiscovery {
-    private classes: LSPClass[];
-    private functions: LSPFunction[];
-    private testTargetName?: string;
-
-    constructor(
-        public uri: vscode.Uri,
-        private folderContext: FolderContext,
-        private controller: vscode.TestController
-    ) {
-        this.testTargetName = this.folderContext.getTestTarget(uri)?.name;
-        this.classes = [];
-        this.functions = [];
-    }
-
+    constructor(private languageClient: LanguageClientManager) {}
     /**
-     * Return if function was found via LSP server symbol search
-     * @param targetName Target name
-     * @param className Class name
-     * @param funcName Function name
-     * @returns Function from by LSP server symbol search
+     * Used to augment test discovery via `swift test --list-tests`.
+     *
+     * Parses result of any document symbol request to add/remove tests from
+     * the current file.
      */
-    includesFunction(targetName: string, className: string, funcName: string): boolean {
-        if (targetName !== this.testTargetName) {
-            return false;
-        }
-        return (
-            this.functions.find(
-                element => element.className === className && element.funcName === funcName
-            ) !== undefined
-        );
-    }
-
-    /**
-     * Add test items for the symbols we have found so far
-     */
-    addTestItems() {
-        if (!this.testTargetName) {
-            return;
-        }
-        const targetItem = this.controller.items.get(this.testTargetName);
-        if (!targetItem) {
-            return;
-        }
-        this.addTestItemsToTarget(targetItem);
-    }
-
-    /**
-     * Update test items based on document symbols returned from LSP server
-     * @param symbols Document symbols returned from LSP server
-     */
-    updateTestItems(symbols: vscode.DocumentSymbol[]) {
-        if (!this.testTargetName) {
-            return;
-        }
-
-        const results = this.parseSymbolList(symbols);
-
-        const targetItem = this.controller.items.get(this.testTargetName);
-        if (!targetItem) {
-            // if didn't find target item it probably hasn't been constructed yet
-            // store the results for later use and return
-            this.functions = results.functions;
-            this.classes = results.classes;
-            return;
-        }
-        const functions = results.functions;
-        const deletedFunctions: LSPFunction[] = [];
-        this.functions.forEach(element => {
-            if (
-                !functions.find(
-                    element2 =>
-                        element.className === element2.className &&
-                        element.funcName === element2.funcName
-                )
-            ) {
-                deletedFunctions.push(element);
-            }
-        });
-        this.functions = functions;
-        this.classes = results.classes;
-
-        this.addTestItemsToTarget(targetItem);
-
-        // delete functions that are no longer here
-        for (const f of deletedFunctions) {
-            const classId = `${this.testTargetName}.${f.className}`;
-            const classItem = targetItem.children.get(classId);
-            if (!classItem) {
-                continue;
-            }
-            const funcId = `${this.testTargetName}.${f.className}/${f.funcName}`;
-            classItem.children.delete(funcId);
-        }
-
-        // delete any empty classes
-        targetItem.children.forEach(classItem => {
-            if (classItem.children.size === 0) {
-                targetItem.children.delete(classItem.id);
-            }
-        });
-    }
-
-    /** Add test items for LSP server results */
-    private addTestItemsToTarget(targetItem: vscode.TestItem) {
-        const targetName = targetItem.id;
-        // set class positions
-        for (const c of this.classes) {
-            const classId = `${targetName}.${c.className}`;
-            const classItem = targetItem.children.get(classId);
-            if (!classItem) {
-                continue;
-            }
-            if (!classItem.uri) {
-                // Unfortunately TestItem.uri is readonly so have to create a new TestItem
-                const children = classItem.children;
-                targetItem.children.delete(classId);
-                const newItem = this.controller.createTestItem(classId, c.className, this.uri);
-                children.forEach(child => newItem.children.add(child));
-                newItem.range = c.range;
-                targetItem.children.add(newItem);
-            } else {
-                classItem.range = c.range;
-            }
-        }
-
-        // add functions that didn't exist before
-        for (const f of this.functions) {
-            const classId = `${targetName}.${f.className}`;
-            const classItem = targetItem.children.get(classId);
-            if (!classItem) {
-                continue;
-            }
-            const funcId = `${targetName}.${f.className}/${f.funcName}`;
-            const funcItem = classItem.children.get(funcId);
-            if (!funcItem) {
-                const item = this.controller.createTestItem(funcId, f.funcName, this.uri);
-                item.range = f.range;
-                classItem.children.add(item);
-            } else {
-                // set function item uri and location
-                if (!funcItem.uri) {
-                    // Unfortunately TestItem.uri is readonly so have to create a new TestItem
-                    // if we want to set the uri.
-                    classItem.children.delete(funcId);
-                    const newItem = this.controller.createTestItem(funcId, f.funcName, this.uri);
-                    newItem.range = f.range;
-                    classItem.children.add(newItem);
+    getTests(symbols: vscode.DocumentSymbol[], uri: vscode.Uri): TestDiscovery.TestClass[] {
+        return symbols
+            .filter(
+                symbol =>
+                    symbol.kind === vscode.SymbolKind.Class ||
+                    symbol.kind === vscode.SymbolKind.Namespace
+            )
+            .map(symbol => {
+                const functions = symbol.children
+                    .filter(func => func.kind === vscode.SymbolKind.Method)
+                    .filter(func => func.name.match(/^test.*\(\)/))
+                    .map(func => {
+                        const openBrackets = func.name.indexOf("(");
+                        let funcName = func.name;
+                        if (openBrackets) {
+                            funcName = func.name.slice(0, openBrackets);
+                        }
+                        return {
+                            name: funcName,
+                            location: new vscode.Location(uri, func.range),
+                        };
+                    });
+                const location =
+                    symbol.kind === vscode.SymbolKind.Class
+                        ? new vscode.Location(uri, symbol.range)
+                        : undefined;
+                // As we cannot recognise if a symbol is a new XCTestCase class we have
+                // to treat everything as an extension of existing classes
+                return {
+                    name: symbol.name,
+                    location: location,
+                    extension: true, //symbol.kind === vscode.SymbolKind.Namespace
+                    functions: functions,
+                };
+            })
+            .reduce((result, current) => {
+                const index = result.findIndex(item => item.name === current.name);
+                if (index !== -1) {
+                    result[index].functions = [...result[index].functions, ...current.functions];
+                    result[index].location = result[index].location ?? current.location;
+                    result[index].extension = result[index].extension || current.extension;
+                    return result;
                 } else {
-                    funcItem.range = f.range;
+                    return [...result, current];
                 }
-            }
-        }
+            }, new Array<TestDiscovery.TestClass>());
     }
 
     /**
-     * Get list of class methods that start with the prefix "test" and have no parameters
-     * ie possible test functions
+     * Return list of workspace tests
+     * @param workspaceRoot Root of current workspace folder
      */
-    parseSymbolList(symbols: vscode.DocumentSymbol[]): {
-        classes: LSPClass[];
-        functions: LSPFunction[];
-    } {
-        const resultClasses: LSPClass[] = [];
-        const results: LSPFunction[] = [];
-
-        // filter is class or extension
-        const classes = symbols.filter(
-            item =>
-                item.kind === vscode.SymbolKind.Class || item.kind === vscode.SymbolKind.Namespace
-        );
-        classes.forEach(c => {
-            // add class with position
-            if (c.kind === vscode.SymbolKind.Class) {
-                resultClasses.push({
-                    className: c.name,
-                    range: c.range,
-                });
-            }
-            // filter test methods
-            const testFunctions = c.children?.filter(
-                child => child.kind === vscode.SymbolKind.Method && child.name.match(/^test.*\(\)/)
+    async getWorkspaceTests(workspaceRoot: vscode.Uri): Promise<TestDiscovery.TestClass[]> {
+        return await this.languageClient.useLanguageClient(async (client, token) => {
+            const tests = await client.sendRequest(workspaceTestsRequest, {}, token);
+            const testsInWorkspace = tests.filter(item =>
+                isPathInsidePath(
+                    client.protocol2CodeConverter.asLocation(item.location).uri.fsPath,
+                    workspaceRoot.fsPath
+                )
             );
-            testFunctions?.forEach(func => {
-                // drop "()" from function name
-                results.push({
-                    className: c.name,
-                    funcName: func.name.slice(0, -2),
-                    range: func.range,
+            const classes = testsInWorkspace
+                .filter(item => {
+                    return (
+                        item.kind === langclient.SymbolKind.Class &&
+                        isPathInsidePath(
+                            client.protocol2CodeConverter.asLocation(item.location).uri.fsPath,
+                            workspaceRoot.fsPath
+                        )
+                    );
+                })
+                .map(item => {
+                    const functions = testsInWorkspace
+                        .filter(func => func.containerName === item.name)
+                        .map(func => {
+                            const openBrackets = func.name.indexOf("(");
+                            let funcName = func.name;
+                            if (openBrackets) {
+                                funcName = func.name.slice(0, openBrackets);
+                            }
+                            return {
+                                name: funcName,
+                                location: client.protocol2CodeConverter.asLocation(func.location),
+                            };
+                        });
+                    return {
+                        name: item.name,
+                        location: client.protocol2CodeConverter.asLocation(item.location),
+                        functions: functions,
+                    };
                 });
-            });
+            return classes;
         });
-        return { classes: resultClasses, functions: results };
     }
 }

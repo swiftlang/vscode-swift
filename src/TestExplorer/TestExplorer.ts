@@ -22,12 +22,13 @@ import { Version } from "../utilities/version";
 import configuration from "../configuration";
 import { buildOptions, getBuildAllTask } from "../SwiftTaskProvider";
 import { SwiftExecOperation, TaskOperation } from "../TaskQueue";
+import * as TestDiscovery from "./TestDiscovery";
 
 /** Build test explorer UI */
 export class TestExplorer {
     static errorTestItemId = "#Error#";
     public controller: vscode.TestController;
-    private lspFunctionParser?: LSPTestDiscovery;
+    private lspTestDiscovery: LSPTestDiscovery;
     private subscriptions: { dispose(): unknown }[];
     private testFileEdited = true;
 
@@ -47,6 +48,10 @@ export class TestExplorer {
 
         TestRunner.setupProfiles(this.controller, this.folderContext);
 
+        this.lspTestDiscovery = new LSPTestDiscovery(
+            folderContext.workspaceContext.languageClientManager
+        );
+
         // add end of task handler to be called whenever a build task has finished. If
         // it is the build task for this folder then update the tests
         const onDidEndTask = folderContext.workspaceContext.tasks.onDidEndTaskProcess(event => {
@@ -60,7 +65,7 @@ export class TestExplorer {
                 task.definition.dontTriggerTestDiscovery !== true &&
                 this.testFileEdited
             ) {
-                this.testFileEdited = false;
+                //this.testFileEdited = false;
                 // only run discover tests if the library has tests
                 if (this.folderContext.swiftPackage.getTargets("test").length > 0) {
                     this.discoverTestsInWorkspace();
@@ -138,16 +143,37 @@ export class TestExplorer {
         const testExplorer = folder?.testExplorer;
         if (testExplorer && symbols && uri && uri.scheme === "file") {
             if (isPathInsidePath(uri.fsPath, folder.folder.fsPath)) {
-                if (testExplorer.lspFunctionParser?.uri === uri) {
-                    testExplorer.lspFunctionParser.updateTestItems(symbols);
-                } else {
-                    testExplorer.lspFunctionParser = new LSPTestDiscovery(
-                        uri,
-                        folder,
-                        testExplorer.controller
+                const target = folder.swiftPackage.getTarget(uri.fsPath);
+                if (target && target.type === "test") {
+                    const tests = testExplorer.lspTestDiscovery.getTests(symbols, uri);
+                    TestDiscovery.updateTests(
+                        testExplorer.controller,
+                        [
+                            {
+                                name: target.name,
+                                folder: vscode.Uri.file(target.path),
+                                classes: tests,
+                            },
+                        ],
+                        uri
                     );
-                    testExplorer.lspFunctionParser.updateTestItems(symbols);
                 }
+            }
+        }
+    }
+
+    /**
+     * Discover tests
+     */
+    async discoverTestsInWorkspace() {
+        const toolchain = this.folderContext.workspaceContext.toolchain;
+        if (toolchain.swiftVersion.isLessThan(new Version(5, 11, 0))) {
+            await this.discoverTestsInWorkspaceSPM();
+        } else {
+            try {
+                await this.discoverTestsInWorkspaceLSP();
+            } catch {
+                await this.discoverTestsInWorkspaceSPM();
             }
         }
     }
@@ -156,7 +182,7 @@ export class TestExplorer {
      * Discover tests
      * Uses `swift test --list-tests` to get the list of tests
      */
-    async discoverTestsInWorkspace() {
+    async discoverTestsInWorkspaceSPM() {
         try {
             const toolchain = this.folderContext.workspaceContext.toolchain;
             // get build options before build is run so we can be sure they aren't changed
@@ -205,12 +231,12 @@ export class TestExplorer {
                             classItem.children.forEach(funcItem => {
                                 const testName = `${targetItem.label}.${classItem.label}/${funcItem.label}`;
                                 if (
-                                    !results.find(item => item === testName) &&
+                                    !results.find(item => item === testName) /* &&
                                     !this.lspFunctionParser?.includesFunction(
                                         targetItem.label,
                                         classItem.label,
                                         funcItem.label
-                                    )
+                                    )*/
                                 ) {
                                     classItem.children.delete(funcItem.id);
                                 }
@@ -252,7 +278,7 @@ export class TestExplorer {
 
             // add items to target test item as the setActive call above may not have done this
             // because the test target item did not exist when it was called
-            this.lspFunctionParser?.addTestItems();
+            //this.lspFunctionParser?.addTestItems();
         } catch (error) {
             const errorDescription = getErrorDescription(error);
             if (
@@ -274,6 +300,16 @@ export class TestExplorer {
                 this.folderContext.name
             );
         }
+    }
+
+    /**
+     * Discover tests
+     */
+    async discoverTestsInWorkspaceLSP() {
+        const tests = await this.lspTestDiscovery.getWorkspaceTests(
+            this.folderContext.workspaceFolder.uri
+        );
+        TestDiscovery.updateTestsFromClasses(this.folderContext, tests);
     }
 
     /** Delete TestItem with error id */
