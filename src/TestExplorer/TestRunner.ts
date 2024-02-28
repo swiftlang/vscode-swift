@@ -372,7 +372,7 @@ export class TestRunner {
             parsedOutputStream.end();
             const execError = error as cp.ExecFileException;
             if (execError.code === 1 && execError.killed === false) {
-                // Process returned an error code
+                // Process returned an error code probably because a test failed
             } else if (execError.killed === true) {
                 // Process was killed
                 this.testRun.appendOutput(`\r\nProcess killed.`);
@@ -381,6 +381,7 @@ export class TestRunner {
                 // Process crashed
                 this.testRun.appendOutput(`\r\nProcess crashed.`);
                 if (runState.currentTestItem) {
+                    // get last line of error message, which should include why it crashed
                     const errorMessagesLines = execError.message.match(/[^\r\n]+/g);
                     if (errorMessagesLines) {
                         const message = new vscode.TestMessage(
