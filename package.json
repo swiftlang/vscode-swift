@@ -1096,18 +1096,20 @@
     "@typescript-eslint/eslint-plugin": "^6.1.0",
     "@typescript-eslint/parser": "^6.1.0",
     "@vscode/test-electron": "^2.3.8",
+    "@vscode/vsce": "^2.19.0",
+    "@types/xml2js": "^0.4.14",
     "esbuild": "^0.20.1",
     "eslint": "^8.1.0",
     "eslint-config-prettier": "^8.3.0",
     "glob": "~7.1.7",
     "mocha": "^10.2.0",
     "prettier": "2.5.1",
-    "typescript": "^5.1.3",
-    "@vscode/vsce": "^2.19.0"
+    "typescript": "^5.1.3"
   },
   "dependencies": {
+    "lcov-parse": "^1.0.0",
     "plist": "^3.1.0",
     "vscode-languageclient": "^9.0.1",
-    "lcov-parse": "^1.0.0"
+    "xml2js": "^0.6.2"
   }
 }

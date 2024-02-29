@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021-2022 the VSCode Swift project authors
+// Copyright (c) 2021-2024 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -16,6 +16,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as stream from "stream";
 import * as cp from "child_process";
+import * as asyncfs from "fs/promises";
 import { createTestConfiguration, createDarwinTestConfiguration } from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
 import { execFileStreamOutput, getErrorDescription } from "../utilities/utilities";
@@ -32,6 +33,7 @@ import {
 import { Version } from "../utilities/version";
 import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
 import { TaskOperation } from "../TaskQueue";
+import { TestXUnitParser, iXUnitTestState } from "./TestXUnitParser";
 
 /** Class used to run tests */
 export class TestRunner {
@@ -373,7 +375,16 @@ export class TestRunner {
                             throw error;
                         }
                     }
-                    console.log("Done");
+                    const buffer = await asyncfs.readFile(filename, "utf8");
+                    const xUnitParser = new TestXUnitParser();
+                    await xUnitParser.parse(
+                        buffer,
+                        new TestRunnerXUnitTestState(
+                            this.testItems,
+                            this.testRun,
+                            this.folderContext
+                        )
+                    );
                 });
             } else {
                 if (process.platform === "darwin") {
@@ -699,6 +710,34 @@ class TestRunnerTestRunState implements iTestRunState {
         const lastClassTestItem = this.lastTestItem?.parent;
         if (lastClassTestItem && lastClassTestItem.id.endsWith(`.${name}`)) {
             this.testRun.failed(lastClassTestItem, []);
+        }
+    }
+}
+
+class TestRunnerXUnitTestState implements iXUnitTestState {
+    constructor(
+        public testItems: vscode.TestItem[],
+        private testRun: vscode.TestRun,
+        private folderContext: FolderContext
+    ) {}
+
+    passTest(id: string, duration: number): void {
+        const item = this.testItems.find(item => item.id === id);
+        if (item) {
+            this.testRun.passed(item, duration);
+        }
+    }
+    failTest(id: string, duration: number, message?: string): void {
+        const item = this.testItems.find(item => item.id === id);
+        if (item) {
+            const testMessage = new vscode.TestMessage(message ?? "Failed");
+            this.testRun.failed(item, testMessage, duration);
+        }
+    }
+    skipTest(id: string): void {
+        const item = this.testItems.find(item => item.id === id);
+        if (item) {
+            this.testRun.skipped(item);
         }
     }
 }
