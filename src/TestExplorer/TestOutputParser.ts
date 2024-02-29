@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021-2023 the VSCode Swift project authors
+// Copyright (c) 2021-2024 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -12,106 +12,64 @@
 //
 //===----------------------------------------------------------------------===//
 
+/** Regex for parsing XCTest output */
+export interface TestRegex {
+    started: RegExp;
+    passed: RegExp;
+    failed: RegExp;
+    error: RegExp;
+    skipped: RegExp;
+    startedSuite: RegExp;
+    passedSuite: RegExp;
+    failedSuite: RegExp;
+}
+
+/** Regex for parsing darwin XCTest output */
+export const darwinTestRegex = {
+    // Regex "Test Case '-[<test target> <class.function>]' started"
+    started: /^Test Case '-\[(\S+)\s(.*)\]' started./,
+    // Regex "Test Case '-[<test target> <class.function>]' passed (<duration> seconds)"
+    passed: /^Test Case '-\[(\S+)\s(.*)\]' passed \((\d.*) seconds\)/,
+    // Regex "Test Case '-[<test target> <class.function>]' failed (<duration> seconds)"
+    failed: /^Test Case '-\[(\S+)\s(.*)\]' failed \((\d.*) seconds\)/,
+    // Regex "<path/to/test>:<line number>: error: -[<test target> <class.function>] : <error>"
+    error: /^(.+):(\d+):\serror:\s-\[(\S+)\s(.*)\] : (.*)$/,
+    // Regex "<path/to/test>:<line number>: -[<test target> <class.function>] : Test skipped"
+    skipped: /^(.+):(\d+):\s-\[(\S+)\s(.*)\] : Test skipped/,
+    // Regex "Test Suite '-[<test target> <class.function>]' started"
+    startedSuite: /^Test Suite '(.*)' started/,
+    // Regex "Test Suite '-[<test target> <class.function>]' passed"
+    passedSuite: /^Test Suite '(.*)' passed/,
+    // Regex "Test Suite '-[<test target> <class.function>]' failed"
+    failedSuite: /^Test Suite '(.*)' failed/,
+};
+
+/** Regex for parsing non darwin XCTest output */
+export const nonDarwinTestRegex = {
+    // Regex "Test Case '-[<test target> <class.function>]' started"
+    started: /^Test Case '(.*)\.(.*)' started/,
+    // Regex "Test Case '<class>.<function>' passed (<duration> seconds)"
+    passed: /^Test Case '(.*)\.(.*)' passed \((\d.*) seconds\)/,
+    // Regex "Test Case '-[<test target> <class.function>]' failed (<duration> seconds)"
+    failed: /^Test Case '(.*)\.(.*)' failed \((\d.*) seconds\)/,
+    // Regex "<path/to/test>:<line number>: error: <class>.<function> : <error>"
+    error: /^(.+):(\d+):\serror:\s*(.*)\.(.*) : (.*)/,
+    // Regex "<path/to/test>:<line number>: <class>.<function> : Test skipped"
+    skipped: /^(.+):(\d+):\s*(.*)\.(.*) : Test skipped/,
+    // Regex "Test Suite '-[<test target> <class.function>]' started"
+    startedSuite: /^Test Suite '(.*)' started/,
+    // Regex "Test Suite '-[<test target> <class.function>]' passed"
+    passedSuite: /^Test Suite '(.*)' passed/,
+    // Regex "Test Suite '-[<test target> <class.function>]' failed"
+    failedSuite: /^Test Suite '(.*)' failed/,
+};
+
 export class TestOutputParser {
     /**
-     * Parse results from `swift test` and update tests accordingly for Darwin platforms
+     * Parse results from `swift test` and update tests accordingly
      * @param output Output from `swift test`
      */
-    public parseResultDarwin(output: string, runState: iTestRunState) {
-        const output2 = output.replace(/\r\n/g, "\n");
-        const lines = output2.split("\n");
-        if (runState.excess) {
-            lines[0] = runState.excess + lines[0];
-        }
-        // pop empty string off the end of the lines array
-        if (lines.length > 0 && lines[lines.length - 1] === "") {
-            lines.pop();
-        }
-        // if submitted text does not end with a newline then pop that off and store in excess
-        // for next call of parseResultDarwin
-        if (output2[output2.length - 1] !== "\n") {
-            runState.excess = lines.pop();
-        } else {
-            runState.excess = undefined;
-        }
-
-        for (const line of lines) {
-            // Regex "Test Case '-[<test target> <class.function>]' started"
-            const startedMatch = /^Test Case '-\[(\S+)\s(.*)\]' started./.exec(line);
-            if (startedMatch) {
-                const testId = `${startedMatch[1]}/${startedMatch[2]}`;
-                this.startTest(runState.getTestItemIndexDarwin(testId), runState);
-                continue;
-            }
-            // Regex "Test Case '-[<test target> <class.function>]' passed (<duration> seconds)"
-            const passedMatch = /^Test Case '-\[(\S+)\s(.*)\]' passed \((\d.*) seconds\)/.exec(
-                line
-            );
-            if (passedMatch) {
-                const testId = `${passedMatch[1]}/${passedMatch[2]}`;
-                const duration: number = +passedMatch[3];
-                this.passTest(runState.getTestItemIndexDarwin(testId), duration, runState);
-                continue;
-            }
-            // Regex "Test Case '-[<test target> <class.function>]' failed (<duration> seconds)"
-            const failedMatch = /^Test Case '-\[(\S+)\s(.*)\]' failed \((\d.*) seconds\)/.exec(
-                line
-            );
-            if (failedMatch) {
-                const testId = `${failedMatch[1]}/${failedMatch[2]}`;
-                const duration: number = +failedMatch[3];
-                this.failTest(runState.getTestItemIndexDarwin(testId), duration, runState);
-                continue;
-            }
-            // Regex "<path/to/test>:<line number>: error: -[<test target> <class.function>] : <error>"
-            const errorMatch = /^(.+):(\d+):\serror:\s-\[(\S+)\s(.*)\] : (.*)$/.exec(line);
-            if (errorMatch) {
-                const testId = `${errorMatch[3]}/${errorMatch[4]}`;
-                this.startErrorMessage(
-                    runState.getTestItemIndexDarwin(testId),
-                    errorMatch[5],
-                    errorMatch[1],
-                    errorMatch[2],
-                    runState
-                );
-                continue;
-            }
-            // Regex "<path/to/test>:<line number>: -[<test target> <class.function>] : Test skipped"
-            const skippedMatch = /^(.+):(\d+):\s-\[(\S+)\s(.*)\] : Test skipped/.exec(line);
-            if (skippedMatch) {
-                const testId = `${skippedMatch[3]}/${skippedMatch[4]}`;
-                this.skipTest(runState.getTestItemIndexDarwin(testId), runState);
-                continue;
-            }
-            // Regex "Test Suite '-[<test target> <class.function>]' started"
-            const startedSuiteMatch = /^Test Suite '(.*)' started/.exec(line);
-            if (startedSuiteMatch) {
-                this.startTestSuite(startedSuiteMatch[1], runState);
-                continue;
-            }
-            // Regex "Test Suite '-[<test target> <class.function>]' passed"
-            const passedSuiteMatch = /^Test Suite '(.*)' passed/.exec(line);
-            if (passedSuiteMatch) {
-                this.passTestSuite(passedSuiteMatch[1], runState);
-                continue;
-            }
-            // Regex "Test Suite '-[<test target> <class.function>]' failed"
-            const failedSuiteMatch = /^Test Suite '(.*)' failed/.exec(line);
-            if (failedSuiteMatch) {
-                this.failTestSuite(failedSuiteMatch[1], runState);
-                continue;
-            }
-            // unrecognised output could be the continuation of a previous error message
-            this.continueErrorMessage(line, runState);
-        }
-    }
-
-    /**
-     * Parse results from `swift test` and update tests accordingly for non Darwin
-     * platforms eg Linux and Windows
-     * @param output Output from `swift test`
-     */
-    public parseResultNonDarwin(output: string, runState: iTestRunState) {
+    public parseResult(output: string, runState: iTestRunState, regex: TestRegex) {
         const output2 = output.replace(/\r\n/g, "\n");
         const lines = output2.split("\n");
         if (runState.excess) {
@@ -138,26 +96,26 @@ export class TestOutputParser {
         // the above method is unsuccessful.
         for (const line of lines) {
             // Regex "Test Case '-[<test target> <class.function>]' started"
-            const startedMatch = /^Test Case '(.*)\.(.*)' started/.exec(line);
+            const startedMatch = regex.started.exec(line);
             if (startedMatch) {
                 const testName = `${startedMatch[1]}/${startedMatch[2]}`;
-                const startedTestIndex = runState.getTestItemIndexNonDarwin(testName, undefined);
+                const startedTestIndex = runState.getTestItemIndex(testName, undefined);
                 this.startTest(startedTestIndex, runState);
                 continue;
             }
             // Regex "Test Case '-[<test target> <class.function>]' failed (<duration> seconds)"
-            const failedMatch = /^Test Case '(.*)\.(.*)' failed \((\d.*) seconds\)/.exec(line);
+            const failedMatch = regex.failed.exec(line);
             if (failedMatch) {
                 const testName = `${failedMatch[1]}/${failedMatch[2]}`;
-                const failedTestIndex = runState.getTestItemIndexNonDarwin(testName, undefined);
+                const failedTestIndex = runState.getTestItemIndex(testName, undefined);
                 this.failTest(failedTestIndex, +failedMatch[3], runState);
                 continue;
             }
             // Regex "<path/to/test>:<line number>: error: <class>.<function> : <error>"
-            const errorMatch = /^(.+):(\d+):\serror:\s*(.*)\.(.*) : (.*)/.exec(line);
+            const errorMatch = regex.error.exec(line);
             if (errorMatch) {
                 const testName = `${errorMatch[3]}/${errorMatch[4]}`;
-                const failedTestIndex = runState.getTestItemIndexNonDarwin(testName, errorMatch[1]);
+                const failedTestIndex = runState.getTestItemIndex(testName, errorMatch[1]);
                 this.startErrorMessage(
                     failedTestIndex,
                     errorMatch[5],
@@ -168,30 +126,27 @@ export class TestOutputParser {
                 continue;
             }
             // Regex "<path/to/test>:<line number>: <class>.<function> : Test skipped"
-            const skippedMatch = /^(.+):(\d+):\s*(.*)\.(.*) : Test skipped/.exec(line);
+            const skippedMatch = regex.skipped.exec(line);
             if (skippedMatch) {
                 const testName = `${skippedMatch[3]}/${skippedMatch[4]}`;
-                const skippedTestIndex = runState.getTestItemIndexNonDarwin(
-                    testName,
-                    skippedMatch[1]
-                );
+                const skippedTestIndex = runState.getTestItemIndex(testName, skippedMatch[1]);
                 this.skipTest(skippedTestIndex, runState);
                 continue;
             }
             // Regex "Test Suite '-[<test target> <class.function>]' started"
-            const startedSuiteMatch = /^Test Suite '(.*)' started/.exec(line);
+            const startedSuiteMatch = regex.startedSuite.exec(line);
             if (startedSuiteMatch) {
                 this.startTestSuite(startedSuiteMatch[1], runState);
                 continue;
             }
             // Regex "Test Suite '-[<test target> <class.function>]' passed"
-            const passedSuiteMatch = /^Test Suite '(.*)' passed/.exec(line);
+            const passedSuiteMatch = regex.passedSuite.exec(line);
             if (passedSuiteMatch) {
                 this.passTestSuite(passedSuiteMatch[1], runState);
                 continue;
             }
             // Regex "Test Suite '-[<test target> <class.function>]' failed"
-            const failedSuiteMatch = /^Test Suite '(.*)' failed/.exec(line);
+            const failedSuiteMatch = regex.failedSuite.exec(line);
             if (failedSuiteMatch) {
                 this.failTestSuite(failedSuiteMatch[1], runState);
                 continue;
@@ -205,11 +160,11 @@ export class TestOutputParser {
         // to be passed.
         for (const line of lines) {
             // Regex "Test Case '<class>.<function>' passed (<duration> seconds)"
-            const passedMatch = /^Test Case '(.*)\.(.*)' passed \((\d.*) seconds\)/.exec(line);
+            const passedMatch = regex.passed.exec(line);
             if (passedMatch) {
                 const testName = `${passedMatch[1]}/${passedMatch[2]}`;
                 const duration: number = +passedMatch[3];
-                const passedTestIndex = runState.getTestItemIndexNonDarwin(testName, undefined);
+                const passedTestIndex = runState.getTestItemIndex(testName, undefined);
                 this.passTest(passedTestIndex, duration, runState);
                 continue;
             }
@@ -317,10 +272,8 @@ export interface iTestRunState {
         complete: boolean;
     };
 
-    // get test item index from test name on Darwin platforms
-    getTestItemIndexDarwin(id: string): number;
     // get test item index from test name on non Darwin platforms
-    getTestItemIndexNonDarwin(id: string, filename: string | undefined): number;
+    getTestItemIndex(id: string, filename: string | undefined): number;
     // set test index to be started
     started(index: number): void;
     // set test index to have passed

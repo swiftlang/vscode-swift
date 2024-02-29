@@ -21,7 +21,13 @@ import { ExecError, execFileStreamOutput, getErrorDescription } from "../utiliti
 import { getBuildAllTask } from "../SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
-import { iTestRunState, TestOutputParser } from "./TestOutputParser";
+import {
+    darwinTestRegex,
+    iTestRunState,
+    nonDarwinTestRegex,
+    TestOutputParser,
+    TestRegex,
+} from "./TestOutputParser";
 import { Version } from "../utilities/version";
 import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
 import { TaskOperation } from "../TaskQueue";
@@ -177,7 +183,7 @@ export class TestRunner {
         generateCoverage: boolean,
         token: vscode.CancellationToken
     ) {
-        const runState = new TestRunState(this.testItems, this.testRun, this.folderContext);
+        const runState = new TestRunnerTestRunState(this.testItemFinder, this.testRun);
         try {
             // run associated build task
             // don't do this if generating code test coverage data as it
@@ -286,24 +292,20 @@ export class TestRunner {
     async runSession(
         token: vscode.CancellationToken,
         generateCoverage: boolean,
-        runState: TestRunState
+        runState: TestRunnerTestRunState
     ) {
         // create launch config for testing
         const testBuildConfig = this.createLaunchConfigurationForTesting(false);
         if (testBuildConfig === null) {
             return;
         }
-
+        const testRegex = this.testRegex;
         // Parse output from stream and output to log
         const parsedOutputStream = new stream.Writable({
             write: (chunk, encoding, next) => {
                 const text = chunk.toString();
                 this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
-                if (process.platform === "darwin") {
-                    this.testOutputParser.parseResultDarwin(text, runState);
-                } else {
-                    this.testOutputParser.parseResultNonDarwin(text, runState);
-                }
+                this.testOutputParser.parseResult(text, runState, testRegex);
                 next();
             },
         });
@@ -403,7 +405,7 @@ export class TestRunner {
     }
 
     /** Run test session inside debugger */
-    async debugSession(token: vscode.CancellationToken, runState: TestRunState) {
+    async debugSession(token: vscode.CancellationToken, runState: TestRunnerTestRunState) {
         // create launch config for testing
         const testBuildConfig = this.createLaunchConfigurationForTesting(true);
         if (testBuildConfig === null) {
@@ -423,6 +425,7 @@ export class TestRunner {
             );
         }
 
+        const testRegex = this.testRegex;
         const subscriptions: vscode.Disposable[] = [];
         // add cancelation
         const startSession = vscode.debug.onDidStartDebugSession(session => {
@@ -432,11 +435,7 @@ export class TestRunner {
             );
             LoggingDebugAdapterTracker.setDebugSessionCallback(session, output => {
                 this.testRun.appendOutput(output);
-                if (process.platform === "darwin") {
-                    this.testOutputParser.parseResultDarwin(output, runState);
-                } else {
-                    this.testOutputParser.parseResultNonDarwin(output, runState);
-                }
+                this.testOutputParser.parseResult(output, runState, testRegex);
             });
             const cancellation = token.onCancellationRequested(() => {
                 this.workspaceContext.outputChannel.logDiagnostic(
@@ -489,40 +488,51 @@ export class TestRunner {
             this.testRun.enqueued(test);
         }
     }
+
+    /** Get TestItem finder for current platform */
+    get testItemFinder(): TestItemFinder {
+        if (process.platform === "darwin") {
+            return new DarwinTestItemFinder(this.testItems);
+        } else {
+            return new NonDarwinTestItemFinder(this.testItems, this.folderContext);
+        }
+    }
+
+    /** Get Test parsing regex for current platform */
+    get testRegex(): TestRegex {
+        if (process.platform === "darwin") {
+            return darwinTestRegex;
+        } else {
+            return nonDarwinTestRegex;
+        }
+    }
 }
 
-/**
- * Store state of current test run output parse
- */
-class TestRunState implements iTestRunState {
-    constructor(
-        public testItems: vscode.TestItem[],
-        private testRun: vscode.TestRun,
-        private folderContext: FolderContext
-    ) {}
+/** Interface defining how to find test items given a test id from XCTest output */
+interface TestItemFinder {
+    getIndex(id: string, filename?: string): number;
+    testItems: vscode.TestItem[];
+}
 
-    public currentTestItem?: vscode.TestItem;
-    public lastTestItem?: vscode.TestItem;
-    public excess?: string;
-    public failedTest?: {
-        testIndex: number;
-        message: string;
-        file: string;
-        lineNumber: number;
-        complete: boolean;
-    };
+/** Defines how to find test items given a test id from XCTest output on Darwin platforms */
+class DarwinTestItemFinder implements TestItemFinder {
+    constructor(public testItems: vscode.TestItem[]) {}
 
-    /** Get test item index from id for Darwin platforms */
-    getTestItemIndexDarwin(id: string): number {
+    getIndex(id: string): number {
         return this.testItems.findIndex(item => item.id === id);
     }
+}
+
+/** Defines how to find test items given a test id from XCTest output on non-Darwin platforms */
+class NonDarwinTestItemFinder implements TestItemFinder {
+    constructor(public testItems: vscode.TestItem[], public folderContext: FolderContext) {}
 
     /**
      * Get test item index from id for non Darwin platforms. It is a little harder to
      * be certain we have the correct test item on non Darwin platforms as the target
      * name is not included in the id
      */
-    getTestItemIndexNonDarwin(id: string, filename?: string): number {
+    getIndex(id: string, filename?: string): number {
         let testIndex = -1;
         if (filename) {
             testIndex = this.testItems.findIndex(item =>
@@ -533,64 +543,6 @@ class TestRunState implements iTestRunState {
             testIndex = this.testItems.findIndex(item => item.id.endsWith(id));
         }
         return testIndex;
-    }
-
-    // set test item to be started
-    started(index: number): void {
-        this.testRun.started(this.testItems[index]);
-        this.currentTestItem = this.testItems[index];
-    }
-
-    // set test item to have passed
-    passed(index: number, duration: number): void {
-        this.testRun.passed(this.testItems[index], duration * 1000);
-        this.testItems.splice(index, 1);
-        this.lastTestItem = this.currentTestItem;
-        this.currentTestItem = undefined;
-    }
-
-    // set test item to be failed
-    failed(index: number, message: string, location?: { file: string; line: number }): void {
-        if (location) {
-            const testMessage = new vscode.TestMessage(message);
-            testMessage.location = new vscode.Location(
-                vscode.Uri.file(location.file),
-                new vscode.Position(location.line - 1, 0)
-            );
-            this.testRun.failed(this.testItems[index], testMessage);
-        } else {
-            this.testRun.failed(this.testItems[index], new vscode.TestMessage(message));
-        }
-        this.testItems.splice(index, 1);
-        this.lastTestItem = this.currentTestItem;
-        this.currentTestItem = undefined;
-    }
-
-    // set test item to have been skipped
-    skipped(index: number): void {
-        this.testRun.skipped(this.testItems[index]);
-        this.testItems.splice(index, 1);
-        this.lastTestItem = this.currentTestItem;
-        this.currentTestItem = undefined;
-    }
-
-    // started suite
-    startedSuite() {
-        // Nothing to do here
-    }
-    // passed suite
-    passedSuite(name: string) {
-        const lastClassTestItem = this.lastTestItem?.parent;
-        if (lastClassTestItem && lastClassTestItem.id.endsWith(`.${name}`)) {
-            this.testRun.passed(lastClassTestItem);
-        }
-    }
-    // failed suite
-    failedSuite(name: string) {
-        const lastClassTestItem = this.lastTestItem?.parent;
-        if (lastClassTestItem && lastClassTestItem.id.endsWith(`.${name}`)) {
-            this.testRun.failed(lastClassTestItem, []);
-        }
     }
 
     /**
@@ -627,5 +579,88 @@ class TestRunState implements iTestRunState {
             return target.sources.find(source => source === relativePath) !== undefined;
         }
         return false;
+    }
+}
+
+/**
+ * Store state of current test run output parse
+ */
+class TestRunnerTestRunState implements iTestRunState {
+    constructor(private testItemFinder: TestItemFinder, private testRun: vscode.TestRun) {}
+
+    public currentTestItem?: vscode.TestItem;
+    public lastTestItem?: vscode.TestItem;
+    public excess?: string;
+    public failedTest?: {
+        testIndex: number;
+        message: string;
+        file: string;
+        lineNumber: number;
+        complete: boolean;
+    };
+
+    getTestItemIndex(id: string, filename?: string): number {
+        return this.testItemFinder.getIndex(id, filename);
+    }
+
+    // set test item to be started
+    started(index: number): void {
+        this.testRun.started(this.testItemFinder.testItems[index]);
+        this.currentTestItem = this.testItemFinder.testItems[index];
+    }
+
+    // set test item to have passed
+    passed(index: number, duration: number): void {
+        this.testRun.passed(this.testItemFinder.testItems[index], duration * 1000);
+        this.testItemFinder.testItems.splice(index, 1);
+        this.lastTestItem = this.currentTestItem;
+        this.currentTestItem = undefined;
+    }
+
+    // set test item to be failed
+    failed(index: number, message: string, location?: { file: string; line: number }): void {
+        if (location) {
+            const testMessage = new vscode.TestMessage(message);
+            testMessage.location = new vscode.Location(
+                vscode.Uri.file(location.file),
+                new vscode.Position(location.line - 1, 0)
+            );
+            this.testRun.failed(this.testItemFinder.testItems[index], testMessage);
+        } else {
+            this.testRun.failed(
+                this.testItemFinder.testItems[index],
+                new vscode.TestMessage(message)
+            );
+        }
+        this.testItemFinder.testItems.splice(index, 1);
+        this.lastTestItem = this.currentTestItem;
+        this.currentTestItem = undefined;
+    }
+
+    // set test item to have been skipped
+    skipped(index: number): void {
+        this.testRun.skipped(this.testItemFinder.testItems[index]);
+        this.testItemFinder.testItems.splice(index, 1);
+        this.lastTestItem = this.currentTestItem;
+        this.currentTestItem = undefined;
+    }
+
+    // started suite
+    startedSuite() {
+        // Nothing to do here
+    }
+    // passed suite
+    passedSuite(name: string) {
+        const lastClassTestItem = this.lastTestItem?.parent;
+        if (lastClassTestItem && lastClassTestItem.id.endsWith(`.${name}`)) {
+            this.testRun.passed(lastClassTestItem);
+        }
+    }
+    // failed suite
+    failedSuite(name: string) {
+        const lastClassTestItem = this.lastTestItem?.parent;
+        if (lastClassTestItem && lastClassTestItem.id.endsWith(`.${name}`)) {
+            this.testRun.failed(lastClassTestItem, []);
+        }
     }
 }
