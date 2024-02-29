@@ -35,6 +35,16 @@ import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
 import { TaskOperation } from "../TaskQueue";
 import { TestXUnitParser, iXUnitTestState } from "./TestXUnitParser";
 
+/** Workspace Folder events */
+export enum TestKind {
+    // run tests serially
+    standard = "standard",
+    // run tests in parallel
+    parallel = "parallel",
+    // run tests and extract test coverage
+    coverage = "coverage",
+}
+
 /** Class used to run tests */
 export class TestRunner {
     private testRun: vscode.TestRun;
@@ -76,9 +86,18 @@ export class TestRunner {
             vscode.TestRunProfileKind.Run,
             async (request, token) => {
                 const runner = new TestRunner(request, folderContext, controller);
-                await runner.runHandler(false, false, token);
+                await runner.runHandler(false, TestKind.standard, token);
             },
             true
+        );
+        // Add non-debug profile
+        controller.createRunProfile(
+            "Run Tests (Parallel)",
+            vscode.TestRunProfileKind.Run,
+            async (request, token) => {
+                const runner = new TestRunner(request, folderContext, controller);
+                await runner.runHandler(false, TestKind.parallel, token);
+            }
         );
         // Add coverage profile
         controller.createRunProfile(
@@ -86,7 +105,7 @@ export class TestRunner {
             vscode.TestRunProfileKind.Run,
             async (request, token) => {
                 const runner = new TestRunner(request, folderContext, controller);
-                await runner.runHandler(false, true, token);
+                await runner.runHandler(false, TestKind.coverage, token);
             }
         );
         // Add debug profile
@@ -95,7 +114,7 @@ export class TestRunner {
             vscode.TestRunProfileKind.Debug,
             async (request, token) => {
                 const runner = new TestRunner(request, folderContext, controller);
-                await runner.runHandler(true, false, token);
+                await runner.runHandler(true, TestKind.standard, token);
             }
         );
     }
@@ -181,17 +200,13 @@ export class TestRunner {
      * @param token Cancellation token
      * @returns When complete
      */
-    async runHandler(
-        shouldDebug: boolean,
-        generateCoverage: boolean,
-        token: vscode.CancellationToken
-    ) {
+    async runHandler(shouldDebug: boolean, testKind: TestKind, token: vscode.CancellationToken) {
         const runState = new TestRunnerTestRunState(this.testItemFinder, this.testRun);
         try {
             // run associated build task
             // don't do this if generating code test coverage data as it
             // will rebuild everything again
-            if (!generateCoverage) {
+            if (testKind !== TestKind.coverage) {
                 const task = await getBuildAllTask(this.folderContext);
                 const exitCode = await this.folderContext.taskQueue.queueOperation(
                     new TaskOperation(task),
@@ -209,7 +224,7 @@ export class TestRunner {
             if (shouldDebug) {
                 await this.debugSession(token, runState);
             } else {
-                await this.runSession(token, generateCoverage, runState);
+                await this.runSession(token, testKind, runState);
             }
         } catch (error) {
             this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
@@ -283,10 +298,9 @@ export class TestRunner {
     /** Run test session without attaching to a debugger */
     async runSession(
         token: vscode.CancellationToken,
-        generateCoverage: boolean,
+        testKind: TestKind,
         runState: TestRunnerTestRunState
     ) {
-        const parallel = true;
         // create launch config for testing
         const testBuildConfig = this.createLaunchConfigurationForTesting(false);
         if (testBuildConfig === null) {
@@ -331,7 +345,7 @@ export class TestRunner {
 
         this.testRun.appendOutput(`> Test run started at ${new Date().toLocaleString()} <\r\n\r\n`);
         try {
-            if (generateCoverage) {
+            if (testKind === TestKind.coverage) {
                 const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
                 const args = ["test", "--enable-code-coverage"];
                 await execFileStreamOutput(
@@ -349,7 +363,7 @@ export class TestRunner {
                     false,
                     "SIGINT" // use SIGINT to kill process as it is a child process of `swift test`
                 );
-            } else if (parallel) {
+            } else if (testKind === TestKind.parallel) {
                 await this.workspaceContext.tempFolder.withTemporaryFile("xml", async filename => {
                     const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
                     const args = ["test", "--parallel", "--xunit-output", filename];
@@ -441,7 +455,7 @@ export class TestRunner {
             }
         }
 
-        if (generateCoverage) {
+        if (testKind === TestKind.coverage) {
             await this.folderContext.lcovResults.generate();
             if (configuration.displayCoverageReportAfterRun) {
                 this.workspaceContext.testCoverageDocumentProvider.show(this.folderContext);
