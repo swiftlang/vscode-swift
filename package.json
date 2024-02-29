@@ -1088,8 +1088,10 @@
   },
   "devDependencies": {
     "@types/glob": "^7.1.6",
+    "@types/lcov-parse": "1.0.0",
     "@types/mocha": "^10.0.1",
     "@types/node": "^18.15.0",
+    "@types/plist": "^3.0.2",
     "@types/vscode": "^1.71.0",
     "@typescript-eslint/eslint-plugin": "^6.1.0",
     "@typescript-eslint/parser": "^6.1.0",
@@ -1104,10 +1106,8 @@
     "@vscode/vsce": "^2.19.0"
   },
   "dependencies": {
-    "@types/plist": "^3.0.2",
     "plist": "^3.0.5",
     "vscode-languageclient": "^9.0.1",
-    "@types/lcov-parse": "1.0.0",
     "lcov-parse": "1.0.0"
   }
 }
