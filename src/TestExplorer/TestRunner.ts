@@ -379,11 +379,7 @@ export class TestRunner {
                     const xUnitParser = new TestXUnitParser();
                     await xUnitParser.parse(
                         buffer,
-                        new TestRunnerXUnitTestState(
-                            this.testItems,
-                            this.testRun,
-                            this.folderContext
-                        )
+                        new TestRunnerXUnitTestState(this.testItemFinder, this.testRun)
                     );
                 });
             } else {
@@ -715,29 +711,25 @@ class TestRunnerTestRunState implements iTestRunState {
 }
 
 class TestRunnerXUnitTestState implements iXUnitTestState {
-    constructor(
-        public testItems: vscode.TestItem[],
-        private testRun: vscode.TestRun,
-        private folderContext: FolderContext
-    ) {}
+    constructor(private testItemFinder: TestItemFinder, private testRun: vscode.TestRun) {}
 
     passTest(id: string, duration: number): void {
-        const item = this.testItems.find(item => item.id === id);
-        if (item) {
-            this.testRun.passed(item, duration);
+        const index = this.testItemFinder.getIndex(id);
+        if (index !== -1) {
+            this.testRun.passed(this.testItemFinder.testItems[index], duration);
         }
     }
     failTest(id: string, duration: number, message?: string): void {
-        const item = this.testItems.find(item => item.id === id);
-        if (item) {
+        const index = this.testItemFinder.getIndex(id);
+        if (index !== -1) {
             const testMessage = new vscode.TestMessage(message ?? "Failed");
-            this.testRun.failed(item, testMessage, duration);
+            this.testRun.failed(this.testItemFinder.testItems[index], testMessage, duration);
         }
     }
     skipTest(id: string): void {
-        const item = this.testItems.find(item => item.id === id);
-        if (item) {
-            this.testRun.skipped(item);
+        const index = this.testItemFinder.getIndex(id);
+        if (index !== -1) {
+            this.testRun.skipped(this.testItemFinder.testItems[index]);
         }
     }
 }
