@@ -13,7 +13,12 @@
 //===----------------------------------------------------------------------===//
 
 import * as assert from "assert";
-import { iTestRunState, TestOutputParser } from "../../src/TestExplorer/TestOutputParser";
+import {
+    darwinTestRegex,
+    iTestRunState,
+    nonDarwinTestRegex,
+    TestOutputParser,
+} from "../../src/TestExplorer/TestOutputParser";
 
 /** TestStatus */
 export enum TestStatus {
@@ -33,6 +38,22 @@ interface TestItem {
     location?: { file: string; line: number };
 }
 
+interface iTestItemFinder {
+    getIndex(id: string): number;
+    tests: TestItem[];
+}
+class DarwinTestItemFinder implements iTestItemFinder {
+    constructor(public tests: TestItem[]) {}
+    getIndex(id: string): number {
+        return this.tests.findIndex(item => item.name === id);
+    }
+}
+class NonDarwinTestItemFinder implements iTestItemFinder {
+    constructor(public tests: TestItem[]) {}
+    getIndex(id: string): number {
+        return this.tests.findIndex(item => item.name.endsWith(id));
+    }
+}
 /** Test implementation of iTestRunState */
 class TestRunState implements iTestRunState {
     excess?: string;
@@ -43,37 +64,38 @@ class TestRunState implements iTestRunState {
         lineNumber: number;
         complete: boolean;
     };
-    tests: TestItem[];
-    constructor(testNames: string[]) {
-        this.tests = testNames.map(name => {
+    public testItemFinder: iTestItemFinder;
+    get tests(): TestItem[] {
+        return this.testItemFinder.tests;
+    }
+    constructor(testNames: string[], darwin: boolean) {
+        const tests = testNames.map(name => {
             return { name: name, status: TestStatus.enqueued };
         });
+        if (darwin) {
+            this.testItemFinder = new DarwinTestItemFinder(tests);
+        } else {
+            this.testItemFinder = new NonDarwinTestItemFinder(tests);
+        }
     }
 
-    getTestItemIndexDarwin(id: string): number {
-        return this.tests.findIndex(item => item.name === id);
-    }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    getTestItemIndexNonDarwin(id: string, _filename: string | undefined): number {
-        const testIndex = this.tests.findIndex(item => item.name.endsWith(id));
-        // to properly test Linux we should be checking filenames, but the test framework
-        // doesn't have a concept of targets with files in them
-        return testIndex;
+    getTestItemIndex(id: string): number {
+        return this.testItemFinder.getIndex(id);
     }
     started(index: number): void {
-        this.tests[index].status = TestStatus.started;
+        this.testItemFinder.tests[index].status = TestStatus.started;
     }
     passed(index: number, duration: number): void {
-        this.tests[index].status = TestStatus.passed;
-        this.tests[index].duration = duration;
+        this.testItemFinder.tests[index].status = TestStatus.passed;
+        this.testItemFinder.tests[index].duration = duration;
     }
     failed(index: number, message: string, location?: { file: string; line: number }): void {
-        this.tests[index].status = TestStatus.failed;
-        this.tests[index].message = message;
-        this.tests[index].location = location;
+        this.testItemFinder.tests[index].status = TestStatus.failed;
+        this.testItemFinder.tests[index].message = message;
+        this.testItemFinder.tests[index].location = location;
     }
     skipped(index: number): void {
-        this.tests[index].status = TestStatus.skipped;
+        this.testItemFinder.tests[index].status = TestStatus.skipped;
     }
 
     // started suite
@@ -95,27 +117,29 @@ suite("TestOutputParser Suite", () => {
 
     suite("Darwin", () => {
         test("Passed Test", async () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testPass"]);
+            const testRunState = new TestRunState(["MyTests.MyTests/testPass"], true);
             const runState = testRunState.tests[0];
-            outputParser.parseResultDarwin(
+            outputParser.parseResult(
                 `Test Case '-[MyTests.MyTests testPass]' started.
 Test Case '-[MyTests.MyTests testPass]' passed (0.001 seconds).
 `,
-                testRunState
+                testRunState,
+                darwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.passed);
             assert.strictEqual(runState.duration, 0.001);
         });
 
         test("Failed Test", async () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testFail"]);
+            const testRunState = new TestRunState(["MyTests.MyTests/testFail"], true);
             const runState = testRunState.tests[0];
-            outputParser.parseResultDarwin(
+            outputParser.parseResult(
                 `Test Case '-[MyTests.MyTests testPublish]' started.
 /Users/user/Developer/MyTests/MyTests.swift:59: error: -[MyTests.MyTests testFail] : XCTAssertEqual failed: ("1") is not equal to ("2")
 Test Case '-[MyTests.MyTests testFail]' failed (0.106 seconds).                
 `,
-                testRunState
+                testRunState,
+                darwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.failed);
             assert.strictEqual(
@@ -130,29 +154,31 @@ Test Case '-[MyTests.MyTests testFail]' failed (0.106 seconds).
         });
 
         test("Skipped Test", async () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testSkip"]);
+            const testRunState = new TestRunState(["MyTests.MyTests/testSkip"], true);
             const runState = testRunState.tests[0];
-            outputParser.parseResultDarwin(
+            outputParser.parseResult(
                 `Test Case '-[MyTests.MyTests testSkip]' started.
 /Users/user/Developer/MyTests/MyTests.swift:90: -[MyTests.MyTests testSkip] : Test skipped
 Test Case '-[MyTests.MyTests testSkip]' skipped (0.002 seconds).              
 `,
-                testRunState
+                testRunState,
+                darwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.skipped);
         });
 
         test("Multi-line Fail", async () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testFail"]);
+            const testRunState = new TestRunState(["MyTests.MyTests/testFail"], true);
             const runState = testRunState.tests[0];
-            outputParser.parseResultDarwin(
+            outputParser.parseResult(
                 `Test Case '-[MyTests.MyTests testFail]' started.
 /Users/user/Developer/MyTests/MyTests.swift:59: error: -[MyTests.MyTests testFail] : failed - Multiline
 fail
 message
 Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
 `,
-                testRunState
+                testRunState,
+                darwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.failed);
             assert.strictEqual(
@@ -164,9 +190,9 @@ message`
         });
 
         test("Multi-line Fail followed by another error", async () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testFail"]);
+            const testRunState = new TestRunState(["MyTests.MyTests/testFail"], true);
             const runState = testRunState.tests[0];
-            outputParser.parseResultDarwin(
+            outputParser.parseResult(
                 `Test Case '-[MyTests.MyTests testFail]' started.
 /Users/user/Developer/MyTests/MyTests.swift:59: error: -[MyTests.MyTests testFail] : failed - Multiline
 fail
@@ -174,7 +200,8 @@ message
 /Users/user/Developer/MyTests/MyTests.swift:61: error: -[MyTests.MyTests testFail] : failed - Again
 Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
 `,
-                testRunState
+                testRunState,
+                darwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.failed);
             assert.strictEqual(
@@ -186,17 +213,19 @@ message`
         });
 
         test("Split line", async () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testPass"]);
+            const testRunState = new TestRunState(["MyTests.MyTests/testPass"], true);
             const runState = testRunState.tests[0];
-            outputParser.parseResultDarwin(
+            outputParser.parseResult(
                 `Test Case '-[MyTests.MyTests testPass]' started.
 Test Case '-[MyTests.MyTests`,
-                testRunState
+                testRunState,
+                darwinTestRegex
             );
-            outputParser.parseResultDarwin(
+            outputParser.parseResult(
                 ` testPass]' passed (0.006 seconds).
 `,
-                testRunState
+                testRunState,
+                darwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.passed);
             assert.strictEqual(runState.duration, 0.006);
@@ -205,27 +234,29 @@ Test Case '-[MyTests.MyTests`,
 
     suite("Linux", () => {
         test("Passed Test", async () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testPass"]);
+            const testRunState = new TestRunState(["MyTests.MyTests/testPass"], false);
             const runState = testRunState.tests[0];
-            outputParser.parseResultNonDarwin(
+            outputParser.parseResult(
                 `Test Case 'MyTests.testPass' started.
 Test Case 'MyTests.testPass' passed (0.001 seconds).
 `,
-                testRunState
+                testRunState,
+                nonDarwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.passed);
             assert.strictEqual(runState.duration, 0.001);
         });
 
         test("Failed Test", async () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testFail"]);
+            const testRunState = new TestRunState(["MyTests.MyTests/testFail"], false);
             const runState = testRunState.tests[0];
-            outputParser.parseResultNonDarwin(
+            outputParser.parseResult(
                 `Test Case 'MyTests.testFail' started.
 /Users/user/Developer/MyTests/MyTests.swift:59: error: MyTests.testFail : XCTAssertEqual failed: ("1") is not equal to ("2")
 Test Case 'MyTests.testFail' failed (0.106 seconds).                
 `,
-                testRunState
+                testRunState,
+                nonDarwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.failed);
             assert.strictEqual(
@@ -240,14 +271,15 @@ Test Case 'MyTests.testFail' failed (0.106 seconds).
         });
 
         test("Skipped Test", async () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testSkip"]);
+            const testRunState = new TestRunState(["MyTests.MyTests/testSkip"], false);
             const runState = testRunState.tests[0];
-            outputParser.parseResultNonDarwin(
+            outputParser.parseResult(
                 `Test Case 'MyTests.testSkip' started.
 /Users/user/Developer/MyTests/MyTests.swift:90: MyTests.testSkip : Test skipped
 Test Case 'MyTests.testSkip' skipped (0.002 seconds).              
 `,
-                testRunState
+                testRunState,
+                nonDarwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.skipped);
         });
