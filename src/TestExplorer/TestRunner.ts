@@ -402,10 +402,15 @@ export class TestRunner {
                     }
                     const buffer = await asyncfs.readFile(filename, "utf8");
                     const xUnitParser = new TestXUnitParser();
-                    await xUnitParser.parse(
+                    const results = await xUnitParser.parse(
                         buffer,
                         new TestRunnerXUnitTestState(this.testItemFinder, this.testRun)
                     );
+                    if (results) {
+                        this.testRun.appendOutput(
+                            `\r\nExecuted ${results.tests} tests, with ${results.failures} failures and ${results.errors} errors.\r\n`
+                        );
+                    }
                 });
             } else {
                 if (process.platform === "darwin") {

@@ -20,6 +20,12 @@ export interface iXUnitTestState {
     skipTest(id: string): void;
 }
 
+export interface TestResults {
+    tests: number;
+    failures: number;
+    errors: number;
+}
+
 interface XUnitFailure {
     message?: string;
 }
@@ -30,6 +36,7 @@ interface XUnitTestCase {
 }
 
 interface XUnitTestSuite {
+    $: { name: string; errors: string; failures: string; tests: string; time: string };
     testcase: XUnitTestCase[];
 }
 
@@ -44,19 +51,26 @@ interface XUnit {
 export class TestXUnitParser {
     constructor() {}
 
-    async parse(buffer: string, runState: iXUnitTestState) {
+    async parse(buffer: string, runState: iXUnitTestState): Promise<TestResults | undefined> {
         const xml = await xml2js.parseStringPromise(buffer);
         try {
-            this.parseXUnit(xml, runState);
+            return await this.parseXUnit(xml, runState);
         } catch (error) {
             // ignore error
             console.log(error);
+            return undefined;
         }
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async parseXUnit(xUnit: XUnit, runState: iXUnitTestState) {
+    async parseXUnit(xUnit: XUnit, runState: iXUnitTestState): Promise<TestResults> {
+        let tests = 0;
+        let failures = 0;
+        let errors = 0;
         xUnit.testsuites.testsuite.forEach(testsuite => {
+            tests = tests + parseInt(testsuite.$.tests);
+            failures += parseInt(testsuite.$.failures);
+            errors += parseInt(testsuite.$.errors);
             testsuite.testcase.forEach(testcase => {
                 const id = `${testcase.$.classname}/${testcase.$.name}`;
                 if (testcase.failure) {
@@ -66,5 +80,6 @@ export class TestXUnitParser {
                 }
             });
         });
+        return { tests: tests, failures: failures, errors: errors };
     }
 }
