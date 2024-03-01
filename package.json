@@ -195,7 +195,7 @@
               "thread",
               "address"
             ],
-            "description": "Runtime sanitizer instrumentation. Requires a re-compilation.",
+            "description": "Runtime sanitizer instrumentation.",
             "scope": "machine-overridable",
             "order": 4
           },

@@ -365,8 +365,19 @@ export class TestRunner {
                 );
             } else if (testKind === TestKind.parallel) {
                 await this.workspaceContext.tempFolder.withTemporaryFile("xml", async filename => {
+                    const sanitizer = this.workspaceContext.toolchain.sanitizer(
+                        configuration.sanitizer
+                    );
+                    const sanitizerArgs = sanitizer?.buildFlags ?? [];
                     const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
-                    const args = ["test", "--parallel", "--skip-build", "--xunit-output", filename];
+                    const args = [
+                        "test",
+                        "--parallel",
+                        ...sanitizerArgs,
+                        "--skip-build",
+                        "--xunit-output",
+                        filename,
+                    ];
                     try {
                         await execFileStreamOutput(
                             this.workspaceContext.toolchain.getToolchainExecutable("swift"),
