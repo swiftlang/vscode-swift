@@ -326,17 +326,6 @@ export class TestRunner {
             },
         });
 
-        // Darwin outputs XCTest output to stderr, Linux outputs XCTest output to stdout
-        let stdout: stream.Writable;
-        let stderr: stream.Writable;
-        if (process.platform === "darwin") {
-            stdout = parsedOutputStream;
-            stderr = outputStream;
-        } else {
-            stdout = parsedOutputStream;
-            stderr = outputStream;
-        }
-
         if (token.isCancellationRequested) {
             parsedOutputStream.end();
             outputStream.end();
@@ -345,93 +334,31 @@ export class TestRunner {
 
         this.testRun.appendOutput(`> Test run started at ${new Date().toLocaleString()} <\r\n\r\n`);
         try {
-            if (testKind === TestKind.coverage) {
-                const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
-                const args = ["test", "--enable-code-coverage"];
-                await execFileStreamOutput(
-                    this.workspaceContext.toolchain.getToolchainExecutable("swift"),
-                    [...args, ...filterArgs],
-                    stdout,
-                    stderr,
-                    token,
-                    {
-                        cwd: testBuildConfig.cwd,
-                        env: { ...process.env, ...testBuildConfig.env },
-                        maxBuffer: 16 * 1024 * 1024,
-                    },
-                    this.folderContext,
-                    false,
-                    "SIGINT" // use SIGINT to kill process as it is a child process of `swift test`
-                );
-            } else if (testKind === TestKind.parallel) {
-                await this.workspaceContext.tempFolder.withTemporaryFile("xml", async filename => {
-                    const sanitizer = this.workspaceContext.toolchain.sanitizer(
-                        configuration.sanitizer
+            switch (testKind) {
+                case TestKind.coverage:
+                    await this.runCoverageSession(
+                        token,
+                        parsedOutputStream,
+                        outputStream,
+                        testBuildConfig
                     );
-                    const sanitizerArgs = sanitizer?.buildFlags ?? [];
-                    const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
-                    const args = [
-                        "test",
-                        "--parallel",
-                        ...sanitizerArgs,
-                        "--skip-build",
-                        "--xunit-output",
-                        filename,
-                    ];
-                    try {
-                        await execFileStreamOutput(
-                            this.workspaceContext.toolchain.getToolchainExecutable("swift"),
-                            [...args, ...filterArgs],
-                            stdout,
-                            stderr,
-                            token,
-                            {
-                                cwd: testBuildConfig.cwd,
-                                env: { ...process.env, ...testBuildConfig.env },
-                                maxBuffer: 16 * 1024 * 1024,
-                            },
-                            this.folderContext,
-                            false,
-                            "SIGINT" // use SIGINT to kill process as it is a child process of `swift test`
-                        );
-                    } catch (error) {
-                        const execError = error as cp.ExecFileException;
-                        if (!execError || execError.code !== 1 || execError.killed === true) {
-                            throw error;
-                        }
-                    }
-                    const buffer = await asyncfs.readFile(filename, "utf8");
-                    const xUnitParser = new TestXUnitParser();
-                    const results = await xUnitParser.parse(
-                        buffer,
-                        new TestRunnerXUnitTestState(this.testItemFinder, this.testRun)
+                    break;
+                case TestKind.parallel:
+                    await this.runParallelSession(
+                        token,
+                        parsedOutputStream,
+                        outputStream,
+                        testBuildConfig
                     );
-                    if (results) {
-                        this.testRun.appendOutput(
-                            `\r\nExecuted ${results.tests} tests, with ${results.failures} failures and ${results.errors} errors.\r\n`
-                        );
-                    }
-                });
-            } else {
-                if (process.platform === "darwin") {
-                    stdout = outputStream;
-                    stderr = parsedOutputStream;
-                }
-                await execFileStreamOutput(
-                    testBuildConfig.program,
-                    testBuildConfig.args ?? [],
-                    stdout,
-                    stderr,
-                    token,
-                    {
-                        cwd: testBuildConfig.cwd,
-                        env: { ...process.env, ...testBuildConfig.env },
-                        maxBuffer: 16 * 1024 * 1024,
-                    },
-                    this.folderContext,
-                    false,
-                    "SIGKILL"
-                );
+                    break;
+                default:
+                    await this.runStandardSession(
+                        token,
+                        parsedOutputStream,
+                        outputStream,
+                        testBuildConfig
+                    );
+                    break;
             }
             outputStream.end();
             parsedOutputStream.end();
@@ -470,13 +397,133 @@ export class TestRunner {
                 return;
             }
         }
+    }
 
-        if (testKind === TestKind.coverage) {
-            await this.folderContext.lcovResults.generate();
-            if (configuration.displayCoverageReportAfterRun) {
-                this.workspaceContext.testCoverageDocumentProvider.show(this.folderContext);
+    /** Run tests outside of debugger */
+    async runStandardSession(
+        token: vscode.CancellationToken,
+        parsedOutputStream: stream.Writable,
+        outputStream: stream.Writable,
+        testBuildConfig: vscode.DebugConfiguration
+    ) {
+        // Darwin outputs XCTest output to stderr, Linux outputs XCTest output to stdout
+        let stdout: stream.Writable;
+        let stderr: stream.Writable;
+        if (process.platform === "darwin") {
+            stdout = outputStream;
+            stderr = parsedOutputStream;
+        } else {
+            stdout = parsedOutputStream;
+            stderr = outputStream;
+        }
+
+        await execFileStreamOutput(
+            testBuildConfig.program,
+            testBuildConfig.args ?? [],
+            stdout,
+            stderr,
+            token,
+            {
+                cwd: testBuildConfig.cwd,
+                env: { ...process.env, ...testBuildConfig.env },
+                maxBuffer: 16 * 1024 * 1024,
+            },
+            this.folderContext,
+            false,
+            "SIGKILL"
+        );
+    }
+
+    /** Run tests with code coverage, and parse coverage results */
+    async runCoverageSession(
+        token: vscode.CancellationToken,
+        stdout: stream.Writable,
+        stderr: stream.Writable,
+        testBuildConfig: vscode.DebugConfiguration
+    ) {
+        try {
+            const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
+            const args = ["test", "--enable-code-coverage"];
+            await execFileStreamOutput(
+                this.workspaceContext.toolchain.getToolchainExecutable("swift"),
+                [...args, ...filterArgs],
+                stdout,
+                stderr,
+                token,
+                {
+                    cwd: testBuildConfig.cwd,
+                    env: { ...process.env, ...testBuildConfig.env },
+                    maxBuffer: 16 * 1024 * 1024,
+                },
+                this.folderContext,
+                false,
+                "SIGINT" // use SIGINT to kill process as it is a child process of `swift test`
+            );
+        } catch (error) {
+            const execError = error as cp.ExecFileException;
+            if (execError.code !== 1 || execError.killed === true) {
+                throw error;
             }
         }
+        await this.folderContext.lcovResults.generate();
+        if (configuration.displayCoverageReportAfterRun) {
+            this.workspaceContext.testCoverageDocumentProvider.show(this.folderContext);
+        }
+    }
+
+    /** Run tests in parallel outside of debugger */
+    async runParallelSession(
+        token: vscode.CancellationToken,
+        stdout: stream.Writable,
+        stderr: stream.Writable,
+        testBuildConfig: vscode.DebugConfiguration
+    ) {
+        await this.workspaceContext.tempFolder.withTemporaryFile("xml", async filename => {
+            const sanitizer = this.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
+            const sanitizerArgs = sanitizer?.buildFlags ?? [];
+            const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
+            const args = [
+                "test",
+                "--parallel",
+                ...sanitizerArgs,
+                "--skip-build",
+                "--xunit-output",
+                filename,
+            ];
+            try {
+                await execFileStreamOutput(
+                    this.workspaceContext.toolchain.getToolchainExecutable("swift"),
+                    [...args, ...filterArgs],
+                    stdout,
+                    stderr,
+                    token,
+                    {
+                        cwd: testBuildConfig.cwd,
+                        env: { ...process.env, ...testBuildConfig.env },
+                        maxBuffer: 16 * 1024 * 1024,
+                    },
+                    this.folderContext,
+                    false,
+                    "SIGINT" // use SIGINT to kill process as it is a child process of `swift test`
+                );
+            } catch (error) {
+                const execError = error as cp.ExecFileException;
+                if (execError.code !== 1 || execError.killed === true) {
+                    throw error;
+                }
+            }
+            const buffer = await asyncfs.readFile(filename, "utf8");
+            const xUnitParser = new TestXUnitParser();
+            const results = await xUnitParser.parse(
+                buffer,
+                new TestRunnerXUnitTestState(this.testItemFinder, this.testRun)
+            );
+            if (results) {
+                this.testRun.appendOutput(
+                    `\r\nExecuted ${results.tests} tests, with ${results.failures} failures and ${results.errors} errors.\r\n`
+                );
+            }
+        });
     }
 
     /** Run test session inside debugger */
