@@ -9,9 +9,9 @@ updates:
       - dependency-type: direct
     ignore:
       - dependency-name: "*glob"
-        update-types: ["version-update:semvar-major"]
+        update-types: ["version-update:semver-major"]
       - dependency-name: "@types/node"
-        update-types: ["version-update:semvar-major"]
+        update-types: ["version-update:semver-major"]
       - dependency-name: "@types/vscode"
       - dependency-name: "@typescript-eslint/*"
     groups:
