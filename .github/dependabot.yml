@@ -12,6 +12,8 @@ updates:
         update-types: ["version-update:semvar-major"]
       - dependency-name: "@types/node"
         update-types: ["version-update:semvar-major"]
+      - dependency-name: "@types/vscode"
+      - dependency-name: "@typescript-eslint/*"
     groups:
       all-dependencies:
         patterns:
