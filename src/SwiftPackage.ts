@@ -363,8 +363,12 @@ export class SwiftPackage implements PackageContents {
      * @param type Type of target
      * @returns Array of targets
      */
-    getTargets(type: "executable" | "library" | "test"): Target[] {
-        return this.targets.filter(target => target.type === type);
+    getTargets(type?: TargetType): Target[] {
+        if (type === undefined) {
+            return this.targets;
+        } else {
+            return this.targets.filter(target => target.type === type);
+        }
     }
 
     /**
@@ -374,4 +378,10 @@ export class SwiftPackage implements PackageContents {
         const filePath = path.relative(this.folder.fsPath, file);
         return this.targets.find(target => isPathInsidePath(filePath, target.path));
     }
+}
+
+export enum TargetType {
+    executable = "executable",
+    library = "library",
+    test = "test",
 }
