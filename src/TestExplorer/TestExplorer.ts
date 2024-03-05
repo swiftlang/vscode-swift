@@ -65,7 +65,7 @@ export class TestExplorer {
                 task.definition.dontTriggerTestDiscovery !== true &&
                 this.testFileEdited
             ) {
-                //this.testFileEdited = false;
+                this.testFileEdited = false;
                 // only run discover tests if the library has tests
                 if (this.folderContext.swiftPackage.getTargets("test").length > 0) {
                     this.discoverTestsInWorkspace();
