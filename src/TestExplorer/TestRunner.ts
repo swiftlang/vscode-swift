@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021-2022 the VSCode Swift project authors
+// Copyright (c) 2021-2024 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -16,6 +16,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as stream from "stream";
 import * as cp from "child_process";
+import * as asyncfs from "fs/promises";
 import { createTestConfiguration, createDarwinTestConfiguration } from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
 import { execFileStreamOutput, getErrorDescription } from "../utilities/utilities";
@@ -32,6 +33,17 @@ import {
 import { Version } from "../utilities/version";
 import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
 import { TaskOperation } from "../TaskQueue";
+import { TestXUnitParser, iXUnitTestState } from "./TestXUnitParser";
+
+/** Workspace Folder events */
+export enum TestKind {
+    // run tests serially
+    standard = "standard",
+    // run tests in parallel
+    parallel = "parallel",
+    // run tests and extract test coverage
+    coverage = "coverage",
+}
 
 /** Class used to run tests */
 export class TestRunner {
@@ -74,9 +86,18 @@ export class TestRunner {
             vscode.TestRunProfileKind.Run,
             async (request, token) => {
                 const runner = new TestRunner(request, folderContext, controller);
-                await runner.runHandler(false, false, token);
+                await runner.runHandler(false, TestKind.standard, token);
             },
             true
+        );
+        // Add non-debug profile
+        controller.createRunProfile(
+            "Run Tests (Parallel)",
+            vscode.TestRunProfileKind.Run,
+            async (request, token) => {
+                const runner = new TestRunner(request, folderContext, controller);
+                await runner.runHandler(false, TestKind.parallel, token);
+            }
         );
         // Add coverage profile
         controller.createRunProfile(
@@ -84,7 +105,7 @@ export class TestRunner {
             vscode.TestRunProfileKind.Run,
             async (request, token) => {
                 const runner = new TestRunner(request, folderContext, controller);
-                await runner.runHandler(false, true, token);
+                await runner.runHandler(false, TestKind.coverage, token);
             }
         );
         // Add debug profile
@@ -93,7 +114,7 @@ export class TestRunner {
             vscode.TestRunProfileKind.Debug,
             async (request, token) => {
                 const runner = new TestRunner(request, folderContext, controller);
-                await runner.runHandler(true, false, token);
+                await runner.runHandler(true, TestKind.standard, token);
             }
         );
     }
@@ -179,17 +200,13 @@ export class TestRunner {
      * @param token Cancellation token
      * @returns When complete
      */
-    async runHandler(
-        shouldDebug: boolean,
-        generateCoverage: boolean,
-        token: vscode.CancellationToken
-    ) {
+    async runHandler(shouldDebug: boolean, testKind: TestKind, token: vscode.CancellationToken) {
         const runState = new TestRunnerTestRunState(this.testItemFinder, this.testRun);
         try {
             // run associated build task
             // don't do this if generating code test coverage data as it
             // will rebuild everything again
-            if (!generateCoverage) {
+            if (testKind !== TestKind.coverage) {
                 const task = await getBuildAllTask(this.folderContext);
                 const exitCode = await this.folderContext.taskQueue.queueOperation(
                     new TaskOperation(task),
@@ -207,7 +224,7 @@ export class TestRunner {
             if (shouldDebug) {
                 await this.debugSession(token, runState);
             } else {
-                await this.runSession(token, generateCoverage, runState);
+                await this.runSession(token, testKind, runState);
             }
         } catch (error) {
             this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
@@ -281,7 +298,7 @@ export class TestRunner {
     /** Run test session without attaching to a debugger */
     async runSession(
         token: vscode.CancellationToken,
-        generateCoverage: boolean,
+        testKind: TestKind,
         runState: TestRunnerTestRunState
     ) {
         // create launch config for testing
@@ -309,17 +326,6 @@ export class TestRunner {
             },
         });
 
-        // Darwin outputs XCTest output to stderr, Linux outputs XCTest output to stdout
-        let stdout: stream.Writable;
-        let stderr: stream.Writable;
-        if (process.platform === "darwin") {
-            stdout = parsedOutputStream;
-            stderr = outputStream;
-        } else {
-            stdout = parsedOutputStream;
-            stderr = outputStream;
-        }
-
         if (token.isCancellationRequested) {
             parsedOutputStream.end();
             outputStream.end();
@@ -328,44 +334,31 @@ export class TestRunner {
 
         this.testRun.appendOutput(`> Test run started at ${new Date().toLocaleString()} <\r\n\r\n`);
         try {
-            if (generateCoverage) {
-                const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
-                const args = ["test", "--enable-code-coverage"];
-                await execFileStreamOutput(
-                    this.workspaceContext.toolchain.getToolchainExecutable("swift"),
-                    [...args, ...filterArgs],
-                    stdout,
-                    stderr,
-                    token,
-                    {
-                        cwd: testBuildConfig.cwd,
-                        env: { ...process.env, ...testBuildConfig.env },
-                        maxBuffer: 16 * 1024 * 1024,
-                    },
-                    this.folderContext,
-                    false,
-                    "SIGINT" // use SIGINT to kill process as it is a child process of `swift test`
-                );
-            } else {
-                if (process.platform === "darwin") {
-                    stdout = outputStream;
-                    stderr = parsedOutputStream;
-                }
-                await execFileStreamOutput(
-                    testBuildConfig.program,
-                    testBuildConfig.args ?? [],
-                    stdout,
-                    stderr,
-                    token,
-                    {
-                        cwd: testBuildConfig.cwd,
-                        env: { ...process.env, ...testBuildConfig.env },
-                        maxBuffer: 16 * 1024 * 1024,
-                    },
-                    this.folderContext,
-                    false,
-                    "SIGKILL"
-                );
+            switch (testKind) {
+                case TestKind.coverage:
+                    await this.runCoverageSession(
+                        token,
+                        parsedOutputStream,
+                        outputStream,
+                        testBuildConfig
+                    );
+                    break;
+                case TestKind.parallel:
+                    await this.runParallelSession(
+                        token,
+                        parsedOutputStream,
+                        outputStream,
+                        testBuildConfig
+                    );
+                    break;
+                default:
+                    await this.runStandardSession(
+                        token,
+                        parsedOutputStream,
+                        outputStream,
+                        testBuildConfig
+                    );
+                    break;
             }
             outputStream.end();
             parsedOutputStream.end();
@@ -404,13 +397,133 @@ export class TestRunner {
                 return;
             }
         }
+    }
 
-        if (generateCoverage) {
-            await this.folderContext.lcovResults.generate();
-            if (configuration.displayCoverageReportAfterRun) {
-                this.workspaceContext.testCoverageDocumentProvider.show(this.folderContext);
+    /** Run tests outside of debugger */
+    async runStandardSession(
+        token: vscode.CancellationToken,
+        parsedOutputStream: stream.Writable,
+        outputStream: stream.Writable,
+        testBuildConfig: vscode.DebugConfiguration
+    ) {
+        // Darwin outputs XCTest output to stderr, Linux outputs XCTest output to stdout
+        let stdout: stream.Writable;
+        let stderr: stream.Writable;
+        if (process.platform === "darwin") {
+            stdout = outputStream;
+            stderr = parsedOutputStream;
+        } else {
+            stdout = parsedOutputStream;
+            stderr = outputStream;
+        }
+
+        await execFileStreamOutput(
+            testBuildConfig.program,
+            testBuildConfig.args ?? [],
+            stdout,
+            stderr,
+            token,
+            {
+                cwd: testBuildConfig.cwd,
+                env: { ...process.env, ...testBuildConfig.env },
+                maxBuffer: 16 * 1024 * 1024,
+            },
+            this.folderContext,
+            false,
+            "SIGKILL"
+        );
+    }
+
+    /** Run tests with code coverage, and parse coverage results */
+    async runCoverageSession(
+        token: vscode.CancellationToken,
+        stdout: stream.Writable,
+        stderr: stream.Writable,
+        testBuildConfig: vscode.DebugConfiguration
+    ) {
+        try {
+            const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
+            const args = ["test", "--enable-code-coverage"];
+            await execFileStreamOutput(
+                this.workspaceContext.toolchain.getToolchainExecutable("swift"),
+                [...args, ...filterArgs],
+                stdout,
+                stderr,
+                token,
+                {
+                    cwd: testBuildConfig.cwd,
+                    env: { ...process.env, ...testBuildConfig.env },
+                    maxBuffer: 16 * 1024 * 1024,
+                },
+                this.folderContext,
+                false,
+                "SIGINT" // use SIGINT to kill process as it is a child process of `swift test`
+            );
+        } catch (error) {
+            const execError = error as cp.ExecFileException;
+            if (execError.code !== 1 || execError.killed === true) {
+                throw error;
             }
         }
+        await this.folderContext.lcovResults.generate();
+        if (configuration.displayCoverageReportAfterRun) {
+            this.workspaceContext.testCoverageDocumentProvider.show(this.folderContext);
+        }
+    }
+
+    /** Run tests in parallel outside of debugger */
+    async runParallelSession(
+        token: vscode.CancellationToken,
+        stdout: stream.Writable,
+        stderr: stream.Writable,
+        testBuildConfig: vscode.DebugConfiguration
+    ) {
+        await this.workspaceContext.tempFolder.withTemporaryFile("xml", async filename => {
+            const sanitizer = this.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
+            const sanitizerArgs = sanitizer?.buildFlags ?? [];
+            const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
+            const args = [
+                "test",
+                "--parallel",
+                ...sanitizerArgs,
+                "--skip-build",
+                "--xunit-output",
+                filename,
+            ];
+            try {
+                await execFileStreamOutput(
+                    this.workspaceContext.toolchain.getToolchainExecutable("swift"),
+                    [...args, ...filterArgs],
+                    stdout,
+                    stderr,
+                    token,
+                    {
+                        cwd: testBuildConfig.cwd,
+                        env: { ...process.env, ...testBuildConfig.env },
+                        maxBuffer: 16 * 1024 * 1024,
+                    },
+                    this.folderContext,
+                    false,
+                    "SIGINT" // use SIGINT to kill process as it is a child process of `swift test`
+                );
+            } catch (error) {
+                const execError = error as cp.ExecFileException;
+                if (execError.code !== 1 || execError.killed === true) {
+                    throw error;
+                }
+            }
+            const buffer = await asyncfs.readFile(filename, "utf8");
+            const xUnitParser = new TestXUnitParser();
+            const results = await xUnitParser.parse(
+                buffer,
+                new TestRunnerXUnitTestState(this.testItemFinder, this.testRun)
+            );
+            if (results) {
+                this.testRun.appendOutput(
+                    `\r\nExecuted ${results.tests} tests, with ${results.failures} failures and ${results.errors} errors.\r\n`
+                );
+            }
+        });
     }
 
     /** Run test session inside debugger */
@@ -670,6 +783,30 @@ class TestRunnerTestRunState implements iTestRunState {
         const lastClassTestItem = this.lastTestItem?.parent;
         if (lastClassTestItem && lastClassTestItem.id.endsWith(`.${name}`)) {
             this.testRun.failed(lastClassTestItem, []);
+        }
+    }
+}
+
+class TestRunnerXUnitTestState implements iXUnitTestState {
+    constructor(private testItemFinder: TestItemFinder, private testRun: vscode.TestRun) {}
+
+    passTest(id: string, duration: number): void {
+        const index = this.testItemFinder.getIndex(id);
+        if (index !== -1) {
+            this.testRun.passed(this.testItemFinder.testItems[index], duration);
+        }
+    }
+    failTest(id: string, duration: number, message?: string): void {
+        const index = this.testItemFinder.getIndex(id);
+        if (index !== -1) {
+            const testMessage = new vscode.TestMessage(message ?? "Failed");
+            this.testRun.failed(this.testItemFinder.testItems[index], testMessage, duration);
+        }
+    }
+    skipTest(id: string): void {
+        const index = this.testItemFinder.getIndex(id);
+        if (index !== -1) {
+            this.testRun.skipped(this.testItemFinder.testItems[index]);
         }
     }
 }
