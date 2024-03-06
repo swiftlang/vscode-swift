@@ -32,7 +32,7 @@ export interface TestClass {
 /** Test target definition */
 export interface TestTarget {
     name: string;
-    folder: vscode.Uri;
+    folder?: vscode.Uri;
     classes: TestClass[];
 }
 
