@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
-import { Product } from "./SwiftPackage";
+import { Product, TargetType } from "./SwiftPackage";
 import configuration from "./configuration";
 import { swiftRuntimeEnv } from "./utilities/utilities";
 import { Version } from "./utilities/version";
@@ -110,7 +110,7 @@ function getBuildRevealOption(): vscode.TaskRevealKind {
  */
 export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
     let additionalArgs = buildOptions(folderContext.workspaceContext.toolchain);
-    if (folderContext.swiftPackage.getTargets("test").length > 0) {
+    if (folderContext.swiftPackage.getTargets(TargetType.test).length > 0) {
         additionalArgs.push(...testDiscoveryFlag(folderContext));
     }
     let buildTaskName = SwiftTaskProvider.buildAllName;

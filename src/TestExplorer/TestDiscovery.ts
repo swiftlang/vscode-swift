@@ -14,6 +14,7 @@
 
 import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
+import { TargetType } from "../SwiftPackage";
 
 /** Test function definition */
 export interface TestFunction {
@@ -49,7 +50,7 @@ export function updateTestsFromClasses(folderContext: FolderContext, testClasses
     if (!testExplorer) {
         return;
     }
-    const targets = folderContext.swiftPackage.getTargets("test").map(target => {
+    const targets = folderContext.swiftPackage.getTargets(TargetType.test).map(target => {
         const classes = testClasses.filter(
             testClass =>
                 testClass.location &&
