@@ -78,7 +78,7 @@ export class PackageResolved {
                         pin.state
                     )
             );
-        } else if (this.version === 2) {
+        } else if (this.version === 2 || this.version === 3) {
             const v2Json = json as PackageResolvedFileV2;
             this.pins = v2Json.pins.map(
                 pin => new PackageResolvedPin(pin.identity, pin.location, pin.state)
