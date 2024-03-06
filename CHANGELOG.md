@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.1 - 2024-03-06
+
+### Fixed
+
+- Loading of package dependencies for Swift 5.10 packages.
+
 ## 1.8.0 - 2024-02-21
 
 ### Added
