@@ -459,7 +459,11 @@ export class LanguageClientManager {
                 // returns invalid replacement text
                 provideInlayHints: async (document, position, token, next) => {
                     const result = await next(document, position, token);
-                    result?.forEach(r => (r.textEdits = undefined));
+                    // remove textEdits for swift version earlier than 5.10 as it sometimes
+                    // generated invalid textEdits
+                    if (this.workspaceContext.swiftVersion.isLessThan(new Version(5, 10, 0))) {
+                        result?.forEach(r => (r.textEdits = undefined));
+                    }
                     return result;
                 },
             },
