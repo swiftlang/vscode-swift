@@ -40,7 +40,7 @@ class CommentCompletionProvider implements vscode.CompletionItemProvider {
         position: vscode.Position
     ): Promise<vscode.CompletionItem[] | undefined> {
         // Is line a '///' comment
-        if (this.isLineComment(document, position.line - 1) === false) {
+        if (position.line === 0 || this.isLineComment(document, position.line - 1) === false) {
             return undefined;
         }
         const completion = new CommentCompletion("/// ", "///", "Documentation comment");
