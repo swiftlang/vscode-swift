@@ -20,6 +20,7 @@ import { FolderContext } from "../FolderContext";
 import { BuildFlags } from "../toolchain/BuildFlags";
 import { stringArrayInEnglish, swiftLibraryPathKey, swiftRuntimeEnv } from "../utilities/utilities";
 import { DebugAdapter } from "./debugAdapter";
+import { TargetType } from "../SwiftPackage";
 
 /**
  * Edit launch.json based on contents of Swift Package.
@@ -178,7 +179,7 @@ export function createTestConfiguration(
     ctx: FolderContext,
     expandEnvVariables = false
 ): vscode.DebugConfiguration | null {
-    if (ctx.swiftPackage.getTargets("test").length === 0) {
+    if (ctx.swiftPackage.getTargets(TargetType.test).length === 0) {
         return null;
     }
 
@@ -265,7 +266,7 @@ export function createDarwinTestConfiguration(
     ctx: FolderContext,
     args: string
 ): vscode.DebugConfiguration | null {
-    if (ctx.swiftPackage.getTargets("test").length === 0) {
+    if (ctx.swiftPackage.getTargets(TargetType.test).length === 0) {
         return null;
     }
     if (process.platform !== "darwin") {
