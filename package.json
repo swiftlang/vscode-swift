@@ -1090,7 +1090,7 @@
     "@types/glob": "^7.1.6",
     "@types/lcov-parse": "^1.0.2",
     "@types/mocha": "^10.0.1",
-    "@types/node": "^18.19.26",
+    "@types/node": "^18.19.28",
     "@types/plist": "^3.0.5",
     "@types/vscode": "^1.71.0",
     "@typescript-eslint/eslint-plugin": "^6.1.0",
@@ -1102,7 +1102,7 @@
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "glob": "~7.2.3",
-    "mocha": "^10.2.0",
+    "mocha": "^10.4.0",
     "prettier": "3.2.5",
     "typescript": "^5.4.3"
   },
