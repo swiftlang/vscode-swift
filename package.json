@@ -1104,7 +1104,7 @@
     "glob": "~7.2.3",
     "mocha": "^10.4.0",
     "prettier": "3.2.5",
-    "typescript": "^5.4.3"
+    "typescript": "^5.4.4"
   },
   "dependencies": {
     "lcov-parse": "^1.0.0",
