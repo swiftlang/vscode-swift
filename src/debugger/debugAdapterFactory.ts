@@ -15,19 +15,21 @@
 import * as vscode from "vscode";
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
+import { DebugAdapter } from "./debugAdapter";
 
 export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
     class LLDBDebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFactory {
         createDebugAdapterDescriptor(
             _session: vscode.DebugSession,
-            executable: vscode.DebugAdapterExecutable | undefined
+            executable: vscode.DebugAdapterExecutable | undefined,
         ): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
             // use the executable specified in the settings or use version in toolchain
+            const debugAdapter = DebugAdapter.getDebugAdapter(workspaceContext.toolchain);
             if (!executable) {
                 const lldbDebugAdapterPath =
                     configuration.debugger.debugAdapterPath.length > 0
                         ? configuration.debugger.debugAdapterPath
-                        : workspaceContext.toolchain.getToolchainExecutable("lldb-vscode");
+                        : workspaceContext.toolchain.getToolchainExecutable(debugAdapter);
                 executable = new vscode.DebugAdapterExecutable(lldbDebugAdapterPath, [], {});
             }
 
@@ -38,11 +40,11 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
 
     const debugAdpaterFactory = vscode.debug.registerDebugAdapterDescriptorFactory(
         "swift-lldb",
-        new LLDBDebugAdapterExecutableFactory()
+        new LLDBDebugAdapterExecutableFactory(),
     );
     const debugConfigProvider = vscode.debug.registerDebugConfigurationProvider(
         "swift-lldb",
-        new LLDBDebugConfigurationProvider()
+        new LLDBDebugConfigurationProvider(),
     );
     return {
         dispose: () => {
@@ -52,9 +54,9 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
     };
 }
 
-/** Provide configurations for lldb-vscode
+/** Provide configurations for lldb-vscode/lldb-dap
  *
- * Converts launch configuration that user supplies into a version that the lldb-vscode
+ * Converts launch configuration that user supplies into a version that the lldb-vscode/lldb-dap
  * debug adapter will use. Primarily it converts the environment variables from Object
  * to an array of strings in format "var=value".
  *
@@ -66,14 +68,14 @@ class LLDBDebugConfigurationProvider implements vscode.DebugConfigurationProvide
         folder: vscode.WorkspaceFolder | undefined,
         launchConfig: vscode.DebugConfiguration,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        cancellation?: vscode.CancellationToken
+        cancellation?: vscode.CancellationToken,
     ): Promise<vscode.DebugConfiguration> {
         launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
         return launchConfig;
     }
 
     convertEnvironmentVariables(
-        map: { [key: string]: string } | undefined
+        map: { [key: string]: string } | undefined,
     ): { [key: string]: string } | string[] | undefined {
         if (map === undefined) {
             return undefined;
