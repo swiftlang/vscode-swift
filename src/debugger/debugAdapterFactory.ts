@@ -15,6 +15,7 @@
 import * as vscode from "vscode";
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
+import { DebugAdapter } from "./debugAdapter";
 
 export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
     class LLDBDebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFactory {
@@ -23,11 +24,12 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
             executable: vscode.DebugAdapterExecutable | undefined
         ): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
             // use the executable specified in the settings or use version in toolchain
+            const debugAdapter = DebugAdapter.getDebugAdapter(workspaceContext.toolchain);
             if (!executable) {
                 const lldbDebugAdapterPath =
                     configuration.debugger.debugAdapterPath.length > 0
                         ? configuration.debugger.debugAdapterPath
-                        : workspaceContext.toolchain.getToolchainExecutable("lldb-vscode");
+                        : workspaceContext.toolchain.getToolchainExecutable(debugAdapter);
                 executable = new vscode.DebugAdapterExecutable(lldbDebugAdapterPath, [], {});
             }
 
@@ -52,9 +54,9 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
     };
 }
 
-/** Provide configurations for lldb-vscode
+/** Provide configurations for lldb-vscode/lldb-dap
  *
- * Converts launch configuration that user supplies into a version that the lldb-vscode
+ * Converts launch configuration that user supplies into a version that the lldb-vscode/lldb-dap
  * debug adapter will use. Primarily it converts the environment variables from Object
  * to an array of strings in format "var=value".
  *
