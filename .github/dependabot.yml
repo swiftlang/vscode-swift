@@ -13,7 +13,6 @@ updates:
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
       - dependency-name: "@types/vscode"
-      - dependency-name: "@typescript-eslint/*"
     groups:
       all-dependencies:
         patterns:
