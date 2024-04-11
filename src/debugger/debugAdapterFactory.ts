@@ -21,7 +21,7 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
     class LLDBDebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFactory {
         createDebugAdapterDescriptor(
             _session: vscode.DebugSession,
-            executable: vscode.DebugAdapterExecutable | undefined,
+            executable: vscode.DebugAdapterExecutable | undefined
         ): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
             // use the executable specified in the settings or use version in toolchain
             const debugAdapter = DebugAdapter.getDebugAdapter(workspaceContext.toolchain);
@@ -40,11 +40,11 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
 
     const debugAdpaterFactory = vscode.debug.registerDebugAdapterDescriptorFactory(
         "swift-lldb",
-        new LLDBDebugAdapterExecutableFactory(),
+        new LLDBDebugAdapterExecutableFactory()
     );
     const debugConfigProvider = vscode.debug.registerDebugConfigurationProvider(
         "swift-lldb",
-        new LLDBDebugConfigurationProvider(),
+        new LLDBDebugConfigurationProvider()
     );
     return {
         dispose: () => {
@@ -68,14 +68,14 @@ class LLDBDebugConfigurationProvider implements vscode.DebugConfigurationProvide
         folder: vscode.WorkspaceFolder | undefined,
         launchConfig: vscode.DebugConfiguration,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        cancellation?: vscode.CancellationToken,
+        cancellation?: vscode.CancellationToken
     ): Promise<vscode.DebugConfiguration> {
         launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
         return launchConfig;
     }
 
     convertEnvironmentVariables(
-        map: { [key: string]: string } | undefined,
+        map: { [key: string]: string } | undefined
     ): { [key: string]: string } | string[] | undefined {
         if (map === undefined) {
             return undefined;

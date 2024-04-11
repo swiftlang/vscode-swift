@@ -49,7 +49,7 @@ export class DebugAdapter {
      */
     static async verifyDebugAdapterExists(
         workspace: WorkspaceContext,
-        quiet = false,
+        quiet = false
     ): Promise<boolean> {
         const useCustom = configuration.debugger.debugAdapterPath.length > 0;
         const debugAdapter = DebugAdapter.getDebugAdapter(workspace.toolchain);
@@ -61,7 +61,7 @@ export class DebugAdapter {
                 vscode.window.showInformationMessage(
                     useCustom
                         ? `Cannot find ${debugAdapter} debug adapter specified in setting Swift.Debugger.Path.`
-                        : `Cannot find ${debugAdapter} debug adapter in your Swift toolchain.`,
+                        : `Cannot find ${debugAdapter} debug adapter in your Swift toolchain.`
                 );
             }
             workspace.outputChannel.log(`Failed to find ${lldbDebugAdapterPath}`);
