@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.9.0 - 2024-04-15
+
+### Added
+- Running tests in parallel. It is available from the drop-down next to the run button at the top of the TestExplorer. It is not available while debugging and parsing of XCT failure messages does not work prior to Swift 6.
+
+### Changed
+- If using Swift 5.10 allow for InlayHint text edits.
+- If using Swift 6 name of debug adapter has changed from `lldb-vscode` to `lldb-dap`.
+
+### Fixed
+- Don't check if line above is a comment if you are on line 0 in comment completion code.
+
 ## 1.8.1 - 2024-03-06
 
 ### Fixed
