@@ -2,7 +2,7 @@
   "name": "swift-lang",
   "displayName": "Swift",
   "description": "Swift Language Support for Visual Studio Code.",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "publisher": "sswg",
   "icon": "icon.png",
   "repository": {
@@ -432,12 +432,12 @@
         }
       },
       {
-        "title": "Debugger (Windows)",
+        "title": "Debugger",
         "properties": {
           "swift.debugger.useDebugAdapterFromToolchain": {
             "type": "boolean",
             "default": false,
-            "description": "Use lldb debug adapter packaged with Swift toolchain as your debug adapter. This is currently only available on Windows platforms",
+            "description": "Use lldb debug adapter packaged with Swift toolchain as your debug adapter. This is currently only available on Windows platforms or macOS Swift 6",
             "order": 1
           },
           "swift.debugger.path": {
@@ -1081,7 +1081,7 @@
     "pretest": "npm run compile && npm run lint",
     "test": "tsc -p ./ && node ./out/test/runTest.js",
     "package": "vsce package",
-    "dev-package": "vsce package --no-update-package-json 1.8.2-dev",
+    "dev-package": "vsce package --no-update-package-json 1.9.1-dev",
     "preview-package": "vsce package --pre-release",
     "tag": "./scripts/tag_release.sh $npm_package_version",
     "contributors": "./scripts/generate_contributors_list.sh"
