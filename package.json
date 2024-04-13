@@ -1096,7 +1096,7 @@
     "@typescript-eslint/eslint-plugin": "^7.6.0",
     "@typescript-eslint/parser": "^7.6.0",
     "@vscode/test-electron": "^2.3.8",
-    "@vscode/vsce": "^2.24.0",
+    "@vscode/vsce": "^2.25.0",
     "@types/xml2js": "^0.4.14",
     "esbuild": "^0.20.2",
     "eslint": "^8.57.0",
