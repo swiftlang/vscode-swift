@@ -21,7 +21,7 @@ import { createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderContext } from "./FolderContext";
 import { PackageNode } from "./ui/PackageDependencyProvider";
 import { withQuickPick } from "./ui/QuickPick";
-import { getErrorDescription } from "./utilities/utilities";
+import { execSwift, getErrorDescription } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 import { DarwinCompatibleTarget, SwiftToolchain } from "./toolchain/toolchain";
 import { debugSnippet, runSnippet } from "./SwiftSnippets";
@@ -89,6 +89,158 @@ export async function updateDependencies(ctx: WorkspaceContext) {
         return;
     }
     await updateFolderDependencies(current);
+}
+
+/**
+ * Prompts the user to input project details and then executes `swift package init`
+ * to create the project.
+ */
+export async function createProject(ctx: WorkspaceContext): Promise<void> {
+    // Prompt the user for the type of project they would like to create
+    const selectedProjectType = await vscode.window.showQuickPick<
+        vscode.QuickPickItem & { description: string }
+    >(
+        [
+            {
+                label: "Library",
+                description: "library",
+                detail: "A package with a library.",
+            },
+            {
+                label: "Executable",
+                description: "executable",
+                detail: "A package with an executable.",
+            },
+            {
+                label: "Tool",
+                description: "tool",
+                detail: "A package with an executable that uses Swift Argument Parser. Use this template if you plan to have a rich set of command-line arguments.",
+            },
+            {
+                label: "Build Tool Plugin",
+                description: "build-tool-plugin",
+                detail: "A package that vends a build tool plugin.",
+            },
+            {
+                label: "Command Plugin",
+                description: "command-plugin",
+                detail: "A package that vends a command plugin.",
+            },
+            {
+                label: "Macro",
+                description: "macro",
+                detail: "A package that vends a macro.",
+            },
+            {
+                label: "Empty",
+                description: "empty",
+                detail: "An empty package with a Package.swift manifest.",
+            },
+        ],
+        {
+            placeHolder: "Select a swift project template",
+        }
+    );
+    if (!selectedProjectType) {
+        return undefined;
+    }
+    const projectType = selectedProjectType.description;
+    // Prompt the user for a location in which to create the new project
+    const selectedFolder = await vscode.window.showOpenDialog({
+        title: "Select a folder to create a new swift project in",
+        openLabel: "Select folder",
+        canSelectFiles: false,
+        canSelectFolders: true,
+        canSelectMany: false,
+    });
+    if (!selectedFolder || selectedFolder.length === 0) {
+        return undefined;
+    }
+
+    // Prompt the user for the project name. Ensure no name collisions.
+    const existingNames = await fs.readdir(selectedFolder[0].fsPath, { encoding: "utf-8" });
+    let initialValue = `swift-${projectType}`;
+    for (let i = 1; ; i++) {
+        if (!existingNames.includes(initialValue)) {
+            break;
+        }
+        initialValue = `swift-${projectType}-${i}`;
+    }
+    const projectName = await vscode.window.showInputBox({
+        value: initialValue,
+        prompt: "Enter a name for your new swift project",
+        validateInput(value) {
+            if (existingNames.includes(value)) {
+                return "A file/folder with this name already exists";
+            }
+            return undefined;
+        },
+    });
+    if (!projectName) {
+        return undefined;
+    }
+
+    // Create the folder that will store the new project
+    const projectUri = vscode.Uri.joinPath(selectedFolder[0], projectName);
+    await fs.mkdir(projectUri.fsPath);
+
+    // Use swift package manager to initialize the swift project
+    await execSwift(
+        ["package", "init", "--type", projectType, "--name", projectName],
+        ctx.toolchain,
+        {
+            cwd: projectUri.fsPath,
+        }
+    );
+
+    // Prompt the user whether or not they want to open the newly created project
+    const isWorkspaceOpened = !!vscode.workspace.workspaceFolders;
+    const config = vscode.workspace.getConfiguration("swift");
+    const openAfterCreate = config.get<string>("openAfterCreateProject");
+
+    let action: "open" | "openNewWindow" | "addToWorkspace" | undefined;
+    if (openAfterCreate === "always") {
+        action = "open";
+    } else if (openAfterCreate === "alwaysNewWindow") {
+        action = "openNewWindow";
+    } else if (openAfterCreate === "whenNoFolderOpen" && !isWorkspaceOpened) {
+        action = "open";
+    }
+
+    if (action === undefined) {
+        let message = `Would you like to open ${projectName}?`;
+        const open = "Open";
+        const openNewWindow = "Open in New Window";
+        const choices = [open, openNewWindow];
+
+        const addToWorkspace = "Add to Workspace";
+        if (isWorkspaceOpened) {
+            message = `Would you like to open ${projectName}, or add it to the current workspace?`;
+            choices.push(addToWorkspace);
+        }
+
+        const result = await vscode.window.showInformationMessage(
+            message,
+            { modal: true, detail: "The default action can be configured in settings" },
+            ...choices
+        );
+        if (result === open) {
+            action = "open";
+        } else if (result === openNewWindow) {
+            action = "openNewWindow";
+        } else if (result === addToWorkspace) {
+            action = "addToWorkspace";
+        }
+    }
+
+    if (action === "open") {
+        vscode.commands.executeCommand("vscode.openFolder", projectUri, { forceReuseWindow: true });
+    } else if (action === "openNewWindow") {
+        vscode.commands.executeCommand("vscode.openFolder", projectUri, { forceNewWindow: true });
+    } else if (action === "addToWorkspace") {
+        const index = vscode.workspace.workspaceFolders?.length ?? 0;
+        vscode.workspace.updateWorkspaceFolders(index, 0, { uri: projectUri });
+    }
 }
 
 /**
@@ -682,6 +834,7 @@ function updateAfterError(result: boolean, folderContext: FolderContext) {
  */
 export function register(ctx: WorkspaceContext) {
     ctx.subscriptions.push(
+        vscode.commands.registerCommand("swift.createProject", () => createProject(ctx)),
         vscode.commands.registerCommand("swift.resolveDependencies", () =>
             resolveDependencies(ctx)
         ),

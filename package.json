@@ -38,6 +38,11 @@
     ],
     "commands": [
       {
+        "command": "swift.createProject",
+        "title": "New Project",
+        "category": "Swift"
+      },
+      {
         "command": "swift.updateDependencies",
         "title": "Update Package Dependencies",
         "icon": "$(cloud-download)",
@@ -160,6 +165,23 @@
       {
         "title": "Swift",
         "properties": {
+          "swift.openAfterCreateProject": {
+            "type": "string",
+            "enum": [
+              "always",
+              "alwaysNewWindow",
+              "whenNoFolderOpen",
+              "prompt"
+            ],
+            "enumDescriptions": [
+              "Always open in current window.",
+              "Always open in a new window.",
+              "Only open in current window when no folder is opened.",
+              "Always prompt for action."
+            ],
+            "default": "prompt",
+            "description": "Controls whether to open a swift project automatically after creating it."
+          },
           "swift.path": {
             "type": "string",
             "default": "",
