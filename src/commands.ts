@@ -28,6 +28,7 @@ import { debugSnippet, runSnippet } from "./SwiftSnippets";
 import { debugLaunchConfig, getLaunchConfiguration } from "./debugger/launch";
 import { execFile } from "./utilities/utilities";
 import { SwiftExecOperation, TaskOperation } from "./TaskQueue";
+import { SwiftProjectTemplate } from "./toolchain/toolchain";
 
 /**
  * References:
@@ -97,54 +98,25 @@ export async function updateDependencies(ctx: WorkspaceContext) {
  */
 export async function createProject(ctx: WorkspaceContext): Promise<void> {
     // Prompt the user for the type of project they would like to create
-    const selectedProjectType = await vscode.window.showQuickPick<
-        vscode.QuickPickItem & { description: string }
+    const availableProjectTemplates = await ctx.toolchain.getProjectTemplates();
+    const selectedProjectTemplate = await vscode.window.showQuickPick<
+        vscode.QuickPickItem & { type: SwiftProjectTemplate }
     >(
-        [
-            {
-                label: "Library",
-                description: "library",
-                detail: "A package with a library.",
-            },
-            {
-                label: "Executable",
-                description: "executable",
-                detail: "A package with an executable.",
-            },
-            {
-                label: "Tool",
-                description: "tool",
-                detail: "A package with an executable that uses Swift Argument Parser. Use this template if you plan to have a rich set of command-line arguments.",
-            },
-            {
-                label: "Build Tool Plugin",
-                description: "build-tool-plugin",
-                detail: "A package that vends a build tool plugin.",
-            },
-            {
-                label: "Command Plugin",
-                description: "command-plugin",
-                detail: "A package that vends a command plugin.",
-            },
-            {
-                label: "Macro",
-                description: "macro",
-                detail: "A package that vends a macro.",
-            },
-            {
-                label: "Empty",
-                description: "empty",
-                detail: "An empty package with a Package.swift manifest.",
-            },
-        ],
+        availableProjectTemplates.map(type => ({
+            label: type.name,
+            description: type.id,
+            detail: type.description,
+            type,
+        })),
         {
             placeHolder: "Select a swift project template",
         }
     );
-    if (!selectedProjectType) {
+    if (!selectedProjectTemplate) {
         return undefined;
     }
-    const projectType = selectedProjectType.description;
+    const projectType = selectedProjectTemplate.type.id;
+
     // Prompt the user for a location in which to create the new project
     const selectedFolder = await vscode.window.showOpenDialog({
         title: "Select a folder to create a new swift project in",
