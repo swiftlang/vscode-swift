@@ -168,16 +168,16 @@ export class TestExplorer {
      * Discover tests
      */
     async discoverTestsInWorkspace() {
-        const toolchain = this.folderContext.workspaceContext.toolchain;
-        if (toolchain.swiftVersion.isLessThan(new Version(5, 11, 0))) {
-            await this.discoverTestsInWorkspaceSPM();
-        } else {
+        //const toolchain = this.folderContext.workspaceContext.toolchain;
+        //if (toolchain.swiftVersion.isLessThan(new Version(5, 11, 0))) {
+        await this.discoverTestsInWorkspaceSPM();
+        /*} else {
             try {
                 await this.discoverTestsInWorkspaceLSP();
             } catch {
                 await this.discoverTestsInWorkspaceSPM();
             }
-        }
+        }*/
     }
 
     /**
