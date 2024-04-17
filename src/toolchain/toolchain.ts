@@ -187,6 +187,14 @@ export class SwiftToolchain {
         return `${this.toolchainPath}/bin/${exe}${windowsExeSuffix}`;
     }
 
+    /**
+     * Cannot use `getToolchainExecutable` to get the LLDB executable as LLDB
+     * is not in macOS toolchain path
+     */
+    public getLLDB(): string {
+        return path.join(this.swiftFolderPath, "lldb");
+    }
+
     logDiagnostics(channel: SwiftOutputChannel) {
         channel.logDiagnostic(`Swift Path: ${this.swiftFolderPath}`);
         channel.logDiagnostic(`Toolchain Path: ${this.toolchainPath}`);

@@ -634,7 +634,7 @@ function toggleTestCoverageDisplay(workspaceContext: WorkspaceContext) {
 
 async function attachDebugger(workspaceContext: WorkspaceContext) {
     // use LLDB to get list of processes
-    const lldb = workspaceContext.toolchain.getToolchainExecutable("lldb");
+    const lldb = workspaceContext.toolchain.getLLDB();
     try {
         const { stdout } = await execFile(lldb, [
             "--batch",
