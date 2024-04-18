@@ -100,4 +100,31 @@ suite("WorkspaceContext Test Suite", () => {
             await swiftConfig.update("path", "");
         });
     });
+
+    suite("Toolchain", () => {
+        test("get project templates", async () => {
+            // The output of `swift package init --help` will probably change at some point.
+            // Just make sure that the most complex portions of the output are parsed correctly.
+            const projectTemplates = await workspaceContext.toolchain.getProjectTemplates();
+            // Contains multi-line description
+            const toolTemplate = projectTemplates.find(template => template.id === "tool");
+            assert(toolTemplate);
+            assert.deepEqual(toolTemplate, {
+                id: "tool",
+                name: "Tool",
+                description:
+                    "A package with an executable that uses Swift Argument Parser. Use this template if you plan to have a rich set of command-line arguments.",
+            });
+            // Name conversion includes dashes
+            const buildToolPluginTemplate = projectTemplates.find(
+                t => t.id === "build-tool-plugin"
+            );
+            assert(buildToolPluginTemplate);
+            assert.deepEqual(buildToolPluginTemplate, {
+                id: "build-tool-plugin",
+                name: "Build Tool Plugin",
+                description: "A package that vends a build tool plugin.",
+            });
+        }).timeout(1000);
+    });
 }).timeout(10000);
