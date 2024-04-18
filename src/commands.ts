@@ -21,7 +21,7 @@ import { createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
 import { FolderContext } from "./FolderContext";
 import { PackageNode } from "./ui/PackageDependencyProvider";
 import { withQuickPick } from "./ui/QuickPick";
-import { execSwift, getErrorDescription } from "./utilities/utilities";
+import { execSwift, getErrorDescription, withDelayedProgress } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 import { DarwinCompatibleTarget, SwiftToolchain } from "./toolchain/toolchain";
 import { debugSnippet, runSnippet } from "./SwiftSnippets";
@@ -129,7 +129,7 @@ export async function createProject(ctx: WorkspaceContext): Promise<void> {
         return undefined;
     }
 
-    // Prompt the user for the project name. Ensure no name collisions.
+    // Prompt the user for the project name
     const existingNames = await fs.readdir(selectedFolder[0].fsPath, { encoding: "utf-8" });
     let initialValue = `swift-${projectType}`;
     for (let i = 1; ; i++) {
@@ -142,6 +142,7 @@ export async function createProject(ctx: WorkspaceContext): Promise<void> {
         value: initialValue,
         prompt: "Enter a name for your new swift project",
         validateInput(value) {
+            // Ensure there are no name collisions
             if (existingNames.includes(value)) {
                 return "A file/folder with this name already exists";
             }
@@ -157,12 +158,21 @@ export async function createProject(ctx: WorkspaceContext): Promise<void> {
     await fs.mkdir(projectUri.fsPath);
 
     // Use swift package manager to initialize the swift project
-    await execSwift(
-        ["package", "init", "--type", projectType, "--name", projectName],
-        ctx.toolchain,
+    await withDelayedProgress(
         {
-            cwd: projectUri.fsPath,
-        }
+            location: vscode.ProgressLocation.Notification,
+            title: `Creating swift project ${projectName}`,
+        },
+        async () => {
+            await execSwift(
+                ["package", "init", "--type", projectType, "--name", projectName],
+                ctx.toolchain,
+                {
+                    cwd: projectUri.fsPath,
+                }
+            );
+        },
+        1000
     );
 
     // Prompt the user whether or not they want to open the newly created project
