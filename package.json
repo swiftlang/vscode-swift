@@ -517,6 +517,10 @@
     "menus": {
       "commandPalette": [
         {
+          "command": "swift.createNewProject",
+          "when": "!swift.isActivated || swift.createNewProjectAvailable"
+        },
+        {
           "command": "swift.updateDependencies",
           "when": "swift.hasPackage"
         },

@@ -98,6 +98,16 @@ export async function updateDependencies(ctx: WorkspaceContext) {
  * to create the project.
  */
 export async function createNewProject(ctx: WorkspaceContext): Promise<void> {
+    // The context key `swift.createNewProjectAvailable` only works if the extension has been
+    // activated. As such, we also have to allow this command to run when no workspace is
+    // active. Show an error to the user if the command is unavailable.
+    if (!ctx.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 8, 0))) {
+        vscode.window.showErrorMessage(
+            "Creating a new swift project is only available starting in swift version 5.8.0."
+        );
+        return;
+    }
+
     // Prompt the user for the type of project they would like to create
     const availableProjectTemplates = await ctx.toolchain.getProjectTemplates();
     const selectedProjectTemplate = await vscode.window.showQuickPick<

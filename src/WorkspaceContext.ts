@@ -37,6 +37,7 @@ import { TestCoverageReportProvider } from "./coverage/TestCoverageReport";
 import { CommentCompletionProviders } from "./editor/CommentCompletion";
 import { TestCoverageRenderer } from "./coverage/TestCoverageRenderer";
 import { DebugAdapter } from "./debugger/debugAdapter";
+import { Version } from "./utilities/version";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -72,6 +73,9 @@ export class WorkspaceContext implements vscode.Disposable {
         this.testCoverageDocumentProvider = new TestCoverageReportProvider(this);
         this.commentCompletionProvider = new CommentCompletionProviders();
         this.testCoverageRenderer = new TestCoverageRenderer(this);
+        contextKeys.createNewProjectAvailable = toolchain.swiftVersion.isGreaterThanOrEqual(
+            new Version(5, 8, 0)
+        );
 
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(async event => {
             // on toolchain config change, reload window

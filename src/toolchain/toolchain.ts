@@ -192,6 +192,11 @@ export class SwiftToolchain {
      * @returns a {@link SwiftProjectTemplate} for each discovered project type
      */
     public async getProjectTemplates(): Promise<SwiftProjectTemplate[]> {
+        // Only swift versions >=5.8.0 are supported
+        if (this.swiftVersion.isLessThan(new Version(5, 8, 0))) {
+            return [];
+        }
+        // Parse the output from `swift package init --help`
         const { stdout } = await execSwift(["package", "init", "--help"], "default");
         const lines = stdout.split(/\r?\n/g);
         // Determine where the `--type` option is documented
