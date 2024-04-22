@@ -233,6 +233,37 @@ message`,
             ]);
         });
 
+        test("Single-line Fail followed by another error", async () => {
+            const testRunState = new TestRunState(["MyTests.MyTests/testFail"], true);
+            const runState = testRunState.tests[0];
+            outputParser.parseResult(
+                `Test Case '-[MyTests.MyTests testFail]' started.
+/Users/user/Developer/MyTests/MyTests.swift:59: error: -[MyTests.MyTests testFail] : failed - Message
+/Users/user/Developer/MyTests/MyTests.swift:61: error: -[MyTests.MyTests testFail] : failed - Again
+Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
+`,
+                testRunState,
+                darwinTestRegex
+            );
+            assert.strictEqual(runState.status, TestStatus.failed);
+            assert.deepEqual(runState.issues, [
+                {
+                    message: `failed - Message`,
+                    location: {
+                        file: "/Users/user/Developer/MyTests/MyTests.swift",
+                        line: 59,
+                    },
+                },
+                {
+                    message: `failed - Again`,
+                    location: {
+                        file: "/Users/user/Developer/MyTests/MyTests.swift",
+                        line: 61,
+                    },
+                },
+            ]);
+        });
+
         test("Split line", async () => {
             const testRunState = new TestRunState(["MyTests.MyTests/testPass"], true);
             const runState = testRunState.tests[0];
@@ -250,26 +281,6 @@ Test Case '-[MyTests.MyTests`,
             );
             assert.strictEqual(runState.status, TestStatus.passed);
             assert.deepEqual(runState.timing, { duration: 0.006 });
-        });
-
-        test("Two single line failing tests", async () => {
-            const testRunState = new TestRunState(
-                ["MyTests.MyTests/testFailOne", "MyTests.MyTests/testFailTwo"],
-                true
-            );
-            const runState = testRunState.tests[0];
-            outputParser.parseResult(
-                `Test Case '-[MyTests.MyTests testFailOne]' started.
-/Users/user/Developer/MyTests/MyTests.swift:59: error: -[MyTests.MyTests testFailOne] : failed - One
-Test Case '-[MyTests.MyTests testFailOne]' failed (0.571 seconds).
-Test Case '-[MyTests.MyTests testFailTwo]' started.
-/Users/user/Developer/MyTests/MyTests.swift:61: error: -[MyTests.MyTests testFailTwo] : failed - Two
-Test Case '-[MyTests.MyTests testFailTwo]' failed (0.572 seconds).
-`,
-                testRunState,
-                darwinTestRegex
-            );
-            assert.strictEqual(runState.status, TestStatus.failed);
         });
     });
 
