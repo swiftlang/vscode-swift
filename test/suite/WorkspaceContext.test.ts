@@ -107,7 +107,7 @@ suite("WorkspaceContext Test Suite", () => {
             // This is only supported in swift versions >=5.8.0
             const swiftVersion = workspaceContext.toolchain.swiftVersion;
             if (swiftVersion.isLessThan(new Version(5, 8, 0))) {
-                assert.deepEqual(await workspaceContext.toolchain.getProjectTemplates, []);
+                assert.deepEqual(await workspaceContext.toolchain.getProjectTemplates(), []);
                 return;
             }
             // The output of `swift package init --help` will probably change at some point.
