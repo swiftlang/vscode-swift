@@ -38,8 +38,8 @@
     ],
     "commands": [
       {
-        "command": "swift.createProject",
-        "title": "New Project",
+        "command": "swift.createNewProject",
+        "title": "Create New Project...",
         "category": "Swift"
       },
       {
@@ -165,23 +165,6 @@
       {
         "title": "Swift",
         "properties": {
-          "swift.openAfterCreateProject": {
-            "type": "string",
-            "enum": [
-              "always",
-              "alwaysNewWindow",
-              "whenNoFolderOpen",
-              "prompt"
-            ],
-            "enumDescriptions": [
-              "Always open in current window.",
-              "Always open in a new window.",
-              "Only open in current window when no folder is opened.",
-              "Always prompt for action."
-            ],
-            "default": "prompt",
-            "description": "Controls whether to open a swift project automatically after creating it."
-          },
           "swift.path": {
             "type": "string",
             "default": "",
@@ -292,6 +275,24 @@
             "default": false,
             "markdownDescription": "Disables automated Build Tasks, Package Dependency view, Launch configuration generation and TestExplorer.",
             "order": 13
+          },
+          "swift.openAfterCreateNewProject": {
+            "type": "string",
+            "enum": [
+              "always",
+              "alwaysNewWindow",
+              "whenNoFolderOpen",
+              "prompt"
+            ],
+            "enumDescriptions": [
+              "Always open in current window.",
+              "Always open in a new window.",
+              "Only open in current window when no folder is opened.",
+              "Always prompt for action."
+            ],
+            "default": "prompt",
+            "description": "Controls whether to open a swift project automatically after creating it.",
+            "order": 14
           }
         }
       },

@@ -16,6 +16,11 @@ import * as vscode from "vscode";
 
 type CFamilySupportOptions = "enable" | "disable" | "cpptools-inactive";
 type ActionAfterBuildError = "Focus Problems" | "Focus Terminal" | "Do Nothing";
+type OpenAfterCreateNewProjectOptions =
+    | "always"
+    | "alwaysNewWindow"
+    | "whenNoFolderOpen"
+    | "prompt";
 
 /** sourcekit-lsp configuration */
 export interface LSPConfiguration {
@@ -244,6 +249,11 @@ const configuration = {
         return vscode.workspace
             .getConfiguration("swift")
             .get<string>("coverage.colors.darkMode.miss", "#400000");
+    },
+    get openAfterCreateNewProject(): OpenAfterCreateNewProjectOptions {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<OpenAfterCreateNewProjectOptions>("openAfterCreateNewProject", "prompt");
     },
 };
 

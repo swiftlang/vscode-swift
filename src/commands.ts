@@ -96,7 +96,7 @@ export async function updateDependencies(ctx: WorkspaceContext) {
  * Prompts the user to input project details and then executes `swift package init`
  * to create the project.
  */
-export async function createProject(ctx: WorkspaceContext): Promise<void> {
+export async function createNewProject(ctx: WorkspaceContext): Promise<void> {
     // Prompt the user for the type of project they would like to create
     const availableProjectTemplates = await ctx.toolchain.getProjectTemplates();
     const selectedProjectTemplate = await vscode.window.showQuickPick<
@@ -177,8 +177,7 @@ export async function createProject(ctx: WorkspaceContext): Promise<void> {
 
     // Prompt the user whether or not they want to open the newly created project
     const isWorkspaceOpened = !!vscode.workspace.workspaceFolders;
-    const config = vscode.workspace.getConfiguration("swift");
-    const openAfterCreate = config.get<string>("openAfterCreateProject");
+    const openAfterCreate = configuration.openAfterCreateNewProject;
 
     let action: "open" | "openNewWindow" | "addToWorkspace" | undefined;
     if (openAfterCreate === "always") {
@@ -216,12 +215,16 @@ export async function createProject(ctx: WorkspaceContext): Promise<void> {
     }
 
     if (action === "open") {
-        vscode.commands.executeCommand("vscode.openFolder", projectUri, { forceReuseWindow: true });
+        await vscode.commands.executeCommand("vscode.openFolder", projectUri, {
+            forceReuseWindow: true,
+        });
     } else if (action === "openNewWindow") {
-        vscode.commands.executeCommand("vscode.openFolder", projectUri, { forceNewWindow: true });
+        await vscode.commands.executeCommand("vscode.openFolder", projectUri, {
+            forceNewWindow: true,
+        });
     } else if (action === "addToWorkspace") {
         const index = vscode.workspace.workspaceFolders?.length ?? 0;
-        vscode.workspace.updateWorkspaceFolders(index, 0, { uri: projectUri });
+        await vscode.workspace.updateWorkspaceFolders(index, 0, { uri: projectUri });
     }
 }
 
@@ -816,7 +819,7 @@ function updateAfterError(result: boolean, folderContext: FolderContext) {
  */
 export function register(ctx: WorkspaceContext) {
     ctx.subscriptions.push(
-        vscode.commands.registerCommand("swift.createProject", () => createProject(ctx)),
+        vscode.commands.registerCommand("swift.createNewProject", () => createNewProject(ctx)),
         vscode.commands.registerCommand("swift.resolveDependencies", () =>
             resolveDependencies(ctx)
         ),
