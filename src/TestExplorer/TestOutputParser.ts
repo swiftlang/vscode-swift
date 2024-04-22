@@ -110,7 +110,7 @@ export class TestOutputParser {
             if (failedMatch) {
                 const testName = `${failedMatch[1]}/${failedMatch[2]}`;
                 const failedTestIndex = runState.getTestItemIndex(testName, undefined);
-                this.failTest(failedTestIndex, +failedMatch[3], runState);
+                this.failTest(failedTestIndex, { duration: +failedMatch[3] }, runState);
                 continue;
             }
             // Regex "<path/to/test>:<line number>: error: <class>.<function> : <error>"
@@ -167,7 +167,7 @@ export class TestOutputParser {
                 const testName = `${passedMatch[1]}/${passedMatch[2]}`;
                 const duration: number = +passedMatch[3];
                 const passedTestIndex = runState.getTestItemIndex(testName, undefined);
-                this.passTest(passedTestIndex, duration, runState);
+                this.passTest(passedTestIndex, { duration }, runState);
                 continue;
             }
         }
@@ -198,9 +198,13 @@ export class TestOutputParser {
     }
 
     /** Flag we have passed a test */
-    private passTest(testIndex: number, duration: number, runState: iTestRunState) {
+    private passTest(
+        testIndex: number,
+        timing: { duration: number } | { timestamp: number },
+        runState: iTestRunState
+    ) {
         if (testIndex !== -1) {
-            runState.completed(testIndex, duration);
+            runState.completed(testIndex, timing);
         }
         runState.failedTest = undefined;
     }
@@ -213,7 +217,7 @@ export class TestOutputParser {
         lineNumber: string,
         runState: iTestRunState
     ) {
-        // if we have already found an error then skip this error
+        // If we were already capturing an error record it and start a new one
         if (runState.failedTest) {
             runState.recordIssue(testIndex, runState.failedTest.message, {
                 file: runState.failedTest.file,
@@ -239,7 +243,11 @@ export class TestOutputParser {
     }
 
     /** Flag we have failed a test */
-    private failTest(testIndex: number, duration: number, runState: iTestRunState) {
+    private failTest(
+        testIndex: number,
+        timing: { duration: number } | { timestamp: number },
+        runState: iTestRunState
+    ) {
         if (testIndex !== -1) {
             if (runState.failedTest) {
                 runState.recordIssue(testIndex, runState.failedTest.message, {
@@ -250,7 +258,7 @@ export class TestOutputParser {
                 runState.recordIssue(testIndex, "Failed");
             }
         }
-        runState.completed(testIndex, duration);
+        runState.completed(testIndex, timing);
         runState.failedTest = undefined;
     }
 
@@ -285,7 +293,7 @@ export interface iTestRunState {
     // set test index to have passed.
     // If a start time was provided to `started` then the duration is computed as endTime - startTime,
     // otherwise the time passed is assumed to be the duration.
-    completed(index: number, durationOrEndTime: number): void;
+    completed(index: number, timing: { duration: number } | { timestamp: number }): void;
     // set test index to have failed
     // failed(index: number, message: string, location?: { file: string; line: number }): void;
     recordIssue(

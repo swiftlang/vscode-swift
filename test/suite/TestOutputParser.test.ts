@@ -34,7 +34,7 @@ interface TestItem {
     name: string;
     status: TestStatus;
     issues?: { message: string; location?: { file: string; line: number } }[];
-    duration?: number;
+    timing?: { duration: number } | { timestamp: number };
 }
 
 interface iTestItemFinder {
@@ -84,12 +84,12 @@ class TestRunState implements iTestRunState {
     started(index: number): void {
         this.testItemFinder.tests[index].status = TestStatus.started;
     }
-    completed(index: number, duration: number): void {
+    completed(index: number, timing: { duration: number } | { timestamp: number }): void {
         this.testItemFinder.tests[index].status =
             this.testItemFinder.tests[index].issues !== undefined
                 ? TestStatus.failed
                 : TestStatus.passed;
-        this.testItemFinder.tests[index].duration = duration;
+        this.testItemFinder.tests[index].timing = timing;
     }
     recordIssue(index: number, message: string, location?: { file: string; line: number }): void {
         this.testItemFinder.tests[index].issues = [
@@ -116,7 +116,7 @@ class TestRunState implements iTestRunState {
     }
 }
 
-suite.only("TestOutputParser Suite", () => {
+suite("TestOutputParser Suite", () => {
     const outputParser = new TestOutputParser();
 
     suite("Darwin", () => {
@@ -131,7 +131,7 @@ Test Case '-[MyTests.MyTests testPass]' passed (0.001 seconds).
                 darwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.passed);
-            assert.strictEqual(runState.duration, 0.001);
+            assert.deepEqual(runState.timing, { duration: 0.001 });
         });
 
         test("Failed Test", async () => {
@@ -249,7 +249,27 @@ Test Case '-[MyTests.MyTests`,
                 darwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.passed);
-            assert.strictEqual(runState.duration, 0.006);
+            assert.deepEqual(runState.timing, { duration: 0.006 });
+        });
+
+        test("Two single line failing tests", async () => {
+            const testRunState = new TestRunState(
+                ["MyTests.MyTests/testFailOne", "MyTests.MyTests/testFailTwo"],
+                true
+            );
+            const runState = testRunState.tests[0];
+            outputParser.parseResult(
+                `Test Case '-[MyTests.MyTests testFailOne]' started.
+/Users/user/Developer/MyTests/MyTests.swift:59: error: -[MyTests.MyTests testFailOne] : failed - One
+Test Case '-[MyTests.MyTests testFailOne]' failed (0.571 seconds).
+Test Case '-[MyTests.MyTests testFailTwo]' started.
+/Users/user/Developer/MyTests/MyTests.swift:61: error: -[MyTests.MyTests testFailTwo] : failed - Two
+Test Case '-[MyTests.MyTests testFailTwo]' failed (0.572 seconds).
+`,
+                testRunState,
+                darwinTestRegex
+            );
+            assert.strictEqual(runState.status, TestStatus.failed);
         });
     });
 
@@ -265,7 +285,7 @@ Test Case 'MyTests.testPass' passed (0.001 seconds).
                 nonDarwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.passed);
-            assert.strictEqual(runState.duration, 0.001);
+            assert.deepEqual(runState.timing, { duration: 0.001 });
         });
 
         test("Failed Test", async () => {

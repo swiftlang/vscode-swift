@@ -741,13 +741,25 @@ class TestRunnerTestRunState implements iTestRunState {
     }
 
     // set test item to have passed
-    completed(index: number, durationOrEndTime: number): void {
+    completed(index: number, timing: { duration: number } | { timestamp: number }): void {
         const test = this.testItemFinder.testItems[index];
         const startTime = this.startTimes.get(index);
-        const duration =
-            (startTime !== undefined ? durationOrEndTime - startTime : durationOrEndTime) * 1000;
-        const issues = this.issues.get(index) ?? [];
 
+        let duration: number;
+        if ("timestamp" in timing) {
+            // Completion was specified in timestamp format but the test has no saved `started` timestamp.
+            // This is a bug in the code and can't be caused by a user.
+            if (startTime === undefined) {
+                throw Error(
+                    "Timestamp was provided on test completion, but there was no startTime set when the test was started."
+                );
+            }
+            duration = (timing.timestamp - startTime) * 1000;
+        } else {
+            duration = timing.duration * 1000;
+        }
+
+        const issues = this.issues.get(index) ?? [];
         if (issues.length > 0) {
             this.testRun.failed(test, issues, duration);
         } else {
