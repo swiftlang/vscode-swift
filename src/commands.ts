@@ -143,14 +143,23 @@ export async function createNewProject(ctx: WorkspaceContext): Promise<void> {
         value: initialValue,
         prompt: "Enter a name for your new swift project",
         validateInput(value) {
+            // Swift Package Manager doesn't seem to do any validation on the name.
+            // So, we'll just check for obvious failure cases involving mkdir.
+            if (value.trim() === "") {
+                return "Project name cannot be empty.";
+            } else if (value.includes("/") || value.includes("\\")) {
+                return "Project name cannot contain '/' or '\\' characters.";
+            } else if (value === "." || value === "..") {
+                return "Project name cannot be '.' or '..'.";
+            }
             // Ensure there are no name collisions
             if (existingNames.includes(value)) {
-                return "A file/folder with this name already exists";
+                return "A file/folder with this name already exists.";
             }
             return undefined;
         },
     });
-    if (!projectName) {
+    if (projectName === undefined) {
         return undefined;
     }
 
