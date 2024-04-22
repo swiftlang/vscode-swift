@@ -294,8 +294,7 @@ export interface iTestRunState {
     // If a start time was provided to `started` then the duration is computed as endTime - startTime,
     // otherwise the time passed is assumed to be the duration.
     completed(index: number, timing: { duration: number } | { timestamp: number }): void;
-    // set test index to have failed
-    // failed(index: number, message: string, location?: { file: string; line: number }): void;
+    // record an issue against a test
     recordIssue(
         index: number,
         message: string | MarkdownString,
