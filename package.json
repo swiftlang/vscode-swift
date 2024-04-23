@@ -864,6 +864,13 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "explorer",
+        "contents": "You can also create a new Swift project.\n[Create Swift Project](command:swift.createNewProject)",
+        "when": "workspaceFolderCount == 0"
+      }
+    ],
     "breakpoints": [
       {
         "language": "asm"
