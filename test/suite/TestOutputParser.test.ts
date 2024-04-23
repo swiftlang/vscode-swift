@@ -33,9 +33,8 @@ export enum TestStatus {
 interface TestItem {
     name: string;
     status: TestStatus;
-    duration?: number;
-    message?: string;
-    location?: { file: string; line: number };
+    issues?: { message: string; location?: { file: string; line: number } }[];
+    timing?: { duration: number } | { timestamp: number };
 }
 
 interface iTestItemFinder {
@@ -85,14 +84,19 @@ class TestRunState implements iTestRunState {
     started(index: number): void {
         this.testItemFinder.tests[index].status = TestStatus.started;
     }
-    passed(index: number, duration: number): void {
-        this.testItemFinder.tests[index].status = TestStatus.passed;
-        this.testItemFinder.tests[index].duration = duration;
+    completed(index: number, timing: { duration: number } | { timestamp: number }): void {
+        this.testItemFinder.tests[index].status =
+            this.testItemFinder.tests[index].issues !== undefined
+                ? TestStatus.failed
+                : TestStatus.passed;
+        this.testItemFinder.tests[index].timing = timing;
     }
-    failed(index: number, message: string, location?: { file: string; line: number }): void {
+    recordIssue(index: number, message: string, location?: { file: string; line: number }): void {
+        this.testItemFinder.tests[index].issues = [
+            ...(this.testItemFinder.tests[index].issues ?? []),
+            { message, location },
+        ];
         this.testItemFinder.tests[index].status = TestStatus.failed;
-        this.testItemFinder.tests[index].message = message;
-        this.testItemFinder.tests[index].location = location;
     }
     skipped(index: number): void {
         this.testItemFinder.tests[index].status = TestStatus.skipped;
@@ -127,7 +131,7 @@ Test Case '-[MyTests.MyTests testPass]' passed (0.001 seconds).
                 darwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.passed);
-            assert.strictEqual(runState.duration, 0.001);
+            assert.deepEqual(runState.timing, { duration: 0.001 });
         });
 
         test("Failed Test", async () => {
@@ -136,21 +140,21 @@ Test Case '-[MyTests.MyTests testPass]' passed (0.001 seconds).
             outputParser.parseResult(
                 `Test Case '-[MyTests.MyTests testPublish]' started.
 /Users/user/Developer/MyTests/MyTests.swift:59: error: -[MyTests.MyTests testFail] : XCTAssertEqual failed: ("1") is not equal to ("2")
-Test Case '-[MyTests.MyTests testFail]' failed (0.106 seconds).                
+Test Case '-[MyTests.MyTests testFail]' failed (0.106 seconds).
 `,
                 testRunState,
                 darwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.failed);
-            assert.strictEqual(
-                runState.message,
-                `XCTAssertEqual failed: ("1") is not equal to ("2")`
-            );
-            assert.strictEqual(
-                runState.location?.file,
-                "/Users/user/Developer/MyTests/MyTests.swift"
-            );
-            assert.strictEqual(runState.location?.line, 59);
+            assert.deepEqual(runState.issues, [
+                {
+                    message: `XCTAssertEqual failed: ("1") is not equal to ("2")`,
+                    location: {
+                        file: "/Users/user/Developer/MyTests/MyTests.swift",
+                        line: 59,
+                    },
+                },
+            ]);
         });
 
         test("Skipped Test", async () => {
@@ -159,7 +163,7 @@ Test Case '-[MyTests.MyTests testFail]' failed (0.106 seconds).
             outputParser.parseResult(
                 `Test Case '-[MyTests.MyTests testSkip]' started.
 /Users/user/Developer/MyTests/MyTests.swift:90: -[MyTests.MyTests testSkip] : Test skipped
-Test Case '-[MyTests.MyTests testSkip]' skipped (0.002 seconds).              
+Test Case '-[MyTests.MyTests testSkip]' skipped (0.002 seconds).
 `,
                 testRunState,
                 darwinTestRegex
@@ -181,12 +185,17 @@ Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
                 darwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.failed);
-            assert.strictEqual(
-                runState.message,
-                `failed - Multiline
+            assert.deepEqual(runState.issues, [
+                {
+                    message: `failed - Multiline
 fail
-message`
-            );
+message`,
+                    location: {
+                        file: "/Users/user/Developer/MyTests/MyTests.swift",
+                        line: 59,
+                    },
+                },
+            ]);
         });
 
         test("Multi-line Fail followed by another error", async () => {
@@ -204,12 +213,55 @@ Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
                 darwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.failed);
-            assert.strictEqual(
-                runState.message,
-                `failed - Multiline
+            assert.deepEqual(runState.issues, [
+                {
+                    message: `failed - Multiline
 fail
-message`
+message`,
+                    location: {
+                        file: "/Users/user/Developer/MyTests/MyTests.swift",
+                        line: 59,
+                    },
+                },
+                {
+                    message: `failed - Again`,
+                    location: {
+                        file: "/Users/user/Developer/MyTests/MyTests.swift",
+                        line: 61,
+                    },
+                },
+            ]);
+        });
+
+        test("Single-line Fail followed by another error", async () => {
+            const testRunState = new TestRunState(["MyTests.MyTests/testFail"], true);
+            const runState = testRunState.tests[0];
+            outputParser.parseResult(
+                `Test Case '-[MyTests.MyTests testFail]' started.
+/Users/user/Developer/MyTests/MyTests.swift:59: error: -[MyTests.MyTests testFail] : failed - Message
+/Users/user/Developer/MyTests/MyTests.swift:61: error: -[MyTests.MyTests testFail] : failed - Again
+Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
+`,
+                testRunState,
+                darwinTestRegex
             );
+            assert.strictEqual(runState.status, TestStatus.failed);
+            assert.deepEqual(runState.issues, [
+                {
+                    message: `failed - Message`,
+                    location: {
+                        file: "/Users/user/Developer/MyTests/MyTests.swift",
+                        line: 59,
+                    },
+                },
+                {
+                    message: `failed - Again`,
+                    location: {
+                        file: "/Users/user/Developer/MyTests/MyTests.swift",
+                        line: 61,
+                    },
+                },
+            ]);
         });
 
         test("Split line", async () => {
@@ -228,7 +280,7 @@ Test Case '-[MyTests.MyTests`,
                 darwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.passed);
-            assert.strictEqual(runState.duration, 0.006);
+            assert.deepEqual(runState.timing, { duration: 0.006 });
         });
     });
 
@@ -244,7 +296,7 @@ Test Case 'MyTests.testPass' passed (0.001 seconds).
                 nonDarwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.passed);
-            assert.strictEqual(runState.duration, 0.001);
+            assert.deepEqual(runState.timing, { duration: 0.001 });
         });
 
         test("Failed Test", async () => {
@@ -253,21 +305,21 @@ Test Case 'MyTests.testPass' passed (0.001 seconds).
             outputParser.parseResult(
                 `Test Case 'MyTests.testFail' started.
 /Users/user/Developer/MyTests/MyTests.swift:59: error: MyTests.testFail : XCTAssertEqual failed: ("1") is not equal to ("2")
-Test Case 'MyTests.testFail' failed (0.106 seconds).                
+Test Case 'MyTests.testFail' failed (0.106 seconds).
 `,
                 testRunState,
                 nonDarwinTestRegex
             );
             assert.strictEqual(runState.status, TestStatus.failed);
-            assert.strictEqual(
-                runState.message,
-                `XCTAssertEqual failed: ("1") is not equal to ("2")`
-            );
-            assert.strictEqual(
-                runState.location?.file,
-                "/Users/user/Developer/MyTests/MyTests.swift"
-            );
-            assert.strictEqual(runState.location?.line, 59);
+            assert.deepEqual(runState.issues, [
+                {
+                    message: `XCTAssertEqual failed: ("1") is not equal to ("2")`,
+                    location: {
+                        file: "/Users/user/Developer/MyTests/MyTests.swift",
+                        line: 59,
+                    },
+                },
+            ]);
         });
 
         test("Skipped Test", async () => {
@@ -276,7 +328,7 @@ Test Case 'MyTests.testFail' failed (0.106 seconds).
             outputParser.parseResult(
                 `Test Case 'MyTests.testSkip' started.
 /Users/user/Developer/MyTests/MyTests.swift:90: MyTests.testSkip : Test skipped
-Test Case 'MyTests.testSkip' skipped (0.002 seconds).              
+Test Case 'MyTests.testSkip' skipped (0.002 seconds).
 `,
                 testRunState,
                 nonDarwinTestRegex

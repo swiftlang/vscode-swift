@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import { MarkdownString } from "vscode";
+
 /** Regex for parsing XCTest output */
 export interface TestRegex {
     started: RegExp;
@@ -108,7 +110,7 @@ export class TestOutputParser {
             if (failedMatch) {
                 const testName = `${failedMatch[1]}/${failedMatch[2]}`;
                 const failedTestIndex = runState.getTestItemIndex(testName, undefined);
-                this.failTest(failedTestIndex, +failedMatch[3], runState);
+                this.failTest(failedTestIndex, { duration: +failedMatch[3] }, runState);
                 continue;
             }
             // Regex "<path/to/test>:<line number>: error: <class>.<function> : <error>"
@@ -165,7 +167,7 @@ export class TestOutputParser {
                 const testName = `${passedMatch[1]}/${passedMatch[2]}`;
                 const duration: number = +passedMatch[3];
                 const passedTestIndex = runState.getTestItemIndex(testName, undefined);
-                this.passTest(passedTestIndex, duration, runState);
+                this.passTest(passedTestIndex, { duration }, runState);
                 continue;
             }
         }
@@ -196,9 +198,13 @@ export class TestOutputParser {
     }
 
     /** Flag we have passed a test */
-    private passTest(testIndex: number, duration: number, runState: iTestRunState) {
+    private passTest(
+        testIndex: number,
+        timing: { duration: number } | { timestamp: number },
+        runState: iTestRunState
+    ) {
         if (testIndex !== -1) {
-            runState.passed(testIndex, duration);
+            runState.completed(testIndex, timing);
         }
         runState.failedTest = undefined;
     }
@@ -211,10 +217,13 @@ export class TestOutputParser {
         lineNumber: string,
         runState: iTestRunState
     ) {
-        // if we have already found an error then skip this error
+        // If we were already capturing an error record it and start a new one
         if (runState.failedTest) {
+            runState.recordIssue(testIndex, runState.failedTest.message, {
+                file: runState.failedTest.file,
+                line: runState.failedTest.lineNumber,
+            });
             runState.failedTest.complete = true;
-            return;
         }
         runState.failedTest = {
             testIndex: testIndex,
@@ -234,17 +243,22 @@ export class TestOutputParser {
     }
 
     /** Flag we have failed a test */
-    private failTest(testIndex: number, duration: number, runState: iTestRunState) {
+    private failTest(
+        testIndex: number,
+        timing: { duration: number } | { timestamp: number },
+        runState: iTestRunState
+    ) {
         if (testIndex !== -1) {
             if (runState.failedTest) {
-                runState.failed(testIndex, runState.failedTest.message, {
+                runState.recordIssue(testIndex, runState.failedTest.message, {
                     file: runState.failedTest.file,
                     line: runState.failedTest.lineNumber,
                 });
             } else {
-                runState.failed(testIndex, "Failed");
+                runState.recordIssue(testIndex, "Failed");
             }
         }
+        runState.completed(testIndex, timing);
         runState.failedTest = undefined;
     }
 
@@ -275,11 +289,17 @@ export interface iTestRunState {
     // get test item index from test name on non Darwin platforms
     getTestItemIndex(id: string, filename: string | undefined): number;
     // set test index to be started
-    started(index: number): void;
-    // set test index to have passed
-    passed(index: number, duration: number): void;
-    // set test index to have failed
-    failed(index: number, message: string, location?: { file: string; line: number }): void;
+    started(index: number, startTime?: number): void;
+    // set test index to have passed.
+    // If a start time was provided to `started` then the duration is computed as endTime - startTime,
+    // otherwise the time passed is assumed to be the duration.
+    completed(index: number, timing: { duration: number } | { timestamp: number }): void;
+    // record an issue against a test
+    recordIssue(
+        index: number,
+        message: string | MarkdownString,
+        location?: { file: string; line: number; column?: number }
+    ): void;
     // set test index to have been skipped
     skipped(index: number): void;
     // started suite

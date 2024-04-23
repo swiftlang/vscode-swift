@@ -726,49 +726,70 @@ class TestRunnerTestRunState implements iTestRunState {
         lineNumber: number;
         complete: boolean;
     };
+    private startTimes: Map<number, number | undefined> = new Map();
+    private issues: Map<number, vscode.TestMessage[]> = new Map();
 
     getTestItemIndex(id: string, filename?: string): number {
         return this.testItemFinder.getIndex(id, filename);
     }
 
     // set test item to be started
-    started(index: number): void {
+    started(index: number, startTime?: number): void {
         this.testRun.started(this.testItemFinder.testItems[index]);
         this.currentTestItem = this.testItemFinder.testItems[index];
+        this.startTimes.set(index, startTime);
     }
 
     // set test item to have passed
-    passed(index: number, duration: number): void {
-        this.testRun.passed(this.testItemFinder.testItems[index], duration * 1000);
-        this.testItemFinder.testItems.splice(index, 1);
+    completed(index: number, timing: { duration: number } | { timestamp: number }): void {
+        const test = this.testItemFinder.testItems[index];
+        const startTime = this.startTimes.get(index);
+
+        let duration: number;
+        if ("timestamp" in timing) {
+            // Completion was specified in timestamp format but the test has no saved `started` timestamp.
+            // This is a bug in the code and can't be caused by a user.
+            if (startTime === undefined) {
+                throw Error(
+                    "Timestamp was provided on test completion, but there was no startTime set when the test was started."
+                );
+            }
+            duration = (timing.timestamp - startTime) * 1000;
+        } else {
+            duration = timing.duration * 1000;
+        }
+
+        const issues = this.issues.get(index) ?? [];
+        if (issues.length > 0) {
+            this.testRun.failed(test, issues, duration);
+        } else {
+            this.testRun.passed(test, duration);
+        }
+
         this.lastTestItem = this.currentTestItem;
         this.currentTestItem = undefined;
     }
 
-    // set test item to be failed
-    failed(index: number, message: string, location?: { file: string; line: number }): void {
+    recordIssue(
+        index: number,
+        message: string | vscode.MarkdownString,
+        location?: { file: string; line: number; column?: number }
+    ): void {
+        const issueList = this.issues.get(index) ?? [];
+        const msg = new vscode.TestMessage(message);
         if (location) {
-            const testMessage = new vscode.TestMessage(message);
-            testMessage.location = new vscode.Location(
+            msg.location = new vscode.Location(
                 vscode.Uri.file(location.file),
-                new vscode.Position(location.line - 1, 0)
-            );
-            this.testRun.failed(this.testItemFinder.testItems[index], testMessage);
-        } else {
-            this.testRun.failed(
-                this.testItemFinder.testItems[index],
-                new vscode.TestMessage(message)
+                new vscode.Position(location.line - 1, location?.column ?? 0)
             );
         }
-        this.testItemFinder.testItems.splice(index, 1);
-        this.lastTestItem = this.currentTestItem;
-        this.currentTestItem = undefined;
+        issueList.push(msg);
+        this.issues.set(index, issueList);
     }
 
     // set test item to have been skipped
     skipped(index: number): void {
         this.testRun.skipped(this.testItemFinder.testItems[index]);
-        this.testItemFinder.testItems.splice(index, 1);
         this.lastTestItem = this.currentTestItem;
         this.currentTestItem = undefined;
     }
