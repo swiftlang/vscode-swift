@@ -18,6 +18,7 @@ import { testAssetUri } from "../fixtures";
 import { FolderEvent, WorkspaceContext } from "../../src/WorkspaceContext";
 import { createBuildAllTask, platformDebugBuildOptions } from "../../src/SwiftTaskProvider";
 import { globalWorkspaceContextPromise } from "./extension.test";
+import { Version } from "../../src/utilities/version";
 
 suite("WorkspaceContext Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -99,5 +100,42 @@ suite("WorkspaceContext Test Suite", () => {
             assert.notStrictEqual(execution?.command, "/usr/bin/swift");
             await swiftConfig.update("path", "");
         });
+    });
+
+    suite("Toolchain", () => {
+        test("get project templates", async () => {
+            // This is only supported in swift versions >=5.8.0
+            const swiftVersion = workspaceContext.toolchain.swiftVersion;
+            if (swiftVersion.isLessThan(new Version(5, 8, 0))) {
+                assert.deepEqual(await workspaceContext.toolchain.getProjectTemplates(), []);
+                return;
+            }
+            // The output of `swift package init --help` will probably change at some point.
+            // Just make sure that the most complex portions of the output are parsed correctly.
+            const projectTemplates = await workspaceContext.toolchain.getProjectTemplates();
+            // Contains multi-line description
+            const toolTemplate = projectTemplates.find(template => template.id === "tool");
+            assert(toolTemplate);
+            assert.deepEqual(toolTemplate, {
+                id: "tool",
+                name: "Tool",
+                description:
+                    "A package with an executable that uses Swift Argument Parser. Use this template if you plan to have a rich set of command-line arguments.",
+            });
+            // build-tool-plugin is only available in swift versions >=5.9.0
+            if (swiftVersion.isLessThan(new Version(5, 9, 0))) {
+                return;
+            }
+            // Name conversion includes dashes
+            const buildToolPluginTemplate = projectTemplates.find(
+                t => t.id === "build-tool-plugin"
+            );
+            assert(buildToolPluginTemplate);
+            assert.deepEqual(buildToolPluginTemplate, {
+                id: "build-tool-plugin",
+                name: "Build Tool Plugin",
+                description: "A package that vends a build tool plugin.",
+            });
+        }).timeout(1000);
     });
 }).timeout(10000);

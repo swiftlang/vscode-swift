@@ -38,6 +38,11 @@
     ],
     "commands": [
       {
+        "command": "swift.createNewProject",
+        "title": "Create New Project...",
+        "category": "Swift"
+      },
+      {
         "command": "swift.updateDependencies",
         "title": "Update Package Dependencies",
         "icon": "$(cloud-download)",
@@ -270,6 +275,24 @@
             "default": false,
             "markdownDescription": "Disables automated Build Tasks, Package Dependency view, Launch configuration generation and TestExplorer.",
             "order": 13
+          },
+          "swift.openAfterCreateNewProject": {
+            "type": "string",
+            "enum": [
+              "always",
+              "alwaysNewWindow",
+              "whenNoFolderOpen",
+              "prompt"
+            ],
+            "enumDescriptions": [
+              "Always open in current window.",
+              "Always open in a new window.",
+              "Only open in current window when no folder is opened.",
+              "Always prompt for action."
+            ],
+            "default": "prompt",
+            "description": "Controls whether to open a swift project automatically after creating it.",
+            "order": 14
           }
         }
       },
@@ -493,6 +516,10 @@
     ],
     "menus": {
       "commandPalette": [
+        {
+          "command": "swift.createNewProject",
+          "when": "!swift.isActivated || swift.createNewProjectAvailable"
+        },
         {
           "command": "swift.updateDependencies",
           "when": "swift.hasPackage"

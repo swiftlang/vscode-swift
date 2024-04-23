@@ -29,6 +29,7 @@ import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
 import { registerLoggingDebugAdapterTracker } from "./debugger/logTracker";
 import { registerLLDBDebugAdapter } from "./debugger/debugAdapterFactory";
 import { DebugAdapter } from "./debugger/debugAdapter";
+import contextKeys from "./contextKeys";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -182,6 +183,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             pluginTaskProvider,
             taskProvider
         );
+
+        // Mark the extension as activated.
+        contextKeys.isActivated = true;
 
         return { workspaceContext };
     } catch (error) {

@@ -26,6 +26,13 @@ import * as vscode from "vscode";
  */
 const contextKeys = {
     /**
+     * Whether or not the swift extension is activated.
+     */
+    set isActivated(value: boolean) {
+        vscode.commands.executeCommand("setContext", "swift.isActivated", value);
+    },
+
+    /**
      * Whether the workspace folder contains a Swift package.
      */
     set hasPackage(value: boolean) {
@@ -65,6 +72,13 @@ const contextKeys = {
      */
     set lldbVSCodeAvailable(value: boolean) {
         vscode.commands.executeCommand("setContext", "swift.lldbVSCodeAvailable", value);
+    },
+
+    /**
+     * Whether the swift.createNewProject command is available.
+     */
+    set createNewProjectAvailable(value: boolean) {
+        vscode.commands.executeCommand("setContext", "swift.createNewProjectAvailable", value);
     },
 };
 

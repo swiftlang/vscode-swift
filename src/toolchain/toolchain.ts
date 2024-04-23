@@ -33,6 +33,15 @@ interface InfoPlist {
 }
 
 /**
+ * Project template information retrieved from `swift package init --help`
+ */
+export interface SwiftProjectTemplate {
+    id: string;
+    name: string;
+    description: string;
+}
+
+/**
  * Stripped layout of `swift -print-target-info` output.
  */
 interface SwiftTargetInfo {
@@ -176,6 +185,52 @@ export class SwiftToolchain {
             `kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'`,
         ]);
         return xcodes.trimEnd().split("\n");
+    }
+
+    /**
+     * Get a list of new project templates from swift package manager
+     * @returns a {@link SwiftProjectTemplate} for each discovered project type
+     */
+    public async getProjectTemplates(): Promise<SwiftProjectTemplate[]> {
+        // Only swift versions >=5.8.0 are supported
+        if (this.swiftVersion.isLessThan(new Version(5, 8, 0))) {
+            return [];
+        }
+        // Parse the output from `swift package init --help`
+        const { stdout } = await execSwift(["package", "init", "--help"], "default");
+        const lines = stdout.split(/\r?\n/g);
+        // Determine where the `--type` option is documented
+        let position = lines.findIndex(line => line.trim().startsWith("--type"));
+        if (position === -1) {
+            throw new Error("Unable to parse output from `swift package init --help`");
+        }
+        // Loop through the possible project types in the output
+        position += 1;
+        const result: SwiftProjectTemplate[] = [];
+        const typeRegex = /^\s*([a-zA-z-]+)\s+-\s+(.+)$/;
+        for (; position < lines.length; position++) {
+            const line = lines[position];
+            // Stop if we hit a new command line option
+            if (line.trim().startsWith("--")) {
+                break;
+            }
+            // Check if this is the start of a new project type
+            const match = line.match(typeRegex);
+            if (match) {
+                const nameSegments = match[1].split("-");
+                result.push({
+                    id: match[1],
+                    name: nameSegments
+                        .map(seg => seg[0].toLocaleUpperCase() + seg.slice(1))
+                        .join(" "),
+                    description: match[2],
+                });
+            } else {
+                // Continuation of the previous project type
+                result[result.length - 1].description += " " + line.trim();
+            }
+        }
+        return result;
     }
 
     /**
