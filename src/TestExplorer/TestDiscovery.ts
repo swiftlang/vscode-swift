@@ -75,9 +75,8 @@ export function updateTests(
             !incomingTestsLookup.get(testItem.id) &&
             (!filterFile || testItem.uri?.fsPath === filterFile.fsPath)
         ) {
-            // TODO: Remove
-            console.log(`Removing test: ${testItem.id}`);
-            (testItem.parent ? testItem.parent.children : testController.items).delete(testItem.id);
+            const collection = testItem.parent ? testItem.parent.children : testController.items;
+            collection.delete(testItem.id);
         }
     }
 
@@ -119,7 +118,7 @@ function createIncomingTestLookup(
 }
 
 /**
- * Updates the existing vscode.TestItem if it exists with the same ID as the VSCodeLSPTestItem,
+ * Updates the existing `vscode.TestItem` if it exists with the same ID as the `TestClass`,
  * otherwise creates an add a new one. The location on the returned vscode.TestItem is always updated.
  */
 function upsertTestItem(
@@ -128,7 +127,7 @@ function upsertTestItem(
     parent?: vscode.TestItem
 ) {
     // This is a temporary gate on adding swift-testing tests until there is code to
-    // run them.
+    // run them. See https://github.com/swift-server/vscode-swift/issues/757
     if (testItem.style === "swift-testing") {
         return;
     }

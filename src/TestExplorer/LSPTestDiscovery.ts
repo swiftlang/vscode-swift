@@ -57,7 +57,7 @@ export class LSPTestDiscovery {
                 );
                 return this.transform(client, swiftPackage, testsInDocument);
             } else {
-                throw new Error("workspace/tests requests not supported");
+                throw new Error("textDocument/tests requests not supported");
             }
         });
     }
@@ -93,8 +93,8 @@ export class LSPTestDiscovery {
     }
 
     /**
-     * Convert from a collection of LSP TestItems to a collection of
-     * TestDiscovery.TestClasses, updating the format of the location.
+     * Convert from `LSPTestItem[]` to `TestDiscovery.TestClass[]`,
+     * updating the format of the location.
      */
     private transform(
         client: LanguageClient,
@@ -116,7 +116,7 @@ export class LSPTestDiscovery {
     /**
      * If the test is an XCTest, transform the ID provided by the LSP from a
      * swift-testing style ID to one that XCTest can use. This allows the ID to
-     * be used to specify to the test runner (xctest or swift-testing) which tests to run.
+     * be used to tell to the test runner (xctest or swift-testing) which tests to run.
      */
     private transformId(
         item: LSPTestItem,
