@@ -102,8 +102,8 @@ export class SwiftToolchain {
         public swiftVersion: Version, // Swift version as semVar variable
         public runtimePath?: string, // runtime library included in output from `swift -print-target-info`
         private defaultTarget?: string,
-        private defaultSDK?: string,
-        private customSDK?: string,
+        public defaultSDK?: string,
+        public customSDK?: string,
         public xcTestPath?: string
     ) {}
 
@@ -248,6 +248,36 @@ export class SwiftToolchain {
      */
     public getLLDB(): string {
         return path.join(this.swiftFolderPath, "lldb");
+    }
+
+    private basePlatformDeveloperPath(): string | undefined {
+        const sdk = this.customSDK ?? this.defaultSDK;
+        if (!sdk) {
+            return undefined;
+        }
+        return path.resolve(sdk, "../../");
+    }
+
+    /**
+     * Library path for swift-testing executables
+     */
+    public swiftTestingLibraryPath(): string | undefined {
+        const base = this.basePlatformDeveloperPath();
+        if (!base) {
+            return undefined;
+        }
+        return path.join(base, "usr/lib");
+    }
+
+    /**
+     * Framework path for swift-testing executables
+     */
+    public swiftTestingFrameworkPath(): string | undefined {
+        const base = this.basePlatformDeveloperPath();
+        if (!base) {
+            return undefined;
+        }
+        return path.join(base, "Library/Frameworks");
     }
 
     logDiagnostics(channel: SwiftOutputChannel) {

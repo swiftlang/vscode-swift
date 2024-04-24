@@ -169,13 +169,113 @@ export function createSnippetConfiguration(
     };
 }
 
+export function createSwiftTestConfiguration(
+    ctx: FolderContext,
+    fifoPipePath: string,
+    expandEnvVariables = false
+): vscode.DebugConfiguration | null {
+    if (ctx.swiftPackage.getTargets(TargetType.test).length === 0) {
+        return null;
+    }
+
+    // respect user configuration if conflicts with injected runtime path
+    const testEnv = {
+        ...swiftRuntimeEnv(),
+        ...configuration.folder(ctx.workspaceFolder).testEnvironmentVariables,
+    };
+    const { folder, nameSuffix } = getFolderAndNameSuffix(ctx, expandEnvVariables);
+    const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
+
+    const baseConfig = {
+        type: DebugAdapter.adapterName,
+        request: "launch",
+        sourceLanguages: ["swift"],
+        name: `Test ${ctx.swiftPackage.name}`,
+        cwd: folder,
+        preLaunchTask: `swift: Build All${nameSuffix}`,
+    };
+
+    if (process.platform === "darwin") {
+        const swiftFolderPath = ctx.workspaceContext.toolchain.swiftFolderPath;
+        if (swiftFolderPath === undefined) {
+            return null;
+        }
+
+        const libraryPath = ctx.workspaceContext.toolchain.swiftTestingLibraryPath();
+        const frameworkPath = ctx.workspaceContext.toolchain.swiftTestingFrameworkPath();
+        const sanitizer = ctx.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
+
+        return {
+            ...baseConfig,
+            program: path.join(
+                buildDirectory,
+                "debug",
+                `${ctx.swiftPackage.name}PackageTests.swift-testing`
+            ),
+            args: ["--experimental-event-stream-output", fifoPipePath],
+            env: {
+                ...testEnv,
+                ...sanitizer?.runtimeEnvironment,
+                DYLD_FRAMEWORK_PATH: frameworkPath,
+                DYLD_LIBRARY_PATH: libraryPath,
+                SWT_SF_SYMBOLS_ENABLED: "0",
+            },
+        };
+    } else if (process.platform === "win32") {
+        // On Windows, add XCTest.dll to the Path
+        // and run the .xctest executable from the .build directory.
+        const runtimePath = ctx.workspaceContext.toolchain.runtimePath;
+        const xcTestPath = ctx.workspaceContext.toolchain.xcTestPath;
+        if (xcTestPath === undefined) {
+            return null;
+        }
+        if (xcTestPath !== runtimePath) {
+            testEnv.Path = `${xcTestPath};${testEnv.Path ?? process.env.Path}`;
+        }
+        const sdkroot = configuration.sdk === "" ? process.env.SDKROOT : configuration.sdk;
+        if (sdkroot === undefined) {
+            return null;
+        }
+        let preRunCommands: string[] | undefined;
+        if (
+            configuration.debugger.useDebugAdapterFromToolchain ||
+            vscode.workspace.getConfiguration("lldb")?.get<string>("library")
+        ) {
+            preRunCommands = [`settings set target.sdk-path ${sdkroot}`];
+        }
+
+        return {
+            ...baseConfig,
+            program: path.join(
+                buildDirectory,
+                "debug",
+                `${ctx.swiftPackage.name}PackageTests.swift-testing`
+            ),
+            args: ["--experimental-event-stream-output", fifoPipePath],
+            env: testEnv,
+            preRunCommands: preRunCommands,
+        };
+    } else {
+        // On Linux, just run the .xctest executable from the configured build directory.
+        return {
+            ...baseConfig,
+            program: path.join(
+                buildDirectory,
+                "debug",
+                ctx.swiftPackage.name + "PackageTests.xctest"
+            ),
+            env: testEnv,
+        };
+    }
+}
+
 /**
  * Return array of DebugConfigurations for tests based on what is in Package.swift
  * @param ctx Folder context
  * @param fullPath should we return configuration with full paths instead of environment vars
  * @returns debug configuration
  */
-export function createTestConfiguration(
+export function createXCTestConfiguration(
     ctx: FolderContext,
     expandEnvVariables = false
 ): vscode.DebugConfiguration | null {

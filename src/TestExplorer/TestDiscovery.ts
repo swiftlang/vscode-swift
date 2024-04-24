@@ -122,12 +122,6 @@ function upsertTestItem(
     testItem: TestClass,
     parent?: vscode.TestItem
 ) {
-    // This is a temporary gate on adding swift-testing tests until there is code to
-    // run them. See https://github.com/swift-server/vscode-swift/issues/757
-    if (testItem.style === "swift-testing") {
-        return;
-    }
-
     const collection = parent?.children ?? testController.items;
     const existingItem = collection.get(testItem.id);
     let newItem: vscode.TestItem;

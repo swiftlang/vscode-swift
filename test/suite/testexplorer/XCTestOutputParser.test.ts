@@ -15,109 +15,13 @@
 import * as assert from "assert";
 import {
     darwinTestRegex,
-    iTestRunState,
     nonDarwinTestRegex,
-    TestOutputParser,
-} from "../../../src/TestExplorer/TestOutputParser";
+    XCTestOutputParser,
+} from "../../../src/TestExplorer/TestParsers/XCTestOutputParser";
+import { TestRunState, TestStatus } from "./MockTestRunState";
 
-/** TestStatus */
-export enum TestStatus {
-    enqueued = "enqueued",
-    started = "started",
-    passed = "passed",
-    failed = "failed",
-    skipped = "skipped",
-}
-
-/** TestItem */
-interface TestItem {
-    name: string;
-    status: TestStatus;
-    issues?: { message: string; location?: { file: string; line: number } }[];
-    timing?: { duration: number } | { timestamp: number };
-}
-
-interface iTestItemFinder {
-    getIndex(id: string): number;
-    tests: TestItem[];
-}
-class DarwinTestItemFinder implements iTestItemFinder {
-    constructor(public tests: TestItem[]) {}
-    getIndex(id: string): number {
-        return this.tests.findIndex(item => item.name === id);
-    }
-}
-class NonDarwinTestItemFinder implements iTestItemFinder {
-    constructor(public tests: TestItem[]) {}
-    getIndex(id: string): number {
-        return this.tests.findIndex(item => item.name.endsWith(id));
-    }
-}
-/** Test implementation of iTestRunState */
-class TestRunState implements iTestRunState {
-    excess?: string;
-    failedTest?: {
-        testIndex: number;
-        message: string;
-        file: string;
-        lineNumber: number;
-        complete: boolean;
-    };
-    public testItemFinder: iTestItemFinder;
-    get tests(): TestItem[] {
-        return this.testItemFinder.tests;
-    }
-    constructor(testNames: string[], darwin: boolean) {
-        const tests = testNames.map(name => {
-            return { name: name, status: TestStatus.enqueued };
-        });
-        if (darwin) {
-            this.testItemFinder = new DarwinTestItemFinder(tests);
-        } else {
-            this.testItemFinder = new NonDarwinTestItemFinder(tests);
-        }
-    }
-
-    getTestItemIndex(id: string): number {
-        return this.testItemFinder.getIndex(id);
-    }
-    started(index: number): void {
-        this.testItemFinder.tests[index].status = TestStatus.started;
-    }
-    completed(index: number, timing: { duration: number } | { timestamp: number }): void {
-        this.testItemFinder.tests[index].status =
-            this.testItemFinder.tests[index].issues !== undefined
-                ? TestStatus.failed
-                : TestStatus.passed;
-        this.testItemFinder.tests[index].timing = timing;
-    }
-    recordIssue(index: number, message: string, location?: { file: string; line: number }): void {
-        this.testItemFinder.tests[index].issues = [
-            ...(this.testItemFinder.tests[index].issues ?? []),
-            { message, location },
-        ];
-        this.testItemFinder.tests[index].status = TestStatus.failed;
-    }
-    skipped(index: number): void {
-        this.testItemFinder.tests[index].status = TestStatus.skipped;
-    }
-
-    // started suite
-    startedSuite() {
-        //
-    }
-    // passed suite
-    passedSuite() {
-        //
-    }
-    // failed suite
-    failedSuite() {
-        //
-    }
-}
-
-suite("TestOutputParser Suite", () => {
-    const outputParser = new TestOutputParser();
+suite("XCTestOutputParser Suite", () => {
+    const outputParser = new XCTestOutputParser();
 
     suite("Darwin", () => {
         test("Passed Test", async () => {
