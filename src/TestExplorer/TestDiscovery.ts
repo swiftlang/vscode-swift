@@ -138,12 +138,8 @@ function upsertTestItem(
         collection.get(testItem.id) ??
         testController.createTestItem(testItem.id, testItem.label, testItem.location?.uri);
 
-    // The leading `.` is part of the tag name when parsed by sourcekit-lsp. Strip
-    // it off for better UX when filtering by tag.
-    const tags = testItem.tags.map(tag => ({ ...tag, id: tag.id.replace(/^\./, "") }));
-
     // Manually add the test style as a tag so we can filter by test type.
-    newItem.tags = [{ id: testItem.style }, ...tags];
+    newItem.tags = [{ id: testItem.style }, ...testItem.tags];
     newItem.label = testItem.label;
     newItem.range = testItem.location?.range;
 
