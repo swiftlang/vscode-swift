@@ -44,15 +44,9 @@ export class LSPTestDiscovery {
         document: vscode.Uri
     ): Promise<TestDiscovery.TestClass[]> {
         return await this.languageClient.useLanguageClient(async (client, token) => {
-            const workspaceTestCaps = client.initializeResult?.capabilities.experimental;
-            if (!workspaceTestCaps) {
-                throw new Error("textDocument/tests requests not supported");
-            }
-            const textDocumentCaps = workspaceTestCaps[textDocumentTestsRequest.method];
-
             // Only use the lsp for this request if it supports the
             // textDocument/tests method, and is at least version 2.
-            if (textDocumentCaps?.version >= 2) {
+            if (this.checkExperimentalCapability(client, textDocumentTestsRequest.method, 2)) {
                 const testsInDocument = await client.sendRequest(
                     textDocumentTestsRequest,
                     { textDocument: { uri: document.toString() } },
@@ -60,7 +54,7 @@ export class LSPTestDiscovery {
                 );
                 return this.transform(client, swiftPackage, testsInDocument);
             } else {
-                throw new Error("textDocument/tests requests not supported");
+                throw new Error(`${textDocumentTestsRequest.method} requests not supported`);
             }
         });
     }
@@ -74,15 +68,9 @@ export class LSPTestDiscovery {
         workspaceRoot: vscode.Uri
     ): Promise<TestDiscovery.TestClass[]> {
         return await this.languageClient.useLanguageClient(async (client, token) => {
-            const workspaceTestCaps = client.initializeResult?.capabilities.experimental;
-            if (!workspaceTestCaps) {
-                throw new Error("textDocument/tests requests not supported");
-            }
-            const workspaceTestsCaps = workspaceTestCaps[workspaceTestsRequest.method];
-
             // Only use the lsp for this request if it supports the
             // workspace/tests method, and is at least version 2.
-            if (workspaceTestsCaps?.version >= 2) {
+            if (this.checkExperimentalCapability(client, workspaceTestsRequest.method, 2)) {
                 const tests = await client.sendRequest(workspaceTestsRequest, {}, token);
                 const testsInWorkspace = tests.filter(item =>
                     isPathInsidePath(
@@ -93,9 +81,26 @@ export class LSPTestDiscovery {
 
                 return this.transform(client, swiftPackage, testsInWorkspace);
             } else {
-                throw new Error("workspace/tests requests not supported");
+                throw new Error(`${workspaceTestsRequest.method} requests not supported`);
             }
         });
+    }
+
+    /**
+     * Returns `true` if the LSP supports the supplied `method` at or
+     * above the supplied `minVersion`.
+     */
+    private checkExperimentalCapability(
+        client: LanguageClient,
+        method: string,
+        minVersion: number
+    ) {
+        const experimentalCapability = client.initializeResult?.capabilities.experimental;
+        if (!experimentalCapability) {
+            throw new Error(`${method} requests not supported`);
+        }
+        const targetCapability = experimentalCapability[method];
+        return (targetCapability?.version ?? -1) >= minVersion;
     }
 
     /**
