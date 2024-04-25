@@ -132,20 +132,15 @@ export class LSPTestDiscovery {
         // XCTest: Target.TestClass/testCase
         // swift-testing: TestClass/testCase()
         //                TestClassOrStruct/NestedTestSuite/testCase()
+        const target = swiftPackage
+            .getTargets(TargetType.test)
+            .find(target => swiftPackage.getTarget(location.uri.fsPath) === target);
 
-        let id: string = item.id;
+        const id = target !== undefined ? `${target.name}.${item.id}` : item.id;
         if (item.style === "XCTest") {
-            const target = swiftPackage
-                .getTargets(TargetType.test)
-                .find(target => swiftPackage.getTarget(location.uri.fsPath) === target);
-
-            id = "";
-            if (target) {
-                id += `${target?.name}.`;
-            }
-            return id + item.id.replace(/\(\)$/, "");
+            return id.replace(/\(\)$/, "");
         } else {
-            return item.id;
+            return id;
         }
     }
 }
