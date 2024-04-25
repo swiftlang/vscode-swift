@@ -21,15 +21,20 @@ export class LanguageStatusItems implements vscode.Disposable {
     private packageSwiftItem: vscode.LanguageStatusItem;
 
     constructor(workspaceContext: WorkspaceContext) {
-        // Swift language version item
-        const swiftVersionItem = vscode.languages.createLanguageStatusItem(
-            "swiftlang-version",
-            LanguageClientManager.documentSelector
-        );
-        swiftVersionItem.text = workspaceContext.toolchain.swiftVersionString;
-        swiftVersionItem.accessibilityInformation = {
-            label: `Swift Version ${workspaceContext.toolchain.swiftVersion.toString()}`,
-        };
+        this.subscriptions = [];
+
+        if (workspaceContext.toolchain) {
+            // Swift language version item
+            const swiftVersionItem = vscode.languages.createLanguageStatusItem(
+                "swiftlang-version",
+                LanguageClientManager.documentSelector
+            );
+            swiftVersionItem.text = workspaceContext.toolchain.swiftVersionString;
+            swiftVersionItem.accessibilityInformation = {
+                label: `Swift Version ${workspaceContext.toolchain.swiftVersion.toString()}`,
+            };
+            this.subscriptions.push(swiftVersionItem);
+        }
 
         // Package.swift item
         this.packageSwiftItem = vscode.languages.createLanguageStatusItem("swiftlang-package", [
@@ -61,12 +66,12 @@ export class LanguageStatusItems implements vscode.Disposable {
                     }
             }
         });
-        this.subscriptions = [onFocus, swiftVersionItem, this.packageSwiftItem];
+        this.subscriptions.push(onFocus, this.packageSwiftItem);
     }
 
     dispose() {
         this.subscriptions.forEach(element => element.dispose());
     }
 
-    private subscriptions: { dispose(): unknown }[];
+    private readonly subscriptions: vscode.Disposable[];
 }

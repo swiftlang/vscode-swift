@@ -50,15 +50,16 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
 
         for (const folderContext of this.workspaceContext.folders) {
             for (const plugin of folderContext.swiftPackage.plugins) {
-                tasks.push(
-                    this.createSwiftPluginTask(plugin, {
-                        cwd: folderContext.folder,
-                        scope: folderContext.workspaceFolder,
-                        presentationOptions: {
-                            reveal: vscode.TaskRevealKind.Always,
-                        },
-                    })
-                );
+                const task = this.createSwiftPluginTask(plugin, {
+                    cwd: folderContext.folder,
+                    scope: folderContext.workspaceFolder,
+                    presentationOptions: {
+                        reveal: vscode.TaskRevealKind.Always,
+                    },
+                });
+                if (task) {
+                    tasks.push(task);
+                }
             }
         }
         return tasks;
@@ -72,6 +73,10 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     resolveTask(task: vscode.Task, token: vscode.CancellationToken): vscode.Task {
+        if (!this.workspaceContext.toolchain) {
+            return task;
+        }
+
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
         const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
@@ -113,7 +118,11 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
      * @param config
      * @returns
      */
-    createSwiftPluginTask(plugin: PackagePlugin, config: TaskConfig): vscode.Task {
+    createSwiftPluginTask(plugin: PackagePlugin, config: TaskConfig): vscode.Task | undefined {
+        if (!this.workspaceContext.toolchain) {
+            return;
+        }
+
         const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
 
         // Add relative path current working directory

@@ -70,14 +70,19 @@ export class FolderContext implements vscode.Disposable {
         folder: vscode.Uri,
         workspaceFolder: vscode.WorkspaceFolder,
         workspaceContext: WorkspaceContext
-    ): Promise<FolderContext> {
+    ): Promise<FolderContext | undefined> {
+        const toolchain = workspaceContext.toolchain;
+        if (!toolchain) {
+            return;
+        }
+
         const statusItemText = `Loading Package (${FolderContext.uriName(folder)})`;
         workspaceContext.statusItem.start(statusItemText);
 
         const { linuxMain, swiftPackage } =
             await workspaceContext.statusItem.showStatusWhileRunning(statusItemText, async () => {
                 const linuxMain = await LinuxMain.create(folder);
-                const swiftPackage = await SwiftPackage.create(folder, workspaceContext.toolchain);
+                const swiftPackage = await SwiftPackage.create(folder, toolchain);
                 return { linuxMain, swiftPackage };
             });
 

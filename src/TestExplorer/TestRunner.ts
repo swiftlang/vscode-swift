@@ -43,6 +43,7 @@ import { ITestRunState } from "./TestParsers/TestRunState";
 import { TestRunArguments } from "./TestRunArguments";
 import { TemporaryFolder } from "../utilities/tempFolder";
 import { TestClass, runnableTag, upsertTestItem } from "./TestDiscovery";
+import { showToolchainError } from "../ui/ToolchainSelection";
 
 /** Workspace Folder events */
 export enum TestKind {
@@ -297,15 +298,17 @@ export class TestRunner {
     async runHandler(shouldDebug: boolean, testKind: TestKind, token: vscode.CancellationToken) {
         const runState = new TestRunnerTestRunState(this.testRun);
         try {
+            const toolchain = this.folderContext.workspaceContext.toolchain;
+            if (!toolchain) {
+                return;
+            }
             // run associated build task
             // don't do this if generating code test coverage data as it
             // will rebuild everything again
             if (testKind !== TestKind.coverage) {
                 const task = await getBuildAllTask(this.folderContext);
                 task.definition.dontTriggerTestDiscovery =
-                    this.folderContext.workspaceContext.swiftVersion.isGreaterThanOrEqual(
-                        new Version(6, 0, 0)
-                    );
+                    toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0));
 
                 const exitCode = await this.folderContext.taskQueue.queueOperation(
                     new TaskOperation(task),
@@ -559,6 +562,11 @@ export class TestRunner {
         stderr: stream.Writable,
         testBuildConfig: vscode.DebugConfiguration
     ) {
+        if (!this.workspaceContext.toolchain) {
+            showToolchainError();
+            return;
+        }
+
         try {
             // XCTestRuns are started immediately
             this.testRun.testRunStarted();
@@ -601,6 +609,11 @@ export class TestRunner {
         testBuildConfig: vscode.DebugConfiguration
     ) {
         await this.workspaceContext.tempFolder.withTemporaryFile("xml", async filename => {
+            if (!this.workspaceContext.toolchain) {
+                showToolchainError();
+                return;
+            }
+
             const sanitizer = this.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
             const sanitizerArgs = sanitizer?.buildFlags ?? [];
             const filterArgs = this.testArgs.xcTestArgs.flatMap(arg => ["--filter", arg]);
@@ -821,6 +834,10 @@ class LaunchConfigurations {
         folderContext: FolderContext,
         debugging: boolean
     ): vscode.DebugConfiguration | null {
+        if (!workspaceContext.toolchain) {
+            return null;
+        }
+
         const testList = args.join(",");
 
         if (process.platform === "darwin") {

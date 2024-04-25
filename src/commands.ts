@@ -30,6 +30,8 @@ import { debugLaunchConfig, getLaunchConfiguration } from "./debugger/launch";
 import { execFile } from "./utilities/utilities";
 import { SwiftExecOperation, TaskOperation } from "./tasks/TaskQueue";
 import { SwiftProjectTemplate } from "./toolchain/toolchain";
+import { showToolchainError } from "./ui/ToolchainSelection";
+import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 
 /**
  * References:
@@ -40,10 +42,16 @@ import { SwiftProjectTemplate } from "./toolchain/toolchain";
  *   https://code.visualstudio.com/api/extension-guides/command
  */
 
+export type WorkspaceContextWithToolchain = WorkspaceContext & { toolchain: SwiftToolchain };
+
 /**
  * Executes a {@link vscode.Task task} to resolve this package's dependencies.
  */
 export async function resolveDependencies(ctx: WorkspaceContext) {
+    if (!ctx.toolchain) {
+        showToolchainError();
+        return;
+    }
     const current = ctx.currentFolder;
     if (!current) {
         return;
@@ -59,6 +67,10 @@ export async function resolveFolderDependencies(
     folderContext: FolderContext,
     checkAlreadyRunning?: boolean
 ) {
+    if (!folderContext.workspaceContext.toolchain) {
+        return;
+    }
+
     const task = createSwiftTask(
         ["package", "resolve"],
         SwiftTaskProvider.resolvePackageName,
@@ -86,6 +98,10 @@ export async function resolveFolderDependencies(
  * Executes a {@link vscode.Task task} to update this package's dependencies.
  */
 export async function updateDependencies(ctx: WorkspaceContext) {
+    if (!ctx.toolchain) {
+        showToolchainError();
+        return;
+    }
     const current = ctx.currentFolder;
     if (!current) {
         return;
@@ -98,10 +114,16 @@ export async function updateDependencies(ctx: WorkspaceContext) {
  * to create the project.
  */
 export async function createNewProject(ctx: WorkspaceContext): Promise<void> {
+    const toolchain = ctx.toolchain;
+    if (!toolchain) {
+        showToolchainError();
+        return;
+    }
+
     // The context key `swift.createNewProjectAvailable` only works if the extension has been
     // activated. As such, we also have to allow this command to run when no workspace is
     // active. Show an error to the user if the command is unavailable.
-    if (!ctx.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 8, 0))) {
+    if (!toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 8, 0))) {
         vscode.window.showErrorMessage(
             "Creating a new swift project is only available starting in swift version 5.8.0."
         );
@@ -109,7 +131,7 @@ export async function createNewProject(ctx: WorkspaceContext): Promise<void> {
     }
 
     // Prompt the user for the type of project they would like to create
-    const availableProjectTemplates = await ctx.toolchain.getProjectTemplates();
+    const availableProjectTemplates = await toolchain.getProjectTemplates();
     const selectedProjectTemplate = await vscode.window.showQuickPick<
         vscode.QuickPickItem & { type: SwiftProjectTemplate }
     >(
@@ -186,7 +208,7 @@ export async function createNewProject(ctx: WorkspaceContext): Promise<void> {
         async () => {
             await execSwift(
                 ["package", "init", "--type", projectType, "--name", projectName],
-                ctx.toolchain,
+                toolchain,
                 {
                     cwd: projectUri.fsPath,
                 }
@@ -254,6 +276,11 @@ export async function createNewProject(ctx: WorkspaceContext): Promise<void> {
  * @returns
  */
 export async function updateFolderDependencies(folderContext: FolderContext) {
+    if (!folderContext.workspaceContext.toolchain) {
+        showToolchainError();
+        return;
+    }
+
     const task = createSwiftTask(
         ["package", "update"],
         SwiftTaskProvider.updatePackageName,
@@ -323,6 +350,11 @@ export async function cleanBuild(ctx: WorkspaceContext) {
  * @param folderContext folder to run update inside
  */
 export async function folderCleanBuild(folderContext: FolderContext) {
+    if (!folderContext.workspaceContext.toolchain) {
+        showToolchainError();
+        return;
+    }
+
     const task = createSwiftTask(
         ["package", "clean"],
         SwiftTaskProvider.cleanBuildName,
@@ -355,6 +387,11 @@ export async function resetPackage(ctx: WorkspaceContext) {
  * @param folderContext folder to run update inside
  */
 export async function folderResetPackage(folderContext: FolderContext) {
+    if (!folderContext.workspaceContext.toolchain) {
+        showToolchainError();
+        return;
+    }
+
     const task = createSwiftTask(
         ["package", "reset"],
         "Reset Package Dependencies",
@@ -369,7 +406,7 @@ export async function folderResetPackage(folderContext: FolderContext) {
     );
 
     await executeTaskWithUI(task, "Reset Package", folderContext).then(async success => {
-        if (!success) {
+        if (!success || !folderContext.workspaceContext.toolchain) {
             return;
         }
         const resolveTask = createSwiftTask(
@@ -392,6 +429,11 @@ export async function folderResetPackage(folderContext: FolderContext) {
  * Run single Swift file through Swift REPL
  */
 async function runSwiftScript(ctx: WorkspaceContext) {
+    if (!ctx.toolchain) {
+        showToolchainError();
+        return;
+    }
+
     const document = vscode.window.activeTextEditor?.document;
     if (!document) {
         return;
@@ -454,6 +496,11 @@ async function runPluginTask() {
  * @param ctx workspace context
  */
 async function useLocalDependency(identifier: string, ctx: WorkspaceContext) {
+    const toolchain = ctx.toolchain;
+    if (!toolchain) {
+        showToolchainError();
+        return;
+    }
     const currentFolder = ctx.currentFolder;
     if (!currentFolder) {
         return;
@@ -480,7 +527,7 @@ async function useLocalDependency(identifier: string, ctx: WorkspaceContext) {
                     cwd: currentFolder.folder,
                     prefix: currentFolder.name,
                 },
-                ctx.toolchain
+                toolchain
             );
             await executeTaskWithUI(
                 task,
@@ -501,6 +548,10 @@ async function useLocalDependency(identifier: string, ctx: WorkspaceContext) {
  * @param ctx workspace context
  */
 async function editDependency(identifier: string, ctx: WorkspaceContext) {
+    if (!ctx.toolchain) {
+        showToolchainError();
+        return;
+    }
     const currentFolder = ctx.currentFolder;
     if (!currentFolder) {
         return;
@@ -766,14 +817,9 @@ async function selectXcodeDeveloperDir() {
                     selected.folder ?? defaultXcode
                 );
             }
-            vscode.window
-                .showInformationMessage(
-                    "Changing the Xcode Developer Directory requires the project be reloaded.",
-                    "Ok"
-                )
-                .then(() => {
-                    vscode.commands.executeCommand("workbench.action.reloadWindow");
-                });
+            showReloadExtensionNotification(
+                "Changing the Xcode Developer Directory requires the project be reloaded."
+            );
         }
     );
 }
@@ -789,9 +835,15 @@ function toggleTestCoverageDisplay(workspaceContext: WorkspaceContext) {
     workspaceContext.toggleTestCoverageDisplay();
 }
 
-async function attachDebugger(workspaceContext: WorkspaceContext) {
+async function attachDebugger(ctx: WorkspaceContext) {
+    const toolchain = ctx.toolchain;
+    if (!toolchain) {
+        showToolchainError();
+        return;
+    }
+
     // use LLDB to get list of processes
-    const lldb = workspaceContext.toolchain.getLLDB();
+    const lldb = toolchain.getLLDB();
     try {
         const { stdout } = await execFile(lldb, [
             "--batch",

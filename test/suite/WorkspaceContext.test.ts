@@ -34,7 +34,7 @@ suite("WorkspaceContext Test Suite", () => {
             let count = 0;
             const observer = workspaceContext?.observeFolders((folder, operation) => {
                 assert(folder !== null);
-                assert.strictEqual(folder.swiftPackage.name, "package2");
+                assert.strictEqual(folder!.swiftPackage.name, "package2");
                 switch (operation) {
                     case FolderEvent.add:
                         count++;
@@ -62,12 +62,12 @@ suite("WorkspaceContext Test Suite", () => {
             );
             assert(folder);
             const buildAllTask = createBuildAllTask(folder);
-            const execution = buildAllTask.execution as vscode.ProcessExecution;
-            assert.strictEqual(buildAllTask.definition.type, "swift");
-            assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
+            const execution = buildAllTask!.execution as vscode.ProcessExecution;
+            assert.strictEqual(buildAllTask!.definition.type, "swift");
+            assert.strictEqual(buildAllTask!.name, "Build All (defaultPackage)");
             assert.strictEqual(execution?.args[0], "build");
             assert.strictEqual(execution?.args[1], "--build-tests");
-            assert.strictEqual(buildAllTask.scope, folder.workspaceFolder);
+            assert.strictEqual(buildAllTask!.scope, folder.workspaceFolder);
         });
 
         test("Build Settings", async () => {
@@ -77,7 +77,7 @@ suite("WorkspaceContext Test Suite", () => {
             assert(folder);
             await swiftConfig.update("buildArguments", ["--sanitize=thread"]);
             const buildAllTask = createBuildAllTask(folder);
-            const execution = buildAllTask.execution as SwiftExecution;
+            const execution = buildAllTask!.execution as SwiftExecution;
             assert.strictEqual(execution?.args[0], "build");
             assert.strictEqual(execution?.args[1], "--build-tests");
             assert.strictEqual(execution?.args[2], "--sanitize=thread");
@@ -101,14 +101,14 @@ suite("WorkspaceContext Test Suite", () => {
     suite("Toolchain", () => {
         test("get project templates", async () => {
             // This is only supported in swift versions >=5.8.0
-            const swiftVersion = workspaceContext.toolchain.swiftVersion;
+            const swiftVersion = workspaceContext.toolchain!.swiftVersion;
             if (swiftVersion.isLessThan(new Version(5, 8, 0))) {
-                assert.deepEqual(await workspaceContext.toolchain.getProjectTemplates(), []);
+                assert.deepEqual(await workspaceContext.toolchain!.getProjectTemplates(), []);
                 return;
             }
             // The output of `swift package init --help` will probably change at some point.
             // Just make sure that the most complex portions of the output are parsed correctly.
-            const projectTemplates = await workspaceContext.toolchain.getProjectTemplates();
+            const projectTemplates = await workspaceContext.toolchain!.getProjectTemplates();
             // Contains multi-line description
             const toolTemplate = projectTemplates.find(template => template.id === "tool");
             assert(toolTemplate);

@@ -196,6 +196,10 @@ function createDebugConfiguration(
     expandEnvVariables = false,
     type: "XCTest" | "swift-testing"
 ): vscode.DebugConfiguration | null {
+    if (!ctx.workspaceContext.toolchain) {
+        return null;
+    }
+
     if (ctx.swiftPackage.getTargets(TargetType.test).length === 0) {
         return null;
     }
@@ -379,6 +383,9 @@ export function createDarwinTestConfiguration(
     ctx: FolderContext,
     args: string
 ): vscode.DebugConfiguration | null {
+    if (!ctx.workspaceContext.toolchain) {
+        return null;
+    }
     if (ctx.swiftPackage.getTargets(TargetType.test).length === 0) {
         return null;
     }

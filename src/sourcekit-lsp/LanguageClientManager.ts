@@ -113,9 +113,9 @@ export class LanguageClientManager {
     public subFolderWorkspaces: vscode.Uri[];
 
     constructor(public workspaceContext: WorkspaceContext) {
-        this.singleServerSupport = workspaceContext.swiftVersion.isGreaterThanOrEqual(
-            new Version(5, 7, 0)
-        );
+        this.singleServerSupport = workspaceContext.toolchain
+            ? workspaceContext.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 7, 0))
+            : false;
         this.subscriptions = [];
         this.subFolderWorkspaces = [];
         if (this.singleServerSupport) {
@@ -178,7 +178,7 @@ export class LanguageClientManager {
 
         // Swift versions prior to 5.6 don't support file changes, so need to restart
         // lSP server when a file is either created or deleted
-        if (workspaceContext.swiftVersion.isLessThan(new Version(5, 6, 0))) {
+        if (workspaceContext.toolchain?.swiftVersion.isLessThan(new Version(5, 6, 0))) {
             workspaceContext.outputChannel.logDiagnostic("LSP: Adding new/delete file handlers");
             // restart LSP server on creation of a new file
             const onDidCreateFileDisposable = vscode.workspace.onDidCreateFiles(() => {
@@ -378,10 +378,18 @@ export class LanguageClientManager {
             return;
         }
         const client = this.createLSPClient(folder);
+        if (!client) {
+            this.languageClient = undefined;
+            return;
+        }
         return this.startClient(client);
     }
 
-    private createLSPClient(folder?: vscode.Uri): langclient.LanguageClient {
+    private createLSPClient(folder?: vscode.Uri): langclient.LanguageClient | undefined {
+        if (!this.workspaceContext.toolchain) {
+            return;
+        }
+
         const toolchainSourceKitLSP =
             this.workspaceContext.toolchain.getToolchainExecutable("sourcekit-lsp");
         const lspConfig = configuration.lsp;
@@ -462,7 +470,11 @@ export class LanguageClientManager {
                     const result = await next(document, position, token);
                     // remove textEdits for swift version earlier than 5.10 as it sometimes
                     // generated invalid textEdits
-                    if (this.workspaceContext.swiftVersion.isLessThan(new Version(5, 10, 0))) {
+                    if (
+                        this.workspaceContext.toolchain?.swiftVersion.isLessThan(
+                            new Version(5, 10, 0)
+                        )
+                    ) {
                         result?.forEach(r => (r.textEdits = undefined));
                     }
                     return result;
@@ -507,7 +519,9 @@ export class LanguageClientManager {
         this.clientReadyPromise = client
             .start()
             .then(() => {
-                if (this.workspaceContext.swiftVersion.isLessThan(new Version(5, 7, 0))) {
+                if (
+                    this.workspaceContext.toolchain?.swiftVersion.isLessThan(new Version(5, 7, 0))
+                ) {
                     this.legacyInlayHints = activateLegacyInlayHints(client);
                 }
                 this.initializeResult = client.initializeResult;

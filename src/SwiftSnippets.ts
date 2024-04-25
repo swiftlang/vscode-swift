@@ -20,6 +20,7 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import configuration from "./configuration";
 import { createSnippetConfiguration, debugLaunchConfig } from "./debugger/launch";
 import { TaskOperation } from "./tasks/TaskQueue";
+import { showToolchainError } from "./ui/ToolchainSelection";
 
 /**
  * Set context key indicating whether current file is a Swift Snippet
@@ -27,7 +28,7 @@ import { TaskOperation } from "./tasks/TaskQueue";
  */
 export function setSnippetContextKey(ctx: WorkspaceContext) {
     if (
-        ctx.swiftVersion.isLessThan({ major: 5, minor: 7, patch: 0 }) ||
+        ctx.toolchain?.swiftVersion.isLessThan({ major: 5, minor: 7, patch: 0 }) ||
         !ctx.currentFolder ||
         !ctx.currentDocument
     ) {
@@ -65,6 +66,11 @@ export async function debugSnippetWithOptions(
     ctx: WorkspaceContext,
     options: vscode.DebugSessionOptions
 ) {
+    if (!ctx.toolchain) {
+        showToolchainError();
+        return;
+    }
+
     const folderContext = ctx.currentFolder;
     if (!ctx.currentDocument || !folderContext) {
         return;

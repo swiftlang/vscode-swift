@@ -30,6 +30,7 @@ import { registerLoggingDebugAdapterTracker } from "./debugger/logTracker";
 import { registerLLDBDebugAdapter } from "./debugger/debugAdapterFactory";
 import { DebugAdapter } from "./debugger/debugAdapter";
 import contextKeys from "./contextKeys";
+import { showToolchainError } from "./ui/ToolchainSelection";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -42,11 +43,16 @@ export interface Api {
 /**
  * Activate the extension. This is the main entry point.
  */
-export async function activate(context: vscode.ExtensionContext): Promise<Api> {
+export async function activate(context: vscode.ExtensionContext): Promise<Api | undefined> {
     try {
         console.debug("Activating Swift for Visual Studio Code...");
 
         const workspaceContext = await WorkspaceContext.create();
+        commands.register(workspaceContext);
+
+        if (!workspaceContext.toolchain && vscode.workspace.workspaceFolders) {
+            showToolchainError();
+        }
 
         context.subscriptions.push(workspaceContext);
 
@@ -67,7 +73,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             "swift-plugin",
             new SwiftPluginTaskProvider(workspaceContext)
         );
-        commands.register(workspaceContext);
 
         const languageStatusItem = new LanguageStatusItems(workspaceContext);
 
@@ -111,7 +116,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                         } else {
                             await commands.resolveFolderDependencies(folder, true);
                         }
-                        if (workspace.swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))) {
+                        if (
+                            workspace.toolchain &&
+                            workspace.toolchain.swiftVersion.isGreaterThanOrEqual(
+                                new Version(5, 6, 0)
+                            )
+                        ) {
                             workspace.statusItem.showStatusWhileRunning(
                                 `Loading Swift Plugins (${FolderContext.uriName(
                                     folder.workspaceFolder.uri
