@@ -32,6 +32,8 @@ import { SwiftPackage, TargetType } from "../SwiftPackage";
  * these results.
  */
 export class LSPTestDiscovery {
+    private capCache = new Map<string, boolean>();
+
     constructor(private languageClient: LanguageClientManager) {}
 
     /**
@@ -84,12 +86,20 @@ export class LSPTestDiscovery {
         method: string,
         minVersion: number
     ) {
+        const capKey = `${method}:${minVersion}`;
+        const cachedCap = this.capCache.get(capKey);
+        if (cachedCap !== undefined) {
+            return cachedCap;
+        }
+
         const experimentalCapability = client.initializeResult?.capabilities.experimental;
         if (!experimentalCapability) {
             throw new Error(`${method} requests not supported`);
         }
         const targetCapability = experimentalCapability[method];
-        return (targetCapability?.version ?? -1) >= minVersion;
+        const canUse = (targetCapability?.version ?? -1) >= minVersion;
+        this.capCache.set(capKey, canUse);
+        return canUse;
     }
 
     /**
