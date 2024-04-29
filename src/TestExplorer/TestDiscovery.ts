@@ -85,7 +85,7 @@ export function updateTests(
         testController.items.forEach(removeOldTests);
     }
 
-    // Add/update the top level test items. upsertTestItem will decend the tree of children adding them as well.
+    // Add/update the top level test items. upsertTestItem will descend the tree of children adding them as well.
     testItems.forEach(testItem => {
         upsertTestItem(testController, testItem);
     });

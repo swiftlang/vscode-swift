@@ -294,8 +294,7 @@ export class TestExplorer {
      */
     async discoverTestsInWorkspaceLSP() {
         const tests = await this.lspTestDiscovery.getWorkspaceTests(
-            this.folderContext.swiftPackage,
-            this.folderContext.workspaceFolder.uri
+            this.folderContext.swiftPackage
         );
         TestDiscovery.updateTestsFromClasses(this.folderContext, tests);
     }

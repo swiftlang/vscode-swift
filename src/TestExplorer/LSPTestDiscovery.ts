@@ -19,7 +19,6 @@ import {
     textDocumentTestsRequest,
     workspaceTestsRequest,
 } from "../sourcekit-lsp/lspExtensions";
-import { isPathInsidePath } from "../utilities/utilities";
 import { LanguageClientManager } from "../sourcekit-lsp/LanguageClientManager";
 import { LanguageClient } from "vscode-languageclient/node";
 import { SwiftPackage, TargetType } from "../SwiftPackage";
@@ -63,23 +62,13 @@ export class LSPTestDiscovery {
      * Return list of workspace tests
      * @param workspaceRoot Root of current workspace folder
      */
-    async getWorkspaceTests(
-        swiftPackage: SwiftPackage,
-        workspaceRoot: vscode.Uri
-    ): Promise<TestDiscovery.TestClass[]> {
+    async getWorkspaceTests(swiftPackage: SwiftPackage): Promise<TestDiscovery.TestClass[]> {
         return await this.languageClient.useLanguageClient(async (client, token) => {
             // Only use the lsp for this request if it supports the
             // workspace/tests method, and is at least version 2.
             if (this.checkExperimentalCapability(client, workspaceTestsRequest.method, 2)) {
                 const tests = await client.sendRequest(workspaceTestsRequest, {}, token);
-                const testsInWorkspace = tests.filter(item =>
-                    isPathInsidePath(
-                        client.protocol2CodeConverter.asLocation(item.location).uri.fsPath,
-                        workspaceRoot.fsPath
-                    )
-                );
-
-                return this.transformToTestClass(client, swiftPackage, testsInWorkspace);
+                return this.transformToTestClass(client, swiftPackage, tests);
             } else {
                 throw new Error(`${workspaceTestsRequest.method} requests not supported`);
             }
