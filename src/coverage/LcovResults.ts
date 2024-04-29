@@ -62,7 +62,7 @@ export class LcovResults implements vscode.Disposable {
                 llvmCov,
                 [
                     "export",
-                    "-format",
+                    "--format",
                     "lcov",
                     xctestFile,
                     "--ignore-filename-regex=Tests|.build|Snippets|Plugins",
