@@ -52,7 +52,7 @@ export class LSPTestDiscovery {
                     { textDocument: { uri: document.toString() } },
                     token
                 );
-                return this.transform(client, swiftPackage, testsInDocument);
+                return this.transformToTestClass(client, swiftPackage, testsInDocument);
             } else {
                 throw new Error(`${textDocumentTestsRequest.method} requests not supported`);
             }
@@ -79,7 +79,7 @@ export class LSPTestDiscovery {
                     )
                 );
 
-                return this.transform(client, swiftPackage, testsInWorkspace);
+                return this.transformToTestClass(client, swiftPackage, testsInWorkspace);
             } else {
                 throw new Error(`${workspaceTestsRequest.method} requests not supported`);
             }
@@ -107,7 +107,7 @@ export class LSPTestDiscovery {
      * Convert from `LSPTestItem[]` to `TestDiscovery.TestClass[]`,
      * updating the format of the location.
      */
-    private transform(
+    private transformToTestClass(
         client: LanguageClient,
         swiftPackage: SwiftPackage,
         input: LSPTestItem[]
@@ -119,7 +119,7 @@ export class LSPTestDiscovery {
                 ...item,
                 id: id,
                 location: location,
-                children: this.transform(client, swiftPackage, item.children),
+                children: this.transformToTestClass(client, swiftPackage, item.children),
             };
         });
     }
