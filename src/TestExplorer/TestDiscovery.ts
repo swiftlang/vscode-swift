@@ -89,10 +89,6 @@ export function updateTests(
     testItems.forEach(testItem => {
         upsertTestItem(testController, testItem);
     });
-
-    testController.items.forEach(item => {
-        testController.items.add(item);
-    });
 }
 
 /**
@@ -132,11 +128,25 @@ function upsertTestItem(
         return;
     }
 
-    const collection = parent === undefined ? testController.items : parent.children;
+    const collection = parent?.children ?? testController.items;
+    const existingItem = collection.get(testItem.id);
+    let newItem: vscode.TestItem;
 
-    const newItem =
-        collection.get(testItem.id) ??
-        testController.createTestItem(testItem.id, testItem.label, testItem.location?.uri);
+    // Unfortunately TestItem.uri is readonly so if the location of the test has changed
+    // we need to create a new TestItem. If the location of the new test item is undefined
+    // then don't create a new item and use the old one.
+    if (
+        existingItem === undefined ||
+        (existingItem && testItem.location?.uri && existingItem.uri !== testItem.location.uri)
+    ) {
+        newItem = testController.createTestItem(
+            testItem.id,
+            testItem.label,
+            testItem.location?.uri
+        );
+    } else {
+        newItem = existingItem;
+    }
 
     // Manually add the test style as a tag so we can filter by test type.
     newItem.tags = [{ id: testItem.style }, ...testItem.tags];
