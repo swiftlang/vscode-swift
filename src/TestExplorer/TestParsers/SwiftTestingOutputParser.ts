@@ -67,7 +67,7 @@ interface RunEnded {
 
 interface BaseEvent {
     timestamp: number;
-    message: EventMessage[];
+    messages: EventMessage[];
     testID: string;
 }
 
@@ -160,7 +160,7 @@ export class SwiftTestingOutputParser {
                 const testName = this.testName(item.payload.testID);
                 const testIndex = runState.getTestItemIndex(testName, undefined);
                 const sourceLocation = item.payload.sourceLocation;
-                item.payload.message.forEach(message => {
+                item.payload.messages.forEach(message => {
                     runState.recordIssue(testIndex, message.text, {
                         file: sourceLocation._filePath,
                         line: sourceLocation.line,

@@ -51,7 +51,7 @@ suite("SwiftTestingOutputParser Suite", () => {
             payload: {
                 kind: name,
                 timestamp: 0,
-                message: messages ?? [],
+                messages: messages ?? [],
                 ...{ testID, sourceLocation },
             } as EventRecordPayload,
         };
