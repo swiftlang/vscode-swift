@@ -19,14 +19,23 @@ import { testAssetPath } from "../fixtures";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { SwiftExecOperation, TaskOperation, TaskQueue } from "../../src/TaskQueue";
 import { globalWorkspaceContextPromise } from "./extension.test";
+import { SwiftTaskProvider, createSwiftTask } from "../../src/SwiftTaskProvider";
+import { SwiftToolchain } from "../../src/toolchain/toolchain";
+import { SwiftExecution } from "../../src/tasks/SwiftExecution";
+import { Version } from "../../src/utilities/version";
 
 suite("Tasks Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     let taskManager: TaskManager;
+    let toolchain: SwiftToolchain;
+    let workspaceFolder: vscode.WorkspaceFolder;
 
     suiteSetup(async () => {
         workspaceContext = await globalWorkspaceContextPromise;
         taskManager = workspaceContext.tasks;
+        toolchain = await SwiftToolchain.create();
+        assert.notEqual(workspaceContext.folders.length, 0);
+        workspaceFolder = workspaceContext.folders[0].workspaceFolder;
     });
 
     suite("TaskManager", () => {
@@ -252,6 +261,122 @@ suite("Tasks Test Suite", () => {
                     "SwiftExecOperation error"
                 );
             }
+        });
+    });
+
+    suite("SwiftExecution", () => {
+        test("createSwiftTask uses SwiftExecution", async () => {
+            const task = createSwiftTask(
+                ["--help"],
+                "help",
+                { cwd: workspaceFolder.uri, scope: vscode.TaskScope.Workspace },
+                toolchain
+            );
+            assert.equal(task.execution instanceof SwiftExecution, true);
+        });
+
+        test("Exit code on success", async () => {
+            const task = createSwiftTask(
+                ["--help"],
+                "help",
+                { cwd: workspaceFolder.uri, scope: vscode.TaskScope.Workspace },
+                toolchain
+            );
+            const promise = new Promise(res =>
+                vscode.tasks.onDidEndTaskProcess(e => res(e.exitCode))
+            );
+            await vscode.tasks.executeTask(task);
+            const exitCode = await promise;
+            assert.equal(exitCode, 0);
+        });
+
+        test("Exit code on failure", async () => {
+            const task = createSwiftTask(
+                ["--help"],
+                "help",
+                { cwd: workspaceFolder.uri, scope: vscode.TaskScope.Workspace },
+                new SwiftToolchain(
+                    "/invalid/swift/path",
+                    "/invalid/toolchain/path",
+                    "1.2.3",
+                    new Version(1, 2, 3)
+                )
+            );
+            const promise = new Promise(res =>
+                vscode.tasks.onDidEndTaskProcess(e => res(e.exitCode))
+            );
+            await vscode.tasks.executeTask(task);
+            const exitCode = await promise;
+            assert.equal(exitCode, 1);
+        });
+
+        test("Event handlers fire", async () => {
+            const task = createSwiftTask(
+                ["--help"],
+                "help",
+                { cwd: workspaceFolder.uri, scope: vscode.TaskScope.Workspace },
+                toolchain
+            );
+            let output = "";
+            const execution = task.execution as SwiftExecution;
+            execution.onDidWrite(e => (output += e));
+            const promise = new Promise(res => execution.onDidClose(e => res(e)));
+            await vscode.tasks.executeTask(task);
+            const exitCode = await promise;
+            assert.equal(exitCode, 0);
+            assert.equal(output.includes("Welcome to Swift!"), true);
+        });
+    });
+
+    suite("SwiftTaskProvider", () => {
+        test("provideTasks includes build all task", async () => {
+            const taskProvider = new SwiftTaskProvider(workspaceContext);
+            const tasks = await taskProvider.provideTasks(
+                new vscode.CancellationTokenSource().token
+            );
+            const task = tasks.find(t => t.name === "Build All (defaultPackage)");
+            assert.equal(task?.detail, "swift build --build-tests");
+        });
+
+        test("provideTasks includes product debug task", async () => {
+            const taskProvider = new SwiftTaskProvider(workspaceContext);
+            const tasks = await taskProvider.provideTasks(
+                new vscode.CancellationTokenSource().token
+            );
+            const task = tasks.find(t => t.name === "Build Debug PackageExe (defaultPackage)");
+            assert.equal(task?.detail, "swift build --product PackageExe");
+        });
+
+        test("provideTasks includes product release task", async () => {
+            const taskProvider = new SwiftTaskProvider(workspaceContext);
+            const tasks = await taskProvider.provideTasks(
+                new vscode.CancellationTokenSource().token
+            );
+            const task = tasks.find(t => t.name === "Build Release PackageExe (defaultPackage)");
+            assert.equal(task?.detail, "swift build -c release --product PackageExe");
+        });
+
+        test("resolveTask uses SwiftExecution", async () => {
+            const taskProvider = new SwiftTaskProvider(workspaceContext);
+            const task = new vscode.Task(
+                {
+                    type: "swift",
+                    args: ["run", "PackageExe"],
+                    env: { FOO: "bar" },
+                    cwd: workspaceFolder.uri.fsPath,
+                },
+                workspaceFolder,
+                "run PackageExe",
+                "swift"
+            );
+            const resolvedTask = taskProvider.resolveTask(
+                task,
+                new vscode.CancellationTokenSource().token
+            );
+            assert.equal(resolvedTask.execution instanceof SwiftExecution, true);
+            const swiftExecution = resolvedTask.execution as SwiftExecution;
+            assert.equal(swiftExecution.options.cwd, workspaceFolder.uri.fsPath);
+            assert.equal(swiftExecution.options.env?.FOO, "bar");
         });
     });
 });

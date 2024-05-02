@@ -18,6 +18,7 @@ import * as swiftExtension from "../../src/extension";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { testAssetUri } from "../fixtures";
 import { getBuildAllTask } from "../../src/SwiftTaskProvider";
+import { SwiftExecution } from "../../src/tasks/SwiftExecution";
 
 export const globalWorkspaceContextPromise = new Promise<WorkspaceContext>(resolve => {
     const ext = vscode.extensions.getExtension<swiftExtension.Api>("sswg.swift-lang")!;
@@ -63,7 +64,7 @@ suite("Extension Test Suite", () => {
             const folder = workspaceContext.folders.find(f => f.name === "test/defaultPackage");
             assert(folder);
             const buildAllTask = await getBuildAllTask(folder);
-            const execution = buildAllTask.execution as vscode.ShellExecution;
+            const execution = buildAllTask.execution as SwiftExecution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
             assert.strictEqual(buildAllTask.name, "swift: Build All (defaultPackage)");
             for (const arg of ["build", "--build-tests", "--verbose"]) {
