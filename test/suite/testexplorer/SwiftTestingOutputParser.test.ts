@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as assert from "assert";
+import * as vscode from "vscode";
 import {
     SwiftTestEvent,
     EventRecord,
@@ -36,14 +37,18 @@ class TestEventStream {
 }
 
 suite("SwiftTestingOutputParser Suite", () => {
-    const outputParser = new SwiftTestingOutputParser();
+    const outputParser = new SwiftTestingOutputParser(
+        () => {},
+        () => {}
+    );
 
     type ExtractPayload<T> = T extends { payload: infer E } ? E : never;
     function testEvent(
         name: ExtractPayload<EventRecord>["kind"],
         testID?: string,
         messages?: EventMessage[],
-        sourceLocation?: SourceLocation
+        sourceLocation?: SourceLocation,
+        testCaseID?: string
     ): EventRecord {
         return {
             kind: "event",
@@ -54,6 +59,10 @@ suite("SwiftTestingOutputParser Suite", () => {
                 messages: messages ?? [],
                 ...{ testID, sourceLocation },
                 ...(messages ? { issue: { sourceLocation } } : {}),
+                _testCase: {
+                    id: testCaseID ?? testID,
+                    displayName: testCaseID ?? testID,
+                },
             } as EventRecordPayload,
         };
     }
@@ -112,12 +121,90 @@ suite("SwiftTestingOutputParser Suite", () => {
         assert.deepEqual(runState.issues, [
             {
                 message: "Expectation failed: bar == foo",
-                location: {
-                    file: issueLocation._filePath,
-                    line: issueLocation.line,
-                    column: issueLocation.column,
-                },
+                location: new vscode.Location(
+                    vscode.Uri.file(issueLocation._filePath),
+                    new vscode.Position(issueLocation.line - 1, issueLocation?.column ?? 0)
+                ),
             },
         ]);
+    });
+
+    test("Parameterized test", async () => {
+        const testRunState = new TestRunState(["MyTests.MyTests/testParameterized()"], true);
+        const events = new TestEventStream([
+            {
+                kind: "test",
+                payload: {
+                    isParameterized: true,
+                    _testCases: [
+                        {
+                            displayName: "1",
+                            id: "argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])",
+                        },
+                        {
+                            displayName: "2",
+                            id: "argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])",
+                        },
+                    ],
+                    id: "MyTests.MyTests/testParameterized()",
+                    kind: "function",
+                    sourceLocation: {
+                        _filePath: "file:///some/file.swift",
+                        line: 1,
+                        column: 2,
+                    },
+                    name: "testParameterized(_:)",
+                },
+                version: 0,
+            },
+            testEvent("runStarted"),
+            testEvent(
+                "testCaseStarted",
+                "MyTests.MyTests/testParameterized()",
+                undefined,
+                undefined,
+                "argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])"
+            ),
+            testEvent(
+                "testCaseEnded",
+                "MyTests.MyTests/testParameterized()",
+                undefined,
+                undefined,
+                "argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])"
+            ),
+            testEvent(
+                "testCaseStarted",
+                "MyTests.MyTests/testParameterized()",
+                undefined,
+                undefined,
+                "argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])"
+            ),
+            testEvent(
+                "testCaseEnded",
+                "MyTests.MyTests/testParameterized()",
+                undefined,
+                undefined,
+                "argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])"
+            ),
+            testEvent("testEnded", "MyTests.MyTests/testParameterized()"),
+            testEvent("runEnded"),
+        ]);
+
+        const outputParser = new SwiftTestingOutputParser(
+            () => {},
+            testClass => {
+                testRunState.testItemFinder.tests.push({
+                    name: testClass.id,
+                    status: TestStatus.enqueued,
+                });
+            }
+        );
+        await outputParser.watch("file:///mock/named/pipe", testRunState, events);
+
+        assert.strictEqual(testRunState.tests.length, 3);
+        testRunState.tests.forEach(runState => {
+            assert.strictEqual(runState.status, TestStatus.passed);
+            assert.deepEqual(runState.timing, { timestamp: 0 });
+        });
     });
 });

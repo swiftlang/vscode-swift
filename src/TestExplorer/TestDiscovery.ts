@@ -140,11 +140,11 @@ function deepMergeTestItemChildren(existingItem: vscode.TestItem, newItem: vscod
  * Updates the existing `vscode.TestItem` if it exists with the same ID as the `TestClass`,
  * otherwise creates an add a new one. The location on the returned vscode.TestItem is always updated.
  */
-function upsertTestItem(
+export function upsertTestItem(
     testController: vscode.TestController,
     testItem: TestClass,
     parent?: vscode.TestItem
-) {
+): vscode.TestItem {
     const collection = parent?.children ?? testController.items;
     const existingItem = collection.get(testItem.id);
     let newItem: vscode.TestItem;
@@ -161,6 +161,15 @@ function upsertTestItem(
             testItem.label,
             testItem.location?.uri
         );
+
+        // We want to keep existing children if they exist.
+        if (existingItem) {
+            const existingChildren: vscode.TestItem[] = [];
+            existingItem.children.forEach(child => {
+                existingChildren.push(child);
+            });
+            newItem.children.replace(existingChildren);
+        }
     } else {
         newItem = existingItem;
     }
@@ -192,4 +201,6 @@ function upsertTestItem(
     testItem.children.forEach(child => {
         upsertTestItem(testController, child, newItem);
     });
+
+    return newItem;
 }

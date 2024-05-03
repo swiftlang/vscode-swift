@@ -19,6 +19,7 @@ import { TestRunArguments } from "../../../src/TestExplorer/TestRunArguments";
 
 suite("TestRunArguments Suite", () => {
     let controller: vscode.TestController;
+    let testTarget: vscode.TestItem;
     let xcSuite: vscode.TestItem;
     let xcTest: vscode.TestItem;
     let swiftTestSuite: vscode.TestItem;
@@ -30,27 +31,43 @@ suite("TestRunArguments Suite", () => {
             ""
         );
 
-        const testTarget = controller.createTestItem("TestTarget", "TestTarget");
+        testTarget = controller.createTestItem("TestTarget", "TestTarget");
         testTarget.tags = [{ id: "test-target" }];
 
         controller.items.add(testTarget);
 
-        xcSuite = controller.createTestItem("XCTest Suite", "XCTest Suite");
+        xcSuite = controller.createTestItem(
+            "XCTest Suite",
+            "XCTest Suite",
+            vscode.Uri.file("/path/to/file")
+        );
         xcSuite.tags = [{ id: "XCTest" }];
 
         testTarget.children.add(xcSuite);
 
-        xcTest = controller.createTestItem("XCTest Item", "XCTest Item");
+        xcTest = controller.createTestItem(
+            "XCTest Item",
+            "XCTest Item",
+            vscode.Uri.file("/path/to/file")
+        );
         xcTest.tags = [{ id: "XCTest" }];
 
         xcSuite.children.add(xcTest);
 
-        swiftTestSuite = controller.createTestItem("Swift Test Suite", "Swift Test Suite");
+        swiftTestSuite = controller.createTestItem(
+            "Swift Test Suite",
+            "Swift Test Suite",
+            vscode.Uri.file("/path/to/file")
+        );
         swiftTestSuite.tags = [{ id: "swift-testing" }];
 
         testTarget.children.add(swiftTestSuite);
 
-        swiftTest = controller.createTestItem("Swift Test Item", "Swift Test Item");
+        swiftTest = controller.createTestItem(
+            "Swift Test Item",
+            "Swift Test Item",
+            vscode.Uri.file("/path/to/file")
+        );
         swiftTest.tags = [{ id: "swift-testing" }];
 
         swiftTestSuite.children.add(swiftTest);
@@ -72,7 +89,7 @@ suite("TestRunArguments Suite", () => {
         assert.deepEqual(testArgs.swiftTestArgs, [swiftTestSuite.id]);
         assert.deepEqual(
             testArgs.testItems.map(item => item.id),
-            [xcSuite.id, xcTest.id, swiftTestSuite.id, swiftTest.id]
+            [testTarget.id, xcSuite.id, xcTest.id, swiftTestSuite.id, swiftTest.id]
         );
     });
 
@@ -86,7 +103,7 @@ suite("TestRunArguments Suite", () => {
         assert.deepEqual(testArgs.swiftTestArgs, [swiftTestSuite.id]);
         assert.deepEqual(
             testArgs.testItems.map(item => item.id),
-            [swiftTestSuite.id, swiftTest.id]
+            [testTarget.id, swiftTestSuite.id, swiftTest.id]
         );
     });
 
@@ -100,14 +117,15 @@ suite("TestRunArguments Suite", () => {
         assert.deepEqual(testArgs.swiftTestArgs, [swiftTestSuite.id]);
         assert.deepEqual(
             testArgs.testItems.map(item => item.id),
-            [swiftTestSuite.id, swiftTest.id]
+            [testTarget.id, swiftTestSuite.id, swiftTest.id]
         );
     });
 
     test("Single Test in Suite With Multiple", () => {
         const anotherSwiftTest = controller.createTestItem(
             "Another Swift Test Item",
-            "Another Swift Test Item"
+            "Another Swift Test Item",
+            vscode.Uri.file("/path/to/file")
         );
         anotherSwiftTest.tags = [{ id: "swift-testing" }];
         swiftTestSuite.children.add(anotherSwiftTest);
@@ -121,7 +139,7 @@ suite("TestRunArguments Suite", () => {
         assert.deepEqual(testArgs.swiftTestArgs, [anotherSwiftTest.id]);
         assert.deepEqual(
             testArgs.testItems.map(item => item.id),
-            [anotherSwiftTest.id]
+            [swiftTestSuite.id, testTarget.id, anotherSwiftTest.id]
         );
     });
 });

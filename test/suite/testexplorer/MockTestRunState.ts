@@ -1,3 +1,4 @@
+import * as vscode from "vscode";
 import { ITestRunState } from "../../../src/TestExplorer/TestParsers/TestRunState";
 
 /** TestStatus */
@@ -13,7 +14,7 @@ export enum TestStatus {
 interface TestItem {
     name: string;
     status: TestStatus;
-    issues?: { message: string; location?: { file: string; line: number } }[];
+    issues?: { message: string; location?: vscode.Location }[];
     timing?: { duration: number } | { timestamp: number };
 }
 
@@ -80,7 +81,7 @@ export class TestRunState implements ITestRunState {
         this.testItemFinder.tests[index].timing = timing;
     }
 
-    recordIssue(index: number, message: string, location?: { file: string; line: number }): void {
+    recordIssue(index: number, message: string, location?: vscode.Location): void {
         this.testItemFinder.tests[index].issues = [
             ...(this.testItemFinder.tests[index].issues ?? []),
             { message, location },

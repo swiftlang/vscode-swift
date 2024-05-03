@@ -187,6 +187,7 @@ export async function getBuildAllTask(folderContext: FolderContext): Promise<vsc
     if (!task) {
         throw Error("Build All Task does not exist");
     }
+
     return task;
 }
 
@@ -252,7 +253,7 @@ export function createSwiftTask(
     const fullCwd = config.cwd.fsPath;
 
     /* Currently there seems to be a bug in vscode where kicking off two tasks
-     with the same definition but different scopes messes with the task 
+     with the same definition but different scopes messes with the task
      completion code. When that is resolved we will go back to the code below
      where we only store the relative cwd instead of the full cwd
 
