@@ -42,6 +42,7 @@ export interface Product {
 /** Swift Package Manager target */
 export interface Target {
     name: string;
+    c99name: string;
     path: string;
     sources: string[];
     type: "executable" | "test" | "library" | "snippet";
