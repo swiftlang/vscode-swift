@@ -174,103 +174,7 @@ export function createSwiftTestConfiguration(
     fifoPipePath: string,
     expandEnvVariables = false
 ): vscode.DebugConfiguration | null {
-    if (ctx.swiftPackage.getTargets(TargetType.test).length === 0) {
-        return null;
-    }
-
-    // respect user configuration if conflicts with injected runtime path
-    const testEnv = {
-        ...swiftRuntimeEnv(),
-        ...configuration.folder(ctx.workspaceFolder).testEnvironmentVariables,
-    };
-    const { folder, nameSuffix } = getFolderAndNameSuffix(ctx, expandEnvVariables);
-    const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
-
-    const baseConfig = {
-        type: DebugAdapter.adapterName,
-        request: "launch",
-        sourceLanguages: ["swift"],
-        name: `Test ${ctx.swiftPackage.name}`,
-        cwd: folder,
-        preLaunchTask: `swift: Build All${nameSuffix}`,
-    };
-
-    if (process.platform === "darwin") {
-        const swiftFolderPath = ctx.workspaceContext.toolchain.swiftFolderPath;
-        if (swiftFolderPath === undefined) {
-            return null;
-        }
-
-        const libraryPath = ctx.workspaceContext.toolchain.swiftTestingLibraryPath();
-        const frameworkPath = ctx.workspaceContext.toolchain.swiftTestingFrameworkPath();
-        const sanitizer = ctx.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
-
-        return {
-            ...baseConfig,
-            program: path.join(
-                buildDirectory,
-                "debug",
-                `${ctx.swiftPackage.name}PackageTests.swift-testing`
-            ),
-            args: ["--experimental-event-stream-output", fifoPipePath],
-            env: {
-                ...testEnv,
-                ...sanitizer?.runtimeEnvironment,
-                DYLD_FRAMEWORK_PATH: frameworkPath,
-                DYLD_LIBRARY_PATH: libraryPath,
-                SWT_SF_SYMBOLS_ENABLED: "0",
-            },
-        };
-    } else if (process.platform === "win32") {
-        // On Windows, add XCTest.dll to the Path
-        // and run the .xctest executable from the .build directory.
-        const runtimePath = ctx.workspaceContext.toolchain.runtimePath;
-        const xcTestPath = ctx.workspaceContext.toolchain.xcTestPath;
-        if (xcTestPath === undefined) {
-            return null;
-        }
-        if (xcTestPath !== runtimePath) {
-            testEnv.Path = `${xcTestPath};${testEnv.Path ?? process.env.Path}`;
-        }
-        const sdkroot = configuration.sdk === "" ? process.env.SDKROOT : configuration.sdk;
-        if (sdkroot === undefined) {
-            return null;
-        }
-        let preRunCommands: string[] | undefined;
-        if (
-            configuration.debugger.useDebugAdapterFromToolchain ||
-            vscode.workspace.getConfiguration("lldb")?.get<string>("library")
-        ) {
-            preRunCommands = [`settings set target.sdk-path ${sdkroot}`];
-        }
-
-        return {
-            ...baseConfig,
-            program: path.join(
-                buildDirectory,
-                "debug",
-                `${ctx.swiftPackage.name}PackageTests.swift-testing`
-            ),
-            args: ["--experimental-event-stream-output", fifoPipePath],
-            env: testEnv,
-            preRunCommands: preRunCommands,
-        };
-    } else {
-        // On Linux, just run the .swift-testing executable from the configured build directory.
-        return {
-            ...baseConfig,
-            program: path.join(
-                buildDirectory,
-                "debug",
-                `${ctx.swiftPackage.name}PackageTests.swift-testing`
-            ),
-            args: ["--experimental-event-stream-output", fifoPipePath],
-            env: {
-                ...testEnv,
-                SWT_SF_SYMBOLS_ENABLED: "0",
-            },
-        };
-    }
+    return createDebugConfiguration(ctx, fifoPipePath, expandEnvVariables, "swift-testing");
 }
 
 /**
@@ -283,11 +187,19 @@ export function createXCTestConfiguration(
     ctx: FolderContext,
     expandEnvVariables = false
 ): vscode.DebugConfiguration | null {
+    return createDebugConfiguration(ctx, "", expandEnvVariables, "XCTest");
+}
+
+function createDebugConfiguration(
+    ctx: FolderContext,
+    fifoPipePath: string,
+    expandEnvVariables = false,
+    type: "XCTest" | "swift-testing"
+): vscode.DebugConfiguration | null {
     if (ctx.swiftPackage.getTargets(TargetType.test).length === 0) {
         return null;
     }
 
-    // respect user configuration if conflicts with injected runtime path
     const testEnv = {
         ...swiftRuntimeEnv(),
         ...configuration.folder(ctx.workspaceFolder).testEnvironmentVariables,
@@ -303,66 +215,148 @@ export function createXCTestConfiguration(
         cwd: folder,
         preLaunchTask: `swift: Build All${nameSuffix}`,
     };
-    if (process.platform === "darwin") {
-        // On macOS, find the path to xctest
-        // and point it at the .xctest bundle from the configured build directory.
-        const xctestPath = ctx.workspaceContext.toolchain.xcTestPath;
-        if (xctestPath === undefined) {
-            return null;
-        }
-        const sanitizer = ctx.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
-        return {
-            ...baseConfig,
-            program: path.join(xctestPath, "xctest"),
-            args: [
-                path.join(buildDirectory, "debug", ctx.swiftPackage.name + "PackageTests.xctest"),
-            ],
-            env: { ...testEnv, ...sanitizer?.runtimeEnvironment },
-        };
-    } else if (process.platform === "win32") {
-        // On Windows, add XCTest.dll to the Path
-        // and run the .xctest executable from the .build directory.
-        const runtimePath = ctx.workspaceContext.toolchain.runtimePath;
-        const xcTestPath = ctx.workspaceContext.toolchain.xcTestPath;
-        if (xcTestPath === undefined) {
-            return null;
-        }
-        if (xcTestPath !== runtimePath) {
-            testEnv.Path = `${xcTestPath};${testEnv.Path ?? process.env.Path}`;
-        }
-        const sdkroot = configuration.sdk === "" ? process.env.SDKROOT : configuration.sdk;
-        if (sdkroot === undefined) {
-            return null;
-        }
-        let preRunCommands: string[] | undefined;
-        if (
-            configuration.debugger.useDebugAdapterFromToolchain ||
-            vscode.workspace.getConfiguration("lldb")?.get<string>("library")
-        ) {
-            preRunCommands = [`settings set target.sdk-path ${sdkroot}`];
-        }
-        return {
-            ...baseConfig,
-            program: path.join(
-                buildDirectory,
-                "debug",
-                ctx.swiftPackage.name + "PackageTests.xctest"
-            ),
-            env: testEnv,
-            preRunCommands: preRunCommands,
-        };
-    } else {
-        // On Linux, just run the .xctest executable from the configured build directory.
-        return {
-            ...baseConfig,
-            program: path.join(
-                buildDirectory,
-                "debug",
-                ctx.swiftPackage.name + "PackageTests.xctest"
-            ),
-            env: testEnv,
-        };
+
+    let programPath;
+    let args: string[] = [];
+    let preRunCommands: string[] | undefined;
+    let env: object = {};
+
+    const swiftFolderPath = ctx.workspaceContext.toolchain.swiftFolderPath;
+    if (swiftFolderPath === undefined) {
+        return null;
     }
+
+    const xcTestPath = ctx.workspaceContext.toolchain.xcTestPath;
+    const runtimePath = ctx.workspaceContext.toolchain.runtimePath;
+    const sdkroot = configuration.sdk === "" ? process.env.SDKROOT : configuration.sdk;
+    const libraryPath = ctx.workspaceContext.toolchain.swiftTestingLibraryPath();
+    const frameworkPath = ctx.workspaceContext.toolchain.swiftTestingFrameworkPath();
+    const sanitizer = ctx.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
+
+    switch (process.platform) {
+        case "darwin":
+            switch (type) {
+                case "swift-testing":
+                    programPath = path.join(
+                        buildDirectory,
+                        "debug",
+                        `${ctx.swiftPackage.name}PackageTests.swift-testing`
+                    );
+                    args = ["--experimental-event-stream-output", fifoPipePath];
+                    env = {
+                        ...testEnv,
+                        ...sanitizer?.runtimeEnvironment,
+                        DYLD_FRAMEWORK_PATH: frameworkPath,
+                        DYLD_LIBRARY_PATH: libraryPath,
+                        SWT_SF_SYMBOLS_ENABLED: "0",
+                    };
+                    break;
+                case "XCTest":
+                    // On macOS, find the path to xctest
+                    // and point it at the .xctest bundle from the configured build directory.
+                    if (xcTestPath === undefined) {
+                        return null;
+                    }
+
+                    programPath = path.join(xcTestPath, "xctest");
+                    args = [
+                        path.join(
+                            buildDirectory,
+                            "debug",
+                            ctx.swiftPackage.name + "PackageTests.xctest"
+                        ),
+                    ];
+                    env = { ...testEnv, ...sanitizer?.runtimeEnvironment };
+                    break;
+            }
+            break;
+        case "win32":
+            switch (type) {
+                case "swift-testing":
+                    // On Windows, add XCTest.dll to the Path
+                    // and run the .xctest executable from the .build directory.
+                    if (xcTestPath === undefined) {
+                        return null;
+                    }
+                    if (xcTestPath !== runtimePath) {
+                        testEnv.Path = `${xcTestPath};${testEnv.Path ?? process.env.Path}`;
+                    }
+                    if (sdkroot === undefined) {
+                        return null;
+                    }
+                    if (
+                        configuration.debugger.useDebugAdapterFromToolchain ||
+                        vscode.workspace.getConfiguration("lldb")?.get<string>("library")
+                    ) {
+                        preRunCommands = [`settings set target.sdk-path ${sdkroot}`];
+                    }
+
+                    programPath = path.join(
+                        buildDirectory,
+                        "debug",
+                        `${ctx.swiftPackage.name}PackageTests.swift-testing`
+                    );
+                    args = ["--experimental-event-stream-output", fifoPipePath];
+                    env = testEnv;
+                    break;
+                case "XCTest":
+                    // On Windows, add XCTest.dll to the Path
+                    // and run the .xctest executable from the .build directory.
+                    if (xcTestPath === undefined || sdkroot === undefined) {
+                        return null;
+                    }
+                    if (xcTestPath !== runtimePath) {
+                        testEnv.Path = `${xcTestPath};${testEnv.Path ?? process.env.Path}`;
+                    }
+
+                    if (
+                        configuration.debugger.useDebugAdapterFromToolchain ||
+                        vscode.workspace.getConfiguration("lldb")?.get<string>("library")
+                    ) {
+                        preRunCommands = [`settings set target.sdk-path ${sdkroot}`];
+                    }
+
+                    programPath = path.join(
+                        buildDirectory,
+                        "debug",
+                        ctx.swiftPackage.name + "PackageTests.xctest"
+                    );
+                    env = testEnv;
+                    break;
+            }
+            break;
+        default:
+            switch (type) {
+                case "swift-testing":
+                    // On Linux, just run the .swift-testing executable from the configured build directory.
+                    programPath = path.join(
+                        buildDirectory,
+                        "debug",
+                        `${ctx.swiftPackage.name}PackageTests.swift-testing`
+                    );
+                    args = ["--experimental-event-stream-output", fifoPipePath];
+                    env = {
+                        ...testEnv,
+                        SWT_SF_SYMBOLS_ENABLED: "0",
+                    };
+                    break;
+                case "XCTest":
+                    programPath = path.join(
+                        buildDirectory,
+                        "debug",
+                        ctx.swiftPackage.name + "PackageTests.xctest"
+                    );
+                    env = testEnv;
+            }
+    }
+
+    return {
+        ...baseConfig,
+        program: programPath,
+        args: args,
+        env: env,
+        preRunCommands: preRunCommands,
+    };
 }
 
 /** Return custom Darwin test configuration that works with Swift 5.6 */
