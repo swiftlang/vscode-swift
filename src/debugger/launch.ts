@@ -256,15 +256,19 @@ export function createSwiftTestConfiguration(
             preRunCommands: preRunCommands,
         };
     } else {
-        // On Linux, just run the .xctest executable from the configured build directory.
+        // On Linux, just run the .swift-testing executable from the configured build directory.
         return {
             ...baseConfig,
             program: path.join(
                 buildDirectory,
                 "debug",
-                ctx.swiftPackage.name + "PackageTests.xctest"
+                `${ctx.swiftPackage.name}PackageTests.swift-testing`
             ),
-            env: testEnv,
+            args: ["--experimental-event-stream-output", fifoPipePath],
+            env: {
+                ...testEnv,
+                SWT_SF_SYMBOLS_ENABLED: "0",
+            },
         };
     }
 }

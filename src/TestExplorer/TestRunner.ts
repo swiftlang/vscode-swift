@@ -570,12 +570,12 @@ export class TestRunner {
     async debugSession(token: vscode.CancellationToken, runState: TestRunnerTestRunState) {
         const buildConfigs: Array<vscode.DebugConfiguration | undefined> = [];
 
-        if (this.testArgs.hasSwiftTestingTests) {
-            const fifoPipePath =
-                process.platform === "win32"
-                    ? `\\\\.\\pipe\\vscodemkfifo-${Date.now()}`
-                    : path.join(os.tmpdir(), `vscodemkfifo-${Date.now()}`);
+        const fifoPipePath =
+            process.platform === "win32"
+                ? `\\\\.\\pipe\\vscodemkfifo-${Date.now()}`
+                : path.join(os.tmpdir(), `vscodemkfifo-${Date.now()}`);
 
+        if (this.testArgs.hasSwiftTestingTests) {
             const swiftTestBuildConfig =
                 await LaunchConfigurations.createLaunchConfigurationForSwiftTesting(
                     this.testArgs.swiftTestArgs,
@@ -706,6 +706,9 @@ export class TestRunner {
 
         // Run each debugging session sequentially
         await debugRuns.reduce((p, fn) => p.then(() => fn()), Promise.resolve());
+
+        // If we created a named pipe for this run then clean it up.
+        await asyncfs.rm(fifoPipePath, { force: true });
     }
 
     setTestsEnqueued() {
@@ -821,6 +824,10 @@ class LaunchConfigurations {
 
             return testBuildConfig;
         } else {
+            if (process.platform !== "win32") {
+                await execFile("mkfifo", [fifoPipePath], undefined, folderContext);
+            }
+
             const testBuildConfig = createSwiftTestConfiguration(folderContext, fifoPipePath, true);
             if (testBuildConfig === null) {
                 return null;
