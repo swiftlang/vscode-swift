@@ -40,7 +40,7 @@ Where possible any new feature should have tests that go along with it, to ensur
 
 ## sourcekit-lsp
 
-The VSCode extension for Swift relies on Apple's [sourcekit-lsp](https://github.com/apple/sourcekit-lsp) for syntax highlighting, enumerating tests, and more. If you want to test the extension with a different version of the sourcekit-lsp you can set the `swift.sourcekit-lsp.serverPath` setting to point to your sourcekit-lsp binary.
+The VSCode extension for Swift relies on Apple's [sourcekit-lsp](https://github.com/apple/sourcekit-lsp) for syntax highlighting, enumerating tests, and more. If you want to test the extension with a different version of the sourcekit-lsp you can add a `swift.sourcekit-lsp.serverPath` entry in your local `settings.xml` to point to your sourcekit-lsp binary. The setting is no longer visible in the UI because it has been deprecated.
 
 > [!WARNING]
 > If your sourcekit-lsp version does not match your toolchain you may experience unexpected behaviour.
