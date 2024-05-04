@@ -45,6 +45,7 @@ import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
 import { TaskOperation } from "../TaskQueue";
 import { TestXUnitParser, iXUnitTestState } from "./TestXUnitParser";
 import { ITestRunState } from "./TestParsers/TestRunState";
+import { TestRunArguments } from "./TestRunArguments";
 
 /** Workspace Folder events */
 export enum TestKind {
@@ -54,103 +55,6 @@ export enum TestKind {
     parallel = "parallel",
     // run tests and extract test coverage
     coverage = "coverage",
-}
-
-/**
- * Given a `TestRunRequest`, produces the lists of
- * XCTests and swift-testing tests to run.
- */
-export class TestRunArguments {
-    public testItems: vscode.TestItem[];
-    public xcTestArgs: string[];
-    public swiftTestArgs: string[];
-
-    constructor(request: vscode.TestRunRequest) {
-        const { testItems, xcTestArgs, swiftTestArgs } = this.createTestLists(request);
-        this.testItems = testItems;
-        this.xcTestArgs = xcTestArgs;
-        this.swiftTestArgs = swiftTestArgs;
-    }
-
-    get hasXCTests(): boolean {
-        return this.xcTestArgs.length > 0;
-    }
-
-    get hasSwiftTestingTests(): boolean {
-        return this.swiftTestArgs.length > 0;
-    }
-
-    /**
-     * Construct test item list from TestRequest
-     * @returns list of test items to run and list of test for XCTest arguments
-     */
-    private createTestLists(request: vscode.TestRunRequest): {
-        testItems: vscode.TestItem[];
-        xcTestArgs: string[];
-        swiftTestArgs: string[];
-    } {
-        const testItems: vscode.TestItem[] = [];
-        const xcTestArgs: string[] = [];
-        const swiftTestArgs: string[] = [];
-
-        // Start processing from root items
-        request.include?.forEach(item =>
-            this.processTestItem(
-                item,
-                testItems,
-                xcTestArgs,
-                swiftTestArgs,
-                request.include,
-                request.exclude
-            )
-        );
-
-        return { testItems, xcTestArgs, swiftTestArgs };
-    }
-
-    private processTestItem(
-        testItem: vscode.TestItem,
-        collection: vscode.TestItem[],
-        xcTestArgs: string[],
-        swiftTestArgs: string[],
-        include?: readonly vscode.TestItem[],
-        exclude?: readonly vscode.TestItem[]
-    ) {
-        // Skip tests the user asked to exclude
-        if (exclude?.includes(testItem)) {
-            return;
-        }
-
-        // If this test item is included or we are including everything
-        if (include?.includes(testItem) || !include) {
-            collection.push(testItem);
-
-            // Only add leaf items to testArgs
-            if (testItem.children.size === 0) {
-                if (testItem.tags.find(tag => tag.id === "XCTest")) {
-                    xcTestArgs.push(testItem.id);
-                } else {
-                    swiftTestArgs.push(testItem.id);
-                }
-            }
-        }
-
-        const lengthBefore = xcTestArgs.length + swiftTestArgs.length;
-
-        // Recursively process children
-        testItem.children.forEach(child =>
-            this.processTestItem(child, collection, xcTestArgs, swiftTestArgs, undefined, exclude)
-        );
-
-        // If all of a parent's children were excluded then don't add
-        // the parent to the testItem collection.
-        if (
-            testItem.children.size > 0 &&
-            lengthBefore === xcTestArgs.length + swiftTestArgs.length
-        ) {
-            collection.splice(collection.indexOf(testItem), 1);
-        }
-    }
 }
 
 /** Class used to run tests */

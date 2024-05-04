@@ -15,9 +15,9 @@
 import * as vscode from "vscode";
 import * as assert from "assert";
 import { beforeEach } from "mocha";
-import { TestRunArguments } from "../../../src/TestExplorer/TestRunner";
+import { TestRunArguments } from "../../../src/TestExplorer/TestRunArguments";
 
-suite("TestRunArguments Suite", () => {
+suite.only("TestRunArguments Suite", () => {
     let controller: vscode.TestController;
     let xcSuite: vscode.TestItem;
     let xcTest: vscode.TestItem;
@@ -58,8 +58,8 @@ suite("TestRunArguments Suite", () => {
         );
         assert.equal(testArgs.hasXCTests, true);
         assert.equal(testArgs.hasSwiftTestingTests, true);
-        assert.deepEqual(testArgs.xcTestArgs, [xcTest.id]);
-        assert.deepEqual(testArgs.swiftTestArgs, [swiftTest.id]);
+        assert.deepEqual(testArgs.xcTestArgs, [xcSuite.id]);
+        assert.deepEqual(testArgs.swiftTestArgs, [swiftTestSuite.id]);
         assert.deepEqual(
             testArgs.testItems.map(item => item.id),
             [xcSuite.id, xcTest.id, swiftTestSuite.id, swiftTest.id]
@@ -73,7 +73,7 @@ suite("TestRunArguments Suite", () => {
         assert.equal(testArgs.hasXCTests, false);
         assert.equal(testArgs.hasSwiftTestingTests, true);
         assert.deepEqual(testArgs.xcTestArgs, []);
-        assert.deepEqual(testArgs.swiftTestArgs, [swiftTest.id]);
+        assert.deepEqual(testArgs.swiftTestArgs, [swiftTestSuite.id]);
         assert.deepEqual(
             testArgs.testItems.map(item => item.id),
             [swiftTestSuite.id, swiftTest.id]
@@ -87,10 +87,31 @@ suite("TestRunArguments Suite", () => {
         assert.equal(testArgs.hasXCTests, false);
         assert.equal(testArgs.hasSwiftTestingTests, true);
         assert.deepEqual(testArgs.xcTestArgs, []);
-        assert.deepEqual(testArgs.swiftTestArgs, [swiftTest.id]);
+        assert.deepEqual(testArgs.swiftTestArgs, [swiftTestSuite.id]);
         assert.deepEqual(
             testArgs.testItems.map(item => item.id),
             [swiftTestSuite.id, swiftTest.id]
+        );
+    });
+
+    test("Single Test in Suite With Multiple", () => {
+        const anotherSwiftTest = controller.createTestItem(
+            "Another Swift Test Item",
+            "Another Swift Test Item"
+        );
+        anotherSwiftTest.tags = [{ id: "swift-testing" }];
+        swiftTestSuite.children.add(anotherSwiftTest);
+
+        const testArgs = new TestRunArguments(
+            new vscode.TestRunRequest([anotherSwiftTest], [], undefined)
+        );
+        assert.equal(testArgs.hasXCTests, false);
+        assert.equal(testArgs.hasSwiftTestingTests, true);
+        assert.deepEqual(testArgs.xcTestArgs, []);
+        assert.deepEqual(testArgs.swiftTestArgs, [anotherSwiftTest.id]);
+        assert.deepEqual(
+            testArgs.testItems.map(item => item.id),
+            [anotherSwiftTest.id]
         );
     });
 });
