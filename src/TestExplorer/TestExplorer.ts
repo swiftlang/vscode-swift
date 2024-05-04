@@ -155,7 +155,7 @@ export class TestExplorer {
                             tests =>
                                 [
                                     {
-                                        id: target.name,
+                                        id: target.c99name,
                                         label: target.name,
                                         children: tests,
                                         location: undefined,

@@ -43,7 +43,7 @@ export function updateTestsFromClasses(folderContext: FolderContext, testItems: 
                 folderContext.swiftPackage.getTarget(testItem.location.uri.fsPath) === target
         );
         return {
-            id: target.name,
+            id: target.c99name,
             label: target.name,
             children: filteredItems,
             location: undefined,

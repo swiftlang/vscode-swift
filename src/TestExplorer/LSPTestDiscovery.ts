@@ -140,7 +140,7 @@ export class LSPTestDiscovery {
             .getTargets(TargetType.test)
             .find(target => swiftPackage.getTarget(location.uri.fsPath) === target);
 
-        const id = target !== undefined ? `${target.name}.${item.id}` : item.id;
+        const id = target !== undefined ? `${target.c99name}.${item.id}` : item.id;
         if (item.style === "XCTest") {
             return id.replace(/\(\)$/, "");
         } else {
