@@ -21,6 +21,7 @@ import { BuildFlags } from "../toolchain/BuildFlags";
 import { stringArrayInEnglish, swiftLibraryPathKey, swiftRuntimeEnv } from "../utilities/utilities";
 import { DebugAdapter } from "./debugAdapter";
 import { TargetType } from "../SwiftPackage";
+import { Version } from "../utilities/version";
 
 /**
  * Edit launch.json based on contents of Swift Package.
@@ -221,28 +222,26 @@ function createDebugConfiguration(
     let preRunCommands: string[] | undefined;
     let env: object = {};
 
-    const swiftFolderPath = ctx.workspaceContext.toolchain.swiftFolderPath;
+    const workspace = ctx.workspaceContext;
+    const swiftFolderPath = workspace.toolchain.swiftFolderPath;
     if (swiftFolderPath === undefined) {
         return null;
     }
 
-    const xcTestPath = ctx.workspaceContext.toolchain.xcTestPath;
-    const runtimePath = ctx.workspaceContext.toolchain.runtimePath;
+    const xcTestPath = workspace.toolchain.xcTestPath;
+    const runtimePath = workspace.toolchain.runtimePath;
+    const sanitizer = workspace.toolchain.sanitizer(configuration.sanitizer);
     const sdkroot = configuration.sdk === "" ? process.env.SDKROOT : configuration.sdk;
-    const libraryPath = ctx.workspaceContext.toolchain.swiftTestingLibraryPath();
-    const frameworkPath = ctx.workspaceContext.toolchain.swiftTestingFrameworkPath();
-    const sanitizer = ctx.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
 
     switch (process.platform) {
         case "darwin":
             switch (type) {
                 case "swift-testing":
-                    programPath = path.join(
-                        buildDirectory,
-                        "debug",
-                        `${ctx.swiftPackage.name}PackageTests.swift-testing`
-                    );
+                    programPath = path.join(swiftFolderPath, "swift");
                     args = [
+                        "test",
+                        "--disable-xctest",
+                        "--enable-experimental-swift-testing",
                         "--experimental-event-stream-version",
                         "0",
                         "--experimental-event-stream-output",
@@ -251,26 +250,16 @@ function createDebugConfiguration(
                     env = {
                         ...testEnv,
                         ...sanitizer?.runtimeEnvironment,
-                        DYLD_FRAMEWORK_PATH: frameworkPath,
-                        DYLD_LIBRARY_PATH: libraryPath,
                         SWT_SF_SYMBOLS_ENABLED: "0",
                     };
                     break;
                 case "XCTest":
-                    // On macOS, find the path to xctest
-                    // and point it at the .xctest bundle from the configured build directory.
-                    if (xcTestPath === undefined) {
-                        return null;
-                    }
+                    programPath = path.join(swiftFolderPath, "swift");
+                    args = ["test"];
 
-                    programPath = path.join(xcTestPath, "xctest");
-                    args = [
-                        path.join(
-                            buildDirectory,
-                            "debug",
-                            ctx.swiftPackage.name + "PackageTests.xctest"
-                        ),
-                    ];
+                    if (workspace.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
+                        args = [...args, "--enable-xctest", "--disable-experimental-swift-testing"];
+                    }
                     env = { ...testEnv, ...sanitizer?.runtimeEnvironment };
                     break;
             }
