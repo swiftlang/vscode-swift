@@ -40,9 +40,16 @@ export class SwiftProcess {
 
     spawn(): void {
         try {
+            // The pty process hangs on Windows when debugging the extension if we use conpty
+            // See https://github.com/microsoft/node-pty/issues/640
+            const useConpty =
+                process.platform === "win32" && process.env["VSCODE_DEBUG"] === "1"
+                    ? false
+                    : undefined;
             this.spawnedProcess = spawn(this.command, this.args, {
                 cwd: this.options.cwd,
                 env: { ...process.env, ...this.options.env },
+                useConpty,
             });
             this.spawnEmitter.fire();
             this.spawnedProcess.onData(data => {
