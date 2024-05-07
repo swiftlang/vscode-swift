@@ -21,26 +21,20 @@ export interface SwiftExecutionOptions extends vscode.ProcessExecutionOptions {
 }
 
 export class SwiftExecution extends vscode.CustomExecution {
-    private swiftProcess?: SwiftProcess;
-
     constructor(
         public readonly command: string,
         public readonly args: string[],
         public readonly options: SwiftExecutionOptions
     ) {
+        const swiftProcess = new SwiftProcess(command, args, options);
         super(async () => {
-            return new SwiftPseudoterminal(this.getSwiftProcess(), options.presentation || {});
+            return new SwiftPseudoterminal(swiftProcess, options.presentation || {});
         });
+        this.onDidWrite = swiftProcess.onDidWrite;
+        this.onDidClose = swiftProcess.onDidClose;
     }
 
-    onDidWrite: vscode.Event<string> = this.getSwiftProcess().onDidWrite;
+    onDidWrite: vscode.Event<string>;
 
-    onDidClose: vscode.Event<number | void> = this.getSwiftProcess().onDidClose;
-
-    private getSwiftProcess(): SwiftProcess {
-        if (!this.swiftProcess) {
-            this.swiftProcess = new SwiftProcess(this.command, this.args, this.options);
-        }
-        return this.swiftProcess;
-    }
+    onDidClose: vscode.Event<number | void>;
 }

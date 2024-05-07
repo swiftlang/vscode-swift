@@ -19,6 +19,7 @@ import { PackagePlugin } from "./SwiftPackage";
 import configuration from "./configuration";
 import { swiftRuntimeEnv } from "./utilities/utilities";
 import { SwiftExecution } from "./tasks/SwiftExecution";
+import { resolveTaskCwd } from "./utilities/tasks";
 
 // Interface class for defining task configuration
 interface TaskConfig {
@@ -87,13 +88,14 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         ];
         swiftArgs = this.workspaceContext.toolchain.buildFlags.withSwiftSDKFlags(swiftArgs);
 
+        const cwd = resolveTaskCwd(task, task.definition.cwd);
         const newTask = new vscode.Task(
             task.definition,
             task.scope ?? vscode.TaskScope.Workspace,
             task.name,
             "swift-plugin",
             new SwiftExecution(swift, swiftArgs, {
-                cwd: task.definition.cwd,
+                cwd,
                 presentation: task.presentationOptions,
             }),
             task.problemMatchers

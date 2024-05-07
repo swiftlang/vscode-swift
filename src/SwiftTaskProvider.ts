@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as path from "path";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { Product, TargetType } from "./SwiftPackage";
@@ -22,6 +21,7 @@ import { swiftRuntimeEnv } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { SwiftExecution } from "./tasks/SwiftExecution";
+import { resolveTaskCwd } from "./utilities/tasks";
 
 /**
  * References:
@@ -378,7 +378,6 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
         const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
-        const scopeWorkspaceFolder = task.scope as vscode.WorkspaceFolder;
         // platform specific
         let platform: TaskPlatformSpecificConfig | undefined;
         if (process.platform === "win32") {
@@ -391,10 +390,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         // get args and cwd values from either platform specific block or base
         const args = platform?.args ?? task.definition.args;
         const env = platform?.env ?? task.definition.env;
-        let fullCwd = platform?.cwd ?? task.definition.cwd;
-        if (fullCwd && !path.isAbsolute(fullCwd) && scopeWorkspaceFolder.uri.fsPath) {
-            fullCwd = path.join(scopeWorkspaceFolder.uri.fsPath, fullCwd);
-        }
+        const fullCwd = resolveTaskCwd(task, platform?.cwd ?? task.definition.cwd);
 
         const presentation = task.definition.presentation ?? task.presentationOptions ?? {};
         const newTask = new vscode.Task(
