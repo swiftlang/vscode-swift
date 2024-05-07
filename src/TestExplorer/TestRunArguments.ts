@@ -72,11 +72,16 @@ export class TestRunArguments {
             // If no children were added we can skip adding this parent.
             if (xcTestArgs.length + swiftTestArgs.length === 0) {
                 return previousValue;
-            } else if (xcTestArgs.length + swiftTestArgs.length === testItem.children.size) {
+            } else if (
+                xcTestArgs.length + swiftTestArgs.length === testItem.children.size &&
+                testItem.parent
+            ) {
                 // If we've added all the children to the list of arguments, just add
                 // the parent instead of each individual child. This crafts a minimal set
                 // of test/suites that run all the test cases requested with the smallest list
-                // of arguments.
+                // of arguments. The testItem has to have a parent to perform this optimization.
+                // If it does not we break the ability to run both swift testing tests and XCTests
+                // in the same run, since test targets can have both types of tests in them.
                 const isXCTest = !!testItem.tags.find(tag => tag.id === "XCTest");
                 return {
                     testItems: [...previousValue.testItems, ...testItems],
