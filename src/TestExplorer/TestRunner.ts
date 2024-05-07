@@ -157,6 +157,8 @@ export class TestRunner {
             // will rebuild everything again
             if (testKind !== TestKind.coverage) {
                 const task = await getBuildAllTask(this.folderContext);
+                task.definition.dontTriggerTestDiscovery = true;
+
                 const exitCode = await this.folderContext.taskQueue.queueOperation(
                     new TaskOperation(task),
                     token
