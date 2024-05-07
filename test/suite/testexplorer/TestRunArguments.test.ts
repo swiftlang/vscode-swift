@@ -17,7 +17,7 @@ import * as assert from "assert";
 import { beforeEach } from "mocha";
 import { TestRunArguments } from "../../../src/TestExplorer/TestRunArguments";
 
-suite.only("TestRunArguments Suite", () => {
+suite("TestRunArguments Suite", () => {
     let controller: vscode.TestController;
     let xcSuite: vscode.TestItem;
     let xcTest: vscode.TestItem;

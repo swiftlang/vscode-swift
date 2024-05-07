@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import { reduceTestItemChildren } from "../utilities/utilities";
 
 type ProcessResult = {
     testItems: vscode.TestItem[];
@@ -128,7 +129,7 @@ export class TestRunArguments {
             }
         }
 
-        return this.reduceTestItemChildren(
+        return reduceTestItemChildren(
             testItem.children,
             this.createTestItemReducer(undefined, exclude),
             {
@@ -137,17 +138,5 @@ export class TestRunArguments {
                 swiftTestArgs,
             }
         );
-    }
-
-    private reduceTestItemChildren<U>(
-        array: vscode.TestItemCollection,
-        callback: (accumulator: U, currentValue: vscode.TestItem) => U,
-        initialValue: U
-    ): U {
-        let accumulator = initialValue;
-        array.forEach(currentValue => {
-            accumulator = callback(accumulator, currentValue);
-        });
-        return accumulator;
     }
 }
