@@ -15,6 +15,10 @@
 import * as vscode from "vscode";
 import { SwiftProcess } from "./SwiftProcess";
 
+/**
+ * Implements {@link vscode.Pseudoterminal} to spawn a {@link SwiftProcess} for tasks
+ * that provide a custom {@link vscode.CustomExecution}
+ */
 export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Disposable {
     private readonly writeEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
     private readonly closeEmitter: vscode.EventEmitter<number | void> = new vscode.EventEmitter<
@@ -67,6 +71,14 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Dispos
         }
     }
 
+    /**
+     * Called by vscode when the user interacts with the
+     * terminal. Here we will handle any special sequences,
+     * ex. ctrl+c to kill, and otherwise pass the input along
+     * to {@link SwiftProcess.handleInput}
+     *
+     * @param data VT sequence as a string
+     */
     handleInput(data: string): void {
         const buf: Buffer = Buffer.from(data);
         // Kill on ctrl+c

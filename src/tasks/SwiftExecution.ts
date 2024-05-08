@@ -20,6 +20,11 @@ export interface SwiftExecutionOptions extends vscode.ProcessExecutionOptions {
     presentation?: vscode.TaskPresentationOptions;
 }
 
+/**
+ * A custom task execution to use for `swift` tasks. This gives us more
+ * control over how the task and `swift` process is executed and allows
+ * us to capture and process the output of the `swift` process
+ */
 export class SwiftExecution extends vscode.CustomExecution {
     constructor(
         public readonly command: string,
@@ -34,7 +39,19 @@ export class SwiftExecution extends vscode.CustomExecution {
         this.onDidClose = swiftProcess.onDidClose;
     }
 
+    /**
+     * Bubbles up the {@link SwiftProcess.onDidWrite onDidWrite} event
+     * from the `SwiftProcess`
+     *
+     * @see {@link SwiftProcess.onDidWrite}
+     */
     onDidWrite: vscode.Event<string>;
 
+    /**
+     * Bubbles up the {@link SwiftProcess.onDidClose onDidClose} event
+     * from the `SwiftProcess`
+     *
+     * @see {@link SwiftProcess.onDidClose}
+     */
     onDidClose: vscode.Event<number | void>;
 }
