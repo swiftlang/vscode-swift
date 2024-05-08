@@ -29,8 +29,16 @@ suite("TestRunArguments Suite", () => {
             this.currentTest?.id ?? "TestRunArgumentsTests",
             ""
         );
+
+        const testTarget = controller.createTestItem("TestTarget", "TestTarget");
+        testTarget.tags = [{ id: "test-target" }];
+
+        controller.items.add(testTarget);
+
         xcSuite = controller.createTestItem("XCTest Suite", "XCTest Suite");
         xcSuite.tags = [{ id: "XCTest" }];
+
+        testTarget.children.add(xcSuite);
 
         xcTest = controller.createTestItem("XCTest Item", "XCTest Item");
         xcTest.tags = [{ id: "XCTest" }];
@@ -39,6 +47,8 @@ suite("TestRunArguments Suite", () => {
 
         swiftTestSuite = controller.createTestItem("Swift Test Suite", "Swift Test Suite");
         swiftTestSuite.tags = [{ id: "swift-testing" }];
+
+        testTarget.children.add(swiftTestSuite);
 
         swiftTest = controller.createTestItem("Swift Test Item", "Swift Test Item");
         swiftTest.tags = [{ id: "swift-testing" }];
