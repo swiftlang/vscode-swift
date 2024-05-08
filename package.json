@@ -308,6 +308,12 @@
             "default": "prompt",
             "description": "Controls whether to open a swift project automatically after creating it.",
             "order": 14
+          },
+          "swift.showBuildStatus": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show the build progress in the status bar when running a `swift` task.",
+            "order": 15
           }
         }
       },
@@ -1155,6 +1161,7 @@
     "mocha": "^10.4.0",
     "node-pty": "^1.0.0",
     "prettier": "3.2.5",
+    "strip-ansi": "^6.0.1",
     "typescript": "^5.4.5"
   },
   "dependencies": {

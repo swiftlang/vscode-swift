@@ -76,6 +76,20 @@ export class StatusItem {
     }
 
     /**
+     * Updates the status bar message for the running {@link vscode.Task Task}.
+     *
+     * This will display the message, preceded by a spinner animation.
+     */
+    update(task: vscode.Task | string, message: string) {
+        const runningTask = this.runningTasks.find(element => element.task === task);
+        if (!runningTask) {
+            return; // This task is not running.
+        }
+
+        this.showTask(runningTask, message);
+    }
+
+    /**
      * Signals the end of a {@link vscode.Task Task}.
      *
      * If no other tasks are in progress, this will hide the {@link vscode.StatusBarItem StatusBarItem}.
@@ -99,11 +113,12 @@ export class StatusItem {
      * Show status item for task
      * @param task task to show status item for
      */
-    private showTask(task: RunningTask) {
+    private showTask(task: RunningTask, message?: string) {
+        message = message ?? task.name;
         if (task.task instanceof vscode.Task) {
-            this.show(`$(sync~spin) ${task.name}`, task.name, "workbench.action.tasks.showTasks");
+            this.show(`$(sync~spin) ${message}`, message, "workbench.action.tasks.showTasks");
         } else {
-            this.show(`$(sync~spin) ${task.name}`, task.name);
+            this.show(`$(sync~spin) ${message}`, message);
         }
     }
 

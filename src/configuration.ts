@@ -200,6 +200,10 @@ const configuration = {
             .getConfiguration("swift")
             .get<boolean>("problemMatchCompileErrors", true);
     },
+    /** show the build progress in the status bar for the running task */
+    get showBuildStatus(): boolean {
+        return vscode.workspace.getConfiguration("swift").get<boolean>("showBuildStatus", true);
+    },
     /** background compilation */
     get backgroundCompilation(): boolean {
         return vscode.workspace
