@@ -107,6 +107,8 @@ export interface SourceLocation {
 }
 
 export class SwiftTestingOutputParser {
+    private completionMap = new Map<number, boolean>();
+
     /**
      * Watches for test events on the named pipe at the supplied path.
      * As events are read they are parsed and recorded in the test run state.
@@ -170,6 +172,13 @@ export class SwiftTestingOutputParser {
             } else if (item.payload.kind === "testCaseEnded" || item.payload.kind === "testEnded") {
                 const testName = this.testName(item.payload.testID);
                 const testIndex = runState.getTestItemIndex(testName, undefined);
+
+                // When running a single test the testEnded and testCaseEnded events
+                // have the same ID, and so we'd end the same test twice.
+                if (this.completionMap.get(testIndex)) {
+                    return;
+                }
+                this.completionMap.set(testIndex, true);
                 runState.completed(testIndex, { timestamp: item.payload.timestamp });
             }
         }
