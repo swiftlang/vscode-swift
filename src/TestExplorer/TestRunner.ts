@@ -234,6 +234,8 @@ export class TestRunner {
                 testBuildConfig,
                 runState
             );
+
+            await asyncfs.rm(fifoPipePath, { force: true });
         }
 
         if (this.testArgs.hasXCTests) {
