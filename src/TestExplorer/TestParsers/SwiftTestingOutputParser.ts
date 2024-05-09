@@ -47,7 +47,7 @@ interface Test {
     kind: "suite" | "function" | "parameterizedFunction";
     id: string;
     name: string;
-    testCases?: TestCase[];
+    _testCases?: TestCase[];
     sourceLocation: SourceLocation;
 }
 

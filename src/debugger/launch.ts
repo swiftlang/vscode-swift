@@ -242,7 +242,12 @@ function createDebugConfiguration(
                         "debug",
                         `${ctx.swiftPackage.name}PackageTests.swift-testing`
                     );
-                    args = ["--experimental-event-stream-output", fifoPipePath];
+                    args = [
+                        "--experimental-event-stream-version",
+                        "0",
+                        "--experimental-event-stream-output",
+                        fifoPipePath,
+                    ];
                     env = {
                         ...testEnv,
                         ...sanitizer?.runtimeEnvironment,
@@ -296,7 +301,12 @@ function createDebugConfiguration(
                         "debug",
                         `${ctx.swiftPackage.name}PackageTests.swift-testing`
                     );
-                    args = ["--experimental-event-stream-output", fifoPipePath];
+                    args = [
+                        "--experimental-event-stream-version",
+                        "0",
+                        "--experimental-event-stream-output",
+                        fifoPipePath,
+                    ];
                     env = testEnv;
                     break;
                 case "XCTest":
@@ -334,7 +344,12 @@ function createDebugConfiguration(
                         "debug",
                         `${ctx.swiftPackage.name}PackageTests.swift-testing`
                     );
-                    args = ["--experimental-event-stream-output", fifoPipePath];
+                    args = [
+                        "--experimental-event-stream-version",
+                        "0",
+                        "--experimental-event-stream-output",
+                        fifoPipePath,
+                    ];
                     env = {
                         ...testEnv,
                         SWT_SF_SYMBOLS_ENABLED: "0",
