@@ -117,9 +117,9 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
 
         // Add relative path current working directory
-        const relativeCwd = path.relative(config.scope.uri.fsPath, config.cwd?.fsPath);
-        const cwd = relativeCwd !== "" ? relativeCwd : undefined;
-        const definition = this.getTaskDefinition(plugin, cwd);
+        const relativeCwd = path.relative(config.scope.uri.fsPath, config.cwd.fsPath);
+        const taskDefinitionCwd = relativeCwd !== "" ? relativeCwd : undefined;
+        const definition = this.getTaskDefinition(plugin, taskDefinitionCwd);
         // Add arguments based on definition
         const sandboxArg = definition.disableSandbox ? ["--disable-sandbox"] : [];
         const writingToPackageArg = definition.allowWritingToPackageDirectory
@@ -141,7 +141,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             plugin.name,
             "swift-plugin",
             new SwiftExecution(swift, swiftArgs, {
-                cwd: cwd,
+                cwd: config.cwd.fsPath,
                 env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
                 presentation,
             }),
