@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021-2022 the VSCode Swift project authors
+// Copyright (c) 2021-2024 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as path from "path";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { Product, TargetType } from "./SwiftPackage";
@@ -21,6 +20,8 @@ import configuration from "./configuration";
 import { swiftRuntimeEnv } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 import { SwiftToolchain } from "./toolchain/toolchain";
+import { SwiftExecution } from "./tasks/SwiftExecution";
+import { resolveTaskCwd } from "./utilities/tasks";
 
 /**
  * References:
@@ -155,9 +156,8 @@ export async function getBuildAllTask(folderContext: FolderContext): Promise<vsc
         if (task.source !== "Workspace" || task.scope !== folderContext.workspaceFolder) {
             return false;
         }
-        const processExecutionOptions = (task.execution as vscode.ProcessExecution).options;
-        const shellExecutionOptions = (task.execution as vscode.ShellExecution).options;
-        let cwd = processExecutionOptions?.cwd ?? shellExecutionOptions?.cwd;
+        const swiftExecutionOptions = (task.execution as SwiftExecution).options;
+        let cwd = swiftExecutionOptions?.cwd;
         if (cwd === "${workspaceFolder}" || cwd === undefined) {
             cwd = folderWorkingDir;
         }
@@ -181,8 +181,7 @@ export async function getBuildAllTask(folderContext: FolderContext): Promise<vsc
     task = swiftTasks.find(
         task =>
             task.name === buildTaskName &&
-            (task.execution as vscode.ProcessExecution).options?.cwd ===
-                folderContext.folder.fsPath &&
+            (task.execution as SwiftExecution).options?.cwd === folderContext.folder.fsPath &&
             task.source === "swift"
     );
     if (!task) {
@@ -264,6 +263,7 @@ export function createSwiftTask(
         cwd = config.cwd.fsPath;
     }*/
     const env = { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() };
+    const presentation = config?.presentationOptions ?? {};
     const task = new vscode.Task(
         {
             type: "swift",
@@ -276,9 +276,10 @@ export function createSwiftTask(
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
         "swift",
-        new vscode.ProcessExecution(swift, args, {
+        new SwiftExecution(swift, args, {
             cwd: fullCwd,
             env: env,
+            presentation,
         }),
         config?.problemMatcher
     );
@@ -293,7 +294,7 @@ export function createSwiftTask(
     }
     task.detail = `${prefix}swift ${args.join(" ")}`;
     task.group = config?.group;
-    task.presentationOptions = config?.presentationOptions ?? {};
+    task.presentationOptions = presentation;
     return task;
 }
 
@@ -377,7 +378,6 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
         const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
-        const scopeWorkspaceFolder = task.scope as vscode.WorkspaceFolder;
         // platform specific
         let platform: TaskPlatformSpecificConfig | undefined;
         if (process.platform === "win32") {
@@ -390,25 +390,24 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         // get args and cwd values from either platform specific block or base
         const args = platform?.args ?? task.definition.args;
         const env = platform?.env ?? task.definition.env;
-        let fullCwd = platform?.cwd ?? task.definition.cwd;
-        if (fullCwd && !path.isAbsolute(fullCwd) && scopeWorkspaceFolder.uri.fsPath) {
-            fullCwd = path.join(scopeWorkspaceFolder.uri.fsPath, fullCwd);
-        }
+        const fullCwd = resolveTaskCwd(task, platform?.cwd ?? task.definition.cwd);
 
+        const presentation = task.definition.presentation ?? task.presentationOptions ?? {};
         const newTask = new vscode.Task(
             task.definition,
             task.scope ?? vscode.TaskScope.Workspace,
             task.name ?? "Swift Custom Task",
             "swift",
-            new vscode.ProcessExecution(swift, args, {
+            new SwiftExecution(swift, args, {
                 cwd: fullCwd,
                 env: { ...env, ...swiftRuntimeEnv() },
+                presentation,
             }),
             task.problemMatchers
         );
         newTask.detail = task.detail ?? `swift ${args.join(" ")}`;
         newTask.group = task.group;
-        newTask.presentationOptions = task.presentationOptions;
+        newTask.presentationOptions = presentation;
 
         return newTask;
     }

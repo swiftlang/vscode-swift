@@ -18,6 +18,8 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { PackagePlugin } from "./SwiftPackage";
 import configuration from "./configuration";
 import { swiftRuntimeEnv } from "./utilities/utilities";
+import { SwiftExecution } from "./tasks/SwiftExecution";
+import { resolveTaskCwd } from "./utilities/tasks";
 
 // Interface class for defining task configuration
 interface TaskConfig {
@@ -86,13 +88,15 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         ];
         swiftArgs = this.workspaceContext.toolchain.buildFlags.withSwiftSDKFlags(swiftArgs);
 
+        const cwd = resolveTaskCwd(task, task.definition.cwd);
         const newTask = new vscode.Task(
             task.definition,
             task.scope ?? vscode.TaskScope.Workspace,
             task.name,
             "swift-plugin",
-            new vscode.ProcessExecution(swift, swiftArgs, {
-                cwd: task.definition.cwd,
+            new SwiftExecution(swift, swiftArgs, {
+                cwd,
+                presentation: task.presentationOptions,
             }),
             task.problemMatchers
         );
@@ -130,14 +134,16 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         ];
         swiftArgs = this.workspaceContext.toolchain.buildFlags.withSwiftSDKFlags(swiftArgs);
 
+        const presentation = config?.presentationOptions ?? {};
         const task = new vscode.Task(
             definition,
             config.scope ?? vscode.TaskScope.Workspace,
             plugin.name,
             "swift-plugin",
-            new vscode.ProcessExecution(swift, swiftArgs, {
+            new SwiftExecution(swift, swiftArgs, {
                 cwd: cwd,
                 env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
+                presentation,
             }),
             []
         );
@@ -148,7 +154,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             prefix = "";
         }
         task.detail = `${prefix}swift ${swiftArgs.join(" ")}`;
-        task.presentationOptions = config?.presentationOptions ?? {};
+        task.presentationOptions = presentation;
         return task;
     }
 

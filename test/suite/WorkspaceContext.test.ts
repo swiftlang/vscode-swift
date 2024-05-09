@@ -19,6 +19,7 @@ import { FolderEvent, WorkspaceContext } from "../../src/WorkspaceContext";
 import { createBuildAllTask, platformDebugBuildOptions } from "../../src/SwiftTaskProvider";
 import { globalWorkspaceContextPromise } from "./extension.test";
 import { Version } from "../../src/utilities/version";
+import { SwiftExecution } from "../../src/tasks/SwiftExecution";
 
 suite("WorkspaceContext Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -79,7 +80,7 @@ suite("WorkspaceContext Test Suite", () => {
             assert(folder);
             await swiftConfig.update("buildArguments", ["--sanitize=thread"]);
             const buildAllTask = createBuildAllTask(folder);
-            const execution = buildAllTask.execution as vscode.ShellExecution;
+            const execution = buildAllTask.execution as SwiftExecution;
             assert.notStrictEqual(execution?.args, [
                 "build",
                 "--build-tests",
@@ -96,7 +97,7 @@ suite("WorkspaceContext Test Suite", () => {
             assert(folder);
             await swiftConfig.update("path", "/usr/bin/swift");
             const buildAllTask = createBuildAllTask(folder);
-            const execution = buildAllTask.execution as vscode.ShellExecution;
+            const execution = buildAllTask.execution as SwiftExecution;
             assert.notStrictEqual(execution?.command, "/usr/bin/swift");
             await swiftConfig.update("path", "");
         });
