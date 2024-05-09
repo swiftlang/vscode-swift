@@ -22,6 +22,12 @@ type OpenAfterCreateNewProjectOptions =
     | "whenNoFolderOpen"
     | "prompt";
 export type ShowBuildStatusOptions = "never" | "swiftStatus" | "progress" | "notification";
+export type DiagnosticCollectionOptions =
+    | "onlySwiftc"
+    | "onlySourceKit"
+    | "keepSwiftc"
+    | "keepSourceKit"
+    | "keepAll";
 
 /** sourcekit-lsp configuration */
 export interface LSPConfiguration {
@@ -196,10 +202,10 @@ const configuration = {
         vscode.workspace.getConfiguration("swift").update("swiftEnvironmentVariables", vars);
     },
     /** include build errors in problems view */
-    get problemMatchCompileErrors(): boolean {
+    get diagnosticsCollection(): DiagnosticCollectionOptions {
         return vscode.workspace
             .getConfiguration("swift")
-            .get<boolean>("problemMatchCompileErrors", true);
+            .get<DiagnosticCollectionOptions>("diagnosticsCollection", "keepSourceKit");
     },
     /** where to show the build progress for the running task */
     get showBuildStatus(): ShowBuildStatusOptions {

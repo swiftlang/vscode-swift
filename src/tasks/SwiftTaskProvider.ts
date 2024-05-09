@@ -39,7 +39,6 @@ interface TaskConfig {
     cwd: vscode.Uri;
     scope: vscode.TaskScope | vscode.WorkspaceFolder;
     group?: vscode.TaskGroup;
-    problemMatcher?: string | string[];
     presentationOptions?: vscode.TaskPresentationOptions;
     prefix?: string;
     disableTaskQueue?: boolean;
@@ -161,7 +160,6 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
             presentationOptions: {
                 reveal: getBuildRevealOption(),
             },
-            problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
             disableTaskQueue: true,
             showBuildStatus: configuration.showBuildStatus,
         },
@@ -246,7 +244,6 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 presentationOptions: {
                     reveal: getBuildRevealOption(),
                 },
-                problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
                 disableTaskQueue: true,
                 dontTriggerTestDiscovery: true,
                 showBuildStatus: configuration.showBuildStatus,
@@ -269,7 +266,6 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 presentationOptions: {
                     reveal: getBuildRevealOption(),
                 },
-                problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
                 disableTaskQueue: true,
                 dontTriggerTestDiscovery: true,
                 showBuildStatus: configuration.showBuildStatus,
@@ -329,8 +325,7 @@ export function createSwiftTask(
             cwd: fullCwd,
             env: env,
             presentation,
-        }),
-        config?.problemMatcher
+        })
     );
     // This doesn't include any quotes added by VS Code.
     // See also: https://github.com/microsoft/vscode/issues/137895

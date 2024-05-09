@@ -230,10 +230,24 @@
             "scope": "machine-overridable",
             "order": 7
           },
-          "swift.problemMatchCompileErrors": {
-            "type": "boolean",
-            "default": true,
-            "description": "List compile errors in the Problems View.",
+          "swift.diagnosticsCollection": {
+            "type": "string",
+            "default": "keepSourceKit",
+            "description": "Controls how diagnostics from the various providers are merged into the `swift` diagnostics collection.",
+            "enum": [
+              "onlySwiftc",
+              "onlySourceKit",
+              "keepSwiftc",
+              "keepSourceKit",
+              "keepAll"
+            ],
+            "enumDescriptions": [
+              "Only provide diagnostics from `swiftc`.",
+              "Only provide diagnostics from `SourceKit`.",
+              "When merging diagnostics, give precedence to diagnostics from `swiftc`.",
+              "When merging diagnostics, give precedence to diagnostics from `SourceKit`.",
+              "Keep diagnostics from all providers."
+            ],
             "order": 8
           },
           "swift.excludePathsFromPackageDependencies": {

@@ -1,0 +1,52 @@
+{
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "sourceLanguages": [
+                "swift"
+            ],
+            "args": [],
+            "cwd": "${workspaceFolder:diagnostics}",
+            "name": "Debug diagnostics",
+            "program": "${workspaceFolder:diagnostics}/.build/debug/diagnostics",
+            "preLaunchTask": "swift: Build Debug diagnostics"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "sourceLanguages": [
+                "swift"
+            ],
+            "args": [],
+            "cwd": "${workspaceFolder:diagnostics}",
+            "name": "Release diagnostics",
+            "program": "${workspaceFolder:diagnostics}/.build/release/diagnostics",
+            "preLaunchTask": "swift: Build Release diagnostics"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "sourceLanguages": [
+                "swift"
+            ],
+            "args": [],
+            "cwd": "${workspaceFolder:diagnostics}",
+            "name": "Debug diagnostics",
+            "program": "${workspaceFolder:diagnostics}/.build/debug/diagnostics",
+            "preLaunchTask": "swift: Build Debug diagnostics"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "sourceLanguages": [
+                "swift"
+            ],
+            "args": [],
+            "cwd": "${workspaceFolder:diagnostics}",
+            "name": "Release diagnostics",
+            "program": "${workspaceFolder:diagnostics}/.build/release/diagnostics",
+            "preLaunchTask": "swift: Build Release diagnostics"
+        }
+    ]
+}
