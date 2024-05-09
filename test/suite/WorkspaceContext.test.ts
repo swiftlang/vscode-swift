@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import * as assert from "assert";
 import { testAssetUri } from "../fixtures";
 import { FolderEvent, WorkspaceContext } from "../../src/WorkspaceContext";
-import { createBuildAllTask, platformDebugBuildOptions } from "../../src/SwiftTaskProvider";
+import { createBuildAllTask } from "../../src/SwiftTaskProvider";
 import { globalWorkspaceContextPromise } from "./extension.test";
 import { Version } from "../../src/utilities/version";
 import { SwiftExecution } from "../../src/tasks/SwiftExecution";
@@ -65,11 +65,8 @@ suite("WorkspaceContext Test Suite", () => {
             const execution = buildAllTask.execution as vscode.ProcessExecution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
             assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
-            assert.notStrictEqual(execution?.args, [
-                "build",
-                "--build-tests",
-                ...platformDebugBuildOptions(workspaceContext.toolchain),
-            ]);
+            assert.strictEqual(execution?.args[0], "build");
+            assert.strictEqual(execution?.args[1], "--build-tests");
             assert.strictEqual(buildAllTask.scope, folder.workspaceFolder);
         });
 
@@ -81,17 +78,14 @@ suite("WorkspaceContext Test Suite", () => {
             await swiftConfig.update("buildArguments", ["--sanitize=thread"]);
             const buildAllTask = createBuildAllTask(folder);
             const execution = buildAllTask.execution as SwiftExecution;
-            assert.notStrictEqual(execution?.args, [
-                "build",
-                "--build-tests",
-                ...platformDebugBuildOptions(workspaceContext.toolchain),
-                "--sanitize=thread",
-            ]);
+            assert.strictEqual(execution?.args[0], "build");
+            assert.strictEqual(execution?.args[1], "--build-tests");
+            assert.strictEqual(execution?.args[2], "--sanitize=thread");
             await swiftConfig.update("buildArguments", []);
         });
 
         test("Swift Path", async () => {
-            /* Temporarily disabled 
+            /* Temporarily disabled (need swift path to update immediately for this to work)
             const folder = workspaceContext.folders.find(
                 f => f.folder.fsPath === packageFolder.fsPath
             );
@@ -99,7 +93,7 @@ suite("WorkspaceContext Test Suite", () => {
             await swiftConfig.update("path", "/usr/bin/swift");
             const buildAllTask = createBuildAllTask(folder);
             const execution = buildAllTask.execution as SwiftExecution;
-            assert.notStrictEqual(execution?.command, "/usr/bin/swift");
+            assert.strictEqual(execution?.command, "/usr/bin/swift");
             await swiftConfig.update("path", "");*/
         });
     });
