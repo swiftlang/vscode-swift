@@ -15,17 +15,18 @@ ENV LANGUAGE en_US.UTF-8
 # dependencies
 RUN apt-get update && apt-get install -y curl gpg libasound2 libgbm1 libgtk-3-0 libnss3 xvfb build-essential
 
-# install NodeJS 18
-# Add the NodeSource package signing key
-ENV KEYRING /usr/share/keyrings/nodesource.gpg
-RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | gpg --dearmor | tee "$KEYRING" >/dev/null
-RUN gpg --no-default-keyring --keyring "$KEYRING" --list-keys
-# Add the desired NodeSource repository
-ENV VERSION node_18.x
-ENV DISTRO $ubuntu_version
-RUN echo "deb [signed-by=$KEYRING] https://deb.nodesource.com/$VERSION $DISTRO main" | tee /etc/apt/sources.list.d/nodesource.list
-RUN echo "deb-src [signed-by=$KEYRING] https://deb.nodesource.com/$VERSION $DISTRO main" | tee -a /etc/apt/sources.list.d/nodesource.list
-# Update package lists and install Node.js
-RUN apt-get update && apt-get install -y nodejs
-
 RUN useradd --user-group --create-home --system --skel /dev/null --home-dir /vscode vscode
+
+RUN mkdir -p /usr/local/nvm
+RUN chown vscode /usr/local/nvm
+
+USER vscode
+ENV NVM_DIR /usr/local/nvm
+
+ENV NODE_VERSION v18.19.0
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+RUN /bin/bash -c "source $NVM_DIR/nvm.sh && nvm install $NODE_VERSION"
+ENV NODE_PATH $NVM_DIR/versions/node/$NODE_VERSION/bin
+ENV PATH $NODE_PATH:$PATH
+RUN npm -v
+RUN node -v
