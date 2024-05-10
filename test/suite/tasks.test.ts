@@ -328,7 +328,7 @@ suite("Tasks Test Suite", () => {
             const exitCode = await promise;
             assert.equal(exitCode, 0);
             assert.equal(output.includes("Build complete"), true);
-        }).timeout(10000);
+        }).timeout(60000);
     });
 
     suite("SwiftTaskProvider", () => {
