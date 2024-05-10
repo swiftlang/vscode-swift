@@ -6,7 +6,7 @@
       "\t$2",
       "}"
     ],
-    "description": "Swift Testing: Test Function"
+    "description": "swift-testing: Test Function"
   },
   "@Test(\"named\")": {
     "prefix": "@Test",
@@ -16,7 +16,7 @@
       "\t$3",
       "}"
     ],
-    "description": "Swift Testing: Test Function With Traits"
+    "description": "swift-testing: Test Function with Traits"
   },
   "@Suite": {
     "prefix": "@Suite",
@@ -27,7 +27,7 @@
       "\t}",
       "}"
     ],
-    "description": "Swift Testing: Test Function"
+    "description": "swift-testing: Test Suite"
   },
   "@Suite(\"named\")": {
     "prefix": "@Suite",
@@ -39,7 +39,7 @@
       "\t}",
       "}"
     ],
-    "description": "Swift Testing: Test Function With Traits"
+    "description": "swift-testing: Test Suite with Traits"
   },
   "tag": {
     "prefix": "tag",
@@ -48,6 +48,6 @@
       "\t@Tag static var ${1:tag}: Tag",
       "}"
     ],
-    "description": "Swift Testing: Tag Declaration"
+    "description": "swift-testing: Tag Declaration"
   }
 }
