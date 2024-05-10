@@ -46,6 +46,7 @@ import { TaskOperation } from "../TaskQueue";
 import { TestXUnitParser, iXUnitTestState } from "./TestXUnitParser";
 import { ITestRunState } from "./TestParsers/TestRunState";
 import { TestRunArguments } from "./TestRunArguments";
+import { TemporaryFolder } from "../utilities/tempFolder";
 
 /** Workspace Folder events */
 export enum TestKind {
@@ -157,8 +158,6 @@ export class TestRunner {
             // will rebuild everything again
             if (testKind !== TestKind.coverage) {
                 const task = await getBuildAllTask(this.folderContext);
-                task.definition.dontTriggerTestDiscovery = true;
-
                 const exitCode = await this.folderContext.taskQueue.queueOperation(
                     new TaskOperation(task),
                     token
@@ -198,44 +197,45 @@ export class TestRunner {
                     ? `\\\\.\\pipe\\vscodemkfifo-${Date.now()}`
                     : path.join(os.tmpdir(), `vscodemkfifo-${Date.now()}`);
 
-            const testBuildConfig =
-                await LaunchConfigurations.createLaunchConfigurationForSwiftTesting(
-                    this.testArgs.swiftTestArgs,
-                    this.folderContext,
-                    fifoPipePath
+            await TemporaryFolder.withNamedTemporaryFile(fifoPipePath, async () => {
+                const testBuildConfig =
+                    await LaunchConfigurations.createLaunchConfigurationForSwiftTesting(
+                        this.testArgs.swiftTestArgs,
+                        this.folderContext,
+                        fifoPipePath
+                    );
+
+                if (testBuildConfig === null) {
+                    return;
+                }
+
+                // Output test from stream
+                const outputStream = new stream.Writable({
+                    write: (chunk, encoding, next) => {
+                        const text = chunk.toString();
+                        this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
+                        next();
+                    },
+                });
+
+                if (token.isCancellationRequested) {
+                    outputStream.end();
+                    return;
+                }
+
+                // Watch the pipe for JSONL output and parse the events into test explorer updates.
+                // The await simply waits for the watching to be configured.
+                await this.swiftTestOutputParser.watch(fifoPipePath, runState);
+
+                await this.launchTests(
+                    testKind,
+                    token,
+                    outputStream,
+                    outputStream,
+                    testBuildConfig,
+                    runState
                 );
-            if (testBuildConfig === null) {
-                return;
-            }
-
-            // Output test from stream
-            const outputStream = new stream.Writable({
-                write: (chunk, encoding, next) => {
-                    const text = chunk.toString();
-                    this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
-                    next();
-                },
             });
-
-            if (token.isCancellationRequested) {
-                outputStream.end();
-                return;
-            }
-
-            // Watch the pipe for JSONL output and parse the events into test explorer updates.
-            // The await simply waits for the watching to be configured.
-            await this.swiftTestOutputParser.watch(fifoPipePath, runState);
-
-            await this.launchTests(
-                testKind,
-                token,
-                outputStream,
-                outputStream,
-                testBuildConfig,
-                runState
-            );
-
-            await asyncfs.rm(fifoPipePath, { force: true });
         }
 
         if (this.testArgs.hasXCTests) {
@@ -288,8 +288,8 @@ export class TestRunner {
     private async launchTests(
         testKind: TestKind,
         token: vscode.CancellationToken,
-        stdout: stream.Writable,
-        stderr: stream.Writable,
+        parsedOutputStream: stream.Writable,
+        outputStream: stream.Writable,
         testBuildConfig: vscode.DebugConfiguration,
         runState: TestRunnerTestRunState
     ) {
@@ -297,13 +297,28 @@ export class TestRunner {
         try {
             switch (testKind) {
                 case TestKind.coverage:
-                    await this.runCoverageSession(token, stdout, stderr, testBuildConfig);
+                    await this.runCoverageSession(
+                        token,
+                        parsedOutputStream,
+                        outputStream,
+                        testBuildConfig
+                    );
                     break;
                 case TestKind.parallel:
-                    await this.runParallelSession(token, stdout, stderr, testBuildConfig);
+                    await this.runParallelSession(
+                        token,
+                        parsedOutputStream,
+                        outputStream,
+                        testBuildConfig
+                    );
                     break;
                 default:
-                    await this.runStandardSession(token, stdout, stderr, testBuildConfig);
+                    await this.runStandardSession(
+                        token,
+                        parsedOutputStream,
+                        outputStream,
+                        testBuildConfig
+                    );
                     break;
             }
         } catch (error) {
@@ -339,9 +354,9 @@ export class TestRunner {
                 return;
             }
         } finally {
-            stdout.end();
-            if (stderr !== stdout) {
-                stderr.end();
+            parsedOutputStream.end();
+            if (outputStream !== parsedOutputStream) {
+                outputStream.end();
             }
         }
     }

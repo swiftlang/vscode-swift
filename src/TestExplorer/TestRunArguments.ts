@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { reduceTestItemChildren } from "../utilities/utilities";
+import { reduceTestItemChildren } from "./TestUtils";
 
 type ProcessResult = {
     testItems: vscode.TestItem[];
