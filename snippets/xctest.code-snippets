@@ -1,6 +1,6 @@
 {
   "XCTestSuite": {
-    "prefix": "XCTestSuite",
+    "prefix": "testsuite",
     "body": [
       "class ${1:suiteName}: XCTestCase {",
       "\tfunc test_${2:testName}() {",
@@ -11,7 +11,7 @@
     "description": "XCTest: Test Suite"
   },
   "XCTest": {
-    "prefix": "XCTest",
+    "prefix": "test",
     "body": [
       "func test${1:Name}() {",
       "\t$2",
