@@ -179,11 +179,6 @@ function upsertTestItem(
 
     if (testItem.sortText) {
         newItem.sortText = testItem.sortText;
-    } else if (testItem.location) {
-        // Sort test items by path:line_number to provide a stable sort order.
-        // This prevents test items from changing their order as items are removed and readded.
-        // const line = `${testItem.location.range.start.line}`.padStart(8, "0");
-        // newItem.sortText = `${testItem.location.uri.fsPath}:${line}`;
     } else if (!testItem.location) {
         // TestItems without a location should be sorted to the top.
         const zeros = ``.padStart(8, "0");
