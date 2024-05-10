@@ -3,7 +3,7 @@
     "prefix": "testsuite",
     "body": [
       "class ${1:suiteName}: XCTestCase {",
-      "\tfunc test_${2:testName}() {",
+      "\tfunc test${2:testName}() {",
       "\t\t$2",
       "\t}",
       "}"
@@ -17,6 +17,6 @@
       "\t$2",
       "}"
     ],
-    "description": "XCTest: Test Function"
+    "description": "XCTest: Test Method"
   }
 }

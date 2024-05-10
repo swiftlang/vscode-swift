@@ -18,7 +18,7 @@
     ],
     "description": "swift-testing: Test Function with Traits"
   },
-  "@Suite": {
+  "Suite": {
     "prefix": "@Suite",
     "body": [
       "struct ${1:suiteName} {",
