@@ -65,8 +65,13 @@ interface RunEnded {
     kind: "runEnded";
 }
 
+interface Instant {
+    absolute: number;
+    since1970: number;
+}
+
 interface BaseEvent {
-    timestamp: number;
+    instant: Instant;
     messages: EventMessage[];
     testID: string;
 }
@@ -93,7 +98,9 @@ interface TestSkipped extends BaseEvent {
 
 interface IssueRecorded extends BaseEvent {
     kind: "issueRecorded";
-    sourceLocation: SourceLocation;
+    issue: {
+        sourceLocation: SourceLocation;
+    };
 }
 
 export interface EventMessage {
@@ -153,7 +160,7 @@ export class SwiftTestingOutputParser {
             if (item.payload.kind === "testCaseStarted" || item.payload.kind === "testStarted") {
                 const testName = this.testName(item.payload.testID);
                 const testIndex = runState.getTestItemIndex(testName, undefined);
-                runState.started(testIndex, item.payload.timestamp);
+                runState.started(testIndex, item.payload.instant.absolute);
             } else if (item.payload.kind === "testSkipped") {
                 const testName = this.testName(item.payload.testID);
                 const testIndex = runState.getTestItemIndex(testName, undefined);
@@ -161,7 +168,7 @@ export class SwiftTestingOutputParser {
             } else if (item.payload.kind === "issueRecorded") {
                 const testName = this.testName(item.payload.testID);
                 const testIndex = runState.getTestItemIndex(testName, undefined);
-                const sourceLocation = item.payload.sourceLocation;
+                const sourceLocation = item.payload.issue.sourceLocation;
                 item.payload.messages.forEach(message => {
                     runState.recordIssue(testIndex, message.text, {
                         file: sourceLocation._filePath,
@@ -179,7 +186,7 @@ export class SwiftTestingOutputParser {
                     return;
                 }
                 this.completionMap.set(testIndex, true);
-                runState.completed(testIndex, { timestamp: item.payload.timestamp });
+                runState.completed(testIndex, { timestamp: item.payload.instant.absolute });
             }
         }
     }
