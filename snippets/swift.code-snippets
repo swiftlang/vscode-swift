@@ -1,0 +1,123 @@
+{
+  "API Availability Check": {
+    "prefix": "available",
+    "body": [
+      "if #available(${1:i, mac, tv, watch}OS ${2:x.y.z}, *) {",
+      "\t${3:API available statements}",
+      "} else {",
+      "\t${4:fallback statements}",
+      "}"
+    ],
+    "description": "Conditionally execute code based on whether the API is available at runtime."
+  },
+  "Defer": {
+    "prefix": "defer",
+    "body": [
+      "defer {",
+      "\t${1:deferred statements}",
+      "}",
+    ],
+    "description": "Executes a set of statements before execution leaves the current block of code."
+  },
+  "Deinitialization Declaration": {
+    "prefix": "deinit",
+    "body": [
+      "deinit {",
+      "\t${1:deferred statements}",
+      "}",
+    ],
+    "description": "Performs cleanup before an object is deallocated."
+  },
+  "Deprecated": {
+    "prefix": "deprecated",
+    "body": [
+      "@available(*, deprecated, renamed: \"${1:String}\", message: \"${2:String}\")",
+    ],
+    "description": "Define availability"
+  },
+  "Deprecated with Version": {
+    "prefix": "deprecated",
+    "body": [
+      "@available(${1:platform}, introduced: ${2:version}, deprecated: ${3:version}, message: \"${4:String}\")",
+    ],
+    "description": "Define availability"
+  },
+  "Import Statement": {
+    "prefix": "import",
+    "body": [
+      "import ${1:module}"
+    ],
+    "description": "Allows access to symbols declared in the specified module."
+  },
+  "Initializer Declaration": {
+    "prefix": "init",
+    "body": [
+      "init(${1:parameters}) {",
+      "\t${2:statements}",
+      "}"
+    ],
+    "description": "A set of statements that prepares an instance of a class, structure, or enumeration for use."
+  },
+  "Lazy Closure Stored Property Declaration": {
+    "prefix": "lazyvarclosure",
+    "body": [
+      "lazy var ${1:property name}: ${2:type name} = {",
+      "\t${3:statements}",
+      "\treturn ${4:value}",
+      "}()"
+    ],
+    "description": "A property whose initial value is lazily set to the result of a closure."
+  },
+  "Lazy Stored Property Declaration": {
+    "prefix": "lazyvar",
+    "body": [
+      "lazy var ${1:property name} = ${2:expression}"
+    ],
+    "description": "A property whose initial value is not calculated until the first time it is used."
+  },
+  "Let Declaration": {
+    "prefix": "let",
+    "body": [
+      "let ${1:name} = ${2:value}"
+    ],
+    "description": "Creates a variable that cannot be changed."
+  },
+  "OptionSet": {
+    "prefix": "optionset",
+    "body": [
+      "struct ${1:name}: OptionSet {",
+      "\tlet rawValue: ${2:integer type}",
+      "",
+      "\tstatic let ${3:optionA} = ${1:name}(rawValue: 1 << 0)",
+      "\tstatic let ${5:optionB} = ${1:name}(rawValue: 1 << 1)",
+      "\tstatic let ${7:optionC} = ${1:name}(rawValue: 1 << 2)",
+      "",
+      "\tstatic let all: ${1:name} = [.${3:optionA}, .${5:optionB}, .${7:optionC}]",
+      "}"
+    ],
+    "description": "A mathematical set interface to a bit set."
+  },
+  "Required Initializer Declaration": {
+    "prefix": "requiredinit",
+    "body": [
+      "required init(${1:parameters}) {",
+      "\t${2:statements}",
+      "}"
+    ],
+    "description": "An initializer that must be implemented by every subclass."
+  },
+  "Typealias Declaration": {
+    "prefix": "typealias",
+    "body": [
+      "typealias ${1:type name} = ${2:type expression}"
+    ],
+    "description": "Defines an alternate name for an existing type."
+  },
+  "Var Declaration": {
+    "prefix": "var",
+    "body": [
+      "var ${1:name} = ${2:value}"
+    ],
+    "description": "Creates a variable that can be changed."
+  }
+}

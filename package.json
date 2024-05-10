@@ -14,7 +14,8 @@
   },
   "categories": [
     "Programming Languages",
-    "Debuggers"
+    "Debuggers",
+    "Snippets"
   ],
   "keywords": [
     "swift",
@@ -34,6 +35,20 @@
         "extensions": [
           "swiftinterface"
         ]
+      }
+    ],
+    "snippets": [
+      {
+        "language": "swift",
+        "path": "./snippets/swift.code-snippets"
+      },
+      {
+        "language": "swift",
+        "path": "./snippets/xctest.code-snippets"
+      },
+      {
+        "language": "swift",
+        "path": "./snippets/swift-testing.code-snippets"
       }
     ],
     "commands": [
