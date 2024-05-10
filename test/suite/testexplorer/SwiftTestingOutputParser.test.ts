@@ -50,9 +50,10 @@ suite("SwiftTestingOutputParser Suite", () => {
             version: 0,
             payload: {
                 kind: name,
-                timestamp: 0,
+                instant: { absolute: 0, since1970: 0 },
                 messages: messages ?? [],
                 ...{ testID, sourceLocation },
+                ...(messages ? { issue: { sourceLocation } } : {}),
             } as EventRecordPayload,
         };
     }

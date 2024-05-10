@@ -158,6 +158,11 @@ export class TestRunner {
             // will rebuild everything again
             if (testKind !== TestKind.coverage) {
                 const task = await getBuildAllTask(this.folderContext);
+                task.definition.dontTriggerTestDiscovery =
+                    this.folderContext.workspaceContext.swiftVersion.isGreaterThanOrEqual(
+                        new Version(6, 0, 0)
+                    );
+
                 const exitCode = await this.folderContext.taskQueue.queueOperation(
                     new TaskOperation(task),
                     token
