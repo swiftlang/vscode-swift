@@ -203,6 +203,12 @@ export class TestRunner {
                     : path.join(os.tmpdir(), `vscodemkfifo-${Date.now()}`);
 
             await TemporaryFolder.withNamedTemporaryFile(fifoPipePath, async () => {
+                // macOS/Linux require us to create the named pipe before we use it.
+                // Windows just lets us communicate by specifying a pipe path without any ceremony.
+                if (process.platform !== "win32") {
+                    await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
+                }
+
                 const testBuildConfig =
                     await LaunchConfigurations.createLaunchConfigurationForSwiftTesting(
                         this.testArgs.swiftTestArgs,
@@ -736,7 +742,6 @@ class LaunchConfigurations {
         const testList = args.join(",");
 
         if (process.platform === "darwin") {
-            await execFile("mkfifo", [fifoPipePath], undefined, folderContext);
             const testBuildConfig = createSwiftTestConfiguration(folderContext, fifoPipePath, true);
             if (testBuildConfig === null) {
                 return null;
@@ -752,10 +757,6 @@ class LaunchConfigurations {
 
             return testBuildConfig;
         } else {
-            if (process.platform !== "win32") {
-                await execFile("mkfifo", [fifoPipePath], undefined, folderContext);
-            }
-
             const testBuildConfig = createSwiftTestConfiguration(folderContext, fifoPipePath, true);
             if (testBuildConfig === null) {
                 return null;
