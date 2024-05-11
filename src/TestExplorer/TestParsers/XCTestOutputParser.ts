@@ -15,7 +15,7 @@
 import { ITestRunState } from "./TestRunState";
 
 /** Regex for parsing XCTest output */
-export interface TestRegex {
+interface TestRegex {
     started: RegExp;
     passed: RegExp;
     failed: RegExp;
@@ -67,11 +67,21 @@ export const nonDarwinTestRegex = {
 };
 
 export class XCTestOutputParser {
+    private regex: TestRegex;
+
+    /**
+     * Create an XCTestOutputParser.
+     * Optional regex can be supplied for tests.
+     */
+    constructor(regex?: TestRegex) {
+        this.regex = regex ?? this.platformTestRegex;
+    }
+
     /**
      * Parse results from `swift test` and update tests accordingly
      * @param output Output from `swift test`
      */
-    public parseResult(output: string, runState: ITestRunState, regex: TestRegex) {
+    public parseResult(output: string, runState: ITestRunState) {
         const output2 = output.replace(/\r\n/g, "\n");
         const lines = output2.split("\n");
         if (runState.excess) {
@@ -98,7 +108,7 @@ export class XCTestOutputParser {
         // the above method is unsuccessful.
         for (const line of lines) {
             // Regex "Test Case '-[<test target> <class.function>]' started"
-            const startedMatch = regex.started.exec(line);
+            const startedMatch = this.regex.started.exec(line);
             if (startedMatch) {
                 const testName = `${startedMatch[1]}/${startedMatch[2]}`;
                 const startedTestIndex = runState.getTestItemIndex(testName, undefined);
@@ -106,7 +116,7 @@ export class XCTestOutputParser {
                 continue;
             }
             // Regex "Test Case '-[<test target> <class.function>]' failed (<duration> seconds)"
-            const failedMatch = regex.failed.exec(line);
+            const failedMatch = this.regex.failed.exec(line);
             if (failedMatch) {
                 const testName = `${failedMatch[1]}/${failedMatch[2]}`;
                 const failedTestIndex = runState.getTestItemIndex(testName, undefined);
@@ -114,7 +124,7 @@ export class XCTestOutputParser {
                 continue;
             }
             // Regex "<path/to/test>:<line number>: error: <class>.<function> : <error>"
-            const errorMatch = regex.error.exec(line);
+            const errorMatch = this.regex.error.exec(line);
             if (errorMatch) {
                 const testName = `${errorMatch[3]}/${errorMatch[4]}`;
                 const failedTestIndex = runState.getTestItemIndex(testName, errorMatch[1]);
@@ -128,7 +138,7 @@ export class XCTestOutputParser {
                 continue;
             }
             // Regex "<path/to/test>:<line number>: <class>.<function> : Test skipped"
-            const skippedMatch = regex.skipped.exec(line);
+            const skippedMatch = this.regex.skipped.exec(line);
             if (skippedMatch) {
                 const testName = `${skippedMatch[3]}/${skippedMatch[4]}`;
                 const skippedTestIndex = runState.getTestItemIndex(testName, skippedMatch[1]);
@@ -136,19 +146,19 @@ export class XCTestOutputParser {
                 continue;
             }
             // Regex "Test Suite '-[<test target> <class.function>]' started"
-            const startedSuiteMatch = regex.startedSuite.exec(line);
+            const startedSuiteMatch = this.regex.startedSuite.exec(line);
             if (startedSuiteMatch) {
                 this.startTestSuite(startedSuiteMatch[1], runState);
                 continue;
             }
             // Regex "Test Suite '-[<test target> <class.function>]' passed"
-            const passedSuiteMatch = regex.passedSuite.exec(line);
+            const passedSuiteMatch = this.regex.passedSuite.exec(line);
             if (passedSuiteMatch) {
                 this.passTestSuite(passedSuiteMatch[1], runState);
                 continue;
             }
             // Regex "Test Suite '-[<test target> <class.function>]' failed"
-            const failedSuiteMatch = regex.failedSuite.exec(line);
+            const failedSuiteMatch = this.regex.failedSuite.exec(line);
             if (failedSuiteMatch) {
                 this.failTestSuite(failedSuiteMatch[1], runState);
                 continue;
@@ -162,7 +172,7 @@ export class XCTestOutputParser {
         // to be passed.
         for (const line of lines) {
             // Regex "Test Case '<class>.<function>' passed (<duration> seconds)"
-            const passedMatch = regex.passed.exec(line);
+            const passedMatch = this.regex.passed.exec(line);
             if (passedMatch) {
                 const testName = `${passedMatch[1]}/${passedMatch[2]}`;
                 const duration: number = +passedMatch[3];
@@ -170,6 +180,15 @@ export class XCTestOutputParser {
                 this.passTest(passedTestIndex, { duration }, runState);
                 continue;
             }
+        }
+    }
+
+    /** Get Test parsing regex for current platform */
+    private get platformTestRegex(): TestRegex {
+        if (process.platform === "darwin") {
+            return darwinTestRegex;
+        } else {
+            return nonDarwinTestRegex;
         }
     }
 

@@ -20,10 +20,10 @@ import {
 } from "../../../src/TestExplorer/TestParsers/XCTestOutputParser";
 import { TestRunState, TestStatus } from "./MockTestRunState";
 
-suite("XCTestOutputParser Suite", () => {
-    const outputParser = new XCTestOutputParser();
-
+suite.only("XCTestOutputParser Suite", () => {
     suite("Darwin", () => {
+        const outputParser = new XCTestOutputParser(darwinTestRegex);
+
         test("Passed Test", async () => {
             const testRunState = new TestRunState(["MyTests.MyTests/testPass"], true);
             const runState = testRunState.tests[0];
@@ -31,8 +31,7 @@ suite("XCTestOutputParser Suite", () => {
                 `Test Case '-[MyTests.MyTests testPass]' started.
 Test Case '-[MyTests.MyTests testPass]' passed (0.001 seconds).
 `,
-                testRunState,
-                darwinTestRegex
+                testRunState
             );
             assert.strictEqual(runState.status, TestStatus.passed);
             assert.deepEqual(runState.timing, { duration: 0.001 });
@@ -46,8 +45,7 @@ Test Case '-[MyTests.MyTests testPass]' passed (0.001 seconds).
 /Users/user/Developer/MyTests/MyTests.swift:59: error: -[MyTests.MyTests testFail] : XCTAssertEqual failed: ("1") is not equal to ("2")
 Test Case '-[MyTests.MyTests testFail]' failed (0.106 seconds).
 `,
-                testRunState,
-                darwinTestRegex
+                testRunState
             );
             assert.strictEqual(runState.status, TestStatus.failed);
             assert.deepEqual(runState.issues, [
@@ -69,8 +67,7 @@ Test Case '-[MyTests.MyTests testFail]' failed (0.106 seconds).
 /Users/user/Developer/MyTests/MyTests.swift:90: -[MyTests.MyTests testSkip] : Test skipped
 Test Case '-[MyTests.MyTests testSkip]' skipped (0.002 seconds).
 `,
-                testRunState,
-                darwinTestRegex
+                testRunState
             );
             assert.strictEqual(runState.status, TestStatus.skipped);
         });
@@ -85,8 +82,7 @@ fail
 message
 Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
 `,
-                testRunState,
-                darwinTestRegex
+                testRunState
             );
             assert.strictEqual(runState.status, TestStatus.failed);
             assert.deepEqual(runState.issues, [
@@ -113,8 +109,7 @@ message
 /Users/user/Developer/MyTests/MyTests.swift:61: error: -[MyTests.MyTests testFail] : failed - Again
 Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
 `,
-                testRunState,
-                darwinTestRegex
+                testRunState
             );
             assert.strictEqual(runState.status, TestStatus.failed);
             assert.deepEqual(runState.issues, [
@@ -146,8 +141,7 @@ message`,
 /Users/user/Developer/MyTests/MyTests.swift:61: error: -[MyTests.MyTests testFail] : failed - Again
 Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
 `,
-                testRunState,
-                darwinTestRegex
+                testRunState
             );
             assert.strictEqual(runState.status, TestStatus.failed);
             assert.deepEqual(runState.issues, [
@@ -174,14 +168,12 @@ Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
             outputParser.parseResult(
                 `Test Case '-[MyTests.MyTests testPass]' started.
 Test Case '-[MyTests.MyTests`,
-                testRunState,
-                darwinTestRegex
+                testRunState
             );
             outputParser.parseResult(
                 ` testPass]' passed (0.006 seconds).
 `,
-                testRunState,
-                darwinTestRegex
+                testRunState
             );
             assert.strictEqual(runState.status, TestStatus.passed);
             assert.deepEqual(runState.timing, { duration: 0.006 });
@@ -189,6 +181,8 @@ Test Case '-[MyTests.MyTests`,
     });
 
     suite("Linux", () => {
+        const outputParser = new XCTestOutputParser(nonDarwinTestRegex);
+
         test("Passed Test", async () => {
             const testRunState = new TestRunState(["MyTests.MyTests/testPass"], false);
             const runState = testRunState.tests[0];
@@ -196,8 +190,7 @@ Test Case '-[MyTests.MyTests`,
                 `Test Case 'MyTests.testPass' started.
 Test Case 'MyTests.testPass' passed (0.001 seconds).
 `,
-                testRunState,
-                nonDarwinTestRegex
+                testRunState
             );
             assert.strictEqual(runState.status, TestStatus.passed);
             assert.deepEqual(runState.timing, { duration: 0.001 });
@@ -211,8 +204,7 @@ Test Case 'MyTests.testPass' passed (0.001 seconds).
 /Users/user/Developer/MyTests/MyTests.swift:59: error: MyTests.testFail : XCTAssertEqual failed: ("1") is not equal to ("2")
 Test Case 'MyTests.testFail' failed (0.106 seconds).
 `,
-                testRunState,
-                nonDarwinTestRegex
+                testRunState
             );
             assert.strictEqual(runState.status, TestStatus.failed);
             assert.deepEqual(runState.issues, [
@@ -234,8 +226,7 @@ Test Case 'MyTests.testFail' failed (0.106 seconds).
 /Users/user/Developer/MyTests/MyTests.swift:90: MyTests.testSkip : Test skipped
 Test Case 'MyTests.testSkip' skipped (0.002 seconds).
 `,
-                testRunState,
-                nonDarwinTestRegex
+                testRunState
             );
             assert.strictEqual(runState.status, TestStatus.skipped);
         });

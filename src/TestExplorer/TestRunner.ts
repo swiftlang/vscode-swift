@@ -33,12 +33,7 @@ import {
 import { getBuildAllTask } from "../SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
-import {
-    darwinTestRegex,
-    nonDarwinTestRegex,
-    XCTestOutputParser,
-    TestRegex,
-} from "./TestParsers/XCTestOutputParser";
+import { XCTestOutputParser } from "./TestParsers/XCTestOutputParser";
 import { SwiftTestingOutputParser } from "./TestParsers/SwiftTestingOutputParser";
 import { Version } from "../utilities/version";
 import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
@@ -259,13 +254,12 @@ export class TestRunner {
             if (testBuildConfig === null) {
                 return;
             }
-            const testRegex = this.testRegex;
             // Parse output from stream and output to log
             const parsedOutputStream = new stream.Writable({
                 write: (chunk, encoding, next) => {
                     const text = chunk.toString();
                     this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
-                    this.xcTestOutputParser.parseResult(text, runState, testRegex);
+                    this.xcTestOutputParser.parseResult(text, runState);
                     next();
                 },
             });
@@ -570,7 +564,6 @@ export class TestRunner {
             config => config !== null
         ) as vscode.DebugConfiguration[];
 
-        const testRegex = this.testRegex;
         const subscriptions: vscode.Disposable[] = [];
 
         const debugRuns = validBuildConfigs.map(config => {
@@ -584,7 +577,7 @@ export class TestRunner {
                         );
                         LoggingDebugAdapterTracker.setDebugSessionCallback(session, output => {
                             this.testRun.appendOutput(output);
-                            this.xcTestOutputParser.parseResult(output, runState, testRegex);
+                            this.xcTestOutputParser.parseResult(output, runState);
                         });
                         const cancellation = token.onCancellationRequested(() => {
                             this.workspaceContext.outputChannel.logDiagnostic(
@@ -657,15 +650,6 @@ export class TestRunner {
             return new DarwinTestItemFinder(this.testArgs.testItems);
         } else {
             return new NonDarwinTestItemFinder(this.testArgs.testItems, this.folderContext);
-        }
-    }
-
-    /** Get Test parsing regex for current platform */
-    get testRegex(): TestRegex {
-        if (process.platform === "darwin") {
-            return darwinTestRegex;
-        } else {
-            return nonDarwinTestRegex;
         }
     }
 }
