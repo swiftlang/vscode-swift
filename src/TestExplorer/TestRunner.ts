@@ -239,7 +239,7 @@ export class TestRunner {
                 await this.swiftTestOutputParser.watch(fifoPipePath, runState);
 
                 await this.launchTests(
-                    testKind,
+                    testKind === TestKind.parallel ? TestKind.standard : testKind,
                     token,
                     outputStream,
                     outputStream,
