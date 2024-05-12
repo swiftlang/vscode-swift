@@ -1,8 +1,15 @@
 {
-  "API Availability Check": {
-    "prefix": "available",
+  "API Availability": {
+    "prefix": "@available",
     "body": [
-      "if #available(${1:i, mac, tv, watch}OS ${2:x.y.z}, *) {",
+      "@available(${1:iOS, macOS, tvOS, watchOS} ${2:x.y.z}, *)",
+    ],
+    "description": "Define an API's minimum version"
+  },
+  "Availability Conditional": {
+    "prefix": "#available",
+    "body": [
+      "if #available(${1:iOS, macOS, tvOS, watchOS} ${2:x.y.z}, *) {",
       "\t${3:API available statements}",
       "} else {",
       "\t${4:fallback statements}",
@@ -31,7 +38,7 @@
   "Deprecated": {
     "prefix": "deprecated",
     "body": [
-      "@available(*, deprecated, renamed: \"${1:String}\", message: \"${2:String}\")",
+      "@available(*, deprecated, message: \"${2:String}\")",
     ],
     "description": "Define availability"
   },
@@ -96,6 +103,13 @@
       "}"
     ],
     "description": "A mathematical set interface to a bit set."
+  },
+  "Renamed": {
+    "prefix": "renamed",
+    "body": [
+      "@available(*, deprecated, renamed: \"${1:renamed}\", message: \"${2:String}\")",
+    ],
+    "description": "Indicate API has moved"
   },
   "Required Initializer Declaration": {
     "prefix": "requiredinit",
