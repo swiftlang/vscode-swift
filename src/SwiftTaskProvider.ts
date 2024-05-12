@@ -338,14 +338,25 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             //
             // Ignore an active build task, it could be the build task that has just been
             // initiated.
-            if (activeOperation && !activeOperation.operation.isBuildOperation) {
+            //
+            // This is only required in Swift toolchains before v6 as SwiftPM in newer toolchains
+            // will block multiple processes accessing the .build folder at the same time
+            if (
+                this.workspaceContext.toolchain.swiftVersion.isLessThan(new Version(6, 0, 0)) &&
+                activeOperation &&
+                !activeOperation.operation.isBuildOperation
+            ) {
+                let buildTaskName = "Build tasks disabled";
+                if (folderContext.relativePath.length > 0) {
+                    buildTaskName += ` (${folderContext.relativePath})`;
+                }
                 const task = new vscode.Task(
                     {
                         type: "swift",
                         args: [],
                     },
                     folderContext.workspaceFolder,
-                    `Build tasks disabled`,
+                    buildTaskName,
                     "swift",
                     new vscode.CustomExecution(() => {
                         throw Error("Task disabled.");
