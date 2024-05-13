@@ -4,7 +4,7 @@
     "body": [
       "class ${1:suiteName}: XCTestCase {",
       "\tfunc test${2:testName}() {",
-      "\t\t$2",
+      "\t\t${2:statements}",
       "\t}",
       "}"
     ],
@@ -14,7 +14,7 @@
     "prefix": "test",
     "body": [
       "func test${1:Name}() {",
-      "\t$2",
+      "\t${2:statements}",
       "}"
     ],
     "description": "XCTest: Test Method"

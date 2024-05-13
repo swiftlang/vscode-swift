@@ -3,7 +3,7 @@
     "prefix": "@Test",
     "body": [
       "@Test func ${1:name}() async throws {",
-      "\t$2",
+      "\t${2:statements}",
       "}"
     ],
     "description": "swift-testing: Test Function"
@@ -13,7 +13,7 @@
     "body": [
       "@Test(\"${1:display name}\")",
       "func ${2:name}() async throws {",
-      "\t$3",
+      "\t${3:statements}",
       "}"
     ],
     "description": "swift-testing: Test Function with Traits"
@@ -23,7 +23,7 @@
     "body": [
       "struct ${1:suiteName} {",
       "\t@Test func ${2:testName}() async throws {",
-      "\t\t$3",
+      "\t\t${3:statements}",
       "\t}",
       "}"
     ],
@@ -35,7 +35,7 @@
       "@Suite(\"${1:display name}\")",
       "struct ${2:name} {",
       "\t@Test func ${3:testName}() async throws {",
-      "\t\t$4",
+      "\t\t${4:statements}",
       "\t}",
       "}"
     ],
