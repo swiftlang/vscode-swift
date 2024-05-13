@@ -1,0 +1,22 @@
+{
+  "XCTestSuite": {
+    "prefix": "testsuite",
+    "body": [
+      "class ${1:suiteName}: XCTestCase {",
+      "\tfunc test${2:testName}() {",
+      "\t\t${2:statements}",
+      "\t}",
+      "}"
+    ],
+    "description": "XCTest: Test Suite"
+  },
+  "XCTest": {
+    "prefix": "test",
+    "body": [
+      "func test${1:Name}() {",
+      "\t${2:statements}",
+      "}"
+    ],
+    "description": "XCTest: Test Method"
+  }
+}

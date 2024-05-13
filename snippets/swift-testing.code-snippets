@@ -1,0 +1,53 @@
+{
+  "@Test": {
+    "prefix": "@Test",
+    "body": [
+      "@Test func ${1:name}() async throws {",
+      "\t${2:statements}",
+      "}"
+    ],
+    "description": "swift-testing: Test Function"
+  },
+  "@Test(\"named\")": {
+    "prefix": "@Test",
+    "body": [
+      "@Test(\"${1:display name}\")",
+      "func ${2:name}() async throws {",
+      "\t${3:statements}",
+      "}"
+    ],
+    "description": "swift-testing: Test Function with Traits"
+  },
+  "Suite": {
+    "prefix": "@Suite",
+    "body": [
+      "struct ${1:suiteName} {",
+      "\t@Test func ${2:testName}() async throws {",
+      "\t\t${3:statements}",
+      "\t}",
+      "}"
+    ],
+    "description": "swift-testing: Test Suite"
+  },
+  "@Suite(\"named\")": {
+    "prefix": "@Suite",
+    "body": [
+      "@Suite(\"${1:display name}\")",
+      "struct ${2:name} {",
+      "\t@Test func ${3:testName}() async throws {",
+      "\t\t${4:statements}",
+      "\t}",
+      "}"
+    ],
+    "description": "swift-testing: Test Suite with Traits"
+  },
+  "tag": {
+    "prefix": "tag",
+    "body": [
+      "extension Tag {",
+      "\t@Tag static var ${1:tag}: Tag",
+      "}"
+    ],
+    "description": "swift-testing: Tag Declaration"
+  }
+}
