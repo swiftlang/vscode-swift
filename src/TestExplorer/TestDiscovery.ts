@@ -16,6 +16,7 @@ import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import { TargetType } from "../SwiftPackage";
 import { LSPTestItem } from "../sourcekit-lsp/lspExtensions";
+import { reduceTestItemChildren } from "./TestUtils";
 
 /** Test class definition */
 export interface TestClass extends Omit<Omit<LSPTestItem, "location">, "children"> {
@@ -76,7 +77,11 @@ export function updateTests(
             (!filterFile || testItem.uri?.fsPath === filterFile.fsPath)
         ) {
             const collection = testItem.parent ? testItem.parent.children : testController.items;
-            collection.delete(testItem.id);
+
+            // TODO: This needs to take in to account parameterized tests with no URI, when they're added.
+            if (testItem.children.size === 0) {
+                collection.delete(testItem.id);
+            }
         }
     }
 
@@ -114,6 +119,24 @@ function createIncomingTestLookup(
 }
 
 /**
+ * Merges the TestItems recursively from the `existingItem` in to the `newItem`
+ */
+function deepMergeTestItemChildren(existingItem: vscode.TestItem, newItem: vscode.TestItem) {
+    reduceTestItemChildren(
+        existingItem.children,
+        (collection, testItem: vscode.TestItem) => {
+            const existing = collection.get(testItem.id);
+            if (existing) {
+                deepMergeTestItemChildren(existing, testItem);
+            }
+            collection.add(testItem);
+            return collection;
+        },
+        newItem.children
+    );
+}
+
+/**
  * Updates the existing `vscode.TestItem` if it exists with the same ID as the `TestClass`,
  * otherwise creates an add a new one. The location on the returned vscode.TestItem is always updated.
  */
@@ -122,12 +145,6 @@ function upsertTestItem(
     testItem: TestClass,
     parent?: vscode.TestItem
 ) {
-    // This is a temporary gate on adding swift-testing tests until there is code to
-    // run them. See https://github.com/swift-server/vscode-swift/issues/757
-    if (testItem.style === "swift-testing") {
-        return;
-    }
-
     const collection = parent?.children ?? testController.items;
     const existingItem = collection.get(testItem.id);
     let newItem: vscode.TestItem;
@@ -148,10 +165,25 @@ function upsertTestItem(
         newItem = existingItem;
     }
 
+    // At this point all the test items that should have been deleted are out of the tree.
+    // Its possible we're dropping a whole branch of test items on top of an existing one,
+    // and we want to merge these branches instead of the new one replacing the existing one.
+    if (existingItem) {
+        deepMergeTestItemChildren(existingItem, newItem);
+    }
+
     // Manually add the test style as a tag so we can filter by test type.
     newItem.tags = [{ id: testItem.style }, ...testItem.tags];
     newItem.label = testItem.label;
     newItem.range = testItem.location?.range;
+
+    if (testItem.sortText) {
+        newItem.sortText = testItem.sortText;
+    } else if (!testItem.location) {
+        // TestItems without a location should be sorted to the top.
+        const zeros = ``.padStart(8, "0");
+        newItem.sortText = `${zeros}:${testItem.label}`;
+    }
 
     // Performs an upsert based on whether a test item exists in the collection with the same id.
     // If no parent is provided operate on the testController's root items.

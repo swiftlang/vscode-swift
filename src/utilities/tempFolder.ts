@@ -37,7 +37,7 @@ export class TemporaryFolder {
     }
 
     /**
-     * Generate temporary filename, run process and delete file with filename once that
+     * Generate temporary filename, run a process and delete file with filename once that
      * process has finished
      *
      * @param prefix File prefix
@@ -47,19 +47,10 @@ export class TemporaryFolder {
      */
     async withTemporaryFile<Return>(
         extension: string,
-        process: {
-            (filename: string): Promise<Return>;
-        }
+        process: (filename: string) => Promise<Return>
     ): Promise<Return> {
         const filename = this.filename("", extension);
-        try {
-            const rt = await process(filename);
-            await fs.rm(filename, { force: true });
-            return rt;
-        } catch (error) {
-            await fs.rm(filename, { force: true });
-            throw error;
-        }
+        return TemporaryFolder.withNamedTemporaryFile(filename, () => process(filename));
     }
 
     /**
@@ -74,5 +65,27 @@ export class TemporaryFolder {
             // ignore error. It is most likely directory exists already
         }
         return new TemporaryFolder(tmpPath);
+    }
+
+    /**
+     * Run a process and delete file with filename once that
+     * process has finished.
+     *
+     * @param path Full file path to a temporary file
+     * @param process Process to run
+     * @returns return value of process
+     */
+    static async withNamedTemporaryFile<Return>(
+        path: string,
+        process: () => Promise<Return>
+    ): Promise<Return> {
+        try {
+            const rt = await process();
+            await fs.rm(path, { force: true });
+            return rt;
+        } catch (error) {
+            await fs.rm(path, { force: true });
+            throw error;
+        }
     }
 }

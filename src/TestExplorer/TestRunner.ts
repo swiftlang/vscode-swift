@@ -16,24 +16,32 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as stream from "stream";
 import * as cp from "child_process";
+import * as os from "os";
 import * as asyncfs from "fs/promises";
-import { createTestConfiguration, createDarwinTestConfiguration } from "../debugger/launch";
+import {
+    createXCTestConfiguration,
+    createSwiftTestConfiguration,
+    createDarwinTestConfiguration,
+} from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
-import { execFileStreamOutput, getErrorDescription } from "../utilities/utilities";
+import {
+    execFile,
+    execFileStreamOutput,
+    getErrorDescription,
+    regexEscapedString,
+} from "../utilities/utilities";
 import { getBuildAllTask } from "../SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
-import {
-    darwinTestRegex,
-    iTestRunState,
-    nonDarwinTestRegex,
-    TestOutputParser,
-    TestRegex,
-} from "./TestOutputParser";
+import { XCTestOutputParser } from "./TestParsers/XCTestOutputParser";
+import { SwiftTestingOutputParser } from "./TestParsers/SwiftTestingOutputParser";
 import { Version } from "../utilities/version";
 import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
 import { TaskOperation } from "../TaskQueue";
 import { TestXUnitParser, iXUnitTestState } from "./TestXUnitParser";
+import { ITestRunState } from "./TestParsers/TestRunState";
+import { TestRunArguments } from "./TestRunArguments";
+import { TemporaryFolder } from "../utilities/tempFolder";
 
 /** Workspace Folder events */
 export enum TestKind {
@@ -48,9 +56,9 @@ export enum TestKind {
 /** Class used to run tests */
 export class TestRunner {
     private testRun: vscode.TestRun;
-    private testItems: vscode.TestItem[];
-    private testArgs: string[];
-    private testOutputParser: TestOutputParser;
+    private testArgs: TestRunArguments;
+    private xcTestOutputParser: XCTestOutputParser;
+    private swiftTestOutputParser: SwiftTestingOutputParser;
 
     /**
      * Constructor for TestRunner
@@ -64,10 +72,22 @@ export class TestRunner {
         private controller: vscode.TestController
     ) {
         this.testRun = this.controller.createTestRun(this.request);
-        const lists = this.createTestLists();
-        this.testItems = lists.testItems;
-        this.testArgs = lists.testArgs;
-        this.testOutputParser = new TestOutputParser();
+        this.testArgs = new TestRunArguments(this.ensureRequestIncludesTests(this.request));
+        this.xcTestOutputParser = new XCTestOutputParser();
+        this.swiftTestOutputParser = new SwiftTestingOutputParser();
+    }
+
+    /**
+     * If the request has no test items to include in the run,
+     * default to usig all the items in the `TestController`.
+     */
+    private ensureRequestIncludesTests(request: vscode.TestRunRequest): vscode.TestRunRequest {
+        if ((request.include?.length ?? 0) > 0) {
+            return request;
+        }
+        const items: vscode.TestItem[] = [];
+        this.controller.items.forEach(item => items.push(item));
+        return new vscode.TestRunRequest(items, request.exclude, request.profile);
     }
 
     get workspaceContext(): WorkspaceContext {
@@ -119,81 +139,6 @@ export class TestRunner {
         );
     }
 
-    /** Construct test item list from TestRequest
-     * @returns list of test items to run and list of test for XCTest arguments
-     */
-    createTestLists(): { testItems: vscode.TestItem[]; testArgs: string[] } {
-        const queue: vscode.TestItem[] = [];
-
-        // Loop through all included tests, or all known tests, and add them to our queue
-        if (this.request.include && this.request.include.length > 0) {
-            this.request.include.forEach(test => queue.push(test));
-        } else {
-            this.controller.items.forEach(test => queue.push(test));
-        }
-
-        // create test list
-        const list: vscode.TestItem[] = [];
-        const queue2: vscode.TestItem[] = [];
-        while (queue.length > 0) {
-            const test = queue.pop()!;
-
-            // Skip tests the user asked to exclude
-            if (this.request.exclude?.includes(test)) {
-                continue;
-            }
-
-            // is this a test item for a TestCase class, it has one parent
-            // (module and controller)
-            if (test.parent && !test.parent?.parent) {
-                // if this test item doesn't include an excluded test add the
-                // test item to the list and then add its children to the queue2
-                // list to be processed in the next loop
-                if (
-                    !this.request.exclude?.find(item => {
-                        return item.id.startsWith(test.id);
-                    })
-                ) {
-                    list.push(test);
-                    if (test.children.size > 0) {
-                        test.children.forEach(test => queue2.push(test));
-                    }
-                    continue;
-                }
-            }
-
-            if (test.children.size > 0) {
-                test.children.forEach(test => queue.push(test));
-                continue;
-            }
-            list.push(test);
-        }
-        // construct list of arguments from test item list ids
-        let argumentList: string[] = [];
-        // if test list has been filtered in some way then construct list of tests
-        // for XCTest arguments
-        if (
-            (this.request.include && this.request.include.length > 0) ||
-            (this.request.exclude && this.request.exclude.length > 0)
-        ) {
-            argumentList = list.map(item => item.id);
-        }
-
-        // add leaf test items, not added in previous loop. A full set of test
-        // items being tested is needed when parsing the test output
-        while (queue2.length > 0) {
-            const test = queue2.pop()!;
-
-            // Skip tests the user asked to exclude
-            if (this.request.exclude?.includes(test)) {
-                continue;
-            }
-
-            list.push(test);
-        }
-        return { testItems: list, testArgs: argumentList };
-    }
-
     /**
      * Test run handler. Run a series of tests and extracts the results from the output
      * @param shouldDebug Should we run the debugger
@@ -208,6 +153,11 @@ export class TestRunner {
             // will rebuild everything again
             if (testKind !== TestKind.coverage) {
                 const task = await getBuildAllTask(this.folderContext);
+                task.definition.dontTriggerTestDiscovery =
+                    this.folderContext.workspaceContext.swiftVersion.isGreaterThanOrEqual(
+                        new Version(6, 0, 0)
+                    );
+
                 const exitCode = await this.folderContext.taskQueue.queueOperation(
                     new TaskOperation(task),
                     token
@@ -233,105 +183,121 @@ export class TestRunner {
         this.testRun.end();
     }
 
-    /**
-     * Edit launch configuration to run tests
-     * @param debugging Do we need this configuration for debugging
-     * @param outputFile Debug output file
-     * @returns
-     */
-    private createLaunchConfigurationForTesting(
-        debugging: boolean
-    ): vscode.DebugConfiguration | null {
-        const testList = this.testArgs.join(",");
-
-        if (process.platform === "darwin") {
-            // if debugging on macOS with Swift 5.6 we need to create a custom launch
-            // configuration so we can set the system architecture
-            const swiftVersion = this.workspaceContext.toolchain.swiftVersion;
-            if (
-                debugging &&
-                swiftVersion.isLessThan(new Version(5, 7, 0)) &&
-                swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))
-            ) {
-                let testFilterArg: string;
-                if (testList.length > 0) {
-                    testFilterArg = `-XCTest ${testList}`;
-                } else {
-                    testFilterArg = "";
-                }
-                const testBuildConfig = createDarwinTestConfiguration(
-                    this.folderContext,
-                    testFilterArg
-                );
-                if (testBuildConfig === null) {
-                    return null;
-                }
-                return testBuildConfig;
-            } else {
-                const testBuildConfig = createTestConfiguration(this.folderContext, true);
-                if (testBuildConfig === null) {
-                    return null;
-                }
-
-                if (testList.length > 0) {
-                    testBuildConfig.args = ["-XCTest", testList, ...testBuildConfig.args];
-                }
-                // output test logging to debug console so we can catch it with a tracker
-                testBuildConfig.terminal = "console";
-                return testBuildConfig;
-            }
-        } else {
-            const testBuildConfig = createTestConfiguration(this.folderContext, true);
-            if (testBuildConfig === null) {
-                return null;
-            }
-
-            if (testList.length > 0) {
-                testBuildConfig.args = [testList];
-            }
-            // output test logging to debug console so we can catch it with a tracker
-            testBuildConfig.terminal = "console";
-            return testBuildConfig;
-        }
-    }
-
     /** Run test session without attaching to a debugger */
     async runSession(
         token: vscode.CancellationToken,
         testKind: TestKind,
         runState: TestRunnerTestRunState
     ) {
-        // create launch config for testing
-        const testBuildConfig = this.createLaunchConfigurationForTesting(false);
-        if (testBuildConfig === null) {
-            return;
+        // Run swift-testing first, then XCTest.
+        // swift-testing being parallel by default should help these run faster.
+        if (this.testArgs.hasSwiftTestingTests) {
+            const fifoPipePath =
+                process.platform === "win32"
+                    ? `\\\\.\\pipe\\vscodemkfifo-${Date.now()}`
+                    : path.join(os.tmpdir(), `vscodemkfifo-${Date.now()}`);
+
+            await TemporaryFolder.withNamedTemporaryFile(fifoPipePath, async () => {
+                // macOS/Linux require us to create the named pipe before we use it.
+                // Windows just lets us communicate by specifying a pipe path without any ceremony.
+                if (process.platform !== "win32") {
+                    await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
+                }
+
+                const testBuildConfig =
+                    await LaunchConfigurations.createLaunchConfigurationForSwiftTesting(
+                        this.testArgs.swiftTestArgs,
+                        this.folderContext,
+                        fifoPipePath
+                    );
+
+                if (testBuildConfig === null) {
+                    return;
+                }
+
+                // Output test from stream
+                const outputStream = new stream.Writable({
+                    write: (chunk, encoding, next) => {
+                        const text = chunk.toString();
+                        this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
+                        next();
+                    },
+                });
+
+                if (token.isCancellationRequested) {
+                    outputStream.end();
+                    return;
+                }
+
+                // Watch the pipe for JSONL output and parse the events into test explorer updates.
+                // The await simply waits for the watching to be configured.
+                await this.swiftTestOutputParser.watch(fifoPipePath, runState);
+
+                await this.launchTests(
+                    testKind === TestKind.parallel ? TestKind.standard : testKind,
+                    token,
+                    outputStream,
+                    outputStream,
+                    testBuildConfig,
+                    runState
+                );
+            });
         }
-        const testRegex = this.testRegex;
-        // Parse output from stream and output to log
-        const parsedOutputStream = new stream.Writable({
-            write: (chunk, encoding, next) => {
-                const text = chunk.toString();
-                this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
-                this.testOutputParser.parseResult(text, runState, testRegex);
-                next();
-            },
-        });
 
-        // Output test from stream
-        const outputStream = new stream.Writable({
-            write: (chunk, encoding, next) => {
-                const text = chunk.toString();
-                this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
-                next();
-            },
-        });
+        if (this.testArgs.hasXCTests) {
+            const testBuildConfig = LaunchConfigurations.createLaunchConfigurationForXCTestTesting(
+                this.testArgs.xcTestArgs,
+                this.workspaceContext,
+                this.folderContext,
+                false
+            );
+            if (testBuildConfig === null) {
+                return;
+            }
+            // Parse output from stream and output to log
+            const parsedOutputStream = new stream.Writable({
+                write: (chunk, encoding, next) => {
+                    const text = chunk.toString();
+                    this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
+                    this.xcTestOutputParser.parseResult(text, runState);
+                    next();
+                },
+            });
 
-        if (token.isCancellationRequested) {
-            parsedOutputStream.end();
-            outputStream.end();
-            return;
+            // Output test from stream
+            const outputStream = new stream.Writable({
+                write: (chunk, encoding, next) => {
+                    const text = chunk.toString();
+                    this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
+                    next();
+                },
+            });
+
+            if (token.isCancellationRequested) {
+                parsedOutputStream.end();
+                outputStream.end();
+                return;
+            }
+
+            await this.launchTests(
+                testKind,
+                token,
+                parsedOutputStream,
+                outputStream,
+                testBuildConfig,
+                runState
+            );
         }
+    }
 
+    private async launchTests(
+        testKind: TestKind,
+        token: vscode.CancellationToken,
+        parsedOutputStream: stream.Writable,
+        outputStream: stream.Writable,
+        testBuildConfig: vscode.DebugConfiguration,
+        runState: TestRunnerTestRunState
+    ) {
         this.testRun.appendOutput(`> Test run started at ${new Date().toLocaleString()} <\r\n\r\n`);
         try {
             switch (testKind) {
@@ -360,11 +326,7 @@ export class TestRunner {
                     );
                     break;
             }
-            outputStream.end();
-            parsedOutputStream.end();
         } catch (error) {
-            outputStream.end();
-            parsedOutputStream.end();
             const execError = error as cp.ExecFileException;
             if (execError.code === 1 && execError.killed === false) {
                 // Process returned an error code probably because a test failed
@@ -395,6 +357,11 @@ export class TestRunner {
                 // Unrecognised error
                 this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
                 return;
+            }
+        } finally {
+            parsedOutputStream.end();
+            if (outputStream !== parsedOutputStream) {
+                outputStream.end();
             }
         }
     }
@@ -442,7 +409,8 @@ export class TestRunner {
         testBuildConfig: vscode.DebugConfiguration
     ) {
         try {
-            const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
+            // TODO: This approach only covers xctests.
+            const filterArgs = this.testArgs.xcTestArgs.flatMap(arg => ["--filter", arg]);
             const args = ["test", "--enable-code-coverage"];
             await execFileStreamOutput(
                 this.workspaceContext.toolchain.getToolchainExecutable("swift"),
@@ -452,7 +420,7 @@ export class TestRunner {
                 token,
                 {
                     cwd: testBuildConfig.cwd,
-                    env: { ...process.env, ...testBuildConfig.env },
+                    env: { ...process.env, ...testBuildConfig.env, SWT_SF_SYMBOLS_ENABLED: "0" },
                     maxBuffer: 16 * 1024 * 1024,
                 },
                 this.folderContext,
@@ -481,7 +449,7 @@ export class TestRunner {
         await this.workspaceContext.tempFolder.withTemporaryFile("xml", async filename => {
             const sanitizer = this.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
             const sanitizerArgs = sanitizer?.buildFlags ?? [];
-            const filterArgs = this.testArgs.flatMap(arg => ["--filter", arg]);
+            const filterArgs = this.testArgs.xcTestArgs.flatMap(arg => ["--filter", arg]);
             const args = [
                 "test",
                 "--parallel",
@@ -528,85 +496,152 @@ export class TestRunner {
 
     /** Run test session inside debugger */
     async debugSession(token: vscode.CancellationToken, runState: TestRunnerTestRunState) {
-        // create launch config for testing
-        const testBuildConfig = this.createLaunchConfigurationForTesting(true);
-        if (testBuildConfig === null) {
-            return;
-        }
+        const buildConfigs: Array<vscode.DebugConfiguration | undefined> = [];
 
-        // given we have already run a build task there is no need to have a pre launch task
-        // to build the tests
-        testBuildConfig.preLaunchTask = undefined;
+        const fifoPipePath =
+            process.platform === "win32"
+                ? `\\\\.\\pipe\\vscodemkfifo-${Date.now()}`
+                : path.join(os.tmpdir(), `vscodemkfifo-${Date.now()}`);
 
-        // output test build configuration
-        if (configuration.diagnostics) {
-            const configJSON = JSON.stringify(testBuildConfig);
-            this.workspaceContext.outputChannel.logDiagnostic(
-                `Debug Config: ${configJSON}`,
-                this.folderContext.name
-            );
-        }
+        await TemporaryFolder.withNamedTemporaryFile(fifoPipePath, async () => {
+            if (this.testArgs.hasSwiftTestingTests) {
+                const swiftTestBuildConfig =
+                    await LaunchConfigurations.createLaunchConfigurationForSwiftTesting(
+                        this.testArgs.swiftTestArgs,
+                        this.folderContext,
+                        fifoPipePath
+                    );
 
-        const testRegex = this.testRegex;
-        const subscriptions: vscode.Disposable[] = [];
-        // add cancelation
-        const startSession = vscode.debug.onDidStartDebugSession(session => {
-            this.workspaceContext.outputChannel.logDiagnostic(
-                "Start Test Debugging",
-                this.folderContext.name
-            );
-            LoggingDebugAdapterTracker.setDebugSessionCallback(session, output => {
-                this.testRun.appendOutput(output);
-                this.testOutputParser.parseResult(output, runState, testRegex);
-            });
-            const cancellation = token.onCancellationRequested(() => {
-                this.workspaceContext.outputChannel.logDiagnostic(
-                    "Test Debugging Cancelled",
-                    this.folderContext.name
-                );
-                vscode.debug.stopDebugging(session);
-            });
-            subscriptions.push(cancellation);
-        });
-        subscriptions.push(startSession);
+                if (swiftTestBuildConfig !== null) {
+                    // given we have already run a build task there is no need to have a pre launch task
+                    // to build the tests
+                    swiftTestBuildConfig.preLaunchTask = undefined;
 
-        return new Promise<void>((resolve, reject) => {
-            vscode.debug.startDebugging(this.folderContext.workspaceFolder, testBuildConfig).then(
-                started => {
-                    if (started) {
-                        this.testRun.appendOutput(
-                            `> Test run started at ${new Date().toLocaleString()} <\r\n\r\n`
+                    // output test build configuration
+                    if (configuration.diagnostics) {
+                        const configJSON = JSON.stringify(swiftTestBuildConfig);
+                        this.workspaceContext.outputChannel.logDiagnostic(
+                            `swift-testing Debug Config: ${configJSON}`,
+                            this.folderContext.name
                         );
-                        // show test results pane
-                        vscode.commands.executeCommand("testing.showMostRecentOutput");
+                    }
+                    // Watch the pipe for JSONL output and parse the events into test explorer updates.
+                    // The await simply waits for the watching to be configured.
+                    await this.swiftTestOutputParser.watch(fifoPipePath, runState);
 
-                        const terminateSession = vscode.debug.onDidTerminateDebugSession(
-                            async () => {
+                    buildConfigs.push(swiftTestBuildConfig);
+                }
+            }
+
+            // create launch config for testing
+            if (this.testArgs.hasXCTests) {
+                const xcTestBuildConfig =
+                    await LaunchConfigurations.createLaunchConfigurationForXCTestTesting(
+                        this.testArgs.xcTestArgs,
+                        this.workspaceContext,
+                        this.folderContext,
+                        true
+                    );
+
+                if (xcTestBuildConfig !== null) {
+                    // given we have already run a build task there is no need to have a pre launch task
+                    // to build the tests
+                    xcTestBuildConfig.preLaunchTask = undefined;
+
+                    // output test build configuration
+                    if (configuration.diagnostics) {
+                        const configJSON = JSON.stringify(xcTestBuildConfig);
+                        this.workspaceContext.outputChannel.logDiagnostic(
+                            `XCTest Debug Config: ${configJSON}`,
+                            this.folderContext.name
+                        );
+                    }
+
+                    buildConfigs.push(xcTestBuildConfig);
+                }
+            }
+
+            const validBuildConfigs = buildConfigs.filter(
+                config => config !== null
+            ) as vscode.DebugConfiguration[];
+
+            const subscriptions: vscode.Disposable[] = [];
+
+            const debugRuns = validBuildConfigs.map(config => {
+                return () =>
+                    new Promise<void>((resolve, reject) => {
+                        // add cancelation
+                        const startSession = vscode.debug.onDidStartDebugSession(session => {
+                            this.workspaceContext.outputChannel.logDiagnostic(
+                                "Start Test Debugging",
+                                this.folderContext.name
+                            );
+                            LoggingDebugAdapterTracker.setDebugSessionCallback(session, output => {
+                                this.testRun.appendOutput(output);
+                                this.xcTestOutputParser.parseResult(output, runState);
+                            });
+                            const cancellation = token.onCancellationRequested(() => {
                                 this.workspaceContext.outputChannel.logDiagnostic(
-                                    "Stop Test Debugging",
+                                    "Test Debugging Cancelled",
                                     this.folderContext.name
                                 );
-                                // dispose terminate debug handler
-                                subscriptions.forEach(sub => sub.dispose());
-                                resolve();
-                            }
-                        );
-                        subscriptions.push(terminateSession);
-                    } else {
-                        subscriptions.forEach(sub => sub.dispose());
-                        reject();
-                    }
-                },
-                reason => {
-                    subscriptions.forEach(sub => sub.dispose());
-                    reject(reason);
-                }
-            );
+                                vscode.debug.stopDebugging(session);
+                            });
+                            subscriptions.push(cancellation);
+                        });
+                        subscriptions.push(startSession);
+
+                        vscode.debug
+                            .startDebugging(this.folderContext.workspaceFolder, config)
+                            .then(
+                                started => {
+                                    if (started) {
+                                        if (config === validBuildConfigs[0]) {
+                                            this.testRun.appendOutput(
+                                                `> Test run started at ${new Date().toLocaleString()} <\r\n\r\n`
+                                            );
+                                        }
+                                        // show test results pane
+                                        vscode.commands.executeCommand(
+                                            "testing.showMostRecentOutput"
+                                        );
+
+                                        const terminateSession =
+                                            vscode.debug.onDidTerminateDebugSession(async () => {
+                                                this.workspaceContext.outputChannel.logDiagnostic(
+                                                    "Stop Test Debugging",
+                                                    this.folderContext.name
+                                                );
+                                                // dispose terminate debug handler
+                                                subscriptions.forEach(sub => sub.dispose());
+
+                                                vscode.commands.executeCommand(
+                                                    "workbench.view.extension.test"
+                                                );
+
+                                                resolve();
+                                            });
+                                        subscriptions.push(terminateSession);
+                                    } else {
+                                        subscriptions.forEach(sub => sub.dispose());
+                                        reject();
+                                    }
+                                },
+                                reason => {
+                                    subscriptions.forEach(sub => sub.dispose());
+                                    reject(reason);
+                                }
+                            );
+                    });
+            });
+
+            // Run each debugging session sequentially
+            await debugRuns.reduce((p, fn) => p.then(() => fn()), Promise.resolve());
         });
     }
 
     setTestsEnqueued() {
-        for (const test of this.testItems) {
+        for (const test of this.testArgs.testItems) {
             this.testRun.enqueued(test);
         }
     }
@@ -614,18 +649,115 @@ export class TestRunner {
     /** Get TestItem finder for current platform */
     get testItemFinder(): TestItemFinder {
         if (process.platform === "darwin") {
-            return new DarwinTestItemFinder(this.testItems);
+            return new DarwinTestItemFinder(this.testArgs.testItems);
         } else {
-            return new NonDarwinTestItemFinder(this.testItems, this.folderContext);
+            return new NonDarwinTestItemFinder(this.testArgs.testItems, this.folderContext);
+        }
+    }
+}
+
+class LaunchConfigurations {
+    /**
+     * Edit launch configuration to run tests
+     * @param debugging Do we need this configuration for debugging
+     * @param outputFile Debug output file
+     * @returns
+     */
+    static createLaunchConfigurationForXCTestTesting(
+        args: string[],
+        workspaceContext: WorkspaceContext,
+        folderContext: FolderContext,
+        debugging: boolean
+    ): vscode.DebugConfiguration | null {
+        const testList = args.join(",");
+
+        if (process.platform === "darwin") {
+            // if debugging on macOS with Swift 5.6 we need to create a custom launch
+            // configuration so we can set the system architecture
+            const swiftVersion = workspaceContext.toolchain.swiftVersion;
+            if (
+                debugging &&
+                swiftVersion.isLessThan(new Version(5, 7, 0)) &&
+                swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))
+            ) {
+                let testFilterArg: string;
+                if (testList.length > 0) {
+                    testFilterArg = `-XCTest ${testList}`;
+                } else {
+                    testFilterArg = "";
+                }
+                const testBuildConfig = createDarwinTestConfiguration(folderContext, testFilterArg);
+                if (testBuildConfig === null) {
+                    return null;
+                }
+                return testBuildConfig;
+            } else {
+                const testBuildConfig = createXCTestConfiguration(folderContext, true);
+                if (testBuildConfig === null) {
+                    return null;
+                }
+
+                if (testList.length > 0) {
+                    testBuildConfig.args = ["-XCTest", testList, ...testBuildConfig.args];
+                }
+
+                // output test logging to debug console so we can catch it with a tracker
+                testBuildConfig.terminal = "console";
+                return testBuildConfig;
+            }
+        } else {
+            const testBuildConfig = createXCTestConfiguration(folderContext, true);
+            if (testBuildConfig === null) {
+                return null;
+            }
+
+            if (testList.length > 0) {
+                testBuildConfig.args = [testList];
+            }
+            // output test logging to debug console so we can catch it with a tracker
+            testBuildConfig.terminal = "console";
+            return testBuildConfig;
         }
     }
 
-    /** Get Test parsing regex for current platform */
-    get testRegex(): TestRegex {
+    static async createLaunchConfigurationForSwiftTesting(
+        args: string[],
+        folderContext: FolderContext,
+        fifoPipePath: string
+    ): Promise<vscode.DebugConfiguration | null> {
+        const testList = args.join(",");
+
         if (process.platform === "darwin") {
-            return darwinTestRegex;
+            const testBuildConfig = createSwiftTestConfiguration(folderContext, fifoPipePath, true);
+            if (testBuildConfig === null) {
+                return null;
+            }
+
+            let testFilterArg: string[] = [];
+            if (testList.length > 0) {
+                testFilterArg = args.flatMap(arg => ["--filter", regexEscapedString(arg)]);
+            }
+
+            testBuildConfig.args = [...testBuildConfig.args, ...testFilterArg];
+            testBuildConfig.terminal = "console";
+
+            return testBuildConfig;
         } else {
-            return nonDarwinTestRegex;
+            const testBuildConfig = createSwiftTestConfiguration(folderContext, fifoPipePath, true);
+            if (testBuildConfig === null) {
+                return null;
+            }
+
+            let testFilterArg: string[] = [];
+            if (testList.length > 0) {
+                testFilterArg = args.flatMap(arg => ["--filter", regexEscapedString(arg)]);
+            }
+
+            testBuildConfig.args = [...testBuildConfig.args, ...testFilterArg];
+
+            // output test logging to debug console so we can catch it with a tracker
+            testBuildConfig.terminal = "console";
+            return testBuildConfig;
         }
     }
 }
@@ -710,7 +842,7 @@ class NonDarwinTestItemFinder implements TestItemFinder {
 /**
  * Store state of current test run output parse
  */
-class TestRunnerTestRunState implements iTestRunState {
+class TestRunnerTestRunState implements ITestRunState {
     constructor(
         private testItemFinder: TestItemFinder,
         private testRun: vscode.TestRun

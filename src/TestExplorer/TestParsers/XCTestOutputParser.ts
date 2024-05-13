@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import { MarkdownString } from "vscode";
+import { ITestRunState } from "./TestRunState";
 
 /** Regex for parsing XCTest output */
-export interface TestRegex {
+interface TestRegex {
     started: RegExp;
     passed: RegExp;
     failed: RegExp;
@@ -66,12 +66,22 @@ export const nonDarwinTestRegex = {
     failedSuite: /^Test Suite '(.*)' failed/,
 };
 
-export class TestOutputParser {
+export class XCTestOutputParser {
+    private regex: TestRegex;
+
+    /**
+     * Create an XCTestOutputParser.
+     * Optional regex can be supplied for tests.
+     */
+    constructor(regex?: TestRegex) {
+        this.regex = regex ?? this.platformTestRegex;
+    }
+
     /**
      * Parse results from `swift test` and update tests accordingly
      * @param output Output from `swift test`
      */
-    public parseResult(output: string, runState: iTestRunState, regex: TestRegex) {
+    public parseResult(output: string, runState: ITestRunState) {
         const output2 = output.replace(/\r\n/g, "\n");
         const lines = output2.split("\n");
         if (runState.excess) {
@@ -98,7 +108,7 @@ export class TestOutputParser {
         // the above method is unsuccessful.
         for (const line of lines) {
             // Regex "Test Case '-[<test target> <class.function>]' started"
-            const startedMatch = regex.started.exec(line);
+            const startedMatch = this.regex.started.exec(line);
             if (startedMatch) {
                 const testName = `${startedMatch[1]}/${startedMatch[2]}`;
                 const startedTestIndex = runState.getTestItemIndex(testName, undefined);
@@ -106,7 +116,7 @@ export class TestOutputParser {
                 continue;
             }
             // Regex "Test Case '-[<test target> <class.function>]' failed (<duration> seconds)"
-            const failedMatch = regex.failed.exec(line);
+            const failedMatch = this.regex.failed.exec(line);
             if (failedMatch) {
                 const testName = `${failedMatch[1]}/${failedMatch[2]}`;
                 const failedTestIndex = runState.getTestItemIndex(testName, undefined);
@@ -114,7 +124,7 @@ export class TestOutputParser {
                 continue;
             }
             // Regex "<path/to/test>:<line number>: error: <class>.<function> : <error>"
-            const errorMatch = regex.error.exec(line);
+            const errorMatch = this.regex.error.exec(line);
             if (errorMatch) {
                 const testName = `${errorMatch[3]}/${errorMatch[4]}`;
                 const failedTestIndex = runState.getTestItemIndex(testName, errorMatch[1]);
@@ -128,7 +138,7 @@ export class TestOutputParser {
                 continue;
             }
             // Regex "<path/to/test>:<line number>: <class>.<function> : Test skipped"
-            const skippedMatch = regex.skipped.exec(line);
+            const skippedMatch = this.regex.skipped.exec(line);
             if (skippedMatch) {
                 const testName = `${skippedMatch[3]}/${skippedMatch[4]}`;
                 const skippedTestIndex = runState.getTestItemIndex(testName, skippedMatch[1]);
@@ -136,19 +146,19 @@ export class TestOutputParser {
                 continue;
             }
             // Regex "Test Suite '-[<test target> <class.function>]' started"
-            const startedSuiteMatch = regex.startedSuite.exec(line);
+            const startedSuiteMatch = this.regex.startedSuite.exec(line);
             if (startedSuiteMatch) {
                 this.startTestSuite(startedSuiteMatch[1], runState);
                 continue;
             }
             // Regex "Test Suite '-[<test target> <class.function>]' passed"
-            const passedSuiteMatch = regex.passedSuite.exec(line);
+            const passedSuiteMatch = this.regex.passedSuite.exec(line);
             if (passedSuiteMatch) {
                 this.passTestSuite(passedSuiteMatch[1], runState);
                 continue;
             }
             // Regex "Test Suite '-[<test target> <class.function>]' failed"
-            const failedSuiteMatch = regex.failedSuite.exec(line);
+            const failedSuiteMatch = this.regex.failedSuite.exec(line);
             if (failedSuiteMatch) {
                 this.failTestSuite(failedSuiteMatch[1], runState);
                 continue;
@@ -162,7 +172,7 @@ export class TestOutputParser {
         // to be passed.
         for (const line of lines) {
             // Regex "Test Case '<class>.<function>' passed (<duration> seconds)"
-            const passedMatch = regex.passed.exec(line);
+            const passedMatch = this.regex.passed.exec(line);
             if (passedMatch) {
                 const testName = `${passedMatch[1]}/${passedMatch[2]}`;
                 const duration: number = +passedMatch[3];
@@ -173,23 +183,32 @@ export class TestOutputParser {
         }
     }
 
+    /** Get Test parsing regex for current platform */
+    private get platformTestRegex(): TestRegex {
+        if (process.platform === "darwin") {
+            return darwinTestRegex;
+        } else {
+            return nonDarwinTestRegex;
+        }
+    }
+
     /** Flag a test suite has started */
-    private startTestSuite(name: string, runState: iTestRunState) {
+    private startTestSuite(name: string, runState: ITestRunState) {
         runState.startedSuite(name);
     }
 
     /** Flag a test suite has passed */
-    private passTestSuite(name: string, runState: iTestRunState) {
+    private passTestSuite(name: string, runState: ITestRunState) {
         runState.passedSuite(name);
     }
 
     /** Flag a test suite has failed */
-    private failTestSuite(name: string, runState: iTestRunState) {
+    private failTestSuite(name: string, runState: ITestRunState) {
         runState.failedSuite(name);
     }
 
     /** Flag we have started a test */
-    private startTest(testIndex: number, runState: iTestRunState) {
+    private startTest(testIndex: number, runState: ITestRunState) {
         if (testIndex !== -1) {
             runState.started(testIndex);
             // clear error state
@@ -201,7 +220,7 @@ export class TestOutputParser {
     private passTest(
         testIndex: number,
         timing: { duration: number } | { timestamp: number },
-        runState: iTestRunState
+        runState: ITestRunState
     ) {
         if (testIndex !== -1) {
             runState.completed(testIndex, timing);
@@ -215,7 +234,7 @@ export class TestOutputParser {
         message: string,
         file: string,
         lineNumber: string,
-        runState: iTestRunState
+        runState: ITestRunState
     ) {
         // If we were already capturing an error record it and start a new one
         if (runState.failedTest) {
@@ -235,7 +254,7 @@ export class TestOutputParser {
     }
 
     /** continue capturing error message */
-    private continueErrorMessage(message: string, runState: iTestRunState) {
+    private continueErrorMessage(message: string, runState: ITestRunState) {
         // if we have a failed test message and it isn't complete
         if (runState.failedTest && runState.failedTest.complete !== true) {
             runState.failedTest.message += `\n${message}`;
@@ -246,7 +265,7 @@ export class TestOutputParser {
     private failTest(
         testIndex: number,
         timing: { duration: number } | { timestamp: number },
-        runState: iTestRunState
+        runState: ITestRunState
     ) {
         if (testIndex !== -1) {
             if (runState.failedTest) {
@@ -263,49 +282,10 @@ export class TestOutputParser {
     }
 
     /** Flag we have skipped a test */
-    private skipTest(testIndex: number, runState: iTestRunState) {
+    private skipTest(testIndex: number, runState: ITestRunState) {
         if (testIndex !== -1) {
             runState.skipped(testIndex);
         }
         runState.failedTest = undefined;
     }
-}
-
-/**
- * Interface for setting this test runs state
- */
-export interface iTestRunState {
-    // excess data from previous parse that was not processed
-    excess?: string;
-    // failed test state
-    failedTest?: {
-        testIndex: number;
-        message: string;
-        file: string;
-        lineNumber: number;
-        complete: boolean;
-    };
-
-    // get test item index from test name on non Darwin platforms
-    getTestItemIndex(id: string, filename: string | undefined): number;
-    // set test index to be started
-    started(index: number, startTime?: number): void;
-    // set test index to have passed.
-    // If a start time was provided to `started` then the duration is computed as endTime - startTime,
-    // otherwise the time passed is assumed to be the duration.
-    completed(index: number, timing: { duration: number } | { timestamp: number }): void;
-    // record an issue against a test
-    recordIssue(
-        index: number,
-        message: string | MarkdownString,
-        location?: { file: string; line: number; column?: number }
-    ): void;
-    // set test index to have been skipped
-    skipped(index: number): void;
-    // started suite
-    startedSuite(name: string): void;
-    // passed suite
-    passedSuite(name: string): void;
-    // failed suite
-    failedSuite(name: string): void;
 }

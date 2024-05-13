@@ -321,3 +321,21 @@ export function expandFilePathTilda(filepath: string): string {
     }
     return filepath;
 }
+
+const regexEscapedCharacters = new Set(["(", ")", "[", "]", ".", "$", "^", "?", "|", "/", ":"]);
+/**
+ * Escapes regular expression special characters with a backslash.
+ * @param string A string to escape
+ * @returns The escaped string
+ */
+export function regexEscapedString(string: string): string {
+    let result = "";
+    for (const c of string) {
+        if (regexEscapedCharacters.has(c)) {
+            result += `\\${c}`;
+        } else {
+            result += c;
+        }
+    }
+    return result;
+}
