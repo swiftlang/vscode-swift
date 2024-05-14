@@ -27,7 +27,7 @@ import { getLLDBLibPath } from "./debugger/lldb";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 import { TemporaryFolder } from "./utilities/tempFolder";
 import { SwiftToolchain } from "./toolchain/toolchain";
-import { TaskManager } from "./TaskManager";
+import { TaskManager } from "./tasks/TaskManager";
 import { BackgroundCompilation } from "./BackgroundCompilation";
 import { makeDebugConfigurations } from "./debugger/launch";
 import configuration from "./configuration";

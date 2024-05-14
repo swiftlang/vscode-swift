@@ -1,0 +1,57 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the VSCode Swift open source project
+//
+// Copyright (c) 2024 the VSCode Swift project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.txt for the list of VSCode Swift project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+import * as vscode from "vscode";
+import * as assert from "assert";
+import { testSwiftTask } from "../../fixtures";
+import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import { globalWorkspaceContextPromise } from "../extension.test";
+import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities";
+
+suite("SwiftExecution Tests Suite", () => {
+    let workspaceContext: WorkspaceContext;
+    let workspaceFolder: vscode.WorkspaceFolder;
+
+    suiteSetup(async () => {
+        workspaceContext = await globalWorkspaceContextPromise;
+        assert.notEqual(workspaceContext.folders.length, 0);
+        workspaceFolder = workspaceContext.folders[0].workspaceFolder;
+    });
+
+    setup(async () => {
+        await waitForNoRunningTasks();
+    });
+
+    test("Close event handler fires", async () => {
+        const fixture = testSwiftTask("swift", ["build"], workspaceFolder);
+        const promise = executeTaskAndWaitForResult(fixture);
+        fixture.process.close(1);
+        const { exitCode } = await promise;
+        assert.equal(exitCode, 1);
+    });
+
+    test("Write event handler fires", async () => {
+        const fixture = testSwiftTask("swift", ["build"], workspaceFolder);
+        const promise = executeTaskAndWaitForResult(fixture);
+        fixture.process.write("Fetching some dependency");
+        fixture.process.write("[5/7] Building main.swift");
+        fixture.process.write("Build complete");
+        fixture.process.close(0);
+        const { output } = await promise;
+        assert.equal(
+            output,
+            "Fetching some dependency\n[5/7] Building main.swift\nBuild complete\n"
+        );
+    });
+});

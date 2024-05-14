@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { WorkspaceContext } from "./WorkspaceContext";
+import { WorkspaceContext } from "../WorkspaceContext";
 
 /** Manage task execution and completion handlers */
 export class TaskManager implements vscode.Disposable {

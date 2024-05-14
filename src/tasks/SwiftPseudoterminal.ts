@@ -32,6 +32,10 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Dispos
 
     private disposables: vscode.Disposable[] = [];
 
+    get commandLine(): string {
+        return [this.swiftProcess.command, ...this.swiftProcess.args].join(" ");
+    }
+
     open(initialDimensions: vscode.TerminalDimensions | undefined): void {
         try {
             // Convert the pty's events to the ones expected by the Tasks API
@@ -39,7 +43,7 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Dispos
                 this.swiftProcess.onDidSpawn(() => {
                     // Display the actual command line that we're executing. `echo` defaults to true.
                     if (this.options.echo !== false) {
-                        this.writeEmitter.fire(`> ${this.swiftProcess.commandLine}\n\n\r`);
+                        this.writeEmitter.fire(`> ${this.commandLine}\n\n\r`);
                     }
                 }),
                 this.swiftProcess.onDidWrite(data => {

@@ -30,14 +30,14 @@ import {
     getErrorDescription,
     regexEscapedString,
 } from "../utilities/utilities";
-import { getBuildAllTask } from "../SwiftTaskProvider";
+import { getBuildAllTask } from "../tasks/SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { XCTestOutputParser } from "./TestParsers/XCTestOutputParser";
 import { SwiftTestingOutputParser } from "./TestParsers/SwiftTestingOutputParser";
 import { Version } from "../utilities/version";
 import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
-import { TaskOperation } from "../TaskQueue";
+import { TaskOperation } from "../tasks/TaskQueue";
 import { TestXUnitParser, iXUnitTestState } from "./TestXUnitParser";
 import { ITestRunState } from "./TestParsers/TestRunState";
 import { TestRunArguments } from "./TestRunArguments";

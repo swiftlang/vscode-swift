@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import configuration from "../configuration";
 import { StatusItem } from "./StatusItem";
-import { SwiftExecution } from "../tasks/SwiftExecution";
+import { SwiftTask } from "../tasks/SwiftTask";
 
 /**
  * This class will handle detecting and updating the status
@@ -40,11 +40,10 @@ export class SwiftBuildStatus implements vscode.Disposable {
     }
 
     private handleTaskStatus(task: vscode.Task) {
-        const execution = task.execution;
-        if (!(execution && execution instanceof SwiftExecution)) {
+        if (!(task instanceof SwiftTask)) {
             return;
         }
-        const swiftExecution = execution as SwiftExecution;
+        const swiftTask = task as SwiftTask;
         const disposables: vscode.Disposable[] = [];
         this.statusItem.showStatusWhileRunning<void>(
             task,
@@ -55,17 +54,17 @@ export class SwiftBuildStatus implements vscode.Disposable {
                         res();
                     };
                     disposables.push(
-                        swiftExecution.onBuildComplete(done),
-                        swiftExecution.onProgress(progress =>
+                        swiftTask.onBuildComplete(done),
+                        swiftTask.onProgress(progress =>
                             this.statusItem.update(
                                 task,
                                 `Building "${task.name}" (${progress.completed}/${progress.total})`
                             )
                         ),
-                        swiftExecution.onFetching(() =>
+                        swiftTask.onFetching(() =>
                             this.statusItem.update(task, `Fetching dependencies "${task.name}"`)
                         ),
-                        swiftExecution.onDidClose(done)
+                        swiftTask.onDidClose(done)
                     );
                 })
         );

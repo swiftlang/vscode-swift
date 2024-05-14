@@ -14,12 +14,11 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
-import { WorkspaceContext } from "./WorkspaceContext";
-import { PackagePlugin } from "./SwiftPackage";
-import configuration from "./configuration";
-import { swiftRuntimeEnv } from "./utilities/utilities";
-import { SwiftExecution } from "./tasks/SwiftExecution";
-import { resolveTaskCwd } from "./utilities/tasks";
+import { WorkspaceContext } from "../WorkspaceContext";
+import { PackagePlugin } from "../SwiftPackage";
+import configuration from "../configuration";
+import { swiftRuntimeEnv } from "../utilities/utilities";
+import { SwiftTask, SwiftTaskDefinition } from "./SwiftTask";
 
 // Interface class for defining task configuration
 interface TaskConfig {
@@ -88,20 +87,18 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         ];
         swiftArgs = this.workspaceContext.toolchain.buildFlags.withSwiftSDKFlags(swiftArgs);
 
-        const cwd = resolveTaskCwd(task, task.definition.cwd);
-        const newTask = new vscode.Task(
-            task.definition,
+        const detail = task.detail ?? `swift ${swiftArgs.join(" ")}`;
+
+        const newTask = new SwiftTask(
+            task.definition as SwiftTaskDefinition,
             task.scope ?? vscode.TaskScope.Workspace,
             task.name,
+            detail,
             "swift-plugin",
-            new SwiftExecution(swift, swiftArgs, {
-                cwd,
-                presentation: task.presentationOptions,
-            }),
+            swift,
+            swiftArgs,
             task.problemMatchers
         );
-        newTask.detail = task.detail ?? `swift ${swiftArgs.join(" ")}`;
-        newTask.presentationOptions = task.presentationOptions;
 
         return newTask;
     }
@@ -113,7 +110,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
      * @param config
      * @returns
      */
-    createSwiftPluginTask(plugin: PackagePlugin, config: TaskConfig): vscode.Task {
+    createSwiftPluginTask(plugin: PackagePlugin, config: TaskConfig): SwiftTask {
         const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
 
         // Add relative path current working directory
@@ -134,44 +131,40 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         ];
         swiftArgs = this.workspaceContext.toolchain.buildFlags.withSwiftSDKFlags(swiftArgs);
 
-        const presentation = config?.presentationOptions ?? {};
-        const task = new vscode.Task(
-            definition,
-            config.scope ?? vscode.TaskScope.Workspace,
-            plugin.name,
-            "swift-plugin",
-            new SwiftExecution(swift, swiftArgs, {
-                cwd: config.cwd.fsPath,
-                env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
-                presentation,
-            }),
-            []
-        );
         let prefix: string;
         if (config.prefix) {
             prefix = `(${config.prefix}) `;
         } else {
             prefix = "";
         }
-        task.detail = `${prefix}swift ${swiftArgs.join(" ")}`;
-        task.presentationOptions = presentation;
+        const detail = `${prefix}swift ${swiftArgs.join(" ")}`;
+
+        const presentation = config?.presentationOptions ?? {};
+        const task = new SwiftTask(
+            { ...definition, presentation },
+            config.scope ?? vscode.TaskScope.Workspace,
+            plugin.name,
+            "swift-plugin",
+            detail,
+            swift,
+            swiftArgs,
+            []
+        );
         return task;
     }
 
     /**
      * Get task definition for a command plugin
      */
-    private getTaskDefinition(
-        plugin: PackagePlugin,
-        cwd: string | undefined
-    ): vscode.TaskDefinition {
-        const definition = {
+    private getTaskDefinition(plugin: PackagePlugin, cwd: string | undefined): SwiftTaskDefinition {
+        const definition: SwiftTaskDefinition = {
             type: "swift-plugin",
             command: plugin.command,
             args: [],
             disableSandbox: false,
             allowWritingToPackageDirectory: false,
-            cwd: cwd,
+            cwd,
+            env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
             disableTaskQueue: false,
         };
         // There are common command plugins used across the package eco-system eg for docc generation

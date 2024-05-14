@@ -15,11 +15,11 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import { isPathInsidePath } from "./utilities/utilities";
-import { getBuildAllTask } from "./SwiftTaskProvider";
+import { getBuildAllTask } from "./tasks/SwiftTaskProvider";
 import configuration from "./configuration";
 import { FolderContext } from "./FolderContext";
 import { WorkspaceContext } from "./WorkspaceContext";
-import { TaskOperation } from "./TaskQueue";
+import { TaskOperation } from "./tasks/TaskQueue";
 
 export class BackgroundCompilation {
     private waitingToRun = false;

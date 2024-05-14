@@ -15,11 +15,11 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import contextKeys from "./contextKeys";
-import { createSwiftTask } from "./SwiftTaskProvider";
+import { createSwiftTask } from "./tasks/SwiftTaskProvider";
 import { WorkspaceContext } from "./WorkspaceContext";
 import configuration from "./configuration";
 import { createSnippetConfiguration, debugLaunchConfig } from "./debugger/launch";
-import { TaskOperation } from "./TaskQueue";
+import { TaskOperation } from "./tasks/TaskQueue";
 
 /**
  * Set context key indicating whether current file is a Swift Snippet

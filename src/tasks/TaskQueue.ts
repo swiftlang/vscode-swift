@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
-import { FolderContext } from "./FolderContext";
-import { WorkspaceContext } from "./WorkspaceContext";
-import { execSwift, poll } from "./utilities/utilities";
+import { FolderContext } from "../FolderContext";
+import { WorkspaceContext } from "../WorkspaceContext";
+import { execSwift, poll } from "../utilities/utilities";
 
 export interface SwiftOperationOptions {
     // Should I show a status item
