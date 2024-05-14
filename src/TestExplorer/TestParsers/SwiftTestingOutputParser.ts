@@ -180,7 +180,7 @@ export class SwiftTestingOutputParser {
 
     private testCaseId(testId: string, testCaseId: string): string {
         const testCase = this.testCaseMap.get(testId)?.get(testCaseId);
-        return testCase ? this.createTestCaseId(testCase) : testId;
+        return testCase ? `${testId}/${this.idFromTestCase(testCase)}` : testId;
     }
 
     // Test cases do not have a unique ID if their arguments are not serializable
@@ -189,17 +189,18 @@ export class SwiftTestingOutputParser {
     // ideal because its possible to have multiple test cases with the same display name,
     // but until we have a better solution for identifying test cases it will have to do.
     // SEE: rdar://119522099.
-    private createTestCaseId(testCase: TestCase): string {
+    private idFromTestCase(testCase: TestCase): string {
         return testCase.id === "argumentIDs: nil" ? testCase.displayName : testCase.id;
     }
 
     private parameterizedFunctionTestCaseToTestClass(
+        testId: string,
         testCase: TestCase,
         location: vscode.Location,
         index: number
     ): TestClass {
         return {
-            id: this.createTestCaseId(testCase),
+            id: this.testCaseId(testId, this.idFromTestCase(testCase)),
             label: testCase.displayName,
             tags: [],
             children: [],
@@ -213,7 +214,7 @@ export class SwiftTestingOutputParser {
     private buildTestCaseMapForParameterizedTest(record: TestRecord) {
         const map = new Map<string, TestCase>();
         (record.payload._testCases ?? []).forEach(testCase => {
-            map.set(this.createTestCaseId(testCase), testCase);
+            map.set(this.idFromTestCase(testCase), testCase);
         });
         this.testCaseMap.set(record.payload.id, map);
     }
@@ -237,6 +238,7 @@ export class SwiftTestingOutputParser {
             item.payload._testCases
                 .map((testCase, index) =>
                     this.parameterizedFunctionTestCaseToTestClass(
+                        item.payload.id,
                         testCase,
                         sourceLocationToVSCodeLocation(item.payload.sourceLocation),
                         index
@@ -256,10 +258,9 @@ export class SwiftTestingOutputParser {
             } else if (item.payload.kind === "testCaseStarted") {
                 const testID = this.testCaseId(
                     item.payload.testID,
-                    this.createTestCaseId(item.payload._testCase)
+                    this.idFromTestCase(item.payload._testCase)
                 );
-                const testName = this.testName(testID);
-                const testIndex = runState.getTestItemIndex(testName, undefined);
+                const testIndex = runState.getTestItemIndex(testID, undefined);
                 runState.started(testIndex, item.payload.instant.absolute);
             } else if (item.payload.kind === "testSkipped") {
                 const testName = this.testName(item.payload.testID);
@@ -268,10 +269,9 @@ export class SwiftTestingOutputParser {
             } else if (item.payload.kind === "issueRecorded") {
                 const testID = this.testCaseId(
                     item.payload.testID,
-                    this.createTestCaseId(item.payload._testCase)
+                    this.idFromTestCase(item.payload._testCase)
                 );
-                const testName = this.testName(testID);
-                const testIndex = runState.getTestItemIndex(testName, undefined);
+                const testIndex = runState.getTestItemIndex(testID, undefined);
                 const location = sourceLocationToVSCodeLocation(item.payload.issue.sourceLocation);
                 item.payload.messages.forEach(message => {
                     runState.recordIssue(testIndex, message.text, location);
@@ -298,7 +298,7 @@ export class SwiftTestingOutputParser {
             } else if (item.payload.kind === "testCaseEnded") {
                 const testID = this.testCaseId(
                     item.payload.testID,
-                    this.createTestCaseId(item.payload._testCase)
+                    this.idFromTestCase(item.payload._testCase)
                 );
                 const testName = this.testName(testID);
                 const testIndex = runState.getTestItemIndex(testName, undefined);
