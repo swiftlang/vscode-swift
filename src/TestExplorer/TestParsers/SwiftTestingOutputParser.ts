@@ -219,6 +219,14 @@ export class SwiftTestingOutputParser {
         this.testCaseMap.set(record.payload.id, map);
     }
 
+    private getTestCaseIndex(runState: ITestRunState, testID: string): number {
+        const fullNameIndex = runState.getTestItemIndex(testID, undefined);
+        if (fullNameIndex === -1) {
+            return runState.getTestItemIndex(this.testName(testID), undefined);
+        }
+        return fullNameIndex;
+    }
+
     private parse(item: SwiftTestEvent, runState: ITestRunState) {
         if (
             item.kind === "test" &&
@@ -260,7 +268,7 @@ export class SwiftTestingOutputParser {
                     item.payload.testID,
                     this.idFromTestCase(item.payload._testCase)
                 );
-                const testIndex = runState.getTestItemIndex(testID, undefined);
+                const testIndex = this.getTestCaseIndex(runState, testID);
                 runState.started(testIndex, item.payload.instant.absolute);
             } else if (item.payload.kind === "testSkipped") {
                 const testName = this.testName(item.payload.testID);
@@ -271,15 +279,15 @@ export class SwiftTestingOutputParser {
                     item.payload.testID,
                     this.idFromTestCase(item.payload._testCase)
                 );
-                const testIndex = runState.getTestItemIndex(testID, undefined);
+                const testIndex = this.getTestCaseIndex(runState, testID);
                 const location = sourceLocationToVSCodeLocation(item.payload.issue.sourceLocation);
                 item.payload.messages.forEach(message => {
                     runState.recordIssue(testIndex, message.text, location);
                 });
 
                 if (testID !== item.payload.testID) {
-                    const testName = this.testName(item.payload.testID);
-                    const testIndex = runState.getTestItemIndex(testName, undefined);
+                    // const testName = this.testName(item.payload.testID);
+                    const testIndex = this.getTestCaseIndex(runState, item.payload.testID);
                     item.payload.messages.forEach(message => {
                         runState.recordIssue(testIndex, message.text, location);
                     });
@@ -300,8 +308,7 @@ export class SwiftTestingOutputParser {
                     item.payload.testID,
                     this.idFromTestCase(item.payload._testCase)
                 );
-                const testName = this.testName(testID);
-                const testIndex = runState.getTestItemIndex(testName, undefined);
+                const testIndex = this.getTestCaseIndex(runState, testID);
 
                 // When running a single test the testEnded and testCaseEnded events
                 // have the same ID, and so we'd end the same test twice.

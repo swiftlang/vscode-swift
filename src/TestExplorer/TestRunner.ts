@@ -60,8 +60,11 @@ class TestRunProxy {
     private runStarted: boolean = false;
     private completedMap = new Set<vscode.TestItem>();
     private queuedOutput: string[] = [];
+    private _testItems: vscode.TestItem[];
 
-    public testItems: vscode.TestItem[];
+    public get testItems(): vscode.TestItem[] {
+        return this._testItems;
+    }
 
     constructor(
         private testRunRequest: vscode.TestRunRequest,
@@ -69,7 +72,7 @@ class TestRunProxy {
         private args: TestRunArguments,
         private folderContext: FolderContext
     ) {
-        this.testItems = args.testItems;
+        this._testItems = args.testItems;
     }
 
     public testRunStarted = () => {
@@ -115,7 +118,7 @@ class TestRunProxy {
             });
 
         this.testRun = this.controller.createTestRun(this.testRunRequest);
-        this.testItems = [...this.args.testItems, ...addedTestItems];
+        this._testItems = [...this.testItems, ...addedTestItems];
 
         // Forward any output captured before the testRun was created.
         for (const outputLine of this.queuedOutput) {
@@ -181,15 +184,18 @@ class TestRunProxy {
         // then no results are reported. At the end of the run iterate
         // all the tests that have no results and mark them with an error state.
         this.testItems
-            .filter(testItem => !this.completedMap.has(testItem))
+            .filter(testItem => this.isUnfinishedTest(testItem))
             .forEach(unreported => {
-                this.testRun?.errored(
-                    unreported,
-                    new vscode.TestMessage(`Test reported no results`)
-                );
+                this.errored(unreported, new vscode.TestMessage(`Test reported no results`));
             });
 
         this.testRun?.end();
+    }
+
+    private isUnfinishedTest(testItem: vscode.TestItem): boolean {
+        // Leaf nodes not in the completed map are unfinished.
+        // Suites inherit their state in the Test Explorer from the leaf tests.
+        return !this.completedMap.has(testItem) && testItem.children.size === 0;
     }
 
     public appendOutput(output: string) {
