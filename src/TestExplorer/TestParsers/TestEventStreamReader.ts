@@ -43,10 +43,24 @@ export class UnixNamedPipeReader implements INamedPipeReader {
 
     public async start(readable: Readable) {
         return new Promise<void>((resolve, reject) => {
-            fs.open(this.path, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK, (err, fd) => {
+            fs.open(this.path, fs.constants.O_RDONLY, (err, fd) => {
+                if (err) {
+                    return reject(err);
+                }
                 try {
-                    const pipe = new net.Socket({ fd, readable: true });
-                    pipe.on("data", data => readable.push(data));
+                    // Create our own readable stream that handles backpressure.
+                    // Using a net.Socket to read the pipe has an 8kb internal buffer,
+                    // meaning we couldn't read from writes that were > 8kb.
+                    const pipe = fs.createReadStream("", { fd });
+
+                    pipe.on("data", data => {
+                        if (!readable.push(data)) {
+                            pipe.pause();
+                        }
+                    });
+
+                    readable.on("drain", () => pipe.resume());
+
                     pipe.on("error", () => fs.close(fd));
                     pipe.on("end", () => {
                         readable.push(null);
@@ -55,7 +69,7 @@ export class UnixNamedPipeReader implements INamedPipeReader {
 
                     resolve();
                 } catch (error) {
-                    reject(error);
+                    fs.close(fd, () => reject(error));
                 }
             });
         });
