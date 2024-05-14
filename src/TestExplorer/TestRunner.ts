@@ -203,7 +203,6 @@ class TestRunProxy {
 
 /** Class used to run tests */
 export class TestRunner {
-    // private testRun: vscode.TestRun;
     private testRun: TestRunProxy;
     private testArgs: TestRunArguments;
     private xcTestOutputParser: XCTestOutputParser;

@@ -10,6 +10,8 @@ import { ITestRunState } from "./TestRunState";
 import { TestClass } from "../TestDiscovery";
 
 // All events produced by a swift-testing run will be one of these three types.
+// Detailed information about swift-testing's JSON schema is available here:
+// https://github.com/apple/swift-testing/blob/main/Documentation/ABI/JSON.md
 export type SwiftTestEvent = MetadataRecord | TestRecord | EventRecord;
 
 interface VersionedRecord {
