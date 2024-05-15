@@ -125,7 +125,7 @@ export interface EventMessage {
     text: string;
 }
 
-interface SourceLocation {
+export interface SourceLocation {
     _filePath: string;
     line: number;
     column: number;
