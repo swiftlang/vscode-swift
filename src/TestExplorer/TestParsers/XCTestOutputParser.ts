@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as vscode from "vscode";
 import { ITestRunState } from "./TestRunState";
+import { sourceLocationToVSCodeLocation } from "../../utilities/utilities";
 
 /** Regex for parsing XCTest output */
 interface TestRegex {
@@ -229,10 +229,6 @@ export class XCTestOutputParser {
         runState.failedTest = undefined;
     }
 
-    private sourceLocationToVSCodeLocation(file: string, lineNumber: number): vscode.Location {
-        return new vscode.Location(vscode.Uri.file(file), new vscode.Position(lineNumber - 1, 0));
-    }
-
     /** Start capture error message */
     private startErrorMessage(
         testIndex: number,
@@ -243,7 +239,7 @@ export class XCTestOutputParser {
     ) {
         // If we were already capturing an error record it and start a new one
         if (runState.failedTest) {
-            const location = this.sourceLocationToVSCodeLocation(
+            const location = sourceLocationToVSCodeLocation(
                 runState.failedTest.file,
                 runState.failedTest.lineNumber
             );
@@ -275,7 +271,7 @@ export class XCTestOutputParser {
     ) {
         if (testIndex !== -1) {
             if (runState.failedTest) {
-                const location = this.sourceLocationToVSCodeLocation(
+                const location = sourceLocationToVSCodeLocation(
                     runState.failedTest.file,
                     runState.failedTest.lineNumber
                 );

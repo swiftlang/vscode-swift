@@ -8,6 +8,7 @@ import {
 } from "./TestEventStreamReader";
 import { ITestRunState } from "./TestRunState";
 import { TestClass } from "../TestDiscovery";
+import { sourceLocationToVSCodeLocation } from "../../utilities/utilities";
 
 // All events produced by a swift-testing run will be one of these three types.
 // Detailed information about swift-testing's JSON schema is available here:
@@ -124,7 +125,7 @@ export interface EventMessage {
     text: string;
 }
 
-export interface SourceLocation {
+interface SourceLocation {
     _filePath: string;
     line: number;
     column: number;
@@ -248,7 +249,11 @@ export class SwiftTestingOutputParser {
                     this.parameterizedFunctionTestCaseToTestClass(
                         item.payload.id,
                         testCase,
-                        sourceLocationToVSCodeLocation(item.payload.sourceLocation),
+                        sourceLocationToVSCodeLocation(
+                            item.payload.sourceLocation._filePath,
+                            item.payload.sourceLocation.line,
+                            item.payload.sourceLocation.column
+                        ),
                         index
                     )
                 )
@@ -280,7 +285,12 @@ export class SwiftTestingOutputParser {
                     this.idFromTestCase(item.payload._testCase)
                 );
                 const testIndex = this.getTestCaseIndex(runState, testID);
-                const location = sourceLocationToVSCodeLocation(item.payload.issue.sourceLocation);
+                const sourceLocation = item.payload.issue.sourceLocation;
+                const location = sourceLocationToVSCodeLocation(
+                    sourceLocation._filePath,
+                    sourceLocation.line,
+                    sourceLocation.column
+                );
                 item.payload.messages.forEach(message => {
                     runState.recordIssue(testIndex, message.text, location);
                 });
@@ -320,11 +330,4 @@ export class SwiftTestingOutputParser {
             }
         }
     }
-}
-
-function sourceLocationToVSCodeLocation(sourceLocation: SourceLocation): vscode.Location {
-    return new vscode.Location(
-        vscode.Uri.file(sourceLocation._filePath),
-        new vscode.Position(sourceLocation.line - 1, sourceLocation?.column ?? 0)
-    );
 }

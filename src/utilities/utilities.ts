@@ -322,6 +322,21 @@ export function expandFilePathTilda(filepath: string): string {
     return filepath;
 }
 
+/**
+ * Transforms a file, line and optional column in to a vscode.Location.
+ * The line numbers are expected to start at 1, not 0.
+ * @param string A file path
+ * @param line A line number, starting at 1
+ * @param column An optional column
+ */
+export function sourceLocationToVSCodeLocation(
+    file: string,
+    line: number,
+    column?: number
+): vscode.Location {
+    return new vscode.Location(vscode.Uri.file(file), new vscode.Position(line - 1, column ?? 0));
+}
+
 const regexEscapedCharacters = new Set(["(", ")", "[", "]", ".", "$", "^", "?", "|", "/", ":"]);
 /**
  * Escapes regular expression special characters with a backslash.

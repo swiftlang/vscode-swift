@@ -78,8 +78,10 @@ export function updateTests(
         ) {
             const collection = testItem.parent ? testItem.parent.children : testController.items;
 
-            // TODO: This needs to take in to account parameterized tests with no URI, when they're added.
-            if (testItem.children.size === 0) {
+            if (
+                testItem.children.size === 0 ||
+                testItemHasParameterizedTestResultChildren(testItem)
+            ) {
                 collection.delete(testItem.id);
             }
         }
@@ -94,6 +96,21 @@ export function updateTests(
     testItems.forEach(testItem => {
         upsertTestItem(testController, testItem);
     });
+}
+
+/**
+ * Returns true if all children have no URI.
+ * This indicates the test item is parameterized and the children are the results.
+ */
+function testItemHasParameterizedTestResultChildren(testItem: vscode.TestItem) {
+    return (
+        testItem.children.size > 0 &&
+        reduceTestItemChildren(
+            testItem.children,
+            (acc, child) => acc || child.uri !== undefined,
+            false
+        ) === false
+    );
 }
 
 /**

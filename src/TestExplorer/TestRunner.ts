@@ -552,6 +552,7 @@ export class TestRunner {
             {
                 cwd: testBuildConfig.cwd,
                 env: { ...process.env, ...testBuildConfig.env },
+                maxBuffer: 16 * 1024 * 1024,
             },
             this.folderContext,
             false,
@@ -582,6 +583,7 @@ export class TestRunner {
                 {
                     cwd: testBuildConfig.cwd,
                     env: { ...process.env, ...testBuildConfig.env, SWT_SF_SYMBOLS_ENABLED: "0" },
+                    maxBuffer: 16 * 1024 * 1024,
                 },
                 this.folderContext,
                 false,
@@ -632,6 +634,7 @@ export class TestRunner {
                     {
                         cwd: testBuildConfig.cwd,
                         env: { ...process.env, ...testBuildConfig.env },
+                        maxBuffer: 16 * 1024 * 1024,
                     },
                     this.folderContext,
                     false,
