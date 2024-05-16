@@ -18,7 +18,22 @@ import {
     runTests,
     downloadAndUnzipVSCode,
     resolveCliPathFromVSCodeExecutablePath,
+    ConsoleReporter,
+    ProgressReport,
 } from "@vscode/test-electron";
+
+class CIReporter extends ConsoleReporter {
+    constructor(private showProgress: boolean) {
+        super(showProgress);
+    }
+    report(report: ProgressReport): void {
+        if (report.stage === "downloading" && !this.showProgress) {
+            // suppress
+        } else {
+            super.report(report);
+        }
+    }
+}
 
 async function main() {
     try {
@@ -30,7 +45,9 @@ async function main() {
         // Passed to --extensionTestsPath
         const extensionTestsPath = path.resolve(__dirname, "./suite/index");
 
-        const vscodeExecutablePath = await downloadAndUnzipVSCode();
+        const vscodeExecutablePath = await downloadAndUnzipVSCode({
+            reporter: new CIReporter(process.env["CI"] !== "1"),
+        });
         const cliPath = resolveCliPathFromVSCodeExecutablePath(vscodeExecutablePath);
 
         // Use cp.spawn / cp.exec for custom setup
@@ -51,6 +68,7 @@ async function main() {
             extensionDevelopmentPath,
             extensionTestsPath,
             launchArgs: [
+                "--disable-gpu",
                 // Already start in the fixtures dir because we lose debugger connection
                 // once we re-open a different folder due to window reloading
                 path.join(extensionDevelopmentPath, "assets/test"),
@@ -58,7 +76,7 @@ async function main() {
             reuseMachineInstall: true,
         });
     } catch (err) {
-        console.error("Failed to run tests");
+        console.error("Failed to run tests:", err);
         process.exit(1);
     }
 }

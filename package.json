@@ -1163,7 +1163,7 @@
     "lint": "eslint ./ --ext ts && tsc --noEmit",
     "format": "prettier --check src test",
     "pretest": "npm run compile && npm run lint",
-    "test": "tsc -p ./ && node ./out/test/runTest.js",
+    "test": "find . -type d -name '.build' -exec rm -rf {} + && find . -type d -name 'Package.resolved' -exec rm -rf {} + && tsc -p ./ && node ./out/test/runTest.js",
     "package": "vsce package",
     "dev-package": "vsce package --no-update-package-json 1.9.1-dev",
     "preview-package": "vsce package --pre-release",

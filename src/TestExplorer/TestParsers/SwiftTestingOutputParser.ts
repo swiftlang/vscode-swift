@@ -296,7 +296,6 @@ export class SwiftTestingOutputParser {
                 });
 
                 if (testID !== item.payload.testID) {
-                    // const testName = this.testName(item.payload.testID);
                     const testIndex = this.getTestCaseIndex(runState, item.payload.testID);
                     item.payload.messages.forEach(message => {
                         runState.recordIssue(testIndex, message.text, location);

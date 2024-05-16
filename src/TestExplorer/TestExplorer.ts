@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import { getErrorDescription, isPathInsidePath } from "../utilities/utilities";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
-import { TestRunner } from "./TestRunner";
+import { TestRunProxy, TestRunner } from "./TestRunner";
 import { LSPTestDiscovery } from "./LSPTestDiscovery";
 import { Version } from "../utilities/version";
 import configuration from "../configuration";
@@ -31,11 +31,22 @@ import { parseTestsFromDocumentSymbols } from "./DocumentSymbolTestDiscovery";
 export class TestExplorer {
     static errorTestItemId = "#Error#";
     public controller: vscode.TestController;
+    public testRunProfiles: vscode.TestRunProfile[];
     private lspTestDiscovery: LSPTestDiscovery;
     private subscriptions: { dispose(): unknown }[];
     private testFileEdited = true;
 
+    // Emits after the `vscode.TestController` has been updated.
+    private onTestItemsDidChangeEmitter = new vscode.EventEmitter<vscode.TestController>();
+    public onTestItemsDidChange: vscode.Event<vscode.TestController>;
+
+    private onDidCreateTestRunEmitter = new vscode.EventEmitter<TestRunProxy>();
+    public onCreateTestRun: vscode.Event<TestRunProxy>;
+
     constructor(public folderContext: FolderContext) {
+        this.onTestItemsDidChange = this.onTestItemsDidChangeEmitter.event;
+        this.onCreateTestRun = this.onDidCreateTestRunEmitter.event;
+
         this.controller = vscode.tests.createTestController(
             folderContext.name,
             `${folderContext.name} Tests`
@@ -49,7 +60,11 @@ export class TestExplorer {
             }
         };
 
-        TestRunner.setupProfiles(this.controller, this.folderContext);
+        this.testRunProfiles = TestRunner.setupProfiles(
+            this.controller,
+            this.folderContext,
+            this.onDidCreateTestRunEmitter
+        );
 
         this.lspTestDiscovery = new LSPTestDiscovery(
             folderContext.workspaceContext.languageClientManager
@@ -86,6 +101,7 @@ export class TestExplorer {
     }
 
     dispose() {
+        this.onTestItemsDidChangeEmitter.dispose();
         this.subscriptions.forEach(element => element.dispose());
     }
 
@@ -168,11 +184,20 @@ export class TestExplorer {
                         // Fallback to parsing document symbols for XCTests only
                         .catch(() => parseTestsFromDocumentSymbols(target.name, symbols, uri))
                         .then(tests => {
-                            TestDiscovery.updateTests(testExplorer.controller, tests, uri);
+                            testExplorer.updateTests(testExplorer.controller, tests, uri);
                         });
                 }
             }
         }
+    }
+
+    private updateTests(
+        controller: vscode.TestController,
+        tests: TestDiscovery.TestClass[],
+        uri?: vscode.Uri
+    ) {
+        TestDiscovery.updateTests(controller, tests, uri);
+        this.onTestItemsDidChangeEmitter.fire(controller);
     }
 
     /**
@@ -235,7 +260,7 @@ export class TestExplorer {
                         explorer.deleteErrorTestItem();
 
                         const tests = parseTestsFromSwiftTestListOutput(stdout);
-                        TestDiscovery.updateTests(explorer.controller, tests);
+                        explorer.updateTests(explorer.controller, tests);
                     }
                 );
                 await explorer.folderContext.taskQueue.queueOperation(listTestsOperation);
@@ -295,11 +320,13 @@ export class TestExplorer {
             this.folderContext.swiftPackage
         );
         TestDiscovery.updateTestsFromClasses(this.folderContext, tests);
+        this.onTestItemsDidChangeEmitter.fire(this.controller);
     }
 
     /** Delete TestItem with error id */
     private deleteErrorTestItem() {
         this.controller.items.delete(TestExplorer.errorTestItemId);
+        this.onTestItemsDidChangeEmitter.fire(this.controller);
     }
 
     /**
@@ -315,5 +342,6 @@ export class TestExplorer {
             errorItem.error = errorDescription;
             this.controller.items.add(errorItem);
         }
+        this.onTestItemsDidChangeEmitter.fire(this.controller);
     }
 }

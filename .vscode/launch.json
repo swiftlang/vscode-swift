@@ -25,6 +25,7 @@
 			"type": "extensionHost",
 			"request": "launch",
 			"args": [
+				"--profile=testing-debug",
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--extensionTestsPath=${workspaceFolder}/out/test/suite/index",
 				"${workspaceFolder}/assets/test"
