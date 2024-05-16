@@ -22,6 +22,7 @@ export function run(): Promise<void> {
         ui: "tdd",
         color: true,
         timeout: 3000,
+        forbidOnly: process.env["CI"] === "1",
     });
 
     const testsRoot = path.resolve(__dirname, "..");
