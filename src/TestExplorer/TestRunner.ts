@@ -42,7 +42,7 @@ import { TestXUnitParser, iXUnitTestState } from "./TestXUnitParser";
 import { ITestRunState } from "./TestParsers/TestRunState";
 import { TestRunArguments } from "./TestRunArguments";
 import { TemporaryFolder } from "../utilities/tempFolder";
-import { TestClass, upsertTestItem } from "./TestDiscovery";
+import { TestClass, runnableTag, upsertTestItem } from "./TestDiscovery";
 
 /** Workspace Folder events */
 export enum TestKind {
@@ -265,7 +265,8 @@ export class TestRunner {
                 const runner = new TestRunner(request, folderContext, controller);
                 await runner.runHandler(false, TestKind.standard, token);
             },
-            true
+            true,
+            runnableTag
         );
         // Add non-debug profile
         controller.createRunProfile(
@@ -274,7 +275,9 @@ export class TestRunner {
             async (request, token) => {
                 const runner = new TestRunner(request, folderContext, controller);
                 await runner.runHandler(false, TestKind.parallel, token);
-            }
+            },
+            false,
+            runnableTag
         );
         // Add coverage profile
         controller.createRunProfile(
@@ -283,7 +286,9 @@ export class TestRunner {
             async (request, token) => {
                 const runner = new TestRunner(request, folderContext, controller);
                 await runner.runHandler(false, TestKind.coverage, token);
-            }
+            },
+            false,
+            runnableTag
         );
         // Add debug profile
         controller.createRunProfile(
@@ -292,7 +297,9 @@ export class TestRunner {
             async (request, token) => {
                 const runner = new TestRunner(request, folderContext, controller);
                 await runner.runHandler(true, TestKind.standard, token);
-            }
+            },
+            false,
+            runnableTag
         );
     }
 

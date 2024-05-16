@@ -24,6 +24,8 @@ export interface TestClass extends Omit<Omit<LSPTestItem, "location">, "children
     children: TestClass[];
 }
 
+export const runnableTag = new vscode.TestTag("runnable");
+
 /**
  * Update Test Controller TestItems based off array of TestClasses.
  *
@@ -200,6 +202,11 @@ export function upsertTestItem(
 
     // Manually add the test style as a tag so we can filter by test type.
     newItem.tags = [{ id: testItem.style }, ...testItem.tags];
+
+    if (testItem.disabled === false) {
+        newItem.tags = [...newItem.tags, runnableTag];
+    }
+
     newItem.label = testItem.label;
     newItem.range = testItem.location?.range;
 
