@@ -180,22 +180,7 @@ class TestRunProxy {
     }
 
     public end() {
-        // If a test crashes out, for instance with a `fatalError`,
-        // then no results are reported. At the end of the run iterate
-        // all the tests that have no results and mark them with an error state.
-        this.testItems
-            .filter(testItem => this.isUnfinishedTest(testItem))
-            .forEach(unreported => {
-                this.errored(unreported, new vscode.TestMessage(`Test reported no results`));
-            });
-
         this.testRun?.end();
-    }
-
-    private isUnfinishedTest(testItem: vscode.TestItem): boolean {
-        // Leaf nodes not in the completed map are unfinished.
-        // Suites inherit their state in the Test Explorer from the leaf tests.
-        return !this.completedMap.has(testItem) && testItem.children.size === 0;
     }
 
     public appendOutput(output: string) {
