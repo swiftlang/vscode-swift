@@ -20,7 +20,7 @@ import {
 } from "../../../src/TestExplorer/TestParsers/XCTestOutputParser";
 import { TestRunState, TestStatus } from "./MockTestRunState";
 
-suite.only("XCTestOutputParser Suite", () => {
+suite("XCTestOutputParser Suite", () => {
     suite("Darwin", () => {
         const outputParser = new XCTestOutputParser(darwinTestRegex);
 
