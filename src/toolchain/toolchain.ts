@@ -315,7 +315,13 @@ export class SwiftToolchain {
                     }
                     case "win32": {
                         const { stdout } = await execFile("where", ["swift"]);
-                        swift = stdout.trimEnd();
+                        const paths = stdout.trimEnd().split("\r\n");
+                        if (paths.length > 1) {
+                            vscode.window.showWarningMessage(
+                                `Found multiple swift executables in in %PATH%. Using excutable found at ${paths[0]}`
+                            );
+                        }
+                        swift = paths[0];
                         break;
                     }
                     default: {
