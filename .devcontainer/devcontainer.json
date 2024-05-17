@@ -31,14 +31,14 @@
             ]
         }
     },
-    // Use 'forwardPorts' to make a list of ports inside the container available locally.
-    // "forwardPorts": [],
-
-    // Set `remoteUser` to `root` to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
-    "remoteUser": "vscode",
     "mounts": [
         "source=node_modules,target=${containerWorkspaceFolder}/node_modules,type=volume"
     ],
     // Use 'postCreateCommand' to run commands after the container is created.
-    "postCreateCommand": "chown vscode /usr/local/nvm & npm install"
+    "postCreateCommand": "sudo chown vscode node_modules && npm install",
+    // Use 'forwardPorts' to make a list of ports inside the container available locally.
+    // "forwardPorts": [],
+
+    // Set `remoteUser` to `root` to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
+    "remoteUser": "vscode"
 }
