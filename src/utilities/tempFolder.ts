@@ -16,10 +16,14 @@ import { tmpdir } from "os";
 import * as path from "path";
 import * as fs from "fs/promises";
 import { randomString } from "./utilities";
+import { Disposable } from "vscode";
 
 export class TemporaryFolder {
     private constructor(public path: string) {}
 
+    public createDisposableFileCollection(): DisposableFileCollection {
+        return new DisposableFileCollection(this);
+    }
     /**
      * Return random filename inside temporary folder
      * @param prefix Prefix of file
@@ -87,5 +91,24 @@ export class TemporaryFolder {
             await fs.rm(path, { force: true });
             throw error;
         }
+    }
+}
+
+export class DisposableFileCollection implements Disposable {
+    private files: string[] = [];
+
+    constructor(private folder: TemporaryFolder) {}
+
+    public file(prefix: string, extension?: string): string {
+        const filename = this.folder.filename(prefix, extension);
+        this.files.push(filename);
+        return filename;
+    }
+
+    async dispose() {
+        for (const file of this.files) {
+            await fs.rm(file, { force: true });
+        }
+        this.files = [];
     }
 }

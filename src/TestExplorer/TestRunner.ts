@@ -17,14 +17,9 @@ import * as path from "path";
 import * as stream from "stream";
 import * as os from "os";
 import * as asyncfs from "fs/promises";
-import {
-    createXCTestConfiguration,
-    createSwiftTestConfiguration,
-    createDarwinTestConfiguration,
-} from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
+import { execFile, getErrorDescription } from "../utilities/utilities";
 import { getBuildAllTask } from "../tasks/SwiftTaskProvider";
-import { execFile, getErrorDescription, regexEscapedString } from "../utilities/utilities";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { XCTestOutputParser } from "./TestParsers/XCTestOutputParser";
@@ -37,8 +32,9 @@ import { ITestRunState } from "./TestParsers/TestRunState";
 import { TestRunArguments } from "./TestRunArguments";
 import { TemporaryFolder } from "../utilities/tempFolder";
 import { TestClass, runnableTag, upsertTestItem } from "./TestDiscovery";
-import { SwiftProcess } from "../tasks/SwiftProcess";
-import { TestCoverage } from "../coverage/TestCoverage";
+import { TestCoverage } from "../coverage/LcovResults";
+import { DebugConfigurationFactory } from "../debugger/buildConfig";
+import { SwiftPtyProcess } from "../tasks/SwiftProcess";
 
 /** Workspace Folder events */
 export enum TestKind {
@@ -55,6 +51,11 @@ export enum RunProfileName {
     runParallel = "Run Tests (Parallel)",
     coverage = "Test Coverage",
     debug = "Debug Tests",
+}
+
+export enum TestLibrary {
+    xctest = "XCTest",
+    swiftTesting = "swift-testing",
 }
 
 export class TestRunProxy {
@@ -388,13 +389,13 @@ export class TestRunner {
                     await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
                 }
 
-                const testBuildConfig =
-                    await LaunchConfigurations.createLaunchConfigurationForSwiftTesting(
-                        this.testArgs.swiftTestArgs,
-                        this.folderContext,
-                        fifoPipePath,
-                        testKind === TestKind.coverage
-                    );
+                const testBuildConfig = DebugConfigurationFactory.swiftTestingConfig(
+                    this.folderContext,
+                    fifoPipePath,
+                    testKind,
+                    this.testArgs.swiftTestArgs,
+                    true
+                );
 
                 if (testBuildConfig === null) {
                     return;
@@ -422,18 +423,18 @@ export class TestRunner {
                     testKind === TestKind.parallel ? TestKind.standard : testKind,
                     token,
                     outputStream,
-                    testBuildConfig
+                    testBuildConfig,
+                    TestLibrary.swiftTesting
                 );
             });
         }
 
         if (this.testArgs.hasXCTests) {
-            const testBuildConfig = LaunchConfigurations.createLaunchConfigurationForXCTestTesting(
-                this.testArgs.xcTestArgs,
-                this.workspaceContext,
+            const testBuildConfig = DebugConfigurationFactory.xcTestConfig(
                 this.folderContext,
-                false,
-                testKind === TestKind.coverage
+                testKind,
+                this.testArgs.xcTestArgs,
+                true
             );
             if (testBuildConfig === null) {
                 return;
@@ -456,7 +457,13 @@ export class TestRunner {
             // XCTestRuns are started immediately
             this.testRun.testRunStarted();
 
-            await this.launchTests(testKind, token, parsedOutputStream, testBuildConfig);
+            await this.launchTests(
+                testKind,
+                token,
+                parsedOutputStream,
+                testBuildConfig,
+                TestLibrary.xctest
+            );
         }
     }
 
@@ -464,13 +471,19 @@ export class TestRunner {
         testKind: TestKind,
         token: vscode.CancellationToken,
         outputStream: stream.Writable,
-        testBuildConfig: vscode.DebugConfiguration
+        testBuildConfig: vscode.DebugConfiguration,
+        testLibrary: TestLibrary
     ) {
         this.testRun.appendOutput(`> Test run started at ${new Date().toLocaleString()} <\r\n\r\n`);
         try {
             switch (testKind) {
                 case TestKind.coverage:
-                    await this.runCoverageSession(token, outputStream, testBuildConfig);
+                    await this.runCoverageSession(
+                        token,
+                        outputStream,
+                        testBuildConfig,
+                        testLibrary
+                    );
                     break;
                 case TestKind.parallel:
                     await this.runParallelSession(token, outputStream, testBuildConfig);
@@ -500,7 +513,7 @@ export class TestRunner {
             let didError = false;
             let cancellation: vscode.Disposable;
 
-            const exec = new SwiftProcess(testBuildConfig.program, args, {
+            const exec = new SwiftPtyProcess(testBuildConfig.program, args, {
                 cwd: testBuildConfig.cwd,
                 env: { ...process.env, ...testBuildConfig.env },
             });
@@ -552,7 +565,8 @@ export class TestRunner {
     async runCoverageSession(
         token: vscode.CancellationToken,
         outputStream: stream.Writable,
-        testBuildConfig: vscode.DebugConfiguration
+        testBuildConfig: vscode.DebugConfiguration,
+        testLibrary: TestLibrary
     ) {
         try {
             await this.runStandardSession(token, outputStream, testBuildConfig);
@@ -563,7 +577,7 @@ export class TestRunner {
             }
         }
 
-        await this.testRun.coverage.captureCoverage();
+        await this.testRun.coverage.captureCoverage(testLibrary);
     }
 
     /** Run tests in parallel outside of debugger */
@@ -630,13 +644,13 @@ export class TestRunner {
             }
 
             if (this.testArgs.hasSwiftTestingTests) {
-                const swiftTestBuildConfig =
-                    await LaunchConfigurations.createLaunchConfigurationForSwiftTesting(
-                        this.testArgs.swiftTestArgs,
-                        this.folderContext,
-                        fifoPipePath,
-                        false
-                    );
+                const swiftTestBuildConfig = DebugConfigurationFactory.swiftTestingConfig(
+                    this.folderContext,
+                    fifoPipePath,
+                    TestKind.standard,
+                    this.testArgs.swiftTestArgs,
+                    true
+                );
 
                 if (swiftTestBuildConfig !== null) {
                     // given we have already run a build task there is no need to have a pre launch task
@@ -675,14 +689,12 @@ export class TestRunner {
 
                 // create launch config for testing
                 if (this.testArgs.hasXCTests) {
-                    const xcTestBuildConfig =
-                        await LaunchConfigurations.createLaunchConfigurationForXCTestTesting(
-                            this.testArgs.xcTestArgs,
-                            this.workspaceContext,
-                            this.folderContext,
-                            true,
-                            false
-                        );
+                    const xcTestBuildConfig = DebugConfigurationFactory.xcTestConfig(
+                        this.folderContext,
+                        TestKind.standard,
+                        this.testArgs.xcTestArgs,
+                        true
+                    );
 
                     if (xcTestBuildConfig !== null) {
                         // given we have already run a build task there is no need to have a pre launch task
@@ -794,111 +806,6 @@ export class TestRunner {
         } else {
             return new NonDarwinTestItemFinder(this.testArgs.testItems, this.folderContext);
         }
-    }
-}
-
-class LaunchConfigurations {
-    /**
-     * Edit launch configuration to run tests
-     * @param debugging Do we need this configuration for debugging
-     * @param outputFile Debug output file
-     * @returns
-     */
-    static createLaunchConfigurationForXCTestTesting(
-        args: string[],
-        workspaceContext: WorkspaceContext,
-        folderContext: FolderContext,
-        debugging: boolean,
-        coverage: boolean
-    ): vscode.DebugConfiguration | null {
-        const testList = args.join(",");
-
-        if (process.platform === "darwin") {
-            // if debugging on macOS with Swift 5.6 we need to create a custom launch
-            // configuration so we can set the system architecture
-            const swiftVersion = workspaceContext.toolchain.swiftVersion;
-            if (
-                debugging &&
-                swiftVersion.isLessThan(new Version(5, 7, 0)) &&
-                swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))
-            ) {
-                let testFilterArg: string;
-                if (testList.length > 0) {
-                    testFilterArg = `-XCTest ${testList}`;
-                } else {
-                    testFilterArg = "";
-                }
-                const testBuildConfig = createDarwinTestConfiguration(folderContext, testFilterArg);
-                if (testBuildConfig === null) {
-                    return null;
-                }
-                return testBuildConfig;
-            } else {
-                const testBuildConfig = createXCTestConfiguration(folderContext, true);
-                if (testBuildConfig === null) {
-                    return null;
-                }
-
-                let additionalArgs: string[] = [];
-                if (testList.length > 0) {
-                    additionalArgs = args.flatMap(arg => ["--filter", regexEscapedString(arg)]);
-                }
-
-                if (coverage) {
-                    additionalArgs = [...additionalArgs, "--enable-code-coverage"];
-                }
-
-                testBuildConfig.args = [...testBuildConfig.args, ...additionalArgs];
-                testBuildConfig.terminal = "console";
-
-                return testBuildConfig;
-            }
-        } else {
-            const testBuildConfig = createXCTestConfiguration(folderContext, true);
-            if (testBuildConfig === null) {
-                return null;
-            }
-
-            let testFilterArg: string[] = [];
-            if (testList.length > 0) {
-                testFilterArg = args.flatMap(arg => ["--filter", regexEscapedString(arg)]);
-            }
-            if (coverage) {
-                testFilterArg = [...testFilterArg, "--enable-code-coverage"];
-            }
-            testBuildConfig.args = [...testBuildConfig.args, ...testFilterArg];
-
-            // output test logging to debug console so we can catch it with a tracker
-            testBuildConfig.terminal = "console";
-            return testBuildConfig;
-        }
-    }
-
-    static async createLaunchConfigurationForSwiftTesting(
-        args: string[],
-        folderContext: FolderContext,
-        fifoPipePath: string,
-        coverage: boolean
-    ): Promise<vscode.DebugConfiguration | null> {
-        const testList = args.join(",");
-
-        const testBuildConfig = createSwiftTestConfiguration(folderContext, fifoPipePath, true);
-        if (testBuildConfig === null) {
-            return null;
-        }
-
-        let additionalArgs: string[] = [];
-        if (testList.length > 0) {
-            additionalArgs = args.flatMap(arg => ["--filter", regexEscapedString(arg)]);
-        }
-
-        if (coverage) {
-            additionalArgs = [...additionalArgs, "--enable-code-coverage"];
-        }
-
-        testBuildConfig.args = [...testBuildConfig.args, ...additionalArgs];
-        testBuildConfig.terminal = "console";
-        return testBuildConfig;
     }
 }
 
