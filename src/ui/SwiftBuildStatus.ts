@@ -12,10 +12,20 @@
 //
 //===----------------------------------------------------------------------===//
 
+import stripAnsi = require("strip-ansi");
 import * as vscode from "vscode";
-import configuration from "../configuration";
-import { StatusItem } from "./StatusItem";
-import { SwiftTask } from "../tasks/SwiftTask";
+import configuration, { ShowBuildStatusOptions } from "../configuration";
+import { RunningTask, StatusItem } from "./StatusItem";
+import { SwiftExecution } from "../tasks/SwiftExecution";
+
+/**
+ * Progress of `swift` build, parsed from the
+ * output, ex. `[6/7] Building main.swift`
+ */
+interface SwiftProgress {
+    completed: number;
+    total: number;
+}
 
 /**
  * This class will handle detecting and updating the status
@@ -39,34 +49,111 @@ export class SwiftBuildStatus implements vscode.Disposable {
         this.onDidStartTaskDisposible.dispose();
     }
 
-    private handleTaskStatus(task: vscode.Task) {
-        if (!(task instanceof SwiftTask)) {
+    private handleTaskStatus(task: vscode.Task): void {
+        // Only care about swift tasks
+        if (!(task.execution && task.execution instanceof SwiftExecution)) {
             return;
         }
-        const swiftTask = task as SwiftTask;
+        // Default to setting if task doesn't overwrite
+        const showBuildStatus: ShowBuildStatusOptions =
+            task.definition.showBuildStatus || configuration.showBuildStatus;
+        if (showBuildStatus === "never") {
+            return;
+        }
+
+        const execution = task.execution as SwiftExecution;
         const disposables: vscode.Disposable[] = [];
-        this.statusItem.showStatusWhileRunning<void>(
-            task,
-            () =>
-                new Promise<void>(res => {
-                    const done = () => {
-                        disposables.forEach(d => d.dispose());
-                        res();
-                    };
-                    disposables.push(
-                        swiftTask.onBuildComplete(done),
-                        swiftTask.onProgress(progress =>
-                            this.statusItem.update(
-                                task,
-                                `Building "${task.name}" (${progress.completed}/${progress.total})`
-                            )
-                        ),
-                        swiftTask.onFetching(() =>
-                            this.statusItem.update(task, `Fetching dependencies "${task.name}"`)
-                        ),
-                        swiftTask.onDidClose(done)
-                    );
-                })
-        );
+        const handleTaskOutput = (update: (message: string) => void) =>
+            new Promise<void>(res => {
+                const done = () => {
+                    disposables.forEach(d => d.dispose());
+                    res();
+                };
+                disposables.push(
+                    execution.onDidWrite(data => {
+                        if (this.parseEvents(task, data, update)) {
+                            done();
+                        }
+                    }),
+                    execution.onDidClose(done)
+                );
+            });
+        if (showBuildStatus === "progress" || showBuildStatus === "notification") {
+            vscode.window.withProgress<void>(
+                {
+                    location:
+                        showBuildStatus === "progress"
+                            ? vscode.ProgressLocation.Window
+                            : vscode.ProgressLocation.Notification,
+                },
+                progress => handleTaskOutput(message => progress.report({ message }))
+            );
+        } else {
+            this.statusItem.showStatusWhileRunning(task, () =>
+                handleTaskOutput(message => this.statusItem.update(task, message))
+            );
+        }
+    }
+
+    /**
+     * @param data
+     * @returns true if done, false otherwise
+     */
+    private parseEvents(
+        task: vscode.Task,
+        data: string,
+        update: (message: string) => void
+    ): boolean {
+        const name = new RunningTask(task).name;
+        const sanitizedData = stripAnsi(data);
+        // We'll process data one line at a time, in reverse order
+        // since the latest interesting message is all we need to
+        // be concerned with
+        const lines = sanitizedData.split(/\r\n|\n|\r/gm).reverse();
+        for (const line of lines) {
+            if (this.checkIfBuildComplete(line)) {
+                return true;
+            }
+            const progress = this.findBuildProgress(line);
+            if (progress) {
+                update(`"${name}" [${progress.completed}/${progress.total}]`);
+                return false;
+            }
+            if (this.checkIfFetching(line)) {
+                // this.statusItem.update(task, `Fetching dependencies "${task.name}"`);
+                update(`"${name}" fetching dependencies`);
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private checkIfBuildComplete(line: string): boolean {
+        // Output in this format for "build" and "test" commands
+        const completeRegex = /^Build complete!/gm;
+        let match = completeRegex.exec(line);
+        if (match) {
+            return true;
+        }
+        // Output in this format for "run" commands
+        const productCompleteRegex = /^Build of product '.*' complete!/gm;
+        match = productCompleteRegex.exec(line);
+        if (match) {
+            return true;
+        }
+        return false;
+    }
+
+    private checkIfFetching(line: string): boolean {
+        const fetchRegex = /^Fetching\s/gm;
+        return !!fetchRegex.exec(line);
+    }
+
+    private findBuildProgress(line: string): SwiftProgress | undefined {
+        const buildingRegex = /^\[(\d+)\/(\d+)\]/g;
+        const match = buildingRegex.exec(line);
+        if (match) {
+            return { completed: parseInt(match[1]), total: parseInt(match[2]) };
+        }
     }
 }

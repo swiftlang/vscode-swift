@@ -15,8 +15,9 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import { SwiftProcess } from "../src/tasks/SwiftProcess";
-import { SwiftExecution, SwiftExecutionOptions } from "../src/tasks/SwiftExecution";
-import { SwiftTask } from "../src/tasks/SwiftTask";
+import { SwiftExecution } from "../src/tasks/SwiftExecution";
+import { SwiftTask, createSwiftTask } from "../src/tasks/SwiftTaskProvider";
+import { SwiftToolchain } from "../src/toolchain/toolchain";
 
 /** Workspace folder class */
 class TestWorkspaceFolder implements vscode.WorkspaceFolder {
@@ -118,27 +119,20 @@ export function testSwiftTask(
     command: string,
     args: string[],
     workspaceFolder: vscode.WorkspaceFolder,
-    options?: SwiftExecutionOptions
+    toolchain: SwiftToolchain
 ): SwiftTaskFixture {
     const process = new TestSwiftProcess(command, args);
     const execution = new SwiftExecution(command, args, {}, process);
-    const detail = [command, ...args].join(" ");
-    const task = new SwiftTask(
-        {
-            type: "swift",
-            args,
-            env: options?.env ?? {},
-            cwd: options?.cwd || workspaceFolder.uri.fsPath,
-        },
-        workspaceFolder,
-        detail,
-        detail,
-        "swift",
-        command,
+    const task = createSwiftTask(
         args,
-        [],
-        execution
+        "my test task",
+        {
+            cwd: workspaceFolder.uri,
+            scope: workspaceFolder,
+        },
+        toolchain
     );
+    task.execution = execution;
     return {
         task,
         process,

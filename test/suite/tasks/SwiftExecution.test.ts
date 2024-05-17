@@ -18,13 +18,16 @@ import { testSwiftTask } from "../../fixtures";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { globalWorkspaceContextPromise } from "../extension.test";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities";
+import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 
 suite("SwiftExecution Tests Suite", () => {
     let workspaceContext: WorkspaceContext;
+    let toolchain: SwiftToolchain;
     let workspaceFolder: vscode.WorkspaceFolder;
 
     suiteSetup(async () => {
         workspaceContext = await globalWorkspaceContextPromise;
+        toolchain = await SwiftToolchain.create();
         assert.notEqual(workspaceContext.folders.length, 0);
         workspaceFolder = workspaceContext.folders[0].workspaceFolder;
     });
@@ -34,7 +37,7 @@ suite("SwiftExecution Tests Suite", () => {
     });
 
     test("Close event handler fires", async () => {
-        const fixture = testSwiftTask("swift", ["build"], workspaceFolder);
+        const fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
         const promise = executeTaskAndWaitForResult(fixture);
         fixture.process.close(1);
         const { exitCode } = await promise;
@@ -42,7 +45,7 @@ suite("SwiftExecution Tests Suite", () => {
     });
 
     test("Write event handler fires", async () => {
-        const fixture = testSwiftTask("swift", ["build"], workspaceFolder);
+        const fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
         const promise = executeTaskAndWaitForResult(fixture);
         fixture.process.write("Fetching some dependency");
         fixture.process.write("[5/7] Building main.swift");

@@ -310,9 +310,21 @@
             "order": 14
           },
           "swift.showBuildStatus": {
-            "type": "boolean",
-            "default": true,
-            "description": "Show the build progress in the status bar when running a `swift` task.",
+            "type": "string",
+            "default": "swiftStatus",
+            "description": "Controls where to show the Swift build progress when running a `swift` build task.",
+            "enum": [
+              "never",
+              "swiftStatus",
+              "progress",
+              "notification"
+            ],
+            "enumDescriptions": [
+              "Never show the Swift build status.",
+              "Show the Swift build status in a status bar item provided by the Swift extension.",
+              "Show the Swift build status in the \"Progress Message\" status bar item provided by VSCode.",
+              "Show the Swift build status as a progress notification."
+            ],
             "order": 15
           }
         }
@@ -752,6 +764,16 @@
           "dontTriggerTestDiscovery": {
             "description": "Don't trigger the test discovery process.",
             "type": "boolean"
+          },
+          "showBuildStatus": {
+            "description": "Where to show the Swift build progress when running a `swift` build task. Default comes from the `swift.showBuildStatus` setting.",
+            "type": "string",
+            "enum": [
+              "never",
+              "swiftStatus",
+              "progress",
+              "notification"
+            ]
           },
           "macos": {
             "type": "object",

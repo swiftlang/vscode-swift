@@ -83,6 +83,7 @@ export async function debugSnippetWithOptions(
                 reveal: vscode.TaskRevealKind.Always,
             },
             problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
+            showBuildStatus: configuration.showBuildStatus,
         },
         ctx.toolchain
     );

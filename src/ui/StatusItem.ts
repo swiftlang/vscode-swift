@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 
-class RunningTask {
+export class RunningTask {
     constructor(public task: vscode.Task | string) {}
     get name(): string {
         if (this.task instanceof vscode.Task) {

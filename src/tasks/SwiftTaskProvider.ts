@@ -16,12 +16,12 @@ import * as vscode from "vscode";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderContext } from "../FolderContext";
 import { Product, TargetType } from "../SwiftPackage";
-import configuration from "../configuration";
+import configuration, { ShowBuildStatusOptions } from "../configuration";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { SwiftToolchain } from "../toolchain/toolchain";
-import { SwiftExecution } from "./SwiftExecution";
-import { SwiftTask, SwiftTaskDefinition } from "./SwiftTask";
+import { SwiftExecution } from "../tasks/SwiftExecution";
+import { resolveTaskCwd } from "../utilities/tasks";
 
 /**
  * References:
@@ -44,12 +44,17 @@ interface TaskConfig {
     prefix?: string;
     disableTaskQueue?: boolean;
     dontTriggerTestDiscovery?: boolean;
+    showBuildStatus?: ShowBuildStatusOptions;
 }
 
 interface TaskPlatformSpecificConfig {
     args?: string[];
     cwd?: string;
     env?: { [name: string]: unknown };
+}
+
+export interface SwiftTask extends vscode.Task {
+    execution: SwiftExecution;
 }
 
 /** flag for enabling test discovery */
@@ -134,6 +139,7 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
             },
             problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
             disableTaskQueue: true,
+            showBuildStatus: configuration.showBuildStatus,
         },
         folderContext.workspaceContext.toolchain
     );
@@ -214,6 +220,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
                 disableTaskQueue: true,
                 dontTriggerTestDiscovery: true,
+                showBuildStatus: configuration.showBuildStatus,
             },
             folderContext.workspaceContext.toolchain
         ),
@@ -230,6 +237,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
                 disableTaskQueue: true,
                 dontTriggerTestDiscovery: true,
+                showBuildStatus: configuration.showBuildStatus,
             },
             folderContext.workspaceContext.toolchain
         ),
@@ -237,7 +245,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
 }
 
 /**
- * Helper function to create a {@link SwiftTask} with the given parameters.
+ * Helper function to create a {@link vscode.Task Task} with the given parameters.
  */
 export function createSwiftTask(
     args: string[],
@@ -248,8 +256,9 @@ export function createSwiftTask(
     const swift = toolchain.getToolchainExecutable("swift");
     args = toolchain.buildFlags.withSwiftSDKFlags(args);
 
-    // Add relative path current working directory. Will be fully resolve in SwiftTask
+    // Add relative path current working directory
     const cwd = config.cwd.fsPath;
+    const fullCwd = config.cwd.fsPath;
 
     /* Currently there seems to be a bug in vscode where kicking off two tasks
      with the same definition but different scopes messes with the task
@@ -263,37 +272,40 @@ export function createSwiftTask(
         cwd = config.cwd.fsPath;
     }*/
     const env = { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() };
-
+    const presentation = config?.presentationOptions ?? {};
+    const task = new vscode.Task(
+        {
+            type: "swift",
+            args: args,
+            env: env,
+            cwd: cwd,
+            showBuildStatus: config.showBuildStatus,
+            disableTaskQueue: config.disableTaskQueue,
+            dontTriggerTestDiscovery: config.dontTriggerTestDiscovery,
+        },
+        config?.scope ?? vscode.TaskScope.Workspace,
+        name,
+        "swift",
+        new SwiftExecution(swift, args, {
+            cwd: fullCwd,
+            env: env,
+            presentation,
+        }),
+        config?.problemMatcher
+    );
     // This doesn't include any quotes added by VS Code.
     // See also: https://github.com/microsoft/vscode/issues/137895
+
     let prefix: string;
     if (config?.prefix) {
         prefix = `(${config.prefix}) `;
     } else {
         prefix = "";
     }
-    const detail = `${prefix}swift ${args.join(" ")}`;
-
-    const presentation = config?.presentationOptions ?? {};
-    const task = new SwiftTask(
-        {
-            type: "swift",
-            args,
-            env,
-            cwd,
-            disableTaskQueue: config.disableTaskQueue,
-            dontTriggerTestDiscovery: config.dontTriggerTestDiscovery,
-            presentation,
-        },
-        config?.scope ?? vscode.TaskScope.Workspace,
-        name,
-        detail,
-        "swift",
-        swift,
-        args,
-        config?.problemMatcher
-    );
-    return task;
+    task.detail = `${prefix}swift ${args.join(" ")}`;
+    task.group = config?.group;
+    task.presentationOptions = presentation;
+    return task as SwiftTask;
 }
 
 /**
@@ -399,25 +411,24 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         // get args and cwd values from either platform specific block or base
         const args = platform?.args ?? task.definition.args;
         const env = platform?.env ?? task.definition.env;
+        const fullCwd = resolveTaskCwd(task, platform?.cwd ?? task.definition.cwd);
 
         const presentation = task.definition.presentation ?? task.presentationOptions ?? {};
-        const detail = task.detail ?? `swift ${args.join(" ")}`;
-        const newTask = new SwiftTask(
-            {
-                presentation,
-                ...(task.definition as SwiftTaskDefinition),
-                cwd: platform?.cwd ?? task.definition.cwd,
-                env: { ...env, ...swiftRuntimeEnv() },
-            },
+        const newTask = new vscode.Task(
+            task.definition,
             task.scope ?? vscode.TaskScope.Workspace,
             task.name ?? "Swift Custom Task",
-            detail,
             "swift",
-            swift,
-            args,
+            new SwiftExecution(swift, args, {
+                cwd: fullCwd,
+                env: { ...env, ...swiftRuntimeEnv() },
+                presentation,
+            }),
             task.problemMatchers
         );
+        newTask.detail = task.detail ?? `swift ${args.join(" ")}`;
         newTask.group = task.group;
+        newTask.presentationOptions = presentation;
 
         return newTask;
     }

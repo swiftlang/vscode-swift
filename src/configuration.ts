@@ -21,6 +21,7 @@ type OpenAfterCreateNewProjectOptions =
     | "alwaysNewWindow"
     | "whenNoFolderOpen"
     | "prompt";
+export type ShowBuildStatusOptions = "never" | "swiftStatus" | "progress" | "notification";
 
 /** sourcekit-lsp configuration */
 export interface LSPConfiguration {
@@ -200,9 +201,11 @@ const configuration = {
             .getConfiguration("swift")
             .get<boolean>("problemMatchCompileErrors", true);
     },
-    /** show the build progress in the status bar for the running task */
-    get showBuildStatus(): boolean {
-        return vscode.workspace.getConfiguration("swift").get<boolean>("showBuildStatus", true);
+    /** where to show the build progress for the running task */
+    get showBuildStatus(): ShowBuildStatusOptions {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<ShowBuildStatusOptions>("showBuildStatus", "swiftStatus");
     },
     /** background compilation */
     get backgroundCompilation(): boolean {

@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import { SwiftTaskFixture } from "./fixtures";
-import { SwiftTask } from "../src/tasks/SwiftTask";
+import { SwiftTask } from "../src/tasks/SwiftTaskProvider";
 
 /**
  * Executes a {@link SwiftTask}, accumulates output, and
@@ -26,12 +26,12 @@ import { SwiftTask } from "../src/tasks/SwiftTask";
 export async function executeTaskAndWaitForResult(
     fixture: SwiftTaskFixture | SwiftTask
 ): Promise<{ exitCode?: number; output: string }> {
-    const task = fixture instanceof SwiftTask ? fixture : fixture.task;
+    const task = (fixture instanceof vscode.Task ? fixture : fixture.task) as SwiftTask;
     let output = "";
     const disposables = [task.execution.onDidWrite(e => (output += e))];
     const promise = new Promise<number | undefined>(res =>
         disposables.push(
-            task.onDidClose(e => {
+            task.execution.onDidClose(e => {
                 disposables.forEach(d => d.dispose());
                 res(typeof e === "number" ? e : undefined);
             })
