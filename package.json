@@ -53,6 +53,16 @@
     ],
     "commands": [
       {
+        "command": "swift.browsePackageIndex",
+        "title": "Browse Package Index...",
+        "category": "Swift"
+      },
+      {
+        "command": "swift.addPackageDependency",
+        "title": "Add Package Dependency...",
+        "category": "Swift"
+      },
+      {
         "command": "swift.createNewProject",
         "title": "Create New Project...",
         "category": "Swift"
@@ -535,6 +545,14 @@
         {
           "command": "swift.createNewProject",
           "when": "!swift.isActivated || swift.createNewProjectAvailable"
+        },
+        {
+          "command": "swift.browsePackageIndex",
+          "when": "swift.hasPackage"
+        },
+        {
+          "command": "swift.addPackageDependency",
+          "when": "swift.hasPackage"
         },
         {
           "command": "swift.updateDependencies",

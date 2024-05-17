@@ -249,6 +249,147 @@ export async function createNewProject(ctx: WorkspaceContext): Promise<void> {
 }
 
 /**
+ * Prompts the user to input project details and then executes `swift package init`
+ * to create the project.
+ */
+export async function browsePackageIndex(ctx: WorkspaceContext): Promise<void> {
+    // The context key `swift.browsePackageIndex` only works if the extension has been
+    // activated. As such, we also have to allow this command to run when no workspace is
+    // active. Show an error to the user if the command is unavailable.
+    if (!ctx.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
+        vscode.window.showErrorMessage(
+            "Creating a new swift project is only available starting in swift version 6.0.0."
+        );
+        return;
+    }
+
+    const panel = vscode.window.createWebviewPanel(
+        "swiftPackageIndex",
+        "Swift Package Index",
+        vscode.ViewColumn.One,
+        {
+            retainContextWhenHidden: true,
+            enableScripts: true,
+        }
+    );
+
+    panel.webview.onDidReceiveMessage(
+        message => {
+            switch (message.command) {
+                case "addSwiftPackage":
+                    addPackageDependency(ctx, message.url, message.version);
+                    return;
+                default:
+                    // Log message
+                    vscode.window.showErrorMessage(`An error occurred when adding packages`);
+                    return;
+            }
+        },
+        undefined,
+        ctx.subscriptions
+    );
+
+    panel.webview.html = `<html>
+        <iframe name="vscode_iframe" id="mainframe" src="http://localhost:8080/" style="position:fixed; top:0; left:0; bottom:0; right:0; width:100%; height:100%; border:none; margin:0; padding:0; overflow:hidden; z-index:999999;">
+            Your browser doesn't support iframes
+        </iframe>
+        <script>
+            const vscode = acquireVsCodeApi();
+            window.addEventListener('message', e => {
+                action = e.data.action;
+                if (action === "addPackage") {
+                    url = e.data.url
+                    version = e.data.version
+                    
+                    if (url && version) {
+                        vscode.postMessage({
+                            command: 'addSwiftPackage',
+                            url: url,
+                            version: version
+                        })
+                    } else {
+                        console.log("Unknown message: " + e)
+                    }
+                } else {
+                    console.log("Unknown message: " + e)
+                }
+            }, false);
+        </script>
+
+    </html>`;
+}
+
+export async function addPackageDependency(
+    ctx: WorkspaceContext,
+    url?: string,
+    version?: string
+): Promise<void> {
+    // The context key `swift.addPackageDependency` only works if the extension has been
+    // activated. As such, we also have to allow this command to run when no workspace is
+    // active. Show an error to the user if the command is unavailable.
+    if (!ctx.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
+        vscode.window.showErrorMessage(
+            "Adding a new swift package dependency is only available starting in swift version 6.0.0."
+        );
+        return;
+    }
+
+    if (!ctx.currentFolder) {
+        vscode.window.showErrorMessage("An error occurred when adding packages");
+        return;
+    }
+    const folderContext = ctx.currentFolder;
+
+    if (!url) {
+        url = await vscode.window.showInputBox({
+            prompt: "Enter the URL for the package",
+            validateInput(value) {
+                if (value.trim() === "") {
+                    return "URL cannot be empty.";
+                }
+                return undefined;
+            },
+        });
+
+        if (!url) {
+            return;
+        }
+    }
+
+    if (!version) {
+        version = await vscode.window.showInputBox({
+            prompt: "Enter the version for the package",
+            validateInput(value) {
+                if (value.trim() === "") {
+                    return "Version cannot be empty.";
+                }
+                return undefined;
+            },
+        });
+
+        if (!version) {
+            return;
+        }
+    }
+
+    const resolveTask = createSwiftTask(
+        ["package", "add-dependency", url, "--branch", version],
+        "Adding Package Dependency",
+        {
+            cwd: folderContext.folder,
+            scope: folderContext.workspaceFolder,
+            prefix: folderContext.name,
+            presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+        },
+        folderContext.workspaceContext.toolchain
+    );
+
+    await executeTaskWithUI(resolveTask, "Adding Package Dependency", folderContext);
+
+    await openPackage(ctx);
+}
+
+/**
  * Run `swift package update` inside a folder
  * @param folderContext folder to run update inside
  * @returns
@@ -840,6 +981,10 @@ function updateAfterError(result: boolean, folderContext: FolderContext) {
 export function register(ctx: WorkspaceContext) {
     ctx.subscriptions.push(
         vscode.commands.registerCommand("swift.createNewProject", () => createNewProject(ctx)),
+        vscode.commands.registerCommand("swift.browsePackageIndex", () => browsePackageIndex(ctx)),
+        vscode.commands.registerCommand("swift.addPackageDependency", (url, version) =>
+            addPackageDependency(ctx, url, version)
+        ),
         vscode.commands.registerCommand("swift.resolveDependencies", () =>
             resolveDependencies(ctx)
         ),
