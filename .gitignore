@@ -4,4 +4,3 @@ node_modules
 *.vsix
 .vscode-test
 .build
-.devcontainer
