@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import { ITestRunState } from "./TestRunState";
+import { sourceLocationToVSCodeLocation } from "../../utilities/utilities";
 
 /** Regex for parsing XCTest output */
 interface TestRegex {
@@ -238,10 +239,11 @@ export class XCTestOutputParser {
     ) {
         // If we were already capturing an error record it and start a new one
         if (runState.failedTest) {
-            runState.recordIssue(testIndex, runState.failedTest.message, {
-                file: runState.failedTest.file,
-                line: runState.failedTest.lineNumber,
-            });
+            const location = sourceLocationToVSCodeLocation(
+                runState.failedTest.file,
+                runState.failedTest.lineNumber
+            );
+            runState.recordIssue(testIndex, runState.failedTest.message, location);
             runState.failedTest.complete = true;
         }
         runState.failedTest = {
@@ -269,10 +271,11 @@ export class XCTestOutputParser {
     ) {
         if (testIndex !== -1) {
             if (runState.failedTest) {
-                runState.recordIssue(testIndex, runState.failedTest.message, {
-                    file: runState.failedTest.file,
-                    line: runState.failedTest.lineNumber,
-                });
+                const location = sourceLocationToVSCodeLocation(
+                    runState.failedTest.file,
+                    runState.failedTest.lineNumber
+                );
+                runState.recordIssue(testIndex, runState.failedTest.message, location);
             } else {
                 runState.recordIssue(testIndex, "Failed");
             }

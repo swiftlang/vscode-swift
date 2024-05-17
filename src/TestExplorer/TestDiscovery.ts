@@ -24,6 +24,8 @@ export interface TestClass extends Omit<Omit<LSPTestItem, "location">, "children
     children: TestClass[];
 }
 
+export const runnableTag = new vscode.TestTag("runnable");
+
 /**
  * Update Test Controller TestItems based off array of TestClasses.
  *
@@ -78,8 +80,10 @@ export function updateTests(
         ) {
             const collection = testItem.parent ? testItem.parent.children : testController.items;
 
-            // TODO: This needs to take in to account parameterized tests with no URI, when they're added.
-            if (testItem.children.size === 0) {
+            if (
+                testItem.children.size === 0 ||
+                testItemHasParameterizedTestResultChildren(testItem)
+            ) {
                 collection.delete(testItem.id);
             }
         }
@@ -94,6 +98,21 @@ export function updateTests(
     testItems.forEach(testItem => {
         upsertTestItem(testController, testItem);
     });
+}
+
+/**
+ * Returns true if all children have no URI.
+ * This indicates the test item is parameterized and the children are the results.
+ */
+function testItemHasParameterizedTestResultChildren(testItem: vscode.TestItem) {
+    return (
+        testItem.children.size > 0 &&
+        reduceTestItemChildren(
+            testItem.children,
+            (acc, child) => acc || child.uri !== undefined,
+            false
+        ) === false
+    );
 }
 
 /**
@@ -140,11 +159,11 @@ function deepMergeTestItemChildren(existingItem: vscode.TestItem, newItem: vscod
  * Updates the existing `vscode.TestItem` if it exists with the same ID as the `TestClass`,
  * otherwise creates an add a new one. The location on the returned vscode.TestItem is always updated.
  */
-function upsertTestItem(
+export function upsertTestItem(
     testController: vscode.TestController,
     testItem: TestClass,
     parent?: vscode.TestItem
-) {
+): vscode.TestItem {
     const collection = parent?.children ?? testController.items;
     const existingItem = collection.get(testItem.id);
     let newItem: vscode.TestItem;
@@ -161,6 +180,15 @@ function upsertTestItem(
             testItem.label,
             testItem.location?.uri
         );
+
+        // We want to keep existing children if they exist.
+        if (existingItem) {
+            const existingChildren: vscode.TestItem[] = [];
+            existingItem.children.forEach(child => {
+                existingChildren.push(child);
+            });
+            newItem.children.replace(existingChildren);
+        }
     } else {
         newItem = existingItem;
     }
@@ -174,6 +202,11 @@ function upsertTestItem(
 
     // Manually add the test style as a tag so we can filter by test type.
     newItem.tags = [{ id: testItem.style }, ...testItem.tags];
+
+    if (testItem.disabled === false) {
+        newItem.tags = [...newItem.tags, runnableTag];
+    }
+
     newItem.label = testItem.label;
     newItem.range = testItem.location?.range;
 
@@ -192,4 +225,6 @@ function upsertTestItem(
     testItem.children.forEach(child => {
         upsertTestItem(testController, child, newItem);
     });
+
+    return newItem;
 }

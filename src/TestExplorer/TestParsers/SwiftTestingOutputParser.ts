@@ -1,3 +1,4 @@
+import * as vscode from "vscode";
 import * as readline from "readline";
 import { Readable } from "stream";
 import {
@@ -6,8 +7,12 @@ import {
     WindowsNamedPipeReader,
 } from "./TestEventStreamReader";
 import { ITestRunState } from "./TestRunState";
+import { TestClass } from "../TestDiscovery";
+import { sourceLocationToVSCodeLocation } from "../../utilities/utilities";
 
 // All events produced by a swift-testing run will be one of these three types.
+// Detailed information about swift-testing's JSON schema is available here:
+// https://github.com/apple/swift-testing/blob/main/Documentation/ABI/JSON.md
 export type SwiftTestEvent = MetadataRecord | TestRecord | EventRecord;
 
 interface VersionedRecord {
@@ -21,7 +26,7 @@ interface MetadataRecord extends VersionedRecord {
 
 interface TestRecord extends VersionedRecord {
     kind: "test";
-    payload: Test;
+    payload: TestSuite | TestFunction;
 }
 
 export type EventRecordPayload =
@@ -43,15 +48,23 @@ interface Metadata {
     [key: string]: object; // Currently unstructured content
 }
 
-interface Test {
-    kind: "suite" | "function" | "parameterizedFunction";
+interface TestBase {
     id: string;
     name: string;
     _testCases?: TestCase[];
     sourceLocation: SourceLocation;
 }
 
-interface TestCase {
+interface TestSuite extends TestBase {
+    kind: "suite";
+}
+
+interface TestFunction extends TestBase {
+    kind: "function";
+    isParameterized: boolean;
+}
+
+export interface TestCase {
     id: string;
     displayName: string;
 }
@@ -76,6 +89,11 @@ interface BaseEvent {
     testID: string;
 }
 
+interface TestCaseEvent {
+    sourceLocation: SourceLocation;
+    _testCase: TestCase;
+}
+
 interface TestStarted extends BaseEvent {
     kind: "testStarted";
 }
@@ -84,11 +102,11 @@ interface TestEnded extends BaseEvent {
     kind: "testEnded";
 }
 
-interface TestCaseStarted extends BaseEvent {
+interface TestCaseStarted extends BaseEvent, TestCaseEvent {
     kind: "testCaseStarted";
 }
 
-interface TestCaseEnded extends BaseEvent {
+interface TestCaseEnded extends BaseEvent, TestCaseEvent {
     kind: "testCaseEnded";
 }
 
@@ -96,7 +114,7 @@ interface TestSkipped extends BaseEvent {
     kind: "testSkipped";
 }
 
-interface IssueRecorded extends BaseEvent {
+interface IssueRecorded extends BaseEvent, TestCaseEvent {
     kind: "issueRecorded";
     issue: {
         sourceLocation: SourceLocation;
@@ -115,6 +133,12 @@ export interface SourceLocation {
 
 export class SwiftTestingOutputParser {
     private completionMap = new Map<number, boolean>();
+    private testCaseMap = new Map<string, Map<string, TestCase>>();
+
+    constructor(
+        public testRunStarted: () => void,
+        public addParameterizedTestCase: (testClass: TestClass, parentIndex: number) => void
+    ) {}
 
     /**
      * Watches for test events on the named pipe at the supplied path.
@@ -155,30 +179,146 @@ export class SwiftTestingOutputParser {
         return !matches ? id : matches[1];
     }
 
+    private testCaseId(testId: string, testCaseId: string): string {
+        const testCase = this.testCaseMap.get(testId)?.get(testCaseId);
+        return testCase ? `${testId}/${this.idFromTestCase(testCase)}` : testId;
+    }
+
+    // Test cases do not have a unique ID if their arguments are not serializable
+    // with Codable. If they aren't, their id appears as `argumentIDs: nil`, and we
+    // fall back to using the testCase display name as the test case ID. This isn't
+    // ideal because its possible to have multiple test cases with the same display name,
+    // but until we have a better solution for identifying test cases it will have to do.
+    // SEE: rdar://119522099.
+    private idFromTestCase(testCase: TestCase): string {
+        return testCase.id === "argumentIDs: nil" ? testCase.displayName : testCase.id;
+    }
+
+    private parameterizedFunctionTestCaseToTestClass(
+        testId: string,
+        testCase: TestCase,
+        location: vscode.Location,
+        index: number
+    ): TestClass {
+        return {
+            id: this.testCaseId(testId, this.idFromTestCase(testCase)),
+            label: testCase.displayName,
+            tags: [],
+            children: [],
+            style: "swift-testing",
+            location: location,
+            disabled: true,
+            sortText: `${index}`.padStart(8, "0"),
+        };
+    }
+
+    private buildTestCaseMapForParameterizedTest(record: TestRecord) {
+        const map = new Map<string, TestCase>();
+        (record.payload._testCases ?? []).forEach(testCase => {
+            map.set(this.idFromTestCase(testCase), testCase);
+        });
+        this.testCaseMap.set(record.payload.id, map);
+    }
+
+    private getTestCaseIndex(runState: ITestRunState, testID: string): number {
+        const fullNameIndex = runState.getTestItemIndex(testID, undefined);
+        if (fullNameIndex === -1) {
+            return runState.getTestItemIndex(this.testName(testID), undefined);
+        }
+        return fullNameIndex;
+    }
+
     private parse(item: SwiftTestEvent, runState: ITestRunState) {
-        if (item.kind === "event") {
-            if (item.payload.kind === "testCaseStarted" || item.payload.kind === "testStarted") {
+        if (
+            item.kind === "test" &&
+            item.payload.kind === "function" &&
+            item.payload.isParameterized &&
+            item.payload._testCases
+        ) {
+            // Store a map of [Test ID, [Test Case ID, TestCase]] so we can quickly
+            // map an event.payload.testID back to a test case.
+            this.buildTestCaseMapForParameterizedTest(item);
+
+            const testName = this.testName(item.payload.id);
+            const testIndex = runState.getTestItemIndex(testName, undefined);
+            // If a test has test cases it is paramterized and we need to notify
+            // the caller that the TestClass should be added to the vscode.TestRun
+            // before it starts.
+            item.payload._testCases
+                .map((testCase, index) =>
+                    this.parameterizedFunctionTestCaseToTestClass(
+                        item.payload.id,
+                        testCase,
+                        sourceLocationToVSCodeLocation(
+                            item.payload.sourceLocation._filePath,
+                            item.payload.sourceLocation.line,
+                            item.payload.sourceLocation.column
+                        ),
+                        index
+                    )
+                )
+                .flatMap(testClass => (testClass ? [testClass] : []))
+                .forEach(testClass => this.addParameterizedTestCase(testClass, testIndex));
+        } else if (item.kind === "event") {
+            if (item.payload.kind === "runStarted") {
+                // Notify the runner that we've recieved all the test cases and
+                // are going to start running tests now.
+                this.testRunStarted();
+            } else if (item.payload.kind === "testStarted") {
                 const testName = this.testName(item.payload.testID);
                 const testIndex = runState.getTestItemIndex(testName, undefined);
+                runState.started(testIndex, item.payload.instant.absolute);
+            } else if (item.payload.kind === "testCaseStarted") {
+                const testID = this.testCaseId(
+                    item.payload.testID,
+                    this.idFromTestCase(item.payload._testCase)
+                );
+                const testIndex = this.getTestCaseIndex(runState, testID);
                 runState.started(testIndex, item.payload.instant.absolute);
             } else if (item.payload.kind === "testSkipped") {
                 const testName = this.testName(item.payload.testID);
                 const testIndex = runState.getTestItemIndex(testName, undefined);
                 runState.skipped(testIndex);
             } else if (item.payload.kind === "issueRecorded") {
-                const testName = this.testName(item.payload.testID);
-                const testIndex = runState.getTestItemIndex(testName, undefined);
+                const testID = this.testCaseId(
+                    item.payload.testID,
+                    this.idFromTestCase(item.payload._testCase)
+                );
+                const testIndex = this.getTestCaseIndex(runState, testID);
                 const sourceLocation = item.payload.issue.sourceLocation;
+                const location = sourceLocationToVSCodeLocation(
+                    sourceLocation._filePath,
+                    sourceLocation.line,
+                    sourceLocation.column
+                );
                 item.payload.messages.forEach(message => {
-                    runState.recordIssue(testIndex, message.text, {
-                        file: sourceLocation._filePath,
-                        line: sourceLocation.line,
-                        column: sourceLocation.column,
-                    });
+                    runState.recordIssue(testIndex, message.text, location);
                 });
-            } else if (item.payload.kind === "testCaseEnded" || item.payload.kind === "testEnded") {
+
+                if (testID !== item.payload.testID) {
+                    // const testName = this.testName(item.payload.testID);
+                    const testIndex = this.getTestCaseIndex(runState, item.payload.testID);
+                    item.payload.messages.forEach(message => {
+                        runState.recordIssue(testIndex, message.text, location);
+                    });
+                }
+            } else if (item.payload.kind === "testEnded") {
                 const testName = this.testName(item.payload.testID);
                 const testIndex = runState.getTestItemIndex(testName, undefined);
+
+                // When running a single test the testEnded and testCaseEnded events
+                // have the same ID, and so we'd end the same test twice.
+                if (this.completionMap.get(testIndex)) {
+                    return;
+                }
+                this.completionMap.set(testIndex, true);
+                runState.completed(testIndex, { timestamp: item.payload.instant.absolute });
+            } else if (item.payload.kind === "testCaseEnded") {
+                const testID = this.testCaseId(
+                    item.payload.testID,
+                    this.idFromTestCase(item.payload._testCase)
+                );
+                const testIndex = this.getTestCaseIndex(runState, testID);
 
                 // When running a single test the testEnded and testCaseEnded events
                 // have the same ID, and so we'd end the same test twice.

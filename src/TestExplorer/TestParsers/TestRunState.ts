@@ -1,4 +1,4 @@
-import { MarkdownString } from "vscode";
+import * as vscode from "vscode";
 
 /**
  * Interface for setting this test runs state
@@ -26,11 +26,12 @@ export interface ITestRunState {
     // otherwise the time passed is assumed to be the duration.
     completed(index: number, timing: { duration: number } | { timestamp: number }): void;
 
-    // record an issue against a test
+    // record an issue against a test.
+    // If a `testCase` is provided a new TestItem will be created under the TestItem at the supplied index.
     recordIssue(
         index: number,
-        message: string | MarkdownString,
-        location?: { file: string; line: number; column?: number }
+        message: string | vscode.MarkdownString,
+        location?: vscode.Location
     ): void;
 
     // set test index to have been skipped

@@ -19,6 +19,7 @@ import {
     XCTestOutputParser,
 } from "../../../src/TestExplorer/TestParsers/XCTestOutputParser";
 import { TestRunState, TestStatus } from "./MockTestRunState";
+import { sourceLocationToVSCodeLocation } from "../../../src/utilities/utilities";
 
 suite("XCTestOutputParser Suite", () => {
     suite("Darwin", () => {
@@ -51,10 +52,11 @@ Test Case '-[MyTests.MyTests testFail]' failed (0.106 seconds).
             assert.deepEqual(runState.issues, [
                 {
                     message: `XCTAssertEqual failed: ("1") is not equal to ("2")`,
-                    location: {
-                        file: "/Users/user/Developer/MyTests/MyTests.swift",
-                        line: 59,
-                    },
+                    location: sourceLocationToVSCodeLocation(
+                        "/Users/user/Developer/MyTests/MyTests.swift",
+                        59,
+                        0
+                    ),
                 },
             ]);
         });
@@ -90,10 +92,11 @@ Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
                     message: `failed - Multiline
 fail
 message`,
-                    location: {
-                        file: "/Users/user/Developer/MyTests/MyTests.swift",
-                        line: 59,
-                    },
+                    location: sourceLocationToVSCodeLocation(
+                        "/Users/user/Developer/MyTests/MyTests.swift",
+                        59,
+                        0
+                    ),
                 },
             ]);
         });
@@ -117,17 +120,19 @@ Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
                     message: `failed - Multiline
 fail
 message`,
-                    location: {
-                        file: "/Users/user/Developer/MyTests/MyTests.swift",
-                        line: 59,
-                    },
+                    location: sourceLocationToVSCodeLocation(
+                        "/Users/user/Developer/MyTests/MyTests.swift",
+                        59,
+                        0
+                    ),
                 },
                 {
                     message: `failed - Again`,
-                    location: {
-                        file: "/Users/user/Developer/MyTests/MyTests.swift",
-                        line: 61,
-                    },
+                    location: sourceLocationToVSCodeLocation(
+                        "/Users/user/Developer/MyTests/MyTests.swift",
+                        61,
+                        0
+                    ),
                 },
             ]);
         });
@@ -147,17 +152,19 @@ Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
             assert.deepEqual(runState.issues, [
                 {
                     message: `failed - Message`,
-                    location: {
-                        file: "/Users/user/Developer/MyTests/MyTests.swift",
-                        line: 59,
-                    },
+                    location: sourceLocationToVSCodeLocation(
+                        "/Users/user/Developer/MyTests/MyTests.swift",
+                        59,
+                        0
+                    ),
                 },
                 {
                     message: `failed - Again`,
-                    location: {
-                        file: "/Users/user/Developer/MyTests/MyTests.swift",
-                        line: 61,
-                    },
+                    location: sourceLocationToVSCodeLocation(
+                        "/Users/user/Developer/MyTests/MyTests.swift",
+                        61,
+                        0
+                    ),
                 },
             ]);
         });
@@ -210,10 +217,11 @@ Test Case 'MyTests.testFail' failed (0.106 seconds).
             assert.deepEqual(runState.issues, [
                 {
                     message: `XCTAssertEqual failed: ("1") is not equal to ("2")`,
-                    location: {
-                        file: "/Users/user/Developer/MyTests/MyTests.swift",
-                        line: 59,
-                    },
+                    location: sourceLocationToVSCodeLocation(
+                        "/Users/user/Developer/MyTests/MyTests.swift",
+                        59,
+                        0
+                    ),
                 },
             ]);
         });
