@@ -188,6 +188,11 @@ export class SwiftToolchain {
         return xcodes.trimEnd().split("\n");
     }
 
+    /**
+     * Reads the swiftly configuration file to find a list of installed toolchains.
+     *
+     * @returns an array of toolchain paths
+     */
     public static async getSwiftlyToolchainInstalls(): Promise<string[]> {
         try {
             const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
@@ -220,6 +225,11 @@ export class SwiftToolchain {
         }
     }
 
+    /**
+     * Checks common directories for available swift toolchain installations.
+     *
+     * @returns an array of toolchain paths
+     */
     public static getToolchainInstalls(): Promise<string[]> {
         return Promise.all([
             this.findToolchainsIn("/Library/Developer/Toolchains/"),
@@ -227,6 +237,12 @@ export class SwiftToolchain {
         ]).then(results => results.flatMap(a => a));
     }
 
+    /**
+     * Searches the given directory for any swift toolchain installations.
+     *
+     * @param directory the directory path to search in
+     * @returns an array of toolchain paths
+     */
     public static async findToolchainsIn(directory: string): Promise<string[]> {
         try {
             return (await fs.readdir(directory, { withFileTypes: true }))

@@ -19,12 +19,25 @@ import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { SwiftToolchain } from "../toolchain/toolchain";
 
+/**
+ * Open the installation page on Swift.org
+ */
 export async function downloadToolchain() {
     if (await vscode.env.openExternal(vscode.Uri.parse("https://www.swift.org/install/"))) {
-        await showToolchainWarning();
+        const selected = await showReloadExtensionNotification(
+            "The Swift extension must be reloaded in order to use your new toolchain.",
+            "Select Toolchain Folder"
+        );
+        if (selected === "Select Toolchain Folder") {
+            await selectToolchainFolder();
+        }
     }
 }
 
+/**
+ * Prompt the user to select a folder where they have installed the swift toolchain.
+ * Updates the swift.path configuration with the selected folder.
+ */
 export async function selectToolchainFolder() {
     const selected = await vscode.window.showOpenDialog({
         canSelectFiles: false,
@@ -37,16 +50,6 @@ export async function selectToolchainFolder() {
         return;
     }
     await configuration.setPath(selected[0].fsPath, "prompt");
-}
-
-export async function showToolchainWarning(): Promise<void> {
-    const selected = await showReloadExtensionNotification(
-        "The Swift extension must be reloaded in order to use your new toolchain.",
-        "Select Toolchain Folder"
-    );
-    if (selected === "Select Toolchain Folder") {
-        await selectToolchainFolder();
-    }
 }
 
 export async function showToolchainError(): Promise<void> {
@@ -62,21 +65,25 @@ export async function showToolchainError(): Promise<void> {
     }
 }
 
+/** A {@link vscode.QuickPickItem} that contains the path to Xcode */
 interface XcodeItem extends vscode.QuickPickItem {
     type: "xcode";
     path: string;
 }
 
+/** A {@link vscode.QuickPickItem} that contains the path to an installed swift toolchain */
 interface SwiftToolchainItem extends vscode.QuickPickItem {
     type: "toolchain";
     path: string;
 }
 
+/** A {@link vscode.QuickPickItem} that performs an action for the user */
 interface ActionItem extends vscode.QuickPickItem {
     type: "action";
     run(): Promise<void>;
 }
 
+/** A {@link vscode.QuickPickItem} that separates items in the UI */
 class SeparatorItem implements vscode.QuickPickItem {
     readonly type = "separator";
     readonly kind = vscode.QuickPickItemKind.Separator;
@@ -87,8 +94,15 @@ class SeparatorItem implements vscode.QuickPickItem {
     }
 }
 
+/** The possible types of {@link vscode.QuickPickItem} in the toolchain selection dialog */
 type SelectToolchainItem = XcodeItem | SwiftToolchainItem | ActionItem | SeparatorItem;
 
+/**
+ * Retrieves all {@link SelectToolchainItem} that are available on the system.
+ *
+ * @param ctx the {@link WorkspaceContext}
+ * @returns an array of {@link SelectToolchainItem}
+ */
 async function getQuickPickItems(ctx: WorkspaceContext): Promise<SelectToolchainItem[]> {
     const xcodes = (await SwiftToolchain.getXcodeInstalls())
         .sort((a, b) => (a > b ? -1 : 1)) // Reverse order
@@ -157,6 +171,12 @@ async function getQuickPickItems(ctx: WorkspaceContext): Promise<SelectToolchain
     ];
 }
 
+/**
+ * Prompt the user to select or install a swift toolchain. Updates the swift.path configuration
+ * with the user's selection.
+ *
+ * @param ctx the {@link WorkspaceContext}
+ */
 export async function selectToolchain(ctx: WorkspaceContext) {
     const selected = await vscode.window.showQuickPick<SelectToolchainItem>(
         getQuickPickItems(ctx),

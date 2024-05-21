@@ -14,6 +14,14 @@
 
 import * as vscode from "vscode";
 
+/**
+ * Prompts the user to reload the extension in cases where we are unable to do
+ * so automatically.
+ *
+ * @param message the warning message to display to the user
+ * @param items extra buttons to display
+ * @returns the selected button or undefined if cancelled
+ */
 export async function showReloadExtensionNotification<T extends string>(
     message: string,
     ...items: T[]
