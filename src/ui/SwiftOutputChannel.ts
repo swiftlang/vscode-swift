@@ -65,9 +65,8 @@ export class SwiftOutputChannel {
         console.log(line);
     }
 
-    logEnd(message: string) {
-        this.channel.appendLine(message);
-        console.log(message);
+    logEnd(message: string, label?: string) {
+        this.logStart(message, label);
     }
 
     get nowFormatted(): string {

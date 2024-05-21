@@ -111,6 +111,21 @@ function getBuildRevealOption(): vscode.TaskRevealKind {
         : vscode.TaskRevealKind.Never;
 }
 
+const buildAllTaskCache = (() => {
+    const cache = new Map<string, vscode.Task>();
+    const key = (name: string, folderContext: FolderContext) => {
+        return `${name}:${buildOptions(folderContext.workspaceContext.toolchain).join(",")}`;
+    };
+    return {
+        get(name: string, folderContext: FolderContext): vscode.Task | undefined {
+            return cache.get(key(name, folderContext));
+        },
+        set(name: string, folderContext: FolderContext, task: vscode.Task) {
+            cache.set(key(name, folderContext), task);
+        },
+    };
+})();
+
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
@@ -127,7 +142,16 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
     if (folderContext.workspaceContext.toolchain.buildFlags.getDarwinTarget() === undefined) {
         additionalArgs = ["--build-tests", ...additionalArgs];
     }
-    return createSwiftTask(
+
+    // Create one Build All task per folder context, since this can be called multiple
+    // times and we want the same instance each time. Otherwise, VSCode may try and execute
+    // one instance while our extension code tries to listen to events on an instance created earlier/later.
+    const existingTask = buildAllTaskCache.get(buildTaskName, folderContext);
+    if (existingTask) {
+        return existingTask;
+    }
+
+    const task = createSwiftTask(
         ["build", ...additionalArgs],
         buildTaskName,
         {
@@ -143,6 +167,8 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
         },
         folderContext.workspaceContext.toolchain
     );
+    buildAllTaskCache.set(buildTaskName, folderContext, task);
+    return task;
 }
 
 /**
@@ -206,10 +232,13 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
     if (folderContext.relativePath.length > 0) {
         buildTaskNameSuffix = ` (${folderContext.relativePath})`;
     }
-    return [
-        createSwiftTask(
+
+    const buildDebugName = `Build Debug ${product.name}${buildTaskNameSuffix}`;
+    let buildDebug = buildAllTaskCache.get(buildDebugName, folderContext);
+    if (!buildDebug) {
+        buildDebug = createSwiftTask(
             ["build", "--product", product.name, ...buildOptions(toolchain)],
-            `Build Debug ${product.name}${buildTaskNameSuffix}`,
+            buildDebugName,
             {
                 group: vscode.TaskGroup.Build,
                 cwd: folderContext.folder,
@@ -223,8 +252,14 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 showBuildStatus: configuration.showBuildStatus,
             },
             folderContext.workspaceContext.toolchain
-        ),
-        createSwiftTask(
+        );
+        buildAllTaskCache.set(buildDebugName, folderContext, buildDebug);
+    }
+
+    const buildReleaseName = `Build Release ${product.name}${buildTaskNameSuffix}`;
+    let buildRelease = buildAllTaskCache.get(buildReleaseName, folderContext);
+    if (!buildRelease) {
+        buildRelease = createSwiftTask(
             ["build", "-c", "release", "--product", product.name, ...configuration.buildArguments],
             `Build Release ${product.name}${buildTaskNameSuffix}`,
             {
@@ -240,8 +275,11 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 showBuildStatus: configuration.showBuildStatus,
             },
             folderContext.workspaceContext.toolchain
-        ),
-    ];
+        );
+        buildAllTaskCache.set(buildReleaseName, folderContext, buildRelease);
+    }
+
+    return [buildDebug, buildRelease];
 }
 
 /**

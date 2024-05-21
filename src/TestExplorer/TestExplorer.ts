@@ -243,20 +243,18 @@ export class TestExplorer {
                 // If a test list fails its possible the tests have not been built.
                 // Build them and try again, and if we still fail then notify the user.
                 if (firstTry) {
-                    await new Promise<string>(resolve => {
-                        const swiftBuildOperation = new SwiftExecOperation(
-                            ["build", "--build-tests"],
-                            explorer.folderContext,
-                            "Building",
-                            {
-                                showStatusItem: true,
-                                checkAlreadyRunning: true,
-                                log: "Performing initial build",
-                            },
-                            resolve
+                    const backgroundTask = await getBuildAllTask(explorer.folderContext);
+                    if (!backgroundTask) {
+                        return;
+                    }
+
+                    try {
+                        await explorer.folderContext.taskQueue.queueOperation(
+                            new TaskOperation(backgroundTask)
                         );
-                        explorer.folderContext.taskQueue.queueOperation(swiftBuildOperation);
-                    });
+                    } catch {
+                        // can ignore if running task fails
+                    }
 
                     // Retry test discovery after performing a build.
                     await runDiscover(explorer, false);
