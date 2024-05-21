@@ -17,7 +17,7 @@ import * as assert from "assert";
 import * as swiftExtension from "../../src/extension";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { testAssetUri } from "../fixtures";
-import { getBuildAllTask } from "../../src/SwiftTaskProvider";
+import { getBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { SwiftExecution } from "../../src/tasks/SwiftExecution";
 
 export const globalWorkspaceContextPromise = new Promise<WorkspaceContext>(resolve => {

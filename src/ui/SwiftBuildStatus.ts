@@ -1,0 +1,159 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the VSCode Swift open source project
+//
+// Copyright (c) 2024 the VSCode Swift project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.txt for the list of VSCode Swift project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+import stripAnsi = require("strip-ansi");
+import * as vscode from "vscode";
+import configuration, { ShowBuildStatusOptions } from "../configuration";
+import { RunningTask, StatusItem } from "./StatusItem";
+import { SwiftExecution } from "../tasks/SwiftExecution";
+
+/**
+ * Progress of `swift` build, parsed from the
+ * output, ex. `[6/7] Building main.swift`
+ */
+interface SwiftProgress {
+    completed: number;
+    total: number;
+}
+
+/**
+ * This class will handle detecting and updating the status
+ * bar message as the `swift` process executes.
+ *
+ * @see {@link SwiftExecution} to see what and where the events come from
+ */
+export class SwiftBuildStatus implements vscode.Disposable {
+    private onDidStartTaskDisposible: vscode.Disposable;
+
+    constructor(private statusItem: StatusItem) {
+        this.onDidStartTaskDisposible = vscode.tasks.onDidStartTask(event => {
+            if (!configuration.showBuildStatus) {
+                return;
+            }
+            this.handleTaskStatus(event.execution.task);
+        });
+    }
+
+    dispose() {
+        this.onDidStartTaskDisposible.dispose();
+    }
+
+    private handleTaskStatus(task: vscode.Task): void {
+        // Only care about swift tasks
+        if (!(task.execution && task.execution instanceof SwiftExecution)) {
+            return;
+        }
+        // Default to setting if task doesn't overwrite
+        const showBuildStatus: ShowBuildStatusOptions =
+            task.definition.showBuildStatus || configuration.showBuildStatus;
+        if (showBuildStatus === "never") {
+            return;
+        }
+
+        const execution = task.execution as SwiftExecution;
+        const disposables: vscode.Disposable[] = [];
+        const handleTaskOutput = (update: (message: string) => void) =>
+            new Promise<void>(res => {
+                const done = () => {
+                    disposables.forEach(d => d.dispose());
+                    res();
+                };
+                disposables.push(
+                    execution.onDidWrite(data => {
+                        if (this.parseEvents(task, data, update)) {
+                            done();
+                        }
+                    }),
+                    execution.onDidClose(done)
+                );
+            });
+        if (showBuildStatus === "progress" || showBuildStatus === "notification") {
+            vscode.window.withProgress<void>(
+                {
+                    location:
+                        showBuildStatus === "progress"
+                            ? vscode.ProgressLocation.Window
+                            : vscode.ProgressLocation.Notification,
+                },
+                progress => handleTaskOutput(message => progress.report({ message }))
+            );
+        } else {
+            this.statusItem.showStatusWhileRunning(task, () =>
+                handleTaskOutput(message => this.statusItem.update(task, message))
+            );
+        }
+    }
+
+    /**
+     * @param data
+     * @returns true if done, false otherwise
+     */
+    private parseEvents(
+        task: vscode.Task,
+        data: string,
+        update: (message: string) => void
+    ): boolean {
+        const name = new RunningTask(task).name;
+        const sanitizedData = stripAnsi(data);
+        // We'll process data one line at a time, in reverse order
+        // since the latest interesting message is all we need to
+        // be concerned with
+        const lines = sanitizedData.split(/\r\n|\n|\r/gm).reverse();
+        for (const line of lines) {
+            if (this.checkIfBuildComplete(line)) {
+                return true;
+            }
+            const progress = this.findBuildProgress(line);
+            if (progress) {
+                update(`"${name}" [${progress.completed}/${progress.total}]`);
+                return false;
+            }
+            if (this.checkIfFetching(line)) {
+                // this.statusItem.update(task, `Fetching dependencies "${task.name}"`);
+                update(`"${name}" fetching dependencies`);
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private checkIfBuildComplete(line: string): boolean {
+        // Output in this format for "build" and "test" commands
+        const completeRegex = /^Build complete!/gm;
+        let match = completeRegex.exec(line);
+        if (match) {
+            return true;
+        }
+        // Output in this format for "run" commands
+        const productCompleteRegex = /^Build of product '.*' complete!/gm;
+        match = productCompleteRegex.exec(line);
+        if (match) {
+            return true;
+        }
+        return false;
+    }
+
+    private checkIfFetching(line: string): boolean {
+        const fetchRegex = /^Fetching\s/gm;
+        return !!fetchRegex.exec(line);
+    }
+
+    private findBuildProgress(line: string): SwiftProgress | undefined {
+        const buildingRegex = /^\[(\d+)\/(\d+)\]/g;
+        const match = buildingRegex.exec(line);
+        if (match) {
+            return { completed: parseInt(match[1]), total: parseInt(match[2]) };
+        }
+    }
+}

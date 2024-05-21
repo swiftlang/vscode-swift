@@ -20,7 +20,7 @@ import { SwiftPackage, Target, TargetType } from "./SwiftPackage";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { WorkspaceContext, FolderEvent } from "./WorkspaceContext";
 import { BackgroundCompilation } from "./BackgroundCompilation";
-import { TaskQueue } from "./TaskQueue";
+import { TaskQueue } from "./tasks/TaskQueue";
 import { LcovResults } from "./coverage/LcovResults";
 import { isPathInsidePath } from "./utilities/utilities";
 

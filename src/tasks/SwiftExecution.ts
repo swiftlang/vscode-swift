@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { SwiftProcess } from "./SwiftProcess";
+import { SwiftProcess, SwiftPtyProcess } from "./SwiftProcess";
 import { SwiftPseudoterminal } from "./SwiftPseudoterminal";
 
 export interface SwiftExecutionOptions extends vscode.ProcessExecutionOptions {
@@ -29,9 +29,9 @@ export class SwiftExecution extends vscode.CustomExecution {
     constructor(
         public readonly command: string,
         public readonly args: string[],
-        public readonly options: SwiftExecutionOptions
+        public readonly options: SwiftExecutionOptions,
+        swiftProcess: SwiftProcess = new SwiftPtyProcess(command, args, options)
     ) {
-        const swiftProcess = new SwiftProcess(command, args, options);
         super(async () => {
             return new SwiftPseudoterminal(swiftProcess, options.presentation || {});
         });
@@ -41,7 +41,7 @@ export class SwiftExecution extends vscode.CustomExecution {
 
     /**
      * Bubbles up the {@link SwiftProcess.onDidWrite onDidWrite} event
-     * from the `SwiftProcess`
+     * from the {@link SwiftProcess}
      *
      * @see {@link SwiftProcess.onDidWrite}
      */
@@ -49,7 +49,7 @@ export class SwiftExecution extends vscode.CustomExecution {
 
     /**
      * Bubbles up the {@link SwiftProcess.onDidClose onDidClose} event
-     * from the `SwiftProcess`
+     * from the {@link SwiftProcess}
      *
      * @see {@link SwiftProcess.onDidClose}
      */

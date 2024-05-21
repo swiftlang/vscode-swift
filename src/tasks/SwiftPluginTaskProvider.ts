@@ -14,12 +14,12 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
-import { WorkspaceContext } from "./WorkspaceContext";
-import { PackagePlugin } from "./SwiftPackage";
-import configuration from "./configuration";
-import { swiftRuntimeEnv } from "./utilities/utilities";
-import { SwiftExecution } from "./tasks/SwiftExecution";
-import { resolveTaskCwd } from "./utilities/tasks";
+import { WorkspaceContext } from "../WorkspaceContext";
+import { PackagePlugin } from "../SwiftPackage";
+import configuration from "../configuration";
+import { swiftRuntimeEnv } from "../utilities/utilities";
+import { SwiftExecution } from "../tasks/SwiftExecution";
+import { resolveTaskCwd } from "../utilities/tasks";
 
 // Interface class for defining task configuration
 interface TaskConfig {
@@ -171,7 +171,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             args: [],
             disableSandbox: false,
             allowWritingToPackageDirectory: false,
-            cwd: cwd,
+            cwd,
             disableTaskQueue: false,
         };
         // There are common command plugins used across the package eco-system eg for docc generation

@@ -17,7 +17,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import configuration from "./configuration";
 import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
-import { createSwiftTask, SwiftTaskProvider } from "./SwiftTaskProvider";
+import { createSwiftTask, SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
 import { FolderContext } from "./FolderContext";
 import { PackageNode } from "./ui/PackageDependencyProvider";
 import { withQuickPick } from "./ui/QuickPick";
@@ -28,7 +28,7 @@ import { DarwinCompatibleTarget, SwiftToolchain } from "./toolchain/toolchain";
 import { debugSnippet, runSnippet } from "./SwiftSnippets";
 import { debugLaunchConfig, getLaunchConfiguration } from "./debugger/launch";
 import { execFile } from "./utilities/utilities";
-import { SwiftExecOperation, TaskOperation } from "./TaskQueue";
+import { SwiftExecOperation, TaskOperation } from "./tasks/TaskQueue";
 import { SwiftProjectTemplate } from "./toolchain/toolchain";
 
 /**

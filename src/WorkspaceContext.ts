@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021-2022 the VSCode Swift project authors
+// Copyright (c) 2021-2024 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -27,7 +27,7 @@ import { getLLDBLibPath } from "./debugger/lldb";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 import { TemporaryFolder } from "./utilities/tempFolder";
 import { SwiftToolchain } from "./toolchain/toolchain";
-import { TaskManager } from "./TaskManager";
+import { TaskManager } from "./tasks/TaskManager";
 import { BackgroundCompilation } from "./BackgroundCompilation";
 import { makeDebugConfigurations } from "./debugger/launch";
 import configuration from "./configuration";
@@ -38,6 +38,7 @@ import { CommentCompletionProviders } from "./editor/CommentCompletion";
 import { TestCoverageRenderer } from "./coverage/TestCoverageRenderer";
 import { DebugAdapter } from "./debugger/debugAdapter";
 import { Version } from "./utilities/version";
+import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -49,6 +50,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public currentDocument: vscode.Uri | null;
     public outputChannel: SwiftOutputChannel;
     public statusItem: StatusItem;
+    public buildStatus: SwiftBuildStatus;
     public languageClientManager: LanguageClientManager;
     public tasks: TaskManager;
     public subscriptions: { dispose(): unknown }[];
@@ -64,6 +66,7 @@ export class WorkspaceContext implements vscode.Disposable {
     ) {
         this.outputChannel = new SwiftOutputChannel();
         this.statusItem = new StatusItem();
+        this.buildStatus = new SwiftBuildStatus(this.statusItem);
         this.languageClientManager = new LanguageClientManager(this);
         this.outputChannel.log(this.toolchain.swiftVersionString);
         this.toolchain.logDiagnostics(this.outputChannel);
@@ -219,6 +222,7 @@ export class WorkspaceContext implements vscode.Disposable {
             this.languageClientManager,
             this.outputChannel,
             this.statusItem,
+            this.buildStatus,
         ];
         this.lastFocusUri = vscode.window.activeTextEditor?.document.uri;
     }

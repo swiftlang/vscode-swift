@@ -13,15 +13,15 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { WorkspaceContext } from "./WorkspaceContext";
-import { FolderContext } from "./FolderContext";
-import { Product, TargetType } from "./SwiftPackage";
-import configuration from "./configuration";
-import { swiftRuntimeEnv } from "./utilities/utilities";
-import { Version } from "./utilities/version";
-import { SwiftToolchain } from "./toolchain/toolchain";
-import { SwiftExecution } from "./tasks/SwiftExecution";
-import { resolveTaskCwd } from "./utilities/tasks";
+import { WorkspaceContext } from "../WorkspaceContext";
+import { FolderContext } from "../FolderContext";
+import { Product, TargetType } from "../SwiftPackage";
+import configuration, { ShowBuildStatusOptions } from "../configuration";
+import { swiftRuntimeEnv } from "../utilities/utilities";
+import { Version } from "../utilities/version";
+import { SwiftToolchain } from "../toolchain/toolchain";
+import { SwiftExecution } from "../tasks/SwiftExecution";
+import { resolveTaskCwd } from "../utilities/tasks";
 
 /**
  * References:
@@ -44,12 +44,17 @@ interface TaskConfig {
     prefix?: string;
     disableTaskQueue?: boolean;
     dontTriggerTestDiscovery?: boolean;
+    showBuildStatus?: ShowBuildStatusOptions;
 }
 
 interface TaskPlatformSpecificConfig {
     args?: string[];
     cwd?: string;
     env?: { [name: string]: unknown };
+}
+
+export interface SwiftTask extends vscode.Task {
+    execution: SwiftExecution;
 }
 
 /** flag for enabling test discovery */
@@ -134,6 +139,7 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
             },
             problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
             disableTaskQueue: true,
+            showBuildStatus: configuration.showBuildStatus,
         },
         folderContext.workspaceContext.toolchain
     );
@@ -214,6 +220,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
                 disableTaskQueue: true,
                 dontTriggerTestDiscovery: true,
+                showBuildStatus: configuration.showBuildStatus,
             },
             folderContext.workspaceContext.toolchain
         ),
@@ -230,6 +237,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
                 disableTaskQueue: true,
                 dontTriggerTestDiscovery: true,
+                showBuildStatus: configuration.showBuildStatus,
             },
             folderContext.workspaceContext.toolchain
         ),
@@ -244,7 +252,7 @@ export function createSwiftTask(
     name: string,
     config: TaskConfig,
     toolchain: SwiftToolchain
-): vscode.Task {
+): SwiftTask {
     const swift = toolchain.getToolchainExecutable("swift");
     args = toolchain.buildFlags.withSwiftSDKFlags(args);
 
@@ -271,6 +279,7 @@ export function createSwiftTask(
             args: args,
             env: env,
             cwd: cwd,
+            showBuildStatus: config.showBuildStatus,
             disableTaskQueue: config.disableTaskQueue,
             dontTriggerTestDiscovery: config.dontTriggerTestDiscovery,
         },
@@ -296,7 +305,7 @@ export function createSwiftTask(
     task.detail = `${prefix}swift ${args.join(" ")}`;
     task.group = config?.group;
     task.presentationOptions = presentation;
-    return task;
+    return task as SwiftTask;
 }
 
 /**
