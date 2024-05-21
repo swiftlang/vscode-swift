@@ -30,7 +30,7 @@ import { debugLaunchConfig, getLaunchConfiguration } from "./debugger/launch";
 import { execFile } from "./utilities/utilities";
 import { SwiftExecOperation, TaskOperation } from "./tasks/TaskQueue";
 import { SwiftProjectTemplate } from "./toolchain/toolchain";
-import { showToolchainError } from "./ui/ToolchainSelection";
+import { selectToolchain, showToolchainError } from "./ui/ToolchainSelection";
 import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 
 /**
@@ -945,6 +945,7 @@ export function register(ctx: WorkspaceContext) {
         vscode.commands.registerCommand("swift.selectXcodeDeveloperDir", () =>
             selectXcodeDeveloperDir()
         ),
-        vscode.commands.registerCommand("swift.attachDebugger", () => attachDebugger(ctx))
+        vscode.commands.registerCommand("swift.attachDebugger", () => attachDebugger(ctx)),
+        vscode.commands.registerCommand("swift.selectToolchain", () => selectToolchain(ctx))
     );
 }

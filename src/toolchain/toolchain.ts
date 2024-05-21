@@ -14,6 +14,7 @@
 
 import * as fs from "fs/promises";
 import * as path from "path";
+import * as os from "os";
 import * as plist from "plist";
 import * as vscode from "vscode";
 import configuration from "../configuration";
@@ -185,6 +186,60 @@ export class SwiftToolchain {
             `kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'`,
         ]);
         return xcodes.trimEnd().split("\n");
+    }
+
+    public static async getSwiftlyToolchainInstalls(): Promise<string[]> {
+        try {
+            const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
+            const swiftlyBinDir: string | undefined = process.env["SWIFTLY_BIN_DIR"];
+            if (!swiftlyHomeDir || !swiftlyBinDir) {
+                return [];
+            }
+            const swiftlyConfigRaw = await fs.readFile(
+                path.join(swiftlyHomeDir, "config.json"),
+                "utf-8"
+            );
+            const swiftlyConfig: unknown = JSON.parse(swiftlyConfigRaw);
+            if (
+                swiftlyConfig === undefined ||
+                swiftlyConfig === null ||
+                typeof swiftlyConfig !== "object" ||
+                !("installedToolchains" in swiftlyConfig)
+            ) {
+                return [];
+            }
+            const installedToolchains = swiftlyConfig.installedToolchains;
+            if (!Array.isArray(installedToolchains)) {
+                return [];
+            }
+            return installedToolchains
+                .filter((toolchain): toolchain is string => typeof toolchain === "string")
+                .map(toolchain => path.join(swiftlyBinDir, toolchain));
+        } catch (error) {
+            throw new Error("Failed to retrieve Swiftly installations from disk.");
+        }
+    }
+
+    public static getToolchainInstalls(): Promise<string[]> {
+        return Promise.all([
+            this.findToolchainsIn("/Library/Developer/Toolchains/"),
+            this.findToolchainsIn(path.join(os.homedir(), "Library/Developer/Toolchains/")),
+        ]).then(results => results.flatMap(a => a));
+    }
+
+    public static async findToolchainsIn(directory: string): Promise<string[]> {
+        try {
+            return (await fs.readdir(directory, { withFileTypes: true }))
+                .filter(
+                    dirent =>
+                        dirent.name.startsWith("swift-") &&
+                        (dirent.isDirectory() || dirent.isSymbolicLink())
+                )
+                .map(dirent => path.join(dirent.path, dirent.name));
+        } catch {
+            // Assume that there are no installations here
+        }
+        return [];
     }
 
     /**
