@@ -315,12 +315,37 @@ export class SwiftToolchain {
         return `${this.toolchainPath}/bin/${exe}${windowsExeSuffix}`;
     }
 
+    private getXcodeDirectory(): string | undefined {
+        let xcodeDirectory = this.swiftFolderPath;
+        while (path.extname(xcodeDirectory) !== ".app") {
+            xcodeDirectory = path.dirname(xcodeDirectory);
+            if (path.parse(xcodeDirectory).base === "") {
+                return undefined;
+            }
+        }
+        return xcodeDirectory;
+    }
+
     /**
      * Cannot use `getToolchainExecutable` to get the LLDB executable as LLDB
      * is not in macOS toolchain path
      */
-    public getLLDB(): string {
-        return path.join(this.swiftFolderPath, "lldb");
+    public async getLLDB(): Promise<string> {
+        let lldbPath = path.join(this.swiftFolderPath, "lldb");
+        if (!(await pathExists(lldbPath))) {
+            if (process.platform !== "darwin") {
+                throw new Error("Failed to find LLDB in swift toolchain");
+            }
+            const xcodeDirectory = this.getXcodeDirectory();
+            if (!xcodeDirectory) {
+                throw new Error("Failed to find LLDB in swift toolchain");
+            }
+            const { stdout } = await execFile("xcrun", ["-find", "lldb"], {
+                env: { ...process.env, DEVELOPER_DIR: xcodeDirectory },
+            });
+            lldbPath = stdout.trimEnd();
+        }
+        return lldbPath;
     }
 
     private basePlatformDeveloperPath(): string | undefined {

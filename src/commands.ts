@@ -843,7 +843,7 @@ async function attachDebugger(ctx: WorkspaceContext) {
     }
 
     // use LLDB to get list of processes
-    const lldb = toolchain.getLLDB();
+    const lldb = await toolchain.getLLDB();
     try {
         const { stdout } = await execFile(lldb, [
             "--batch",

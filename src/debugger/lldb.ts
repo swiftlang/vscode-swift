@@ -27,7 +27,12 @@ import { SwiftToolchain } from "../toolchain/toolchain";
  * @returns Library path for LLDB
  */
 export async function getLLDBLibPath(toolchain: SwiftToolchain): Promise<Result<string>> {
-    const executable = toolchain.getLLDB();
+    let executable: string;
+    try {
+        executable = await toolchain.getLLDB();
+    } catch (error) {
+        return Result.makeFailure(error);
+    }
     let pathHint = path.dirname(toolchain.swiftFolderPath);
     try {
         const statement = `print('<!' + lldb.SBHostOS.GetLLDBPath(lldb.ePathTypeLLDBShlibDir).fullpath + '!>')`;
