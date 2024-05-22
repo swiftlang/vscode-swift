@@ -293,7 +293,7 @@
           },
           "swift.showCreateSwiftProjectInWelcomePage": {
             "type": "boolean",
-            "default": false,
+            "default": true,
             "description": "Controls whether or not the create new swift project button appears in the welcome page.",
             "order": 14
           },
