@@ -118,7 +118,7 @@ async function getQuickPickItems(ctx: WorkspaceContext): Promise<SelectToolchain
             type: "toolchain",
             label: path.basename(toolchainPath, ".xctoolchain"),
             detail: toolchainPath,
-            path: toolchainPath,
+            path: path.join(toolchainPath, "usr", "bin"),
         }));
     const swiftlyToolchains = (await SwiftToolchain.getSwiftlyToolchainInstalls())
         .sort((a, b) => (a > b ? -1 : 1)) // Reverse order
@@ -126,20 +126,15 @@ async function getQuickPickItems(ctx: WorkspaceContext): Promise<SelectToolchain
             type: "toolchain",
             label: path.basename(toolchainPath),
             detail: toolchainPath,
-            path: toolchainPath,
+            path: path.join(toolchainPath, "usr", "bin"),
         }));
     if (ctx.toolchain) {
-        const xcode = xcodes.find(xcode => ctx.toolchain?.toolchainPath.startsWith(xcode.path));
-        if (xcode) {
-            xcode.description = "$(check) in use";
-        }
-        const toolchain = toolchains.find(toolchain =>
-            ctx.toolchain?.toolchainPath.startsWith(toolchain.path)
-        );
-        if (toolchain) {
-            toolchain.description = "$(check) in use";
-        }
-        if (!xcode && !toolchain) {
+        const toolchainInUse = [...xcodes, ...toolchains, ...swiftlyToolchains].find(toolchain => {
+            return ctx.toolchain?.toolchainPath.startsWith(toolchain.path);
+        });
+        if (toolchainInUse) {
+            toolchainInUse.description = "$(check) in use";
+        } else {
             toolchains.splice(0, 0, {
                 type: "toolchain",
                 label: `Swift ${ctx.toolchain.swiftVersion.toString()}`,
