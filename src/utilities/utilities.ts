@@ -89,7 +89,7 @@ export async function execFile(
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) =>
         cp.execFile(executable, args, options, (error, stdout, stderr) => {
             if (error) {
-                reject({ error, stdout, stderr });
+                reject({ error, stdout, stderr, toString: () => error.message });
             }
             resolve({ stdout, stderr });
         })

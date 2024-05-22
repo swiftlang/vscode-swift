@@ -253,7 +253,10 @@ export class TaskQueue {
                     .catch(error => {
                         // log error
                         if (operation.log) {
-                            this.workspaceContext.outputChannel.logEnd(`${error}`);
+                            this.workspaceContext.outputChannel.logEnd(
+                                `${operation.log}: ${error}`,
+                                this.folderContext.name
+                            );
                         }
                         this.finishTask(operation, { fail: error });
                     });
