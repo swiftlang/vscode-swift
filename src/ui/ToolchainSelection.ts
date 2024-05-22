@@ -65,16 +65,11 @@ export async function showToolchainError(): Promise<void> {
     }
 }
 
-/** A {@link vscode.QuickPickItem} that contains the path to Xcode */
-interface XcodeItem extends vscode.QuickPickItem {
-    type: "xcode";
-    path: string;
-}
-
 /** A {@link vscode.QuickPickItem} that contains the path to an installed swift toolchain */
 interface SwiftToolchainItem extends vscode.QuickPickItem {
     type: "toolchain";
-    path: string;
+    toolchainPath: string;
+    swiftFolderPath: string;
 }
 
 /** A {@link vscode.QuickPickItem} that performs an action for the user */
@@ -95,7 +90,7 @@ class SeparatorItem implements vscode.QuickPickItem {
 }
 
 /** The possible types of {@link vscode.QuickPickItem} in the toolchain selection dialog */
-type SelectToolchainItem = XcodeItem | SwiftToolchainItem | ActionItem | SeparatorItem;
+type SelectToolchainItem = SwiftToolchainItem | ActionItem | SeparatorItem;
 
 /**
  * Retrieves all {@link SelectToolchainItem} that are available on the system.
@@ -106,19 +101,31 @@ type SelectToolchainItem = XcodeItem | SwiftToolchainItem | ActionItem | Separat
 async function getQuickPickItems(ctx: WorkspaceContext): Promise<SelectToolchainItem[]> {
     const xcodes = (await SwiftToolchain.getXcodeInstalls())
         .sort((a, b) => (a > b ? -1 : 1)) // Reverse order
-        .map<XcodeItem>(xcodePath => ({
-            type: "xcode",
-            label: path.basename(xcodePath, ".app"),
-            detail: xcodePath,
-            path: xcodePath,
-        }));
+        .map<SwiftToolchainItem>(xcodePath => {
+            const toolchainPath = path.join(
+                xcodePath,
+                "Contents",
+                "Developer",
+                "Toolchains",
+                "XcodeDefault.xctoolchain",
+                "usr"
+            );
+            return {
+                type: "toolchain",
+                label: path.basename(xcodePath, ".app"),
+                detail: xcodePath,
+                toolchainPath,
+                swiftFolderPath: path.join(toolchainPath, "bin"),
+            };
+        });
     const toolchains = (await SwiftToolchain.getToolchainInstalls())
         .sort((a, b) => (a > b ? -1 : 1)) // Reverse order
         .map<SwiftToolchainItem>(toolchainPath => ({
             type: "toolchain",
             label: path.basename(toolchainPath, ".xctoolchain"),
             detail: toolchainPath,
-            path: path.join(toolchainPath, "usr", "bin"),
+            toolchainPath: path.join(toolchainPath, "usr"),
+            swiftFolderPath: path.join(toolchainPath, "usr", "bin"),
         }));
     const swiftlyToolchains = (await SwiftToolchain.getSwiftlyToolchainInstalls())
         .sort((a, b) => (a > b ? -1 : 1)) // Reverse order
@@ -126,11 +133,12 @@ async function getQuickPickItems(ctx: WorkspaceContext): Promise<SelectToolchain
             type: "toolchain",
             label: path.basename(toolchainPath),
             detail: toolchainPath,
-            path: path.join(toolchainPath, "usr", "bin"),
+            toolchainPath: path.join(toolchainPath, "usr"),
+            swiftFolderPath: path.join(toolchainPath, "usr", "bin"),
         }));
     if (ctx.toolchain) {
         const toolchainInUse = [...xcodes, ...toolchains, ...swiftlyToolchains].find(toolchain => {
-            return ctx.toolchain?.swiftFolderPath.startsWith(toolchain.path);
+            return ctx.toolchain?.toolchainPath.startsWith(toolchain.toolchainPath);
         });
         if (toolchainInUse) {
             toolchainInUse.description = "$(check) in use";
@@ -140,7 +148,8 @@ async function getQuickPickItems(ctx: WorkspaceContext): Promise<SelectToolchain
                 label: `Swift ${ctx.toolchain.swiftVersion.toString()}`,
                 description: "$(check) in use",
                 detail: ctx.toolchain.toolchainPath,
-                path: ctx.toolchain.toolchainPath,
+                toolchainPath: ctx.toolchain.toolchainPath,
+                swiftFolderPath: ctx.toolchain.swiftFolderPath,
             });
         }
     }
@@ -184,19 +193,6 @@ export async function selectToolchain(ctx: WorkspaceContext) {
     if (selected?.type === "action") {
         await selected.run();
     } else if (selected?.type === "toolchain") {
-        await configuration.setPath(selected.path, "prompt");
-    } else if (selected?.type === "xcode") {
-        await configuration.setPath(
-            path.join(
-                selected.path,
-                "Contents",
-                "Developer",
-                "Toolchains",
-                "XcodeDefault.xctoolchain",
-                "usr",
-                "bin"
-            ),
-            "prompt"
-        );
+        await configuration.setPath(selected.swiftFolderPath, "prompt");
     }
 }
