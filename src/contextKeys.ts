@@ -80,6 +80,13 @@ const contextKeys = {
     set createNewProjectAvailable(value: boolean) {
         vscode.commands.executeCommand("setContext", "swift.createNewProjectAvailable", value);
     },
+
+    /**
+     * Whether the swift.addPackageRefactoringAvailable command is available.
+     */
+    set addPackageRefactoringAvailable(value: boolean) {
+        vscode.commands.executeCommand("setContext", "swift.addPackageRefactoringAvailable", value);
+    },
 };
 
 export default contextKeys;

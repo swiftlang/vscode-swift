@@ -253,12 +253,12 @@ export async function createNewProject(ctx: WorkspaceContext): Promise<void> {
  * to create the project.
  */
 export async function browsePackageIndex(ctx: WorkspaceContext): Promise<void> {
-    // The context key `swift.browsePackageIndex` only works if the extension has been
+    // The context key `swift.addPackageRefactoringAvailable` only works if the extension has been
     // activated. As such, we also have to allow this command to run when no workspace is
     // active. Show an error to the user if the command is unavailable.
     if (!ctx.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
         vscode.window.showErrorMessage(
-            "Creating a new swift project is only available starting in swift version 6.0.0."
+            "Browsing the package index is only available starting in swift version 6.0.0."
         );
         return;
     }
@@ -324,7 +324,7 @@ export async function addPackageDependency(
     url?: string,
     version?: string
 ): Promise<void> {
-    // The context key `swift.addPackageDependency` only works if the extension has been
+    // The context key `swift.addPackageRefactoringAvailable` only works if the extension has been
     // activated. As such, we also have to allow this command to run when no workspace is
     // active. Show an error to the user if the command is unavailable.
     if (!ctx.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {

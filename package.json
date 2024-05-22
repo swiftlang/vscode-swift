@@ -548,11 +548,11 @@
         },
         {
           "command": "swift.browsePackageIndex",
-          "when": "swift.hasPackage"
+          "when": "swift.hasPackage && swift.addPackageRefactoringAvailable"
         },
         {
           "command": "swift.addPackageDependency",
-          "when": "swift.hasPackage"
+          "when": "swift.hasPackage && swift.addPackageRefactoringAvailable"
         },
         {
           "command": "swift.updateDependencies",
