@@ -182,6 +182,9 @@ export class SwiftToolchain {
      * @returns Folders for each Xcode install
      */
     public static async getXcodeInstalls(): Promise<string[]> {
+        if (process.platform !== "darwin") {
+            return [];
+        }
         const { stdout: xcodes } = await execFile("mdfind", [
             `kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'`,
         ]);
@@ -196,8 +199,7 @@ export class SwiftToolchain {
     public static async getSwiftlyToolchainInstalls(): Promise<string[]> {
         try {
             const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
-            const swiftlyBinDir: string | undefined = process.env["SWIFTLY_BIN_DIR"];
-            if (!swiftlyHomeDir || !swiftlyBinDir) {
+            if (!swiftlyHomeDir) {
                 return [];
             }
             const swiftlyConfigRaw = await fs.readFile(
@@ -219,7 +221,7 @@ export class SwiftToolchain {
             }
             return installedToolchains
                 .filter((toolchain): toolchain is string => typeof toolchain === "string")
-                .map(toolchain => path.join(swiftlyBinDir, toolchain));
+                .map(toolchain => path.join(swiftlyHomeDir, "toolchains", toolchain));
         } catch (error) {
             throw new Error("Failed to retrieve Swiftly installations from disk.");
         }

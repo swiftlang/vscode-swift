@@ -130,7 +130,7 @@ async function getQuickPickItems(ctx: WorkspaceContext): Promise<SelectToolchain
         }));
     if (ctx.toolchain) {
         const toolchainInUse = [...xcodes, ...toolchains, ...swiftlyToolchains].find(toolchain => {
-            return ctx.toolchain?.toolchainPath.startsWith(toolchain.path);
+            return ctx.toolchain?.swiftFolderPath.startsWith(toolchain.path);
         });
         if (toolchainInUse) {
             toolchainInUse.description = "$(check) in use";
