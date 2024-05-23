@@ -207,12 +207,7 @@ export class SwiftToolchain {
                 "utf-8"
             );
             const swiftlyConfig: unknown = JSON.parse(swiftlyConfigRaw);
-            if (
-                swiftlyConfig === undefined ||
-                swiftlyConfig === null ||
-                typeof swiftlyConfig !== "object" ||
-                !("installedToolchains" in swiftlyConfig)
-            ) {
+            if (!(swiftlyConfig instanceof Object) || !("installedToolchains" in swiftlyConfig)) {
                 return [];
             }
             const installedToolchains = swiftlyConfig.installedToolchains;
@@ -232,7 +227,10 @@ export class SwiftToolchain {
      *
      * @returns an array of toolchain paths
      */
-    public static getToolchainInstalls(): Promise<string[]> {
+    public static async getToolchainInstalls(): Promise<string[]> {
+        if (process.platform !== "darwin") {
+            return [];
+        }
         return Promise.all([
             this.findToolchainsIn("/Library/Developer/Toolchains/"),
             this.findToolchainsIn(path.join(os.homedir(), "Library/Developer/Toolchains/")),
@@ -256,8 +254,8 @@ export class SwiftToolchain {
                 .map(dirent => path.join(dirent.path, dirent.name));
         } catch {
             // Assume that there are no installations here
+            return [];
         }
-        return [];
     }
 
     /**
