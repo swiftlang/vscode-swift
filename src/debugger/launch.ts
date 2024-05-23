@@ -221,17 +221,17 @@ function createDebugConfiguration(
     let preRunCommands: string[] | undefined;
     let env: object = {};
 
-    const swiftFolderPath = ctx.toolchain.swiftFolderPath;
+    const swiftFolderPath = ctx.workspaceContext.toolchain.swiftFolderPath;
     if (swiftFolderPath === undefined) {
         return null;
     }
 
-    const xcTestPath = ctx.toolchain.xcTestPath;
-    const runtimePath = ctx.toolchain.runtimePath;
+    const xcTestPath = ctx.workspaceContext.toolchain.xcTestPath;
+    const runtimePath = ctx.workspaceContext.toolchain.runtimePath;
     const sdkroot = configuration.sdk === "" ? process.env.SDKROOT : configuration.sdk;
-    const libraryPath = ctx.toolchain.swiftTestingLibraryPath();
-    const frameworkPath = ctx.toolchain.swiftTestingFrameworkPath();
-    const sanitizer = ctx.toolchain.sanitizer(configuration.sanitizer);
+    const libraryPath = ctx.workspaceContext.toolchain.swiftTestingLibraryPath();
+    const frameworkPath = ctx.workspaceContext.toolchain.swiftTestingFrameworkPath();
+    const sanitizer = ctx.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
 
     switch (process.platform) {
         case "darwin":
@@ -390,7 +390,7 @@ export function createDarwinTestConfiguration(
     const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
     // On macOS, find the path to xctest
     // and point it at the .xctest bundle from the configured build directory.
-    const xctestPath = ctx.toolchain.xcTestPath;
+    const xctestPath = ctx.workspaceContext.toolchain.xcTestPath;
     if (xctestPath === undefined) {
         return null;
     }
@@ -405,7 +405,7 @@ export function createDarwinTestConfiguration(
         default:
             return null;
     }
-    const sanitizer = ctx.toolchain.sanitizer(configuration.sanitizer);
+    const sanitizer = ctx.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
     const envCommands = Object.entries({
         ...swiftRuntimeEnv(),
         ...configuration.folder(ctx.workspaceFolder).testEnvironmentVariables,

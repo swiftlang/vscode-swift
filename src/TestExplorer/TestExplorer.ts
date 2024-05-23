@@ -199,7 +199,7 @@ export class TestExplorer {
     async discoverTestsInWorkspaceSPM() {
         async function runDiscover(explorer: TestExplorer, firstTry: boolean) {
             try {
-                const toolchain = explorer.folderContext.toolchain;
+                const toolchain = explorer.folderContext.workspaceContext.toolchain;
                 // get build options before build is run so we can be sure they aren't changed
                 // mid-build
                 const testBuildOptions = buildOptions(toolchain);
