@@ -31,6 +31,9 @@ import { registerLLDBDebugAdapter } from "./debugger/debugAdapterFactory";
 import { DebugAdapter } from "./debugger/debugAdapter";
 import contextKeys from "./contextKeys";
 import { showToolchainError } from "./ui/ToolchainSelection";
+import { SwiftToolchain } from "./toolchain/toolchain";
+import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
+import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -47,11 +50,52 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
     try {
         console.debug("Activating Swift for Visual Studio Code...");
 
-        const workspaceContext = await WorkspaceContext.create();
-        commands.register(workspaceContext);
+        const outputChannel = new SwiftOutputChannel();
+        const toolchain: SwiftToolchain | undefined = await SwiftToolchain.create()
+            .then(toolchain => {
+                outputChannel.log(toolchain.swiftVersionString);
+                toolchain.logDiagnostics(outputChannel);
+                contextKeys.createNewProjectAvailable = toolchain.swiftVersion.isGreaterThanOrEqual(
+                    new Version(5, 8, 0)
+                );
+                return toolchain;
+            })
+            .catch(error => {
+                outputChannel.log("Failed to discover Swift toolchain");
+                outputChannel.log(error);
+                contextKeys.createNewProjectAvailable = true;
+                return undefined;
+            });
+        const workspaceContext = toolchain
+            ? await WorkspaceContext.create(outputChannel, toolchain)
+            : undefined;
+        context.subscriptions.push(...commands.register(workspaceContext));
 
-        if (!workspaceContext.toolchain && vscode.workspace.workspaceFolders) {
+        if (!toolchain && vscode.workspace.workspaceFolders) {
             showToolchainError();
+        }
+
+        context.subscriptions.push(
+            vscode.workspace.onDidChangeConfiguration(event => {
+                // on toolchain config change, reload window
+                if (event.affectsConfiguration("swift.path")) {
+                    showReloadExtensionNotification(
+                        "Changing the Swift path requires the project be reloaded."
+                    );
+                }
+                // on sdk config change, restart sourcekit-lsp
+                if (event.affectsConfiguration("swift.SDK")) {
+                    // FIXME: There is a bug stopping us from restarting SourceKit-LSP directly.
+                    // As long as it's fixed we won't need to reload on newer versions.
+                    showReloadExtensionNotification(
+                        "Changing the Swift SDK path requires the project be reloaded."
+                    );
+                }
+            })
+        );
+
+        if (!workspaceContext) {
+            return;
         }
 
         context.subscriptions.push(workspaceContext);
@@ -172,7 +216,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
         const testExplorerObserver = TestExplorer.observeFolders(workspaceContext);
 
         if (configuration.debugger.useDebugAdapterFromToolchain) {
-            const lldbDebugAdapter = registerLLDBDebugAdapter(workspaceContext);
+            const lldbDebugAdapter = registerLLDBDebugAdapter(workspaceContext.toolchain);
             context.subscriptions.push(lldbDebugAdapter);
         }
         const loggingDebugAdapter = registerLoggingDebugAdapterTracker();

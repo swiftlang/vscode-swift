@@ -97,10 +97,10 @@ export class SwiftExecOperation implements SwiftOperation {
         return false;
     }
 
-    async run(workspaceContext: WorkspaceContext): Promise<number | undefined> {
+    async run(): Promise<number | undefined> {
         const { stdout, stderr } = await execSwift(
             this.args,
-            workspaceContext.toolchain ?? "default",
+            this.folderContext.toolchain,
             { cwd: this.folderContext.folder.fsPath },
             this.folderContext
         );

@@ -212,11 +212,8 @@ export class SwiftPackage implements PackageContents {
      */
     static async loadPackage(
         folder: vscode.Uri,
-        toolchain: SwiftToolchain | undefined
+        toolchain: SwiftToolchain
     ): Promise<SwiftPackageState> {
-        if (!toolchain) {
-            return new Error("No toolchain is available");
-        }
         try {
             let { stdout } = await execSwift(["package", "describe", "--type", "json"], toolchain, {
                 cwd: folder.fsPath,
@@ -307,7 +304,7 @@ export class SwiftPackage implements PackageContents {
     }
 
     /** Reload swift package */
-    public async reload(toolchain: SwiftToolchain | undefined) {
+    public async reload(toolchain: SwiftToolchain) {
         this.contents = await SwiftPackage.loadPackage(this.folder, toolchain);
     }
 

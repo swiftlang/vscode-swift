@@ -20,7 +20,6 @@ import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
 import { execFileStreamOutput } from "../utilities/utilities";
 import { BuildFlags } from "../toolchain/BuildFlags";
-import { showToolchainError } from "../ui/ToolchainSelection";
 
 /**
  * Class keeping a record of the latest test coverage results for a package
@@ -42,11 +41,6 @@ export class LcovResults implements vscode.Disposable {
      * load these results into the contents.
      */
     async generate() {
-        if (!this.folderContext.workspaceContext.toolchain) {
-            showToolchainError();
-            return;
-        }
-
         const llvmCov =
             this.folderContext.workspaceContext.toolchain.getToolchainExecutable("llvm-cov");
         const packageName = this.folderContext.swiftPackage.name;

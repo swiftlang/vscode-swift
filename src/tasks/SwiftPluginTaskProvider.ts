@@ -73,10 +73,6 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     resolveTask(task: vscode.Task, token: vscode.CancellationToken): vscode.Task {
-        if (!this.workspaceContext.toolchain) {
-            return task;
-        }
-
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
         const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
@@ -119,10 +115,6 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
      * @returns
      */
     createSwiftPluginTask(plugin: PackagePlugin, config: TaskConfig): vscode.Task | undefined {
-        if (!this.workspaceContext.toolchain) {
-            return;
-        }
-
         const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
 
         // Add relative path current working directory

@@ -26,7 +26,6 @@ import {
 import { getLLDBLibPath } from "./debugger/lldb";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 import { TemporaryFolder } from "./utilities/tempFolder";
-import { SwiftToolchain } from "./toolchain/toolchain";
 import { TaskManager } from "./tasks/TaskManager";
 import { BackgroundCompilation } from "./BackgroundCompilation";
 import { makeDebugConfigurations } from "./debugger/launch";
@@ -37,9 +36,8 @@ import { TestCoverageReportProvider } from "./coverage/TestCoverageReport";
 import { CommentCompletionProviders } from "./editor/CommentCompletion";
 import { TestCoverageRenderer } from "./coverage/TestCoverageRenderer";
 import { DebugAdapter } from "./debugger/debugAdapter";
-import { Version } from "./utilities/version";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
-import { showReloadExtensionNotification } from "./ui/ReloadExtension";
+import { SwiftToolchain } from "./toolchain/toolchain";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -49,7 +47,6 @@ export class WorkspaceContext implements vscode.Disposable {
     public folders: FolderContext[] = [];
     public currentFolder: FolderContext | undefined;
     public currentDocument: vscode.Uri | undefined;
-    public outputChannel: SwiftOutputChannel;
     public statusItem: StatusItem;
     public buildStatus: SwiftBuildStatus;
     public languageClientManager: LanguageClientManager;
@@ -63,20 +60,12 @@ export class WorkspaceContext implements vscode.Disposable {
 
     private constructor(
         public tempFolder: TemporaryFolder,
-        public toolchain: SwiftToolchain | undefined
+        public outputChannel: SwiftOutputChannel,
+        public toolchain: SwiftToolchain
     ) {
-        this.outputChannel = new SwiftOutputChannel();
         this.statusItem = new StatusItem();
         this.buildStatus = new SwiftBuildStatus(this.statusItem);
         this.languageClientManager = new LanguageClientManager(this);
-        if (this.toolchain) {
-            this.outputChannel.log(this.toolchain.swiftVersionString);
-            this.toolchain.logDiagnostics(this.outputChannel);
-            contextKeys.createNewProjectAvailable =
-                this.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 8, 0));
-        } else {
-            contextKeys.createNewProjectAvailable = true;
-        }
         this.tasks = new TaskManager(this);
         // test coverage document provider
         this.testCoverageDocumentProvider = new TestCoverageReportProvider(this);
@@ -84,20 +73,6 @@ export class WorkspaceContext implements vscode.Disposable {
         this.testCoverageRenderer = new TestCoverageRenderer(this);
 
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(async event => {
-            // on toolchain config change, reload window
-            if (event.affectsConfiguration("swift.path")) {
-                showReloadExtensionNotification(
-                    "Changing the Swift path requires the project be reloaded."
-                );
-            }
-            // on sdk config change, restart sourcekit-lsp
-            if (event.affectsConfiguration("swift.SDK")) {
-                // FIXME: There is a bug stopping us from restarting SourceKit-LSP directly.
-                // As long as it's fixed we won't need to reload on newer versions.
-                showReloadExtensionNotification(
-                    "Changing the Swift SDK path requires the project be reloaded."
-                );
-            }
             // on runtime path config change, regenerate launch.json
             if (event.affectsConfiguration("swift.runtimePath")) {
                 if (!this.needToAutoGenerateLaunchConfig()) {
@@ -222,10 +197,12 @@ export class WorkspaceContext implements vscode.Disposable {
     }
 
     /** Get swift version and create WorkspaceContext */
-    static async create(): Promise<WorkspaceContext> {
+    static async create(
+        outputChannel: SwiftOutputChannel,
+        toolchain: SwiftToolchain
+    ): Promise<WorkspaceContext> {
         const tempFolder = await TemporaryFolder.create();
-        const toolchain = await SwiftToolchain.create().catch(() => undefined);
-        return new WorkspaceContext(tempFolder, toolchain);
+        return new WorkspaceContext(tempFolder, outputChannel, toolchain);
     }
 
     /**

@@ -298,10 +298,7 @@ export class TestRunner {
     async runHandler(shouldDebug: boolean, testKind: TestKind, token: vscode.CancellationToken) {
         const runState = new TestRunnerTestRunState(this.testRun);
         try {
-            const toolchain = this.folderContext.workspaceContext.toolchain;
-            if (!toolchain) {
-                return;
-            }
+            const toolchain = this.folderContext.toolchain;
             // run associated build task
             // don't do this if generating code test coverage data as it
             // will rebuild everything again
@@ -562,11 +559,6 @@ export class TestRunner {
         stderr: stream.Writable,
         testBuildConfig: vscode.DebugConfiguration
     ) {
-        if (!this.workspaceContext.toolchain) {
-            showToolchainError();
-            return;
-        }
-
         try {
             // XCTestRuns are started immediately
             this.testRun.testRunStarted();
@@ -575,7 +567,7 @@ export class TestRunner {
             const filterArgs = this.testArgs.xcTestArgs.flatMap(arg => ["--filter", arg]);
             const args = ["test", "--enable-code-coverage"];
             await execFileStreamOutput(
-                this.workspaceContext.toolchain.getToolchainExecutable("swift"),
+                this.folderContext.toolchain.getToolchainExecutable("swift"),
                 [...args, ...filterArgs],
                 stdout,
                 stderr,
@@ -609,12 +601,12 @@ export class TestRunner {
         testBuildConfig: vscode.DebugConfiguration
     ) {
         await this.workspaceContext.tempFolder.withTemporaryFile("xml", async filename => {
-            if (!this.workspaceContext.toolchain) {
+            if (!this.folderContext.toolchain) {
                 showToolchainError();
                 return;
             }
 
-            const sanitizer = this.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
+            const sanitizer = this.folderContext.toolchain.sanitizer(configuration.sanitizer);
             const sanitizerArgs = sanitizer?.buildFlags ?? [];
             const filterArgs = this.testArgs.xcTestArgs.flatMap(arg => ["--filter", arg]);
             const args = [
@@ -631,7 +623,7 @@ export class TestRunner {
 
             try {
                 await execFileStreamOutput(
-                    this.workspaceContext.toolchain.getToolchainExecutable("swift"),
+                    this.folderContext.toolchain.getToolchainExecutable("swift"),
                     [...args, ...filterArgs],
                     stdout,
                     stderr,
@@ -834,16 +826,12 @@ class LaunchConfigurations {
         folderContext: FolderContext,
         debugging: boolean
     ): vscode.DebugConfiguration | null {
-        if (!workspaceContext.toolchain) {
-            return null;
-        }
-
         const testList = args.join(",");
 
         if (process.platform === "darwin") {
             // if debugging on macOS with Swift 5.6 we need to create a custom launch
             // configuration so we can set the system architecture
-            const swiftVersion = workspaceContext.toolchain.swiftVersion;
+            const swiftVersion = folderContext.toolchain.swiftVersion;
             if (
                 debugging &&
                 swiftVersion.isLessThan(new Version(5, 7, 0)) &&

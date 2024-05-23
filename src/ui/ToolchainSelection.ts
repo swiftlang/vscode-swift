@@ -98,7 +98,9 @@ type SelectToolchainItem = SwiftToolchainItem | ActionItem | SeparatorItem;
  * @param ctx the {@link WorkspaceContext}
  * @returns an array of {@link SelectToolchainItem}
  */
-async function getQuickPickItems(ctx: WorkspaceContext): Promise<SelectToolchainItem[]> {
+async function getQuickPickItems(
+    ctx: WorkspaceContext | undefined
+): Promise<SelectToolchainItem[]> {
     const xcodes = (await SwiftToolchain.getXcodeInstalls())
         .reverse()
         .map<SwiftToolchainItem>(xcodePath => {
@@ -136,7 +138,7 @@ async function getQuickPickItems(ctx: WorkspaceContext): Promise<SelectToolchain
             toolchainPath: path.join(toolchainPath, "usr"),
             swiftFolderPath: path.join(toolchainPath, "usr", "bin"),
         }));
-    if (ctx.toolchain) {
+    if (ctx) {
         const toolchainInUse = [...xcodes, ...toolchains, ...swiftlyToolchains].find(toolchain => {
             return ctx.toolchain?.toolchainPath.startsWith(toolchain.toolchainPath);
         });
@@ -181,7 +183,7 @@ async function getQuickPickItems(ctx: WorkspaceContext): Promise<SelectToolchain
  *
  * @param ctx the {@link WorkspaceContext}
  */
-export async function selectToolchain(ctx: WorkspaceContext) {
+export async function selectToolchain(ctx: WorkspaceContext | undefined) {
     const selected = await vscode.window.showQuickPick<SelectToolchainItem>(
         getQuickPickItems(ctx),
         {

@@ -13,16 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
 import { DebugAdapter } from "./debugAdapter";
+import { SwiftToolchain } from "../toolchain/toolchain";
 
-export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
-    if (!workspaceContext.toolchain) {
-        return { dispose: () => {} };
-    }
-    const toolchain = workspaceContext.toolchain;
-
+export function registerLLDBDebugAdapter(toolchain: SwiftToolchain): vscode.Disposable {
     class LLDBDebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFactory {
         createDebugAdapterDescriptor(
             _session: vscode.DebugSession,

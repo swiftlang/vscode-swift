@@ -23,18 +23,16 @@ export class LanguageStatusItems implements vscode.Disposable {
     constructor(workspaceContext: WorkspaceContext) {
         this.subscriptions = [];
 
-        if (workspaceContext.toolchain) {
-            // Swift language version item
-            const swiftVersionItem = vscode.languages.createLanguageStatusItem(
-                "swiftlang-version",
-                LanguageClientManager.documentSelector
-            );
-            swiftVersionItem.text = workspaceContext.toolchain.swiftVersionString;
-            swiftVersionItem.accessibilityInformation = {
-                label: `Swift Version ${workspaceContext.toolchain.swiftVersion.toString()}`,
-            };
-            this.subscriptions.push(swiftVersionItem);
-        }
+        // Swift language version item
+        const swiftVersionItem = vscode.languages.createLanguageStatusItem(
+            "swiftlang-version",
+            LanguageClientManager.documentSelector
+        );
+        swiftVersionItem.text = workspaceContext.toolchain.swiftVersionString;
+        swiftVersionItem.accessibilityInformation = {
+            label: `Swift Version ${workspaceContext.toolchain.swiftVersion.toString()}`,
+        };
+        this.subscriptions.push(swiftVersionItem);
 
         // Package.swift item
         this.packageSwiftItem = vscode.languages.createLanguageStatusItem("swiftlang-package", [

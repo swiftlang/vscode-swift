@@ -60,16 +60,15 @@ export interface SwiftTask extends vscode.Task {
 /** flag for enabling test discovery */
 function testDiscoveryFlag(ctx: FolderContext): string[] {
     // Test discovery is only available in SwiftPM 5.1 and later.
-    if (ctx.workspaceContext.toolchain?.swiftVersion.isLessThan(new Version(5, 1, 0))) {
+    if (ctx.toolchain.swiftVersion.isLessThan(new Version(5, 1, 0))) {
         return [];
     }
     // Test discovery is always enabled on Darwin.
     if (process.platform !== "darwin") {
         const hasLinuxMain = ctx.linuxMain.exists;
-        const testDiscoveryByDefault =
-            ctx.workspaceContext.toolchain?.swiftVersion.isGreaterThanOrEqual(
-                new Version(5, 4, 0)
-            ) ?? false;
+        const testDiscoveryByDefault = ctx.toolchain.swiftVersion.isGreaterThanOrEqual(
+            new Version(5, 4, 0)
+        );
         if (hasLinuxMain || !testDiscoveryByDefault) {
             return ["--enable-test-discovery"];
         }
@@ -119,7 +118,7 @@ function getBuildRevealOption(): vscode.TaskRevealKind {
 const buildAllTaskCache = (() => {
     const cache = new Map<string, vscode.Task>();
     const key = (name: string, folderContext: FolderContext) => {
-        return `${name}:${buildOptions(folderContext.workspaceContext.toolchain).join(",")}`;
+        return `${name}:${buildOptions(folderContext.toolchain).join(",")}`;
     };
     return {
         get(name: string, folderContext: FolderContext): vscode.Task | undefined {
@@ -135,10 +134,10 @@ const buildAllTaskCache = (() => {
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
 export function createBuildAllTask(folderContext: FolderContext): vscode.Task | undefined {
-    if (!folderContext.workspaceContext.toolchain) {
+    if (!folderContext.toolchain) {
         return;
     }
-    let additionalArgs = buildOptions(folderContext.workspaceContext.toolchain);
+    let additionalArgs = buildOptions(folderContext.toolchain);
     if (folderContext.swiftPackage.getTargets(TargetType.test).length > 0) {
         additionalArgs.push(...testDiscoveryFlag(folderContext));
     }
@@ -147,7 +146,7 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task | 
         buildTaskName += ` (${folderContext.relativePath})`;
     }
     // don't build tests for iOS etc as they don't compile
-    if (folderContext.workspaceContext.toolchain.buildFlags.getDarwinTarget() === undefined) {
+    if (folderContext.toolchain.buildFlags.getDarwinTarget() === undefined) {
         additionalArgs = ["--build-tests", ...additionalArgs];
     }
 
@@ -173,7 +172,7 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task | 
             disableTaskQueue: true,
             showBuildStatus: configuration.showBuildStatus,
         },
-        folderContext.workspaceContext.toolchain
+        folderContext.toolchain
     );
     buildAllTaskCache.set(buildTaskName, folderContext, task);
     return task;
@@ -235,7 +234,7 @@ export async function getBuildAllTask(folderContext: FolderContext): Promise<vsc
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
 function createBuildTasks(product: Product, folderContext: FolderContext): vscode.Task[] {
-    const toolchain = folderContext.workspaceContext.toolchain;
+    const toolchain = folderContext.toolchain;
     if (!toolchain) {
         return [];
     }
@@ -381,10 +380,6 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async provideTasks(token: vscode.CancellationToken): Promise<vscode.Task[]> {
-        if (!this.workspaceContext.toolchain) {
-            return [];
-        }
-
         if (this.workspaceContext.folders.length === 0) {
             return [];
         }
@@ -452,10 +447,6 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     resolveTask(task: vscode.Task, token: vscode.CancellationToken): vscode.Task {
-        if (!this.workspaceContext.toolchain) {
-            throw new Error("Unable to discover swift toolchain");
-        }
-
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
         const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
