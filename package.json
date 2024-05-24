@@ -161,16 +161,6 @@
         "category": "Swift"
       },
       {
-        "command": "swift.showTestCoverageReport",
-        "title": "Show Test Coverage Report",
-        "category": "Swift"
-      },
-      {
-        "command": "swift.toggleTestCoverage",
-        "title": "Toggle Display of Test Coverage Results",
-        "category": "Swift"
-      },
-      {
         "command": "swift.attachDebugger",
         "title": "Attach to Process...",
         "category": "Swift"
