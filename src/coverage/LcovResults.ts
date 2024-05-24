@@ -112,10 +112,6 @@ export class TestCoverage {
 
     private async computeLCOVCoverage(): Promise<lcov.LcovFile[]> {
         if (this.lcovFiles.length === 0) {
-            this.folderContext.workspaceContext.outputChannel.logDiagnostic(
-                `Attempted to compute code coverage with no coverage files captured.`,
-                this.folderContext.name
-            );
             return [];
         }
 

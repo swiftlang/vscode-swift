@@ -86,12 +86,10 @@ export class DebugConfigurationFactory {
         }
 
         switch (process.platform) {
-            case "darwin":
-                return this.buidDarwinConfig();
             case "win32":
                 return this.buildWindowsConfig();
             default:
-                return this.buildLinuxConfig();
+                return this.buidDarwinConfig();
         }
     }
 
@@ -130,54 +128,44 @@ export class DebugConfigurationFactory {
                             : this.baseConfig.preLaunchTask,
                 };
             case "XCTest":
-                switch (this.testKind) {
-                    // If we want code coverage on XCTests we have to run with `swift test --enable-code-coverage`.
-                    case TestKind.coverage:
-                        let args = ["test", "--enable-code-coverage"];
-                        if (this.swiftVersionGreaterOrEqual(6, 0, 0)) {
-                            args = [
-                                ...args,
-                                "--enable-xctest",
-                                "--disable-experimental-swift-testing",
-                            ];
-                        }
-
-                        return {
-                            ...this.baseConfig,
-                            program: this.swiftProgramPath,
-                            args: this.addTestsToArgs(args),
-                            env: {
-                                ...this.testEnv,
-                                ...this.sanitizerRuntimeEnvironment,
-                            },
-                        };
-                    default:
-                        const swiftVersion = this.ctx.workspaceContext.toolchain.swiftVersion;
-                        if (
-                            swiftVersion.isLessThan(new Version(5, 7, 0)) &&
-                            swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))
-                        ) {
-                            // if debugging on macOS with Swift 5.6 we need to create a custom launch
-                            // configuration so we can set the system architecture
-                            return this.createDarwin56TestConfiguration();
-                        }
-
-                        // If we don't need code coverage we can just run the built <Package>PackageTests.xctest binary with xctest.
-                        const xcTestBinary = this.xcTestBinaryPath;
-                        if (!xcTestBinary) {
-                            return null;
-                        }
-
-                        return {
-                            ...this.baseConfig,
-                            program: this.xcTestBinaryPath,
-                            args:
-                                this.testList.length > 0
-                                    ? ["-XCTest", this.testList.join(","), this.xcTestOutputPath]
-                                    : [this.xcTestOutputPath],
-                            env: this.testEnv,
-                        };
+                const swiftVersion = this.ctx.workspaceContext.toolchain.swiftVersion;
+                if (
+                    swiftVersion.isLessThan(new Version(5, 7, 0)) &&
+                    swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))
+                ) {
+                    // if debugging on macOS with Swift 5.6 we need to create a custom launch
+                    // configuration so we can set the system architecture
+                    return this.createDarwin56TestConfiguration();
                 }
+
+                let xcTestArgs = [
+                    "test",
+                    ...(this.testKind === TestKind.coverage ? ["--enable-code-coverage"] : []),
+                ];
+                if (this.swiftVersionGreaterOrEqual(6, 0, 0)) {
+                    xcTestArgs = [
+                        ...xcTestArgs,
+                        "--enable-xctest",
+                        "--disable-experimental-swift-testing",
+                    ];
+                }
+
+                return {
+                    ...this.baseConfig,
+                    program: this.swiftProgramPath,
+                    args: this.addTestsToArgs(xcTestArgs),
+                    env: {
+                        ...this.testEnv,
+                        ...this.sanitizerRuntimeEnvironment,
+                        SWT_SF_SYMBOLS_ENABLED: "0",
+                    },
+                    // For coverage we need to rebuild so do the build/test all in one step,
+                    // otherwise we do a build, then test, to give better progress.
+                    preLaunchTask:
+                        this.testKind === TestKind.coverage
+                            ? undefined
+                            : this.baseConfig.preLaunchTask,
+                };
             default:
                 return null;
         }
@@ -191,7 +179,7 @@ export class DebugConfigurationFactory {
             case TestLibrary.xctest:
                 switch (this.testKind) {
                     case TestKind.coverage:
-                        return this.buildLinuxConfig();
+                        return this.buidDarwinConfig();
                     default:
                         const xcTestPath = this.ctx.workspaceContext.toolchain.xcTestPath;
                         const runtimePath = this.ctx.workspaceContext.toolchain.runtimePath;
@@ -225,43 +213,6 @@ export class DebugConfigurationFactory {
                                       preRunCommands: [`settings set target.sdk-path ${sdkroot}`],
                                   }
                                 : {}),
-                        };
-                }
-        }
-    }
-
-    private buildLinuxConfig(): vscode.DebugConfiguration | null {
-        switch (this.testLibrary) {
-            case TestLibrary.swiftTesting:
-                return this.buidDarwinConfig();
-            case TestLibrary.xctest:
-                switch (this.testKind) {
-                    case TestKind.coverage:
-                        let args = ["test", "--enable-code-coverage"];
-                        if (this.swiftVersionGreaterOrEqual(6, 0, 0)) {
-                            args = [
-                                ...args,
-                                "--enable-xctest",
-                                "--disable-experimental-swift-testing",
-                            ];
-                        }
-
-                        return {
-                            ...this.baseConfig,
-                            program: this.swiftProgramPath,
-                            args: this.addTestsToArgs(args),
-                            env: this.testEnv,
-                            preLaunchTask:
-                                this.testKind === TestKind.coverage
-                                    ? undefined
-                                    : this.baseConfig.preLaunchTask,
-                        };
-                    default:
-                        return {
-                            ...this.baseConfig,
-                            program: this.xcTestOutputPath,
-                            args: [this.testList.join(",")],
-                            env: this.testEnv,
                         };
                 }
         }
@@ -339,12 +290,6 @@ export class DebugConfigurationFactory {
 
     private get swiftProgramPath(): string {
         return this.ctx.workspaceContext.toolchain.getToolchainExecutable("swift");
-        // return path.join(this.ctx.workspaceContext.toolchain.swiftFolderPath, "swift");
-    }
-
-    private get xcTestBinaryPath(): string | undefined {
-        const xcTestPath = this.ctx.workspaceContext.toolchain.xcTestPath;
-        return xcTestPath ? path.join(xcTestPath, "xctest") : undefined;
     }
 
     private get buildDirectory(): string {

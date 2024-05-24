@@ -289,7 +289,8 @@ export function createSwiftTask(
     args: string[],
     name: string,
     config: TaskConfig,
-    toolchain: SwiftToolchain
+    toolchain: SwiftToolchain,
+    cmdEnv: { [key: string]: string } = {}
 ): SwiftTask {
     const swift = toolchain.getToolchainExecutable("swift");
     args = toolchain.buildFlags.withSwiftSDKFlags(args);
@@ -309,7 +310,7 @@ export function createSwiftTask(
     } else {
         cwd = config.cwd.fsPath;
     }*/
-    const env = { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() };
+    const env = { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv(), ...cmdEnv };
     const presentation = config?.presentationOptions ?? {};
     const task = new vscode.Task(
         {

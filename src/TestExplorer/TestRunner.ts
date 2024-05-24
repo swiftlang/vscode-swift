@@ -19,12 +19,11 @@ import * as os from "os";
 import * as asyncfs from "fs/promises";
 import { FolderContext } from "../FolderContext";
 import { execFile, getErrorDescription } from "../utilities/utilities";
-import { getBuildAllTask } from "../tasks/SwiftTaskProvider";
+import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { XCTestOutputParser } from "./TestParsers/XCTestOutputParser";
 import { SwiftTestingOutputParser } from "./TestParsers/SwiftTestingOutputParser";
-import { Version } from "../utilities/version";
 import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
 import { TaskOperation } from "../tasks/TaskQueue";
 import { TestXUnitParser, iXUnitTestState } from "./TestXUnitParser";
@@ -34,16 +33,15 @@ import { TemporaryFolder } from "../utilities/tempFolder";
 import { TestClass, runnableTag, upsertTestItem } from "./TestDiscovery";
 import { TestCoverage } from "../coverage/LcovResults";
 import { DebugConfigurationFactory } from "../debugger/buildConfig";
-import { SwiftPtyProcess } from "../tasks/SwiftProcess";
 
 /** Workspace Folder events */
 export enum TestKind {
     // run tests serially
-    standard = "standard",
+    standard = "Standard",
     // run tests in parallel
-    parallel = "parallel",
+    parallel = "Parallel",
     // run tests and extract test coverage
-    coverage = "coverage",
+    coverage = "Coverage",
 }
 
 export enum RunProfileName {
@@ -333,28 +331,6 @@ export class TestRunner {
     async runHandler(shouldDebug: boolean, testKind: TestKind, token: vscode.CancellationToken) {
         const runState = new TestRunnerTestRunState(this.testRun);
         try {
-            // run associated build task
-            // don't do this if generating code test coverage data as the
-            // `swift test --enable-code-coverage` command will rebuild everything again.
-            if (testKind !== TestKind.coverage) {
-                const task = await getBuildAllTask(this.folderContext);
-                task.definition.dontTriggerTestDiscovery =
-                    this.folderContext.workspaceContext.swiftVersion.isGreaterThanOrEqual(
-                        new Version(6, 0, 0)
-                    );
-
-                const exitCode = await this.folderContext.taskQueue.queueOperation(
-                    new TaskOperation(task),
-                    token
-                );
-
-                // if build failed then exit
-                if (exitCode === undefined || exitCode !== 0) {
-                    await this.testRun.end();
-                    return;
-                }
-            }
-
             if (shouldDebug) {
                 await this.debugSession(token, runState);
             } else {
@@ -474,7 +450,6 @@ export class TestRunner {
         testBuildConfig: vscode.DebugConfiguration,
         testLibrary: TestLibrary
     ) {
-        this.testRun.appendOutput(`> Test run started at ${new Date().toLocaleString()} <\r\n\r\n`);
         try {
             switch (testKind) {
                 case TestKind.coverage:
@@ -489,7 +464,7 @@ export class TestRunner {
                     await this.runParallelSession(token, outputStream, testBuildConfig);
                     break;
                 default:
-                    await this.runStandardSession(token, outputStream, testBuildConfig);
+                    await this.runStandardSession(token, outputStream, testBuildConfig, testKind);
                     break;
             }
         } catch (error) {
@@ -506,35 +481,53 @@ export class TestRunner {
     async runStandardSession(
         token: vscode.CancellationToken,
         outputStream: stream.Writable,
-        testBuildConfig: vscode.DebugConfiguration
+        testBuildConfig: vscode.DebugConfiguration,
+        testKind: TestKind
     ) {
         return new Promise<void>((resolve, reject) => {
             const args = testBuildConfig.args ?? [];
-            let didError = false;
-            let cancellation: vscode.Disposable;
+            this.folderContext?.workspaceContext.outputChannel.logDiagnostic(
+                `Exec: ${testBuildConfig.program} ${args.join(" ")}`,
+                this.folderContext.name
+            );
 
-            const exec = new SwiftPtyProcess(testBuildConfig.program, args, {
-                cwd: testBuildConfig.cwd,
-                env: { ...process.env, ...testBuildConfig.env },
-            });
+            let kindLabel: string;
+            switch (testKind) {
+                case TestKind.coverage:
+                    kindLabel = " With Code Coverage";
+                    break;
+                case TestKind.parallel:
+                    kindLabel = " In Parallel";
+                    break;
+                case TestKind.standard:
+                    kindLabel = "";
+            }
 
-            exec.onDidWrite(str => {
-                // Work around SPM still emitting progress when doing --no-build.
-                const replaced = str.replace("[1/1] Planning build", "");
+            const task = createSwiftTask(
+                args,
+                `Building and Running Tests${kindLabel}`,
+                {
+                    cwd: this.folderContext.folder,
+                    scope: this.folderContext.workspaceFolder,
+                    prefix: this.folderContext.name,
+                    presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+                },
+                this.folderContext.workspaceContext.toolchain,
+                { ...process.env, ...testBuildConfig.env }
+            );
+
+            task.execution.onDidWrite(str => {
+                const replaced = str
+                    .replace("[1/1] Planning build", "") // Work around SPM still emitting progress when doing --no-build.
+                    .replace(
+                        /LLVM Profile Error: Failed to write file "default.profraw": Operation not permitted\r\n/gm,
+                        ""
+                    ); // Work around benign LLVM coverage warnings
                 outputStream.write(replaced);
             });
 
-            exec.onDidThrowError(err => {
-                didError = true;
-                reject(err);
-            });
-
-            exec.onDidClose(code => {
-                // onDidClose is still called after an error
-                if (didError) {
-                    return;
-                }
-
+            let cancellation: vscode.Disposable;
+            task.execution.onDidClose(code => {
                 if (cancellation) {
                     cancellation.dispose();
                 }
@@ -547,17 +540,7 @@ export class TestRunner {
                 }
             });
 
-            if (token) {
-                cancellation = token.onCancellationRequested(() => {
-                    exec.kill();
-                });
-            }
-
-            this.folderContext?.workspaceContext.outputChannel.logDiagnostic(
-                `Exec: ${testBuildConfig.program} ${args.join(" ")}`,
-                this.folderContext.name
-            );
-            exec.spawn();
+            this.folderContext.taskQueue.queueOperation(new TaskOperation(task), token);
         });
     }
 
@@ -569,7 +552,7 @@ export class TestRunner {
         testLibrary: TestLibrary
     ) {
         try {
-            await this.runStandardSession(token, outputStream, testBuildConfig);
+            await this.runStandardSession(token, outputStream, testBuildConfig, TestKind.coverage);
         } catch (error) {
             // If this isn't a standard test failure, forward the error and skip generating coverage.
             if (error !== 1) {
@@ -603,10 +586,15 @@ export class TestRunner {
             this.testRun.testRunStarted();
 
             try {
-                testBuildConfig.args = await this.runStandardSession(token, outputStream, {
-                    ...testBuildConfig,
-                    args: [...args, filterArgs],
-                });
+                testBuildConfig.args = await this.runStandardSession(
+                    token,
+                    outputStream,
+                    {
+                        ...testBuildConfig,
+                        args: [...args, filterArgs],
+                    },
+                    TestKind.parallel
+                );
             } catch (error) {
                 // If this isn't a standard test failure, forward the error and skip generating coverage.
                 if (error !== 1) {
@@ -752,11 +740,6 @@ export class TestRunner {
                                 .then(
                                     started => {
                                         if (started) {
-                                            if (config === validBuildConfigs[0]) {
-                                                this.testRun.appendOutput(
-                                                    `> Test run started at ${new Date().toLocaleString()} <\r\n\r\n`
-                                                );
-                                            }
                                             // show test results pane
                                             vscode.commands.executeCommand(
                                                 "testing.showMostRecentOutput"
