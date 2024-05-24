@@ -118,6 +118,7 @@ export class SwiftToolchain {
         const customSDK = this.getCustomSDK();
         const xcTestPath = await this.getXCTestPath(
             targetInfo,
+            swiftFolderPath,
             swiftVersion,
             runtimePath,
             customSDK ?? defaultSDK
@@ -313,8 +314,8 @@ export class SwiftToolchain {
         return `${this.toolchainPath}/bin/${exe}${windowsExeSuffix}`;
     }
 
-    private getXcodeDirectory(): string | undefined {
-        let xcodeDirectory = this.swiftFolderPath;
+    private static getXcodeDirectory(toolchainPath: string): string | undefined {
+        let xcodeDirectory = toolchainPath;
         while (path.extname(xcodeDirectory) !== ".app") {
             xcodeDirectory = path.dirname(xcodeDirectory);
             if (path.parse(xcodeDirectory).base === "") {
@@ -334,7 +335,7 @@ export class SwiftToolchain {
             if (process.platform !== "darwin") {
                 throw new Error("Failed to find LLDB in swift toolchain");
             }
-            const xcodeDirectory = this.getXcodeDirectory();
+            const xcodeDirectory = SwiftToolchain.getXcodeDirectory(this.swiftFolderPath);
             if (!xcodeDirectory) {
                 throw new Error("Failed to find LLDB in swift toolchain");
             }
@@ -550,15 +551,19 @@ export class SwiftToolchain {
      */
     private static async getXCTestPath(
         targetInfo: SwiftTargetInfo,
+        swiftFolderPath: string,
         swiftVersion: Version,
         runtimePath: string | undefined,
         sdkroot: string | undefined
     ): Promise<string | undefined> {
         switch (process.platform) {
             case "darwin": {
-                const developerDir = await this.getXcodeDeveloperDir(
-                    configuration.swiftEnvironmentVariables
-                );
+                const xcodeDirectory = this.getXcodeDirectory(swiftFolderPath);
+                const swiftEnvironmentVariables = configuration.swiftEnvironmentVariables;
+                if (xcodeDirectory && !("DEVELOPER_DIR" in swiftEnvironmentVariables)) {
+                    swiftEnvironmentVariables["DEVELOPER_DIR"] = xcodeDirectory;
+                }
+                const developerDir = await this.getXcodeDeveloperDir(swiftEnvironmentVariables);
                 return path.join(developerDir, "usr", "bin");
             }
             case "win32": {
