@@ -43,7 +43,7 @@ export async function selectToolchainFolder() {
         canSelectFiles: false,
         canSelectFolders: true,
         canSelectMany: false,
-        title: "Select the folder containing swift binaries",
+        title: "Select the folder containing Swift binaries",
         openLabel: "Select folder",
     });
     if (!selected || selected.length !== 1) {
