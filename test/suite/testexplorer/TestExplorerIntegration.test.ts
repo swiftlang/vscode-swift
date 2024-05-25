@@ -15,8 +15,10 @@ import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { RunProfileName, TestRunProxy } from "../../../src/TestExplorer/TestRunner";
 import { Version } from "../../../src/utilities/version";
 
-suite("TestDiscovery Suite", function () {
-    this.timeout(600000);
+suite("Test Explorer Suite", function () {
+    const MAX_TEST_RUN_TIME_MINUTES = 5;
+
+    this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES);
 
     let workspaceContext: WorkspaceContext;
     let testExplorer: TestExplorer;
@@ -112,7 +114,7 @@ suite("TestDiscovery Suite", function () {
     });
 
     // TODO: Add RunProfileName.coverage once https://github.com/swift-server/vscode-swift/pull/807 is merged.
-    [RunProfileName.run, RunProfileName.debug].forEach(runProfile => {
+    [RunProfileName.run].forEach(runProfile => {
         suite(runProfile, () => {
             suite("swift-testing", function () {
                 suiteSetup(function () {

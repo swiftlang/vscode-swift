@@ -349,6 +349,7 @@ export class TestRunner {
                 await this.runSession(token, testKind, runState);
             }
         } catch (error) {
+            this.workspaceContext.outputChannel.log(`Error: ${getErrorDescription(error)}`);
             this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
         }
 
