@@ -97,11 +97,18 @@ export class TestExplorer {
                 this.testFileEdited = true;
             }
         });
-        this.subscriptions = [fileWatcher, onDidEndTask, this.controller];
+
+        this.subscriptions = [
+            fileWatcher,
+            onDidEndTask,
+            this.controller,
+            this.onTestItemsDidChangeEmitter,
+            this.onDidCreateTestRunEmitter,
+            ...this.testRunProfiles,
+        ];
     }
 
     dispose() {
-        this.onTestItemsDidChangeEmitter.dispose();
         this.subscriptions.forEach(element => element.dispose());
     }
 
