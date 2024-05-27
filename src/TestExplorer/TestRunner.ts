@@ -292,7 +292,7 @@ export class TestRunner {
             // Add coverage profile
             controller.createRunProfile(
                 RunProfileName.coverage,
-                vscode.TestRunProfileKind.Run,
+                vscode.TestRunProfileKind.Coverage,
                 async (request, token) => {
                     const runner = new TestRunner(request, folderContext, controller);
                     onCreateTestRun.fire(runner.testRun);

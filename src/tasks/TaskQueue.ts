@@ -71,7 +71,7 @@ export class TaskOperation implements SwiftOperation {
         workspaceContext: WorkspaceContext,
         token?: vscode.CancellationToken
     ): Promise<number | undefined> {
-        workspaceContext.outputChannel.log(`Exec Task: ${this.task.detail}`);
+        workspaceContext.outputChannel.log(`Exec Task: ${this.task.detail ?? this.task.name}`);
         return workspaceContext.tasks.executeTaskAndWait(this.task, token);
     }
 }

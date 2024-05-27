@@ -113,8 +113,7 @@ suite("Test Explorer Suite", function () {
         }
     });
 
-    // TODO: Add RunProfileName.coverage once https://github.com/swift-server/vscode-swift/pull/807 is merged.
-    [RunProfileName.run].forEach(runProfile => {
+    [RunProfileName.run, RunProfileName.coverage].forEach(runProfile => {
         suite(runProfile, () => {
             suite("swift-testing", function () {
                 suiteSetup(function () {
