@@ -159,58 +159,6 @@ const configuration = {
     get path(): string {
         return vscode.workspace.getConfiguration("swift").get<string>("path", "");
     },
-    async setPath(
-        value: string | undefined,
-        target?: vscode.ConfigurationTarget | "prompt"
-    ): Promise<void> {
-        let scope: vscode.ConfigurationScope | undefined;
-        if (target === "prompt") {
-            const items: (vscode.QuickPickItem & {
-                scope?: vscode.ConfigurationScope;
-                target?: vscode.ConfigurationTarget;
-            })[] = [
-                {
-                    label: "Global",
-                    detail: "Add to global Visual Studio Code configuration",
-                    target: vscode.ConfigurationTarget.Global,
-                },
-            ];
-            if (vscode.workspace.workspaceFolders) {
-                items.push({
-                    label: "Workspace",
-                    detail: "Add to Workspace configuration",
-                    target: vscode.ConfigurationTarget.Workspace,
-                });
-                if (vscode.workspace.workspaceFolders.length > 1) {
-                    items.push({
-                        label: "workspace folders",
-                        kind: vscode.QuickPickItemKind.Separator,
-                    });
-                    for (const folder of vscode.workspace.workspaceFolders) {
-                        items.push({
-                            label: folder.name,
-                            scope: folder.uri,
-                            target: vscode.ConfigurationTarget.WorkspaceFolder,
-                        });
-                    }
-                }
-            }
-            if (items.length > 1) {
-                const selected = await vscode.window.showQuickPick(items, {
-                    title: "Toolchain Settings",
-                    placeHolder: "Select a location to update the toolchain settings",
-                    canPickMany: false,
-                });
-                if (!selected) {
-                    return;
-                }
-                target = selected.target;
-            } else {
-                target = vscode.ConfigurationTarget.Global; // Global scope by default
-            }
-        }
-        vscode.workspace.getConfiguration("swift", scope).update("path", value, target);
-    },
     /** Path to folder that include swift runtime */
     get runtimePath(): string {
         return vscode.workspace.getConfiguration("swift").get<string>("runtimePath", "");

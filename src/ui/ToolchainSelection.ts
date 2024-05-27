@@ -15,7 +15,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import { showReloadExtensionNotification } from "./ReloadExtension";
-import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { SwiftToolchain } from "../toolchain/toolchain";
 
@@ -49,19 +48,16 @@ export async function selectToolchainFolder() {
     if (!selected || selected.length !== 1) {
         return;
     }
-    await configuration.setPath(selected[0].fsPath, "prompt");
+    await setToolchainPath(selected[0].fsPath, "prompt");
 }
 
 export async function showToolchainError(): Promise<void> {
     const selected = await vscode.window.showErrorMessage(
         "Unable to automatically discover your Swift toolchain. Either install a toolchain from Swift.org or provide the path to an existing toolchain.",
-        "Download",
-        "Select Toolchain Folder"
+        "Select Toolchain"
     );
-    if (selected === "Download") {
-        await downloadToolchain();
-    } else if (selected === "Select Toolchain Folder") {
-        await selectToolchainFolder();
+    if (selected === "Select Toolchain") {
+        await vscode.commands.executeCommand("swift.selectToolchain");
     }
 }
 
@@ -195,6 +191,59 @@ export async function selectToolchain(ctx: WorkspaceContext | undefined) {
     if (selected?.type === "action") {
         await selected.run();
     } else if (selected?.type === "toolchain") {
-        await configuration.setPath(selected.swiftFolderPath, "prompt");
+        await setToolchainPath(selected.swiftFolderPath, "prompt");
     }
+}
+
+async function setToolchainPath(
+    value: string | undefined,
+    target?: vscode.ConfigurationTarget | "prompt"
+): Promise<void> {
+    let scope: vscode.ConfigurationScope | undefined;
+    if (target === "prompt") {
+        const items: (vscode.QuickPickItem & {
+            scope?: vscode.ConfigurationScope;
+            target?: vscode.ConfigurationTarget;
+        })[] = [
+            {
+                label: "Global",
+                detail: "Add to global Visual Studio Code configuration",
+                target: vscode.ConfigurationTarget.Global,
+            },
+        ];
+        if (vscode.workspace.workspaceFolders) {
+            items.push({
+                label: "Workspace",
+                detail: "Add to Workspace configuration",
+                target: vscode.ConfigurationTarget.Workspace,
+            });
+            if (vscode.workspace.workspaceFolders.length > 1) {
+                items.push({
+                    label: "workspace folders",
+                    kind: vscode.QuickPickItemKind.Separator,
+                });
+                for (const folder of vscode.workspace.workspaceFolders) {
+                    items.push({
+                        label: folder.name,
+                        scope: folder.uri,
+                        target: vscode.ConfigurationTarget.WorkspaceFolder,
+                    });
+                }
+            }
+        }
+        if (items.length > 1) {
+            const selected = await vscode.window.showQuickPick(items, {
+                title: "Toolchain Settings",
+                placeHolder: "Select a location to update the toolchain settings",
+                canPickMany: false,
+            });
+            if (!selected) {
+                return;
+            }
+            target = selected.target;
+        } else {
+            target = vscode.ConfigurationTarget.Global; // Global scope by default
+        }
+    }
+    vscode.workspace.getConfiguration("swift", scope).update("path", value, target);
 }

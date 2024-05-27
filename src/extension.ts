@@ -161,7 +161,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
                             await commands.resolveFolderDependencies(folder, true);
                         }
                         if (
-                            workspace.toolchain &&
                             workspace.toolchain.swiftVersion.isGreaterThanOrEqual(
                                 new Version(5, 6, 0)
                             )
