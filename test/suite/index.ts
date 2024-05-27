@@ -17,6 +17,8 @@ import * as Mocha from "mocha";
 import * as glob from "glob";
 
 export function run(): Promise<void> {
+    process.traceDeprecation = true;
+
     // Create the mocha test
     const mocha = new Mocha({
         ui: "tdd",

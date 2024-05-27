@@ -1,6 +1,7 @@
 out
 dist
 node_modules
+default.profraw
 *.vsix
 .vscode-test
 .build

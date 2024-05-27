@@ -54,13 +54,27 @@ export enum TestKind {
     coverage = "coverage",
 }
 
-class TestRunProxy {
+export enum RunProfileName {
+    run = "Run Tests",
+    runParallel = "Run Tests (Parallel)",
+    coverage = "Test Coverage",
+    debug = "Debug Tests",
+}
+
+export class TestRunProxy {
     private testRun?: vscode.TestRun;
     private addedTestItems: { testClass: TestClass; parentIndex: number }[] = [];
     private runStarted: boolean = false;
-    private completedMap = new Set<vscode.TestItem>();
     private queuedOutput: string[] = [];
     private _testItems: vscode.TestItem[];
+
+    // Allows for introspection on the state of TestItems after a test run.
+    public runState = {
+        failed: [] as vscode.TestItem[],
+        passed: [] as vscode.TestItem[],
+        skipped: [] as vscode.TestItem[],
+        errored: [] as vscode.TestItem[],
+    };
 
     public get testItems(): vscode.TestItem[] {
         return this._testItems;
@@ -152,12 +166,12 @@ class TestRunProxy {
     }
 
     public skipped(test: vscode.TestItem) {
-        this.completedMap.add(test);
+        this.runState.skipped.push(test);
         this.testRun?.skipped(test);
     }
 
     public passed(test: vscode.TestItem, duration?: number) {
-        this.completedMap.add(test);
+        this.runState.passed.push(test);
         this.testRun?.passed(test, duration);
     }
 
@@ -166,7 +180,7 @@ class TestRunProxy {
         message: vscode.TestMessage | readonly vscode.TestMessage[],
         duration?: number
     ) {
-        this.completedMap.add(test);
+        this.runState.failed.push(test);
         this.testRun?.failed(test, message, duration);
     }
 
@@ -175,7 +189,7 @@ class TestRunProxy {
         message: vscode.TestMessage | readonly vscode.TestMessage[],
         duration?: number
     ) {
-        this.completedMap.add(test);
+        this.runState.errored.push(test);
         this.testRun?.errored(test, message, duration);
     }
 
@@ -241,51 +255,61 @@ export class TestRunner {
      * @param controller Test controller
      * @param folderContext Folder tests are running in
      */
-    static setupProfiles(controller: vscode.TestController, folderContext: FolderContext) {
-        // Add non-debug profile
-        controller.createRunProfile(
-            "Run Tests",
-            vscode.TestRunProfileKind.Run,
-            async (request, token) => {
-                const runner = new TestRunner(request, folderContext, controller);
-                await runner.runHandler(false, TestKind.standard, token);
-            },
-            true,
-            runnableTag
-        );
-        // Add non-debug profile
-        controller.createRunProfile(
-            "Run Tests (Parallel)",
-            vscode.TestRunProfileKind.Run,
-            async (request, token) => {
-                const runner = new TestRunner(request, folderContext, controller);
-                await runner.runHandler(false, TestKind.parallel, token);
-            },
-            false,
-            runnableTag
-        );
-        // Add coverage profile
-        controller.createRunProfile(
-            "Test Coverage",
-            vscode.TestRunProfileKind.Run,
-            async (request, token) => {
-                const runner = new TestRunner(request, folderContext, controller);
-                await runner.runHandler(false, TestKind.coverage, token);
-            },
-            false,
-            runnableTag
-        );
-        // Add debug profile
-        controller.createRunProfile(
-            "Debug Tests",
-            vscode.TestRunProfileKind.Debug,
-            async (request, token) => {
-                const runner = new TestRunner(request, folderContext, controller);
-                await runner.runHandler(true, TestKind.standard, token);
-            },
-            false,
-            runnableTag
-        );
+    static setupProfiles(
+        controller: vscode.TestController,
+        folderContext: FolderContext,
+        onCreateTestRun: vscode.EventEmitter<TestRunProxy>
+    ): vscode.TestRunProfile[] {
+        return [
+            // Add non-debug profile
+            controller.createRunProfile(
+                RunProfileName.run,
+                vscode.TestRunProfileKind.Run,
+                async (request, token) => {
+                    const runner = new TestRunner(request, folderContext, controller);
+                    onCreateTestRun.fire(runner.testRun);
+                    await runner.runHandler(false, TestKind.standard, token);
+                },
+                true,
+                runnableTag
+            ),
+            // Add non-debug profile
+            controller.createRunProfile(
+                RunProfileName.runParallel,
+                vscode.TestRunProfileKind.Run,
+                async (request, token) => {
+                    const runner = new TestRunner(request, folderContext, controller);
+                    onCreateTestRun.fire(runner.testRun);
+                    await runner.runHandler(false, TestKind.parallel, token);
+                },
+                false,
+                runnableTag
+            ),
+            // Add coverage profile
+            controller.createRunProfile(
+                RunProfileName.coverage,
+                vscode.TestRunProfileKind.Run,
+                async (request, token) => {
+                    const runner = new TestRunner(request, folderContext, controller);
+                    onCreateTestRun.fire(runner.testRun);
+                    await runner.runHandler(false, TestKind.coverage, token);
+                },
+                false,
+                runnableTag
+            ),
+            // Add debug profile
+            controller.createRunProfile(
+                RunProfileName.debug,
+                vscode.TestRunProfileKind.Debug,
+                async (request, token) => {
+                    const runner = new TestRunner(request, folderContext, controller);
+                    onCreateTestRun.fire(runner.testRun);
+                    await runner.runHandler(true, TestKind.standard, token);
+                },
+                false,
+                runnableTag
+            ),
+        ];
     }
 
     /**
@@ -325,6 +349,7 @@ export class TestRunner {
                 await this.runSession(token, testKind, runState);
             }
         } catch (error) {
+            this.workspaceContext.outputChannel.log(`Error: ${getErrorDescription(error)}`);
             this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
         }
 
@@ -1082,18 +1107,12 @@ class TestRunnerTestRunState implements ITestRunState {
         // Nothing to do here
     }
     // passed suite
-    passedSuite(name: string) {
-        const lastClassTestItem = this.lastTestItem?.parent;
-        if (lastClassTestItem && lastClassTestItem.id.endsWith(`.${name}`)) {
-            this.testRun.passed(lastClassTestItem);
-        }
+    passedSuite() {
+        // Nothing to do here
     }
     // failed suite
-    failedSuite(name: string) {
-        const lastClassTestItem = this.lastTestItem?.parent;
-        if (lastClassTestItem && lastClassTestItem.id.endsWith(`.${name}`)) {
-            this.testRun.failed(lastClassTestItem, []);
-        }
+    failedSuite() {
+        // Nothing to do here
     }
 }
 

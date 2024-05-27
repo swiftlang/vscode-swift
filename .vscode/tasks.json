@@ -18,9 +18,9 @@
 			}
 		},
 		{
-			"label": "compile",
+			"label": "compile-tests",
 			"type": "npm",
-			"script": "compile",
+			"script": "compile-tests",
 			"problemMatcher": "$tsc",
 			"presentation": {
 				"reveal": "never"
