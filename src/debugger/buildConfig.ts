@@ -89,12 +89,12 @@ export class DebugConfigurationFactory {
             case "win32":
                 return this.buildWindowsConfig();
             default:
-                return this.buidDarwinConfig();
+                return this.buildDarwinConfg();
         }
     }
 
     /* eslint-disable no-case-declarations */
-    private buidDarwinConfig(): vscode.DebugConfiguration | null {
+    private buildDarwinConfg(): vscode.DebugConfiguration | null {
         switch (this.testLibrary) {
             case "swift-testing":
                 let args = [
@@ -176,46 +176,9 @@ export class DebugConfigurationFactory {
         switch (this.testLibrary) {
             case TestLibrary.swiftTesting:
                 // TODO: This is untested until rdar://128092675 is available in a windows SDK.
-                return this.buidDarwinConfig();
+                return this.buildDarwinConfg();
             case TestLibrary.xctest:
-                switch (this.testKind) {
-                    case TestKind.coverage:
-                        return this.buidDarwinConfig();
-                    default:
-                        const xcTestPath = this.ctx.workspaceContext.toolchain.xcTestPath;
-                        const runtimePath = this.ctx.workspaceContext.toolchain.runtimePath;
-                        const sdkroot =
-                            configuration.sdk === "" ? process.env.SDKROOT : configuration.sdk;
-                        const needsToSetTargetSDKPath =
-                            configuration.debugger.useDebugAdapterFromToolchain ||
-                            vscode.workspace.getConfiguration("lldb")?.get<string>("library");
-                        let env = { ...this.testEnv };
-
-                        // On Windows, add XCTest.dll to the Path
-                        // and run the .xctest executable from the .build directory.
-                        if (xcTestPath === undefined || sdkroot === undefined) {
-                            return null;
-                        }
-
-                        if (xcTestPath !== runtimePath) {
-                            env = {
-                                ...env,
-                                Path: `${xcTestPath};${env.Path ?? process.env.Path}`,
-                            };
-                        }
-
-                        return {
-                            ...this.baseConfig,
-                            program: this.xcTestOutputPath,
-                            args: [this.testList.join(",")],
-                            env,
-                            ...(needsToSetTargetSDKPath
-                                ? {
-                                      preRunCommands: [`settings set target.sdk-path ${sdkroot}`],
-                                  }
-                                : {}),
-                        };
-                }
+                return this.buildDarwinConfg();
         }
     }
     /* eslint-enable no-case-declarations */
