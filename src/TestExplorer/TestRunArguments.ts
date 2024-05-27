@@ -148,7 +148,7 @@ export class TestRunArguments {
                 testItems.push(testItem);
 
                 // Only add leaf items to the list of arguments to pass to the test runner.
-                if (this.isLeafTestItem(testItem)) {
+                if (this.isLeafTestItem(testItem, !!isXCTest)) {
                     if (isXCTest) {
                         xcTestArgs.push(testItem.id);
                     } else {
@@ -169,7 +169,11 @@ export class TestRunArguments {
         );
     }
 
-    private isLeafTestItem(testItem: vscode.TestItem) {
+    private isLeafTestItem(testItem: vscode.TestItem, isXCTest: boolean) {
+        if (isXCTest) {
+            return testItem.children.size === 0;
+        }
+
         let result = true;
         testItem.children.forEach(child => {
             if (child.uri) {
