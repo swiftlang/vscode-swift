@@ -131,7 +131,8 @@ export class DebugConfigurationFactory {
                 const swiftVersion = this.ctx.workspaceContext.toolchain.swiftVersion;
                 if (
                     swiftVersion.isLessThan(new Version(5, 7, 0)) &&
-                    swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))
+                    swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0)) &&
+                    process.platform === "darwin"
                 ) {
                     // if debugging on macOS with Swift 5.6 we need to create a custom launch
                     // configuration so we can set the system architecture
@@ -224,9 +225,6 @@ export class DebugConfigurationFactory {
      **/
     private createDarwin56TestConfiguration(): vscode.DebugConfiguration | null {
         if (this.ctx.swiftPackage.getTargets(TargetType.test).length === 0) {
-            return null;
-        }
-        if (process.platform !== "darwin") {
             return null;
         }
 
