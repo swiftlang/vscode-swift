@@ -37,18 +37,22 @@ suite("Test Explorer Suite", function () {
     async function runTest(
         controller: vscode.TestController,
         runProfile: RunProfileName,
-        test: string
+        ...tests: string[]
     ): Promise<TestRunProxy> {
-        const testItem = getTestItem(controller, test);
-        assert.ok(testItem);
-
         const targetProfile = testExplorer.testRunProfiles.find(
             profile => profile.label === runProfile
         );
         if (!targetProfile) {
             throw new Error(`Unable to find run profile named ${runProfile}`);
         }
-        const request = new vscode.TestRunRequest([testItem]);
+
+        const testItems = tests.map(test => {
+            const testItem = getTestItem(controller, test);
+            assert.ok(testItem);
+            return testItem;
+        });
+
+        const request = new vscode.TestRunRequest(testItems);
 
         return (
             await Promise.all([
@@ -160,6 +164,28 @@ suite("Test Explorer Suite", function () {
                             ],
                             skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],
                             failed: ["PackageTests.MixedSwiftTestingSuite/testFailing()"],
+                        });
+                    });
+
+                    test("Runs All", async function () {
+                        const testRun = await runTest(
+                            testExplorer.controller,
+                            runProfile,
+                            "PackageTests.MixedSwiftTestingSuite",
+                            "PackageTests.MixedXCTestSuite"
+                        );
+
+                        assertTestResults(testRun, {
+                            passed: [
+                                "PackageTests.MixedSwiftTestingSuite/testPassing()",
+                                "PackageTests.MixedSwiftTestingSuite",
+                                "PackageTests.MixedXCTestSuite/testPassing",
+                            ],
+                            skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],
+                            failed: [
+                                "PackageTests.MixedSwiftTestingSuite/testFailing()",
+                                "PackageTests.MixedXCTestSuite/testFailing",
+                            ],
                         });
                     });
                 });
