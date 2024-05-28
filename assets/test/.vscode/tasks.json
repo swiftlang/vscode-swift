@@ -6,7 +6,7 @@
 			"args": [
 				"build",
 				"--build-tests",
-                "--verbose"
+				"--verbose"
 			],
 			"cwd": "defaultPackage",
 			"problemMatcher": [

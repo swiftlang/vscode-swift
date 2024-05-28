@@ -296,6 +296,12 @@
             "markdownDescription": "Disables automated Build Tasks, Package Dependency view, Launch configuration generation and TestExplorer.",
             "order": 13
           },
+          "swift.showCreateSwiftProjectInWelcomePage": {
+            "type": "boolean",
+            "default": true,
+            "description": "Controls whether or not the create new swift project button appears in the welcome page.",
+            "order": 14
+          },
           "swift.openAfterCreateNewProject": {
             "type": "string",
             "enum": [
@@ -312,7 +318,7 @@
             ],
             "default": "prompt",
             "description": "Controls whether to open a swift project automatically after creating it.",
-            "order": 14
+            "order": 15
           },
           "swift.showBuildStatus": {
             "type": "string",
@@ -330,7 +336,7 @@
               "Show the Swift build status in the \"Progress Message\" status bar item provided by VSCode.",
               "Show the Swift build status as a progress notification."
             ],
-            "order": 15
+            "order": 16
           }
         }
       },
@@ -917,7 +923,7 @@
       {
         "view": "explorer",
         "contents": "You can also create a new Swift project.\n[Create Swift Project](command:swift.createNewProject)",
-        "when": "workspaceFolderCount == 0"
+        "when": "workspaceFolderCount == 0 && config.swift.showCreateSwiftProjectInWelcomePage"
       }
     ],
     "breakpoints": [
@@ -1162,7 +1168,8 @@
     "lint": "eslint ./ --ext ts && tsc --noEmit",
     "format": "prettier --check src test",
     "pretest": "npm run compile && npm run lint",
-    "test": "tsc -p ./ && node ./out/test/runTest.js",
+    "test": "find ./assets/test -type d -name '.build' -exec rm -rf {} + && find . -type d -name 'Package.resolved' -exec rm -rf {} + && tsc -p ./ && node ./out/test/runTest.js",
+    "compile-tests": "find ./assets/test -type d -name '.build' -exec rm -rf {} + && npm run compile && npm run esbuild",
     "package": "vsce package",
     "dev-package": "vsce package --no-update-package-json 1.9.1-dev",
     "preview-package": "vsce package --pre-release",

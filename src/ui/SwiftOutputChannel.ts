@@ -33,9 +33,7 @@ export class SwiftOutputChannel {
         } else {
             fullMessage = message;
         }
-        const line = `${this.nowFormatted}: ${fullMessage}`;
-        this.channel.appendLine(line);
-        console.log(line);
+        this.sendLog(`${this.nowFormatted}: ${fullMessage}`);
     }
 
     logDiagnostic(message: string, label?: string) {
@@ -48,9 +46,7 @@ export class SwiftOutputChannel {
         } else {
             fullMessage = message;
         }
-        const line = `${this.nowFormatted}: ${fullMessage}`;
-        this.channel.appendLine(line);
-        console.log(line);
+        this.sendLog(`${this.nowFormatted}: ${fullMessage}`);
     }
 
     logStart(message: string, label?: string) {
@@ -60,13 +56,19 @@ export class SwiftOutputChannel {
         } else {
             fullMessage = message;
         }
-        const line = `${this.nowFormatted}: ${fullMessage}`;
-        this.channel.append(line);
-        console.log(line);
+        this.sendLog(`${this.nowFormatted}: ${fullMessage}`);
     }
 
     logEnd(message: string, label?: string) {
         this.logStart(message, label);
+    }
+
+    private sendLog(line: string) {
+        this.channel.append(line);
+
+        if (process.env["CI"] !== "1") {
+            console.log(line);
+        }
     }
 
     get nowFormatted(): string {

@@ -139,15 +139,17 @@ export class TestRunArguments {
 
         // If this test item is included or we are including everything
         if (include?.includes(testItem) || !include) {
+            const isXCTest = testItem.tags.find(tag => tag.id === "XCTest");
+
             // Collect up a list of all the test items involved in the run
             // from the TestExplorer tree and store them in `testItems`. Exclude
             // parameterized test result entries from this list (they don't have a uri).
-            if (testItem.uri !== undefined) {
+            if (testItem.uri !== undefined || isXCTest) {
                 testItems.push(testItem);
 
                 // Only add leaf items to the list of arguments to pass to the test runner.
-                if (this.isLeafTestItem(testItem)) {
-                    if (testItem.tags.find(tag => tag.id === "XCTest")) {
+                if (this.isLeafTestItem(testItem, !!isXCTest)) {
+                    if (isXCTest) {
                         xcTestArgs.push(testItem.id);
                     } else {
                         swiftTestArgs.push(testItem.id);
@@ -167,7 +169,11 @@ export class TestRunArguments {
         );
     }
 
-    private isLeafTestItem(testItem: vscode.TestItem) {
+    private isLeafTestItem(testItem: vscode.TestItem, isXCTest: boolean) {
+        if (isXCTest) {
+            return testItem.children.size === 0;
+        }
+
         let result = true;
         testItem.children.forEach(child => {
             if (child.uri) {
