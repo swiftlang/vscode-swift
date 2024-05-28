@@ -151,6 +151,10 @@ export class DebugConfigurationFactory {
                     ];
                 }
 
+                if (this.testKind === TestKind.parallel) {
+                    xcTestArgs = [...xcTestArgs, "--parallel"];
+                }
+
                 return {
                     ...this.baseConfig,
                     program: this.swiftProgramPath,

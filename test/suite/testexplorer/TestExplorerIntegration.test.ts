@@ -112,96 +112,97 @@ suite("Test Explorer Suite", function () {
             ]);
         }
     });
+    [RunProfileName.run, RunProfileName.coverage, RunProfileName.runParallel].forEach(
+        runProfile => {
+            suite(runProfile, () => {
+                suite("swift-testing", function () {
+                    suiteSetup(function () {
+                        if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+                            this.skip();
+                        }
+                    });
 
-    [RunProfileName.run, RunProfileName.coverage].forEach(runProfile => {
-        suite(runProfile, () => {
-            suite("swift-testing", function () {
-                suiteSetup(function () {
-                    if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
-                        this.skip();
-                    }
-                });
+                    test("Runs passing test", async function () {
+                        const testRun = await runTest(
+                            testExplorer.controller,
+                            runProfile,
+                            "PackageTests.topLevelTestPassing()"
+                        );
 
-                test("Runs passing test", async function () {
-                    const testRun = await runTest(
-                        testExplorer.controller,
-                        runProfile,
-                        "PackageTests.topLevelTestPassing()"
-                    );
+                        assertTestResults(testRun, {
+                            passed: ["PackageTests.topLevelTestPassing()"],
+                        });
+                    });
 
-                    assertTestResults(testRun, {
-                        passed: ["PackageTests.topLevelTestPassing()"],
+                    test("Runs failing test", async function () {
+                        const testRun = await runTest(
+                            testExplorer.controller,
+                            runProfile,
+                            "PackageTests.topLevelTestFailing()"
+                        );
+
+                        assertTestResults(testRun, {
+                            failed: ["PackageTests.topLevelTestFailing()"],
+                        });
+                    });
+
+                    test("Runs Suite", async function () {
+                        const testRun = await runTest(
+                            testExplorer.controller,
+                            runProfile,
+                            "PackageTests.MixedSwiftTestingSuite"
+                        );
+
+                        assertTestResults(testRun, {
+                            passed: [
+                                "PackageTests.MixedSwiftTestingSuite/testPassing()",
+                                "PackageTests.MixedSwiftTestingSuite",
+                            ],
+                            skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],
+                            failed: ["PackageTests.MixedSwiftTestingSuite/testFailing()"],
+                        });
                     });
                 });
 
-                test("Runs failing test", async function () {
-                    const testRun = await runTest(
-                        testExplorer.controller,
-                        runProfile,
-                        "PackageTests.topLevelTestFailing()"
-                    );
+                suite("XCTests", () => {
+                    test("Runs passing test", async function () {
+                        const testRun = await runTest(
+                            testExplorer.controller,
+                            runProfile,
+                            "PackageTests.PassingXCTestSuite/testPassing"
+                        );
 
-                    assertTestResults(testRun, {
-                        failed: ["PackageTests.topLevelTestFailing()"],
+                        assertTestResults(testRun, {
+                            passed: ["PackageTests.PassingXCTestSuite/testPassing"],
+                        });
                     });
-                });
 
-                test("Runs Suite", async function () {
-                    const testRun = await runTest(
-                        testExplorer.controller,
-                        runProfile,
-                        "PackageTests.MixedSwiftTestingSuite"
-                    );
+                    test("Runs failing test", async function () {
+                        const testRun = await runTest(
+                            testExplorer.controller,
+                            runProfile,
+                            "PackageTests.FailingXCTestSuite/testFailing"
+                        );
 
-                    assertTestResults(testRun, {
-                        passed: [
-                            "PackageTests.MixedSwiftTestingSuite/testPassing()",
-                            "PackageTests.MixedSwiftTestingSuite",
-                        ],
-                        skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],
-                        failed: ["PackageTests.MixedSwiftTestingSuite/testFailing()"],
+                        assertTestResults(testRun, {
+                            failed: ["PackageTests.FailingXCTestSuite/testFailing"],
+                        });
+                    });
+
+                    test("Runs Suite", async function () {
+                        const testRun = await runTest(
+                            testExplorer.controller,
+                            runProfile,
+                            "PackageTests.MixedXCTestSuite"
+                        );
+
+                        assertTestResults(testRun, {
+                            passed: ["PackageTests.MixedXCTestSuite/testPassing"],
+                            failed: ["PackageTests.MixedXCTestSuite/testFailing"],
+                        });
                     });
                 });
             });
-
-            suite("XCTests", () => {
-                test("Runs passing test", async function () {
-                    const testRun = await runTest(
-                        testExplorer.controller,
-                        runProfile,
-                        "PackageTests.PassingXCTestSuite/testPassing"
-                    );
-
-                    assertTestResults(testRun, {
-                        passed: ["PackageTests.PassingXCTestSuite/testPassing"],
-                    });
-                });
-
-                test("Runs failing test", async function () {
-                    const testRun = await runTest(
-                        testExplorer.controller,
-                        runProfile,
-                        "PackageTests.FailingXCTestSuite/testFailing"
-                    );
-
-                    assertTestResults(testRun, {
-                        failed: ["PackageTests.FailingXCTestSuite/testFailing"],
-                    });
-                });
-
-                test("Runs Suite", async function () {
-                    const testRun = await runTest(
-                        testExplorer.controller,
-                        runProfile,
-                        "PackageTests.MixedXCTestSuite"
-                    );
-
-                    assertTestResults(testRun, {
-                        passed: ["PackageTests.MixedXCTestSuite/testPassing"],
-                        failed: ["PackageTests.MixedXCTestSuite/testFailing"],
-                    });
-                });
-            });
-        });
-    });
+        }
+    );
 });

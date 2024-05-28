@@ -5,3 +5,4 @@ default.profraw
 *.vsix
 .vscode-test
 .build
+assets/test/**/Package.resolved

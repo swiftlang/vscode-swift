@@ -420,7 +420,13 @@ export class TestRunner {
                 write: (chunk, encoding, next) => {
                     const text = chunk.toString();
                     this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
-                    this.xcTestOutputParser.parseResult(text, runState);
+
+                    // If a test fails in a parallel run the XCTest output is printed.
+                    // Since we get all results from the xunit xml we don't parse here
+                    // to prevent parsing twice.
+                    if (testKind !== TestKind.parallel) {
+                        this.xcTestOutputParser.parseResult(text, runState);
+                    }
                     next();
                 },
             });
@@ -570,20 +576,7 @@ export class TestRunner {
         testBuildConfig: vscode.DebugConfiguration
     ) {
         await this.workspaceContext.tempFolder.withTemporaryFile("xml", async filename => {
-            const sanitizer = this.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
-            const sanitizerArgs = sanitizer?.buildFlags ?? [];
-            const filterArgs = this.testArgs.xcTestArgs.flatMap(arg => ["--filter", arg]);
-            const args = [
-                "test",
-                "--parallel",
-                ...sanitizerArgs,
-                "--skip-build",
-                "--xunit-output",
-                filename,
-            ];
-
-            // XCTestRuns are started immediately
-            this.testRun.testRunStarted();
+            const args = [...(testBuildConfig.args ?? []), "--xunit-output", filename];
 
             try {
                 testBuildConfig.args = await this.runStandardSession(
@@ -591,7 +584,7 @@ export class TestRunner {
                     outputStream,
                     {
                         ...testBuildConfig,
-                        args: [...args, filterArgs],
+                        args,
                     },
                     TestKind.parallel
                 );
