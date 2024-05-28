@@ -88,15 +88,39 @@ export class DebugConfigurationFactory {
         switch (process.platform) {
             case "win32":
                 return this.buildWindowsConfig();
-            default:
+            case "darwin":
                 return this.buildDarwinConfg();
+            default:
+                return this.buildLinuxConfig();
         }
     }
 
     /* eslint-disable no-case-declarations */
+    private buildLinuxConfig(): vscode.DebugConfiguration | null {
+        if (this.testKind === TestKind.debug && this.testLibrary === TestLibrary.xctest) {
+            const { folder } = getFolderAndNameSuffix(this.ctx, this.expandEnvVariables);
+            const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
+            return {
+                ...this.baseConfig,
+                program: path.join(
+                    buildDirectory,
+                    "debug",
+                    this.ctx.swiftPackage.name + "PackageTests.xctest"
+                ),
+                args: this.testList,
+                env: {
+                    ...swiftRuntimeEnv(),
+                    ...configuration.folder(this.ctx.workspaceFolder).testEnvironmentVariables,
+                },
+            };
+        } else {
+            return this.buildDarwinConfg();
+        }
+    }
+
     private buildDarwinConfg(): vscode.DebugConfiguration | null {
         switch (this.testLibrary) {
-            case "swift-testing":
+            case TestLibrary.swiftTesting:
                 switch (this.testKind) {
                     case TestKind.debug:
                         // In the debug case we need to build the .swift-testing executable and then
@@ -158,7 +182,7 @@ export class DebugConfigurationFactory {
                                     : this.baseConfig.preLaunchTask,
                         };
                 }
-            case "XCTest":
+            case TestLibrary.xctest:
                 switch (this.testKind) {
                     case TestKind.debug:
                         const xcTestPath = this.ctx.workspaceContext.toolchain.xcTestPath;
@@ -238,8 +262,6 @@ export class DebugConfigurationFactory {
                                     : this.baseConfig.preLaunchTask,
                         };
                 }
-            default:
-                return null;
         }
     }
 
