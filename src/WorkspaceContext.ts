@@ -45,8 +45,8 @@ import { SwiftToolchain } from "./toolchain/toolchain";
  */
 export class WorkspaceContext implements vscode.Disposable {
     public folders: FolderContext[] = [];
-    public currentFolder: FolderContext | undefined;
-    public currentDocument: vscode.Uri | undefined;
+    public currentFolder: FolderContext | null | undefined;
+    public currentDocument: vscode.Uri | null;
     public statusItem: StatusItem;
     public buildStatus: SwiftBuildStatus;
     public languageClientManager: LanguageClientManager;
@@ -67,6 +67,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.buildStatus = new SwiftBuildStatus(this.statusItem);
         this.languageClientManager = new LanguageClientManager(this);
         this.tasks = new TaskManager(this);
+        this.currentDocument = null;
         // test coverage document provider
         this.testCoverageDocumentProvider = new TestCoverageReportProvider(this);
         this.commentCompletionProvider = new CommentCompletionProviders();
@@ -212,7 +213,7 @@ export class WorkspaceContext implements vscode.Disposable {
     /**
      * Update context keys based on package contents
      */
-    updateContextKeys(folderContext: FolderContext | undefined) {
+    updateContextKeys(folderContext: FolderContext | null) {
         if (!folderContext || !folderContext.swiftPackage.foundPackage) {
             contextKeys.hasPackage = false;
             contextKeys.packageHasDependencies = false;
@@ -285,7 +286,7 @@ export class WorkspaceContext implements vscode.Disposable {
             if (this.folders.length === 1) {
                 await this.focusFolder(this.folders[0]);
             } else {
-                await this.focusFolder(undefined);
+                await this.focusFolder(null);
             }
         }
         this.initialisationComplete();
@@ -296,7 +297,7 @@ export class WorkspaceContext implements vscode.Disposable {
      * @param folder folder to fire event for
      * @param event event type
      */
-    async fireEvent(folder: FolderContext | undefined, event: FolderEvent) {
+    async fireEvent(folder: FolderContext | null, event: FolderEvent) {
         for (const observer of this.observers) {
             await observer(folder, event, this);
         }
@@ -306,9 +307,9 @@ export class WorkspaceContext implements vscode.Disposable {
      * set the focus folder
      * @param folder folder that has gained focus, you can have a null folder
      */
-    async focusFolder(folderContext: FolderContext | undefined) {
+    async focusFolder(folderContext: FolderContext | null) {
         // null and undefined mean different things here. Undefined means nothing
-        // has been setup, undefined means we want to send focus events but for a null
+        // has been setup, null means we want to send focus events but for a null
         // folder
         if (folderContext === this.currentFolder) {
             return;
@@ -380,7 +381,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public async addPackageFolder(
         folder: vscode.Uri,
         workspaceFolder: vscode.WorkspaceFolder
-    ): Promise<FolderContext | undefined> {
+    ): Promise<FolderContext> {
         // find context with root folder
         const index = this.folders.findIndex(context => context.folder.fsPath === folder.fsPath);
         if (index !== -1) {
@@ -388,9 +389,6 @@ export class WorkspaceContext implements vscode.Disposable {
             return this.folders[index];
         }
         const folderContext = await FolderContext.create(folder, workspaceFolder, this);
-        if (!folderContext) {
-            return;
-        }
         this.folders.push(folderContext);
 
         await this.fireEvent(folderContext, FolderEvent.add);
@@ -410,7 +408,7 @@ export class WorkspaceContext implements vscode.Disposable {
             // if current folder is this folder send unfocus event by setting
             // current folder to undefined
             if (this.currentFolder === folder) {
-                this.focusFolder(undefined);
+                this.focusFolder(null);
             }
             // run observer functions in reverse order when removing
             const observersReversed = [...this.observers];
@@ -445,8 +443,8 @@ export class WorkspaceContext implements vscode.Disposable {
 
     /** find LLDB version and setup path in CodeLLDB */
     async setLLDBVersion() {
-        // check we are using CodeLLDB and have a valid toolchain
-        if (!this.toolchain || DebugAdapter.adapterName !== "lldb") {
+        // check we are using CodeLLDB
+        if (DebugAdapter.adapterName !== "lldb") {
             return;
         }
         const libPathResult = await getLLDBLibPath(this.toolchain);
@@ -519,7 +517,7 @@ export class WorkspaceContext implements vscode.Disposable {
     }
 
     async focusUri(uri?: vscode.Uri) {
-        this.currentDocument = uri;
+        this.currentDocument = uri ?? null;
         this.updateContextKeysForFile();
         if (this.currentDocument?.scheme === "file") {
             await this.focusPackageUri(this.currentDocument);
@@ -552,7 +550,7 @@ export class WorkspaceContext implements vscode.Disposable {
                 await this.focusFolder(folderContext);
             }
         } else {
-            await this.focusFolder(undefined);
+            await this.focusFolder(null);
         }
     }
 
@@ -686,7 +684,7 @@ export enum FolderEvent {
 
 /** Workspace Folder observer function */
 export type WorkspaceFoldersObserver = (
-    folder: FolderContext | undefined,
+    folder: FolderContext | null,
     operation: FolderEvent,
     workspace: WorkspaceContext
 ) => unknown;
