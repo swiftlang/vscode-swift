@@ -31,7 +31,6 @@ import { execFile } from "./utilities/utilities";
 import { SwiftExecOperation, TaskOperation } from "./tasks/TaskQueue";
 import { SwiftProjectTemplate } from "./toolchain/toolchain";
 import { selectToolchain, showToolchainError } from "./ui/ToolchainSelection";
-import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 
 /**
  * References:
@@ -730,53 +729,6 @@ async function switchPlatform() {
     );
 }
 
-/**
- * Choose DEVELOPER_DIR
- * @param workspaceContext
- */
-async function selectXcodeDeveloperDir() {
-    const defaultXcode = await SwiftToolchain.getXcodeDeveloperDir();
-    const selectedXcode = configuration.swiftEnvironmentVariables.DEVELOPER_DIR;
-    const xcodes = await SwiftToolchain.getXcodeInstalls();
-    await withQuickPick(
-        selectedXcode ?? defaultXcode,
-        xcodes.map(xcode => {
-            const developerDir = `${xcode}/Contents/Developer`;
-            return {
-                label: developerDir === defaultXcode ? `${xcode} (default)` : xcode,
-                folder: developerDir === defaultXcode ? undefined : developerDir,
-            };
-        }),
-        async selected => {
-            let swiftEnv = configuration.swiftEnvironmentVariables;
-            const previousDeveloperDir = swiftEnv.DEVELOPER_DIR ?? defaultXcode;
-            if (selected.folder) {
-                swiftEnv.DEVELOPER_DIR = selected.folder;
-            } else if (swiftEnv.DEVELOPER_DIR) {
-                // if DEVELOPER_DIR was set and the new folder is the default then
-                // delete variable
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { DEVELOPER_DIR, ...rest } = swiftEnv;
-                swiftEnv = rest;
-            }
-            configuration.swiftEnvironmentVariables = swiftEnv;
-            // if SDK is inside previous DEVELOPER_DIR then move to new DEVELOPER_DIR
-            if (
-                configuration.sdk.length > 0 &&
-                configuration.sdk.startsWith(previousDeveloperDir)
-            ) {
-                configuration.sdk = configuration.sdk.replace(
-                    previousDeveloperDir,
-                    selected.folder ?? defaultXcode
-                );
-            }
-            showReloadExtensionNotification(
-                "Changing the Xcode Developer Directory requires the project be reloaded."
-            );
-        }
-    );
-}
-
 export async function showTestCoverageReport(workspaceContext: WorkspaceContext) {
     // show test coverage report
     if (workspaceContext.currentFolder) {
@@ -936,9 +888,6 @@ export function register(ctx: WorkspaceContext | undefined): vscode.Disposable[]
                 openInExternalEditor(item);
             }
         }),
-        vscode.commands.registerCommand("swift.selectXcodeDeveloperDir", () =>
-            selectXcodeDeveloperDir()
-        ),
         vscode.commands.registerCommand(
             "swift.attachDebugger",
             checkWorkspaceContext(ctx, attachDebugger)
