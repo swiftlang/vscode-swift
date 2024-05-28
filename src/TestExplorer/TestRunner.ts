@@ -42,6 +42,8 @@ export enum TestKind {
     parallel = "Parallel",
     // run tests and extract test coverage
     coverage = "Coverage",
+    // run tests and extract test coverage
+    debug = "Debug",
 }
 
 export enum RunProfileName {
@@ -313,7 +315,7 @@ export class TestRunner {
                 async (request, token) => {
                     const runner = new TestRunner(request, folderContext, controller);
                     onCreateTestRun.fire(runner.testRun);
-                    await runner.runHandler(true, TestKind.standard, token);
+                    await runner.runHandler(true, TestKind.debug, token);
                     await vscode.commands.executeCommand("testing.openCoverage");
                 },
                 false,
@@ -505,6 +507,9 @@ export class TestRunner {
                 case TestKind.parallel:
                     kindLabel = " In Parallel";
                     break;
+                case TestKind.debug:
+                    kindLabel = "For Debugging";
+                    break;
                 case TestKind.standard:
                     kindLabel = "";
             }
@@ -628,15 +633,20 @@ export class TestRunner {
                 const swiftTestBuildConfig = DebugConfigurationFactory.swiftTestingConfig(
                     this.folderContext,
                     fifoPipePath,
-                    TestKind.standard,
+                    TestKind.debug,
                     this.testArgs.swiftTestArgs,
                     true
                 );
 
                 if (swiftTestBuildConfig !== null) {
-                    // given we have already run a build task there is no need to have a pre launch task
-                    // to build the tests
-                    swiftTestBuildConfig.preLaunchTask = undefined;
+                    // output test build configuration
+                    if (configuration.diagnostics) {
+                        const configJSON = JSON.stringify(swiftTestBuildConfig);
+                        this.workspaceContext.outputChannel.logDiagnostic(
+                            `swift-testing Debug Config: ${configJSON}`,
+                            this.folderContext.name
+                        );
+                    }
 
                     // output test build configuration
                     if (configuration.diagnostics) {
@@ -645,133 +655,118 @@ export class TestRunner {
                             `swift-testing Debug Config: ${configJSON}`,
                             this.folderContext.name
                         );
-
-                        if (swiftTestBuildConfig !== null) {
-                            // given we have already run a build task there is no need to have a pre launch task
-                            // to build the tests
-                            swiftTestBuildConfig.preLaunchTask = undefined;
-
-                            // output test build configuration
-                            if (configuration.diagnostics) {
-                                const configJSON = JSON.stringify(swiftTestBuildConfig);
-                                this.workspaceContext.outputChannel.logDiagnostic(
-                                    `swift-testing Debug Config: ${configJSON}`,
-                                    this.folderContext.name
-                                );
-                            }
-                            // Watch the pipe for JSONL output and parse the events into test explorer updates.
-                            // The await simply waits for the watching to be configured.
-                            await this.swiftTestOutputParser.watch(fifoPipePath, runState);
-
-                            buildConfigs.push(swiftTestBuildConfig);
-                        }
                     }
+                    // Watch the pipe for JSONL output and parse the events into test explorer updates.
+                    // The await simply waits for the watching to be configured.
+                    await this.swiftTestOutputParser.watch(fifoPipePath, runState);
+
+                    swiftTestBuildConfig.testType = TestLibrary.swiftTesting;
+                    buildConfigs.push(swiftTestBuildConfig);
                 }
+            }
 
-                // create launch config for testing
-                if (this.testArgs.hasXCTests) {
-                    const xcTestBuildConfig = DebugConfigurationFactory.xcTestConfig(
-                        this.folderContext,
-                        TestKind.standard,
-                        this.testArgs.xcTestArgs,
-                        true
-                    );
+            // create launch config for testing
+            if (this.testArgs.hasXCTests) {
+                const xcTestBuildConfig = DebugConfigurationFactory.xcTestConfig(
+                    this.folderContext,
+                    TestKind.debug,
+                    this.testArgs.xcTestArgs,
+                    true
+                );
 
-                    if (xcTestBuildConfig !== null) {
-                        // given we have already run a build task there is no need to have a pre launch task
-                        // to build the tests
-                        xcTestBuildConfig.preLaunchTask = undefined;
+                if (xcTestBuildConfig !== null) {
+                    // output test build configuration
+                    if (configuration.diagnostics) {
+                        const configJSON = JSON.stringify(xcTestBuildConfig);
+                        this.workspaceContext.outputChannel.logDiagnostic(
+                            `XCTest Debug Config: ${configJSON}`,
+                            this.folderContext.name
+                        );
+                    }
 
-                        // output test build configuration
-                        if (configuration.diagnostics) {
-                            const configJSON = JSON.stringify(xcTestBuildConfig);
+                    xcTestBuildConfig.testType = TestLibrary.xctest;
+
+                    buildConfigs.push(xcTestBuildConfig);
+                }
+            }
+
+            const validBuildConfigs = buildConfigs.filter(
+                config => config !== null
+            ) as vscode.DebugConfiguration[];
+
+            const subscriptions: vscode.Disposable[] = [];
+
+            const debugRuns = validBuildConfigs.map(config => {
+                return () =>
+                    new Promise<void>((resolve, reject) => {
+                        // add cancelation
+                        const startSession = vscode.debug.onDidStartDebugSession(session => {
+                            if (config.testType === TestLibrary.xctest) {
+                                this.testRun.testRunStarted();
+                            }
+
                             this.workspaceContext.outputChannel.logDiagnostic(
-                                `XCTest Debug Config: ${configJSON}`,
+                                "Start Test Debugging",
                                 this.folderContext.name
                             );
-                        }
-
-                        buildConfigs.push(xcTestBuildConfig);
-                    }
-                }
-
-                const validBuildConfigs = buildConfigs.filter(
-                    config => config !== null
-                ) as vscode.DebugConfiguration[];
-
-                const subscriptions: vscode.Disposable[] = [];
-
-                const debugRuns = validBuildConfigs.map(config => {
-                    return () =>
-                        new Promise<void>((resolve, reject) => {
-                            // add cancelation
-                            const startSession = vscode.debug.onDidStartDebugSession(session => {
+                            LoggingDebugAdapterTracker.setDebugSessionCallback(session, output => {
+                                this.testRun.appendOutput(output);
+                                if (config.testType === TestLibrary.xctest) {
+                                    this.xcTestOutputParser.parseResult(output, runState);
+                                }
+                            });
+                            const cancellation = token.onCancellationRequested(() => {
                                 this.workspaceContext.outputChannel.logDiagnostic(
-                                    "Start Test Debugging",
+                                    "Test Debugging Cancelled",
                                     this.folderContext.name
                                 );
-                                LoggingDebugAdapterTracker.setDebugSessionCallback(
-                                    session,
-                                    output => {
-                                        this.testRun.appendOutput(output);
-                                        this.xcTestOutputParser.parseResult(output, runState);
-                                    }
-                                );
-                                const cancellation = token.onCancellationRequested(() => {
-                                    this.workspaceContext.outputChannel.logDiagnostic(
-                                        "Test Debugging Cancelled",
-                                        this.folderContext.name
-                                    );
-                                    vscode.debug.stopDebugging(session);
-                                });
-                                subscriptions.push(cancellation);
+                                vscode.debug.stopDebugging(session);
                             });
-                            subscriptions.push(startSession);
-
-                            vscode.debug
-                                .startDebugging(this.folderContext.workspaceFolder, config)
-                                .then(
-                                    started => {
-                                        if (started) {
-                                            // show test results pane
-                                            vscode.commands.executeCommand(
-                                                "testing.showMostRecentOutput"
-                                            );
-
-                                            const terminateSession =
-                                                vscode.debug.onDidTerminateDebugSession(
-                                                    async () => {
-                                                        this.workspaceContext.outputChannel.logDiagnostic(
-                                                            "Stop Test Debugging",
-                                                            this.folderContext.name
-                                                        );
-                                                        // dispose terminate debug handler
-                                                        subscriptions.forEach(sub => sub.dispose());
-
-                                                        vscode.commands.executeCommand(
-                                                            "workbench.view.extension.test"
-                                                        );
-
-                                                        resolve();
-                                                    }
-                                                );
-                                            subscriptions.push(terminateSession);
-                                        } else {
-                                            subscriptions.forEach(sub => sub.dispose());
-                                            reject();
-                                        }
-                                    },
-                                    reason => {
-                                        subscriptions.forEach(sub => sub.dispose());
-                                        reject(reason);
-                                    }
-                                );
+                            subscriptions.push(cancellation);
                         });
-                });
+                        subscriptions.push(startSession);
 
-                // Run each debugging session sequentially
-                await debugRuns.reduce((p, fn) => p.then(() => fn()), Promise.resolve());
-            }
+                        vscode.debug
+                            .startDebugging(this.folderContext.workspaceFolder, config)
+                            .then(
+                                started => {
+                                    if (started) {
+                                        // show test results pane
+                                        vscode.commands.executeCommand(
+                                            "testing.showMostRecentOutput"
+                                        );
+
+                                        const terminateSession =
+                                            vscode.debug.onDidTerminateDebugSession(async () => {
+                                                this.workspaceContext.outputChannel.logDiagnostic(
+                                                    "Stop Test Debugging",
+                                                    this.folderContext.name
+                                                );
+                                                // dispose terminate debug handler
+                                                subscriptions.forEach(sub => sub.dispose());
+
+                                                vscode.commands.executeCommand(
+                                                    "workbench.view.extension.test"
+                                                );
+
+                                                resolve();
+                                            });
+                                        subscriptions.push(terminateSession);
+                                    } else {
+                                        subscriptions.forEach(sub => sub.dispose());
+                                        reject();
+                                    }
+                                },
+                                reason => {
+                                    subscriptions.forEach(sub => sub.dispose());
+                                    reject(reason);
+                                }
+                            );
+                    });
+            });
+
+            // Run each debugging session sequentially
+            await debugRuns.reduce((p, fn) => p.then(() => fn()), Promise.resolve());
         });
     }
 
