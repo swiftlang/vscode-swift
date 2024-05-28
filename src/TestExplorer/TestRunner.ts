@@ -296,6 +296,11 @@ export class TestRunner {
                 async (request, token) => {
                     const runner = new TestRunner(request, folderContext, controller);
                     onCreateTestRun.fire(runner.testRun);
+                    if (request.profile) {
+                        request.profile.loadDetailedCoverage = async (testRun, fileCoverage) => {
+                            return runner.testRun.coverage.loadDetailedCoverage(fileCoverage.uri);
+                        };
+                    }
                     await runner.runHandler(false, TestKind.coverage, token);
                 },
                 false,
@@ -308,11 +313,6 @@ export class TestRunner {
                 async (request, token) => {
                     const runner = new TestRunner(request, folderContext, controller);
                     onCreateTestRun.fire(runner.testRun);
-                    if (request.profile) {
-                        request.profile.loadDetailedCoverage = async (testRun, fileCoverage) => {
-                            return runner.testRun.coverage.loadDetailedCoverage(fileCoverage.uri);
-                        };
-                    }
                     await runner.runHandler(true, TestKind.standard, token);
                     await vscode.commands.executeCommand("testing.openCoverage");
                 },
