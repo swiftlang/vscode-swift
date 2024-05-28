@@ -40,6 +40,8 @@ export class TestSwiftProcess implements SwiftProcess {
 
     isSpawned: boolean = false;
     private error?: Error;
+    private exitCode?: number;
+    private accumulatedOutput: string = "";
 
     constructor(
         public command: string,
@@ -61,18 +63,12 @@ export class TestSwiftProcess implements SwiftProcess {
 
     write(line: string, delimiter: string = "\n"): void {
         const output = `${line}${delimiter}`;
-        if (!this.isSpawned) {
-            this.onDidSpawn(() => this.writeEmitter.fire(output));
-            return;
-        }
+        this.accumulatedOutput += output;
         this.writeEmitter.fire(output);
     }
 
     close(exitCode: number): void {
-        if (!this.isSpawned) {
-            this.onDidSpawn(() => this.closeEmitter.fire(exitCode));
-            return;
-        }
+        this.exitCode = exitCode;
         this.closeEmitter.fire(exitCode);
     }
 
@@ -80,10 +76,36 @@ export class TestSwiftProcess implements SwiftProcess {
         this.close(8);
     }
 
-    onDidSpawn: vscode.Event<void> = this.spawnEmitter.event;
-    onDidWrite: vscode.Event<string> = this.writeEmitter.event;
-    onDidThrowError: vscode.Event<Error> = this.errorEmitter.event;
-    onDidClose: vscode.Event<number | void> = this.closeEmitter.event;
+    // These instantaneous task processes can lead to some
+    // events being missed while running under test
+
+    onDidSpawn: vscode.Event<void> = (listener: () => unknown, ...args) => {
+        if (this.isSpawned) {
+            listener();
+        }
+        return this.spawnEmitter.event(listener, ...args);
+    };
+    onDidWrite: vscode.Event<string> = (listener: (s: string) => unknown, ...args) => {
+        if (this.accumulatedOutput) {
+            listener(this.accumulatedOutput);
+        }
+        return this.writeEmitter.event(listener, ...args);
+    };
+    onDidThrowError: vscode.Event<Error> = (listener: (e: Error) => unknown, ...args) => {
+        if (this.isSpawned && this.error) {
+            listener(this.error);
+        }
+        return this.errorEmitter.event(listener, ...args);
+    };
+    onDidClose: vscode.Event<number | void> = (
+        listener: (e: number | void) => unknown,
+        ...args
+    ) => {
+        if (this.exitCode !== undefined) {
+            listener(this.exitCode);
+        }
+        return this.closeEmitter.event(listener, ...args);
+    };
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     handleInput(input: string): void {

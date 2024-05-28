@@ -127,7 +127,7 @@ export class DiagnosticsManager implements vscode.Disposable {
                 newDiagnostics.push(...diagnostics);
                 break;
             case "keepAll":
-                newDiagnostics = diagnostics;
+                newDiagnostics = currentDiagnostics.concat(diagnostics);
                 break;
         }
         this.diagnosticCollection.set(uri, newDiagnostics);
