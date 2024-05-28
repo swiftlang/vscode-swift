@@ -34,6 +34,23 @@ export async function downloadToolchain() {
 }
 
 /**
+ * Open the installation page for Swiftly
+ */
+export async function installSwiftly() {
+    if (
+        await vscode.env.openExternal(vscode.Uri.parse("https://swift-server.github.io/swiftly/"))
+    ) {
+        const selected = await showReloadExtensionNotification(
+            "The Swift extension must be reloaded once you have downloaded and installed the new toolchain.",
+            "Select Toolchain"
+        );
+        if (selected === "Select Toolchain") {
+            await vscode.commands.executeCommand("swift.selectToolchain");
+        }
+    }
+}
+
+/**
  * Prompt the user to select a folder where they have installed the swift toolchain.
  * Updates the swift.path configuration with the selected folder.
  */
@@ -151,6 +168,27 @@ async function getQuickPickItems(
             });
         }
     }
+    const actionItems: ActionItem[] = [];
+    actionItems.push({
+        type: "action",
+        label: "$(cloud-download) Download from Swift.org...",
+        detail: "Open https://swift.org/install/ to download and install a toolchain",
+        run: downloadToolchain,
+    });
+    if (process.platform === "linux") {
+        actionItems.push({
+            type: "action",
+            label: "$(cloud-download) Install Swiftly for toolchain management...",
+            detail: "Install https://swift-server.github.io/swiftly/ to manage your toolchains on Linux",
+            run: installSwiftly,
+        });
+    }
+    actionItems.push({
+        type: "action",
+        label: "$(folder-opened) Select toolchain directory...",
+        detail: "Select a folder on your machine where the Swift toolchain is installed",
+        run: selectToolchainFolder,
+    });
     return [
         ...(xcodes.length > 0 ? [new SeparatorItem("Xcode"), ...xcodes] : []),
         ...(toolchains.length > 0 ? [new SeparatorItem("toolchains"), ...toolchains] : []),
@@ -158,18 +196,7 @@ async function getQuickPickItems(
             ? [new SeparatorItem("swiftly"), ...swiftlyToolchains]
             : []),
         new SeparatorItem("actions"),
-        {
-            type: "action",
-            label: "$(cloud-download) Download from Swift.org...",
-            detail: "Open https://swift.org/install/ to download and install a toolchain",
-            run: downloadToolchain,
-        },
-        {
-            type: "action",
-            label: "$(folder-opened) Select toolchain directory...",
-            detail: "Select a folder on your machine where the Swift toolchain is installed",
-            run: selectToolchainFolder,
-        },
+        ...actionItems,
     ];
 }
 
