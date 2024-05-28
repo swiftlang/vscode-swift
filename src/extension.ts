@@ -71,7 +71,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
             : undefined;
         context.subscriptions.push(...commands.register(workspaceContext));
 
-        if (!toolchain && vscode.workspace.workspaceFolders) {
+        if (!toolchain) {
             showToolchainError();
         }
 

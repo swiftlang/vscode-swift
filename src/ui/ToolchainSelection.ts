@@ -24,11 +24,11 @@ import { SwiftToolchain } from "../toolchain/toolchain";
 export async function downloadToolchain() {
     if (await vscode.env.openExternal(vscode.Uri.parse("https://www.swift.org/install/"))) {
         const selected = await showReloadExtensionNotification(
-            "The Swift extension must be reloaded in order to use your new toolchain.",
-            "Select Toolchain Folder"
+            "The Swift extension must be reloaded once you have downloaded and installed the new toolchain.",
+            "Select Toolchain"
         );
-        if (selected === "Select Toolchain Folder") {
-            await selectToolchainFolder();
+        if (selected === "Select Toolchain") {
+            await vscode.commands.executeCommand("swift.selectToolchain");
         }
     }
 }
