@@ -254,11 +254,8 @@ export class SwiftPackage implements PackageContents {
 
     static async loadPlugins(
         folder: vscode.Uri,
-        toolchain: SwiftToolchain | undefined
+        toolchain: SwiftToolchain
     ): Promise<PackagePlugin[]> {
-        if (!toolchain) {
-            return [];
-        }
         try {
             const { stdout } = await execSwift(["package", "plugin", "--list"], toolchain, {
                 cwd: folder.fsPath,

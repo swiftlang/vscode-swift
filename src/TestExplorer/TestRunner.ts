@@ -297,14 +297,15 @@ export class TestRunner {
     async runHandler(shouldDebug: boolean, testKind: TestKind, token: vscode.CancellationToken) {
         const runState = new TestRunnerTestRunState(this.testRun);
         try {
-            const toolchain = this.folderContext.workspaceContext.toolchain;
             // run associated build task
             // don't do this if generating code test coverage data as it
             // will rebuild everything again
             if (testKind !== TestKind.coverage) {
                 const task = await getBuildAllTask(this.folderContext);
                 task.definition.dontTriggerTestDiscovery =
-                    toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0));
+                    this.folderContext.workspaceContext.swiftVersion.isGreaterThanOrEqual(
+                        new Version(6, 0, 0)
+                    );
 
                 const exitCode = await this.folderContext.taskQueue.queueOperation(
                     new TaskOperation(task),
@@ -566,7 +567,7 @@ export class TestRunner {
             const filterArgs = this.testArgs.xcTestArgs.flatMap(arg => ["--filter", arg]);
             const args = ["test", "--enable-code-coverage"];
             await execFileStreamOutput(
-                this.folderContext.workspaceContext.toolchain.getToolchainExecutable("swift"),
+                this.workspaceContext.toolchain.getToolchainExecutable("swift"),
                 [...args, ...filterArgs],
                 stdout,
                 stderr,
@@ -600,9 +601,7 @@ export class TestRunner {
         testBuildConfig: vscode.DebugConfiguration
     ) {
         await this.workspaceContext.tempFolder.withTemporaryFile("xml", async filename => {
-            const sanitizer = this.folderContext.workspaceContext.toolchain.sanitizer(
-                configuration.sanitizer
-            );
+            const sanitizer = this.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
             const sanitizerArgs = sanitizer?.buildFlags ?? [];
             const filterArgs = this.testArgs.xcTestArgs.flatMap(arg => ["--filter", arg]);
             const args = [
@@ -619,7 +618,7 @@ export class TestRunner {
 
             try {
                 await execFileStreamOutput(
-                    this.folderContext.workspaceContext.toolchain.getToolchainExecutable("swift"),
+                    this.workspaceContext.toolchain.getToolchainExecutable("swift"),
                     [...args, ...filterArgs],
                     stdout,
                     stderr,
@@ -827,7 +826,7 @@ class LaunchConfigurations {
         if (process.platform === "darwin") {
             // if debugging on macOS with Swift 5.6 we need to create a custom launch
             // configuration so we can set the system architecture
-            const swiftVersion = folderContext.workspaceContext.toolchain.swiftVersion;
+            const swiftVersion = workspaceContext.toolchain.swiftVersion;
             if (
                 debugging &&
                 swiftVersion.isLessThan(new Version(5, 7, 0)) &&

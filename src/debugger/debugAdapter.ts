@@ -51,9 +51,6 @@ export class DebugAdapter {
         workspace: WorkspaceContext,
         quiet = false
     ): Promise<boolean> {
-        if (!workspace.toolchain) {
-            return false;
-        }
         const useCustom = configuration.debugger.debugAdapterPath.length > 0;
         const debugAdapter = DebugAdapter.getDebugAdapter(workspace.toolchain);
         const lldbDebugAdapterPath = useCustom

@@ -50,16 +50,15 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
 
         for (const folderContext of this.workspaceContext.folders) {
             for (const plugin of folderContext.swiftPackage.plugins) {
-                const task = this.createSwiftPluginTask(plugin, {
-                    cwd: folderContext.folder,
-                    scope: folderContext.workspaceFolder,
-                    presentationOptions: {
-                        reveal: vscode.TaskRevealKind.Always,
-                    },
-                });
-                if (task) {
-                    tasks.push(task);
-                }
+                tasks.push(
+                    this.createSwiftPluginTask(plugin, {
+                        cwd: folderContext.folder,
+                        scope: folderContext.workspaceFolder,
+                        presentationOptions: {
+                            reveal: vscode.TaskRevealKind.Always,
+                        },
+                    })
+                );
             }
         }
         return tasks;
@@ -114,7 +113,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
      * @param config
      * @returns
      */
-    createSwiftPluginTask(plugin: PackagePlugin, config: TaskConfig): vscode.Task | undefined {
+    createSwiftPluginTask(plugin: PackagePlugin, config: TaskConfig): vscode.Task {
         const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
 
         // Add relative path current working directory

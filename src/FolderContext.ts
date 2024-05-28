@@ -70,7 +70,7 @@ export class FolderContext implements vscode.Disposable {
         folder: vscode.Uri,
         workspaceFolder: vscode.WorkspaceFolder,
         workspaceContext: WorkspaceContext
-    ): Promise<FolderContext | undefined> {
+    ): Promise<FolderContext> {
         const statusItemText = `Loading Package (${FolderContext.uriName(folder)})`;
         workspaceContext.statusItem.start(statusItemText);
 

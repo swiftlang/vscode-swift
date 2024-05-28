@@ -60,14 +60,15 @@ export interface SwiftTask extends vscode.Task {
 /** flag for enabling test discovery */
 function testDiscoveryFlag(ctx: FolderContext): string[] {
     // Test discovery is only available in SwiftPM 5.1 and later.
-    if (ctx.workspaceContext.toolchain.swiftVersion.isLessThan(new Version(5, 1, 0))) {
+    if (ctx.workspaceContext.swiftVersion.isLessThan(new Version(5, 1, 0))) {
         return [];
     }
     // Test discovery is always enabled on Darwin.
     if (process.platform !== "darwin") {
         const hasLinuxMain = ctx.linuxMain.exists;
-        const testDiscoveryByDefault =
-            ctx.workspaceContext.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 4, 0));
+        const testDiscoveryByDefault = ctx.workspaceContext.swiftVersion.isGreaterThanOrEqual(
+            new Version(5, 4, 0)
+        );
         if (hasLinuxMain || !testDiscoveryByDefault) {
             return ["--enable-test-discovery"];
         }
@@ -88,11 +89,7 @@ export function platformDebugBuildOptions(toolchain: SwiftToolchain): string[] {
 }
 
 /** Return swift build options */
-export function buildOptions(toolchain: SwiftToolchain | undefined, debug = true): string[] {
-    if (!toolchain) {
-        return [];
-    }
-
+export function buildOptions(toolchain: SwiftToolchain, debug = true): string[] {
     const args: string[] = [];
     if (debug) {
         args.push(...platformDebugBuildOptions(toolchain));
@@ -132,10 +129,7 @@ const buildAllTaskCache = (() => {
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
-export function createBuildAllTask(folderContext: FolderContext): vscode.Task | undefined {
-    if (!folderContext.workspaceContext.toolchain) {
-        return;
-    }
+export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
     let additionalArgs = buildOptions(folderContext.workspaceContext.toolchain);
     if (folderContext.swiftPackage.getTargets(TargetType.test).length > 0) {
         additionalArgs.push(...testDiscoveryFlag(folderContext));
@@ -234,9 +228,6 @@ export async function getBuildAllTask(folderContext: FolderContext): Promise<vsc
  */
 function createBuildTasks(product: Product, folderContext: FolderContext): vscode.Task[] {
     const toolchain = folderContext.workspaceContext.toolchain;
-    if (!toolchain) {
-        return [];
-    }
     let buildTaskNameSuffix = "";
     if (folderContext.relativePath.length > 0) {
         buildTaskNameSuffix = ` (${folderContext.relativePath})`;
@@ -260,7 +251,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 dontTriggerTestDiscovery: true,
                 showBuildStatus: configuration.showBuildStatus,
             },
-            toolchain
+            folderContext.workspaceContext.toolchain
         );
         buildAllTaskCache.set(buildDebugName, folderContext, buildDebug);
     }
@@ -283,7 +274,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 dontTriggerTestDiscovery: true,
                 showBuildStatus: configuration.showBuildStatus,
             },
-            toolchain
+            folderContext.workspaceContext.toolchain
         );
         buildAllTaskCache.set(buildReleaseName, folderContext, buildRelease);
     }
@@ -426,10 +417,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
                 continue;
             }
 
-            const buildAllTask = createBuildAllTask(folderContext);
-            if (buildAllTask) {
-                tasks.push(buildAllTask);
-            }
+            tasks.push(createBuildAllTask(folderContext));
             const executables = folderContext.swiftPackage.executableProducts;
             for (const executable of executables) {
                 tasks.push(...createBuildTasks(executable, folderContext));

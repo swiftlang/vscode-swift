@@ -13,23 +13,23 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
 import { DebugAdapter } from "./debugAdapter";
-import { SwiftToolchain } from "../toolchain/toolchain";
 
-export function registerLLDBDebugAdapter(toolchain: SwiftToolchain): vscode.Disposable {
+export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
     class LLDBDebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFactory {
         createDebugAdapterDescriptor(
             _session: vscode.DebugSession,
             executable: vscode.DebugAdapterExecutable | undefined
         ): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
             // use the executable specified in the settings or use version in toolchain
-            const debugAdapter = DebugAdapter.getDebugAdapter(toolchain);
+            const debugAdapter = DebugAdapter.getDebugAdapter(workspaceContext.toolchain);
             if (!executable) {
                 const lldbDebugAdapterPath =
                     configuration.debugger.debugAdapterPath.length > 0
                         ? configuration.debugger.debugAdapterPath
-                        : toolchain.getToolchainExecutable(debugAdapter);
+                        : workspaceContext.toolchain.getToolchainExecutable(debugAdapter);
                 executable = new vscode.DebugAdapterExecutable(lldbDebugAdapterPath, [], {});
             }
 

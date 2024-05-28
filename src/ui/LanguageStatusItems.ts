@@ -21,8 +21,6 @@ export class LanguageStatusItems implements vscode.Disposable {
     private packageSwiftItem: vscode.LanguageStatusItem;
 
     constructor(workspaceContext: WorkspaceContext) {
-        this.subscriptions = [];
-
         // Swift language version item
         const swiftVersionItem = vscode.languages.createLanguageStatusItem(
             "swiftlang-version",
@@ -32,7 +30,6 @@ export class LanguageStatusItems implements vscode.Disposable {
         swiftVersionItem.accessibilityInformation = {
             label: `Swift Version ${workspaceContext.toolchain.swiftVersion.toString()}`,
         };
-        this.subscriptions.push(swiftVersionItem);
 
         // Package.swift item
         this.packageSwiftItem = vscode.languages.createLanguageStatusItem("swiftlang-package", [
@@ -64,12 +61,12 @@ export class LanguageStatusItems implements vscode.Disposable {
                     }
             }
         });
-        this.subscriptions.push(onFocus, this.packageSwiftItem);
+        this.subscriptions = [onFocus, swiftVersionItem, this.packageSwiftItem];
     }
 
     dispose() {
         this.subscriptions.forEach(element => element.dispose());
     }
 
-    private readonly subscriptions: vscode.Disposable[];
+    private subscriptions: { dispose(): unknown }[];
 }

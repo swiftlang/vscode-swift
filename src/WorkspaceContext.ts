@@ -196,6 +196,10 @@ export class WorkspaceContext implements vscode.Disposable {
         this.subscriptions.forEach(item => item.dispose());
     }
 
+    get swiftVersion() {
+        return this.toolchain.swiftVersion;
+    }
+
     /** Get swift version and create WorkspaceContext */
     static async create(
         outputChannel: SwiftOutputChannel,
