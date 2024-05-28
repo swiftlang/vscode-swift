@@ -1,0 +1,13 @@
+services:
+
+  runtime-setup:
+    image: vscode-swift:22.04-6.0
+    build:
+      args:
+        base_image: "swiftlang/swift:nightly-6.0-jammy"
+
+  test:
+    image: vscode-swift:22.04-6.0
+
+  shell:
+    image: vscode-swift:22.04-6.0
