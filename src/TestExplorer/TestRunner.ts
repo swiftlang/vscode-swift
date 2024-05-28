@@ -193,14 +193,7 @@ export class TestRunProxy {
     }
 
     public async end() {
-        if (!this.testRun) {
-            return;
-        }
-
-        // Compute final coverage numbers if any coverage info has been captured during the run.
-        await this.coverage.computeCoverage(this.testRun);
-
-        this.testRun.end();
+        this.testRun?.end();
     }
 
     public appendOutput(output: string) {
@@ -209,6 +202,15 @@ export class TestRunProxy {
         } else {
             this.queuedOutput.push(output);
         }
+    }
+
+    public async computeCoverage() {
+        if (!this.testRun) {
+            return;
+        }
+
+        // Compute final coverage numbers if any coverage info has been captured during the run.
+        await this.coverage.computeCoverage(this.testRun);
     }
 }
 
@@ -304,6 +306,7 @@ export class TestRunner {
                         };
                     }
                     await runner.runHandler(false, TestKind.coverage, token);
+                    await runner.testRun.computeCoverage();
                 },
                 false,
                 runnableTag
