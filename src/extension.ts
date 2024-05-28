@@ -63,7 +63,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
             .catch(error => {
                 outputChannel.log("Failed to discover Swift toolchain");
                 outputChannel.log(error);
-                contextKeys.createNewProjectAvailable = true;
+                contextKeys.createNewProjectAvailable = false;
                 return undefined;
             });
 
