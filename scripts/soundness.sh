@@ -103,7 +103,7 @@ EOF
             \( \! -path './docker/*' -a \
             \( \! -path './dist/*' -a \
             \( \! -path './assets/*' -a \
-            \( "${matching_files[@]}" \) -a \
+            \( "${matching_files[@]}" \) \
             \) \) \) \) \) \) \)
 
         if [[ "$language" = bash ]]; then
