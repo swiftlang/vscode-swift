@@ -15,7 +15,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import { showReloadExtensionNotification } from "./ReloadExtension";
-import { WorkspaceContext } from "../WorkspaceContext";
 import { SwiftToolchain } from "../toolchain/toolchain";
 
 /**
@@ -112,7 +111,7 @@ type SelectToolchainItem = SwiftToolchainItem | ActionItem | SeparatorItem;
  * @returns an array of {@link SelectToolchainItem}
  */
 async function getQuickPickItems(
-    ctx: WorkspaceContext | undefined
+    toolchain: SwiftToolchain | undefined
 ): Promise<SelectToolchainItem[]> {
     const xcodes = (await SwiftToolchain.getXcodeInstalls())
         .reverse()
@@ -151,20 +150,20 @@ async function getQuickPickItems(
             toolchainPath: path.join(toolchainPath, "usr"),
             swiftFolderPath: path.join(toolchainPath, "usr", "bin"),
         }));
-    if (ctx) {
+    if (toolchain) {
         const toolchainInUse = [...xcodes, ...toolchains, ...swiftlyToolchains].find(toolchain => {
-            return ctx.toolchain?.toolchainPath.startsWith(toolchain.toolchainPath);
+            return toolchain.toolchainPath.startsWith(toolchain.toolchainPath);
         });
         if (toolchainInUse) {
             toolchainInUse.description = "$(check) in use";
         } else {
             toolchains.splice(0, 0, {
                 type: "toolchain",
-                label: `Swift ${ctx.toolchain.swiftVersion.toString()}`,
+                label: `Swift ${toolchain.swiftVersion.toString()}`,
                 description: "$(check) in use",
-                detail: ctx.toolchain.toolchainPath,
-                toolchainPath: ctx.toolchain.toolchainPath,
-                swiftFolderPath: ctx.toolchain.swiftFolderPath,
+                detail: toolchain.toolchainPath,
+                toolchainPath: toolchain.toolchainPath,
+                swiftFolderPath: toolchain.swiftFolderPath,
             });
         }
     }
@@ -206,7 +205,7 @@ async function getQuickPickItems(
  *
  * @param ctx the {@link WorkspaceContext}
  */
-export async function selectToolchain(ctx: WorkspaceContext | undefined) {
+export async function selectToolchain(ctx: SwiftToolchain | undefined) {
     const selected = await vscode.window.showQuickPick<SelectToolchainItem>(
         getQuickPickItems(ctx),
         {

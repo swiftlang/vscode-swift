@@ -574,11 +574,27 @@
         },
         {
           "command": "swift.switchPlatform",
-          "when": "isMac"
+          "when": "swift.isActivated && isMac"
+        },
+        {
+          "command": "swift.insertFunctionComment",
+          "when": "swift.isActivated"
         },
         {
           "command": "swift.resetPackage",
           "when": "swift.hasPackage"
+        },
+        {
+          "command": "swift.restartLSPServer",
+          "when": "swift.isActivated"
+        },
+        {
+          "command": "swift.showTestCoverageReport",
+          "when": "swift.isActivated"
+        },
+        {
+          "command": "swift.toggleTestCoverage",
+          "when": "swift.isActivated"
         },
         {
           "command": "swift.openPackage",

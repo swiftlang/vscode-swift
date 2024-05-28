@@ -66,15 +66,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
                 contextKeys.createNewProjectAvailable = true;
                 return undefined;
             });
-        const workspaceContext = toolchain
-            ? await WorkspaceContext.create(outputChannel, toolchain)
-            : undefined;
-        context.subscriptions.push(...commands.register(workspaceContext));
 
-        if (!toolchain) {
-            showToolchainError();
-        }
-
+        context.subscriptions.push(...commands.registerToolchainCommands(toolchain));
         context.subscriptions.push(
             vscode.workspace.onDidChangeConfiguration(event => {
                 // on toolchain config change, reload window
@@ -94,9 +87,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
             })
         );
 
-        if (!workspaceContext) {
+        if (!toolchain) {
+            showToolchainError();
             return;
         }
+        const workspaceContext = await WorkspaceContext.create(outputChannel, toolchain);
+        context.subscriptions.push(...commands.register(workspaceContext));
 
         context.subscriptions.push(workspaceContext);
 
