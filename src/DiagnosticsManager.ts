@@ -83,6 +83,11 @@ export class DiagnosticsManager implements vscode.Disposable {
      * @param diagnostics Array of {@link vscode.Diagnostic}. This can be empty to remove old diagnostics for the specified `sources`.
      */
     handleDiagnostics(uri: vscode.Uri, sources: string[], diagnostics: vscode.Diagnostic[]): void {
+        // Is a descrepency between SourceKit-LSP and older versions
+        // of Swift as to whether the first letter is capitalized or not,
+        // so we'll always display messages capitalized to user and this
+        // also will allow comparing messages when merging
+        diagnostics.forEach(this.capitalizeMessage);
         // Remove the old set of benefits from this source
         const currentDiagnostics = this.removeDiagnostics(
             this.diagnosticCollection.get(uri)?.slice() || [],
@@ -246,7 +251,7 @@ export class DiagnosticsManager implements vscode.Disposable {
         }
         const diagnostic = new vscode.Diagnostic(
             this.range(match[2], match[3]),
-            this.message(match[5]),
+            match[5],
             this.severity(match[4])
         );
         diagnostic.source = DiagnosticsManager.swiftc[0];
@@ -262,11 +267,6 @@ export class DiagnosticsManager implements vscode.Disposable {
         return new vscode.Range(position, position);
     }
 
-    private message(message: string): string {
-        // sourcekit-lsp capitalizes first character
-        return message.charAt(0).toUpperCase() + message.slice(1);
-    }
-
     private severity(severityString: string): vscode.DiagnosticSeverity {
         let severity = vscode.DiagnosticSeverity.Error;
         switch (severityString) {
@@ -280,6 +280,11 @@ export class DiagnosticsManager implements vscode.Disposable {
                 break;
         }
         return severity;
+    }
+
+    private capitalizeMessage(diagnostic: vscode.Diagnostic): void {
+        const message = diagnostic.message;
+        diagnostic.message = message.charAt(0).toUpperCase() + message.slice(1);
     }
 
     private onDidStartTaskDisposible: vscode.Disposable;

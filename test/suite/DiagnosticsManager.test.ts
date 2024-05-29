@@ -176,13 +176,21 @@ suite("DiagnosticsManager Test Suite", () => {
     suite("Merge diagnostics", () => {
         let swiftcErrorDiagnostic: vscode.Diagnostic;
         let swiftcWarningDiagnostic: vscode.Diagnostic;
+        let swiftcLowercaseDiagnostic: vscode.Diagnostic;
         let sourcekitErrorDiagnostic: vscode.Diagnostic;
         let sourcekitWarningDiagnostic: vscode.Diagnostic;
+        let sourcekitLowercaseDiagnostic: vscode.Diagnostic;
 
         setup(async () => {
             swiftcErrorDiagnostic = new vscode.Diagnostic(
                 new vscode.Range(new vscode.Position(1, 8), new vscode.Position(1, 8)), // Note swiftc provides empty range
                 "Cannot assign to value: 'bar' is a 'let' constant",
+                vscode.DiagnosticSeverity.Error
+            );
+            swiftcErrorDiagnostic.source = "swiftc";
+            swiftcLowercaseDiagnostic = new vscode.Diagnostic(
+                new vscode.Range(new vscode.Position(1, 8), new vscode.Position(1, 8)), // Note swiftc provides empty range
+                "cannot assign to value: 'bar' is a 'let' constant",
                 vscode.DiagnosticSeverity.Error
             );
             swiftcErrorDiagnostic.source = "swiftc";
@@ -195,6 +203,12 @@ suite("DiagnosticsManager Test Suite", () => {
             sourcekitErrorDiagnostic = new vscode.Diagnostic(
                 new vscode.Range(new vscode.Position(1, 8), new vscode.Position(1, 14)), // Note SourceKit provides full range
                 "Cannot assign to value: 'bar' is a 'let' constant",
+                vscode.DiagnosticSeverity.Error
+            );
+            sourcekitErrorDiagnostic.source = "SourceKit";
+            sourcekitLowercaseDiagnostic = new vscode.Diagnostic(
+                new vscode.Range(new vscode.Position(1, 8), new vscode.Position(1, 14)), // Note SourceKit provides full range
+                "cannot assign to value: 'bar' is a 'let' constant",
                 vscode.DiagnosticSeverity.Error
             );
             sourcekitErrorDiagnostic.source = "SourceKit";
@@ -345,6 +359,37 @@ suite("DiagnosticsManager Test Suite", () => {
                 assert.equal(diagnostics.includes(swiftcErrorDiagnostic), true);
                 assert.equal(diagnostics.includes(swiftcWarningDiagnostic), true);
             });
+
+            test("discrepency in capitalization", async () => {
+                // Add initial swiftc diagnostics
+                workspaceContext.diagnostics.handleDiagnostics(mainUri, DiagnosticsManager.swiftc, [
+                    swiftcErrorDiagnostic,
+                    swiftcWarningDiagnostic,
+                ]);
+
+                // Now provide SourceKit diagnostic with different capitalization
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.sourcekit,
+                    [sourcekitLowercaseDiagnostic]
+                );
+
+                // check SourceKit merged in
+                const diagnostics = vscode.languages.getDiagnostics(mainUri);
+                assert.notEqual(
+                    diagnostics.find(
+                        d =>
+                            d.message === sourcekitErrorDiagnostic.message && // Note capitalized
+                            d.range.isEqual(sourcekitErrorDiagnostic.range)
+                    ),
+                    undefined
+                );
+                // swiftc deduplicated
+                assert.equal(diagnostics.includes(swiftcErrorDiagnostic), false);
+                assert.equal(diagnostics.includes(swiftcLowercaseDiagnostic), false);
+                // kept unique swiftc diagnostic
+                assert.equal(diagnostics.includes(swiftcWarningDiagnostic), true);
+            });
         });
 
         suite("keepSwiftc", () => {
@@ -407,6 +452,36 @@ suite("DiagnosticsManager Test Suite", () => {
                 // check added all diagnostics into collection
                 const diagnostics = vscode.languages.getDiagnostics(mainUri);
                 assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), true);
+                assert.equal(diagnostics.includes(sourcekitWarningDiagnostic), true);
+            });
+
+            test("discrepency in capitalization", async () => {
+                // Add initial SourceKit diagnostics
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.sourcekit,
+                    [sourcekitErrorDiagnostic, sourcekitWarningDiagnostic]
+                );
+
+                // Now provide swiftc diagnostic with different capitalization
+                workspaceContext.diagnostics.handleDiagnostics(mainUri, DiagnosticsManager.swiftc, [
+                    swiftcLowercaseDiagnostic,
+                ]);
+
+                // check swiftc merged in
+                const diagnostics = vscode.languages.getDiagnostics(mainUri);
+                assert.notEqual(
+                    diagnostics.find(
+                        d =>
+                            d.message === swiftcErrorDiagnostic.message && // Note capitalized
+                            d.range.isEqual(swiftcErrorDiagnostic.range)
+                    ),
+                    undefined
+                );
+                // SourceKit deduplicated
+                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), false);
+                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), false);
+                // kept unique SourceKit diagnostic
                 assert.equal(diagnostics.includes(sourcekitWarningDiagnostic), true);
             });
         });
