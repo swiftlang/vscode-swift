@@ -71,9 +71,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
         context.subscriptions.push(
             vscode.workspace.onDidChangeConfiguration(event => {
                 // on toolchain config change, reload window
-                if (event.affectsConfiguration("swift.path")) {
+                if (
+                    event.affectsConfiguration("swift.path") &&
+                    configuration.path !== toolchain?.swiftFolderPath
+                ) {
                     showReloadExtensionNotification(
-                        "Changing the Swift path requires the project be reloaded."
+                        "Changing the Swift path requires Visual Studio Code be reloaded."
                     );
                 }
                 // on sdk config change, restart sourcekit-lsp

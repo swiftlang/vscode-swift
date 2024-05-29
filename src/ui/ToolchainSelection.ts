@@ -111,7 +111,7 @@ type SelectToolchainItem = SwiftToolchainItem | ActionItem | SeparatorItem;
  * @returns an array of {@link SelectToolchainItem}
  */
 async function getQuickPickItems(
-    toolchain: SwiftToolchain | undefined
+    activeToolchain: SwiftToolchain | undefined
 ): Promise<SelectToolchainItem[]> {
     const xcodes = (await SwiftToolchain.getXcodeInstalls())
         .reverse()
@@ -150,30 +150,24 @@ async function getQuickPickItems(
             toolchainPath: path.join(toolchainPath, "usr"),
             swiftFolderPath: path.join(toolchainPath, "usr", "bin"),
         }));
-    if (toolchain) {
+    if (activeToolchain) {
         const toolchainInUse = [...xcodes, ...toolchains, ...swiftlyToolchains].find(toolchain => {
-            return toolchain.toolchainPath.startsWith(toolchain.toolchainPath);
+            return toolchain.toolchainPath === activeToolchain.toolchainPath;
         });
         if (toolchainInUse) {
             toolchainInUse.description = "$(check) in use";
         } else {
             toolchains.splice(0, 0, {
                 type: "toolchain",
-                label: `Swift ${toolchain.swiftVersion.toString()}`,
+                label: `Swift ${activeToolchain.swiftVersion.toString()}`,
                 description: "$(check) in use",
-                detail: toolchain.toolchainPath,
-                toolchainPath: toolchain.toolchainPath,
-                swiftFolderPath: toolchain.swiftFolderPath,
+                detail: activeToolchain.toolchainPath,
+                toolchainPath: activeToolchain.toolchainPath,
+                swiftFolderPath: activeToolchain.swiftFolderPath,
             });
         }
     }
     const actionItems: ActionItem[] = [];
-    actionItems.push({
-        type: "action",
-        label: "$(cloud-download) Download from Swift.org...",
-        detail: "Open https://swift.org/install/ to download and install a toolchain",
-        run: downloadToolchain,
-    });
     if (process.platform === "linux") {
         actionItems.push({
             type: "action",
@@ -182,6 +176,12 @@ async function getQuickPickItems(
             run: installSwiftly,
         });
     }
+    actionItems.push({
+        type: "action",
+        label: "$(cloud-download) Download from Swift.org...",
+        detail: "Open https://swift.org/install/ to download and install a toolchain",
+        run: downloadToolchain,
+    });
     actionItems.push({
         type: "action",
         label: "$(folder-opened) Select toolchain directory...",
@@ -210,7 +210,7 @@ export async function selectToolchain(ctx: SwiftToolchain | undefined) {
         getQuickPickItems(ctx),
         {
             title: "Select the Swift toolchain",
-            placeHolder: "Pick a Swift toolchain",
+            placeHolder: "Pick a Swift toolchain that VS Code will use",
             canPickMany: false,
         }
     );
@@ -232,35 +232,23 @@ async function setToolchainPath(
             target?: vscode.ConfigurationTarget;
         })[] = [
             {
-                label: "Global",
-                detail: "Add to global Visual Studio Code configuration",
+                label: "User Configuration",
+                detail: "Add to VS Code user configuration.",
                 target: vscode.ConfigurationTarget.Global,
             },
         ];
         if (vscode.workspace.workspaceFolders) {
             items.push({
-                label: "Workspace",
-                detail: "Add to Workspace configuration",
+                label: "Workspace Configuration",
+                description: "(Recommended)",
+                detail: "Add to VS Code workspace configuration",
                 target: vscode.ConfigurationTarget.Workspace,
             });
-            if (vscode.workspace.workspaceFolders.length > 1) {
-                items.push({
-                    label: "workspace folders",
-                    kind: vscode.QuickPickItemKind.Separator,
-                });
-                for (const folder of vscode.workspace.workspaceFolders) {
-                    items.push({
-                        label: folder.name,
-                        scope: folder.uri,
-                        target: vscode.ConfigurationTarget.WorkspaceFolder,
-                    });
-                }
-            }
         }
         if (items.length > 1) {
             const selected = await vscode.window.showQuickPick(items, {
-                title: "Toolchain Settings",
-                placeHolder: "Select a location to update the toolchain settings",
+                title: "Toolchain Configuration",
+                placeHolder: "Select a location to update the toolchain selection",
                 canPickMany: false,
             });
             if (!selected) {
@@ -271,5 +259,23 @@ async function setToolchainPath(
             target = vscode.ConfigurationTarget.Global; // Global scope by default
         }
     }
-    vscode.workspace.getConfiguration("swift", scope).update("path", value, target);
+    await vscode.workspace.getConfiguration("swift", scope).update("path", value, target);
+    // Check to see if the configuration would be overridden by workspace settings
+    if (target !== vscode.ConfigurationTarget.Global) {
+        return;
+    }
+    const inspect = vscode.workspace.getConfiguration("swift").inspect<string>("path");
+    if (inspect?.workspaceValue) {
+        const confirmation = await vscode.window.showWarningMessage(
+            "You already have the Swift path configured in Workspace Settings which takes precedence over User Settings." +
+                " Would you like to remove the setting from your workspace and use the User Settings instead?",
+            "Remove Workspace Setting"
+        );
+        if (confirmation !== "Remove Workspace Setting") {
+            return;
+        }
+        await vscode.workspace
+            .getConfiguration("swift")
+            .update("path", undefined, vscode.ConfigurationTarget.Workspace);
+    }
 }
