@@ -203,11 +203,11 @@ async function getQuickPickItems(
  * Prompt the user to select or install a swift toolchain. Updates the swift.path configuration
  * with the user's selection.
  *
- * @param ctx the {@link WorkspaceContext}
+ * @param activeToolchain the {@link WorkspaceContext}
  */
-export async function showToolchainSelectionQuickPick(ctx: SwiftToolchain | undefined) {
+export async function showToolchainSelectionQuickPick(activeToolchain: SwiftToolchain | undefined) {
     const selected = await vscode.window.showQuickPick<SelectToolchainItem>(
-        getQuickPickItems(ctx),
+        getQuickPickItems(activeToolchain),
         {
             title: "Select the Swift toolchain",
             placeHolder: "Pick a Swift toolchain that VS Code will use",
