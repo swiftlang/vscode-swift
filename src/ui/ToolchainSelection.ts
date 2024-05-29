@@ -225,10 +225,8 @@ async function setToolchainPath(
     value: string | undefined,
     target?: vscode.ConfigurationTarget | "prompt"
 ): Promise<void> {
-    let scope: vscode.ConfigurationScope | undefined;
     if (target === "prompt") {
         const items: (vscode.QuickPickItem & {
-            scope?: vscode.ConfigurationScope;
             target?: vscode.ConfigurationTarget;
         })[] = [
             {
@@ -259,7 +257,7 @@ async function setToolchainPath(
             target = vscode.ConfigurationTarget.Global; // Global scope by default
         }
     }
-    await vscode.workspace.getConfiguration("swift", scope).update("path", value, target);
+    await vscode.workspace.getConfiguration("swift").update("path", value, target);
     // Check to see if the configuration would be overridden by workspace settings
     if (target !== vscode.ConfigurationTarget.Global) {
         return;
