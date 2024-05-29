@@ -117,7 +117,8 @@ suite("Test Explorer Suite", function () {
         }
     });
 
-    [RunProfileName.run, RunProfileName.coverage, RunProfileName.runParallel].forEach(
+    // Do coverage last as it does a full rebuild, causing the stage after it to have to rebuild as well.
+    [RunProfileName.run, RunProfileName.runParallel, RunProfileName.coverage].forEach(
         runProfile => {
             let xcTestFailureMessage: string;
 

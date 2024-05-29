@@ -335,6 +335,7 @@ export class TestRunner {
                     }
                     await runner.runHandler(token);
                     await runner.testRun.computeCoverage();
+                    await vscode.commands.executeCommand("testing.openCoverage");
                 },
                 false,
                 runnableTag
@@ -352,7 +353,6 @@ export class TestRunner {
                     );
                     onCreateTestRun.fire(runner.testRun);
                     await runner.runHandler(token);
-                    await vscode.commands.executeCommand("testing.openCoverage");
                 },
                 false,
                 runnableTag
