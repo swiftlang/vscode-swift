@@ -34,9 +34,7 @@ const waitForDiagnostics = (uris: vscode.Uri[]) =>
         })
     );
 
-suite("DiagnosticsManager Test Suite", function () {
-    this.timeout(60000);
-
+suite("DiagnosticsManager Test Suite", () => {
     const swiftConfig = vscode.workspace.getConfiguration("swift");
 
     let workspaceContext: WorkspaceContext;
@@ -115,7 +113,7 @@ suite("DiagnosticsManager Test Suite", function () {
                 ),
                 undefined
             );
-        });
+        }).timeout(2 * 60 * 1000); // Allow 2 minutes to build
 
         test("Parse partial line", async () => {
             const fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
@@ -123,13 +121,43 @@ suite("DiagnosticsManager Test Suite", function () {
             const diagnosticsPromise = waitForDiagnostics([mainUri]);
             // Wait to spawn before writing
             fixture.process.write(`${mainUri.fsPath}:13:5: err`, "");
-            fixture.process.write("or: cannot find 'fo", "");
+            fixture.process.write("or: Cannot find 'fo", "");
             fixture.process.write("o' in scope");
             fixture.process.close(1);
             await waitForNoRunningTasks();
             await diagnosticsPromise;
             const diagnostics = vscode.languages.getDiagnostics(mainUri);
             // Should have parsed severity
+            assert.notEqual(
+                diagnostics.find(
+                    d =>
+                        d.severity === vscode.DiagnosticSeverity.Error &&
+                        d.source === "swiftc" &&
+                        d.message === "Cannot find 'foo' in scope" && // Note capitalized to match sourcekit-lsp
+                        d.range.isEqual(
+                            new vscode.Range(new vscode.Position(12, 4), new vscode.Position(12, 4))
+                        )
+                ),
+                undefined
+            );
+        });
+
+        // https://github.com/apple/swift/issues/73973
+        test("Ignore duplicates", async () => {
+            const fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
+            await vscode.tasks.executeTask(fixture.task);
+            const diagnosticsPromise = waitForDiagnostics([mainUri]);
+            // Wait to spawn before writing
+            const output = `${mainUri.fsPath}:13:5: error: Cannot find 'foo' in scope`;
+            fixture.process.write(output);
+            fixture.process.write("some random output");
+            fixture.process.write(output);
+            fixture.process.close(1);
+            await waitForNoRunningTasks();
+            await diagnosticsPromise;
+            const diagnostics = vscode.languages.getDiagnostics(mainUri);
+            // Should only include one
+            assert.equal(diagnostics.length, 1);
             assert.notEqual(
                 diagnostics.find(
                     d =>

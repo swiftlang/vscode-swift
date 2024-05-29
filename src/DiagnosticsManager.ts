@@ -43,20 +43,18 @@ export class DiagnosticsManager implements vscode.Disposable {
 
     constructor(context: WorkspaceContext) {
         this.onDidStartTaskDisposible = vscode.tasks.onDidStartTask(event => {
-            if (!this.includeSwiftcDiagnostics()) {
-                return;
-            }
-
             // Will only try to provide diagnostics for `swift` tasks
             const execution = event.execution.task.execution;
             if (!(execution && execution instanceof SwiftExecution)) {
                 return;
             }
-            const swiftExecution = execution as SwiftExecution;
-
             // Clean up old "swiftc" diagnostics
             this.removeBuildDiagnostics();
-
+            if (!this.includeSwiftcDiagnostics()) {
+                return;
+            }
+            // Provide new list of diagnostics
+            const swiftExecution = execution as SwiftExecution;
             const provideDiagnostics: Promise<DiagnosticsMap> =
                 this.parseDiagnostics(swiftExecution);
 
@@ -219,7 +217,19 @@ export class DiagnosticsManager implements vscode.Disposable {
                         if (!result) {
                             continue;
                         }
-                        const currentUriDiagnostics = diagnostics.get(result.uri) ?? [];
+                        const currentUriDiagnostics: vscode.Diagnostic[] =
+                            diagnostics.get(result.uri) ?? [];
+                        if (
+                            currentUriDiagnostics.find(
+                                d =>
+                                    d.message === result.diagnostic.message &&
+                                    d.range.isEqual(result.diagnostic.range)
+                            )
+                        ) {
+                            // De-duplicate duplicate diagnostics from SwiftPM
+                            // TODO remove when https://github.com/apple/swift/issues/73973 is fixed
+                            continue;
+                        }
                         diagnostics.set(result.uri, [...currentUriDiagnostics, result.diagnostic]);
                     }
                 }),
