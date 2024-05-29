@@ -22,11 +22,15 @@ import { execFile, getErrorDescription } from "../utilities/utilities";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
-import { XCTestOutputParser } from "./TestParsers/XCTestOutputParser";
+import {
+    IXCTestOutputParser,
+    ParallelXCTestOutputParser,
+    XCTestOutputParser,
+} from "./TestParsers/XCTestOutputParser";
 import { SwiftTestingOutputParser } from "./TestParsers/SwiftTestingOutputParser";
 import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
 import { TaskOperation } from "../tasks/TaskQueue";
-import { TestXUnitParser, iXUnitTestState } from "./TestXUnitParser";
+import { TestXUnitParser } from "./TestXUnitParser";
 import { ITestRunState } from "./TestParsers/TestRunState";
 import { TestRunArguments } from "./TestRunArguments";
 import { TemporaryFolder } from "../utilities/tempFolder";
@@ -68,7 +72,10 @@ export class TestRunProxy {
 
     // Allows for introspection on the state of TestItems after a test run.
     public runState = {
-        failed: [] as vscode.TestItem[],
+        failed: [] as {
+            test: vscode.TestItem;
+            message: vscode.TestMessage | readonly vscode.TestMessage[];
+        }[],
         passed: [] as vscode.TestItem[],
         skipped: [] as vscode.TestItem[],
         errored: [] as vscode.TestItem[],
@@ -179,7 +186,7 @@ export class TestRunProxy {
         message: vscode.TestMessage | readonly vscode.TestMessage[],
         duration?: number
     ) {
-        this.runState.failed.push(test);
+        this.runState.failed.push({ test, message });
         this.testRun?.failed(test, message, duration);
     }
 
@@ -218,7 +225,7 @@ export class TestRunProxy {
 export class TestRunner {
     private testRun: TestRunProxy;
     private testArgs: TestRunArguments;
-    private xcTestOutputParser: XCTestOutputParser;
+    private xcTestOutputParser: IXCTestOutputParser;
     private swiftTestOutputParser: SwiftTestingOutputParser;
 
     /**
@@ -228,13 +235,19 @@ export class TestRunner {
      * @param controller Test controller
      */
     constructor(
+        private testKind: TestKind,
         private request: vscode.TestRunRequest,
         private folderContext: FolderContext,
         private controller: vscode.TestController
     ) {
         this.testArgs = new TestRunArguments(this.ensureRequestIncludesTests(this.request));
         this.testRun = new TestRunProxy(request, controller, this.testArgs, folderContext);
-        this.xcTestOutputParser = new XCTestOutputParser();
+        this.xcTestOutputParser =
+            testKind === TestKind.parallel
+                ? new ParallelXCTestOutputParser(
+                      this.folderContext.workspaceContext.toolchain.hasMultiLineParallelTestOutput
+                  )
+                : new XCTestOutputParser();
         this.swiftTestOutputParser = new SwiftTestingOutputParser(
             this.testRun.testRunStarted,
             this.testRun.addParameterizedTestCase
@@ -274,9 +287,14 @@ export class TestRunner {
                 RunProfileName.run,
                 vscode.TestRunProfileKind.Run,
                 async (request, token) => {
-                    const runner = new TestRunner(request, folderContext, controller);
+                    const runner = new TestRunner(
+                        TestKind.standard,
+                        request,
+                        folderContext,
+                        controller
+                    );
                     onCreateTestRun.fire(runner.testRun);
-                    await runner.runHandler(false, TestKind.standard, token);
+                    await runner.runHandler(token);
                 },
                 true,
                 runnableTag
@@ -286,9 +304,14 @@ export class TestRunner {
                 RunProfileName.runParallel,
                 vscode.TestRunProfileKind.Run,
                 async (request, token) => {
-                    const runner = new TestRunner(request, folderContext, controller);
+                    const runner = new TestRunner(
+                        TestKind.parallel,
+                        request,
+                        folderContext,
+                        controller
+                    );
                     onCreateTestRun.fire(runner.testRun);
-                    await runner.runHandler(false, TestKind.parallel, token);
+                    await runner.runHandler(token);
                 },
                 false,
                 runnableTag
@@ -298,14 +321,19 @@ export class TestRunner {
                 RunProfileName.coverage,
                 vscode.TestRunProfileKind.Coverage,
                 async (request, token) => {
-                    const runner = new TestRunner(request, folderContext, controller);
+                    const runner = new TestRunner(
+                        TestKind.coverage,
+                        request,
+                        folderContext,
+                        controller
+                    );
                     onCreateTestRun.fire(runner.testRun);
                     if (request.profile) {
                         request.profile.loadDetailedCoverage = async (testRun, fileCoverage) => {
                             return runner.testRun.coverage.loadDetailedCoverage(fileCoverage.uri);
                         };
                     }
-                    await runner.runHandler(false, TestKind.coverage, token);
+                    await runner.runHandler(token);
                     await runner.testRun.computeCoverage();
                 },
                 false,
@@ -316,9 +344,14 @@ export class TestRunner {
                 RunProfileName.debug,
                 vscode.TestRunProfileKind.Debug,
                 async (request, token) => {
-                    const runner = new TestRunner(request, folderContext, controller);
+                    const runner = new TestRunner(
+                        TestKind.debug,
+                        request,
+                        folderContext,
+                        controller
+                    );
                     onCreateTestRun.fire(runner.testRun);
-                    await runner.runHandler(true, TestKind.debug, token);
+                    await runner.runHandler(token);
                     await vscode.commands.executeCommand("testing.openCoverage");
                 },
                 false,
@@ -333,13 +366,13 @@ export class TestRunner {
      * @param token Cancellation token
      * @returns When complete
      */
-    async runHandler(shouldDebug: boolean, testKind: TestKind, token: vscode.CancellationToken) {
+    async runHandler(token: vscode.CancellationToken) {
         const runState = new TestRunnerTestRunState(this.testRun);
         try {
-            if (shouldDebug) {
+            if (this.testKind === TestKind.debug) {
                 await this.debugSession(token, runState);
             } else {
-                await this.runSession(token, testKind, runState);
+                await this.runSession(token, runState);
             }
         } catch (error) {
             this.workspaceContext.outputChannel.log(`Error: ${getErrorDescription(error)}`);
@@ -350,11 +383,7 @@ export class TestRunner {
     }
 
     /** Run test session without attaching to a debugger */
-    async runSession(
-        token: vscode.CancellationToken,
-        testKind: TestKind,
-        runState: TestRunnerTestRunState
-    ) {
+    async runSession(token: vscode.CancellationToken, runState: TestRunnerTestRunState) {
         // Run swift-testing first, then XCTest.
         // swift-testing being parallel by default should help these run faster.
         if (this.testArgs.hasSwiftTestingTests) {
@@ -373,7 +402,7 @@ export class TestRunner {
                 const testBuildConfig = TestingDebugConfigurationFactory.swiftTestingConfig(
                     this.folderContext,
                     fifoPipePath,
-                    testKind,
+                    this.testKind,
                     this.testArgs.swiftTestArgs,
                     true
                 );
@@ -401,7 +430,8 @@ export class TestRunner {
                 await this.swiftTestOutputParser.watch(fifoPipePath, runState);
 
                 await this.launchTests(
-                    testKind === TestKind.parallel ? TestKind.standard : testKind,
+                    runState,
+                    this.testKind === TestKind.parallel ? TestKind.standard : this.testKind,
                     token,
                     outputStream,
                     testBuildConfig,
@@ -413,7 +443,7 @@ export class TestRunner {
         if (this.testArgs.hasXCTests) {
             const testBuildConfig = TestingDebugConfigurationFactory.xcTestConfig(
                 this.folderContext,
-                testKind,
+                this.testKind,
                 this.testArgs.xcTestArgs,
                 true
             );
@@ -425,13 +455,7 @@ export class TestRunner {
                 write: (chunk, encoding, next) => {
                     const text = chunk.toString();
                     this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
-
-                    // If a test fails in a parallel run the XCTest output is printed.
-                    // Since we get all results from the xunit xml we don't parse here
-                    // to prevent parsing twice.
-                    if (testKind !== TestKind.parallel) {
-                        this.xcTestOutputParser.parseResult(text, runState);
-                    }
+                    this.xcTestOutputParser.parseResult(text, runState);
                     next();
                 },
             });
@@ -445,7 +469,8 @@ export class TestRunner {
             this.testRun.testRunStarted();
 
             await this.launchTests(
-                testKind,
+                runState,
+                this.testKind,
                 token,
                 parsedOutputStream,
                 testBuildConfig,
@@ -455,6 +480,7 @@ export class TestRunner {
     }
 
     private async launchTests(
+        runState: TestRunnerTestRunState,
         testKind: TestKind,
         token: vscode.CancellationToken,
         outputStream: stream.Writable,
@@ -472,7 +498,7 @@ export class TestRunner {
                     );
                     break;
                 case TestKind.parallel:
-                    await this.runParallelSession(token, outputStream, testBuildConfig);
+                    await this.runParallelSession(token, outputStream, testBuildConfig, runState);
                     break;
                 default:
                     await this.runStandardSession(token, outputStream, testBuildConfig, testKind);
@@ -581,7 +607,8 @@ export class TestRunner {
     async runParallelSession(
         token: vscode.CancellationToken,
         outputStream: stream.Writable,
-        testBuildConfig: vscode.DebugConfiguration
+        testBuildConfig: vscode.DebugConfiguration,
+        runState: TestRunnerTestRunState
     ) {
         await this.workspaceContext.tempFolder.withTemporaryFile("xml", async filename => {
             const args = [...(testBuildConfig.args ?? []), "--xunit-output", filename];
@@ -602,12 +629,12 @@ export class TestRunner {
                     throw error;
                 }
             }
+
             const buffer = await asyncfs.readFile(filename, "utf8");
-            const xUnitParser = new TestXUnitParser();
-            const results = await xUnitParser.parse(
-                buffer,
-                new TestRunnerXUnitTestState(this.testItemFinder, this.testRun)
+            const xUnitParser = new TestXUnitParser(
+                this.folderContext.workspaceContext.toolchain.hasMultiLineParallelTestOutput
             );
+            const results = await xUnitParser.parse(buffer, runState);
             if (results) {
                 this.testRun.appendOutput(
                     `\r\nExecuted ${results.tests} tests, with ${results.failures} failures and ${results.errors} errors.\r\n`
@@ -863,7 +890,7 @@ class NonDarwinTestItemFinder implements TestItemFinder {
 /**
  * Store state of current test run output parse
  */
-class TestRunnerTestRunState implements ITestRunState {
+export class TestRunnerTestRunState implements ITestRunState {
     constructor(private testRun: TestRunProxy) {}
 
     public currentTestItem?: vscode.TestItem;
@@ -951,32 +978,5 @@ class TestRunnerTestRunState implements ITestRunState {
     // failed suite
     failedSuite() {
         // Nothing to do here
-    }
-}
-
-class TestRunnerXUnitTestState implements iXUnitTestState {
-    constructor(
-        private testItemFinder: TestItemFinder,
-        private testRun: TestRunProxy
-    ) {}
-
-    passTest(id: string, duration: number): void {
-        const index = this.testItemFinder.getIndex(id);
-        if (index !== -1) {
-            this.testRun.passed(this.testItemFinder.testItems[index], duration);
-        }
-    }
-    failTest(id: string, duration: number, message?: string): void {
-        const index = this.testItemFinder.getIndex(id);
-        if (index !== -1) {
-            const testMessage = new vscode.TestMessage(message ?? "Failed");
-            this.testRun.failed(this.testItemFinder.testItems[index], testMessage, duration);
-        }
-    }
-    skipTest(id: string): void {
-        const index = this.testItemFinder.getIndex(id);
-        if (index !== -1) {
-            this.testRun.skipped(this.testItemFinder.testItems[index]);
-        }
     }
 }

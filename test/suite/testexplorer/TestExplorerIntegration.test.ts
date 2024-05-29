@@ -116,8 +116,23 @@ suite("Test Explorer Suite", function () {
             ]);
         }
     });
+
     [RunProfileName.run, RunProfileName.coverage, RunProfileName.runParallel].forEach(
         runProfile => {
+            let xcTestFailureMessage: string;
+
+            beforeEach(() => {
+                // From 5.7 to 5.10 running with the --parallel option dumps the test results out
+                // to the console with no newlines, so it isn't possible to distinguish where errors
+                // begin and end. Consequently we can't record them, and so we manually mark them
+                // as passed or failed with the message from the xunit xml.
+                xcTestFailureMessage =
+                    runProfile === RunProfileName.runParallel &&
+                    !workspaceContext.toolchain.hasMultiLineParallelTestOutput
+                        ? "failed"
+                        : "failed - oh no";
+            });
+
             suite(runProfile, () => {
                 suite("swift-testing", function () {
                     suiteSetup(function () {
@@ -146,7 +161,12 @@ suite("Test Explorer Suite", function () {
                         );
 
                         assertTestResults(testRun, {
-                            failed: ["PackageTests.topLevelTestFailing()"],
+                            failed: [
+                                {
+                                    test: "PackageTests.topLevelTestFailing()",
+                                    issues: ["Expectation failed: 1 == 2"],
+                                },
+                            ],
                         });
                     });
 
@@ -163,7 +183,12 @@ suite("Test Explorer Suite", function () {
                                 "PackageTests.MixedSwiftTestingSuite",
                             ],
                             skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],
-                            failed: ["PackageTests.MixedSwiftTestingSuite/testFailing()"],
+                            failed: [
+                                {
+                                    test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
+                                    issues: ["Expectation failed: 1 == 2"],
+                                },
+                            ],
                         });
                     });
 
@@ -183,8 +208,14 @@ suite("Test Explorer Suite", function () {
                             ],
                             skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],
                             failed: [
-                                "PackageTests.MixedSwiftTestingSuite/testFailing()",
-                                "PackageTests.MixedXCTestSuite/testFailing",
+                                {
+                                    test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
+                                    issues: ["Expectation failed: 1 == 2"],
+                                },
+                                {
+                                    test: "PackageTests.MixedXCTestSuite/testFailing",
+                                    issues: [xcTestFailureMessage],
+                                },
                             ],
                         });
                     });
@@ -211,7 +242,12 @@ suite("Test Explorer Suite", function () {
                         );
 
                         assertTestResults(testRun, {
-                            failed: ["PackageTests.FailingXCTestSuite/testFailing"],
+                            failed: [
+                                {
+                                    test: "PackageTests.FailingXCTestSuite/testFailing",
+                                    issues: [xcTestFailureMessage],
+                                },
+                            ],
                         });
                     });
 
@@ -224,7 +260,12 @@ suite("Test Explorer Suite", function () {
 
                         assertTestResults(testRun, {
                             passed: ["PackageTests.MixedXCTestSuite/testPassing"],
-                            failed: ["PackageTests.MixedXCTestSuite/testFailing"],
+                            failed: [
+                                {
+                                    test: "PackageTests.MixedXCTestSuite/testFailing",
+                                    issues: [xcTestFailureMessage],
+                                },
+                            ],
                         });
                     });
                 });

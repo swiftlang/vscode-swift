@@ -62,7 +62,10 @@ export function assertTestControllerHierarchy(
 export function assertTestResults(
     testRun: TestRunProxy,
     state: {
-        failed?: string[];
+        failed?: {
+            test: string;
+            issues: string[];
+        }[];
         passed?: string[];
         skipped?: string[];
         errored?: string[];
@@ -71,7 +74,12 @@ export function assertTestResults(
     assert.deepEqual(
         {
             passed: testRun.runState.passed.map(({ id }) => id),
-            failed: testRun.runState.failed.map(({ id }) => id),
+            failed: testRun.runState.failed.map(({ test, message }) => ({
+                test: test.id,
+                issues: Array.isArray(message)
+                    ? message.map(({ message }) => message)
+                    : [(message as vscode.TestMessage).message],
+            })),
             skipped: testRun.runState.skipped.map(({ id }) => id),
             errored: testRun.runState.errored.map(({ id }) => id),
         },
