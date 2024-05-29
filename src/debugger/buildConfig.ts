@@ -29,7 +29,7 @@ import { TestKind, TestLibrary } from "../TestExplorer/TestRunner";
  * testing library, test kind and platform. Use the static `swiftTestingConfig`
  * and `xcTestConfig` functions to create
  */
-export class DebugConfigurationFactory {
+export class TestingDebugConfigurationFactory {
     public static swiftTestingConfig(
         ctx: FolderContext,
         fifoPipePath: string,
@@ -37,7 +37,7 @@ export class DebugConfigurationFactory {
         testList: string[],
         expandEnvVariables = false
     ): vscode.DebugConfiguration | null {
-        return new DebugConfigurationFactory(
+        return new TestingDebugConfigurationFactory(
             ctx,
             fifoPipePath,
             testKind,
@@ -53,7 +53,7 @@ export class DebugConfigurationFactory {
         testList: string[],
         expandEnvVariables = false
     ): vscode.DebugConfiguration | null {
-        return new DebugConfigurationFactory(
+        return new TestingDebugConfigurationFactory(
             ctx,
             "",
             testKind,

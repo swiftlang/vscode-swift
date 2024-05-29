@@ -32,7 +32,7 @@ import { TestRunArguments } from "./TestRunArguments";
 import { TemporaryFolder } from "../utilities/tempFolder";
 import { TestClass, runnableTag, upsertTestItem } from "./TestDiscovery";
 import { TestCoverage } from "../coverage/LcovResults";
-import { DebugConfigurationFactory } from "../debugger/buildConfig";
+import { TestingDebugConfigurationFactory } from "../debugger/buildConfig";
 
 /** Workspace Folder events */
 export enum TestKind {
@@ -370,7 +370,7 @@ export class TestRunner {
                     await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
                 }
 
-                const testBuildConfig = DebugConfigurationFactory.swiftTestingConfig(
+                const testBuildConfig = TestingDebugConfigurationFactory.swiftTestingConfig(
                     this.folderContext,
                     fifoPipePath,
                     testKind,
@@ -411,7 +411,7 @@ export class TestRunner {
         }
 
         if (this.testArgs.hasXCTests) {
-            const testBuildConfig = DebugConfigurationFactory.xcTestConfig(
+            const testBuildConfig = TestingDebugConfigurationFactory.xcTestConfig(
                 this.folderContext,
                 testKind,
                 this.testArgs.xcTestArgs,
@@ -633,7 +633,7 @@ export class TestRunner {
             }
 
             if (this.testArgs.hasSwiftTestingTests) {
-                const swiftTestBuildConfig = DebugConfigurationFactory.swiftTestingConfig(
+                const swiftTestBuildConfig = TestingDebugConfigurationFactory.swiftTestingConfig(
                     this.folderContext,
                     fifoPipePath,
                     TestKind.debug,
@@ -670,7 +670,7 @@ export class TestRunner {
 
             // create launch config for testing
             if (this.testArgs.hasXCTests) {
-                const xcTestBuildConfig = DebugConfigurationFactory.xcTestConfig(
+                const xcTestBuildConfig = TestingDebugConfigurationFactory.xcTestConfig(
                     this.folderContext,
                     TestKind.debug,
                     this.testArgs.xcTestArgs,
