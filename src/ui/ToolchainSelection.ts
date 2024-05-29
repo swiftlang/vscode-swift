@@ -205,7 +205,7 @@ async function getQuickPickItems(
  *
  * @param ctx the {@link WorkspaceContext}
  */
-export async function selectToolchain(ctx: SwiftToolchain | undefined) {
+export async function showToolchainSelectionQuickPick(ctx: SwiftToolchain | undefined) {
     const selected = await vscode.window.showQuickPick<SelectToolchainItem>(
         getQuickPickItems(ctx),
         {

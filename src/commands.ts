@@ -30,7 +30,7 @@ import { debugLaunchConfig, getLaunchConfiguration } from "./debugger/launch";
 import { execFile } from "./utilities/utilities";
 import { SwiftExecOperation, TaskOperation } from "./tasks/TaskQueue";
 import { SwiftProjectTemplate } from "./toolchain/toolchain";
-import { selectToolchain, showToolchainError } from "./ui/ToolchainSelection";
+import { showToolchainSelectionQuickPick, showToolchainError } from "./ui/ToolchainSelection";
 
 /**
  * References:
@@ -800,7 +800,9 @@ export function registerToolchainCommands(
         vscode.commands.registerCommand("swift.createNewProject", () =>
             createNewProject(toolchain)
         ),
-        vscode.commands.registerCommand("swift.selectToolchain", () => selectToolchain(toolchain)),
+        vscode.commands.registerCommand("swift.selectToolchain", () =>
+            showToolchainSelectionQuickPick(toolchain)
+        ),
     ];
 }
 
