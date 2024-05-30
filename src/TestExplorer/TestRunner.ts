@@ -555,11 +555,6 @@ export class TestRunner {
     ) {
         return new Promise<void>((resolve, reject) => {
             const args = testBuildConfig.args ?? [];
-            this.folderContext?.workspaceContext.outputChannel.logDiagnostic(
-                `Exec: ${testBuildConfig.program} ${args.join(" ")}`,
-                this.folderContext.name
-            );
-
             let kindLabel: string;
             switch (testKind) {
                 case TestKind.coverage:

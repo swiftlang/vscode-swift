@@ -56,7 +56,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
 
         const toolchain: SwiftToolchain | undefined = await SwiftToolchain.create()
             .then(toolchain => {
-                outputChannel.log(toolchain.swiftVersionString);
                 toolchain.logDiagnostics(outputChannel);
                 contextKeys.createNewProjectAvailable = toolchain.swiftVersion.isGreaterThanOrEqual(
                     new Version(5, 8, 0)

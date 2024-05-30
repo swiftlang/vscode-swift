@@ -404,6 +404,7 @@ export class SwiftToolchain {
     }
 
     logDiagnostics(channel: SwiftOutputChannel) {
+        channel.logDiagnostic(this.swiftVersionString);
         channel.logDiagnostic(`Swift Path: ${this.swiftFolderPath}`);
         channel.logDiagnostic(`Toolchain Path: ${this.toolchainPath}`);
         if (this.runtimePath) {
