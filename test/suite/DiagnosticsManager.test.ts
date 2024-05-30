@@ -18,8 +18,9 @@ import { SwiftToolchain } from "../../src/toolchain/toolchain";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../utilities";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { testAssetWorkspaceFolder, testSwiftTask } from "../fixtures";
-import { createSwiftTask } from "../../src/tasks/SwiftTaskProvider";
+import { createBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { DiagnosticsManager } from "../../src/DiagnosticsManager";
+import { FolderContext } from "../../src/FolderContext";
 
 const waitForDiagnostics = (uris: vscode.Uri[]) =>
     new Promise<void>(res =>
@@ -34,10 +35,40 @@ const waitForDiagnostics = (uris: vscode.Uri[]) =>
         })
     );
 
+const isEqual = (d1: vscode.Diagnostic, d2: vscode.Diagnostic) =>
+    d1.severity === d2.severity &&
+    d1.source === d2.source &&
+    d1.message === d2.message &&
+    d1.range.isEqual(d2.range);
+
+const findDiagnostic = (expected: vscode.Diagnostic) => (d: vscode.Diagnostic) =>
+    isEqual(d, expected);
+
+function assertHasDiagnostic(uri: vscode.Uri, expected: vscode.Diagnostic): vscode.Diagnostic {
+    const diagnostics = vscode.languages.getDiagnostics(uri);
+    const diagnostic = diagnostics.find(findDiagnostic(expected));
+    assert.notEqual(
+        diagnostic,
+        undefined,
+        `Could not find diagnostic matching:\n${JSON.stringify(expected)}`
+    );
+    return diagnostic!;
+}
+
+function assertWithoutDiagnostic(uri: vscode.Uri, expected: vscode.Diagnostic) {
+    const diagnostics = vscode.languages.getDiagnostics(uri);
+    assert.equal(
+        diagnostics.find(findDiagnostic(expected)),
+        undefined,
+        `Unexpected diagnostic matching:\n${JSON.stringify(expected)}`
+    );
+}
+
 suite("DiagnosticsManager Test Suite", () => {
     const swiftConfig = vscode.workspace.getConfiguration("swift");
 
     let workspaceContext: WorkspaceContext;
+    let folderContext: FolderContext;
     let toolchain: SwiftToolchain;
     let workspaceFolder: vscode.WorkspaceFolder;
 
@@ -48,128 +79,151 @@ suite("DiagnosticsManager Test Suite", () => {
         workspaceContext = await WorkspaceContext.create();
         toolchain = await SwiftToolchain.create();
         workspaceFolder = testAssetWorkspaceFolder("diagnostics");
-        await workspaceContext.addPackageFolder(workspaceFolder.uri, workspaceFolder);
+        folderContext = await workspaceContext.addPackageFolder(
+            workspaceFolder.uri,
+            workspaceFolder
+        );
         mainUri = vscode.Uri.file(`${workspaceFolder.uri.path}/Sources/main.swift`);
         funcUri = vscode.Uri.file(`${workspaceFolder.uri.path}/Sources/func.swift`);
     });
 
-    setup(async () => {
-        await waitForNoRunningTasks();
-        workspaceContext.diagnostics.clear();
-    });
-
     suite("Parse diagnostics", async () => {
-        test("Parse from task output", async () => {
-            // Run actual task
-            const promise = waitForDiagnostics([mainUri, funcUri]);
-            const task = createSwiftTask(
-                ["build"],
-                "Build All",
-                { cwd: workspaceFolder.uri, scope: vscode.TaskScope.Workspace },
-                toolchain
+        suite("Parse from task output", async () => {
+            const expectedWarningDiagnostic = new vscode.Diagnostic(
+                new vscode.Range(new vscode.Position(1, 8), new vscode.Position(1, 8)),
+                "Initialization of variable 'unused' was never used; consider replacing with assignment to '_' or removing it",
+                vscode.DiagnosticSeverity.Warning
             );
-            await executeTaskAndWaitForResult(task);
-            await promise;
-            await waitForNoRunningTasks();
+            expectedWarningDiagnostic.source = "swiftc";
 
-            let diagnostics = vscode.languages.getDiagnostics(mainUri);
-            // Should have parsed severity
-            assert.notEqual(
-                diagnostics.find(
-                    d =>
-                        d.severity === vscode.DiagnosticSeverity.Warning &&
-                        d.source === "swiftc" &&
-                        d.message ===
-                            "Initialization of variable 'unused' was never used; consider replacing with assignment to '_' or removing it" && // Note capitalized to match sourcekit-lsp
-                        d.range.isEqual(
-                            new vscode.Range(new vscode.Position(1, 8), new vscode.Position(1, 8))
-                        )
-                ),
-                undefined
+            const expectedMainErrorDiagnostic = new vscode.Diagnostic(
+                new vscode.Range(new vscode.Position(7, 0), new vscode.Position(7, 0)),
+                "Cannot assign to value: 'bar' is a 'let' constant",
+                vscode.DiagnosticSeverity.Error
             );
-            assert.notEqual(
-                diagnostics.find(
-                    d =>
-                        d.severity === vscode.DiagnosticSeverity.Error &&
-                        d.source === "swiftc" &&
-                        d.message === "Cannot assign to value: 'bar' is a 'let' constant" && // Note capitalized to match sourcekit-lsp
-                        d.range.isEqual(
-                            new vscode.Range(new vscode.Position(7, 0), new vscode.Position(7, 0))
-                        )
-                ),
-                undefined
-            );
-            // Check parsed for other file
-            diagnostics = vscode.languages.getDiagnostics(funcUri);
-            assert.notEqual(
-                diagnostics.find(
-                    d =>
-                        d.severity === vscode.DiagnosticSeverity.Error &&
-                        d.source === "swiftc" &&
-                        d.message === "Cannot find 'baz' in scope" && // Note capitalized to match sourcekit-lsp
-                        d.range.isEqual(
-                            new vscode.Range(new vscode.Position(1, 4), new vscode.Position(1, 4))
-                        )
-                ),
-                undefined
-            );
-        }).timeout(2 * 60 * 1000); // Allow 2 minutes to build
+            expectedMainErrorDiagnostic.source = "swiftc";
 
-        test("Parse partial line", async () => {
-            const fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
-            await vscode.tasks.executeTask(fixture.task);
-            const diagnosticsPromise = waitForDiagnostics([mainUri]);
-            // Wait to spawn before writing
-            fixture.process.write(`${mainUri.fsPath}:13:5: err`, "");
-            fixture.process.write("or: Cannot find 'fo", "");
-            fixture.process.write("o' in scope");
-            fixture.process.close(1);
-            await waitForNoRunningTasks();
-            await diagnosticsPromise;
-            const diagnostics = vscode.languages.getDiagnostics(mainUri);
-            // Should have parsed severity
-            assert.notEqual(
-                diagnostics.find(
-                    d =>
-                        d.severity === vscode.DiagnosticSeverity.Error &&
-                        d.source === "swiftc" &&
-                        d.message === "Cannot find 'foo' in scope" && // Note capitalized to match sourcekit-lsp
-                        d.range.isEqual(
-                            new vscode.Range(new vscode.Position(12, 4), new vscode.Position(12, 4))
-                        )
-                ),
-                undefined
+            const expectedFuncErrorDiagnostic: vscode.Diagnostic = new vscode.Diagnostic(
+                new vscode.Range(new vscode.Position(1, 4), new vscode.Position(1, 4)),
+                "Cannot find 'baz' in scope",
+                vscode.DiagnosticSeverity.Error
             );
+            expectedFuncErrorDiagnostic.source = "swiftc";
+
+            setup(async () => {
+                await waitForNoRunningTasks();
+                workspaceContext.diagnostics.clear();
+            });
+
+            suiteTeardown(async () => {
+                await swiftConfig.update("diagnosticsStyle", undefined);
+            });
+
+            test("default diagnosticsStyle", async () => {
+                await swiftConfig.update("diagnosticsStyle", "default");
+                const task = createBuildAllTask(folderContext);
+                // Run actual task
+                const promise = waitForDiagnostics([mainUri, funcUri]);
+                await executeTaskAndWaitForResult(task);
+                await promise;
+                await waitForNoRunningTasks();
+
+                // Should have parsed correct severity
+                assertHasDiagnostic(mainUri, expectedWarningDiagnostic);
+                assertHasDiagnostic(mainUri, expectedMainErrorDiagnostic);
+                // Check parsed for other file
+                assertHasDiagnostic(funcUri, expectedFuncErrorDiagnostic);
+            }).timeout(2 * 60 * 1000); // Allow 2 minutes to build
+
+            test("swift diagnosticsStyle", async () => {
+                await swiftConfig.update("diagnosticsStyle", "swift");
+                const task = createBuildAllTask(folderContext);
+                // Run actual task
+                const promise = waitForDiagnostics([mainUri, funcUri]);
+                await executeTaskAndWaitForResult(task);
+                await promise;
+                await waitForNoRunningTasks();
+
+                // Should have parsed severity
+                assertHasDiagnostic(mainUri, expectedWarningDiagnostic);
+                assertHasDiagnostic(mainUri, expectedMainErrorDiagnostic);
+                // Check parsed for other file
+                assertHasDiagnostic(funcUri, expectedFuncErrorDiagnostic);
+            }).timeout(2 * 60 * 1000); // Allow 2 minutes to build
+
+            test("llvm diagnosticsStyle", async () => {
+                await swiftConfig.update("diagnosticsStyle", "llvm");
+                const task = createBuildAllTask(folderContext);
+                // Run actual task
+                const promise = waitForDiagnostics([mainUri, funcUri]);
+                await executeTaskAndWaitForResult(task);
+                await promise;
+                await waitForNoRunningTasks();
+
+                // Should have parsed severity
+                assertHasDiagnostic(mainUri, expectedWarningDiagnostic);
+                const diagnostic = assertHasDiagnostic(mainUri, expectedMainErrorDiagnostic);
+                // Should have parsed related note
+                assert.equal(diagnostic.relatedInformation?.length, 1);
+                assert.equal(
+                    diagnostic.relatedInformation![0].message,
+                    "Change 'let' to 'var' to make it mutable"
+                );
+                assert.deepEqual(
+                    diagnostic.relatedInformation![0].location,
+                    new vscode.Location(mainUri, new vscode.Position(6, 0))
+                );
+                // Check parsed for other file
+                assertHasDiagnostic(funcUri, expectedFuncErrorDiagnostic);
+            }).timeout(2 * 60 * 1000); // Allow 2 minutes to build
         });
 
-        // https://github.com/apple/swift/issues/73973
-        test("Ignore duplicates", async () => {
-            const fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
-            await vscode.tasks.executeTask(fixture.task);
-            const diagnosticsPromise = waitForDiagnostics([mainUri]);
-            // Wait to spawn before writing
-            const output = `${mainUri.fsPath}:13:5: error: Cannot find 'foo' in scope`;
-            fixture.process.write(output);
-            fixture.process.write("some random output");
-            fixture.process.write(output);
-            fixture.process.close(1);
-            await waitForNoRunningTasks();
-            await diagnosticsPromise;
-            const diagnostics = vscode.languages.getDiagnostics(mainUri);
-            // Should only include one
-            assert.equal(diagnostics.length, 1);
-            assert.notEqual(
-                diagnostics.find(
-                    d =>
-                        d.severity === vscode.DiagnosticSeverity.Error &&
-                        d.source === "swiftc" &&
-                        d.message === "Cannot find 'foo' in scope" && // Note capitalized to match sourcekit-lsp
-                        d.range.isEqual(
-                            new vscode.Range(new vscode.Position(12, 4), new vscode.Position(12, 4))
-                        )
-                ),
-                undefined
+        suite("Controlled output", () => {
+            const outputDiagnostic = new vscode.Diagnostic(
+                new vscode.Range(new vscode.Position(12, 4), new vscode.Position(12, 4)),
+                "Cannot find 'foo' in scope",
+                vscode.DiagnosticSeverity.Error
             );
+            outputDiagnostic.source = "swiftc";
+
+            setup(async () => {
+                await waitForNoRunningTasks();
+                workspaceContext.diagnostics.clear();
+            });
+
+            test("Parse partial line", async () => {
+                const fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
+                await vscode.tasks.executeTask(fixture.task);
+                const diagnosticsPromise = waitForDiagnostics([mainUri]);
+                // Wait to spawn before writing
+                fixture.process.write(`${mainUri.fsPath}:13:5: err`, "");
+                fixture.process.write("or: Cannot find 'fo", "");
+                fixture.process.write("o' in scope");
+                fixture.process.close(1);
+                await waitForNoRunningTasks();
+                await diagnosticsPromise;
+                // Should have parsed
+                assertHasDiagnostic(mainUri, outputDiagnostic);
+            });
+
+            // https://github.com/apple/swift/issues/73973
+            test("Ignore duplicates", async () => {
+                const fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
+                await vscode.tasks.executeTask(fixture.task);
+                const diagnosticsPromise = waitForDiagnostics([mainUri]);
+                // Wait to spawn before writing
+                const output = `${mainUri.fsPath}:13:5: error: Cannot find 'foo' in scope`;
+                fixture.process.write(output);
+                fixture.process.write("some random output");
+                fixture.process.write(output);
+                fixture.process.close(1);
+                await waitForNoRunningTasks();
+                await diagnosticsPromise;
+                const diagnostics = vscode.languages.getDiagnostics(mainUri);
+                // Should only include one
+                assert.equal(diagnostics.length, 1);
+                assertHasDiagnostic(mainUri, outputDiagnostic);
+            });
         });
     });
 
@@ -182,6 +236,7 @@ suite("DiagnosticsManager Test Suite", () => {
         let sourcekitLowercaseDiagnostic: vscode.Diagnostic;
 
         setup(async () => {
+            workspaceContext.diagnostics.clear();
             swiftcErrorDiagnostic = new vscode.Diagnostic(
                 new vscode.Range(new vscode.Position(1, 8), new vscode.Position(1, 8)), // Note swiftc provides empty range
                 "Cannot assign to value: 'bar' is a 'let' constant",
@@ -193,7 +248,7 @@ suite("DiagnosticsManager Test Suite", () => {
                 "cannot assign to value: 'bar' is a 'let' constant",
                 vscode.DiagnosticSeverity.Error
             );
-            swiftcErrorDiagnostic.source = "swiftc";
+            swiftcLowercaseDiagnostic.source = "swiftc";
             swiftcWarningDiagnostic = new vscode.Diagnostic(
                 new vscode.Range(new vscode.Position(2, 4), new vscode.Position(2, 4)), // Note swiftc provides empty range
                 "Initialization of variable 'unused' was never used; consider replacing with assignment to '_' or removing it",
@@ -211,7 +266,7 @@ suite("DiagnosticsManager Test Suite", () => {
                 "cannot assign to value: 'bar' is a 'let' constant",
                 vscode.DiagnosticSeverity.Error
             );
-            sourcekitErrorDiagnostic.source = "SourceKit";
+            sourcekitLowercaseDiagnostic.source = "SourceKit";
             sourcekitWarningDiagnostic = new vscode.Diagnostic(
                 new vscode.Range(new vscode.Position(2, 4), new vscode.Position(2, 10)), // Note SourceKit provides full range
                 "Initialization of variable 'unused' was never used; consider replacing with assignment to '_' or removing it",
@@ -245,10 +300,9 @@ suite("DiagnosticsManager Test Suite", () => {
                 );
 
                 // check kept all
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), true);
-                assert.equal(diagnostics.includes(swiftcErrorDiagnostic), true);
-                assert.equal(diagnostics.includes(swiftcWarningDiagnostic), true);
+                assertHasDiagnostic(mainUri, sourcekitErrorDiagnostic);
+                assertHasDiagnostic(mainUri, swiftcErrorDiagnostic);
+                assertHasDiagnostic(mainUri, swiftcWarningDiagnostic);
             });
 
             test("merge in swiftc diagnostics", async () => {
@@ -265,10 +319,9 @@ suite("DiagnosticsManager Test Suite", () => {
                 ]);
 
                 // check kept all
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.equal(diagnostics.includes(swiftcErrorDiagnostic), true);
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), true);
-                assert.equal(diagnostics.includes(sourcekitWarningDiagnostic), true);
+                assertHasDiagnostic(mainUri, swiftcErrorDiagnostic);
+                assertHasDiagnostic(mainUri, sourcekitErrorDiagnostic);
+                assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
             });
         });
 
@@ -292,12 +345,11 @@ suite("DiagnosticsManager Test Suite", () => {
                 );
 
                 // check SourceKit merged in
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), true);
+                assertHasDiagnostic(mainUri, sourcekitErrorDiagnostic);
                 // swiftc deduplicated
-                assert.equal(diagnostics.includes(swiftcErrorDiagnostic), false);
+                assertWithoutDiagnostic(mainUri, swiftcErrorDiagnostic);
                 // kept unique swiftc diagnostic
-                assert.equal(diagnostics.includes(swiftcWarningDiagnostic), true);
+                assertHasDiagnostic(mainUri, swiftcWarningDiagnostic);
             });
 
             test("merge in sourcekitd diagnostics", async () => {
@@ -316,12 +368,11 @@ suite("DiagnosticsManager Test Suite", () => {
                 );
 
                 // check sourcekitd merged in
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), true);
+                assertHasDiagnostic(mainUri, sourcekitErrorDiagnostic);
                 // swiftc deduplicated
-                assert.equal(diagnostics.includes(swiftcErrorDiagnostic), false);
+                assertWithoutDiagnostic(mainUri, swiftcErrorDiagnostic);
                 // kept unique swiftc diagnostic
-                assert.equal(diagnostics.includes(swiftcWarningDiagnostic), true);
+                assertHasDiagnostic(mainUri, swiftcWarningDiagnostic);
             });
 
             test("merge in swiftc diagnostics", async () => {
@@ -339,12 +390,11 @@ suite("DiagnosticsManager Test Suite", () => {
                 ]);
 
                 // check SourceKit stayed in collection
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), true);
+                assertHasDiagnostic(mainUri, sourcekitErrorDiagnostic);
                 // swiftc ignored
-                assert.equal(diagnostics.includes(swiftcErrorDiagnostic), false);
+                assertWithoutDiagnostic(mainUri, swiftcErrorDiagnostic);
                 // kept unique swiftc diagnostic
-                assert.equal(diagnostics.includes(swiftcWarningDiagnostic), true);
+                assertHasDiagnostic(mainUri, swiftcWarningDiagnostic);
             });
 
             test("no SourceKit diagnostics", async () => {
@@ -355,9 +405,8 @@ suite("DiagnosticsManager Test Suite", () => {
                 ]);
 
                 // check added all diagnostics into collection
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.equal(diagnostics.includes(swiftcErrorDiagnostic), true);
-                assert.equal(diagnostics.includes(swiftcWarningDiagnostic), true);
+                assertHasDiagnostic(mainUri, swiftcErrorDiagnostic);
+                assertHasDiagnostic(mainUri, swiftcWarningDiagnostic);
             });
 
             test("discrepency in capitalization", async () => {
@@ -374,21 +423,12 @@ suite("DiagnosticsManager Test Suite", () => {
                     [sourcekitLowercaseDiagnostic]
                 );
 
-                // check SourceKit merged in
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.notEqual(
-                    diagnostics.find(
-                        d =>
-                            d.message === sourcekitErrorDiagnostic.message && // Note capitalized
-                            d.range.isEqual(sourcekitErrorDiagnostic.range)
-                    ),
-                    undefined
-                );
+                // check SourceKit merged in capitalized one
+                assertHasDiagnostic(mainUri, sourcekitErrorDiagnostic);
                 // swiftc deduplicated
-                assert.equal(diagnostics.includes(swiftcErrorDiagnostic), false);
-                assert.equal(diagnostics.includes(swiftcLowercaseDiagnostic), false);
+                assertWithoutDiagnostic(mainUri, swiftcErrorDiagnostic);
                 // kept unique swiftc diagnostic
-                assert.equal(diagnostics.includes(swiftcWarningDiagnostic), true);
+                assertHasDiagnostic(mainUri, swiftcWarningDiagnostic);
             });
         });
 
@@ -411,12 +451,11 @@ suite("DiagnosticsManager Test Suite", () => {
                 ]);
 
                 // check swiftc merged in
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.equal(diagnostics.includes(swiftcErrorDiagnostic), true);
+                assertHasDiagnostic(mainUri, swiftcErrorDiagnostic);
                 // SourceKit deduplicated
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), false);
+                assertWithoutDiagnostic(mainUri, sourcekitErrorDiagnostic);
                 // kept unique SourceKit diagnostic
-                assert.equal(diagnostics.includes(sourcekitWarningDiagnostic), true);
+                assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
             });
 
             test("merge in SourceKit diagnostics", async () => {
@@ -433,12 +472,11 @@ suite("DiagnosticsManager Test Suite", () => {
                 );
 
                 // check swiftc stayed in collection
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.equal(diagnostics.includes(swiftcErrorDiagnostic), true);
+                assertHasDiagnostic(mainUri, swiftcErrorDiagnostic);
                 // swiftc ignored
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), false);
+                assertWithoutDiagnostic(mainUri, sourcekitErrorDiagnostic);
                 // kept unique SourceKit diagnostic
-                assert.equal(diagnostics.includes(sourcekitWarningDiagnostic), true);
+                assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
             });
 
             test("no swiftc diagnostics", async () => {
@@ -450,9 +488,8 @@ suite("DiagnosticsManager Test Suite", () => {
                 );
 
                 // check added all diagnostics into collection
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), true);
-                assert.equal(diagnostics.includes(sourcekitWarningDiagnostic), true);
+                assertHasDiagnostic(mainUri, sourcekitErrorDiagnostic);
+                assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
             });
 
             test("discrepency in capitalization", async () => {
@@ -469,20 +506,11 @@ suite("DiagnosticsManager Test Suite", () => {
                 ]);
 
                 // check swiftc merged in
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.notEqual(
-                    diagnostics.find(
-                        d =>
-                            d.message === swiftcErrorDiagnostic.message && // Note capitalized
-                            d.range.isEqual(swiftcErrorDiagnostic.range)
-                    ),
-                    undefined
-                );
+                assertHasDiagnostic(mainUri, swiftcErrorDiagnostic);
                 // SourceKit deduplicated
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), false);
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), false);
+                assertWithoutDiagnostic(mainUri, sourcekitErrorDiagnostic);
                 // kept unique SourceKit diagnostic
-                assert.equal(diagnostics.includes(sourcekitWarningDiagnostic), true);
+                assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
             });
         });
 
@@ -505,12 +533,11 @@ suite("DiagnosticsManager Test Suite", () => {
                 ]);
 
                 // check swiftc merged in
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.equal(diagnostics.includes(swiftcErrorDiagnostic), true);
+                assertHasDiagnostic(mainUri, swiftcErrorDiagnostic);
                 // SourceKit deduplicated
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), false);
+                assertWithoutDiagnostic(mainUri, sourcekitErrorDiagnostic);
                 // kept unique SourceKit diagnostic
-                assert.equal(diagnostics.includes(sourcekitWarningDiagnostic), true);
+                assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
             });
 
             test("merge in SourceKit diagnostics", async () => {
@@ -527,12 +554,11 @@ suite("DiagnosticsManager Test Suite", () => {
                 );
 
                 // check swiftc stayed in collection
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.equal(diagnostics.includes(swiftcErrorDiagnostic), true);
+                assertHasDiagnostic(mainUri, swiftcErrorDiagnostic);
                 // swiftc ignored
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), false);
+                assertWithoutDiagnostic(mainUri, sourcekitErrorDiagnostic);
                 // kept unique SourceKit diagnostic
-                assert.equal(diagnostics.includes(sourcekitWarningDiagnostic), true);
+                assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
             });
 
             test("no swiftc diagnostics", async () => {
@@ -544,9 +570,8 @@ suite("DiagnosticsManager Test Suite", () => {
                 );
 
                 // check added all diagnostics into collection
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), true);
-                assert.equal(diagnostics.includes(sourcekitWarningDiagnostic), true);
+                assertHasDiagnostic(mainUri, sourcekitErrorDiagnostic);
+                assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
             });
         });
 
@@ -570,11 +595,10 @@ suite("DiagnosticsManager Test Suite", () => {
                 );
 
                 // check SourceKit merged in
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), true);
+                assertHasDiagnostic(mainUri, sourcekitErrorDiagnostic);
                 // ignored swiftc
-                assert.equal(diagnostics.includes(swiftcErrorDiagnostic), false);
-                assert.equal(diagnostics.includes(swiftcWarningDiagnostic), false);
+                assertWithoutDiagnostic(mainUri, swiftcErrorDiagnostic);
+                assertWithoutDiagnostic(mainUri, swiftcWarningDiagnostic);
             });
 
             test("ignore swiftc diagnostics", async () => {
@@ -584,10 +608,9 @@ suite("DiagnosticsManager Test Suite", () => {
                     swiftcWarningDiagnostic,
                 ]);
 
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
                 // ignored swiftc
-                assert.equal(diagnostics.includes(swiftcErrorDiagnostic), false);
-                assert.equal(diagnostics.includes(swiftcWarningDiagnostic), false);
+                assertWithoutDiagnostic(mainUri, swiftcErrorDiagnostic);
+                assertWithoutDiagnostic(mainUri, swiftcWarningDiagnostic);
             });
 
             test("clean old swiftc diagnostics", async () => {
@@ -597,9 +620,8 @@ suite("DiagnosticsManager Test Suite", () => {
                     swiftcErrorDiagnostic,
                     swiftcWarningDiagnostic,
                 ]);
-                let diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.equal(diagnostics.includes(swiftcErrorDiagnostic), true);
-                assert.equal(diagnostics.includes(swiftcWarningDiagnostic), true);
+                assertHasDiagnostic(mainUri, swiftcErrorDiagnostic);
+                assertHasDiagnostic(mainUri, swiftcWarningDiagnostic);
 
                 // Now change to onlySourceKit and provide identical SourceKit diagnostic
                 await swiftConfig.update("diagnosticsCollection", "onlySourceKit");
@@ -610,11 +632,10 @@ suite("DiagnosticsManager Test Suite", () => {
                 );
 
                 // check SourceKit merged in
-                diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), true);
+                assertHasDiagnostic(mainUri, sourcekitErrorDiagnostic);
                 // cleaned swiftc
-                assert.equal(diagnostics.includes(swiftcErrorDiagnostic), false);
-                assert.equal(diagnostics.includes(sourcekitWarningDiagnostic), false);
+                assertWithoutDiagnostic(mainUri, swiftcErrorDiagnostic);
+                assertWithoutDiagnostic(mainUri, sourcekitWarningDiagnostic);
             });
         });
 
@@ -637,11 +658,10 @@ suite("DiagnosticsManager Test Suite", () => {
                 ]);
 
                 // check swiftc merged in
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.equal(diagnostics.includes(swiftcErrorDiagnostic), true);
+                assertHasDiagnostic(mainUri, swiftcErrorDiagnostic);
                 // ignored SourceKit
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), false);
-                assert.equal(diagnostics.includes(sourcekitWarningDiagnostic), false);
+                assertWithoutDiagnostic(mainUri, sourcekitErrorDiagnostic);
+                assertWithoutDiagnostic(mainUri, sourcekitWarningDiagnostic);
             });
 
             test("ignore SourceKit diagnostics", async () => {
@@ -652,10 +672,9 @@ suite("DiagnosticsManager Test Suite", () => {
                     [sourcekitErrorDiagnostic, sourcekitWarningDiagnostic]
                 );
 
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
                 // ignored SourceKit
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), false);
-                assert.equal(diagnostics.includes(sourcekitWarningDiagnostic), false);
+                assertWithoutDiagnostic(mainUri, sourcekitErrorDiagnostic);
+                assertWithoutDiagnostic(mainUri, sourcekitWarningDiagnostic);
             });
 
             test("clean old SourceKit diagnostics", async () => {
@@ -666,9 +685,8 @@ suite("DiagnosticsManager Test Suite", () => {
                     DiagnosticsManager.sourcekit,
                     [sourcekitErrorDiagnostic, sourcekitWarningDiagnostic]
                 );
-                let diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), true);
-                assert.equal(diagnostics.includes(sourcekitWarningDiagnostic), true);
+                assertHasDiagnostic(mainUri, sourcekitErrorDiagnostic);
+                assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
 
                 // Now change to onlySwiftc and provide identical swiftc diagnostic
                 await swiftConfig.update("diagnosticsCollection", "onlySwiftc");
@@ -677,11 +695,10 @@ suite("DiagnosticsManager Test Suite", () => {
                 ]);
 
                 // check swiftc merged in
-                diagnostics = vscode.languages.getDiagnostics(mainUri);
-                assert.equal(diagnostics.includes(swiftcErrorDiagnostic), true);
+                assertHasDiagnostic(mainUri, swiftcErrorDiagnostic);
                 // cleaned SourceKit
-                assert.equal(diagnostics.includes(sourcekitErrorDiagnostic), false);
-                assert.equal(diagnostics.includes(sourcekitWarningDiagnostic), false);
+                assertWithoutDiagnostic(mainUri, sourcekitErrorDiagnostic);
+                assertWithoutDiagnostic(mainUri, sourcekitWarningDiagnostic);
             });
         });
     });

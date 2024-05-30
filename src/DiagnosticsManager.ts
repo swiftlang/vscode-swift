@@ -210,32 +210,48 @@ export class DiagnosticsManager implements vscode.Disposable {
                 res(diagnostics);
             };
             let remainingData: string | undefined;
+            let lastDiagnostic: vscode.Diagnostic | undefined;
             disposables.push(
                 swiftExecution.onDidWrite(data => {
                     const sanitizedData = (remainingData || "") + stripAnsi(data);
-                    const lines = sanitizedData.split(/\r\n|\n|\r/gm).reverse();
+                    const lines = sanitizedData.split(/\r\n|\n|\r/gm);
                     // If ends with \n then will be "" and there's no affect.
                     // Otherwise want to keep remaining data to pre-pend next write
-                    remainingData = lines.shift();
+                    remainingData = lines.pop();
                     for (const line of lines) {
                         const result = this.parseDiagnostic(line);
                         if (!result) {
                             continue;
                         }
+                        if (
+                            result instanceof vscode.DiagnosticRelatedInformation &&
+                            lastDiagnostic
+                        ) {
+                            const relatedInformation =
+                                result as vscode.DiagnosticRelatedInformation;
+                            this.capitalizeMessage(relatedInformation);
+                            lastDiagnostic.relatedInformation = (
+                                lastDiagnostic.relatedInformation || []
+                            ).concat(relatedInformation);
+                            continue;
+                        }
+                        const { uri, diagnostic } = result as ParsedDiagnostic;
+
                         const currentUriDiagnostics: vscode.Diagnostic[] =
-                            diagnostics.get(result.uri) ?? [];
+                            diagnostics.get(uri) || [];
                         if (
                             currentUriDiagnostics.find(
                                 d =>
-                                    d.message === result.diagnostic.message &&
-                                    d.range.isEqual(result.diagnostic.range)
+                                    d.message === diagnostic.message &&
+                                    d.range.isEqual(diagnostic.range)
                             )
                         ) {
                             // De-duplicate duplicate diagnostics from SwiftPM
                             // TODO remove when https://github.com/apple/swift/issues/73973 is fixed
                             continue;
                         }
-                        diagnostics.set(result.uri, [...currentUriDiagnostics, result.diagnostic]);
+                        lastDiagnostic = diagnostic;
+                        diagnostics.set(uri, [...currentUriDiagnostics, diagnostic]);
                     }
                 }),
                 swiftExecution.onDidClose(done)
@@ -243,19 +259,26 @@ export class DiagnosticsManager implements vscode.Disposable {
         });
     }
 
-    private parseDiagnostic(line: string): ParsedDiagnostic | undefined {
+    private parseDiagnostic(
+        line: string
+    ): ParsedDiagnostic | vscode.DiagnosticRelatedInformation | undefined {
         const diagnosticRegex = /^(.*?):(\d+)(?::(\d+))?:\s+(warning|error|note):\s+(.*)$/g;
         const match = diagnosticRegex.exec(line);
         if (!match) {
             return;
         }
-        const diagnostic = new vscode.Diagnostic(
-            this.range(match[2], match[3]),
-            match[5],
-            this.severity(match[4])
-        );
-        diagnostic.source = DiagnosticsManager.swiftc[0];
         const uri = match[1];
+        const message = match[5];
+        const range = this.range(match[2], match[3]);
+        const severity = this.severity(match[4]);
+        if (severity === vscode.DiagnosticSeverity.Information) {
+            return new vscode.DiagnosticRelatedInformation(
+                new vscode.Location(vscode.Uri.file(uri), range),
+                message
+            );
+        }
+        const diagnostic = new vscode.Diagnostic(range, message, severity);
+        diagnostic.source = DiagnosticsManager.swiftc[0];
         return { uri, diagnostic };
     }
 
@@ -282,7 +305,9 @@ export class DiagnosticsManager implements vscode.Disposable {
         return severity;
     }
 
-    private capitalizeMessage(diagnostic: vscode.Diagnostic): void {
+    private capitalizeMessage(
+        diagnostic: vscode.Diagnostic | vscode.DiagnosticRelatedInformation
+    ): void {
         const message = diagnostic.message;
         diagnostic.message = message.charAt(0).toUpperCase() + message.slice(1);
     }

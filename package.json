@@ -250,6 +250,17 @@
             ],
             "order": 8
           },
+          "swift.diagnosticsStyle": {
+            "type": "string",
+            "default": "llvm",
+            "description": "Controls which -diagnostic-style option to pass to `swiftc` when running `swift` tasks.",
+            "enum": [
+              "default",
+              "llvm",
+              "swift"
+            ],
+            "order": 9
+          },
           "swift.excludePathsFromPackageDependencies": {
             "description": "A list of paths to exclude from the Package Dependencies view.",
             "type": "array",
@@ -260,13 +271,13 @@
               ".git",
               ".github"
             ],
-            "order": 9
+            "order": 10
           },
           "swift.backgroundCompilation": {
             "type": "boolean",
             "default": false,
             "markdownDescription": "**Experimental**: Run `swift build` in the background whenever a file is saved.",
-            "order": 10
+            "order": 11
           },
           "swift.actionAfterBuildError": {
             "type": "string",
@@ -281,25 +292,25 @@
               "Focus on Build Task Terminal"
             ],
             "markdownDescription": "Action after a Build task generates errors.",
-            "order": 11
+            "order": 12
           },
           "swift.buildPath": {
             "type": "string",
             "default": "",
             "markdownDescription": "Path to the build directory passed to all swift package manager commands.",
-            "order": 12
+            "order": 13
           },
           "swift.disableSwiftPackageManagerIntegration": {
             "type": "boolean",
             "default": false,
             "markdownDescription": "Disables automated Build Tasks, Package Dependency view, Launch configuration generation and TestExplorer.",
-            "order": 13
+            "order": 14
           },
           "swift.showCreateSwiftProjectInWelcomePage": {
             "type": "boolean",
             "default": true,
             "description": "Controls whether or not the create new swift project button appears in the welcome page.",
-            "order": 14
+            "order": 15
           },
           "swift.openAfterCreateNewProject": {
             "type": "string",
@@ -317,7 +328,7 @@
             ],
             "default": "prompt",
             "description": "Controls whether to open a swift project automatically after creating it.",
-            "order": 15
+            "order": 16
           },
           "swift.showBuildStatus": {
             "type": "string",
@@ -335,7 +346,7 @@
               "Show the Swift build status in the \"Progress Message\" status bar item provided by VSCode.",
               "Show the Swift build status as a progress notification."
             ],
-            "order": 16
+            "order": 17
           }
         }
       },

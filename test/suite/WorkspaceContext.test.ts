@@ -54,6 +54,7 @@ suite("WorkspaceContext Test Suite", () => {
         suiteTeardown(async () => {
             await swiftConfig.update("buildArguments", undefined);
             await swiftConfig.update("path", undefined);
+            await swiftConfig.update("diagnosticsStyle", undefined);
         });
 
         test("Default Task values", async () => {
@@ -61,12 +62,47 @@ suite("WorkspaceContext Test Suite", () => {
                 f => f.folder.fsPath === packageFolder.fsPath
             );
             assert(folder);
+            await swiftConfig.update("diagnosticsStyle", undefined);
             const buildAllTask = createBuildAllTask(folder);
-            const execution = buildAllTask.execution as vscode.ProcessExecution;
+            const execution = buildAllTask.execution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
             assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
             assert.strictEqual(execution?.args[0], "build");
             assert.strictEqual(execution?.args[1], "--build-tests");
+            assert.strictEqual(execution?.args[2], "-Xswiftc");
+            assert.strictEqual(execution?.args[3], "-diagnostic-style=llvm");
+            assert.strictEqual(buildAllTask.scope, folder.workspaceFolder);
+        });
+
+        test('"default" diagnosticsStyle', async () => {
+            const folder = workspaceContext.folders.find(
+                f => f.folder.fsPath === packageFolder.fsPath
+            );
+            assert(folder);
+            await swiftConfig.update("diagnosticsStyle", "default");
+            const buildAllTask = createBuildAllTask(folder);
+            const execution = buildAllTask.execution;
+            assert.strictEqual(buildAllTask.definition.type, "swift");
+            assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
+            assert.strictEqual(execution?.args[0], "build");
+            assert.strictEqual(execution?.args[1], "--build-tests");
+            assert.strictEqual(buildAllTask.scope, folder.workspaceFolder);
+        });
+
+        test('"swift" diagnosticsStyle', async () => {
+            const folder = workspaceContext.folders.find(
+                f => f.folder.fsPath === packageFolder.fsPath
+            );
+            assert(folder);
+            await swiftConfig.update("diagnosticsStyle", "swift");
+            const buildAllTask = createBuildAllTask(folder);
+            const execution = buildAllTask.execution;
+            assert.strictEqual(buildAllTask.definition.type, "swift");
+            assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
+            assert.strictEqual(execution?.args[0], "build");
+            assert.strictEqual(execution?.args[1], "--build-tests");
+            assert.strictEqual(execution?.args[2], "-Xswiftc");
+            assert.strictEqual(execution?.args[3], "-diagnostic-style=swift");
             assert.strictEqual(buildAllTask.scope, folder.workspaceFolder);
         });
 
@@ -75,12 +111,15 @@ suite("WorkspaceContext Test Suite", () => {
                 f => f.folder.fsPath === packageFolder.fsPath
             );
             assert(folder);
+            await swiftConfig.update("diagnosticsStyle", undefined);
             await swiftConfig.update("buildArguments", ["--sanitize=thread"]);
             const buildAllTask = createBuildAllTask(folder);
             const execution = buildAllTask.execution as SwiftExecution;
             assert.strictEqual(execution?.args[0], "build");
             assert.strictEqual(execution?.args[1], "--build-tests");
-            assert.strictEqual(execution?.args[2], "--sanitize=thread");
+            assert.strictEqual(execution?.args[2], "-Xswiftc");
+            assert.strictEqual(execution?.args[3], "-diagnostic-style=llvm");
+            assert.strictEqual(execution?.args[4], "--sanitize=thread");
             await swiftConfig.update("buildArguments", []);
         });
 

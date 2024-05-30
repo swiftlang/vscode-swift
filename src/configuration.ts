@@ -207,6 +207,10 @@ const configuration = {
             .getConfiguration("swift")
             .get<DiagnosticCollectionOptions>("diagnosticsCollection", "keepSourceKit");
     },
+    /** set the -diagnostic-style option when running `swift` tasks */
+    get diagnosticsStyle(): "default" | "llvm" | "swift" {
+        return vscode.workspace.getConfiguration("swift").get("diagnosticsStyle", "llvm");
+    },
     /** where to show the build progress for the running task */
     get showBuildStatus(): ShowBuildStatusOptions {
         return vscode.workspace
