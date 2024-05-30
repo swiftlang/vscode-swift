@@ -46,7 +46,7 @@ export async function executeTaskAndWaitForResult(
 }
 
 /**
- * Wait for the writeable ficture to write some output
+ * Wait for the writeable fixture to write some output
  *
  * @param fixture {@link SwiftTaskFixture} or {@link SwiftTask}
  * @returns The string that was written
@@ -61,7 +61,7 @@ export async function waitForWrite(fixture: { onDidWrite: vscode.Event<string> }
 }
 
 /**
- * Wait for the writeable ficture to write some output
+ * Wait for the writeable fixture to write some output
  *
  * @param fixture {@link SwiftTaskFixture} or {@link SwiftTask}
  * @returns The string that was written

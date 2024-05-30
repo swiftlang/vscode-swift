@@ -32,9 +32,7 @@ import { makeDebugConfigurations } from "./debugger/launch";
 import configuration from "./configuration";
 import contextKeys from "./contextKeys";
 import { setSnippetContextKey } from "./SwiftSnippets";
-import { TestCoverageReportProvider } from "./coverage/TestCoverageReport";
 import { CommentCompletionProviders } from "./editor/CommentCompletion";
-import { TestCoverageRenderer } from "./coverage/TestCoverageRenderer";
 import { DebugAdapter } from "./debugger/debugAdapter";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
 import { SwiftToolchain } from "./toolchain/toolchain";
@@ -52,9 +50,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public languageClientManager: LanguageClientManager;
     public tasks: TaskManager;
     public subscriptions: vscode.Disposable[];
-    public testCoverageDocumentProvider: TestCoverageReportProvider;
     public commentCompletionProvider: CommentCompletionProviders;
-    public testCoverageRenderer: TestCoverageRenderer;
     private lastFocusUri: vscode.Uri | undefined;
     private initialisationFinished = false;
 
@@ -68,10 +64,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.languageClientManager = new LanguageClientManager(this);
         this.tasks = new TaskManager(this);
         this.currentDocument = null;
-        // test coverage document provider
-        this.testCoverageDocumentProvider = new TestCoverageReportProvider(this);
         this.commentCompletionProvider = new CommentCompletionProviders();
-        this.testCoverageRenderer = new TestCoverageRenderer(this);
 
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(async event => {
             // on runtime path config change, regenerate launch.json
@@ -178,8 +171,6 @@ export class WorkspaceContext implements vscode.Disposable {
             swiftFileWatcher,
             onDidEndTask,
             this.commentCompletionProvider,
-            this.testCoverageDocumentProvider,
-            this.testCoverageRenderer,
             backgroundCompilationOnDidSave,
             contextKeysUpdate,
             onChangeConfig,
@@ -552,14 +543,6 @@ export class WorkspaceContext implements vscode.Disposable {
         } else {
             await this.focusFolder(null);
         }
-    }
-
-    public toggleTestCoverageDisplay() {
-        if (!this.testCoverageRenderer) {
-            this.testCoverageRenderer = new TestCoverageRenderer(this);
-            this.subscriptions.push(this.testCoverageRenderer);
-        }
-        this.testCoverageRenderer.toggleDisplayResults();
     }
 
     private initialisationComplete() {

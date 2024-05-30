@@ -38,6 +38,7 @@ export class TestSwiftProcess implements SwiftProcess {
         number | void
     >();
 
+    isSpawned: boolean = false;
     private error?: Error;
 
     constructor(
@@ -50,6 +51,7 @@ export class TestSwiftProcess implements SwiftProcess {
     }
 
     spawn(): void {
+        this.isSpawned = true;
         if (this.error) {
             this.errorEmitter.fire(this.error);
         } else {
@@ -57,11 +59,20 @@ export class TestSwiftProcess implements SwiftProcess {
         }
     }
 
-    write(line: string): void {
-        this.writeEmitter.fire(`${line}\n`);
+    write(line: string, delimiter: string = "\n"): void {
+        const output = `${line}${delimiter}`;
+        if (!this.isSpawned) {
+            this.onDidSpawn(() => this.writeEmitter.fire(output));
+            return;
+        }
+        this.writeEmitter.fire(output);
     }
 
     close(exitCode: number): void {
+        if (!this.isSpawned) {
+            this.onDidSpawn(() => this.closeEmitter.fire(exitCode));
+            return;
+        }
         this.closeEmitter.fire(exitCode);
     }
 
@@ -76,12 +87,12 @@ export class TestSwiftProcess implements SwiftProcess {
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     handleInput(input: string): void {
-        throw new Error("Method not implemented.");
+        // Do nothing
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     setDimensions(dimensions: vscode.TerminalDimensions): void {
-        throw new Error("Method not implemented.");
+        // Do nothing
     }
 }
 

@@ -13,12 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as xml2js from "xml2js";
-
-export interface iXUnitTestState {
-    passTest(id: string, duration: number): void;
-    failTest(id: string, duration: number, message?: string): void;
-    skipTest(id: string): void;
-}
+import { TestRunnerTestRunState } from "./TestRunner";
 
 export interface TestResults {
     tests: number;
@@ -27,7 +22,7 @@ export interface TestResults {
 }
 
 interface XUnitFailure {
-    message?: string;
+    $: { message?: string };
 }
 
 interface XUnitTestCase {
@@ -49,9 +44,12 @@ interface XUnit {
 }
 
 export class TestXUnitParser {
-    constructor() {}
+    constructor(private hasMultiLineParallelTestOutput: boolean) {}
 
-    async parse(buffer: string, runState: iXUnitTestState): Promise<TestResults | undefined> {
+    async parse(
+        buffer: string,
+        runState: TestRunnerTestRunState
+    ): Promise<TestResults | undefined> {
         const xml = await xml2js.parseStringPromise(buffer);
         try {
             return await this.parseXUnit(xml, runState);
@@ -63,7 +61,7 @@ export class TestXUnitParser {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async parseXUnit(xUnit: XUnit, runState: iXUnitTestState): Promise<TestResults> {
+    async parseXUnit(xUnit: XUnit, runState: TestRunnerTestRunState): Promise<TestResults> {
         let tests = 0;
         let failures = 0;
         let errors = 0;
@@ -73,10 +71,21 @@ export class TestXUnitParser {
             errors += parseInt(testsuite.$.errors);
             testsuite.testcase.forEach(testcase => {
                 const id = `${testcase.$.classname}/${testcase.$.name}`;
-                if (testcase.failure) {
-                    runState.failTest(id, testcase.$.time, testcase.failure.shift()?.message);
-                } else {
-                    runState.passTest(id, testcase.$.time);
+                const index = runState.getTestItemIndex(id);
+
+                if (index !== -1) {
+                    // From 5.7 to 5.10 running with the --parallel option dumps the test results out
+                    // to the console with no newlines, so it isn't possible to distinguish where errors
+                    // begin and end. Consequently we can't record them, and so we manually mark them
+                    // as passed or failed here with a manufactured issue.
+                    if (!!testcase.failure && !this.hasMultiLineParallelTestOutput) {
+                        runState.recordIssue(
+                            index,
+                            testcase.failure.shift()?.$.message ?? "Test Failed"
+                        );
+                    }
+
+                    runState.completed(index, { duration: testcase.$.time });
                 }
             });
         });

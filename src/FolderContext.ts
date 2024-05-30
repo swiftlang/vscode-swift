@@ -21,7 +21,6 @@ import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { WorkspaceContext, FolderEvent } from "./WorkspaceContext";
 import { BackgroundCompilation } from "./BackgroundCompilation";
 import { TaskQueue } from "./tasks/TaskQueue";
-import { LcovResults } from "./coverage/LcovResults";
 import { isPathInsidePath } from "./utilities/utilities";
 
 export class FolderContext implements vscode.Disposable {
@@ -30,7 +29,6 @@ export class FolderContext implements vscode.Disposable {
     public hasResolveErrors = false;
     public testExplorer?: TestExplorer;
     public taskQueue: TaskQueue;
-    public lcovResults: LcovResults;
 
     /**
      * FolderContext constructor
@@ -49,7 +47,6 @@ export class FolderContext implements vscode.Disposable {
         this.packageWatcher.install();
         this.backgroundCompilation = new BackgroundCompilation(this);
         this.taskQueue = new TaskQueue(this);
-        this.lcovResults = new LcovResults(this);
     }
 
     /** dispose of any thing FolderContext holds */
@@ -57,7 +54,6 @@ export class FolderContext implements vscode.Disposable {
         this.linuxMain?.dispose();
         this.packageWatcher.dispose();
         this.testExplorer?.dispose();
-        this.lcovResults.dispose();
     }
 
     /**

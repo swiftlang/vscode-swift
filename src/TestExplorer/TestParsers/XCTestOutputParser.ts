@@ -14,6 +14,7 @@
 
 import { ITestRunState } from "./TestRunState";
 import { sourceLocationToVSCodeLocation } from "../../utilities/utilities";
+import { MarkdownString, Location } from "vscode";
 
 /** Regex for parsing XCTest output */
 interface TestRegex {
@@ -67,7 +68,69 @@ export const nonDarwinTestRegex = {
     failedSuite: /^Test Suite '(.*)' failed/,
 };
 
-export class XCTestOutputParser {
+export interface IXCTestOutputParser {
+    parseResult(output: string, runState: ITestRunState): void;
+}
+
+export class ParallelXCTestOutputParser implements IXCTestOutputParser {
+    private outputParser: XCTestOutputParser;
+
+    /**
+     * Create an ParallelXCTestOutputParser.
+     * Optional regex can be supplied for tests.
+     */
+    constructor(
+        private hasMultiLineParallelTestOutput: boolean,
+        regex?: TestRegex
+    ) {
+        this.outputParser = new XCTestOutputParser(regex);
+    }
+
+    public parseResult(output: string, runState: ITestRunState) {
+        // From 5.7 to 5.10 running with the --parallel option dumps the test results out
+        // to the console with no newlines, so it isn't possible to distinguish where errors
+        // begin and end. Consequently we can't record them, and so we manually mark them
+        // as passed or failed here with a manufactured issue.
+        // Don't attempt to parse the console output of parallel tests between 5.7 and 5.10
+        // as it doesn't have newlines. You might get lucky and find the output is split
+        // in the right spot, but more often than not we wont be able to parse it.
+        if (!this.hasMultiLineParallelTestOutput) {
+            return;
+        }
+
+        // For parallel XCTest runs we get pass/fail results from the xunit XML
+        // produced at the end of the run, but we still want to monitor the output
+        // for the individual assertion failures. Wrap the run state and only forward
+        // along the issues captured during a test run, and let the `TestXUnitParser`
+        // handle marking tests as completed.
+        this.outputParser.parseResult(output, new ParallelXCTestRunStateProxy(runState));
+    }
+}
+
+/* eslint-disable @typescript-eslint/no-unused-vars */
+class ParallelXCTestRunStateProxy implements ITestRunState {
+    constructor(private runState: ITestRunState) {}
+
+    getTestItemIndex(id: string, filename: string | undefined): number {
+        return this.runState.getTestItemIndex(id, filename);
+    }
+    recordIssue(
+        index: number,
+        message: string | MarkdownString,
+        location?: Location | undefined
+    ): void {
+        this.runState.recordIssue(index, message, location);
+    }
+    started(index: number, startTime?: number | undefined): void {}
+    completed(index: number, timing: { duration: number } | { timestamp: number }): void {}
+    skipped(index: number): void {}
+    startedSuite(name: string): void {}
+    passedSuite(name: string): void {}
+    failedSuite(name: string): void {}
+}
+/* eslint-enable @typescript-eslint/no-unused-vars */
+
+export class XCTestOutputParser implements IXCTestOutputParser {
     private regex: TestRegex;
 
     /**
@@ -93,7 +156,7 @@ export class XCTestOutputParser {
             lines.pop();
         }
         // if submitted text does not end with a newline then pop that off and store in excess
-        // for next call of parseResultDarwin
+        // for next call of parseResult
         if (output2[output2.length - 1] !== "\n") {
             runState.excess = lines.pop();
         } else {

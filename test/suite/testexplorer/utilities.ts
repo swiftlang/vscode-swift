@@ -1,3 +1,17 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the VSCode Swift open source project
+//
+// Copyright (c) 2024 the VSCode Swift project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.txt for the list of VSCode Swift project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
 import * as vscode from "vscode";
 import * as assert from "assert";
 import { reduceTestItemChildren } from "../../../src/TestExplorer/TestUtils";
@@ -62,7 +76,10 @@ export function assertTestControllerHierarchy(
 export function assertTestResults(
     testRun: TestRunProxy,
     state: {
-        failed?: string[];
+        failed?: {
+            test: string;
+            issues: string[];
+        }[];
         passed?: string[];
         skipped?: string[];
         errored?: string[];
@@ -71,7 +88,12 @@ export function assertTestResults(
     assert.deepEqual(
         {
             passed: testRun.runState.passed.map(({ id }) => id),
-            failed: testRun.runState.failed.map(({ id }) => id),
+            failed: testRun.runState.failed.map(({ test, message }) => ({
+                test: test.id,
+                issues: Array.isArray(message)
+                    ? message.map(({ message }) => message)
+                    : [(message as vscode.TestMessage).message],
+            })),
             skipped: testRun.runState.skipped.map(({ id }) => id),
             errored: testRun.runState.errored.map(({ id }) => id),
         },

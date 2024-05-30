@@ -737,17 +737,6 @@ async function switchPlatform() {
     );
 }
 
-export async function showTestCoverageReport(workspaceContext: WorkspaceContext) {
-    // show test coverage report
-    if (workspaceContext.currentFolder) {
-        workspaceContext.testCoverageDocumentProvider.show(workspaceContext.currentFolder);
-    }
-}
-
-function toggleTestCoverageDisplay(workspaceContext: WorkspaceContext) {
-    workspaceContext.toggleTestCoverageDisplay();
-}
-
 async function attachDebugger(ctx: WorkspaceContext) {
     // use LLDB to get list of processes
     const lldb = await ctx.toolchain.getLLDB();
@@ -829,12 +818,6 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand("swift.restartLSPServer", () => restartLSPServer(ctx)),
         vscode.commands.registerCommand("swift.insertFunctionComment", () =>
             insertFunctionComment(ctx)
-        ),
-        vscode.commands.registerCommand("swift.showTestCoverageReport", () =>
-            showTestCoverageReport(ctx)
-        ),
-        vscode.commands.registerCommand("swift.toggleTestCoverage", () =>
-            toggleTestCoverageDisplay(ctx)
         ),
         vscode.commands.registerCommand("swift.useLocalDependency", item => {
             if (item instanceof PackageNode) {

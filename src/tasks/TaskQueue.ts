@@ -1,3 +1,17 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the VSCode Swift open source project
+//
+// Copyright (c) 2022-2024 the VSCode Swift project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.txt for the list of VSCode Swift project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
 import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import { WorkspaceContext } from "../WorkspaceContext";
@@ -71,6 +85,7 @@ export class TaskOperation implements SwiftOperation {
         workspaceContext: WorkspaceContext,
         token?: vscode.CancellationToken
     ): Promise<number | undefined> {
+        workspaceContext.outputChannel.log(`Exec Task: ${this.task.detail ?? this.task.name}`);
         return workspaceContext.tasks.executeTaskAndWait(this.task, token);
     }
 }
