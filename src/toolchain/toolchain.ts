@@ -14,6 +14,7 @@
 
 import * as fs from "fs/promises";
 import * as path from "path";
+import * as os from "os";
 import * as plist from "plist";
 import * as vscode from "vscode";
 import configuration from "../configuration";
@@ -117,6 +118,7 @@ export class SwiftToolchain {
         const customSDK = this.getCustomSDK();
         const xcTestPath = await this.getXCTestPath(
             targetInfo,
+            swiftFolderPath,
             swiftVersion,
             runtimePath,
             customSDK ?? defaultSDK
@@ -192,10 +194,80 @@ export class SwiftToolchain {
      * @returns Folders for each Xcode install
      */
     public static async getXcodeInstalls(): Promise<string[]> {
+        if (process.platform !== "darwin") {
+            return [];
+        }
         const { stdout: xcodes } = await execFile("mdfind", [
             `kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'`,
         ]);
         return xcodes.trimEnd().split("\n");
+    }
+
+    /**
+     * Reads the swiftly configuration file to find a list of installed toolchains.
+     *
+     * @returns an array of toolchain paths
+     */
+    public static async getSwiftlyToolchainInstalls(): Promise<string[]> {
+        try {
+            const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
+            if (!swiftlyHomeDir) {
+                return [];
+            }
+            const swiftlyConfigRaw = await fs.readFile(
+                path.join(swiftlyHomeDir, "config.json"),
+                "utf-8"
+            );
+            const swiftlyConfig: unknown = JSON.parse(swiftlyConfigRaw);
+            if (!(swiftlyConfig instanceof Object) || !("installedToolchains" in swiftlyConfig)) {
+                return [];
+            }
+            const installedToolchains = swiftlyConfig.installedToolchains;
+            if (!Array.isArray(installedToolchains)) {
+                return [];
+            }
+            return installedToolchains
+                .filter((toolchain): toolchain is string => typeof toolchain === "string")
+                .map(toolchain => path.join(swiftlyHomeDir, "toolchains", toolchain));
+        } catch (error) {
+            throw new Error("Failed to retrieve Swiftly installations from disk.");
+        }
+    }
+
+    /**
+     * Checks common directories for available swift toolchain installations.
+     *
+     * @returns an array of toolchain paths
+     */
+    public static async getToolchainInstalls(): Promise<string[]> {
+        if (process.platform !== "darwin") {
+            return [];
+        }
+        return Promise.all([
+            this.findToolchainsIn("/Library/Developer/Toolchains/"),
+            this.findToolchainsIn(path.join(os.homedir(), "Library/Developer/Toolchains/")),
+        ]).then(results => results.flatMap(a => a));
+    }
+
+    /**
+     * Searches the given directory for any swift toolchain installations.
+     *
+     * @param directory the directory path to search in
+     * @returns an array of toolchain paths
+     */
+    public static async findToolchainsIn(directory: string): Promise<string[]> {
+        try {
+            return (await fs.readdir(directory, { withFileTypes: true }))
+                .filter(
+                    dirent =>
+                        dirent.name.startsWith("swift-") &&
+                        (dirent.isDirectory() || dirent.isSymbolicLink())
+                )
+                .map(dirent => path.join(dirent.path, dirent.name));
+        } catch {
+            // Assume that there are no installations here
+            return [];
+        }
     }
 
     /**
@@ -253,12 +325,37 @@ export class SwiftToolchain {
         return `${this.toolchainPath}/bin/${exe}${windowsExeSuffix}`;
     }
 
+    private static getXcodeDirectory(toolchainPath: string): string | undefined {
+        let xcodeDirectory = toolchainPath;
+        while (path.extname(xcodeDirectory) !== ".app") {
+            xcodeDirectory = path.dirname(xcodeDirectory);
+            if (path.parse(xcodeDirectory).base === "") {
+                return undefined;
+            }
+        }
+        return xcodeDirectory;
+    }
+
     /**
      * Cannot use `getToolchainExecutable` to get the LLDB executable as LLDB
      * is not in macOS toolchain path
      */
-    public getLLDB(): string {
-        return path.join(this.swiftFolderPath, "lldb");
+    public async getLLDB(): Promise<string> {
+        let lldbPath = path.join(this.swiftFolderPath, "lldb");
+        if (!(await pathExists(lldbPath))) {
+            if (process.platform !== "darwin") {
+                throw new Error("Failed to find LLDB in swift toolchain");
+            }
+            const xcodeDirectory = SwiftToolchain.getXcodeDirectory(this.swiftFolderPath);
+            if (!xcodeDirectory) {
+                throw new Error("Failed to find LLDB in swift toolchain");
+            }
+            const { stdout } = await execFile("xcrun", ["-find", "lldb"], {
+                env: { ...process.env, DEVELOPER_DIR: xcodeDirectory },
+            });
+            lldbPath = stdout.trimEnd();
+        }
+        return lldbPath;
     }
 
     private basePlatformDeveloperPath(): string | undefined {
@@ -465,15 +562,19 @@ export class SwiftToolchain {
      */
     private static async getXCTestPath(
         targetInfo: SwiftTargetInfo,
+        swiftFolderPath: string,
         swiftVersion: Version,
         runtimePath: string | undefined,
         sdkroot: string | undefined
     ): Promise<string | undefined> {
         switch (process.platform) {
             case "darwin": {
-                const developerDir = await this.getXcodeDeveloperDir(
-                    configuration.swiftEnvironmentVariables
-                );
+                const xcodeDirectory = this.getXcodeDirectory(swiftFolderPath);
+                const swiftEnvironmentVariables = configuration.swiftEnvironmentVariables;
+                if (xcodeDirectory && !("DEVELOPER_DIR" in swiftEnvironmentVariables)) {
+                    swiftEnvironmentVariables["DEVELOPER_DIR"] = xcodeDirectory;
+                }
+                const developerDir = await this.getXcodeDeveloperDir(swiftEnvironmentVariables);
                 return path.join(developerDir, "usr", "bin");
             }
             case "win32": {

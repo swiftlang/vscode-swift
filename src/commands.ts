@@ -30,6 +30,7 @@ import { debugLaunchConfig, getLaunchConfiguration } from "./debugger/launch";
 import { execFile } from "./utilities/utilities";
 import { SwiftExecOperation, TaskOperation } from "./tasks/TaskQueue";
 import { SwiftProjectTemplate } from "./toolchain/toolchain";
+import { showToolchainSelectionQuickPick, showToolchainError } from "./ui/ToolchainSelection";
 
 /**
  * References:
@@ -39,6 +40,8 @@ import { SwiftProjectTemplate } from "./toolchain/toolchain";
  * - Implementing commands:
  *   https://code.visualstudio.com/api/extension-guides/command
  */
+
+export type WorkspaceContextWithToolchain = WorkspaceContext & { toolchain: SwiftToolchain };
 
 /**
  * Executes a {@link vscode.Task task} to resolve this package's dependencies.
@@ -97,11 +100,19 @@ export async function updateDependencies(ctx: WorkspaceContext) {
  * Prompts the user to input project details and then executes `swift package init`
  * to create the project.
  */
-export async function createNewProject(ctx: WorkspaceContext): Promise<void> {
+export async function createNewProject(toolchain: SwiftToolchain | undefined): Promise<void> {
+    // It is possible for this command to be run without a valid toolchain because it can be
+    // run before the Swift extension is activated. Show the toolchain error notification in
+    // this case.
+    if (!toolchain) {
+        showToolchainError();
+        return;
+    }
+
     // The context key `swift.createNewProjectAvailable` only works if the extension has been
     // activated. As such, we also have to allow this command to run when no workspace is
     // active. Show an error to the user if the command is unavailable.
-    if (!ctx.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 8, 0))) {
+    if (!toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 8, 0))) {
         vscode.window.showErrorMessage(
             "Creating a new swift project is only available starting in swift version 5.8.0."
         );
@@ -109,7 +120,7 @@ export async function createNewProject(ctx: WorkspaceContext): Promise<void> {
     }
 
     // Prompt the user for the type of project they would like to create
-    const availableProjectTemplates = await ctx.toolchain.getProjectTemplates();
+    const availableProjectTemplates = await toolchain.getProjectTemplates();
     const selectedProjectTemplate = await vscode.window.showQuickPick<
         vscode.QuickPickItem & { type: SwiftProjectTemplate }
     >(
@@ -186,7 +197,7 @@ export async function createNewProject(ctx: WorkspaceContext): Promise<void> {
         async () => {
             await execSwift(
                 ["package", "init", "--type", projectType, "--name", projectName],
-                ctx.toolchain,
+                toolchain,
                 {
                     cwd: projectUri.fsPath,
                 }
@@ -630,7 +641,7 @@ async function openPackage(workspaceContext: WorkspaceContext) {
     }
 }
 
-function insertFunctionComment(workspaceContext: WorkspaceContext) {
+async function insertFunctionComment(workspaceContext: WorkspaceContext): Promise<void> {
     const activeEditor = vscode.window.activeTextEditor;
     if (!activeEditor) {
         return;
@@ -640,8 +651,8 @@ function insertFunctionComment(workspaceContext: WorkspaceContext) {
 }
 
 /** Restart the SourceKit-LSP server */
-function restartLSPServer(workspaceContext: WorkspaceContext) {
-    workspaceContext.languageClientManager.restart();
+function restartLSPServer(workspaceContext: WorkspaceContext): Promise<void> {
+    return workspaceContext.languageClientManager.restart();
 }
 
 /** Execute task and show UI while running */
@@ -726,61 +737,9 @@ async function switchPlatform() {
     );
 }
 
-/**
- * Choose DEVELOPER_DIR
- * @param workspaceContext
- */
-async function selectXcodeDeveloperDir() {
-    const defaultXcode = await SwiftToolchain.getXcodeDeveloperDir();
-    const selectedXcode = configuration.swiftEnvironmentVariables.DEVELOPER_DIR;
-    const xcodes = await SwiftToolchain.getXcodeInstalls();
-    await withQuickPick(
-        selectedXcode ?? defaultXcode,
-        xcodes.map(xcode => {
-            const developerDir = `${xcode}/Contents/Developer`;
-            return {
-                label: developerDir === defaultXcode ? `${xcode} (default)` : xcode,
-                folder: developerDir === defaultXcode ? undefined : developerDir,
-            };
-        }),
-        async selected => {
-            let swiftEnv = configuration.swiftEnvironmentVariables;
-            const previousDeveloperDir = swiftEnv.DEVELOPER_DIR ?? defaultXcode;
-            if (selected.folder) {
-                swiftEnv.DEVELOPER_DIR = selected.folder;
-            } else if (swiftEnv.DEVELOPER_DIR) {
-                // if DEVELOPER_DIR was set and the new folder is the default then
-                // delete variable
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { DEVELOPER_DIR, ...rest } = swiftEnv;
-                swiftEnv = rest;
-            }
-            configuration.swiftEnvironmentVariables = swiftEnv;
-            // if SDK is inside previous DEVELOPER_DIR then move to new DEVELOPER_DIR
-            if (
-                configuration.sdk.length > 0 &&
-                configuration.sdk.startsWith(previousDeveloperDir)
-            ) {
-                configuration.sdk = configuration.sdk.replace(
-                    previousDeveloperDir,
-                    selected.folder ?? defaultXcode
-                );
-            }
-            vscode.window
-                .showInformationMessage(
-                    "Changing the Xcode Developer Directory requires the project be reloaded.",
-                    "Ok"
-                )
-                .then(() => {
-                    vscode.commands.executeCommand("workbench.action.reloadWindow");
-                });
-        }
-    );
-}
-
-async function attachDebugger(workspaceContext: WorkspaceContext) {
+async function attachDebugger(ctx: WorkspaceContext) {
     // use LLDB to get list of processes
-    const lldb = workspaceContext.toolchain.getLLDB();
+    const lldb = await ctx.toolchain.getLLDB();
     try {
         const { stdout } = await execFile(lldb, [
             "--batch",
@@ -823,12 +782,24 @@ function updateAfterError(result: boolean, folderContext: FolderContext) {
     }
 }
 
+export function registerToolchainCommands(
+    toolchain: SwiftToolchain | undefined
+): vscode.Disposable[] {
+    return [
+        vscode.commands.registerCommand("swift.createNewProject", () =>
+            createNewProject(toolchain)
+        ),
+        vscode.commands.registerCommand("swift.selectToolchain", () =>
+            showToolchainSelectionQuickPick(toolchain)
+        ),
+    ];
+}
+
 /**
  * Registers this extension's commands in the given {@link vscode.ExtensionContext context}.
  */
-export function register(ctx: WorkspaceContext) {
-    ctx.subscriptions.push(
-        vscode.commands.registerCommand("swift.createNewProject", () => createNewProject(ctx)),
+export function register(ctx: WorkspaceContext): vscode.Disposable[] {
+    return [
         vscode.commands.registerCommand("swift.resolveDependencies", () =>
             resolveDependencies(ctx)
         ),
@@ -873,9 +844,6 @@ export function register(ctx: WorkspaceContext) {
                 openInExternalEditor(item);
             }
         }),
-        vscode.commands.registerCommand("swift.selectXcodeDeveloperDir", () =>
-            selectXcodeDeveloperDir()
-        ),
-        vscode.commands.registerCommand("swift.attachDebugger", () => attachDebugger(ctx))
-    );
+        vscode.commands.registerCommand("swift.attachDebugger", () => attachDebugger(ctx)),
+    ];
 }

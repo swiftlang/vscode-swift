@@ -34,7 +34,7 @@ suite("WorkspaceContext Test Suite", () => {
             let count = 0;
             const observer = workspaceContext?.observeFolders((folder, operation) => {
                 assert(folder !== null);
-                assert.strictEqual(folder.swiftPackage.name, "package2");
+                assert.strictEqual(folder!.swiftPackage.name, "package2");
                 switch (operation) {
                     case FolderEvent.add:
                         count++;

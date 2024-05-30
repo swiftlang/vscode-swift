@@ -136,8 +136,8 @@
         "category": "Swift"
       },
       {
-        "command": "swift.selectXcodeDeveloperDir",
-        "title": "Select Xcode Developer Dir...",
+        "command": "swift.selectToolchain",
+        "title": "Select Toolchain...",
         "category": "Swift"
       },
       {
@@ -523,11 +523,27 @@
         },
         {
           "command": "swift.switchPlatform",
-          "when": "isMac"
+          "when": "swift.isActivated && isMac"
+        },
+        {
+          "command": "swift.insertFunctionComment",
+          "when": "swift.isActivated"
         },
         {
           "command": "swift.resetPackage",
           "when": "swift.hasPackage"
+        },
+        {
+          "command": "swift.restartLSPServer",
+          "when": "swift.isActivated"
+        },
+        {
+          "command": "swift.showTestCoverageReport",
+          "when": "swift.isActivated"
+        },
+        {
+          "command": "swift.toggleTestCoverage",
+          "when": "swift.isActivated"
         },
         {
           "command": "swift.openPackage",
@@ -552,10 +568,6 @@
         {
           "command": "swift.openExternal",
           "when": "false"
-        },
-        {
-          "command": "swift.selectXcodeDeveloperDir",
-          "when": "isMac"
         },
         {
           "command": "swift.run",

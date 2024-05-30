@@ -30,6 +30,10 @@ import { registerLoggingDebugAdapterTracker } from "./debugger/logTracker";
 import { registerLLDBDebugAdapter } from "./debugger/debugAdapterFactory";
 import { DebugAdapter } from "./debugger/debugAdapter";
 import contextKeys from "./contextKeys";
+import { showToolchainError } from "./ui/ToolchainSelection";
+import { SwiftToolchain } from "./toolchain/toolchain";
+import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
+import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -42,11 +46,56 @@ export interface Api {
 /**
  * Activate the extension. This is the main entry point.
  */
-export async function activate(context: vscode.ExtensionContext): Promise<Api> {
+export async function activate(context: vscode.ExtensionContext): Promise<Api | undefined> {
     try {
         console.debug("Activating Swift for Visual Studio Code...");
 
-        const workspaceContext = await WorkspaceContext.create();
+        const outputChannel = new SwiftOutputChannel();
+        const toolchain: SwiftToolchain | undefined = await SwiftToolchain.create()
+            .then(toolchain => {
+                outputChannel.log(toolchain.swiftVersionString);
+                toolchain.logDiagnostics(outputChannel);
+                contextKeys.createNewProjectAvailable = toolchain.swiftVersion.isGreaterThanOrEqual(
+                    new Version(5, 8, 0)
+                );
+                return toolchain;
+            })
+            .catch(error => {
+                outputChannel.log("Failed to discover Swift toolchain");
+                outputChannel.log(error);
+                contextKeys.createNewProjectAvailable = false;
+                return undefined;
+            });
+
+        context.subscriptions.push(...commands.registerToolchainCommands(toolchain));
+        context.subscriptions.push(
+            vscode.workspace.onDidChangeConfiguration(event => {
+                // on toolchain config change, reload window
+                if (
+                    event.affectsConfiguration("swift.path") &&
+                    configuration.path !== toolchain?.swiftFolderPath
+                ) {
+                    showReloadExtensionNotification(
+                        "Changing the Swift path requires Visual Studio Code be reloaded."
+                    );
+                }
+                // on sdk config change, restart sourcekit-lsp
+                if (event.affectsConfiguration("swift.SDK")) {
+                    // FIXME: There is a bug stopping us from restarting SourceKit-LSP directly.
+                    // As long as it's fixed we won't need to reload on newer versions.
+                    showReloadExtensionNotification(
+                        "Changing the Swift SDK path requires the project be reloaded."
+                    );
+                }
+            })
+        );
+
+        if (!toolchain) {
+            showToolchainError();
+            return;
+        }
+        const workspaceContext = await WorkspaceContext.create(outputChannel, toolchain);
+        context.subscriptions.push(...commands.register(workspaceContext));
 
         context.subscriptions.push(workspaceContext);
 
@@ -67,7 +116,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             "swift-plugin",
             new SwiftPluginTaskProvider(workspaceContext)
         );
-        commands.register(workspaceContext);
 
         const languageStatusItem = new LanguageStatusItems(workspaceContext);
 
@@ -111,7 +159,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                         } else {
                             await commands.resolveFolderDependencies(folder, true);
                         }
-                        if (workspace.swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))) {
+                        if (
+                            workspace.toolchain.swiftVersion.isGreaterThanOrEqual(
+                                new Version(5, 6, 0)
+                            )
+                        ) {
                             workspace.statusItem.showStatusWhileRunning(
                                 `Loading Swift Plugins (${FolderContext.uriName(
                                     folder.workspaceFolder.uri

@@ -29,7 +29,7 @@ export const globalWorkspaceContextPromise = new Promise<WorkspaceContext>(resol
             return api.workspaceContext.addPackageFolder(packageFolder, workspaceFolder);
         })
         .then(folder => {
-            resolve(folder.workspaceContext);
+            resolve(folder!.workspaceContext);
         });
 });
 

@@ -283,7 +283,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             const packagePath = this.dependencyPackagePath(workspaceStateDependency, workspacePath);
             const childDependencyContents = (await SwiftPackage.loadPackage(
                 vscode.Uri.file(packagePath),
-                this.workspaceContext.toolchain
+                folderContext.workspaceContext.toolchain
             )) as PackageContents;
 
             stack.push(...childDependencyContents.dependencies);
