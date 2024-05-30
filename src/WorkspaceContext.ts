@@ -72,6 +72,9 @@ export class WorkspaceContext implements vscode.Disposable {
         contextKeys.createNewProjectAvailable = toolchain.swiftVersion.isGreaterThanOrEqual(
             new Version(5, 8, 0)
         );
+        contextKeys.addPackageRefactoringAvailable = toolchain.swiftVersion.isGreaterThanOrEqual(
+            new Version(6, 0, 0)
+        );
 
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(async event => {
             // on toolchain config change, reload window
