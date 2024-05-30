@@ -12,6 +12,8 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "strip-ansi"
+        update-types: ["version-update:semver-major"]
       - dependency-name: "@types/vscode"
     groups:
       all-dependencies:
