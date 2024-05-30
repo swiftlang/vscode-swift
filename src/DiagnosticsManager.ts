@@ -100,90 +100,70 @@ export class DiagnosticsManager implements vscode.Disposable {
         // so we'll always display messages capitalized to user and this
         // also will allow comparing messages when merging
         diagnostics.forEach(this.capitalizeMessage);
-        // Remove the old set of benefits from this source
-        const currentDiagnostics = this.removeDiagnostics(
-            this.diagnosticCollection.get(uri)?.slice() || [],
-            sources
-        );
-        let newDiagnostics: vscode.Diagnostic[];
+        const newDiagnostics = this.diagnosticCollection.get(uri)?.slice() || [];
+        // Remove the old set of diagnostics from this source
+        this.removeDiagnostics(newDiagnostics, sources);
         switch (configuration.diagnosticsCollection) {
             case "keepSourceKit":
-                newDiagnostics = this.mergeDiagnostics(
-                    currentDiagnostics,
-                    diagnostics,
-                    DiagnosticsManager.sourcekit
-                );
+                this.mergeDiagnostics(newDiagnostics, diagnostics, DiagnosticsManager.sourcekit);
                 break;
             case "keepSwiftc":
-                newDiagnostics = this.mergeDiagnostics(
-                    currentDiagnostics,
-                    diagnostics,
-                    DiagnosticsManager.swiftc
-                );
+                this.mergeDiagnostics(newDiagnostics, diagnostics, DiagnosticsManager.swiftc);
                 break;
             case "onlySourceKit":
-                newDiagnostics = this.removeDiagnostics(
-                    currentDiagnostics,
-                    DiagnosticsManager.swiftc
-                ); // Just in case
+                this.removeDiagnostics(newDiagnostics, DiagnosticsManager.swiftc); // Just in case
                 if (DiagnosticsManager.swiftc.find(s => sources.includes(s))) {
                     break;
                 }
                 newDiagnostics.push(...diagnostics);
                 break;
             case "onlySwiftc":
-                newDiagnostics = this.removeDiagnostics(
-                    currentDiagnostics,
-                    DiagnosticsManager.sourcekit
-                ); // Just in case
+                this.removeDiagnostics(newDiagnostics, DiagnosticsManager.sourcekit); // Just in case
                 if (DiagnosticsManager.sourcekit.find(s => sources.includes(s))) {
                     break;
                 }
                 newDiagnostics.push(...diagnostics);
                 break;
             case "keepAll":
-                newDiagnostics = currentDiagnostics.concat(diagnostics);
+                newDiagnostics.push(...diagnostics);
                 break;
         }
         this.diagnosticCollection.set(uri, newDiagnostics);
     }
 
     private mergeDiagnostics(
-        currentDiagnostics: vscode.Diagnostic[],
-        newDiagnostics: vscode.Diagnostic[],
+        combinedDiagnostics: vscode.Diagnostic[],
+        incomingDiagnostics: vscode.Diagnostic[],
         precedence: string[]
-    ): vscode.Diagnostic[] {
-        const merged: vscode.Diagnostic[] = [];
-        for (const diagnostic of newDiagnostics) {
+    ): void {
+        for (const diagnostic of incomingDiagnostics) {
             // See if a duplicate diagnostic exists
-            const currentDiagnostic = currentDiagnostics.find(
+            const currentDiagnostic = combinedDiagnostics.find(
                 d =>
                     d.range.start.isEqual(diagnostic.range.start) &&
                     d.message === diagnostic.message
             );
             if (currentDiagnostic) {
-                currentDiagnostics.splice(currentDiagnostics.indexOf(currentDiagnostic), 1);
+                combinedDiagnostics.splice(combinedDiagnostics.indexOf(currentDiagnostic), 1);
             }
 
             // Perform de-duplication
             if (precedence.includes(diagnostic.source || "")) {
-                merged.push(diagnostic);
+                combinedDiagnostics.push(diagnostic);
                 continue;
             }
             if (!currentDiagnostic || !precedence.includes(currentDiagnostic.source || "")) {
-                merged.push(diagnostic);
+                combinedDiagnostics.push(diagnostic);
                 continue;
             }
-            merged.push(currentDiagnostic);
+            combinedDiagnostics.push(currentDiagnostic);
         }
-        // Add all remaining old diagnostics that had no collision
-        merged.push(...currentDiagnostics);
-        return merged;
     }
 
     private removeSwiftcDiagnostics() {
         this.diagnosticCollection.forEach((uri, diagnostics) => {
-            const newDiagnostics = this.removeDiagnostics(diagnostics, DiagnosticsManager.swiftc);
+            const newDiagnostics = diagnostics.slice();
+            this.removeDiagnostics(newDiagnostics, DiagnosticsManager.swiftc);
             if (diagnostics.length !== newDiagnostics.length) {
                 this.diagnosticCollection.set(uri, newDiagnostics);
             }
@@ -192,21 +172,21 @@ export class DiagnosticsManager implements vscode.Disposable {
 
     private removeSourceKitDiagnostics() {
         this.diagnosticCollection.forEach((uri, diagnostics) => {
-            const newDiagnostics = this.removeDiagnostics(
-                diagnostics,
-                DiagnosticsManager.sourcekit
-            );
+            const newDiagnostics = diagnostics.slice();
+            this.removeDiagnostics(newDiagnostics, DiagnosticsManager.sourcekit);
             if (diagnostics.length !== newDiagnostics.length) {
                 this.diagnosticCollection.set(uri, newDiagnostics);
             }
         });
     }
 
-    private removeDiagnostics(
-        diagnostics: readonly vscode.Diagnostic[],
-        sources: string[]
-    ): vscode.Diagnostic[] {
-        return diagnostics.filter(d => !sources.includes(d.source || ""));
+    private removeDiagnostics(diagnostics: vscode.Diagnostic[], sources: string[]): void {
+        let i = diagnostics.length;
+        while (i--) {
+            if (sources.includes(diagnostics[i].source || "")) {
+                diagnostics.splice(i, 1);
+            }
+        }
     }
 
     /**
