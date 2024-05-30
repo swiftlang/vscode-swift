@@ -21,6 +21,7 @@ import { testAssetWorkspaceFolder, testSwiftTask } from "../fixtures";
 import { createBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { DiagnosticsManager } from "../../src/DiagnosticsManager";
 import { FolderContext } from "../../src/FolderContext";
+import { SwiftOutputChannel } from "../../src/ui/SwiftOutputChannel";
 
 const waitForDiagnostics = (uris: vscode.Uri[]) =>
     new Promise<void>(res =>
@@ -76,8 +77,8 @@ suite("DiagnosticsManager Test Suite", () => {
     let funcUri: vscode.Uri;
 
     suiteSetup(async () => {
-        workspaceContext = await WorkspaceContext.create();
         toolchain = await SwiftToolchain.create();
+        workspaceContext = await WorkspaceContext.create(new SwiftOutputChannel(), toolchain);
         workspaceFolder = testAssetWorkspaceFolder("diagnostics");
         folderContext = await workspaceContext.addPackageFolder(
             workspaceFolder.uri,
