@@ -22,6 +22,7 @@ import { createBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { DiagnosticsManager } from "../../src/DiagnosticsManager";
 import { FolderContext } from "../../src/FolderContext";
 import { SwiftOutputChannel } from "../../src/ui/SwiftOutputChannel";
+import { Version } from "../../src/utilities/version";
 
 const waitForDiagnostics = (uris: vscode.Uri[]) =>
     new Promise<void>(res =>
@@ -65,7 +66,10 @@ function assertWithoutDiagnostic(uri: vscode.Uri, expected: vscode.Diagnostic) {
     );
 }
 
-suite("DiagnosticsManager Test Suite", () => {
+suite("DiagnosticsManager Test Suite", async function () {
+    // Was hitting a timeout in suiteSetup during CI build once in a while
+    this.timeout(5000);
+
     const swiftConfig = vscode.workspace.getConfiguration("swift");
 
     let workspaceContext: WorkspaceContext;
@@ -136,7 +140,13 @@ suite("DiagnosticsManager Test Suite", () => {
                 assertHasDiagnostic(funcUri, expectedFuncErrorDiagnostic);
             }).timeout(2 * 60 * 1000); // Allow 2 minutes to build
 
-            test("swift diagnosticsStyle", async () => {
+            test("swift diagnosticsStyle", async function () {
+                // This is only supported in swift versions >=5.10.0
+                const swiftVersion = workspaceContext.toolchain.swiftVersion;
+                if (swiftVersion.isLessThan(new Version(5, 10, 0))) {
+                    this.skip();
+                    return;
+                }
                 await swiftConfig.update("diagnosticsStyle", "swift");
                 const task = createBuildAllTask(folderContext);
                 // Run actual task
@@ -170,9 +180,12 @@ suite("DiagnosticsManager Test Suite", () => {
                     diagnostic.relatedInformation![0].message,
                     "Change 'let' to 'var' to make it mutable"
                 );
-                assert.deepEqual(
-                    diagnostic.relatedInformation![0].location,
-                    new vscode.Location(mainUri, new vscode.Position(6, 0))
+                assert.equal(diagnostic.relatedInformation![0].location.uri.fsPath, mainUri.fsPath);
+                assert.equal(
+                    diagnostic.relatedInformation![0].location.range.isEqual(
+                        new vscode.Range(new vscode.Position(6, 0), new vscode.Position(6, 0))
+                    ),
+                    true
                 );
                 // Check parsed for other file
                 assertHasDiagnostic(funcUri, expectedFuncErrorDiagnostic);

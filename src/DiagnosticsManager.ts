@@ -232,10 +232,10 @@ export class DiagnosticsManager implements vscode.Disposable {
                         if (!result) {
                             continue;
                         }
-                        if (
-                            result instanceof vscode.DiagnosticRelatedInformation &&
-                            lastDiagnostic
-                        ) {
+                        if (result instanceof vscode.DiagnosticRelatedInformation) {
+                            if (!lastDiagnostic) {
+                                continue;
+                            }
                             const relatedInformation =
                                 result as vscode.DiagnosticRelatedInformation;
                             this.capitalizeMessage(relatedInformation);
@@ -270,6 +270,7 @@ export class DiagnosticsManager implements vscode.Disposable {
                         ) {
                             // De-duplicate duplicate diagnostics from SwiftPM
                             // TODO remove when https://github.com/apple/swift/issues/73973 is fixed
+                            lastDiagnostic = undefined;
                             continue;
                         }
                         lastDiagnostic = diagnostic;

@@ -48,7 +48,10 @@ suite("WorkspaceContext Test Suite", () => {
         }).timeout(5000);
     });
 
-    suite("Tasks", async () => {
+    suite("Tasks", async function () {
+        // Was hitting a timeout in suiteSetup during CI build once in a while
+        this.timeout(5000);
+
         const swiftConfig = vscode.workspace.getConfiguration("swift");
 
         suiteTeardown(async () => {
