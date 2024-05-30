@@ -145,6 +145,17 @@ export class SwiftToolchain {
     }
 
     /**
+     * Returns true if the console output of `swift test --parallel` prints results
+     * to stdout with newlines or not.
+     */
+    public get hasMultiLineParallelTestOutput(): boolean {
+        return (
+            this.swiftVersion.isLessThanOrEqual(new Version(5, 6, 0)) ||
+            this.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))
+        );
+    }
+
+    /**
      * Get active developer dir for Xcode
      */
     public static async getXcodeDeveloperDir(env?: { [key: string]: string }): Promise<string> {

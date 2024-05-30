@@ -33,9 +33,7 @@ import { makeDebugConfigurations } from "./debugger/launch";
 import configuration from "./configuration";
 import contextKeys from "./contextKeys";
 import { setSnippetContextKey } from "./SwiftSnippets";
-import { TestCoverageReportProvider } from "./coverage/TestCoverageReport";
 import { CommentCompletionProviders } from "./editor/CommentCompletion";
-import { TestCoverageRenderer } from "./coverage/TestCoverageRenderer";
 import { DebugAdapter } from "./debugger/debugAdapter";
 import { Version } from "./utilities/version";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
@@ -54,9 +52,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public languageClientManager: LanguageClientManager;
     public tasks: TaskManager;
     public subscriptions: { dispose(): unknown }[];
-    public testCoverageDocumentProvider: TestCoverageReportProvider;
     public commentCompletionProvider: CommentCompletionProviders;
-    public testCoverageRenderer: TestCoverageRenderer;
     private lastFocusUri: vscode.Uri | undefined;
     private initialisationFinished = false;
 
@@ -72,10 +68,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.toolchain.logDiagnostics(this.outputChannel);
         this.tasks = new TaskManager(this);
         this.currentDocument = null;
-        // test coverage document provider
-        this.testCoverageDocumentProvider = new TestCoverageReportProvider(this);
         this.commentCompletionProvider = new CommentCompletionProviders();
-        this.testCoverageRenderer = new TestCoverageRenderer(this);
         contextKeys.createNewProjectAvailable = toolchain.swiftVersion.isGreaterThanOrEqual(
             new Version(5, 8, 0)
         );
@@ -213,8 +206,6 @@ export class WorkspaceContext implements vscode.Disposable {
             swiftFileWatcher,
             onDidEndTask,
             this.commentCompletionProvider,
-            this.testCoverageDocumentProvider,
-            this.testCoverageRenderer,
             backgroundCompilationOnDidSave,
             contextKeysUpdate,
             onChangeConfig,
@@ -585,14 +576,6 @@ export class WorkspaceContext implements vscode.Disposable {
         } else {
             await this.focusFolder(null);
         }
-    }
-
-    public toggleTestCoverageDisplay() {
-        if (!this.testCoverageRenderer) {
-            this.testCoverageRenderer = new TestCoverageRenderer(this);
-            this.subscriptions.push(this.testCoverageRenderer);
-        }
-        this.testCoverageRenderer.toggleDisplayResults();
     }
 
     private initialisationComplete() {

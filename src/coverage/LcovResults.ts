@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2021-2022 the VSCode Swift project authors
+// Copyright (c) 2024 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -14,136 +14,182 @@
 
 import * as vscode from "vscode";
 import * as lcov from "lcov-parse";
-import * as fs from "fs";
 import * as asyncfs from "fs/promises";
+import { Writable } from "stream";
+import { promisify } from "util";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
 import { execFileStreamOutput } from "../utilities/utilities";
 import { BuildFlags } from "../toolchain/BuildFlags";
+import { TestLibrary } from "../TestExplorer/TestRunner";
+import { DisposableFileCollection } from "../utilities/tempFolder";
 
-/**
- * Class keeping a record of the latest test coverage results for a package
- */
-export class LcovResults implements vscode.Disposable {
-    public contents: lcov.LcovFile[] | undefined;
-    public observer: ((results: LcovResults) => unknown) | undefined;
+interface CodeCovFile {
+    testLibrary: TestLibrary;
+    path: string;
+}
 
-    constructor(public folderContext: FolderContext) {
-        this.load();
-    }
+export class TestCoverage {
+    private lcovFiles: CodeCovFile[] = [];
+    private lcovTmpFiles: DisposableFileCollection;
+    private coverageDetails = new Map<vscode.Uri, vscode.FileCoverageDetail[]>();
 
-    dispose() {
-        this.observer = undefined;
+    constructor(private folderContext: FolderContext) {
+        const tmpFolder = folderContext.workspaceContext.tempFolder;
+        this.lcovTmpFiles = tmpFolder.createDisposableFileCollection();
     }
 
     /**
-     * Generate LCOV file from profdata output by `swift test --enable-code-coverage`. Then
-     * load these results into the contents.
+     * Returns coverage information for the suppplied URI.
      */
-    async generate() {
-        const llvmCov =
-            this.folderContext.workspaceContext.toolchain.getToolchainExecutable("llvm-cov");
+    public loadDetailedCoverage(uri: vscode.Uri) {
+        return this.coverageDetails.get(uri) || [];
+    }
+
+    /**
+     * Captures the coverage data after an individual test binary has been run.
+     * After the test run completes then the coverage is merged.
+     */
+    public async captureCoverage(testLibrary: TestLibrary) {
+        const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(
+            this.folderContext.folder.fsPath,
+            true
+        );
+        const result = await asyncfs.readFile(`${buildDirectory}/debug/codecov/default.profdata`);
+        const filename = this.lcovTmpFiles.file(testLibrary, "profdata");
+        await asyncfs.writeFile(filename, result);
+        this.lcovFiles.push({ testLibrary, path: filename });
+    }
+
+    /**
+     * Once all test binaries have been run compute the coverage information and
+     * associate it with the test run.
+     */
+    async computeCoverage(testRun: vscode.TestRun) {
+        const lcovFiles = await this.computeLCOVCoverage();
+        if (lcovFiles.length > 0) {
+            for (const sourceFileCoverage of lcovFiles) {
+                const uri = vscode.Uri.file(sourceFileCoverage.file);
+                const detailedCoverage: vscode.FileCoverageDetail[] = [];
+                for (const lineCoverage of sourceFileCoverage.lines.details) {
+                    const statementCoverage = new vscode.StatementCoverage(
+                        lineCoverage.hit,
+                        new vscode.Position(lineCoverage.line - 1, 0)
+                    );
+                    detailedCoverage.push(statementCoverage);
+                }
+
+                const coverage = vscode.FileCoverage.fromDetails(uri, detailedCoverage);
+                testRun.addCoverage(coverage);
+                this.coverageDetails.set(uri, detailedCoverage);
+            }
+        }
+        this.lcovTmpFiles.dispose();
+    }
+
+    /**
+     * Merges multiple `.profdata` files into a single `.profdata` file.
+     */
+    private async mergeProfdata(profDataFiles: string[]) {
+        const filename = this.lcovTmpFiles.file("merged", "profdata");
+        const toolchain = this.folderContext.workspaceContext.toolchain;
+        const llvmProfdata = toolchain.getToolchainExecutable("llvm-profdata");
+        await execFileStreamOutput(
+            llvmProfdata,
+            ["merge", "-sparse", "-o", filename, ...profDataFiles],
+            null,
+            null,
+            null,
+            {
+                env: process.env,
+                maxBuffer: 16 * 1024 * 1024,
+            },
+            this.folderContext
+        );
+
+        return filename;
+    }
+
+    private async computeLCOVCoverage(): Promise<lcov.LcovFile[]> {
+        if (this.lcovFiles.length === 0) {
+            return [];
+        }
+
+        try {
+            // Merge all the profdata files from each test binary.
+            const mergedProfileFile = await this.mergeProfdata(
+                this.lcovFiles.map(({ path }) => path)
+            );
+
+            // Then export to the final lcov file that
+            // can be processed and fed to VSCode.
+            const lcovData = await this.exportProfdata(
+                this.lcovFiles.map(({ testLibrary }) => testLibrary),
+                mergedProfileFile
+            );
+
+            return await this.loadLcov(lcovData.toString("utf8"));
+        } catch (error) {
+            return [];
+        }
+    }
+
+    /**
+     * Exports a `.profdata` file using `llvm-cov export`, returning the result as a `Buffer`.
+     */
+    private async exportProfdata(types: TestLibrary[], mergedProfileFile: string): Promise<Buffer> {
         const packageName = this.folderContext.swiftPackage.name;
         const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(
             this.folderContext.folder.fsPath,
             true
         );
-        const lcovFileName = `${buildDirectory}/debug/codecov/lcov.info`;
 
-        // Use WriteStream to log results
-        const lcovStream = fs.createWriteStream(lcovFileName);
-
-        try {
-            let xctestFile = `${buildDirectory}/debug/${packageName}PackageTests.xctest`;
+        const coveredBinaries: string[] = [];
+        if (types.includes(TestLibrary.xctest)) {
+            let xcTestBinary = `${buildDirectory}/debug/${packageName}PackageTests.xctest`;
             if (process.platform === "darwin") {
-                xctestFile += `/Contents/MacOs/${packageName}PackageTests`;
+                xcTestBinary += `/Contents/MacOS/${packageName}PackageTests`;
             }
-            await execFileStreamOutput(
-                llvmCov,
-                [
-                    "export",
-                    "--format",
-                    "lcov",
-                    xctestFile,
-                    "--ignore-filename-regex=Tests|.build|Snippets|Plugins",
-                    `--instr-profile=${buildDirectory}/debug/codecov/default.profdata`,
-                ],
-                lcovStream,
-                lcovStream,
-                null,
-                {
-                    env: { ...process.env, ...configuration.swiftEnvironmentVariables },
-                    maxBuffer: 16 * 1024 * 1024,
-                },
-                this.folderContext
-            );
-            await this.lcovFileChanged();
-        } catch (error) {
-            lcovStream.end();
-            throw error;
+            coveredBinaries.push(xcTestBinary);
         }
-    }
 
-    get exist(): boolean {
-        return this.contents !== undefined;
-    }
-
-    /**
-     * Get the code coverage results for a specified file
-     * @param filename File we want code coverage data for
-     * @returns Code coverage results
-     */
-    resultsForFile(filename: string): lcov.LcovFile | undefined {
-        return this.contents?.find(item => item.file === filename);
-    }
-
-    get totals(): { hit: number; found: number } | undefined {
-        if (!this.contents) {
-            return undefined;
+        if (types.includes(TestLibrary.swiftTesting)) {
+            const swiftTestBinary = `${buildDirectory}/debug/${packageName}PackageTests.swift-testing`;
+            coveredBinaries.push(swiftTestBinary);
         }
-        let hit = 0;
-        let found = 0;
-        this.contents.forEach(file => {
-            hit += file.lines.hit;
-            found += file.lines.found;
+
+        let buffer = Buffer.alloc(0);
+        const writableStream = new Writable({
+            write(chunk, encoding, callback) {
+                buffer = Buffer.concat([buffer, chunk]);
+                callback();
+            },
         });
-        return { hit: hit, found: found };
-    }
 
-    private async lcovFileChanged() {
-        await this.load();
-        if (this.observer) {
-            this.observer(this);
-        }
-    }
-
-    private async load() {
-        const lcovFile = this.lcovFilename();
-        try {
-            const buffer = await asyncfs.readFile(lcovFile, "utf8");
-            this.contents = await this.loadLcov(buffer);
-        } catch {
-            // LCOV file failed to load, but that's ok
-        }
-    }
-
-    private async loadLcov(lcovContents: string): Promise<lcov.LcovFile[] | undefined> {
-        return new Promise<lcov.LcovFile[]>((resolve, reject) => {
-            lcov.source(lcovContents, (error, data) => {
-                if (error) {
-                    reject(error);
-                } else if (data) {
-                    resolve(data);
-                }
-            });
-        });
-    }
-
-    private lcovFilename() {
-        const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(
-            this.folderContext.folder.fsPath,
-            true
+        await execFileStreamOutput(
+            this.folderContext.workspaceContext.toolchain.getToolchainExecutable("llvm-cov"),
+            [
+                "export",
+                "--format",
+                "lcov",
+                ...coveredBinaries,
+                "--ignore-filename-regex=Tests|swift-testing|Testing|.build|Snippets|Plugins",
+                `--instr-profile=${mergedProfileFile}`,
+            ],
+            writableStream,
+            writableStream,
+            null,
+            {
+                env: { ...process.env, ...configuration.swiftEnvironmentVariables },
+                maxBuffer: 16 * 1024 * 1024,
+            },
+            this.folderContext
         );
-        return `${buildDirectory}/debug/codecov/lcov.info`;
+
+        return buffer;
+    }
+
+    private async loadLcov(lcovContents: string): Promise<lcov.LcovFile[]> {
+        return promisify(lcov.source)(lcovContents).then(value => value ?? []);
     }
 }

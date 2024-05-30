@@ -51,18 +51,22 @@ suite("Test Explorer Suite", function () {
     async function runTest(
         controller: vscode.TestController,
         runProfile: RunProfileName,
-        test: string
+        ...tests: string[]
     ): Promise<TestRunProxy> {
-        const testItem = getTestItem(controller, test);
-        assert.ok(testItem);
-
         const targetProfile = testExplorer.testRunProfiles.find(
             profile => profile.label === runProfile
         );
         if (!targetProfile) {
             throw new Error(`Unable to find run profile named ${runProfile}`);
         }
-        const request = new vscode.TestRunRequest([testItem]);
+
+        const testItems = tests.map(test => {
+            const testItem = getTestItem(controller, test);
+            assert.ok(testItem);
+            return testItem;
+        });
+
+        const request = new vscode.TestRunRequest(testItems);
 
         return (
             await Promise.all([
@@ -127,96 +131,160 @@ suite("Test Explorer Suite", function () {
         }
     });
 
-    // TODO: Add RunProfileName.coverage once https://github.com/swift-server/vscode-swift/pull/807 is merged.
-    [RunProfileName.run].forEach(runProfile => {
-        suite(runProfile, () => {
-            suite("swift-testing", function () {
-                suiteSetup(function () {
-                    if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
-                        this.skip();
-                    }
-                });
+    // Do coverage last as it does a full rebuild, causing the stage after it to have to rebuild as well.
+    [RunProfileName.run, RunProfileName.runParallel, RunProfileName.coverage].forEach(
+        runProfile => {
+            let xcTestFailureMessage: string;
 
-                test("Runs passing test", async function () {
-                    const testRun = await runTest(
-                        testExplorer.controller,
-                        runProfile,
-                        "PackageTests.topLevelTestPassing()"
-                    );
+            beforeEach(() => {
+                // From 5.7 to 5.10 running with the --parallel option dumps the test results out
+                // to the console with no newlines, so it isn't possible to distinguish where errors
+                // begin and end. Consequently we can't record them, and so we manually mark them
+                // as passed or failed with the message from the xunit xml.
+                xcTestFailureMessage =
+                    runProfile === RunProfileName.runParallel &&
+                    !workspaceContext.toolchain.hasMultiLineParallelTestOutput
+                        ? "failed"
+                        : "failed - oh no";
+            });
 
-                    assertTestResults(testRun, {
-                        passed: ["PackageTests.topLevelTestPassing()"],
+            suite(runProfile, () => {
+                suite("swift-testing", function () {
+                    suiteSetup(function () {
+                        if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+                            this.skip();
+                        }
                     });
-                });
 
-                test("Runs failing test", async function () {
-                    const testRun = await runTest(
-                        testExplorer.controller,
-                        runProfile,
-                        "PackageTests.topLevelTestFailing()"
-                    );
+                    test("Runs passing test", async function () {
+                        const testRun = await runTest(
+                            testExplorer.controller,
+                            runProfile,
+                            "PackageTests.topLevelTestPassing()"
+                        );
 
-                    assertTestResults(testRun, {
-                        failed: ["PackageTests.topLevelTestFailing()"],
+                        assertTestResults(testRun, {
+                            passed: ["PackageTests.topLevelTestPassing()"],
+                        });
                     });
-                });
 
-                test("Runs Suite", async function () {
-                    const testRun = await runTest(
-                        testExplorer.controller,
-                        runProfile,
-                        "PackageTests.MixedSwiftTestingSuite"
-                    );
+                    test("Runs failing test", async function () {
+                        const testRun = await runTest(
+                            testExplorer.controller,
+                            runProfile,
+                            "PackageTests.topLevelTestFailing()"
+                        );
 
-                    assertTestResults(testRun, {
-                        passed: [
-                            "PackageTests.MixedSwiftTestingSuite/testPassing()",
+                        assertTestResults(testRun, {
+                            failed: [
+                                {
+                                    test: "PackageTests.topLevelTestFailing()",
+                                    issues: ["Expectation failed: 1 == 2"],
+                                },
+                            ],
+                        });
+                    });
+
+                    test("Runs Suite", async function () {
+                        const testRun = await runTest(
+                            testExplorer.controller,
+                            runProfile,
+                            "PackageTests.MixedSwiftTestingSuite"
+                        );
+
+                        assertTestResults(testRun, {
+                            passed: [
+                                "PackageTests.MixedSwiftTestingSuite/testPassing()",
+                                "PackageTests.MixedSwiftTestingSuite",
+                            ],
+                            skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],
+                            failed: [
+                                {
+                                    test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
+                                    issues: ["Expectation failed: 1 == 2"],
+                                },
+                            ],
+                        });
+                    });
+
+                    test("Runs All", async function () {
+                        const testRun = await runTest(
+                            testExplorer.controller,
+                            runProfile,
                             "PackageTests.MixedSwiftTestingSuite",
-                        ],
-                        skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],
-                        failed: ["PackageTests.MixedSwiftTestingSuite/testFailing()"],
+                            "PackageTests.MixedXCTestSuite"
+                        );
+
+                        assertTestResults(testRun, {
+                            passed: [
+                                "PackageTests.MixedSwiftTestingSuite/testPassing()",
+                                "PackageTests.MixedSwiftTestingSuite",
+                                "PackageTests.MixedXCTestSuite/testPassing",
+                            ],
+                            skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],
+                            failed: [
+                                {
+                                    test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
+                                    issues: ["Expectation failed: 1 == 2"],
+                                },
+                                {
+                                    test: "PackageTests.MixedXCTestSuite/testFailing",
+                                    issues: [xcTestFailureMessage],
+                                },
+                            ],
+                        });
+                    });
+                });
+
+                suite("XCTests", () => {
+                    test("Runs passing test", async function () {
+                        const testRun = await runTest(
+                            testExplorer.controller,
+                            runProfile,
+                            "PackageTests.PassingXCTestSuite/testPassing"
+                        );
+
+                        assertTestResults(testRun, {
+                            passed: ["PackageTests.PassingXCTestSuite/testPassing"],
+                        });
+                    });
+
+                    test("Runs failing test", async function () {
+                        const testRun = await runTest(
+                            testExplorer.controller,
+                            runProfile,
+                            "PackageTests.FailingXCTestSuite/testFailing"
+                        );
+
+                        assertTestResults(testRun, {
+                            failed: [
+                                {
+                                    test: "PackageTests.FailingXCTestSuite/testFailing",
+                                    issues: [xcTestFailureMessage],
+                                },
+                            ],
+                        });
+                    });
+
+                    test("Runs Suite", async function () {
+                        const testRun = await runTest(
+                            testExplorer.controller,
+                            runProfile,
+                            "PackageTests.MixedXCTestSuite"
+                        );
+
+                        assertTestResults(testRun, {
+                            passed: ["PackageTests.MixedXCTestSuite/testPassing"],
+                            failed: [
+                                {
+                                    test: "PackageTests.MixedXCTestSuite/testFailing",
+                                    issues: [xcTestFailureMessage],
+                                },
+                            ],
+                        });
                     });
                 });
             });
-
-            suite("XCTests", () => {
-                test("Runs passing test", async function () {
-                    const testRun = await runTest(
-                        testExplorer.controller,
-                        runProfile,
-                        "PackageTests.PassingXCTestSuite/testPassing"
-                    );
-
-                    assertTestResults(testRun, {
-                        passed: ["PackageTests.PassingXCTestSuite/testPassing"],
-                    });
-                });
-
-                test("Runs failing test", async function () {
-                    const testRun = await runTest(
-                        testExplorer.controller,
-                        runProfile,
-                        "PackageTests.FailingXCTestSuite/testFailing"
-                    );
-
-                    assertTestResults(testRun, {
-                        failed: ["PackageTests.FailingXCTestSuite/testFailing"],
-                    });
-                });
-
-                test("Runs Suite", async function () {
-                    const testRun = await runTest(
-                        testExplorer.controller,
-                        runProfile,
-                        "PackageTests.MixedXCTestSuite"
-                    );
-
-                    assertTestResults(testRun, {
-                        passed: ["PackageTests.MixedXCTestSuite/testPassing"],
-                        failed: ["PackageTests.MixedXCTestSuite/testFailing"],
-                    });
-                });
-            });
-        });
-    });
+        }
+    );
 });
