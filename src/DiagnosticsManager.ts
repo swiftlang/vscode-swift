@@ -42,14 +42,24 @@ export class DiagnosticsManager implements vscode.Disposable {
         vscode.languages.createDiagnosticCollection("swift");
 
     constructor(context: WorkspaceContext) {
+        this.onDidChangeConfigurationDisposible = vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration("swift.diagnosticsCollection")) {
+                if (!this.includeSwiftcDiagnostics()) {
+                    // Clean up "swiftc" diagnostics
+                    this.removeSwiftcDiagnostics();
+                }
+                if (!this.includeSourceKitDiagnostics()) {
+                    // Clean up SourceKit diagnostics
+                    this.removeSourceKitDiagnostics();
+                }
+            }
+        });
         this.onDidStartTaskDisposible = vscode.tasks.onDidStartTask(event => {
             // Will only try to provide diagnostics for `swift` tasks
             const execution = event.execution.task.execution;
             if (!(execution && execution instanceof SwiftExecution)) {
                 return;
             }
-            // Clean up old "swiftc" diagnostics
-            this.removeBuildDiagnostics();
             if (!this.includeSwiftcDiagnostics()) {
                 return;
             }
@@ -59,15 +69,17 @@ export class DiagnosticsManager implements vscode.Disposable {
                 this.parseDiagnostics(swiftExecution);
 
             provideDiagnostics
-                .then(map =>
+                .then(map => {
+                    // Clean up old "swiftc" diagnostics
+                    this.removeSwiftcDiagnostics();
                     map.forEach((diagnostics, uri) =>
                         this.handleDiagnostics(
                             vscode.Uri.file(uri),
                             DiagnosticsManager.swiftc,
                             diagnostics
                         )
-                    )
-                )
+                    );
+                })
                 .catch(e =>
                     context.outputChannel.log(`${e}`, 'Failed to provide "swiftc" diagnostics')
                 );
@@ -169,9 +181,21 @@ export class DiagnosticsManager implements vscode.Disposable {
         return merged;
     }
 
-    private removeBuildDiagnostics() {
+    private removeSwiftcDiagnostics() {
         this.diagnosticCollection.forEach((uri, diagnostics) => {
             const newDiagnostics = this.removeDiagnostics(diagnostics, DiagnosticsManager.swiftc);
+            if (diagnostics.length !== newDiagnostics.length) {
+                this.diagnosticCollection.set(uri, newDiagnostics);
+            }
+        });
+    }
+
+    private removeSourceKitDiagnostics() {
+        this.diagnosticCollection.forEach((uri, diagnostics) => {
+            const newDiagnostics = this.removeDiagnostics(
+                diagnostics,
+                DiagnosticsManager.sourcekit
+            );
             if (diagnostics.length !== newDiagnostics.length) {
                 this.diagnosticCollection.set(uri, newDiagnostics);
             }
@@ -195,10 +219,15 @@ export class DiagnosticsManager implements vscode.Disposable {
     dispose() {
         this.diagnosticCollection.dispose();
         this.onDidStartTaskDisposible.dispose();
+        this.onDidChangeConfigurationDisposible.dispose();
     }
 
     private includeSwiftcDiagnostics(): boolean {
         return configuration.diagnosticsCollection !== "onlySourceKit";
+    }
+
+    private includeSourceKitDiagnostics(): boolean {
+        return configuration.diagnosticsCollection !== "onlySwiftc";
     }
 
     private parseDiagnostics(swiftExecution: SwiftExecution): Promise<DiagnosticsMap> {
@@ -230,6 +259,19 @@ export class DiagnosticsManager implements vscode.Disposable {
                             const relatedInformation =
                                 result as vscode.DiagnosticRelatedInformation;
                             this.capitalizeMessage(relatedInformation);
+                            if (
+                                lastDiagnostic.relatedInformation?.find(
+                                    d =>
+                                        d.message === relatedInformation.message &&
+                                        d.location.uri.fsPath ===
+                                            relatedInformation.location.uri.fsPath &&
+                                        d.location.range.isEqual(relatedInformation.location.range)
+                                )
+                            ) {
+                                // De-duplicate duplicate notes from SwiftPM
+                                // TODO remove when https://github.com/apple/swift/issues/73973 is fixed
+                                continue;
+                            }
                             lastDiagnostic.relatedInformation = (
                                 lastDiagnostic.relatedInformation || []
                             ).concat(relatedInformation);
@@ -313,4 +355,5 @@ export class DiagnosticsManager implements vscode.Disposable {
     }
 
     private onDidStartTaskDisposible: vscode.Disposable;
+    private onDidChangeConfigurationDisposible: vscode.Disposable;
 }
