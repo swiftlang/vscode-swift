@@ -39,4 +39,18 @@ struct MixedSwiftTestingSuite {
 
   @Test(.disabled()) func testDisabled() {}
 }
+
+@Test func testWithKnownIssue() throws {
+  withKnownIssue {
+    #expect(1 == 2)
+  }
+}
+
+@Test func testWithKnownIssueAndUnknownIssue() throws {
+  withKnownIssue {
+    #expect(1 == 2)
+  }
+  #expect(2 == 3)
+}
+
 #endif

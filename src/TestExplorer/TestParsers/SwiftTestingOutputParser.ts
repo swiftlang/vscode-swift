@@ -131,6 +131,7 @@ interface TestSkipped extends BaseEvent {
 interface IssueRecorded extends BaseEvent, TestCaseEvent {
     kind: "issueRecorded";
     issue: {
+        isKnown: boolean;
         sourceLocation: SourceLocation;
     };
 }
@@ -299,6 +300,7 @@ export class SwiftTestingOutputParser {
                     this.idFromTestCase(item.payload._testCase)
                 );
                 const testIndex = this.getTestCaseIndex(runState, testID);
+                const isKnown = item.payload.issue.isKnown;
                 const sourceLocation = item.payload.issue.sourceLocation;
                 const location = sourceLocationToVSCodeLocation(
                     sourceLocation._filePath,
@@ -306,13 +308,13 @@ export class SwiftTestingOutputParser {
                     sourceLocation.column
                 );
                 item.payload.messages.forEach(message => {
-                    runState.recordIssue(testIndex, message.text, location);
+                    runState.recordIssue(testIndex, message.text, isKnown, location);
                 });
 
                 if (testID !== item.payload.testID) {
                     const testIndex = this.getTestCaseIndex(runState, item.payload.testID);
                     item.payload.messages.forEach(message => {
-                        runState.recordIssue(testIndex, message.text, location);
+                        runState.recordIssue(testIndex, message.text, isKnown, location);
                     });
                 }
             } else if (item.payload.kind === "testEnded") {

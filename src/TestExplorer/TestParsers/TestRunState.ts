@@ -45,6 +45,7 @@ export interface ITestRunState {
     recordIssue(
         index: number,
         message: string | vscode.MarkdownString,
+        isKnown: boolean,
         location?: vscode.Location
     ): void;
 

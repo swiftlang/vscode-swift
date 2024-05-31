@@ -28,7 +28,7 @@ export enum TestStatus {
 interface TestItem {
     name: string;
     status: TestStatus;
-    issues?: { message: string; location?: vscode.Location }[];
+    issues?: { message: string; isKnown: boolean; location?: vscode.Location }[];
     timing?: { duration: number } | { timestamp: number };
 }
 
@@ -95,10 +95,15 @@ export class TestRunState implements ITestRunState {
         this.testItemFinder.tests[index].timing = timing;
     }
 
-    recordIssue(index: number, message: string, location?: vscode.Location): void {
+    recordIssue(
+        index: number,
+        message: string,
+        isKnown: boolean = false,
+        location?: vscode.Location
+    ): void {
         this.testItemFinder.tests[index].issues = [
             ...(this.testItemFinder.tests[index].issues ?? []),
-            { message, location },
+            { message, location, isKnown },
         ];
         this.testItemFinder.tests[index].status = TestStatus.failed;
     }

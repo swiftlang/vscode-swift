@@ -57,6 +57,7 @@ Test Case '-[MyTests.MyTests testFail]' failed (0.106 seconds).
                         59,
                         0
                     ),
+                    isKnown: false,
                 },
             ]);
         });
@@ -97,6 +98,7 @@ message`,
                         59,
                         0
                     ),
+                    isKnown: false,
                 },
             ]);
         });
@@ -125,6 +127,7 @@ message`,
                         59,
                         0
                     ),
+                    isKnown: false,
                 },
                 {
                     message: `failed - Again`,
@@ -133,6 +136,7 @@ message`,
                         61,
                         0
                     ),
+                    isKnown: false,
                 },
             ]);
         });
@@ -157,6 +161,7 @@ Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
                         59,
                         0
                     ),
+                    isKnown: false,
                 },
                 {
                     message: `failed - Again`,
@@ -165,6 +170,7 @@ Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
                         61,
                         0
                     ),
+                    isKnown: false,
                 },
             ]);
         });
@@ -222,6 +228,7 @@ Test Case 'MyTests.testFail' failed (0.106 seconds).
                         59,
                         0
                     ),
+                    isKnown: false,
                 },
             ]);
         });

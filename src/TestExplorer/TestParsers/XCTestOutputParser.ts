@@ -117,9 +117,10 @@ class ParallelXCTestRunStateProxy implements ITestRunState {
     recordIssue(
         index: number,
         message: string | MarkdownString,
+        isKnown: boolean = false,
         location?: Location | undefined
     ): void {
-        this.runState.recordIssue(index, message, location);
+        this.runState.recordIssue(index, message, isKnown, location);
     }
     started(index: number, startTime?: number | undefined): void {}
     completed(index: number, timing: { duration: number } | { timestamp: number }): void {}
@@ -306,7 +307,7 @@ export class XCTestOutputParser implements IXCTestOutputParser {
                 runState.failedTest.file,
                 runState.failedTest.lineNumber
             );
-            runState.recordIssue(testIndex, runState.failedTest.message, location);
+            runState.recordIssue(testIndex, runState.failedTest.message, false, location);
             runState.failedTest.complete = true;
         }
         runState.failedTest = {
@@ -338,9 +339,9 @@ export class XCTestOutputParser implements IXCTestOutputParser {
                     runState.failedTest.file,
                     runState.failedTest.lineNumber
                 );
-                runState.recordIssue(testIndex, runState.failedTest.message, location);
+                runState.recordIssue(testIndex, runState.failedTest.message, false, location);
             } else {
-                runState.recordIssue(testIndex, "Failed");
+                runState.recordIssue(testIndex, "Failed", false);
             }
         }
         runState.completed(testIndex, timing);

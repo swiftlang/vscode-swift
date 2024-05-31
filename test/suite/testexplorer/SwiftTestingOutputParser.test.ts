@@ -125,6 +125,7 @@ suite("SwiftTestingOutputParser Suite", () => {
                     vscode.Uri.file(issueLocation._filePath),
                     new vscode.Position(issueLocation.line - 1, issueLocation?.column ?? 0)
                 ),
+                isKnown: false,
             },
         ]);
     });
