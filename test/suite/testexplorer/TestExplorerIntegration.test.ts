@@ -112,6 +112,8 @@ suite("Test Explorer Suite", function () {
                     "topLevelTestFailing()",
                     "MixedSwiftTestingSuite",
                     ["testPassing()", "testFailing()", "testDisabled()"],
+                    "testWithKnownIssue()",
+                    "testWithKnownIssueAndUnknownIssue()",
                 ],
             ]);
         } else if (workspaceContext.swiftVersion.isLessThanOrEqual(new Version(5, 10, 0))) {
