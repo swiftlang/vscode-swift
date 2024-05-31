@@ -904,7 +904,7 @@ export class TestRunnerTestRunState implements ITestRunState {
         complete: boolean;
     };
     private startTimes: Map<number, number | undefined> = new Map();
-    private issues: Map<number, vscode.TestMessage[]> = new Map();
+    private issues: Map<number, { isKnown: boolean; message: vscode.TestMessage }[]> = new Map();
 
     getTestItemIndex(id: string, filename?: string): number {
         return this.testRun.getTestIndex(id, filename);
@@ -939,7 +939,16 @@ export class TestRunnerTestRunState implements ITestRunState {
 
         const issues = this.issues.get(index) ?? [];
         if (issues.length > 0) {
-            this.testRun.failed(test, issues, duration);
+            const allUnknownIssues = issues.filter(({ isKnown }) => !isKnown);
+            if (allUnknownIssues.length === 0) {
+                this.testRun.skipped(test);
+            } else {
+                this.testRun.failed(
+                    test,
+                    allUnknownIssues.map(({ message }) => message),
+                    duration
+                );
+            }
         } else {
             this.testRun.passed(test, duration);
         }
@@ -951,12 +960,16 @@ export class TestRunnerTestRunState implements ITestRunState {
     recordIssue(
         index: number,
         message: string | vscode.MarkdownString,
+        isKnown: boolean = false,
         location?: vscode.Location
     ) {
         const msg = new vscode.TestMessage(message);
         msg.location = location;
         const issueList = this.issues.get(index) ?? [];
-        issueList.push(msg);
+        issueList.push({
+            message: msg,
+            isKnown,
+        });
         this.issues.set(index, issueList);
     }
 

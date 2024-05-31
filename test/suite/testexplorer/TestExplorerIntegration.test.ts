@@ -131,6 +131,43 @@ suite("Test Explorer Suite", function () {
         }
     });
 
+    suite("swift-testing", () => {
+        suiteSetup(function () {
+            if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+                this.skip();
+            }
+        });
+
+        test("withKnownIssue", async () => {
+            const testRun = await runTest(
+                testExplorer.controller,
+                RunProfileName.run,
+                "PackageTests.testWithKnownIssue()"
+            );
+
+            assertTestResults(testRun, {
+                skipped: ["PackageTests.testWithKnownIssue()"],
+            });
+        });
+
+        test("testWithKnownIssueAndUnknownIssue", async () => {
+            const testRun = await runTest(
+                testExplorer.controller,
+                RunProfileName.run,
+                "PackageTests.testWithKnownIssueAndUnknownIssue()"
+            );
+
+            assertTestResults(testRun, {
+                failed: [
+                    {
+                        test: "PackageTests.testWithKnownIssueAndUnknownIssue()",
+                        issues: ["Expectation failed: 2 == 3"],
+                    },
+                ],
+            });
+        });
+    });
+
     // Do coverage last as it does a full rebuild, causing the stage after it to have to rebuild as well.
     [RunProfileName.run, RunProfileName.runParallel, RunProfileName.coverage].forEach(
         runProfile => {
