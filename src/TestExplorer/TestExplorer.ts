@@ -41,7 +41,7 @@ export class TestExplorer {
     private onTestItemsDidChangeEmitter = new vscode.EventEmitter<vscode.TestController>();
     public onTestItemsDidChange: vscode.Event<vscode.TestController>;
 
-    private onDidCreateTestRunEmitter = new vscode.EventEmitter<TestRunProxy>();
+    public onDidCreateTestRunEmitter = new vscode.EventEmitter<TestRunProxy>();
     public onCreateTestRun: vscode.Event<TestRunProxy>;
 
     constructor(public folderContext: FolderContext) {

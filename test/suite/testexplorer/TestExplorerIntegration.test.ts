@@ -15,6 +15,7 @@
 import * as vscode from "vscode";
 import * as assert from "assert";
 import { beforeEach } from "mocha";
+import { when, anything } from "ts-mockito";
 import { testAssetUri } from "../../fixtures";
 import { globalWorkspaceContextPromise } from "../extension.test";
 import { TestExplorer } from "../../../src/TestExplorer/TestExplorer";
@@ -29,6 +30,7 @@ import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { TestRunProxy } from "../../../src/TestExplorer/TestRunner";
 import { Version } from "../../../src/utilities/version";
 import { TestKind } from "../../../src/TestExplorer/TestKind";
+import { mockNamespace } from "../../unit-tests/MockUtils";
 
 suite("Test Explorer Suite", function () {
     const MAX_TEST_RUN_TIME_MINUTES = 5;
@@ -49,18 +51,10 @@ suite("Test Explorer Suite", function () {
         )[0];
     }
 
-    async function runTest(
+    async function gatherTests(
         controller: vscode.TestController,
-        runProfile: TestKind,
         ...tests: string[]
-    ): Promise<TestRunProxy> {
-        const targetProfile = testExplorer.testRunProfiles.find(
-            profile => profile.label === runProfile
-        );
-        if (!targetProfile) {
-            throw new Error(`Unable to find run profile named ${runProfile}`);
-        }
-
+    ): Promise<vscode.TestItem[]> {
         const testItems = tests.map(test => {
             const testItem = getTestItem(controller, test);
             if (!testItem) {
@@ -79,6 +73,21 @@ suite("Test Explorer Suite", function () {
             return testItem;
         });
 
+        return testItems;
+    }
+
+    async function runTest(
+        controller: vscode.TestController,
+        runProfile: TestKind,
+        ...tests: string[]
+    ): Promise<TestRunProxy> {
+        const targetProfile = testExplorer.testRunProfiles.find(
+            profile => profile.label === runProfile
+        );
+        if (!targetProfile) {
+            throw new Error(`Unable to find run profile named ${runProfile}`);
+        }
+        const testItems = await gatherTests(controller, ...tests);
         const request = new vscode.TestRunRequest(testItems);
 
         return (
@@ -233,6 +242,37 @@ suite("Test Explorer Suite", function () {
                 ],
             });
         });
+
+        suite("Runs multiple", function () {
+            const numIterations = 5;
+            const windowMock = mockNamespace(vscode, "window");
+
+            test("@slow runs an swift-testing test multiple times", async function () {
+                const testItems = await gatherTests(
+                    testExplorer.controller,
+                    "PackageTests.MixedXCTestSuite/testPassing"
+                );
+
+                await testExplorer.folderContext.workspaceContext.focusFolder(
+                    testExplorer.folderContext
+                );
+
+                // Stub the showInputBox method to return the input text
+                when(windowMock.showInputBox(anything())).thenReturn(
+                    Promise.resolve(`${numIterations}`)
+                );
+
+                vscode.commands.executeCommand("swift.runTestsMultipleTimes", testItems[0]);
+
+                const testRun = await eventPromise(testExplorer.onCreateTestRun);
+
+                await eventPromise(testRun.onTestRunComplete);
+
+                assertTestResults(testRun, {
+                    passed: ["PackageTests.MixedXCTestSuite/testPassing"],
+                });
+            });
+        });
     });
 
     suite("XCTest", () => {
@@ -260,6 +300,37 @@ suite("Test Explorer Suite", function () {
 
             assertTestResults(passingRun, {
                 passed: ["PackageTests.DebugReleaseTestSuite/testRelease"],
+            });
+        });
+
+        suite("Runs multiple", function () {
+            const numIterations = 5;
+            const windowMock = mockNamespace(vscode, "window");
+
+            test("@slow runs an XCTest multiple times", async function () {
+                const testItems = await gatherTests(
+                    testExplorer.controller,
+                    "PackageTests.topLevelTestPassing()"
+                );
+
+                await testExplorer.folderContext.workspaceContext.focusFolder(
+                    testExplorer.folderContext
+                );
+
+                // Stub the showInputBox method to return the input text
+                when(windowMock.showInputBox(anything())).thenReturn(
+                    Promise.resolve(`${numIterations}`)
+                );
+
+                vscode.commands.executeCommand("swift.runTestsMultipleTimes", testItems[0]);
+
+                const testRun = await eventPromise(testExplorer.onCreateTestRun);
+
+                await eventPromise(testRun.onTestRunComplete);
+
+                assertTestResults(testRun, {
+                    passed: ["PackageTests.topLevelTestPassing()"],
+                });
             });
         });
     });

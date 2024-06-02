@@ -52,20 +52,28 @@ export class TestRunProxy {
     private runStarted: boolean = false;
     private queuedOutput: string[] = [];
     private _testItems: vscode.TestItem[];
+    private iteration: number | undefined;
     public coverage: TestCoverage;
 
+    public testRunCompleteEmitter = new vscode.EventEmitter<void>();
+    public onTestRunComplete: vscode.Event<void>;
+
     // Allows for introspection on the state of TestItems after a test run.
-    public runState = {
-        failed: [] as {
-            test: vscode.TestItem;
-            message: vscode.TestMessage | readonly vscode.TestMessage[];
-        }[],
-        passed: [] as vscode.TestItem[],
-        skipped: [] as vscode.TestItem[],
-        errored: [] as vscode.TestItem[],
-        unknown: 0,
-        output: [] as string[],
-    };
+    public runState = TestRunProxy.initialTestRunState();
+
+    private static initialTestRunState() {
+        return {
+            failed: [] as {
+                test: vscode.TestItem;
+                message: vscode.TestMessage | readonly vscode.TestMessage[];
+            }[],
+            passed: [] as vscode.TestItem[],
+            skipped: [] as vscode.TestItem[],
+            errored: [] as vscode.TestItem[],
+            unknown: 0,
+            output: [] as string[],
+        };
+    }
 
     public get testItems(): vscode.TestItem[] {
         return this._testItems;
@@ -79,6 +87,7 @@ export class TestRunProxy {
     ) {
         this._testItems = args.testItems;
         this.coverage = new TestCoverage(folderContext);
+        this.onTestRunComplete = this.testRunCompleteEmitter.event;
     }
 
     public testRunStarted = () => {
@@ -194,20 +203,37 @@ export class TestRunProxy {
 
     public async end() {
         this.testRun?.end();
+        this.testRunCompleteEmitter.fire();
+    }
+
+    public setIteration(iteration: number) {
+        this.runState = TestRunProxy.initialTestRunState();
+        this.iteration = iteration;
     }
 
     public appendOutput(output: string) {
+        const tranformedOutput = this.prependIterationToOutput(output);
         if (this.testRun) {
-            this.testRun.appendOutput(output);
-            this.runState.output.push(output);
+            this.testRun.appendOutput(tranformedOutput);
+            this.runState.output.push(tranformedOutput);
         } else {
-            this.queuedOutput.push(output);
+            this.queuedOutput.push(tranformedOutput);
         }
     }
 
     public appendOutputToTest(output: string, test: vscode.TestItem, location?: vscode.Location) {
-        this.testRun?.appendOutput(output, location, test);
-        this.runState.output.push(output);
+        const tranformedOutput = this.prependIterationToOutput(output);
+        this.testRun?.appendOutput(tranformedOutput, location, test);
+        this.runState.output.push(tranformedOutput);
+    }
+
+    private prependIterationToOutput(output: string): string {
+        if (this.iteration === undefined) {
+            return output;
+        }
+        const itr = this.iteration + 1;
+        const lines = output.match(/[^\r\n]*[\r\n]*/g);
+        return lines?.map(line => (line ? `\x1b[34mRun ${itr}\x1b[0m ${line}` : "")).join("") ?? "";
     }
 
     public async computeCoverage() {
@@ -222,7 +248,7 @@ export class TestRunProxy {
 
 /** Class used to run tests */
 export class TestRunner {
-    private testRun: TestRunProxy;
+    public testRun: TestRunProxy;
     private testArgs: TestRunArguments;
     private xcTestOutputParser: IXCTestOutputParser;
     private swiftTestOutputParser: SwiftTestingOutputParser;
@@ -254,6 +280,20 @@ export class TestRunner {
             this.testRun.testRunStarted,
             this.testRun.addParameterizedTestCase
         );
+    }
+
+    /**
+     * When performing a "Run test multiple times" run set the iteration
+     * so it can be shown in the logs.
+     * @param iteration The iteration counter
+     */
+    public setIteration(iteration: number) {
+        // The SwiftTestingOutputParser holds state and needs to be reset between iterations.
+        this.swiftTestOutputParser = new SwiftTestingOutputParser(
+            this.testRun.testRunStarted,
+            this.testRun.addParameterizedTestCase
+        );
+        this.testRun.setIteration(iteration);
     }
 
     /**
@@ -587,6 +627,7 @@ export class TestRunner {
             task.execution.onDidWrite(str => {
                 const replaced = str
                     .replace("[1/1] Planning build", "") // Work around SPM still emitting progress when doing --no-build.
+                    .replace(/\[1\/1\] Write swift-version-.*/gm, "")
                     .replace(
                         /LLVM Profile Error: Failed to write file "default.profraw": Operation not permitted\r\n/gm,
                         ""
@@ -1023,6 +1064,7 @@ export class TestRunnerTestRunState implements ITestRunState {
             return;
         }
         const testItem = this.testRun.testItems[index];
+        this.issues.delete(index);
         this.testRun.started(testItem);
         this.currentTestItem = testItem;
         this.startTimes.set(index, startTime);

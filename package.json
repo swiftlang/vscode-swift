@@ -201,6 +201,16 @@
         "command": "swift.clearDiagnosticsCollection",
         "title": "Clear Diagnostics Collection",
         "category": "Swift"
+      },
+      {
+        "command": "swift.runTestsMultipleTimes",
+        "title": "Run Multiple Times...",
+        "category": "Swift"
+      },
+      {
+        "command": "swift.runTestsUntilFailure",
+        "title": "Run Until Failure...",
+        "category": "Swift"
       }
     ],
     "configuration": [
@@ -598,6 +608,18 @@
       }
     ],
     "menus": {
+      "testing/item/context": [
+        {
+          "command": "swift.runTestsMultipleTimes",
+          "group": "testExtras",
+          "when": "testId"
+        },
+        {
+          "command": "swift.runTestsUntilFailure",
+          "group": "testExtras",
+          "when": "testId"
+        }
+      ],
       "commandPalette": [
         {
           "command": "swift.createNewProject",
