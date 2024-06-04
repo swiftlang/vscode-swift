@@ -49,22 +49,8 @@ export class SwiftOutputChannel {
         this.sendLog(`${this.nowFormatted}: ${fullMessage}`);
     }
 
-    logStart(message: string, label?: string) {
-        let fullMessage: string;
-        if (label !== undefined) {
-            fullMessage = `${label}: ${message}`;
-        } else {
-            fullMessage = message;
-        }
-        this.sendLog(`${this.nowFormatted}: ${fullMessage}`);
-    }
-
-    logEnd(message: string, label?: string) {
-        this.logStart(message, label);
-    }
-
     private sendLog(line: string) {
-        this.channel.append(line);
+        this.channel.appendLine(line);
 
         if (process.env["CI"] !== "1") {
             console.log(line);

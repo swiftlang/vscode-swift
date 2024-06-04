@@ -241,8 +241,8 @@ export class TaskQueue {
                 await this.waitWhileDisabled();
                 // log start
                 if (operation.log) {
-                    this.workspaceContext.outputChannel.logStart(
-                        `${operation.log} ... `,
+                    this.workspaceContext.outputChannel.log(
+                        `${operation.log}: starting ... `,
                         this.folderContext.name
                     );
                 }
@@ -253,13 +253,22 @@ export class TaskQueue {
                         if (operation.log) {
                             switch (result) {
                                 case 0:
-                                    this.workspaceContext.outputChannel.logEnd("done.");
+                                    this.workspaceContext.outputChannel.log(
+                                        `${operation.log}: ... done.`,
+                                        this.folderContext.name
+                                    );
                                     break;
                                 case undefined:
-                                    this.workspaceContext.outputChannel.logEnd("cancelled.");
+                                    this.workspaceContext.outputChannel.log(
+                                        `${operation.log}: ... cancelled.`,
+                                        this.folderContext.name
+                                    );
                                     break;
                                 default:
-                                    this.workspaceContext.outputChannel.logEnd("failed.");
+                                    this.workspaceContext.outputChannel.log(
+                                        `${operation.log}: ... failed.`,
+                                        this.folderContext.name
+                                    );
                                     break;
                             }
                         }
@@ -268,7 +277,7 @@ export class TaskQueue {
                     .catch(error => {
                         // log error
                         if (operation.log) {
-                            this.workspaceContext.outputChannel.logEnd(
+                            this.workspaceContext.outputChannel.log(
                                 `${operation.log}: ${error}`,
                                 this.folderContext.name
                             );
