@@ -41,28 +41,49 @@ export async function captureDiagnostics(ctx: WorkspaceContext) {
 
         ctx.outputChannel.log(`Saved diagnostics to ${diagnosticsDir}`);
 
-        const showInFinderButton = "Show In Finder";
+        const showInFinderButton = `Show In ${showCommandType()}`;
         const copyPath = "Copy Path to Clipboard";
-        const infoDialogButtons = [
-            ...(process.platform === "darwin" ? [showInFinderButton] : []),
-            copyPath,
-        ];
         const result = await vscode.window.showInformationMessage(
             `Saved diagnostic logs to ${diagnosticsDir}`,
-            ...infoDialogButtons
+            showInFinderButton,
+            copyPath
         );
         if (result === copyPath) {
             vscode.env.clipboard.writeText(diagnosticsDir);
         } else if (result === showInFinderButton) {
-            exec(`open ${diagnosticsDir}`, error => {
-                if (error) {
-                    vscode.window.showErrorMessage(`Failed to open Finder: ${error.message}`);
-                    return;
+            exec(showDirectoryCommand(diagnosticsDir), error => {
+                // Opening the explorer on windows returns an exit code of 1 despite opening successfully.
+                if (error && process.platform !== "win32") {
+                    vscode.window.showErrorMessage(
+                        `Failed to open ${showCommandType()}: ${error.message}`
+                    );
                 }
             });
         }
     } catch (error) {
-        vscode.window.showErrorMessage(`Unable to captrure diagnostics logs: ${error}`);
+        vscode.window.showErrorMessage(`Unable to capture diagnostic logs: ${error}`);
+    }
+}
+
+function showDirectoryCommand(dir: string): string {
+    switch (process.platform) {
+        case "win32":
+            return `explorer ${dir}`;
+        case "darwin":
+            return `open ${dir}`;
+        default:
+            return `xdg-open ${dir}`;
+    }
+}
+
+function showCommandType(): string {
+    switch (process.platform) {
+        case "win32":
+            return "Explorer";
+        case "darwin":
+            return "Finder";
+        default:
+            return "File Manager";
     }
 }
 
