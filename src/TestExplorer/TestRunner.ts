@@ -508,6 +508,8 @@ export class TestRunner {
             // Test failures result in error code 1
             if (error !== 1) {
                 this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
+            } else {
+                this.swiftTestOutputParser.close();
             }
         } finally {
             outputStream.end();
