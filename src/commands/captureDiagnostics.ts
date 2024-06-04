@@ -26,17 +26,20 @@ export async function captureDiagnostics(ctx: WorkspaceContext) {
         `vscode-diagnostics-${formatDateString(new Date())}`
     );
 
-    const versionOutputChannel = new SwiftOutputChannel();
-    ctx.toolchain.logDiagnostics(versionOutputChannel);
+    const environmentOutputChannel = new SwiftOutputChannel();
+    ctx.toolchain.logDiagnostics(environmentOutputChannel);
+    environmentOutputChannel.log(
+        JSON.stringify(vscode.workspace.getConfiguration("swift"), null, 2)
+    );
 
     const logs = ctx.outputChannel.logs.join("\n");
-    const versionLogs = versionOutputChannel.logs.join("\n");
+    const environmentLogs = environmentOutputChannel.logs.join("\n");
     const diagnosticLogs = buildDiagnostics();
 
     try {
         await fs.mkdir(diagnosticsDir);
         await fs.writeFile(path.join(diagnosticsDir, "logs.txt"), logs);
-        await fs.writeFile(path.join(diagnosticsDir, "version.txt"), versionLogs);
+        await fs.writeFile(path.join(diagnosticsDir, "environment.txt"), environmentLogs);
         await fs.writeFile(path.join(diagnosticsDir, "diagnostics.txt"), diagnosticLogs);
 
         ctx.outputChannel.log(`Saved diagnostics to ${diagnosticsDir}`);
@@ -113,11 +116,9 @@ function severityToString(severity: vscode.DiagnosticSeverity): string {
     }
 }
 
-function padZero(num: number, length: number = 2): string {
-    return num.toString().padStart(length, "0");
-}
-
 function formatDateString(date: Date): string {
+    const padZero = (num: number, length: number = 2) => num.toString().padStart(length, "0");
+
     const year = date.getFullYear();
     const month = padZero(date.getMonth() + 1);
     const day = padZero(date.getDate());
