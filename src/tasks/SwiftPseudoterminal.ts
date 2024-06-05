@@ -50,7 +50,10 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Dispos
                     // The terminal expects a string that has "\n\r" line endings
                     this.writeEmitter.fire(data.replace(/\n(\r)?/g, "\n\r"));
                 }),
-                this.swiftProcess.onDidThrowError(() => {
+                this.swiftProcess.onDidThrowError(e => {
+                    vscode.window.showErrorMessage(
+                        `Failed to run Swift command "${this.commandLine}":\n${e}`
+                    );
                     this.closeEmitter.fire();
                     this.dispose();
                 }),
