@@ -82,7 +82,10 @@ suite("DiagnosticsManager Test Suite", async function () {
 
     suiteSetup(async () => {
         toolchain = await SwiftToolchain.create();
-        workspaceContext = await WorkspaceContext.create(new SwiftOutputChannel(), toolchain);
+        workspaceContext = await WorkspaceContext.create(
+            new SwiftOutputChannel("Swift"),
+            toolchain
+        );
         workspaceFolder = testAssetWorkspaceFolder("diagnostics");
         folderContext = await workspaceContext.addPackageFolder(
             workspaceFolder.uri,
