@@ -23,6 +23,7 @@ import { activateLegacyInlayHints } from "./inlayHints";
 import { FolderContext } from "../FolderContext";
 import { LanguageClient } from "vscode-languageclient/node";
 import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
+import { DiagnosticsManager } from "../DiagnosticsManager";
 
 /** Manages the creation and destruction of Language clients as we move between
  * workspace folders
@@ -466,6 +467,26 @@ export class LanguageClientManager {
                         result?.forEach(r => (r.textEdits = undefined));
                     }
                     return result;
+                },
+                provideDiagnostics: async (uri, previousResultId, token, next) => {
+                    const result = await next(uri, previousResultId, token);
+                    if (result?.kind === langclient.vsdiag.DocumentDiagnosticReportKind.unChanged) {
+                        return undefined;
+                    }
+                    const document = uri as vscode.TextDocument;
+                    this.workspaceContext.diagnostics.handleDiagnostics(
+                        document.uri ?? uri,
+                        DiagnosticsManager.sourcekit,
+                        result?.items ?? []
+                    );
+                    return undefined;
+                },
+                handleDiagnostics: (uri, diagnostics) => {
+                    this.workspaceContext.diagnostics.handleDiagnostics(
+                        uri,
+                        DiagnosticsManager.sourcekit,
+                        diagnostics
+                    );
                 },
             },
             errorHandler: new SourceKitLSPErrorHandler(5),

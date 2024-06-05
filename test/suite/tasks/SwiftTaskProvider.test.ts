@@ -84,7 +84,7 @@ suite("SwiftTaskProvider Test Suite", () => {
                 new vscode.CancellationTokenSource().token
             );
             const task = tasks.find(t => t.name === "Build All (defaultPackage)");
-            assert.equal(task?.detail, "swift build --build-tests");
+            assert.equal(task?.detail, "swift build --build-tests -Xswiftc -diagnostic-style=llvm");
         });
 
         test("includes product debug task", async () => {
@@ -93,7 +93,10 @@ suite("SwiftTaskProvider Test Suite", () => {
                 new vscode.CancellationTokenSource().token
             );
             const task = tasks.find(t => t.name === "Build Debug PackageExe (defaultPackage)");
-            assert.equal(task?.detail, "swift build --product PackageExe");
+            assert.equal(
+                task?.detail,
+                "swift build --product PackageExe -Xswiftc -diagnostic-style=llvm"
+            );
         });
 
         test("includes product release task", async () => {
@@ -102,7 +105,10 @@ suite("SwiftTaskProvider Test Suite", () => {
                 new vscode.CancellationTokenSource().token
             );
             const task = tasks.find(t => t.name === "Build Release PackageExe (defaultPackage)");
-            assert.equal(task?.detail, "swift build -c release --product PackageExe");
+            assert.equal(
+                task?.detail,
+                "swift build -c release --product PackageExe -Xswiftc -diagnostic-style=llvm"
+            );
         });
     });
 

@@ -39,7 +39,6 @@ interface TaskConfig {
     cwd: vscode.Uri;
     scope: vscode.TaskScope | vscode.WorkspaceFolder;
     group?: vscode.TaskGroup;
-    problemMatcher?: string | string[];
     presentationOptions?: vscode.TaskPresentationOptions;
     prefix?: string;
     disableTaskQueue?: boolean;
@@ -88,12 +87,21 @@ export function platformDebugBuildOptions(toolchain: SwiftToolchain): string[] {
     return [];
 }
 
+/** arguments for setting diagnostics style */
+export function diagnosticsStyleOptions(): string[] {
+    if (configuration.diagnosticsStyle !== "default") {
+        return ["-Xswiftc", `-diagnostic-style=${configuration.diagnosticsStyle}`];
+    }
+    return [];
+}
+
 /** Return swift build options */
 export function buildOptions(toolchain: SwiftToolchain, debug = true): string[] {
     const args: string[] = [];
     if (debug) {
         args.push(...platformDebugBuildOptions(toolchain));
     }
+    args.push(...diagnosticsStyleOptions());
     const sanitizer = toolchain.sanitizer(configuration.sanitizer);
     if (sanitizer) {
         args.push(...sanitizer.buildFlags);
@@ -112,15 +120,15 @@ function getBuildRevealOption(): vscode.TaskRevealKind {
 }
 
 const buildAllTaskCache = (() => {
-    const cache = new Map<string, vscode.Task>();
+    const cache = new Map<string, SwiftTask>();
     const key = (name: string, folderContext: FolderContext) => {
         return `${name}:${buildOptions(folderContext.workspaceContext.toolchain).join(",")}`;
     };
     return {
-        get(name: string, folderContext: FolderContext): vscode.Task | undefined {
+        get(name: string, folderContext: FolderContext): SwiftTask | undefined {
             return cache.get(key(name, folderContext));
         },
-        set(name: string, folderContext: FolderContext, task: vscode.Task) {
+        set(name: string, folderContext: FolderContext, task: SwiftTask) {
             cache.set(key(name, folderContext), task);
         },
     };
@@ -129,7 +137,7 @@ const buildAllTaskCache = (() => {
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
-export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
+export function createBuildAllTask(folderContext: FolderContext): SwiftTask {
     let additionalArgs = buildOptions(folderContext.workspaceContext.toolchain);
     if (folderContext.swiftPackage.getTargets(TargetType.test).length > 0) {
         additionalArgs.push(...testDiscoveryFlag(folderContext));
@@ -161,7 +169,6 @@ export function createBuildAllTask(folderContext: FolderContext): vscode.Task {
             presentationOptions: {
                 reveal: getBuildRevealOption(),
             },
-            problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
             disableTaskQueue: true,
             showBuildStatus: configuration.showBuildStatus,
         },
@@ -246,7 +253,6 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 presentationOptions: {
                     reveal: getBuildRevealOption(),
                 },
-                problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
                 disableTaskQueue: true,
                 dontTriggerTestDiscovery: true,
                 showBuildStatus: configuration.showBuildStatus,
@@ -260,7 +266,14 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
     let buildRelease = buildAllTaskCache.get(buildReleaseName, folderContext);
     if (!buildRelease) {
         buildRelease = createSwiftTask(
-            ["build", "-c", "release", "--product", product.name, ...configuration.buildArguments],
+            [
+                "build",
+                "-c",
+                "release",
+                "--product",
+                product.name,
+                ...buildOptions(toolchain, false),
+            ],
             `Build Release ${product.name}${buildTaskNameSuffix}`,
             {
                 group: vscode.TaskGroup.Build,
@@ -269,7 +282,6 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 presentationOptions: {
                     reveal: getBuildRevealOption(),
                 },
-                problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
                 disableTaskQueue: true,
                 dontTriggerTestDiscovery: true,
                 showBuildStatus: configuration.showBuildStatus,
@@ -329,8 +341,7 @@ export function createSwiftTask(
             cwd: fullCwd,
             env: env,
             presentation,
-        }),
-        config?.problemMatcher
+        })
     );
     // This doesn't include any quotes added by VS Code.
     // See also: https://github.com/microsoft/vscode/issues/137895

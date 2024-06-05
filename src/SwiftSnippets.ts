@@ -2,7 +2,7 @@
 //
 // This source file is part of the VSCode Swift open source project
 //
-// Copyright (c) 2022-2023 the VSCode Swift project authors
+// Copyright (c) 2022-2024 the VSCode Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -17,9 +17,9 @@ import * as path from "path";
 import contextKeys from "./contextKeys";
 import { createSwiftTask } from "./tasks/SwiftTaskProvider";
 import { WorkspaceContext } from "./WorkspaceContext";
-import configuration from "./configuration";
 import { createSnippetConfiguration, debugLaunchConfig } from "./debugger/launch";
 import { TaskOperation } from "./tasks/TaskQueue";
+import configuration from "./configuration";
 
 /**
  * Set context key indicating whether current file is a Swift Snippet
@@ -82,7 +82,6 @@ export async function debugSnippetWithOptions(
             presentationOptions: {
                 reveal: vscode.TaskRevealKind.Always,
             },
-            problemMatcher: configuration.problemMatchCompileErrors ? "$swiftc" : undefined,
             showBuildStatus: configuration.showBuildStatus,
         },
         ctx.toolchain

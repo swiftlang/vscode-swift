@@ -36,6 +36,7 @@ import { CommentCompletionProviders } from "./editor/CommentCompletion";
 import { DebugAdapter } from "./debugger/debugAdapter";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
 import { SwiftToolchain } from "./toolchain/toolchain";
+import { DiagnosticsManager } from "./DiagnosticsManager";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -49,6 +50,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public buildStatus: SwiftBuildStatus;
     public languageClientManager: LanguageClientManager;
     public tasks: TaskManager;
+    public diagnostics: DiagnosticsManager;
     public subscriptions: vscode.Disposable[];
     public commentCompletionProvider: CommentCompletionProviders;
     private lastFocusUri: vscode.Uri | undefined;
@@ -63,6 +65,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.buildStatus = new SwiftBuildStatus(this.statusItem);
         this.languageClientManager = new LanguageClientManager(this);
         this.tasks = new TaskManager(this);
+        this.diagnostics = new DiagnosticsManager(this);
         this.currentDocument = null;
         this.commentCompletionProvider = new CommentCompletionProviders();
 
@@ -175,6 +178,7 @@ export class WorkspaceContext implements vscode.Disposable {
             contextKeysUpdate,
             onChangeConfig,
             this.tasks,
+            this.diagnostics,
             this.languageClientManager,
             this.outputChannel,
             this.statusItem,
