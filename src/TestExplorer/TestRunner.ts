@@ -509,7 +509,7 @@ export class TestRunner {
             if (error !== 1) {
                 this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
             } else {
-                this.swiftTestOutputParser.close();
+                await this.swiftTestOutputParser.close();
             }
         } finally {
             outputStream.end();
@@ -761,7 +761,7 @@ export class TestRunner {
                         vscode.debug
                             .startDebugging(this.folderContext.workspaceFolder, config)
                             .then(
-                                started => {
+                                async started => {
                                     if (started) {
                                         // show test results pane
                                         vscode.commands.executeCommand(
@@ -770,6 +770,8 @@ export class TestRunner {
 
                                         const terminateSession =
                                             vscode.debug.onDidTerminateDebugSession(async () => {
+                                                await this.swiftTestOutputParser.close();
+
                                                 this.workspaceContext.outputChannel.logDiagnostic(
                                                     "Stop Test Debugging",
                                                     this.folderContext.name
@@ -785,11 +787,13 @@ export class TestRunner {
                                             });
                                         subscriptions.push(terminateSession);
                                     } else {
+                                        await this.swiftTestOutputParser.close();
                                         subscriptions.forEach(sub => sub.dispose());
                                         reject();
                                     }
                                 },
-                                reason => {
+                                async reason => {
+                                    await this.swiftTestOutputParser.close();
                                     subscriptions.forEach(sub => sub.dispose());
                                     reject(reason);
                                 }
