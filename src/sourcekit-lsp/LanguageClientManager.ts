@@ -486,7 +486,7 @@ export class LanguageClientManager {
             documentSelector: LanguageClientManager.documentSelector,
             revealOutputChannelOn: langclient.RevealOutputChannelOn.Never,
             workspaceFolder: workspaceFolder,
-            outputChannel: new SwiftOutputChannel("SourceKit Language Server"),
+            outputChannel: new SwiftOutputChannel("SourceKit Language Server", false),
             middleware: {
                 provideDocumentSymbols: async (document, token, next) => {
                     const result = await next(document, token);

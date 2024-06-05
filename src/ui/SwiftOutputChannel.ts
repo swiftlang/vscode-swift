@@ -18,6 +18,7 @@ import configuration from "../configuration";
 export class SwiftOutputChannel implements vscode.OutputChannel {
     private channel: vscode.OutputChannel;
     private logStore = new RollingLog(1024 * 1024 * 5);
+    private logToConsole: boolean;
 
     public name: string;
 
@@ -25,8 +26,9 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
      * Creates a vscode.OutputChannel that allows for later retrival of logs.
      * @param name
      */
-    constructor(name: string) {
+    constructor(name: string, logToConsole: boolean = true) {
         this.name = name;
+        this.logToConsole = process.env["CI"] !== "1" && logToConsole;
         this.channel = vscode.window.createOutputChannel(name);
     }
 
@@ -34,7 +36,7 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
         this.channel.append(value);
         this.logStore.append(value);
 
-        if (process.env["CI"] !== "1") {
+        if (this.logToConsole) {
             console.log(value);
         }
     }
@@ -43,7 +45,7 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
         this.channel.appendLine(value);
         this.logStore.appendLine(value);
 
-        if (process.env["CI"] !== "1") {
+        if (this.logToConsole) {
             console.log(value);
         }
     }
