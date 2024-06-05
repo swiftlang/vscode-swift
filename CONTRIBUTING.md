@@ -6,17 +6,17 @@ All contributors are expected to adhere to the project's [Code of Conduct](CODE_
 
 ## Development
 
-To begin development on the VSCode extension for Swift you will need to install [Node.js](https://nodejs.org). We use [nvm](https://github.com/nvm-sh/nvm) the Node version manager to install Node.js. To install or update nvm you should run their install script
+To begin development on the VS Code extension for Swift you will need to install [Node.js](https://nodejs.org). We use [nvm](https://github.com/nvm-sh/nvm) the Node version manager to install Node.js. To install or update nvm you should run their install script
 ```
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 ```
 More details on nvm installation can be found in the [README](https://github.com/nvm-sh/nvm/blob/master/README.md) from its GitHub repository.
 
-Once you have installed nvm, clone this repository, and in the project directory run `nvm install`. This will install the correct version of node.js for developing the extension. Then you should run `npm install` to install all the dependencies the extension requires.
+Once you have installed nvm, clone this repository, and in the project directory run `nvm install`. This will install the correct version of Node.js for developing the extension. Then you should run `npm install` to install all the dependencies the extension requires.
 
-When you first open the project in VSCode you will be recommended to also install [`ESLint`](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint), [`Prettier - Code formatter`](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) and [`esbuild Problem Matchers`](https://marketplace.visualstudio.com/items?itemName=connor4312.esbuild-problem-matchers). Please do so. `ESLint`, `Prettier - Code formatter` is used to ensure a consistent style and we expect everyone who contributes to follow this style as well. `esbuild Problem Matchers` provides proper error output from building the project.
+When you first open the project in VS Code you will be recommended to also install [`ESLint`](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint), [`Prettier - Code formatter`](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) and [`esbuild Problem Matchers`](https://marketplace.visualstudio.com/items?itemName=connor4312.esbuild-problem-matchers). Please do so. `ESLint`, `Prettier - Code formatter` is used to ensure a consistent style and we expect everyone who contributes to follow this style as well. `esbuild Problem Matchers` provides proper error output from building the project.
 
-To run your version of the Swift extension while in VSCode, press `F5`. This will open up another instance of VSCode with it running. You can use the original version of VSCode to debug it.
+To run your version of the Swift extension while in VS Code, press `F5`. This will open up another instance of VS Code with it running. You can use the original version of VS Code to debug it.
 
 ## Submitting a bug or issue
 
@@ -40,16 +40,16 @@ Please keep your PRs to a minimal number of changes. If a PR is large, try to sp
 
 Where possible any new feature should have tests that go along with it, to ensure it works and will continue to work in the future. When a PR is submitted one of the prerequisites for it to be merged is that all tests pass.
 
-To get started running tests first import the `testing-debug.code-profile` VSCode profile used by the tests. Run the `> Profiles: Import Profile...` command then `Select File` and pick `./.vscode/testing-debug.code-profile`.
+To get started running tests first import the `testing-debug.code-profile` VS Code profile used by the tests. Run the `> Profiles: Import Profile...` command then `Select File` and pick `./.vscode/testing-debug.code-profile`.
 
 Now you can run tests locally using either of the following methods:
 
-- From VSCode, by selecting "Extension Tests" in the Run and Debug activity.
+- From VS Code, by selecting "Extension Tests" in the Run and Debug activity.
 - Using `npm run test` from the command line (when VS Code is not running, or you'll get an error)
 
 ## sourcekit-lsp
 
-The VSCode extension for Swift relies on Apple's [sourcekit-lsp](https://github.com/apple/sourcekit-lsp) for syntax highlighting, enumerating tests, and more. If you want to test the extension with a different version of the sourcekit-lsp you can add a `swift.sourcekit-lsp.serverPath` entry in your local `settings.json` to point to your sourcekit-lsp binary. The setting is no longer visible in the UI because it has been deprecated.
+The VS Code extension for Swift relies on Apple's [sourcekit-lsp](https://github.com/apple/sourcekit-lsp) for syntax highlighting, enumerating tests, and more. If you want to test the extension with a different version of the sourcekit-lsp you can add a `swift.sourcekit-lsp.serverPath` entry in your local `settings.json` to point to your sourcekit-lsp binary. The setting is no longer visible in the UI because it has been deprecated.
 
 > [!WARNING]
 > If your sourcekit-lsp version does not match your toolchain you may experience unexpected behaviour.

@@ -1,12 +1,12 @@
 //===----------------------------------------------------------------------===//
 //
-// This source file is part of the VSCode Swift open source project
+// This source file is part of the VS Code Swift open source project
 //
-// Copyright (c) 2021-2024 the VSCode Swift project authors
+// Copyright (c) 2021-2024 the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.txt for the list of VSCode Swift project authors
+// See CONTRIBUTORS.txt for the list of VS Code Swift project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -126,7 +126,7 @@ export class TestRunProxy {
                 const added = upsertTestItem(this.controller, testClass, parent);
 
                 // If we just update leaf nodes the root test controller never realizes that
-                // items have updated. This may be a bug in VSCode. We can work around it by
+                // items have updated. This may be a bug in VS Code. We can work around it by
                 // re-adding the existing items back up the chain to refresh all the nodes along the way.
                 let p = parent;
                 while (p?.parent) {

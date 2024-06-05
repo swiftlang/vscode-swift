@@ -1,12 +1,12 @@
 //===----------------------------------------------------------------------===//
 //
-// This source file is part of the VSCode Swift open source project
+// This source file is part of the VS Code Swift open source project
 //
-// Copyright (c) 2021-2024 the VSCode Swift project authors
+// Copyright (c) 2021-2024 the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.txt for the list of VSCode Swift project authors
+// See CONTRIBUTORS.txt for the list of VS Code Swift project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -152,7 +152,7 @@ export function createBuildAllTask(folderContext: FolderContext): SwiftTask {
     }
 
     // Create one Build All task per folder context, since this can be called multiple
-    // times and we want the same instance each time. Otherwise, VSCode may try and execute
+    // times and we want the same instance each time. Otherwise, VS Code may try and execute
     // one instance while our extension code tries to listen to events on an instance created earlier/later.
     const existingTask = buildAllTaskCache.get(buildTaskName, folderContext);
     if (existingTask) {

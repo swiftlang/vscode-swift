@@ -348,7 +348,7 @@
             "enumDescriptions": [
               "Never show the Swift build status.",
               "Show the Swift build status in a status bar item provided by the Swift extension.",
-              "Show the Swift build status in the \"Progress Message\" status bar item provided by VSCode.",
+              "Show the Swift build status in the \"Progress Message\" status bar item provided by VS Code.",
               "Show the Swift build status as a progress notification."
             ],
             "order": 17
@@ -356,7 +356,7 @@
         }
       },
       {
-        "title": "Sourcekit-LSP",
+        "title": "SourceKit-LSP",
         "properties": {
           "swift.sourcekit-lsp.serverPath": {
             "type": "string",
@@ -370,7 +370,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Arguments to pass to Sourcekit-LSP. Argument keys and values should be provided as separate entries in the array e.g. ['--log-level', 'debug']",
+            "description": "Arguments to pass to SourceKit-LSP. Argument keys and values should be provided as separate entries in the array e.g. ['--log-level', 'debug']",
             "order": 2
           },
           "swift.sourcekit-lsp.supported-languages": {
@@ -424,7 +424,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Arguments to pass to Sourcekit-LSP. Argument keys and values should be provided as separate entries in the array e.g. ['--log-level', 'debug']",
+            "description": "Arguments to pass to SourceKit-LSP. Argument keys and values should be provided as separate entries in the array e.g. ['--log-level', 'debug']",
             "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.serverArguments#` instead.",
             "order": 2
           },
