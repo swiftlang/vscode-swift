@@ -172,7 +172,7 @@
       },
       {
         "command": "swift.captureDiagnostics",
-        "title": "Capture VSCode Swift Diagnostic Logs",
+        "title": "Capture VS Code Swift Diagnostic Logs",
         "category": "Swift"
       },
       {

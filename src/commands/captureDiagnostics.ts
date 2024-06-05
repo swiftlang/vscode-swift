@@ -17,8 +17,12 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { tmpdir } from "os";
 import { exec } from "child_process";
+import { Writable } from "stream";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { WorkspaceContext } from "../WorkspaceContext";
+import { Version } from "../utilities/version";
+import { execFileStreamOutput } from "../utilities/utilities";
+import configuration from "../configuration";
 
 export async function captureDiagnostics(ctx: WorkspaceContext) {
     const diagnosticsDir = path.join(
@@ -30,7 +34,15 @@ export async function captureDiagnostics(ctx: WorkspaceContext) {
         await fs.mkdir(diagnosticsDir);
         await writeLogFile(diagnosticsDir, "logs.txt", extensionLogs(ctx));
         await writeLogFile(diagnosticsDir, "environment.txt", environmentLogs(ctx));
-        await writeLogFile(diagnosticsDir, "sourcekit-lsp.txt", sourceKitLogs(ctx));
+
+        if (ctx.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
+            // sourcekit-lsp diagnose command is only available in 6.0 and higher.
+            // await writeLogFile(diagnosticsDir, "sourcekit-lsp.txt", );
+            await sourcekitDiagnose(ctx, diagnosticsDir);
+        } else {
+            await writeLogFile(diagnosticsDir, "sourcekit-lsp.txt", sourceKitLogs(ctx));
+        }
+
         await writeLogFile(diagnosticsDir, "diagnostics.txt", diagnosticLogs());
 
         ctx.outputChannel.log(`Saved diagnostics to ${diagnosticsDir}`);
@@ -71,7 +83,7 @@ function extensionLogs(ctx: WorkspaceContext): string {
 }
 
 function environmentLogs(ctx: WorkspaceContext): string {
-    const environmentOutputChannel = new SwiftOutputChannel("Swift");
+    const environmentOutputChannel = new SwiftOutputChannel("Swift", false);
     ctx.toolchain.logDiagnostics(environmentOutputChannel);
     environmentOutputChannel.log("Extension Settings:");
     environmentOutputChannel.log(
@@ -95,6 +107,54 @@ function diagnosticLogs(): string {
 
 function sourceKitLogs(ctx: WorkspaceContext) {
     return (ctx.languageClientManager.languageClientOutputChannel?.logs ?? []).join("\n");
+}
+
+async function sourcekitDiagnose(ctx: WorkspaceContext, dir: string) {
+    const sourcekitDiagnosticDir = path.join(dir, "sourcekit-lsp");
+    await fs.mkdir(sourcekitDiagnosticDir);
+
+    const toolchainSourceKitLSP = ctx.toolchain.getToolchainExecutable("sourcekit-lsp");
+    const lspConfig = configuration.lsp;
+    const serverPathConfig = lspConfig.serverPath;
+    const serverPath = serverPathConfig.length > 0 ? serverPathConfig : toolchainSourceKitLSP;
+
+    await vscode.window.withProgress(
+        {
+            location: vscode.ProgressLocation.Notification,
+        },
+        async progress => {
+            progress.report({ message: "Capturing Diagnostics..." });
+            const writableStream = progressUpdatingWritable(percent =>
+                progress.report({ message: `Capturing Diagnostics: ${percent}%` })
+            );
+
+            await execFileStreamOutput(
+                serverPath,
+                ["diagnose", "--bundle-output-path", sourcekitDiagnosticDir],
+                writableStream,
+                writableStream,
+                null,
+                {
+                    env: { ...process.env, ...configuration.swiftEnvironmentVariables },
+                    maxBuffer: 16 * 1024 * 1024,
+                }
+            );
+        }
+    );
+}
+
+function progressUpdatingWritable(updateProgress: (str: string) => void): Writable {
+    return new Writable({
+        write(chunk, encoding, callback) {
+            const str = (chunk as Buffer).toString("utf8").trim();
+            const percent = /^([0-9])+%/.exec(str);
+            if (percent && percent[1]) {
+                updateProgress(percent[1]);
+            }
+
+            callback();
+        },
+    });
 }
 
 function showDirectoryCommand(dir: string): string {
