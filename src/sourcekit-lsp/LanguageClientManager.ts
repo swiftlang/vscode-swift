@@ -351,6 +351,9 @@ export class LanguageClientManager {
                 .stop()
                 .then(async () => {
                     await this.setupLanguageClient(workspaceFolder?.uri);
+
+                    // Now that the client has been replaced, dispose the old client's output channel.
+                    client.outputChannel.dispose();
                 })
                 .catch(async reason => {
                     // error message matches code here https://github.com/microsoft/vscode-languageserver-node/blob/2041784436fed53f4e77267a49396bca22a7aacf/client/src/common/client.ts#L1409C1-L1409C54
