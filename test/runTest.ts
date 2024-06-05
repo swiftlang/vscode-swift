@@ -18,20 +18,26 @@ import {
     runTests,
     downloadAndUnzipVSCode,
     resolveCliPathFromVSCodeExecutablePath,
-    ConsoleReporter,
     ProgressReport,
+    ProgressReporter,
+    makeConsoleReporter,
 } from "@vscode/test-electron";
 
-class CIReporter extends ConsoleReporter {
-    constructor(private showProgress: boolean) {
-        super(showProgress);
-    }
+/** ProgressReporter that doesn't show  downloading stage */
+class CIReporter implements ProgressReporter {
+    constructor(
+        public showProgress: boolean,
+        public progressReporter: ProgressReporter
+    ) {}
     report(report: ProgressReport): void {
         if (report.stage === "downloading" && !this.showProgress) {
             // suppress
         } else {
-            super.report(report);
+            this.progressReporter.report(report);
         }
+    }
+    error(err: unknown): void {
+        this.progressReporter.error(err);
     }
 }
 
@@ -45,8 +51,9 @@ async function main() {
         // Passed to --extensionTestsPath
         const extensionTestsPath = path.resolve(__dirname, "./suite/index");
 
+        const consoleReporter = await makeConsoleReporter();
         const vscodeExecutablePath = await downloadAndUnzipVSCode({
-            reporter: new CIReporter(process.env["CI"] !== "1"),
+            reporter: new CIReporter(process.env["CI"] !== "1", consoleReporter),
         });
         const cliPath = resolveCliPathFromVSCodeExecutablePath(vscodeExecutablePath);
 
