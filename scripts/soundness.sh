@@ -1,13 +1,13 @@
 #!/bin/bash
 ##===----------------------------------------------------------------------===##
 ##
-## This source file is part of the VSCode Swift open source project
+## This source file is part of the VS Code Swift open source project
 ##
-## Copyright (c) 2021 the VSCode Swift project authors
+## Copyright (c) 2021 the VS Code Swift project authors
 ## Licensed under Apache License v2.0
 ##
 ## See LICENSE.txt for license information
-## See CONTRIBUTORS.txt for the list of VSCode Swift project authors
+## See CONTRIBUTORS.txt for the list of VS Code Swift project authors
 ##
 ## SPDX-License-Identifier: Apache-2.0
 ##
@@ -52,13 +52,13 @@ for language in typescript-or-javascript bash; do
         cat > "$tmp" <<"EOF"
 //===----------------------------------------------------------------------===//
 //
-// This source file is part of the VSCode Swift open source project
+// This source file is part of the VS Code Swift open source project
 //
-// Copyright (c) YEARS the VSCode Swift project authors
+// Copyright (c) YEARS the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.txt for the list of VSCode Swift project authors
+// See CONTRIBUTORS.txt for the list of VS Code Swift project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -71,13 +71,13 @@ EOF
 #!/bin/bash
 ##===----------------------------------------------------------------------===##
 ##
-## This source file is part of the VSCode Swift open source project
+## This source file is part of the VS Code Swift open source project
 ##
-## Copyright (c) YEARS the VSCode Swift project authors
+## Copyright (c) YEARS the VS Code Swift project authors
 ## Licensed under Apache License v2.0
 ##
 ## See LICENSE.txt for license information
-## See CONTRIBUTORS.txt for the list of VSCode Swift project authors
+## See CONTRIBUTORS.txt for the list of VS Code Swift project authors
 ##
 ## SPDX-License-Identifier: Apache-2.0
 ##

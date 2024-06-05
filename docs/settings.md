@@ -28,19 +28,19 @@ This is a list of paths to exclude from the Package Dependency View.
 
 - **Background Compilation**
 
-This is an experimental setting which runs `swift build` whenever a file is saved. There are possibilites the background compilation will clash with any compilation you trigger yourselves so this is disabled by default.
+This is an experimental setting which runs `swift build` whenever a file is saved. It is possible the background compilation will clash with any compilation you trigger yourself so this is disabled by default.
 
 - **Build path**
 
-The path to a directory that will be used for build artifacts. This path will be added to all swift package manager commands that are executed by vscode-swift extension via `--scratch-path` option. When no value provided - nothing gets passed to swift package manager and it will use its default value of `.build` folder in workspace. You can use absolute path for directory or the relative path, which will use the workspace path as a base. Unfortunately, VSCode does not correctly understand and pass the tilde symbol (~) which represents user home folder under *nix systems. Thus, it should be avoided.
+The path to a directory that will be used for build artifacts. This path will be added to all swift package manager commands that are executed by vscode-swift extension via `--scratch-path` option. When no value provided - nothing gets passed to swift package manager and it will use its default value of `.build` folder in workspace. You can use absolute path for directory or the relative path, which will use the workspace path as a base. Unfortunately, VS Code does not correctly understand and pass the tilde symbol (~) which represents user home folder under *nix systems. Thus, it should be avoided.
 
 - **Disable Auto Resolve**
 
 When the Swift extension starts up and whenever the `Package.swift` or `Package.resolved` files are updated a `swift package resolve` process is run to make sure we have the correct versions of dependencies downloaded. You can disable this process with the disable auto resolve setting.
 
-### Sourcekit-LSP
+### SourceKit-LSP
 
-[Sourcekit-LSP](https://github.com/apple/sourcekit-lsp) is the language server used by the the Swift extension to provide symbol completion, jump to definition etc. It is developed by Apple to provide Swift and C language support for any editor that supports the Language Server Protocol.   
+[SourceKit-LSP](https://github.com/apple/sourcekit-lsp) is the language server used by the the Swift extension to provide symbol completion, jump to definition etc. It is developed by Apple to provide Swift and C language support for any editor that supports the Language Server Protocol.
 
 - **Server Path**
 
@@ -55,22 +55,22 @@ This is a list of arguments that will be passed to the SourceKit-LSP. Argument k
 This controls the display of Inlay Hints. Inlay Hints are variable annotations indicating their inferred type. They are only available if you are using Swift 5.6 or later. This setting has been deprecated and now you should use `Editor > Inlay Hints: Enabled`.
 
 - **Supported Languages**
-  
+
   This is a configuration setting that allows you to specify the list of languages that the SourceKit-LSP extension should support. The setting accepts an array of language identifiers.e.g. `["swift", "objective-c", "objective-cpp"]` The primary purpose of this configuration is to mitigate conflicts between the SourceKit-LSP and other extensions, such as clangd
 
 - **Trace: Server**
 
-Trace the communication between Visual Studio Code and the SourceKit-LSP server. The output from this is sent to an Output Window called "Sourcekit Language Server"
+Trace the communication between Visual Studio Code and the SourceKit-LSP server. The output from this is sent to an Output Window called "SourceKit Language Server"
 
 ### Test Coverage
 
 - **Coverage: Display Report after Run**
 
-Display the test coverage report after a test coverage has been run. The report includes a list of all your source files and how many lines were hit or missed while running tests, the total number of lines and then the percentage of hit lines. 
+Display the test coverage report after a test coverage has been run. The report includes a list of all your source files and how many lines were hit or missed while running tests, the total number of lines and then the percentage of hit lines.
 
 - **Coverage: Always Show Status Item**
 
-The test coverage functionality includes a status item in the status bar at the bottom of the screen. This can be set to be visible all the time or only when test coverage data is displayed. If it is set to be displayed all the time the status item can be used as a button to toggle the display of test coverage data. 
+The test coverage functionality includes a status item in the status bar at the bottom of the screen. This can be set to be visible all the time or only when test coverage data is displayed. If it is set to be displayed all the time the status item can be used as a button to toggle the display of test coverage data.
 
 - **Coverage: Colors**
 
@@ -80,7 +80,7 @@ These four settings are to define the colors used when displaying the test cover
 
 - **Swift Environment Variables**
 
-This is a list of environment variables to set when running swift (build, resolve etc). 
+This is a list of environment variables to set when running swift (build, resolve etc).
 
 - **Runtime Path**
 

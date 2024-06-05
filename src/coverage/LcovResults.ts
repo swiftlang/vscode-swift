@@ -1,12 +1,12 @@
 //===----------------------------------------------------------------------===//
 //
-// This source file is part of the VSCode Swift open source project
+// This source file is part of the VS Code Swift open source project
 //
-// Copyright (c) 2024 the VSCode Swift project authors
+// Copyright (c) 2024 the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.txt for the list of VSCode Swift project authors
+// See CONTRIBUTORS.txt for the list of VS Code Swift project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -122,7 +122,7 @@ export class TestCoverage {
             );
 
             // Then export to the final lcov file that
-            // can be processed and fed to VSCode.
+            // can be processed and fed to VS Code.
             const lcovData = await this.exportProfdata(
                 this.lcovFiles.map(({ testLibrary }) => testLibrary),
                 mergedProfileFile
