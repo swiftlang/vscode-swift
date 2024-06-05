@@ -15,12 +15,54 @@
 import * as vscode from "vscode";
 import configuration from "../configuration";
 
-export class SwiftOutputChannel {
+export class SwiftOutputChannel implements vscode.OutputChannel {
     private channel: vscode.OutputChannel;
     private logStore = new RollingLog(1024 * 1024 * 5);
 
-    constructor() {
-        this.channel = vscode.window.createOutputChannel("Swift");
+    public name: string;
+
+    /**
+     * Creates a vscode.OutputChannel that allows for later retrival of logs.
+     * @param name
+     */
+    constructor(name: string) {
+        this.name = name;
+        this.channel = vscode.window.createOutputChannel(name);
+    }
+
+    append(value: string): void {
+        this.channel.append(value);
+        this.logStore.append(value);
+
+        if (process.env["CI"] !== "1") {
+            console.log(value);
+        }
+    }
+
+    appendLine(value: string): void {
+        this.channel.appendLine(value);
+        this.logStore.appendLine(value);
+
+        if (process.env["CI"] !== "1") {
+            console.log(value);
+        }
+    }
+
+    replace(value: string): void {
+        this.channel.replace(value);
+        this.logStore.replace(value);
+    }
+
+    clear(): void {
+        this.channel.clear();
+    }
+
+    show(column?: unknown, preserveFocus?: boolean | undefined): void {
+        this.channel.show(preserveFocus);
+    }
+
+    hide(): void {
+        this.channel.hide();
     }
 
     dispose() {
@@ -34,7 +76,7 @@ export class SwiftOutputChannel {
         } else {
             fullMessage = message;
         }
-        this.sendLog(`${this.nowFormatted}: ${fullMessage}`);
+        this.appendLine(`${this.nowFormatted}: ${fullMessage}`);
     }
 
     logDiagnostic(message: string, label?: string) {
@@ -47,16 +89,7 @@ export class SwiftOutputChannel {
         } else {
             fullMessage = message;
         }
-        this.sendLog(`${this.nowFormatted}: ${fullMessage}`);
-    }
-
-    private sendLog(line: string) {
-        this.channel.appendLine(line);
-        this.logStore.append(line);
-
-        if (process.env["CI"] !== "1") {
-            console.log(line);
-        }
+        this.appendLine(`${this.nowFormatted}: ${fullMessage}`);
     }
 
     get nowFormatted(): string {
@@ -83,7 +116,7 @@ class RollingLog {
         return [...this._logs];
     }
 
-    append(log: string) {
+    appendLine(log: string) {
         // It can be costly to calculate the actual memory size of a string in Node so just
         // use the total number of characters in the logs as a huristic for total size.
         const logSize = log.length;
@@ -98,5 +131,16 @@ class RollingLog {
         this._logs.push(log);
 
         this.currentLogLength += logSize;
+    }
+
+    append(log: string) {
+        const line = this._logs.pop();
+        this.currentLogLength -= line?.length ?? 0;
+        this.appendLine((line ?? "") + log);
+    }
+
+    replace(log: string) {
+        this._logs = [log];
+        this.currentLogLength = log.length;
     }
 }

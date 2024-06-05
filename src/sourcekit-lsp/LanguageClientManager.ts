@@ -25,6 +25,7 @@ import { LanguageClient } from "vscode-languageclient/node";
 import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
 import { DiagnosticsManager } from "../DiagnosticsManager";
 import { LSPLogger, LSPOutputChannel } from "./LSPOutputChannel";
+import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 
 interface SourceKitLogMessageParams extends langclient.LogMessageParams {
     logName?: string;
@@ -104,7 +105,6 @@ export class LanguageClientManager {
      * null means in the process of restarting
      */
     private languageClient: langclient.LanguageClient | null | undefined;
-    private initializeResult?: langclient.InitializeResult;
     private cancellationToken?: vscode.CancellationTokenSource;
     private legacyInlayHints?: vscode.Disposable;
     private restartedPromise?: Promise<void>;
@@ -279,6 +279,10 @@ export class LanguageClientManager {
     async restart() {
         // force restart of language client
         await this.setLanguageClientFolder(this.currentWorkspaceFolder, true);
+    }
+
+    get languageClientOutputChannel(): SwiftOutputChannel | undefined {
+        return this.languageClient?.outputChannel as SwiftOutputChannel | undefined;
     }
 
     private async addFolder(folderContext: FolderContext) {
@@ -482,6 +486,7 @@ export class LanguageClientManager {
             documentSelector: LanguageClientManager.documentSelector,
             revealOutputChannelOn: langclient.RevealOutputChannelOn.Never,
             workspaceFolder: workspaceFolder,
+            outputChannel: new SwiftOutputChannel("SourceKit Language Server"),
             middleware: {
                 provideDocumentSymbols: async (document, token, next) => {
                     const result = await next(document, token);
@@ -581,7 +586,6 @@ export class LanguageClientManager {
                 if (this.workspaceContext.swiftVersion.isLessThan(new Version(5, 7, 0))) {
                     this.legacyInlayHints = activateLegacyInlayHints(client);
                 }
-                this.initializeResult = client.initializeResult;
             })
             .catch(reason => {
                 this.workspaceContext.outputChannel.log(`${reason}`);

@@ -50,7 +50,7 @@ export interface Api {
 export async function activate(context: vscode.ExtensionContext): Promise<Api | undefined> {
     try {
         console.debug("Activating Swift for Visual Studio Code...");
-        const outputChannel = new SwiftOutputChannel();
+        const outputChannel = new SwiftOutputChannel("Swift");
 
         checkAndWarnAboutWindowsSymlinks(outputChannel);
 

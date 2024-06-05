@@ -26,21 +26,12 @@ export async function captureDiagnostics(ctx: WorkspaceContext) {
         `vscode-diagnostics-${formatDateString(new Date())}`
     );
 
-    const environmentOutputChannel = new SwiftOutputChannel();
-    ctx.toolchain.logDiagnostics(environmentOutputChannel);
-    environmentOutputChannel.log(
-        JSON.stringify(vscode.workspace.getConfiguration("swift"), null, 2)
-    );
-
-    const logs = ctx.outputChannel.logs.join("\n");
-    const environmentLogs = environmentOutputChannel.logs.join("\n");
-    const diagnosticLogs = buildDiagnostics();
-
     try {
         await fs.mkdir(diagnosticsDir);
-        await fs.writeFile(path.join(diagnosticsDir, "logs.txt"), logs);
-        await fs.writeFile(path.join(diagnosticsDir, "environment.txt"), environmentLogs);
-        await fs.writeFile(path.join(diagnosticsDir, "diagnostics.txt"), diagnosticLogs);
+        await writeLogFile(diagnosticsDir, "logs.txt", extensionLogs(ctx));
+        await writeLogFile(diagnosticsDir, "environment.txt", environmentLogs(ctx));
+        await writeLogFile(diagnosticsDir, "sourcekit-lsp.txt", sourceKitLogs(ctx));
+        await writeLogFile(diagnosticsDir, "diagnostics.txt", diagnosticLogs());
 
         ctx.outputChannel.log(`Saved diagnostics to ${diagnosticsDir}`);
 
@@ -68,6 +59,44 @@ export async function captureDiagnostics(ctx: WorkspaceContext) {
     }
 }
 
+async function writeLogFile(dir: string, name: string, logs: string) {
+    if (logs.length === 0) {
+        return;
+    }
+    await fs.writeFile(path.join(dir, name), logs);
+}
+
+function extensionLogs(ctx: WorkspaceContext): string {
+    return ctx.outputChannel.logs.join("\n");
+}
+
+function environmentLogs(ctx: WorkspaceContext): string {
+    const environmentOutputChannel = new SwiftOutputChannel("Swift");
+    ctx.toolchain.logDiagnostics(environmentOutputChannel);
+    environmentOutputChannel.log("Extension Settings:");
+    environmentOutputChannel.log(
+        JSON.stringify(vscode.workspace.getConfiguration("swift"), null, 2)
+    );
+    return environmentOutputChannel.logs.join("\n");
+}
+
+function diagnosticLogs(): string {
+    const diagnosticToString = (diagnostic: vscode.Diagnostic) => {
+        return `${severityToString(diagnostic.severity)} - ${diagnostic.message} [Ln ${diagnostic.range.start.line}, Col ${diagnostic.range.start.character}]`;
+    };
+
+    return vscode.languages
+        .getDiagnostics()
+        .map(
+            ([uri, diagnostics]) => `${uri}\n\t${diagnostics.map(diagnosticToString).join("\n\t")}`
+        )
+        .join("\n");
+}
+
+function sourceKitLogs(ctx: WorkspaceContext) {
+    return (ctx.languageClientManager.languageClientOutputChannel?.logs ?? []).join("\n");
+}
+
 function showDirectoryCommand(dir: string): string {
     switch (process.platform) {
         case "win32":
@@ -88,19 +117,6 @@ function showCommandType(): string {
         default:
             return "File Manager";
     }
-}
-
-function buildDiagnostics(): string {
-    const diagnosticToString = (diagnostic: vscode.Diagnostic) => {
-        return `${severityToString(diagnostic.severity)} - ${diagnostic.message} [Ln ${diagnostic.range.start.line}, Col ${diagnostic.range.start.character}]`;
-    };
-
-    return vscode.languages
-        .getDiagnostics()
-        .map(
-            ([uri, diagnostics]) => `${uri}\n\t${diagnostics.map(diagnosticToString).join("\n\t")}`
-        )
-        .join("\n");
 }
 
 function severityToString(severity: vscode.DiagnosticSeverity): string {
