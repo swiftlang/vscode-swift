@@ -37,6 +37,7 @@ import { TemporaryFolder } from "../utilities/tempFolder";
 import { TestClass, runnableTag, upsertTestItem } from "./TestDiscovery";
 import { TestCoverage } from "../coverage/LcovResults";
 import { TestingDebugConfigurationFactory } from "../debugger/buildConfig";
+import { SwiftExecution } from "../tasks/SwiftExecution";
 
 /** Workspace Folder events */
 export enum TestKind {
@@ -509,7 +510,7 @@ export class TestRunner {
             if (error !== 1) {
                 this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
             } else {
-                await this.swiftTestOutputParser.close();
+                this.swiftTestOutputParser.close();
             }
         } finally {
             outputStream.end();
@@ -731,6 +732,25 @@ export class TestRunner {
             const debugRuns = validBuildConfigs.map(config => {
                 return () =>
                     new Promise<void>((resolve, reject) => {
+                        let buildFailed = false;
+                        const buildTask = vscode.tasks.onDidStartTask(e => {
+                            if (e.execution.task.name === "Build All") {
+                                const exec = e.execution.task.execution as SwiftExecution;
+                                const didCloseBuildTask = exec.onDidClose(exitCode => {
+                                    if (
+                                        exitCode !== 0 &&
+                                        config.testType === TestLibrary.swiftTesting
+                                    ) {
+                                        buildFailed = true;
+                                        this.swiftTestOutputParser.close();
+                                        subscriptions.forEach(sub => sub.dispose());
+                                    }
+                                });
+                                subscriptions.push(didCloseBuildTask);
+                            }
+                        });
+                        subscriptions.push(buildTask);
+
                         // add cancelation
                         const startSession = vscode.debug.onDidStartDebugSession(session => {
                             if (config.testType === TestLibrary.xctest) {
@@ -761,7 +781,11 @@ export class TestRunner {
                         vscode.debug
                             .startDebugging(this.folderContext.workspaceFolder, config)
                             .then(
-                                async started => {
+                                started => {
+                                    if (buildFailed) {
+                                        reject("Build Failed");
+                                        return;
+                                    }
                                     if (started) {
                                         // show test results pane
                                         vscode.commands.executeCommand(
@@ -769,9 +793,7 @@ export class TestRunner {
                                         );
 
                                         const terminateSession =
-                                            vscode.debug.onDidTerminateDebugSession(async () => {
-                                                await this.swiftTestOutputParser.close();
-
+                                            vscode.debug.onDidTerminateDebugSession(() => {
                                                 this.workspaceContext.outputChannel.logDiagnostic(
                                                     "Stop Test Debugging",
                                                     this.folderContext.name
@@ -787,13 +809,11 @@ export class TestRunner {
                                             });
                                         subscriptions.push(terminateSession);
                                     } else {
-                                        await this.swiftTestOutputParser.close();
                                         subscriptions.forEach(sub => sub.dispose());
                                         reject();
                                     }
                                 },
-                                async reason => {
-                                    await this.swiftTestOutputParser.close();
+                                reason => {
                                     subscriptions.forEach(sub => sub.dispose());
                                     reject(reason);
                                 }
