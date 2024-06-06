@@ -19,13 +19,21 @@ import * as glob from "glob";
 export function run(): Promise<void> {
     process.traceDeprecation = true;
 
-    // Create the mocha test
-    const mocha = new Mocha({
+    const options: Mocha.MochaOptions = {
         ui: "tdd",
         color: true,
         timeout: 3000,
         forbidOnly: process.env["CI"] === "1",
-    });
+    };
+
+    if (process.env.FAST_TEST_RUN) {
+        // Run all tests that are not marked with @slow
+        options.grep = "@slow";
+        options.invert = true;
+    }
+
+    // Create the mocha test
+    const mocha = new Mocha(options);
 
     const testsRoot = path.resolve(__dirname, "..");
 

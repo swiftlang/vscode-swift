@@ -1158,7 +1158,7 @@
     "lint": "eslint ./ --ext ts && tsc --noEmit",
     "format": "prettier --check src test",
     "pretest": "npm run compile && npm run lint",
-    "test": "find ./assets/test -type d -name '.build' -exec rm -rf {} + && find . -type d -name 'Package.resolved' -exec rm -rf {} + && tsc -p ./ && node ./out/test/runTest.js",
+    "test": "find ./assets/test -type d -name '.build' -exec rm -rf {} + && find . -type d -name 'Package.resolved' -exec rm -rf {} + && tsc -p ./ && FAST_TEST_RUN=false node ./out/test/runTest.js",
     "coverage": "c8 --clean npm run test",
     "compile-tests": "find ./assets/test -type d -name '.build' -exec rm -rf {} + && npm run compile && npm run esbuild",
     "package": "vsce package",

@@ -24,6 +24,20 @@ final class MixedXCTestSuite: XCTestCase {
   }
 }
 
+final class DebugReleaseTestSuite: XCTestCase {
+  func testRelease() throws {
+    #if DEBUG
+      XCTFail("Test was run in debug mode.")
+    #endif
+  }
+
+  func testDebug() throws {
+    #if RELEASE
+      XCTFail("Test was run in release mode.")
+    #endif
+  }
+}
+
 #if swift(>=6.0)
 import Testing
 
@@ -35,6 +49,18 @@ import Testing
 @Test(arguments: [1, 2, 3])
 func parameterizedTest(_ arg: Int) {
   #expect(arg != 2)
+}
+
+@Test func testRelease() throws {
+  #if DEBUG
+    Issue.record("Test was run in debug mode.")
+  #endif
+}
+
+@Test func testDebug() throws {
+  #if RELEASE
+    Issue.record("Test was run in release mode.")
+  #endif
 }
 
 @Suite
