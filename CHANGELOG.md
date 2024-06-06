@@ -16,12 +16,10 @@
 ### Changed
 
 - Replace test coverage support with native VSCode coverage APIs.
+- Merge SourceKit-LSP diagnostics with diagnostics from Swift compiler.
+- Removed `swift.problemMatchCompileErrors` as it is no longer needed.
 - Deprecate `swift.sourcekit-lsp.serverPath` setting.
 - Only disable build tasks, while other tasks are running, in Swift versions earlier than 6. As Swift 6 manages access to `.build` folder.
-
-### Fixed
-
-- Merge SourceKit-LSP diagnostics with diagnostics from Swift compiler.
 
 ### Other
 
