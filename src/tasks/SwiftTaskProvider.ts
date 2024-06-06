@@ -122,7 +122,7 @@ function getBuildRevealOption(): vscode.TaskRevealKind {
 const buildAllTaskCache = (() => {
     const cache = new Map<string, SwiftTask>();
     const key = (name: string, folderContext: FolderContext) => {
-        return `${name}:${buildOptions(folderContext.workspaceContext.toolchain).join(",")}`;
+        return `${name}:${folderContext.folder}:${buildOptions(folderContext.workspaceContext.toolchain).join(",")}`;
     };
     return {
         get(name: string, folderContext: FolderContext): SwiftTask | undefined {
