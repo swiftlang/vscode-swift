@@ -335,7 +335,6 @@ export class TestRunner {
                         };
                     }
                     await runner.runHandler(token);
-                    await runner.testRun.computeCoverage();
                     await vscode.commands.executeCommand("testing.openCoverage");
                 },
                 false,
@@ -378,6 +377,11 @@ export class TestRunner {
         } catch (error) {
             this.workspaceContext.outputChannel.log(`Error: ${getErrorDescription(error)}`);
             this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
+        }
+
+        // Coverage must be computed before the testRun is ended as of VS Code 1.90.0
+        if (this.testKind === TestKind.coverage) {
+            await this.testRun.computeCoverage();
         }
 
         await this.testRun.end();
