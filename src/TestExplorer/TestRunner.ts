@@ -37,6 +37,7 @@ import { TemporaryFolder } from "../utilities/tempFolder";
 import { TestClass, runnableTag, upsertTestItem } from "./TestDiscovery";
 import { TestCoverage } from "../coverage/LcovResults";
 import { TestingDebugConfigurationFactory } from "../debugger/buildConfig";
+import { SwiftExecution } from "../tasks/SwiftExecution";
 
 /** Workspace Folder events */
 export enum TestKind {
@@ -731,6 +732,25 @@ export class TestRunner {
             const debugRuns = validBuildConfigs.map(config => {
                 return () =>
                     new Promise<void>((resolve, reject) => {
+                        let buildFailed = false;
+                        const buildTask = vscode.tasks.onDidStartTask(e => {
+                            if (e.execution.task.name === "Build All") {
+                                const exec = e.execution.task.execution as SwiftExecution;
+                                const didCloseBuildTask = exec.onDidClose(exitCode => {
+                                    if (
+                                        exitCode !== 0 &&
+                                        config.testType === TestLibrary.swiftTesting
+                                    ) {
+                                        buildFailed = true;
+                                        this.swiftTestOutputParser.close();
+                                        subscriptions.forEach(sub => sub.dispose());
+                                    }
+                                });
+                                subscriptions.push(didCloseBuildTask);
+                            }
+                        });
+                        subscriptions.push(buildTask);
+
                         // add cancelation
                         const startSession = vscode.debug.onDidStartDebugSession(session => {
                             if (config.testType === TestLibrary.xctest) {
@@ -762,6 +782,10 @@ export class TestRunner {
                             .startDebugging(this.folderContext.workspaceFolder, config)
                             .then(
                                 started => {
+                                    if (buildFailed) {
+                                        reject("Build Failed");
+                                        return;
+                                    }
                                     if (started) {
                                         // show test results pane
                                         vscode.commands.executeCommand(
@@ -769,7 +793,7 @@ export class TestRunner {
                                         );
 
                                         const terminateSession =
-                                            vscode.debug.onDidTerminateDebugSession(async () => {
+                                            vscode.debug.onDidTerminateDebugSession(() => {
                                                 this.workspaceContext.outputChannel.logDiagnostic(
                                                     "Stop Test Debugging",
                                                     this.folderContext.name
