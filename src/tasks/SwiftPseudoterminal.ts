@@ -1,12 +1,12 @@
 //===----------------------------------------------------------------------===//
 //
-// This source file is part of the VSCode Swift open source project
+// This source file is part of the VS Code Swift open source project
 //
-// Copyright (c) 2024 the VSCode Swift project authors
+// Copyright (c) 2024 the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.txt for the list of VSCode Swift project authors
+// See CONTRIBUTORS.txt for the list of VS Code Swift project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -50,7 +50,10 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Dispos
                     // The terminal expects a string that has "\n\r" line endings
                     this.writeEmitter.fire(data.replace(/\n(\r)?/g, "\n\r"));
                 }),
-                this.swiftProcess.onDidThrowError(() => {
+                this.swiftProcess.onDidThrowError(e => {
+                    vscode.window.showErrorMessage(
+                        `Failed to run Swift command "${this.commandLine}":\n${e}`
+                    );
                     this.closeEmitter.fire();
                     this.dispose();
                 }),

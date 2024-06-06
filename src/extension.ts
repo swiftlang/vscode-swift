@@ -1,12 +1,12 @@
 //===----------------------------------------------------------------------===//
 //
-// This source file is part of the VSCode Swift open source project
+// This source file is part of the VS Code Swift open source project
 //
-// Copyright (c) 2021-2023 the VSCode Swift project authors
+// Copyright (c) 2021-2023 the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.txt for the list of VSCode Swift project authors
+// See CONTRIBUTORS.txt for the list of VS Code Swift project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -37,7 +37,7 @@ import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
- * or by the integration test runner for VSCode extensions.
+ * or by the integration test runner for VS Code extensions.
  */
 export interface Api {
     workspaceContext: WorkspaceContext;
@@ -242,7 +242,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
         return { workspaceContext };
     } catch (error) {
         const errorMessage = getErrorDescription(error);
-        // show this error message as the VSCode error message only shows when running
+        // show this error message as the VS Code error message only shows when running
         // the extension through the debugger
         vscode.window.showErrorMessage(`Activating Swift extension failed: ${errorMessage}`);
         throw Error(errorMessage);

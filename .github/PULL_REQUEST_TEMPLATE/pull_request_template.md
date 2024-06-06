@@ -1,4 +1,4 @@
-<!-- 🚀 Thank you for contributing to the VSCode extension for Swift! Please ensure you follow the 
+<!-- 🚀 Thank you for contributing to the VS Code extension for Swift! Please ensure you follow the
 contributing guidelines for any contributions -->
 
 <!-- Note for any contribution that is more than a bug fix, please open an issue first or discuss

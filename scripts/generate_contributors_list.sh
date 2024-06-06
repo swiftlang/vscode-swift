@@ -1,13 +1,13 @@
 #!/bin/bash
 ##===----------------------------------------------------------------------===##
 ##
-## This source file is part of the VSCode Swift open source project
+## This source file is part of the VS Code Swift open source project
 ##
-## Copyright (c) 2021 the VSCode Swift project authors
+## Copyright (c) 2021 the VS Code Swift project authors
 ## Licensed under Apache License v2.0
 ##
 ## See LICENSE.txt for license information
-## See CONTRIBUTORS.txt for the list of VSCode Swift project authors
+## See CONTRIBUTORS.txt for the list of VS Code Swift project authors
 ##
 ## SPDX-License-Identifier: Apache-2.0
 ##
@@ -19,7 +19,7 @@ contributors=$( cd "$here"/.. && git shortlog -es | cut -f2 | sed 's/^/- /' )
 
 cat > "$here/../CONTRIBUTORS.txt" <<- EOF
 	For the purpose of tracking copyright, this is the list of individuals and
-	organizations who have contributed source code to the VSCode Swift extension.
+	organizations who have contributed source code to the VS Code Swift extension.
 	For employees of an organization/company where the copyright of work done
 	by employees of that company is held by the company itself, only the company
 	needs to be listed here.

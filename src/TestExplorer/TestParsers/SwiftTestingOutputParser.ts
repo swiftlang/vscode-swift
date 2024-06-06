@@ -1,12 +1,12 @@
 //===----------------------------------------------------------------------===//
 //
-// This source file is part of the VSCode Swift open source project
+// This source file is part of the VS Code Swift open source project
 //
-// Copyright (c) 2024 the VSCode Swift project authors
+// Copyright (c) 2024 the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.txt for the list of VSCode Swift project authors
+// See CONTRIBUTORS.txt for the list of VS Code Swift project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -23,6 +23,7 @@ import {
 import { ITestRunState } from "./TestRunState";
 import { TestClass } from "../TestDiscovery";
 import { sourceLocationToVSCodeLocation } from "../../utilities/utilities";
+import { exec } from "child_process";
 
 // All events produced by a swift-testing run will be one of these three types.
 // Detailed information about swift-testing's JSON schema is available here:
@@ -149,6 +150,7 @@ export interface SourceLocation {
 export class SwiftTestingOutputParser {
     private completionMap = new Map<number, boolean>();
     private testCaseMap = new Map<string, Map<string, TestCase>>();
+    private path?: string;
 
     constructor(
         public testRunStarted: () => void,
@@ -164,6 +166,8 @@ export class SwiftTestingOutputParser {
         runState: ITestRunState,
         pipeReader?: INamedPipeReader
     ): Promise<void> {
+        this.path = path;
+
         // Creates a reader based on the platform unless being provided in a test context.
         const reader = pipeReader ?? this.createReader(path);
         const readlinePipe = new Readable({
@@ -180,6 +184,18 @@ export class SwiftTestingOutputParser {
         rl.on("line", line => this.parse(JSON.parse(line), runState));
 
         reader.start(readlinePipe);
+    }
+
+    public async close() {
+        if (!this.path) {
+            return;
+        }
+
+        return new Promise<void>(resolve => {
+            exec(`echo '{}' > ${this.path}`, () => {
+                resolve();
+            });
+        });
     }
 
     private createReader(path: string): INamedPipeReader {

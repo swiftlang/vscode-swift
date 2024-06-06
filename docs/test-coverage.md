@@ -2,7 +2,7 @@
 
 Test coverage is a measurement of how much of your code is tested by your tests. It defines how many lines of code were actually run when you ran your tests and how many were not. When a line of code is not run by your tests it will not have been tested and perhaps you need to extend your tests.
 
-The Swift extension integrates with VSCode's Code Coverage APIs to record what code has been hit or missed by your tests.
+The Swift extension integrates with VS Code's Code Coverage APIs to record what code has been hit or missed by your tests.
 
 ![](images/coverage-run.png)
 

@@ -116,7 +116,7 @@ Merge debug adapter changes from v1.6.x prerelease builds into main release.
 
 ### Added
 
-- Support for using debug adapter included in Swift toolchain instead of CodeLLDB extension. Currently this is only available in the Windows toolchain. Setting for this is disabled by default. 
+- Support for using debug adapter included in Swift toolchain instead of CodeLLDB extension. Currently this is only available in the Windows toolchain. Setting for this is disabled by default.
 
 ## 1.5.2 - 2023-09-21
 
@@ -134,7 +134,7 @@ Merge debug adapter changes from v1.6.x prerelease builds into main release.
 ### Fixed
 
 - Removal of workspace folders, now removes all packages associated with the workspace not just the one at the root of the folder.
-- Custom Swift path on Windows. 
+- Custom Swift path on Windows.
 - Fixed adding of packages in sub-folders twice at startup.
 
 ## 1.5.0 - 2023-08-18
@@ -150,7 +150,7 @@ Merge debug adapter changes from v1.6.x prerelease builds into main release.
 - If background compilation is enabled, then run build as startup.
 - Removed `Run Script` context menu entry when editing a file that is part of a Package.
 - Use `tasks.json` default build task, if setup, for Test explorer and background compilation.
-- Only use custom macOS test debug configuration, which was added to fix an issue in Swift 5.6, when using Swift 5.6. 
+- Only use custom macOS test debug configuration, which was added to fix an issue in Swift 5.6, when using Swift 5.6.
 
 ### Fixed
 
@@ -243,7 +243,7 @@ Merge debug adapter changes from v1.6.x prerelease builds into main release.
 ### Fixed
 
 - Setting of error in Test Explorer when test crashes.
-- Skip second attempt at building tests when running tests. 
+- Skip second attempt at building tests when running tests.
 - Parsing of test output when line is split across two text buffers.
 - Parsing of skipped tests on Linux.
 
@@ -278,7 +278,7 @@ Merge debug adapter changes from v1.6.x prerelease builds into main release.
 ### Changed
 
 - Settings scope for a number of settings so they can be set per workspace folder. Ensure the workspace folder setting is being used. Reverted for a number of settings where per workspace folder setting was not possible.
-- Check file type before running Background compilation. 
+- Check file type before running Background compilation.
 
 ### Fixed
 
@@ -319,7 +319,7 @@ Merge debug adapter changes from v1.6.x prerelease builds into main release.
 - When working out project dependencies traverse local dependencies to get full dependency chain
 - Changed settings scope for a number of settings so they can be set per workspace folder
 - Store hash of `Package.resolved` to compare with new `Package.resolved` whenever it has been updated, to ensure it has actaully changed before running `swift package resolve`.
- 
+
 ### Fixed
 
 - Remove `runPlugin` command stub as it does nothing
@@ -353,7 +353,7 @@ Merge debug adapter changes from v1.6.x prerelease builds into main release.
 - Queue Swift tasks, where we can, to ensure we don't have multiple `swift` processes running on the same package at the same time.
 - Configuration setting `buildPath` to set a custom build folder.
 - The Test Explorer now displays additional states: test enqueued, test running and test errored.
-  
+
 ### Changed
 
 - Upgrade to VS Code LanguageClient v8
@@ -379,7 +379,7 @@ Merge debug adapter changes from v1.6.x prerelease builds into main release.
 ### Fixed
 
 - Setup of Swift LLDB on Linux.
-- If Swift LLDB on Windows setup fails, then fail silently. This indicates the Swift version of LLDB has issues (as is the case in Swift < 5.7) and should not be used. 
+- If Swift LLDB on Windows setup fails, then fail silently. This indicates the Swift version of LLDB has issues (as is the case in Swift < 5.7) and should not be used.
 - Pass flags used in Swift build to SourceKit-LSP to avoid unnecessary project rebuilds.
 
 ## 0.5.1 - 2022-05-10
@@ -410,12 +410,12 @@ Version 0.5.0 of vscode-swift now requires v1.65.0 of Visual Studio Code
 
 ### Changed
 
-- Inlay hints (annotations indicating infered types) now use the standard Visual Studio Code renderer.
+- Inlay hints (annotations indicating inferred types) now use the standard Visual Studio Code renderer.
 - Inlay hints are enabled by default.
 - Use Language client middleware to catch Document Symbol requests and use the results to update test list in TestExplorer.
-- Don't send unfocus events when opening non-file based view. Means current project stays in focus and project dependencies view won't disappear. 
+- Don't send unfocus events when opening non-file based view. Means current project stays in focus and project dependencies view won't disappear.
 - If user has created a custom version of a build task in `tasks.json` then use that when building for tests, or running background compilation.
-- Split settings into sections. Add Sourcekit-LSP and Advanced sections.
+- Split settings into sections. Add SourceKit-LSP and Advanced sections.
 - When updating launch.json configurations, show one dialog for each project instead of for each configuration.
 - Windows: Removed dependency on `DEVELOPER_DIR` environment variable. Use `SDKROOT` instead.
 - Windows: Support Swift 5.7 file structure when finding XCTest.
@@ -431,7 +431,7 @@ Version 0.5.0 of vscode-swift now requires v1.65.0 of Visual Studio Code
 
 ### Removed
 
-- `Sourcekit-LSP: Toolchain Path` setting. You can set this using the `Swift: Path` setting.
+- `SourceKit-LSP: Toolchain Path` setting. You can set this using the `Swift: Path` setting.
 
 ## 0.4.3 - 2022-04-05
 
@@ -477,7 +477,7 @@ Version 0.5.0 of vscode-swift now requires v1.65.0 of Visual Studio Code
 ### Changed
 
 - The package dependency view is always visible if your project has a Package.swift regardless of whether it has any dependencies.
-- Don't completely destroy the Language client when changing LSP server workspace folder. 
+- Don't completely destroy the Language client when changing LSP server workspace folder.
 - Conditionally add `--enable-test-discovery` based on Swift version and existence of `LinuxMain.swift`.
 
 ### Fixed
@@ -494,10 +494,10 @@ Version 0.5.0 of vscode-swift now requires v1.65.0 of Visual Studio Code
 ## 0.3.0 - 2022-02-22
 
 ### Added
-- Function documentation comment completion. Type "///" on line above function to activate. 
+- Function documentation comment completion. Type "///" on line above function to activate.
 - Package dependency view has new right click menu. Menu entries include:
   - Use Local Version: Use local version of package dependency.
-  - Add To Workspace: Add a locally edited dependency to your VSCode Workspace.
+  - Add To Workspace: Add a locally edited dependency to your VS Code Workspace.
   - Revert To Original Version: Revert locally edited dependency to the version in the Package.swift.
   - View Repository: Open the repository web page for the dependency.
 - Support for Swift packages that are in a sub-folder of your workspace.
@@ -509,7 +509,7 @@ Version 0.5.0 of vscode-swift now requires v1.65.0 of Visual Studio Code
 - When the Swift path or SourceKit-LSP path are changed the extension will restart to ensure the correct versions are used.
 
 ### Fixed
-- Swift 5.6 will fix the issue of the LSP server not working with new files. If the Swift version is previous to 5.6 then the VSCode extension will restart the LSP server whenever a new file is added.
+- Swift 5.6 will fix the issue of the LSP server not working with new files. If the Swift version is previous to 5.6 then the VS Code extension will restart the LSP server whenever a new file is added.
 - The LSP server works on single Swift files outside of a Package.swift.
 - Windows debug build options for generating dwarf debug output.
 
