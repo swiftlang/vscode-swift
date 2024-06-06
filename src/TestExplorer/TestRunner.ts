@@ -19,7 +19,7 @@ import * as os from "os";
 import * as asyncfs from "fs/promises";
 import { FolderContext } from "../FolderContext";
 import { execFile, getErrorDescription } from "../utilities/utilities";
-import { createSwiftTask } from "../tasks/SwiftTaskProvider";
+import { createSwiftTask, getBuildAllTask } from "../tasks/SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
 import {
@@ -648,8 +648,35 @@ export class TestRunner {
 
     /** Run test session inside debugger */
     async debugSession(token: vscode.CancellationToken, runState: TestRunnerTestRunState) {
-        const buildConfigs: Array<vscode.DebugConfiguration | undefined> = [];
+        const buildAllTask = await getBuildAllTask(this.folderContext);
+        if (!buildAllTask) {
+            return;
+        }
 
+        const subscriptions: vscode.Disposable[] = [];
+        let buildExitCode = 0;
+        const buildTask = vscode.tasks.onDidStartTask(e => {
+            if (e.execution.task.name === "Build All") {
+                const exec = e.execution.task.execution as SwiftExecution;
+                const didCloseBuildTask = exec.onDidClose(exitCode => {
+                    buildExitCode = exitCode ?? 0;
+                });
+                subscriptions.push(didCloseBuildTask);
+            }
+        });
+        subscriptions.push(buildTask);
+
+        // Perform a build all before the tests are run. We want to avoid the "Debug Anyway" dialog
+        // since choosing that with no prior build, when debugging swift-testing tests, will cause
+        // the extension to start listening to the fifo pipe when no results will be produced,
+        // hanging the test run.
+        await this.folderContext.taskQueue.queueOperation(new TaskOperation(buildAllTask));
+
+        if (buildExitCode !== 0) {
+            throw new Error(`Build failed with exit code ${buildExitCode}`);
+        }
+
+        const buildConfigs: Array<vscode.DebugConfiguration | undefined> = [];
         const fifoPipePath =
             process.platform === "win32"
                 ? `\\\\.\\pipe\\vscodemkfifo-${Date.now()}`
@@ -689,11 +716,9 @@ export class TestRunner {
                             this.folderContext.name
                         );
                     }
-                    // Watch the pipe for JSONL output and parse the events into test explorer updates.
-                    // The await simply waits for the watching to be configured.
-                    await this.swiftTestOutputParser.watch(fifoPipePath, runState);
 
                     swiftTestBuildConfig.testType = TestLibrary.swiftTesting;
+                    swiftTestBuildConfig.preLaunchTask = null;
                     buildConfigs.push(swiftTestBuildConfig);
                 }
             }
@@ -718,7 +743,7 @@ export class TestRunner {
                     }
 
                     xcTestBuildConfig.testType = TestLibrary.xctest;
-
+                    xcTestBuildConfig.preLaunchTask = null;
                     buildConfigs.push(xcTestBuildConfig);
                 }
             }
@@ -727,29 +752,9 @@ export class TestRunner {
                 config => config !== null
             ) as vscode.DebugConfiguration[];
 
-            const subscriptions: vscode.Disposable[] = [];
-
             const debugRuns = validBuildConfigs.map(config => {
                 return () =>
                     new Promise<void>((resolve, reject) => {
-                        let buildFailed = false;
-                        const buildTask = vscode.tasks.onDidStartTask(e => {
-                            if (e.execution.task.name === "Build All") {
-                                const exec = e.execution.task.execution as SwiftExecution;
-                                const didCloseBuildTask = exec.onDidClose(exitCode => {
-                                    if (exitCode !== 0) {
-                                        buildFailed = true;
-                                        if (config.testType === TestLibrary.swiftTesting) {
-                                            this.swiftTestOutputParser.close();
-                                            subscriptions.forEach(sub => sub.dispose());
-                                        }
-                                    }
-                                });
-                                subscriptions.push(didCloseBuildTask);
-                            }
-                        });
-                        subscriptions.push(buildTask);
-
                         // add cancelation
                         const startSession = vscode.debug.onDidStartDebugSession(session => {
                             if (config.testType === TestLibrary.xctest) {
@@ -780,12 +785,17 @@ export class TestRunner {
                         vscode.debug
                             .startDebugging(this.folderContext.workspaceFolder, config)
                             .then(
-                                started => {
-                                    if (buildFailed) {
-                                        reject("Build Failed");
-                                        return;
-                                    }
+                                async started => {
                                     if (started) {
+                                        if (config.testType === TestLibrary.swiftTesting) {
+                                            // Watch the pipe for JSONL output and parse the events into test explorer updates.
+                                            // The await simply waits for the watching to be configured.
+                                            await this.swiftTestOutputParser.watch(
+                                                fifoPipePath,
+                                                runState
+                                            );
+                                        }
+
                                         // show test results pane
                                         vscode.commands.executeCommand(
                                             "testing.showMostRecentOutput"
