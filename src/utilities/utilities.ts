@@ -269,7 +269,9 @@ export function randomString(length = 8): string {
  * @returns String description of error
  */
 export function getErrorDescription(error: unknown): string {
-    if ((error as { stderr: string }).stderr) {
+    if (!error) {
+        return "No error provided";
+    } else if ((error as { stderr: string }).stderr) {
         return (error as { stderr: string }).stderr;
     } else if ((error as { error: string }).error) {
         return JSON.stringify((error as { error: string }).error);

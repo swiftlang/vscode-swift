@@ -737,13 +737,12 @@ export class TestRunner {
                             if (e.execution.task.name === "Build All") {
                                 const exec = e.execution.task.execution as SwiftExecution;
                                 const didCloseBuildTask = exec.onDidClose(exitCode => {
-                                    if (
-                                        exitCode !== 0 &&
-                                        config.testType === TestLibrary.swiftTesting
-                                    ) {
+                                    if (exitCode !== 0) {
                                         buildFailed = true;
-                                        this.swiftTestOutputParser.close();
-                                        subscriptions.forEach(sub => sub.dispose());
+                                        if (config.testType === TestLibrary.swiftTesting) {
+                                            this.swiftTestOutputParser.close();
+                                            subscriptions.forEach(sub => sub.dispose());
+                                        }
                                     }
                                 });
                                 subscriptions.push(didCloseBuildTask);
@@ -810,7 +809,7 @@ export class TestRunner {
                                         subscriptions.push(terminateSession);
                                     } else {
                                         subscriptions.forEach(sub => sub.dispose());
-                                        reject();
+                                        reject("Debugger not started");
                                     }
                                 },
                                 reason => {
