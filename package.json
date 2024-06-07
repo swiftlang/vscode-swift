@@ -15,7 +15,8 @@
   "categories": [
     "Programming Languages",
     "Debuggers",
-    "Snippets"
+    "Snippets",
+    "Testing"
   ],
   "keywords": [
     "swift",
@@ -32,8 +33,12 @@
     "languages": [
       {
         "id": "swift",
+        "aliases": [
+          "Swift"
+        ],
         "extensions": [
-          "swiftinterface"
+          ".swiftinterface",
+          ".swift"
         ]
       }
     ],
