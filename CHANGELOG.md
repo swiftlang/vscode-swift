@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.10.0
+
+### Added
+
+- Support for swift-testing.
+- Toolchain selection command `swift: Select Toolchain...`.
+- Create new Swift project command `swift: Create New Project...`.
+- Use custom LSP requests for test discovery.
+- Support for recording multiple issues per test.
+- Code snippets for common actions, like creating tests, availability conditions, option sets.
+- CustomExecution for swift tasks.
+- UI showing Swift build status
+
+### Changed
+
+- Replace test coverage support with native VSCode coverage APIs.
+- Merge SourceKit-LSP diagnostics with diagnostics from Swift compiler.
+- Removed `swift.problemMatchCompileErrors` as it is no longer needed.
+- Deprecate `swift.sourcekit-lsp.serverPath` setting.
+- Only disable build tasks, while other tasks are running, in Swift versions earlier than 6. As Swift 6 manages access to `.build` folder.
+
+### Other
+
+- Removed CI for Swift 5.4/5.5
+
 ## 1.9.0 - 2024-04-15
 
 ### Added
