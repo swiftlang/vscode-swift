@@ -845,5 +845,8 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             }
         }),
         vscode.commands.registerCommand("swift.attachDebugger", () => attachDebugger(ctx)),
+        vscode.commands.registerCommand("swift.clearDiagnosticsCollection", () =>
+            ctx.diagnostics.clear()
+        ),
     ];
 }

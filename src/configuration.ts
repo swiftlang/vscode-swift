@@ -211,6 +211,12 @@ const configuration = {
     get diagnosticsStyle(): "default" | "llvm" | "swift" {
         return vscode.workspace.getConfiguration("swift").get("diagnosticsStyle", "llvm");
     },
+    /** where to clear stale diagnostics when merging */
+    get removeStaleSwiftcDiagnostics(): boolean {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<boolean>("removeStaleSwiftcDiagnostics", false);
+    },
     /** where to show the build progress for the running task */
     get showBuildStatus(): ShowBuildStatusOptions {
         return vscode.workspace
