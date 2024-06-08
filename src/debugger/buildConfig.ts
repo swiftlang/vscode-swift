@@ -98,19 +98,14 @@ export class TestingDebugConfigurationFactory {
     /* eslint-disable no-case-declarations */
     private buildLinuxConfig(): vscode.DebugConfiguration | null {
         if (this.testKind === TestKind.debug && this.testLibrary === TestLibrary.xctest) {
-            const { folder } = getFolderAndNameSuffix(this.ctx, this.expandEnvVariables);
-            const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
             return {
                 ...this.baseConfig,
-                program: path.join(
-                    buildDirectory,
-                    "debug",
-                    this.ctx.swiftPackage.name + "PackageTests.xctest"
-                ),
+                program: this.xcTestOutputPath,
                 args: this.testList,
                 env: {
                     ...swiftRuntimeEnv(),
                     ...configuration.folder(this.ctx.workspaceFolder).testEnvironmentVariables,
+                    SWIFT_TESTING_ENABLED: "0",
                 },
             };
         } else {
@@ -191,28 +186,15 @@ export class TestingDebugConfigurationFactory {
                         if (xcTestPath === undefined) {
                             return null;
                         }
-                        const { folder } = getFolderAndNameSuffix(
-                            this.ctx,
-                            this.expandEnvVariables
-                        );
-                        const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(
-                            folder,
-                            true
-                        );
+
                         return {
                             ...this.baseConfig,
                             program: path.join(xcTestPath, "xctest"),
-                            args: this.addXCTestExutableTestsToArgs([
-                                path.join(
-                                    buildDirectory,
-                                    "debug",
-                                    this.ctx.swiftPackage.name + "PackageTests.xctest"
-                                ),
-                            ]),
+                            args: this.addXCTestExutableTestsToArgs([this.xcTestOutputPath]),
                             env: {
                                 ...this.testEnv,
                                 ...this.sanitizerRuntimeEnvironment,
-                                SWT_SF_SYMBOLS_ENABLED: "0",
+                                SWIFT_TESTING_ENABLED: "0",
                             },
                         };
                     default:
@@ -293,7 +275,6 @@ export class TestingDebugConfigurationFactory {
         }
 
         const { folder, nameSuffix } = getFolderAndNameSuffix(this.ctx, true);
-        const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
         // On macOS, find the path to xctest
         // and point it at the .xctest bundle from the configured build directory.
         const xctestPath = this.ctx.workspaceContext.toolchain.xcTestPath;
@@ -326,7 +307,7 @@ export class TestingDebugConfigurationFactory {
             targetCreateCommands: [`file -a ${arch} ${xctestPath}/xctest`],
             processCreateCommands: [
                 ...envCommands,
-                `process launch -w ${folder} -- ${testFilterArg} ${buildDirectory}/debug/${this.ctx.swiftPackage.name}PackageTests.xctest`,
+                `process launch -w ${folder} -- ${testFilterArg} ${this.xcTestOutputPath}`,
             ],
             preLaunchTask: `swift: Build All${nameSuffix}`,
         };
