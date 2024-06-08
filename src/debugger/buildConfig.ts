@@ -194,7 +194,7 @@ export class TestingDebugConfigurationFactory {
                             ...this.baseConfig,
                             program: path.join(xcTestPath, "xctest"),
                             args: this.addAdditionalArgs(
-                                this.addXCTestExutableTestsToArgs([this.xcTestOutputPath])
+                                this.addXCTestExecutableTestsToArgs([this.xcTestOutputPath])
                             ),
                             env: {
                                 ...this.testEnv,
@@ -333,8 +333,11 @@ export class TestingDebugConfigurationFactory {
         return [...args, ...this.testList.flatMap(arg => ["--filter", regexEscapedString(arg)])];
     }
 
-    private addXCTestExutableTestsToArgs(args: string[]): string[] {
-        return [...this.testList.flatMap(arg => ["-XCTest", arg]), ...args];
+    private addXCTestExecutableTestsToArgs(args: string[]): string[] {
+        if (args.length === 0) {
+            return args;
+        }
+        return ["-XCTest", this.testList.join(","), ...args];
     }
 
     private addAdditionalArgs(args: string[]): string[] {

@@ -557,7 +557,7 @@ export class TestRunner {
                     cwd: this.folderContext.folder,
                     scope: this.folderContext.workspaceFolder,
                     prefix: this.folderContext.name,
-                    presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+                    presentationOptions: { reveal: vscode.TaskRevealKind.Never },
                 },
                 this.folderContext.workspaceContext.toolchain,
                 { ...process.env, ...testBuildConfig.env }
