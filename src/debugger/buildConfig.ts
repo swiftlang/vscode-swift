@@ -102,7 +102,7 @@ export class TestingDebugConfigurationFactory {
             return {
                 ...this.baseConfig,
                 program: this.xcTestOutputPath,
-                args: this.addAdditionalArgs(this.testList),
+                args: this.testList,
                 env: {
                     ...swiftRuntimeEnv(),
                     ...configuration.folder(this.ctx.workspaceFolder).testEnvironmentVariables,
@@ -139,9 +139,7 @@ export class TestingDebugConfigurationFactory {
                                 "debug",
                                 `${this.ctx.swiftPackage.name}PackageTests.swift-testing`
                             ),
-                            args: this.addAdditionalArgs(
-                                this.addTestsToArgs(this.addSwiftTestingFlagsArgs([]))
-                            ),
+                            args: this.addTestsToArgs(this.addSwiftTestingFlagsArgs([])),
                             env: {
                                 ...this.testEnv,
                                 ...this.sanitizerRuntimeEnvironment,
@@ -166,7 +164,7 @@ export class TestingDebugConfigurationFactory {
                         return {
                             ...this.baseConfig,
                             program: this.swiftProgramPath,
-                            args: this.addAdditionalArgs(this.addTestsToArgs(args)),
+                            args: this.addBuildOptionsToArgs(this.addTestsToArgs(args)),
                             env: {
                                 ...this.testEnv,
                                 ...this.sanitizerRuntimeEnvironment,
@@ -193,9 +191,7 @@ export class TestingDebugConfigurationFactory {
                         return {
                             ...this.baseConfig,
                             program: path.join(xcTestPath, "xctest"),
-                            args: this.addAdditionalArgs(
-                                this.addXCTestExecutableTestsToArgs([this.xcTestOutputPath])
-                            ),
+                            args: this.addXCTestExecutableTestsToArgs([this.xcTestOutputPath]),
                             env: {
                                 ...this.testEnv,
                                 ...this.sanitizerRuntimeEnvironment,
@@ -235,7 +231,7 @@ export class TestingDebugConfigurationFactory {
                         return {
                             ...this.baseConfig,
                             program: this.swiftProgramPath,
-                            args: this.addAdditionalArgs(this.addTestsToArgs(xcTestArgs)),
+                            args: this.addBuildOptionsToArgs(this.addTestsToArgs(xcTestArgs)),
                             env: {
                                 ...this.testEnv,
                                 ...this.sanitizerRuntimeEnvironment,
@@ -340,7 +336,7 @@ export class TestingDebugConfigurationFactory {
         return ["-XCTest", this.testList.join(","), ...args];
     }
 
-    private addAdditionalArgs(args: string[]): string[] {
+    private addBuildOptionsToArgs(args: string[]): string[] {
         return [
             ...args,
             ...buildOptions(this.ctx.workspaceContext.toolchain, this.testKind === TestKind.debug),
