@@ -42,7 +42,7 @@ Test Case '-[MyTests.MyTests testPass]' passed (0.001 seconds).
             const testRunState = new TestRunState(["MyTests.MyTests/testFail"], true);
             const runState = testRunState.tests[0];
             outputParser.parseResult(
-                `Test Case '-[MyTests.MyTests testPublish]' started.
+                `Test Case '-[MyTests.MyTests testFail]' started.
 /Users/user/Developer/MyTests/MyTests.swift:59: error: -[MyTests.MyTests testFail] : XCTAssertEqual failed: ("1") is not equal to ("2")
 Test Case '-[MyTests.MyTests testFail]' failed (0.106 seconds).
 `,

@@ -85,8 +85,8 @@ suite("TestRunArguments Suite", () => {
         );
         assert.equal(testArgs.hasXCTests, true);
         assert.equal(testArgs.hasSwiftTestingTests, true);
-        assert.deepEqual(testArgs.xcTestArgs, [xcSuite.id]);
-        assert.deepEqual(testArgs.swiftTestArgs, [swiftTestSuite.id]);
+        assert.deepEqual(testArgs.xcTestArgs, [`${xcSuite.id}/`]);
+        assert.deepEqual(testArgs.swiftTestArgs, [`${swiftTestSuite.id}/`]);
         assert.deepEqual(
             testArgs.testItems.map(item => item.id),
             [testTarget.id, xcSuite.id, xcTest.id, swiftTestSuite.id, swiftTest.id]
@@ -100,7 +100,7 @@ suite("TestRunArguments Suite", () => {
         assert.equal(testArgs.hasXCTests, false);
         assert.equal(testArgs.hasSwiftTestingTests, true);
         assert.deepEqual(testArgs.xcTestArgs, []);
-        assert.deepEqual(testArgs.swiftTestArgs, [swiftTestSuite.id]);
+        assert.deepEqual(testArgs.swiftTestArgs, [`${swiftTestSuite.id}/`]);
         assert.deepEqual(
             testArgs.testItems.map(item => item.id),
             [testTarget.id, swiftTestSuite.id, swiftTest.id]
@@ -114,7 +114,7 @@ suite("TestRunArguments Suite", () => {
         assert.equal(testArgs.hasXCTests, false);
         assert.equal(testArgs.hasSwiftTestingTests, true);
         assert.deepEqual(testArgs.xcTestArgs, []);
-        assert.deepEqual(testArgs.swiftTestArgs, [swiftTestSuite.id]);
+        assert.deepEqual(testArgs.swiftTestArgs, [`${swiftTestSuite.id}/`]);
         assert.deepEqual(
             testArgs.testItems.map(item => item.id),
             [testTarget.id, swiftTestSuite.id, swiftTest.id]

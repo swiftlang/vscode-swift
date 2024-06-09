@@ -73,20 +73,17 @@ export class TestXUnitParser {
                 const id = `${testcase.$.classname}/${testcase.$.name}`;
                 const index = runState.getTestItemIndex(id);
 
-                if (index !== -1) {
-                    // From 5.7 to 5.10 running with the --parallel option dumps the test results out
-                    // to the console with no newlines, so it isn't possible to distinguish where errors
-                    // begin and end. Consequently we can't record them, and so we manually mark them
-                    // as passed or failed here with a manufactured issue.
-                    if (!!testcase.failure && !this.hasMultiLineParallelTestOutput) {
-                        runState.recordIssue(
-                            index,
-                            testcase.failure.shift()?.$.message ?? "Test Failed"
-                        );
-                    }
-
-                    runState.completed(index, { duration: testcase.$.time });
+                // From 5.7 to 5.10 running with the --parallel option dumps the test results out
+                // to the console with no newlines, so it isn't possible to distinguish where errors
+                // begin and end. Consequently we can't record them, and so we manually mark them
+                // as passed or failed here with a manufactured issue.
+                if (!!testcase.failure && !this.hasMultiLineParallelTestOutput) {
+                    runState.recordIssue(
+                        index,
+                        testcase.failure.shift()?.$.message ?? "Test Failed"
+                    );
                 }
+                runState.completed(index, { duration: testcase.$.time });
             });
         });
         return { tests: tests, failures: failures, errors: errors };
