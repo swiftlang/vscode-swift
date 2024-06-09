@@ -209,6 +209,10 @@ export class SwiftToolchain {
      * @returns an array of toolchain paths
      */
     public static async getSwiftlyToolchainInstalls(): Promise<string[]> {
+        // Swiftly is only available on Linux right now
+        if (process.platform !== "linux") {
+            return [];
+        }
         try {
             const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
             if (!swiftlyHomeDir) {
