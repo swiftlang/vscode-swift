@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.10.1
+
+### Fixed
+
+- Fix XCTest argument format when debugging multiple tests
+- Add user defined and optional sanitizer/diagnostics arguments to test builds
+- Silence Terminal on test runs.
+
 ## 1.10.0
 
 ### Added
