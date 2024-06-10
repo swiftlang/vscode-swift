@@ -83,7 +83,6 @@ export function assertTestResults(
         passed?: string[];
         skipped?: string[];
         errored?: string[];
-        unknown?: number;
     }
 ) {
     assert.deepEqual(
@@ -97,14 +96,12 @@ export function assertTestResults(
             })),
             skipped: testRun.runState.skipped.map(({ id }) => id),
             errored: testRun.runState.errored.map(({ id }) => id),
-            unknown: testRun.runState.unknown,
         },
         {
             passed: state.passed ?? [],
             failed: state.failed ?? [],
             skipped: state.skipped ?? [],
             errored: state.errored ?? [],
-            unknown: 0,
         }
     );
 }

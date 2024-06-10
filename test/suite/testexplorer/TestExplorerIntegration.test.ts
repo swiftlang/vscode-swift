@@ -104,8 +104,6 @@ suite("Test Explorer Suite", function () {
                 [
                     "PassingXCTestSuite",
                     ["testPassing()"],
-                    "PassingXCTestSuite2",
-                    ["testPassing()"],
                     "FailingXCTestSuite",
                     ["testFailing()"],
                     "MixedXCTestSuite",
@@ -129,8 +127,6 @@ suite("Test Explorer Suite", function () {
                     "MixedXCTestSuite",
                     ["testFailing", "testPassing"],
                     "PassingXCTestSuite",
-                    ["testPassing"],
-                    "PassingXCTestSuite2",
                     ["testPassing"],
                 ],
             ]);
@@ -284,7 +280,7 @@ suite("Test Explorer Suite", function () {
                         const testRun = await runTest(
                             testExplorer.controller,
                             runProfile,
-                            "PackageTests.PassingXCTestSuite"
+                            "PackageTests.PassingXCTestSuite/testPassing"
                         );
 
                         assertTestResults(testRun, {

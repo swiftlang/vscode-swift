@@ -104,14 +104,9 @@ export class TestRunArguments {
                     testItems: [...previousValue.testItems, ...testItems],
                     swiftTestArgs: [
                         ...previousValue.swiftTestArgs,
-                        // Append a trailing slash to match a suite name exactly.
-                        // This prevents TestTarget.MySuite matching TestTarget.MySuite2.
-                        ...(!isXCTest ? [`${testItem.id}/`] : []),
+                        ...(!isXCTest ? [testItem.id] : []),
                     ],
-                    xcTestArgs: [
-                        ...previousValue.xcTestArgs,
-                        ...(isXCTest ? [`${testItem.id}/`] : []),
-                    ],
+                    xcTestArgs: [...previousValue.xcTestArgs, ...(isXCTest ? [testItem.id] : [])],
                 };
             } else {
                 // If we've only added some of the children the append to our test list

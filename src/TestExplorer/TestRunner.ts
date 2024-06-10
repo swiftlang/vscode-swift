@@ -80,7 +80,6 @@ export class TestRunProxy {
         passed: [] as vscode.TestItem[],
         skipped: [] as vscode.TestItem[],
         errored: [] as vscode.TestItem[],
-        unknown: 0,
     };
 
     public get testItems(): vscode.TestItem[] {
@@ -167,10 +166,6 @@ export class TestRunProxy {
         } else {
             return new NonDarwinTestItemFinder(this.testItems, this.folderContext);
         }
-    }
-
-    public unknownTestRan() {
-        this.runState.unknown++;
     }
 
     public started(test: vscode.TestItem) {
@@ -956,9 +951,6 @@ export class TestRunnerTestRunState implements ITestRunState {
 
     // set test item to be started
     started(index: number, startTime?: number) {
-        if (this.isUnknownTest(index)) {
-            return;
-        }
         const testItem = this.testRun.testItems[index];
         this.testRun.started(testItem);
         this.currentTestItem = testItem;
@@ -967,9 +959,6 @@ export class TestRunnerTestRunState implements ITestRunState {
 
     // set test item to have passed
     completed(index: number, timing: { duration: number } | { timestamp: number }) {
-        if (this.isUnknownTest(index)) {
-            return;
-        }
         const test = this.testRun.testItems[index];
         const startTime = this.startTimes.get(index);
 
@@ -1013,9 +1002,6 @@ export class TestRunnerTestRunState implements ITestRunState {
         isKnown: boolean = false,
         location?: vscode.Location
     ) {
-        if (this.isUnknownTest(index)) {
-            return;
-        }
         const msg = new vscode.TestMessage(message);
         msg.location = location;
         const issueList = this.issues.get(index) ?? [];
@@ -1028,21 +1014,9 @@ export class TestRunnerTestRunState implements ITestRunState {
 
     // set test item to have been skipped
     skipped(index: number) {
-        if (this.isUnknownTest(index)) {
-            return;
-        }
         this.testRun.skipped(this.testRun.testItems[index]);
         this.lastTestItem = this.currentTestItem;
         this.currentTestItem = undefined;
-    }
-
-    // For testing purposes we want to know if a run ran any tests we didn't expect.
-    isUnknownTest(index: number) {
-        if (index < 0 || index >= this.testRun.testItems.length) {
-            this.testRun.unknownTestRan();
-            return true;
-        }
-        return false;
     }
 
     // started suite

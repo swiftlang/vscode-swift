@@ -274,9 +274,11 @@ export class XCTestOutputParser implements IXCTestOutputParser {
 
     /** Flag we have started a test */
     private startTest(testIndex: number, runState: ITestRunState) {
-        runState.started(testIndex);
-        // clear error state
-        runState.failedTest = undefined;
+        if (testIndex !== -1) {
+            runState.started(testIndex);
+            // clear error state
+            runState.failedTest = undefined;
+        }
     }
 
     /** Flag we have passed a test */
@@ -285,7 +287,9 @@ export class XCTestOutputParser implements IXCTestOutputParser {
         timing: { duration: number } | { timestamp: number },
         runState: ITestRunState
     ) {
-        runState.completed(testIndex, timing);
+        if (testIndex !== -1) {
+            runState.completed(testIndex, timing);
+        }
         runState.failedTest = undefined;
     }
 
@@ -329,14 +333,16 @@ export class XCTestOutputParser implements IXCTestOutputParser {
         timing: { duration: number } | { timestamp: number },
         runState: ITestRunState
     ) {
-        if (runState.failedTest) {
-            const location = sourceLocationToVSCodeLocation(
-                runState.failedTest.file,
-                runState.failedTest.lineNumber
-            );
-            runState.recordIssue(testIndex, runState.failedTest.message, false, location);
-        } else {
-            runState.recordIssue(testIndex, "Failed", false);
+        if (testIndex !== -1) {
+            if (runState.failedTest) {
+                const location = sourceLocationToVSCodeLocation(
+                    runState.failedTest.file,
+                    runState.failedTest.lineNumber
+                );
+                runState.recordIssue(testIndex, runState.failedTest.message, false, location);
+            } else {
+                runState.recordIssue(testIndex, "Failed", false);
+            }
         }
         runState.completed(testIndex, timing);
         runState.failedTest = undefined;
@@ -344,7 +350,9 @@ export class XCTestOutputParser implements IXCTestOutputParser {
 
     /** Flag we have skipped a test */
     private skipTest(testIndex: number, runState: ITestRunState) {
-        runState.skipped(testIndex);
+        if (testIndex !== -1) {
+            runState.skipped(testIndex);
+        }
         runState.failedTest = undefined;
     }
 }
