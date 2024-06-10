@@ -5,6 +5,11 @@ final class PassingXCTestSuite: XCTestCase {
   func testPassing() throws {}
 }
 
+// Should not run when PassingXCTestSuite is run.
+final class PassingXCTestSuite2: XCTestCase {
+  func testPassing() throws {}
+}
+
 final class FailingXCTestSuite: XCTestCase {
   func testFailing() throws {
     XCTFail("oh no")
