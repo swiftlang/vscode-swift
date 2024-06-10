@@ -74,14 +74,18 @@ suite("TestRunArguments Suite", () => {
     });
 
     test("Empty Request", () => {
-        const testArgs = new TestRunArguments(new vscode.TestRunRequest([], undefined, undefined));
+        const testArgs = new TestRunArguments(
+            new vscode.TestRunRequest([], undefined, undefined),
+            false
+        );
         assert.equal(testArgs.hasXCTests, false);
         assert.equal(testArgs.hasSwiftTestingTests, false);
     });
 
     test("Both Suites Included", () => {
         const testArgs = new TestRunArguments(
-            new vscode.TestRunRequest([xcSuite, swiftTestSuite], undefined, undefined)
+            new vscode.TestRunRequest([xcSuite, swiftTestSuite], undefined, undefined),
+            false
         );
         assert.equal(testArgs.hasXCTests, true);
         assert.equal(testArgs.hasSwiftTestingTests, true);
@@ -95,7 +99,8 @@ suite("TestRunArguments Suite", () => {
 
     test("Exclude Suite", () => {
         const testArgs = new TestRunArguments(
-            new vscode.TestRunRequest([xcSuite, swiftTestSuite], [xcSuite], undefined)
+            new vscode.TestRunRequest([xcSuite, swiftTestSuite], [xcSuite], undefined),
+            false
         );
         assert.equal(testArgs.hasXCTests, false);
         assert.equal(testArgs.hasSwiftTestingTests, true);
@@ -109,7 +114,8 @@ suite("TestRunArguments Suite", () => {
 
     test("Exclude Test", () => {
         const testArgs = new TestRunArguments(
-            new vscode.TestRunRequest([xcSuite, swiftTestSuite], [xcTest], undefined)
+            new vscode.TestRunRequest([xcSuite, swiftTestSuite], [xcTest], undefined),
+            false
         );
         assert.equal(testArgs.hasXCTests, false);
         assert.equal(testArgs.hasSwiftTestingTests, true);
@@ -131,7 +137,8 @@ suite("TestRunArguments Suite", () => {
         swiftTestSuite.children.add(anotherSwiftTest);
 
         const testArgs = new TestRunArguments(
-            new vscode.TestRunRequest([anotherSwiftTest], [], undefined)
+            new vscode.TestRunRequest([anotherSwiftTest], [], undefined),
+            false
         );
         assert.equal(testArgs.hasXCTests, false);
         assert.equal(testArgs.hasSwiftTestingTests, true);

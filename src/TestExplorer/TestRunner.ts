@@ -246,7 +246,10 @@ export class TestRunner {
         private folderContext: FolderContext,
         private controller: vscode.TestController
     ) {
-        this.testArgs = new TestRunArguments(this.ensureRequestIncludesTests(this.request));
+        this.testArgs = new TestRunArguments(
+            this.ensureRequestIncludesTests(this.request),
+            testKind === TestKind.debug
+        );
         this.testRun = new TestRunProxy(request, controller, this.testArgs, folderContext);
         this.xcTestOutputParser =
             testKind === TestKind.parallel

@@ -30,7 +30,10 @@ export class TestRunArguments {
     public xcTestArgs: string[];
     public swiftTestArgs: string[];
 
-    constructor(request: vscode.TestRunRequest) {
+    constructor(
+        request: vscode.TestRunRequest,
+        private isDebug: boolean
+    ) {
         const { testItems, xcTestArgs, swiftTestArgs } = this.createTestLists(request);
         this.testItems = testItems;
         this.xcTestArgs = xcTestArgs;
@@ -110,7 +113,8 @@ export class TestRunArguments {
                     ],
                     xcTestArgs: [
                         ...previousValue.xcTestArgs,
-                        ...(isXCTest ? [`${testItem.id}/`] : []),
+                        // Debugging XCTests require exact matches, so we don't ned a trailing slash.
+                        ...(isXCTest ? [this.isDebug ? testItem.id : `${testItem.id}/`] : []),
                     ],
                 };
             } else {
