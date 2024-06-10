@@ -46,7 +46,8 @@ export interface ITestRunState {
         index: number,
         message: string | vscode.MarkdownString,
         isKnown: boolean,
-        location?: vscode.Location
+        location?: vscode.Location,
+        diff?: TestIssueDiff
     ): void;
 
     // set test index to have been skipped
@@ -60,4 +61,9 @@ export interface ITestRunState {
 
     // failed suite
     failedSuite(name: string): void;
+}
+
+export interface TestIssueDiff {
+    expected: string;
+    actual: string;
 }

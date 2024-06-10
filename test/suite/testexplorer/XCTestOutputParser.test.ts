@@ -58,6 +58,10 @@ Test Case '-[MyTests.MyTests testFail]' failed (0.106 seconds).
                         0
                     ),
                     isKnown: false,
+                    diff: {
+                        expected: '"1"',
+                        actual: '"2"',
+                    },
                 },
             ]);
         });
@@ -99,6 +103,7 @@ message`,
                         0
                     ),
                     isKnown: false,
+                    diff: undefined,
                 },
             ]);
         });
@@ -128,6 +133,7 @@ message`,
                         0
                     ),
                     isKnown: false,
+                    diff: undefined,
                 },
                 {
                     message: `failed - Again`,
@@ -137,6 +143,7 @@ message`,
                         0
                     ),
                     isKnown: false,
+                    diff: undefined,
                 },
             ]);
         });
@@ -162,6 +169,7 @@ Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
                         0
                     ),
                     isKnown: false,
+                    diff: undefined,
                 },
                 {
                     message: `failed - Again`,
@@ -171,6 +179,7 @@ Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
                         0
                     ),
                     isKnown: false,
+                    diff: undefined,
                 },
             ]);
         });
@@ -190,6 +199,61 @@ Test Case '-[MyTests.MyTests`,
             );
             assert.strictEqual(runState.status, TestStatus.passed);
             assert.deepEqual(runState.timing, { duration: 0.006 });
+        });
+
+        suite("Diffs", () => {
+            const testRun = (message: string, expected?: string, actual?: string) => {
+                const testRunState = new TestRunState(["MyTests.MyTests/testFail"], true);
+                const runState = testRunState.tests[0];
+                outputParser.parseResult(
+                    `Test Case '-[MyTests.MyTests testFail]' started.
+/Users/user/Developer/MyTests/MyTests.swift:59: error: -[MyTests.MyTests testFail] : ${message}
+Test Case '-[MyTests.MyTests testFail]' failed (0.106 seconds).
+`,
+                    testRunState
+                );
+
+                assert.strictEqual(runState.status, TestStatus.failed);
+                assert.deepEqual(runState.issues, [
+                    {
+                        message,
+                        location: sourceLocationToVSCodeLocation(
+                            "/Users/user/Developer/MyTests/MyTests.swift",
+                            59,
+                            0
+                        ),
+                        isKnown: false,
+                        diff:
+                            expected && actual
+                                ? {
+                                      expected,
+                                      actual,
+                                  }
+                                : undefined,
+                    },
+                ]);
+            };
+
+            test("XCTAssertEqual", () => {
+                testRun(`XCTAssertEqual failed: ("1") is not equal to ("2")`, '"1"', '"2"');
+            });
+            test("XCTAssertEqualMultiline", () => {
+                testRun(
+                    `XCTAssertEqual failed: ("foo\nbar") is not equal to ("foo\nbaz")`,
+                    '"foo\nbar"',
+                    '"foo\nbaz"'
+                );
+            });
+            test("XCTAssertIdentical", () => {
+                testRun(
+                    `XCTAssertIdentical failed: ("V: 1") is not identical to ("V: 2")`,
+                    '"V: 1"',
+                    '"V: 2"'
+                );
+            });
+            test("XCTAssertIdentical with Identical Strings", () => {
+                testRun(`XCTAssertIdentical failed: ("V: 1") is not identical to ("V: 1")`);
+            });
         });
     });
 
@@ -229,6 +293,10 @@ Test Case 'MyTests.testFail' failed (0.106 seconds).
                         0
                     ),
                     isKnown: false,
+                    diff: {
+                        expected: '"1"',
+                        actual: '"2"',
+                    },
                 },
             ]);
         });
