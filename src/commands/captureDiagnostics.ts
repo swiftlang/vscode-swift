@@ -39,7 +39,7 @@ export async function captureDiagnostics(ctx: WorkspaceContext) {
 
         await fs.mkdir(diagnosticsDir);
         await writeLogFile(diagnosticsDir, "extension-logs.txt", extensionLogs(ctx));
-        await writeLogFile(diagnosticsDir, "environment-logs.txt", environmentLogs(ctx));
+        await writeLogFile(diagnosticsDir, "settings.txt", settingsLogs(ctx));
         await writeLogFile(diagnosticsDir, "diagnostics.txt", diagnosticLogs());
 
         if (captureMode === "Full") {
@@ -130,8 +130,9 @@ function extensionLogs(ctx: WorkspaceContext): string {
     return ctx.outputChannel.logs.join("\n");
 }
 
-function environmentLogs(ctx: WorkspaceContext): string {
-    return ctx.toolchain.diagnostics;
+function settingsLogs(ctx: WorkspaceContext): string {
+    const settings = JSON.stringify(vscode.workspace.getConfiguration("swift"), null, 2);
+    return `${ctx.toolchain.diagnostics}\nSettings:\n${settings}`;
 }
 
 function diagnosticLogs(): string {
