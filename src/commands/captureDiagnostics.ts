@@ -18,56 +18,91 @@ import * as vscode from "vscode";
 import { tmpdir } from "os";
 import { exec } from "child_process";
 import { Writable } from "stream";
-import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { Version } from "../utilities/version";
 import { execFileStreamOutput } from "../utilities/utilities";
 import configuration from "../configuration";
 
 export async function captureDiagnostics(ctx: WorkspaceContext) {
-    const diagnosticsDir = path.join(
-        tmpdir(),
-        `vscode-diagnostics-${formatDateString(new Date())}`
-    );
-
     try {
+        const captureMode = await captureDiagnosticsMode(ctx);
+
+        const diagnosticsDir = path.join(
+            tmpdir(),
+            `vscode-diagnostics-${formatDateString(new Date())}`
+        );
+
         await fs.mkdir(diagnosticsDir);
-        await writeLogFile(diagnosticsDir, "logs.txt", extensionLogs(ctx));
-        await writeLogFile(diagnosticsDir, "environment.txt", environmentLogs(ctx));
-
-        if (ctx.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
-            // sourcekit-lsp diagnose command is only available in 6.0 and higher.
-            // await writeLogFile(diagnosticsDir, "sourcekit-lsp.txt", );
-            await sourcekitDiagnose(ctx, diagnosticsDir);
-        } else {
-            await writeLogFile(diagnosticsDir, "sourcekit-lsp.txt", sourceKitLogs(ctx));
-        }
-
+        await writeLogFile(diagnosticsDir, "extension-logs.txt", extensionLogs(ctx));
+        await writeLogFile(diagnosticsDir, "environment-logs.txt", environmentLogs(ctx));
         await writeLogFile(diagnosticsDir, "diagnostics.txt", diagnosticLogs());
 
-        ctx.outputChannel.log(`Saved diagnostics to ${diagnosticsDir}`);
-
-        const showInFinderButton = `Show In ${showCommandType()}`;
-        const copyPath = "Copy Path to Clipboard";
-        const result = await vscode.window.showInformationMessage(
-            `Saved diagnostic logs to ${diagnosticsDir}`,
-            showInFinderButton,
-            copyPath
-        );
-        if (result === copyPath) {
-            vscode.env.clipboard.writeText(diagnosticsDir);
-        } else if (result === showInFinderButton) {
-            exec(showDirectoryCommand(diagnosticsDir), error => {
-                // Opening the explorer on windows returns an exit code of 1 despite opening successfully.
-                if (error && process.platform !== "win32") {
-                    vscode.window.showErrorMessage(
-                        `Failed to open ${showCommandType()}: ${error.message}`
-                    );
-                }
-            });
+        if (captureMode === "Full") {
+            // The `sourcekit-lsp diagnose` command is only available in 6.0 and higher.
+            if (ctx.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
+                await sourcekitDiagnose(ctx, diagnosticsDir);
+            } else {
+                await writeLogFile(diagnosticsDir, "sourcekit-lsp.txt", sourceKitLogs(ctx));
+            }
         }
+
+        ctx.outputChannel.log(`Saved diagnostics to ${diagnosticsDir}`);
+        await showCapturedDiagnosticsResults(diagnosticsDir);
     } catch (error) {
         vscode.window.showErrorMessage(`Unable to capture diagnostic logs: ${error}`);
+    }
+}
+
+async function captureDiagnosticsMode(ctx: WorkspaceContext): Promise<"Minimal" | "Full"> {
+    if (
+        ctx.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) ||
+        vscode.workspace.getConfiguration("sourcekit-lsp").get<string>("trace.server", "off") !==
+            "off"
+    ) {
+        const fullButton = "Capture Full Diagnostics";
+        const minimalButton = "Capture Minimal Diagnostics";
+        const fullCaptureResult = await vscode.window.showInformationMessage(
+            `A Diagnostic Bundle collects information that helps the developers of the VS Code Swift extension diagnose and fix issues.
+
+This information contains:
+- Extension logs
+- Versions of Swift installed on your system
+- Crash logs from SourceKit
+- Log messages emitted by SourceKit
+- If possible, a minimized project that caused SourceKit to crash
+- If possible, a minimized project that caused the Swift compiler to crash`,
+            {
+                modal: true,
+                detail: `If you wish to omit potentially sensitive information choose "${minimalButton}"`,
+            },
+            fullButton,
+            minimalButton
+        );
+        return fullCaptureResult === fullButton ? "Full" : "Minimal";
+    } else {
+        return "Minimal";
+    }
+}
+
+async function showCapturedDiagnosticsResults(diagnosticsDir: string) {
+    const showInFinderButton = `Show In ${showCommandType()}`;
+    const copyPath = "Copy Path to Clipboard";
+    const result = await vscode.window.showInformationMessage(
+        `Saved diagnostic logs to ${diagnosticsDir}`,
+        showInFinderButton,
+        copyPath
+    );
+    if (result === copyPath) {
+        vscode.env.clipboard.writeText(diagnosticsDir);
+    } else if (result === showInFinderButton) {
+        exec(showDirectoryCommand(diagnosticsDir), error => {
+            // Opening the explorer on windows returns an exit code of 1 despite opening successfully.
+            if (error && process.platform !== "win32") {
+                vscode.window.showErrorMessage(
+                    `Failed to open ${showCommandType()}: ${error.message}`
+                );
+            }
+        });
     }
 }
 
@@ -83,13 +118,7 @@ function extensionLogs(ctx: WorkspaceContext): string {
 }
 
 function environmentLogs(ctx: WorkspaceContext): string {
-    const environmentOutputChannel = new SwiftOutputChannel("Swift", false);
-    ctx.toolchain.logDiagnostics(environmentOutputChannel);
-    environmentOutputChannel.log("Extension Settings:");
-    environmentOutputChannel.log(
-        JSON.stringify(vscode.workspace.getConfiguration("swift"), null, 2)
-    );
-    return environmentOutputChannel.logs.join("\n");
+    return ctx.toolchain.diagnostics;
 }
 
 function diagnosticLogs(): string {
@@ -123,21 +152,28 @@ async function sourcekitDiagnose(ctx: WorkspaceContext, dir: string) {
             location: vscode.ProgressLocation.Notification,
         },
         async progress => {
-            progress.report({ message: "Capturing Diagnostics..." });
+            progress.report({ message: "Generating Diagnostic Bundle..." });
             const writableStream = progressUpdatingWritable(percent =>
-                progress.report({ message: `Capturing Diagnostics: ${percent}%` })
+                progress.report({ message: `Generating Diagnostic Bundle: ${percent}%` })
             );
 
             await execFileStreamOutput(
                 serverPath,
-                ["diagnose", "--bundle-output-path", sourcekitDiagnosticDir],
+                [
+                    "diagnose",
+                    "--bundle-output-path",
+                    sourcekitDiagnosticDir,
+                    "--toolchain",
+                    ctx.toolchain.toolchainPath,
+                ],
                 writableStream,
                 writableStream,
                 null,
                 {
                     env: { ...process.env, ...configuration.swiftEnvironmentVariables },
                     maxBuffer: 16 * 1024 * 1024,
-                }
+                },
+                ctx.currentFolder ?? undefined
             );
         }
     );
