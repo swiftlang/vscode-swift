@@ -166,9 +166,9 @@ async function sourcekitDiagnose(ctx: WorkspaceContext, dir: string) {
             location: vscode.ProgressLocation.Notification,
         },
         async progress => {
-            progress.report({ message: "Generating Diagnostic Bundle..." });
+            progress.report({ message: "Diagnosing SourceKit-LSP..." });
             const writableStream = progressUpdatingWritable(percent =>
-                progress.report({ message: `Generating Diagnostic Bundle: ${percent}%` })
+                progress.report({ message: `Diagnosing SourceKit-LSP: ${percent}%` })
             );
 
             await execFileStreamOutput(
