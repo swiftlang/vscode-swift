@@ -75,7 +75,7 @@ export async function showToolchainError(): Promise<void> {
     let selected: "Remove From Settings" | "Select Toolchain" | undefined;
     if (configuration.path) {
         selected = await vscode.window.showErrorMessage(
-            `The swift executable at "${configuration.path}" either could not be found or failed to launch. Please select a new toolchain.`,
+            `The Swift executable at "${configuration.path}" either could not be found or failed to launch. Please select a new toolchain.`,
             "Remove From Settings",
             "Select Toolchain"
         );
