@@ -26,6 +26,7 @@ import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
 import { DiagnosticsManager } from "../DiagnosticsManager";
 import { LSPLogger, LSPOutputChannel } from "./LSPOutputChannel";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
+import { promptForDiagnostics } from "../commands/captureDiagnostics";
 
 interface SourceKitLogMessageParams extends langclient.LogMessageParams {
     logName?: string;
@@ -539,6 +540,20 @@ export class LanguageClientManager {
                         diagnostics
                     );
                 },
+                handleWorkDoneProgress: (() => {
+                    let restoringLSPStarted = false;
+                    return async (token, params, next) => {
+                        const result = await next(token, params);
+                        const title = (params as langclient.WorkDoneProgressBegin).title;
+                        if (title === "SourceKit-LSP: Restoring functionality") {
+                            restoringLSPStarted = true;
+                        } else if (params.kind === "end" && restoringLSPStarted) {
+                            restoringLSPStarted = false;
+                            await promptForDiagnostics(this.workspaceContext);
+                        }
+                        return result;
+                    };
+                })(),
             },
             errorHandler: new SourceKitLSPErrorHandler(5),
         };

@@ -23,9 +23,12 @@ import { Version } from "../utilities/version";
 import { execFileStreamOutput } from "../utilities/utilities";
 import configuration from "../configuration";
 
-export async function captureDiagnostics(ctx: WorkspaceContext) {
+export async function captureDiagnostics(
+    ctx: WorkspaceContext,
+    allowMinimalCapture: boolean = true
+) {
     try {
-        const captureMode = await captureDiagnosticsMode(ctx);
+        const captureMode = await captureDiagnosticsMode(ctx, allowMinimalCapture);
 
         // dialog was cancelled
         if (!captureMode) {
@@ -58,16 +61,34 @@ export async function captureDiagnostics(ctx: WorkspaceContext) {
     }
 }
 
+export async function promptForDiagnostics(ctx: WorkspaceContext) {
+    const ok = "OK";
+    const cancel = "Cancel";
+    const result = await vscode.window.showInformationMessage(
+        "SourceKit-LSP has been restored. Would you like to capture a diagnostic bundle to file an issue?",
+        ok,
+        cancel
+    );
+
+    if (!result || result === cancel) {
+        return;
+    }
+
+    return await captureDiagnostics(ctx, false);
+}
+
 async function captureDiagnosticsMode(
-    ctx: WorkspaceContext
+    ctx: WorkspaceContext,
+    allowMinimalCapture: boolean
 ): Promise<"Minimal" | "Full" | undefined> {
     if (
         ctx.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) ||
         vscode.workspace.getConfiguration("sourcekit-lsp").get<string>("trace.server", "off") !==
             "off"
     ) {
-        const fullButton = "Capture Full Diagnostics";
+        const fullButton = allowMinimalCapture ? "Capture Full Diagnostics" : "Capture Diagnostics";
         const minimalButton = "Capture Minimal Diagnostics";
+        const buttons = allowMinimalCapture ? [fullButton, minimalButton] : [fullButton];
         const fullCaptureResult = await vscode.window.showInformationMessage(
             `A Diagnostic Bundle collects information that helps the developers of the VS Code Swift extension diagnose and fix issues.
 
@@ -82,10 +103,11 @@ This information contains:
 Please attach this bundle to GitHub issues.`,
             {
                 modal: true,
-                detail: `If you wish to omit potentially sensitive information choose "${minimalButton}"`,
+                detail: allowMinimalCapture
+                    ? `If you wish to omit potentially sensitive information choose "${minimalButton}"`
+                    : undefined,
             },
-            fullButton,
-            minimalButton
+            ...buttons
         );
         if (!fullCaptureResult) {
             return undefined;
