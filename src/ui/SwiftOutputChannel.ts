@@ -17,19 +17,21 @@ import configuration from "../configuration";
 
 export class SwiftOutputChannel implements vscode.OutputChannel {
     private channel: vscode.OutputChannel;
-    private logStore = new RollingLog(1024 * 1024 * 5);
-    private logToConsole: boolean;
-
-    public name: string;
+    private logStore: RollingLog;
 
     /**
      * Creates a vscode.OutputChannel that allows for later retrival of logs.
      * @param name
      */
-    constructor(name: string, logToConsole: boolean = true) {
+    constructor(
+        public name: string,
+        private logToConsole: boolean = true,
+        logStoreLinesSize: number = 250_000 // default to capturing 250k log lines
+    ) {
         this.name = name;
         this.logToConsole = process.env["CI"] !== "1" && logToConsole;
         this.channel = vscode.window.createOutputChannel(name);
+        this.logStore = new RollingLog(logStoreLinesSize);
     }
 
     append(value: string): void {
@@ -109,40 +111,52 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
 }
 
 class RollingLog {
-    private _logs: string[] = [];
-    private currentLogLength: number = 0;
+    private _logs: (string | null)[];
+    private startIndex: number = 0;
+    private endIndex: number = 0;
+    private logCount: number = 0;
 
-    constructor(private maxSizeCharacters: number) {}
+    constructor(private maxLogs: number) {
+        this._logs = new Array(maxLogs).fill(null);
+    }
 
     public get logs(): string[] {
-        return [...this._logs];
+        const logs: string[] = [];
+        for (let i = 0; i < this.logCount; i++) {
+            logs.push(this._logs[(this.startIndex + i) % this.maxLogs]!);
+        }
+        return logs;
+    }
+
+    private incrementIndex(index: number): number {
+        return (index + 1) % this.maxLogs;
     }
 
     appendLine(log: string) {
-        // It can be costly to calculate the actual memory size of a string in Node so just
-        // use the total number of characters in the logs as a huristic for total size.
-        const logSize = log.length;
-
-        while (this.currentLogLength + logSize > this.maxSizeCharacters && this.logs.length > 0) {
-            const oldestLog = this.logs.shift();
-            if (oldestLog) {
-                this.currentLogLength -= oldestLog.length;
-            }
+        if (this.logCount === this.maxLogs) {
+            this.startIndex = this.incrementIndex(this.startIndex);
+        } else {
+            this.logCount++;
         }
 
-        this._logs.push(log);
-
-        this.currentLogLength += logSize;
+        this._logs[this.endIndex] = log;
+        this.endIndex = this.incrementIndex(this.endIndex);
     }
 
     append(log: string) {
-        const line = this._logs.pop();
-        this.currentLogLength -= line?.length ?? 0;
-        this.appendLine((line ?? "") + log);
+        const endIndex = this.endIndex - 1 < 0 ? Math.max(this.logCount - 1, 0) : this.endIndex;
+        if (this._logs[endIndex] === null) {
+            this.logCount = 1;
+        }
+        const newLogLine = (this._logs[endIndex] ?? "") + log;
+        this._logs[endIndex] = newLogLine;
     }
 
     replace(log: string) {
-        this._logs = [log];
-        this.currentLogLength = log.length;
+        this._logs = new Array(this.maxLogs).fill(null);
+        this._logs[0] = log;
+        this.startIndex = 0;
+        this.endIndex = 1;
+        this.logCount = 1;
     }
 }
