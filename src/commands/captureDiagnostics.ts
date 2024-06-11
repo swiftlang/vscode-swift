@@ -27,6 +27,11 @@ export async function captureDiagnostics(ctx: WorkspaceContext) {
     try {
         const captureMode = await captureDiagnosticsMode(ctx);
 
+        // dialog was cancelled
+        if (!captureMode) {
+            return;
+        }
+
         const diagnosticsDir = path.join(
             tmpdir(),
             `vscode-diagnostics-${formatDateString(new Date())}`
@@ -53,7 +58,9 @@ export async function captureDiagnostics(ctx: WorkspaceContext) {
     }
 }
 
-async function captureDiagnosticsMode(ctx: WorkspaceContext): Promise<"Minimal" | "Full"> {
+async function captureDiagnosticsMode(
+    ctx: WorkspaceContext
+): Promise<"Minimal" | "Full" | undefined> {
     if (
         ctx.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) ||
         vscode.workspace.getConfiguration("sourcekit-lsp").get<string>("trace.server", "off") !==
@@ -70,7 +77,9 @@ This information contains:
 - Crash logs from SourceKit
 - Log messages emitted by SourceKit
 - If possible, a minimized project that caused SourceKit to crash
-- If possible, a minimized project that caused the Swift compiler to crash`,
+- If possible, a minimized project that caused the Swift compiler to crash
+
+Please attach this bundle to GitHub issues.`,
             {
                 modal: true,
                 detail: `If you wish to omit potentially sensitive information choose "${minimalButton}"`,
@@ -78,6 +87,10 @@ This information contains:
             fullButton,
             minimalButton
         );
+        if (!fullCaptureResult) {
+            return undefined;
+        }
+
         return fullCaptureResult === fullButton ? "Full" : "Minimal";
     } else {
         return "Minimal";
