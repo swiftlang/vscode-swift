@@ -16,6 +16,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { showReloadExtensionNotification } from "./ReloadExtension";
 import { SwiftToolchain } from "../toolchain/toolchain";
+import configuration from "../configuration";
 
 /**
  * Open the installation page on Swift.org
@@ -67,12 +68,27 @@ export async function selectToolchainFolder() {
     await setToolchainPath(selected[0].fsPath, "prompt");
 }
 
+/**
+ * Displays an error notification to the user that toolchain discovery failed.
+ */
 export async function showToolchainError(): Promise<void> {
-    const selected = await vscode.window.showErrorMessage(
-        "Unable to automatically discover your Swift toolchain. Either install a toolchain from Swift.org or provide the path to an existing toolchain.",
-        "Select Toolchain"
-    );
-    if (selected === "Select Toolchain") {
+    let selected: "Remove From Settings" | "Select Toolchain" | undefined;
+    if (configuration.path) {
+        selected = await vscode.window.showErrorMessage(
+            `The Swift executable at "${configuration.path}" either could not be found or failed to launch. Please select a new toolchain.`,
+            "Remove From Settings",
+            "Select Toolchain"
+        );
+    } else {
+        selected = await vscode.window.showErrorMessage(
+            "Unable to automatically discover your Swift toolchain. Either install a toolchain from Swift.org or provide the path to an existing toolchain.",
+            "Select Toolchain"
+        );
+    }
+
+    if (selected === "Remove From Settings") {
+        await removeToolchainPath();
+    } else if (selected === "Select Toolchain") {
         await vscode.commands.executeCommand("swift.selectToolchain");
     }
 }
@@ -219,6 +235,15 @@ export async function showToolchainSelectionQuickPick(activeToolchain: SwiftTool
     } else if (selected?.type === "toolchain") {
         await setToolchainPath(selected.swiftFolderPath, "prompt");
     }
+}
+
+/**
+ * Delete all set Swift path settings.
+ */
+async function removeToolchainPath() {
+    const swiftSettings = vscode.workspace.getConfiguration("swift");
+    await swiftSettings.update("path", undefined, vscode.ConfigurationTarget.Global);
+    await swiftSettings.update("path", undefined, vscode.ConfigurationTarget.Workspace);
 }
 
 async function setToolchainPath(
