@@ -150,13 +150,19 @@ async function getQuickPickItems(
         });
     const toolchains = (await SwiftToolchain.getToolchainInstalls())
         .reverse()
-        .map<SwiftToolchainItem>(toolchainPath => ({
-            type: "toolchain",
-            label: path.basename(toolchainPath, ".xctoolchain"),
-            detail: toolchainPath,
-            toolchainPath: path.join(toolchainPath, "usr"),
-            swiftFolderPath: path.join(toolchainPath, "usr", "bin"),
-        }));
+        .map<SwiftToolchainItem>(toolchainPath => {
+            let label = path.basename(toolchainPath, ".xctoolchain");
+            if (label === "swift-latest") {
+                label = "Latest Installed Toolchain";
+            }
+            return {
+                type: "toolchain",
+                label,
+                detail: toolchainPath,
+                toolchainPath: path.join(toolchainPath, "usr"),
+                swiftFolderPath: path.join(toolchainPath, "usr", "bin"),
+            };
+        });
     const swiftlyToolchains = (await SwiftToolchain.getSwiftlyToolchainInstalls())
         .reverse()
         .map<SwiftToolchainItem>(toolchainPath => ({

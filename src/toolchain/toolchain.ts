@@ -261,13 +261,21 @@ export class SwiftToolchain {
      */
     public static async findToolchainsIn(directory: string): Promise<string[]> {
         try {
-            return (await fs.readdir(directory, { withFileTypes: true }))
-                .filter(
-                    dirent =>
-                        dirent.name.startsWith("swift-") &&
-                        (dirent.isDirectory() || dirent.isSymbolicLink())
-                )
-                .map(dirent => path.join(dirent.path, dirent.name));
+            const toolchains = await Promise.all(
+                (await fs.readdir(directory, { withFileTypes: true }))
+                    .filter(dirent => dirent.name.startsWith("swift-"))
+                    .map(async dirent => {
+                        const toolchainPath = path.join(dirent.path, dirent.name);
+                        const toolchainSwiftPath = path.join(toolchainPath, "usr", "bin", "swift");
+                        if (!(await pathExists(toolchainSwiftPath))) {
+                            return null;
+                        }
+                        return toolchainPath;
+                    })
+            );
+            return toolchains.filter(
+                (toolchain): toolchain is string => typeof toolchain === "string"
+            );
         } catch {
             // Assume that there are no installations here
             return [];
