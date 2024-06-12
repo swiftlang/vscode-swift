@@ -43,7 +43,7 @@ export async function captureDiagnostics(
         await fs.mkdir(diagnosticsDir);
         await writeLogFile(diagnosticsDir, "extension-logs.txt", extensionLogs(ctx));
         await writeLogFile(diagnosticsDir, "settings.txt", settingsLogs(ctx));
-        await writeLogFile(diagnosticsDir, "diagnostics.txt", diagnosticLogs());
+        await writeLogFile(diagnosticsDir, "source-code-diagnostics.txt", diagnosticLogs());
 
         if (captureMode === "Full") {
             // The `sourcekit-lsp diagnose` command is only available in 6.0 and higher.
@@ -90,7 +90,7 @@ async function captureDiagnosticsMode(
         const minimalButton = "Capture Minimal Diagnostics";
         const buttons = allowMinimalCapture ? [fullButton, minimalButton] : [fullButton];
         const fullCaptureResult = await vscode.window.showInformationMessage(
-            `A Diagnostic Bundle collects information that helps the developers of the VS Code Swift extension diagnose and fix issues.
+            `A Diagnostic Bundle collects information that helps the developers of the Swift for VS Code extension diagnose and fix issues.
 
 This information contains:
 - Extension logs
@@ -100,7 +100,9 @@ This information contains:
 - If possible, a minimized project that caused SourceKit to crash
 - If possible, a minimized project that caused the Swift compiler to crash
 
-Please attach this bundle to GitHub issues.`,
+All information is collected locally and you can inspect the diagnose bundle before sharing it with developers of the Swift for VS Code extension.
+
+Please file an issue with a description of the problem you are seeing at https://github.com/swiftlang/vscode-swift, and attach this diagnose bundle.`,
             {
                 modal: true,
                 detail: allowMinimalCapture
