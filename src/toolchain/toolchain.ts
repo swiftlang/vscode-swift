@@ -346,6 +346,9 @@ export class SwiftToolchain {
      */
     public async getLLDB(): Promise<string> {
         let lldbPath = path.join(this.swiftFolderPath, "lldb");
+        if (process.platform === "win32") {
+            lldbPath = path.join(this.swiftFolderPath, "lldb.exe");
+        }
         if (!(await pathExists(lldbPath))) {
             if (process.platform !== "darwin") {
                 throw new Error("Failed to find LLDB in swift toolchain");
