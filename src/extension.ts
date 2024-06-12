@@ -58,7 +58,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
                     return;
                 }
                 const selected = await vscode.window.showWarningMessage(
-                    "The Swift extension is unable to create symbolic links on your system and some features may not work correctly. Please either enable Developer Mode or allow symlink creation via Windows priviledges.",
+                    "The Swift extension is unable to create symbolic links on your system and some features may not work correctly. Please either enable Developer Mode or allow symlink creation via Windows privileges.",
                     "Learn More",
                     "Don't Show Again"
                 );
