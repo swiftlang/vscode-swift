@@ -272,6 +272,17 @@ const configuration = {
             .getConfiguration("swift")
             .get<OpenAfterCreateNewProjectOptions>("openAfterCreateNewProject", "prompt");
     },
+    /** Whether or not the extension should warn about being unable to create symlinks on Windows */
+    get warnAboutSymlinkCreation(): boolean {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<boolean>("warnAboutSymlinkCreation", true);
+    },
+    set warnAboutSymlinkCreation(value: boolean) {
+        vscode.workspace
+            .getConfiguration("swift")
+            .update("warnAboutSymlinkCreation", value, vscode.ConfigurationTarget.Global);
+    },
 };
 
 export default configuration;

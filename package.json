@@ -357,6 +357,13 @@
               "Show the Swift build status as a progress notification."
             ],
             "order": 17
+          },
+          "swift.warnAboutSymlinkCreation": {
+            "type": "boolean",
+            "default": true,
+            "description": "Controls whether or not the extension will warn about being unable to create symlinks. (Windows only)",
+            "scope": "application",
+            "order": 18
           }
         }
       },
