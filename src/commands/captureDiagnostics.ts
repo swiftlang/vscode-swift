@@ -43,9 +43,10 @@ export async function captureDiagnostics(
         await fs.mkdir(diagnosticsDir);
         await writeLogFile(diagnosticsDir, "extension-logs.txt", extensionLogs(ctx));
         await writeLogFile(diagnosticsDir, "settings.txt", settingsLogs(ctx));
-        await writeLogFile(diagnosticsDir, "source-code-diagnostics.txt", diagnosticLogs());
 
         if (captureMode === "Full") {
+            await writeLogFile(diagnosticsDir, "source-code-diagnostics.txt", diagnosticLogs());
+
             // The `sourcekit-lsp diagnose` command is only available in 6.0 and higher.
             if (ctx.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
                 await sourcekitDiagnose(ctx, diagnosticsDir);
