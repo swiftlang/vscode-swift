@@ -30,6 +30,9 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
                     configuration.debugger.debugAdapterPath.length > 0
                         ? configuration.debugger.debugAdapterPath
                         : workspaceContext.toolchain.getToolchainExecutable(debugAdapter);
+                DebugAdapter.verifyDebugAdapterExists(workspaceContext).then(() => {
+                    /** Ignore */
+                });
                 executable = new vscode.DebugAdapterExecutable(lldbDebugAdapterPath, [], {});
             }
 
