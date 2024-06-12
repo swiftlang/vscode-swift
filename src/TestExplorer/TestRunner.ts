@@ -31,7 +31,7 @@ import { SwiftTestingOutputParser } from "./TestParsers/SwiftTestingOutputParser
 import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
 import { TaskOperation } from "../tasks/TaskQueue";
 import { TestXUnitParser } from "./TestXUnitParser";
-import { ITestRunState } from "./TestParsers/TestRunState";
+import { ITestRunState, TestIssueDiff } from "./TestParsers/TestRunState";
 import { TestRunArguments } from "./TestRunArguments";
 import { TemporaryFolder } from "../utilities/tempFolder";
 import { TestClass, runnableTag, upsertTestItem } from "./TestDiscovery";
@@ -1014,12 +1014,19 @@ export class TestRunnerTestRunState implements ITestRunState {
         index: number,
         message: string | vscode.MarkdownString,
         isKnown: boolean = false,
-        location?: vscode.Location
+        location?: vscode.Location,
+        diff?: TestIssueDiff
     ) {
         if (this.isUnknownTest(index)) {
             return;
         }
+
         const msg = new vscode.TestMessage(message);
+        if (diff) {
+            msg.expectedOutput = diff.expected;
+            msg.actualOutput = diff.actual;
+        }
+
         msg.location = location;
         const issueList = this.issues.get(index) ?? [];
         issueList.push({

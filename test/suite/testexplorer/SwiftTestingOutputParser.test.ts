@@ -58,7 +58,7 @@ suite("SwiftTestingOutputParser Suite", () => {
                 instant: { absolute: 0, since1970: 0 },
                 messages: messages ?? [],
                 ...{ testID, sourceLocation },
-                ...(messages ? { issue: { sourceLocation } } : {}),
+                ...(messages ? { issue: { sourceLocation, isKnown: false } } : {}),
                 _testCase: {
                     id: testCaseID ?? testID,
                     displayName: testCaseID ?? testID,
@@ -126,6 +126,7 @@ suite("SwiftTestingOutputParser Suite", () => {
                     new vscode.Position(issueLocation.line - 1, issueLocation?.column ?? 0)
                 ),
                 isKnown: false,
+                diff: undefined,
             },
         ]);
     });
