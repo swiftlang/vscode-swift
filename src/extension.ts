@@ -34,7 +34,7 @@ import { showToolchainError } from "./ui/ToolchainSelection";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
 import { showReloadExtensionNotification } from "./ui/ReloadExtension";
-import { isSymlinkAllowed } from "./utilities/isSymlinkAllowed";
+import { checkAndWarnAboutWindowsSymlinks } from "./ui/win32";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -52,27 +52,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
         console.debug("Activating Swift for Visual Studio Code...");
         const outputChannel = new SwiftOutputChannel();
 
-        if (process.platform === "win32" && configuration.warnAboutSymlinkCreation) {
-            isSymlinkAllowed(outputChannel).then(async canCreateSymlink => {
-                if (canCreateSymlink) {
-                    return;
-                }
-                const selected = await vscode.window.showWarningMessage(
-                    "The Swift extension is unable to create symbolic links on your system and some features may not work correctly. Please either enable Developer Mode or allow symlink creation via Windows privileges.",
-                    "Learn More",
-                    "Don't Show Again"
-                );
-                if (selected === "Learn More") {
-                    return vscode.env.openExternal(
-                        vscode.Uri.parse(
-                            "https://learn.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development"
-                        )
-                    );
-                } else if (selected === "Don't Show Again") {
-                    configuration.warnAboutSymlinkCreation = false;
-                }
-            });
-        }
+        checkAndWarnAboutWindowsSymlinks(outputChannel);
 
         const toolchain: SwiftToolchain | undefined = await SwiftToolchain.create()
             .then(toolchain => {
