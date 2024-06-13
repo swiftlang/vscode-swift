@@ -50,6 +50,8 @@ This builds a file that looks like `swift-lang-[version]-dev.vsix`. Now install 
 code --install-extension swift-lang-[version]-dev.vsix
 ```
 
+Alternatively you can install the extension from the Extensions panel by clicking the `...` button and choosing `Install from VSIX...`.
+
 If you'd like to return to using the released version of the extension you can uninstall then reinstall Swift for VS Code from the Extensions panel.
 
 ## Submitting a bug or issue
