@@ -24,7 +24,7 @@ final class MixedXCTestSuite: XCTestCase {
   }
 }
 
-#if swift(>=5.10)
+#if swift(>=6.0)
 import Testing
 
 @Test func topLevelTestPassing() {}

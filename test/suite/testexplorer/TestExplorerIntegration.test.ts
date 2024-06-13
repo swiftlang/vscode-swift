@@ -62,6 +62,18 @@ suite("Test Explorer Suite", function () {
 
         const testItems = tests.map(test => {
             const testItem = getTestItem(controller, test);
+            if (!testItem) {
+                const testsInController: string[] = [];
+                controller.items.forEach(item => {
+                    testsInController.push(
+                        `${item.id}: ${item.label} ${item.error ? `(error: ${item.error})` : ""}`
+                    );
+                });
+
+                assert.fail(
+                    `Unable to find ${test} in Test Controller. Items in test controller are: ${testsInController.join(", ")}`
+                );
+            }
             assert.ok(testItem);
             return testItem;
         });
