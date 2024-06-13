@@ -400,10 +400,7 @@ export class TestRunner {
         // Run swift-testing first, then XCTest.
         // swift-testing being parallel by default should help these run faster.
         if (this.testArgs.hasSwiftTestingTests) {
-            const fifoPipePath =
-                process.platform === "win32"
-                    ? `\\\\.\\pipe\\vscodemkfifo-${Date.now()}`
-                    : path.join(os.tmpdir(), `vscodemkfifo-${Date.now()}`);
+            const fifoPipePath = this.generateFifoPipePath();
 
             await TemporaryFolder.withNamedTemporaryFile(fifoPipePath, async () => {
                 // macOS/Linux require us to create the named pipe before we use it.
@@ -689,19 +686,16 @@ export class TestRunner {
         }
 
         const buildConfigs: Array<vscode.DebugConfiguration | undefined> = [];
-        const fifoPipePath =
-            process.platform === "win32"
-                ? `\\\\.\\pipe\\vscodemkfifo-${Date.now()}`
-                : path.join(os.tmpdir(), `vscodemkfifo-${Date.now()}`);
+        const fifoPipePath = this.generateFifoPipePath();
 
         await TemporaryFolder.withNamedTemporaryFile(fifoPipePath, async () => {
-            // macOS/Linux require us to create the named pipe before we use it.
-            // Windows just lets us communicate by specifying a pipe path without any ceremony.
-            if (process.platform !== "win32") {
-                await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
-            }
-
             if (this.testArgs.hasSwiftTestingTests) {
+                // macOS/Linux require us to create the named pipe before we use it.
+                // Windows just lets us communicate by specifying a pipe path without any ceremony.
+                if (process.platform !== "win32") {
+                    await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
+                }
+
                 const swiftTestBuildConfig = TestingDebugConfigurationFactory.swiftTestingConfig(
                     this.folderContext,
                     fifoPipePath,
@@ -854,6 +848,12 @@ export class TestRunner {
         } else {
             return new NonDarwinTestItemFinder(this.testArgs.testItems, this.folderContext);
         }
+    }
+
+    private generateFifoPipePath(): string {
+        return process.platform === "win32"
+            ? `\\\\.\\pipe\\vscodemkfifo-${Date.now()}`
+            : path.join(os.tmpdir(), `vscodemkfifo-${Date.now()}`);
     }
 }
 
