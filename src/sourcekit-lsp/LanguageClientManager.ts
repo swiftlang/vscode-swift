@@ -112,6 +112,7 @@ export class LanguageClientManager {
     // used by single server support to keep a record of the project folders
     // that are not at the root of their workspace
     public subFolderWorkspaces: vscode.Uri[];
+    /** Get the current state of the underlying LanguageClient */
     public get state(): langclient.State {
         if (!this.languageClient) {
             return langclient.State.Stopped;
