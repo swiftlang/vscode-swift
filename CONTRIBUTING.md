@@ -1,4 +1,4 @@
-# Welcome to the Swift Community! 
+# Welcome to the Swift Community!
 
 Contributions to vscode-swift are welcomed and encouraged! Please see the [Contributing to Swift guide](swift.org/contributing) and check out the [structure of the community](https://www.swift.org/community/#community-structure).
 
@@ -16,11 +16,41 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 ```
 More details on nvm installation can be found in the [README](https://github.com/nvm-sh/nvm/blob/master/README.md) from its GitHub repository.
 
-Once you have installed nvm, clone this repository, and in the project directory run `nvm install`. This will install the correct version of Node.js for developing the extension. Then you should run `npm install` to install all the dependencies the extension requires.
+Once you have installed nvm, you can clone and configure the repository.
+
+```sh
+git clone https://github.com/swift-server/vscode-swift.git && cd vscode-swift
+
+# Install the correct version of Node.JS for developing the extension
+nvm install
+
+# Installs all the dependencies the extension requires
+npm install
+```
 
 When you first open the project in VS Code you will be recommended to also install [`ESLint`](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint), [`Prettier - Code formatter`](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) and [`esbuild Problem Matchers`](https://marketplace.visualstudio.com/items?itemName=connor4312.esbuild-problem-matchers). Please do so. `ESLint`, `Prettier - Code formatter` is used to ensure a consistent style and we expect everyone who contributes to follow this style as well. `esbuild Problem Matchers` provides proper error output from building the project.
 
 To run your version of the Swift extension while in VS Code, press `F5`. This will open up another instance of VS Code with it running. You can use the original version of VS Code to debug it.
+
+### Installing a pre-released version
+
+If you'd like to try out a change during your day to day work that has not yet been released to the VS Code Marketplace you can build and install your own `.vsix` package from this repository.
+
+#### Building
+
+If you haven't already, follow the instructions in [Development](#development) to clone the repository and install its dependencies. Now we can generate the `.vsix` package:
+
+```sh
+npm run dev-package
+```
+
+This builds a file that looks like `swift-lang-[version]-dev.vsix`. Now install the extension with:
+
+```sh
+code --install-extension swift-lang-[version]-dev.vsix
+```
+
+If you'd like to return to using the released version of the extension you can uninstall then reinstall Swift for VS Code from the Extensions panel.
 
 ## Submitting a bug or issue
 
