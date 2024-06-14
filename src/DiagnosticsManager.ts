@@ -48,14 +48,6 @@ export class DiagnosticsManager implements vscode.Disposable {
     constructor(context: WorkspaceContext) {
         this.onDidChangeConfigurationDisposible = vscode.workspace.onDidChangeConfiguration(e => {
             if (e.affectsConfiguration("swift.diagnosticsCollection")) {
-                // if (!this.includeSwiftcDiagnostics()) {
-                //     // Clean up "swiftc" diagnostics
-                //     this.removeSwiftcDiagnostics();
-                // }
-                // if (!this.includeSourceKitDiagnostics()) {
-                //     // Clean up SourceKit diagnostics
-                //     this.removeSourceKitDiagnostics();
-                // }
                 this.diagnosticCollection.clear();
                 this.allDiagnostics.forEach((_, uri) =>
                     this.updateDiagnosticsCollection(vscode.Uri.file(uri))
@@ -112,8 +104,7 @@ export class DiagnosticsManager implements vscode.Disposable {
         // of Swift as to whether the first letter is capitalized or not,
         // so we'll always display messages capitalized to user and this
         // also will allow comparing messages when merging
-        newDiagnostics.forEach(this.capitalizeMessage);
-        // const mergedDiagnostics = this.diagnosticCollection.get(uri)?.slice() || [];
+        newDiagnostics = newDiagnostics.map(this.capitalizeMessage);
         const allDiagnostics = this.allDiagnostics.get(uri.fsPath)?.slice() || [];
         // Remove the old set of diagnostics from this source
         const removedDiagnostics = this.removeDiagnostics(allDiagnostics, d =>
@@ -139,8 +130,8 @@ export class DiagnosticsManager implements vscode.Disposable {
 
     private updateDiagnosticsCollection(uri: vscode.Uri): void {
         const diagnostics = this.allDiagnostics.get(uri.fsPath) ?? [];
-        const swiftcDiagnostics = this.getDiagnostics(diagnostics, DiagnosticsManager.swiftc);
-        const sourceKitDiagnostics = this.getDiagnostics(diagnostics, DiagnosticsManager.sourcekit);
+        const swiftcDiagnostics = diagnostics.filter(d => this.isSwiftc(d));
+        const sourceKitDiagnostics = diagnostics.filter(d => this.isSourceKit(d));
         const mergedDiagnostics: vscode.Diagnostic[] = [];
         switch (configuration.diagnosticsCollection) {
             case "keepSourceKit":
@@ -175,7 +166,6 @@ export class DiagnosticsManager implements vscode.Disposable {
 
     private mergeDiagnostics(
         mergedDiagnostics: vscode.Diagnostic[],
-        // removedDiagnostics: vscode.Diagnostic[],
         newDiagnostics: vscode.Diagnostic[],
         precedence: string[]
     ): void {
@@ -235,20 +225,6 @@ export class DiagnosticsManager implements vscode.Disposable {
         return removed;
     }
 
-    private getDiagnostics(
-        diagnostics: vscode.Diagnostic[],
-        sources: string[]
-    ): vscode.Diagnostic[] {
-        const filtered: vscode.Diagnostic[] = [];
-        let i = diagnostics.length;
-        while (i--) {
-            if (sources.includes(diagnostics[i].source || "")) {
-                filtered.push(diagnostics[i]);
-            }
-        }
-        return filtered;
-    }
-
     /**
      * Clear the `swift` diagnostics collection. Mostly meant for testing purposes.
      */
@@ -299,7 +275,6 @@ export class DiagnosticsManager implements vscode.Disposable {
                             }
                             const relatedInformation =
                                 result as vscode.DiagnosticRelatedInformation;
-                            this.capitalizeMessage(relatedInformation);
                             if (
                                 lastDiagnostic.relatedInformation?.find(
                                     d =>
@@ -352,7 +327,7 @@ export class DiagnosticsManager implements vscode.Disposable {
             return;
         }
         const uri = match[1];
-        const message = match[5];
+        const message = this.capitalize(match[5]);
         const range = this.range(match[2], match[3]);
         const severity = this.severity(match[4]);
         if (severity === vscode.DiagnosticSeverity.Information) {
@@ -389,12 +364,16 @@ export class DiagnosticsManager implements vscode.Disposable {
         return severity;
     }
 
-    private capitalizeMessage(
-        diagnostic: vscode.Diagnostic | vscode.DiagnosticRelatedInformation
-    ): void {
-        const message = diagnostic.message;
-        diagnostic.message = message.charAt(0).toUpperCase() + message.slice(1);
+    private capitalize(message: string): string {
+        return message.charAt(0).toUpperCase() + message.slice(1);
     }
+
+    private capitalizeMessage = (diagnostic: vscode.Diagnostic): vscode.Diagnostic => {
+        const message = diagnostic.message;
+        diagnostic = { ...diagnostic };
+        diagnostic.message = this.capitalize(message);
+        return diagnostic;
+    };
 
     private onDidStartTaskDisposible: vscode.Disposable;
     private onDidChangeConfigurationDisposible: vscode.Disposable;
