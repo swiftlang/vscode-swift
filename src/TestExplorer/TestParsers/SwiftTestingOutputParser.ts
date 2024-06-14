@@ -106,7 +106,7 @@ interface BaseEvent {
 
 interface TestCaseEvent {
     sourceLocation: SourceLocation;
-    _testCase: TestCase;
+    _testCase?: TestCase;
 }
 
 interface TestStarted extends BaseEvent {
@@ -225,6 +225,12 @@ export class SwiftTestingOutputParser {
         return testCase.id === "argumentIDs: nil" ? testCase.displayName : testCase.id;
     }
 
+    private idFromOptionalTestCase(testID: string, testCase?: TestCase): string {
+        return testCase
+            ? this.testCaseId(testID, this.idFromTestCase(testCase))
+            : this.testName(testID);
+    }
+
     private parameterizedFunctionTestCaseToTestClass(
         testId: string,
         testCase: TestCase,
@@ -300,9 +306,9 @@ export class SwiftTestingOutputParser {
                 const testIndex = runState.getTestItemIndex(testName, undefined);
                 runState.started(testIndex, item.payload.instant.absolute);
             } else if (item.payload.kind === "testCaseStarted") {
-                const testID = this.testCaseId(
+                const testID = this.idFromOptionalTestCase(
                     item.payload.testID,
-                    this.idFromTestCase(item.payload._testCase)
+                    item.payload._testCase
                 );
                 const testIndex = this.getTestCaseIndex(runState, testID);
                 runState.started(testIndex, item.payload.instant.absolute);
@@ -311,11 +317,12 @@ export class SwiftTestingOutputParser {
                 const testIndex = runState.getTestItemIndex(testName, undefined);
                 runState.skipped(testIndex);
             } else if (item.payload.kind === "issueRecorded") {
-                const testID = this.testCaseId(
+                const testID = this.idFromOptionalTestCase(
                     item.payload.testID,
-                    this.idFromTestCase(item.payload._testCase)
+                    item.payload._testCase
                 );
                 const testIndex = this.getTestCaseIndex(runState, testID);
+
                 const isKnown = item.payload.issue.isKnown;
                 const sourceLocation = item.payload.issue.sourceLocation;
                 const location = sourceLocationToVSCodeLocation(
@@ -327,7 +334,7 @@ export class SwiftTestingOutputParser {
                     runState.recordIssue(testIndex, message.text, isKnown, location);
                 });
 
-                if (testID !== item.payload.testID) {
+                if (item.payload._testCase && testID !== item.payload.testID) {
                     const testIndex = this.getTestCaseIndex(runState, item.payload.testID);
                     item.payload.messages.forEach(message => {
                         runState.recordIssue(testIndex, message.text, isKnown, location);
@@ -345,9 +352,9 @@ export class SwiftTestingOutputParser {
                 this.completionMap.set(testIndex, true);
                 runState.completed(testIndex, { timestamp: item.payload.instant.absolute });
             } else if (item.payload.kind === "testCaseEnded") {
-                const testID = this.testCaseId(
+                const testID = this.idFromOptionalTestCase(
                     item.payload.testID,
-                    this.idFromTestCase(item.payload._testCase)
+                    item.payload._testCase
                 );
                 const testIndex = this.getTestCaseIndex(runState, testID);
 
