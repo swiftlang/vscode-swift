@@ -357,6 +357,13 @@
               "Show the Swift build status as a progress notification."
             ],
             "order": 17
+          },
+          "swift.warnAboutSymlinkCreation": {
+            "type": "boolean",
+            "default": true,
+            "description": "Controls whether or not the extension will warn about being unable to create symlinks. (Windows only)",
+            "scope": "application",
+            "order": 18
           }
         }
       },
@@ -1152,6 +1159,7 @@
     "format": "prettier --check src test",
     "pretest": "npm run compile && npm run lint",
     "test": "find ./assets/test -type d -name '.build' -exec rm -rf {} + && find . -type d -name 'Package.resolved' -exec rm -rf {} + && tsc -p ./ && node ./out/test/runTest.js",
+    "coverage": "c8 --clean npm run test",
     "compile-tests": "find ./assets/test -type d -name '.build' -exec rm -rf {} + && npm run compile && npm run esbuild",
     "package": "vsce package",
     "dev-package": "vsce package --no-update-package-json 1.10.2-dev",
@@ -1166,11 +1174,12 @@
     "@types/node": "^18.19.34",
     "@types/plist": "^3.0.5",
     "@types/vscode": "^1.88.0",
+    "@types/xml2js": "^0.4.14",
     "@typescript-eslint/eslint-plugin": "^7.12.0",
     "@typescript-eslint/parser": "^7.12.0",
     "@vscode/test-electron": "^2.4.0",
     "@vscode/vsce": "^2.27.0",
-    "@types/xml2js": "^0.4.14",
+    "c8": "^10.1.1",
     "esbuild": "^0.21.4",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",

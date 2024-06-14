@@ -31,7 +31,7 @@ import { SwiftTestingOutputParser } from "./TestParsers/SwiftTestingOutputParser
 import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
 import { TaskOperation } from "../tasks/TaskQueue";
 import { TestXUnitParser } from "./TestXUnitParser";
-import { ITestRunState } from "./TestParsers/TestRunState";
+import { ITestRunState, TestIssueDiff } from "./TestParsers/TestRunState";
 import { TestRunArguments } from "./TestRunArguments";
 import { TemporaryFolder } from "../utilities/tempFolder";
 import { TestClass, runnableTag, upsertTestItem } from "./TestDiscovery";
@@ -400,10 +400,7 @@ export class TestRunner {
         // Run swift-testing first, then XCTest.
         // swift-testing being parallel by default should help these run faster.
         if (this.testArgs.hasSwiftTestingTests) {
-            const fifoPipePath =
-                process.platform === "win32"
-                    ? `\\\\.\\pipe\\vscodemkfifo-${Date.now()}`
-                    : path.join(os.tmpdir(), `vscodemkfifo-${Date.now()}`);
+            const fifoPipePath = this.generateFifoPipePath();
 
             await TemporaryFolder.withNamedTemporaryFile(fifoPipePath, async () => {
                 // macOS/Linux require us to create the named pipe before we use it.
@@ -689,19 +686,16 @@ export class TestRunner {
         }
 
         const buildConfigs: Array<vscode.DebugConfiguration | undefined> = [];
-        const fifoPipePath =
-            process.platform === "win32"
-                ? `\\\\.\\pipe\\vscodemkfifo-${Date.now()}`
-                : path.join(os.tmpdir(), `vscodemkfifo-${Date.now()}`);
+        const fifoPipePath = this.generateFifoPipePath();
 
         await TemporaryFolder.withNamedTemporaryFile(fifoPipePath, async () => {
-            // macOS/Linux require us to create the named pipe before we use it.
-            // Windows just lets us communicate by specifying a pipe path without any ceremony.
-            if (process.platform !== "win32") {
-                await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
-            }
-
             if (this.testArgs.hasSwiftTestingTests) {
+                // macOS/Linux require us to create the named pipe before we use it.
+                // Windows just lets us communicate by specifying a pipe path without any ceremony.
+                if (process.platform !== "win32") {
+                    await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
+                }
+
                 const swiftTestBuildConfig = TestingDebugConfigurationFactory.swiftTestingConfig(
                     this.folderContext,
                     fifoPipePath,
@@ -855,6 +849,12 @@ export class TestRunner {
             return new NonDarwinTestItemFinder(this.testArgs.testItems, this.folderContext);
         }
     }
+
+    private generateFifoPipePath(): string {
+        return process.platform === "win32"
+            ? `\\\\.\\pipe\\vscodemkfifo-${Date.now()}`
+            : path.join(os.tmpdir(), `vscodemkfifo-${Date.now()}`);
+    }
 }
 
 /** Interface defining how to find test items given a test id from XCTest output */
@@ -974,6 +974,9 @@ export class TestRunnerTestRunState implements ITestRunState {
             return;
         }
         const test = this.testRun.testItems[index];
+        if (test.children.size > 0) {
+            return;
+        }
         const startTime = this.startTimes.get(index);
 
         let duration: number;
@@ -1014,12 +1017,19 @@ export class TestRunnerTestRunState implements ITestRunState {
         index: number,
         message: string | vscode.MarkdownString,
         isKnown: boolean = false,
-        location?: vscode.Location
+        location?: vscode.Location,
+        diff?: TestIssueDiff
     ) {
         if (this.isUnknownTest(index)) {
             return;
         }
+
         const msg = new vscode.TestMessage(message);
+        if (diff) {
+            msg.expectedOutput = diff.expected;
+            msg.actualOutput = diff.actual;
+        }
+
         msg.location = location;
         const issueList = this.issues.get(index) ?? [];
         issueList.push({

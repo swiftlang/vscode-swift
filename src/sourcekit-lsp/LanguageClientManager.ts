@@ -24,11 +24,19 @@ import { FolderContext } from "../FolderContext";
 import { LanguageClient } from "vscode-languageclient/node";
 import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
 import { DiagnosticsManager } from "../DiagnosticsManager";
+import { LSPLogger, LSPOutputChannel } from "./LSPOutputChannel";
+
+interface SourceKitLogMessageParams extends langclient.LogMessageParams {
+    logName?: string;
+}
 
 /** Manages the creation and destruction of Language clients as we move between
  * workspace folders
  */
 export class LanguageClientManager {
+    // known log names
+    static indexingLogName = "SourceKit-LSP: Indexing";
+
     // document selector used by language client
     static appleLangDocumentSelector = [
         { scheme: "file", language: "swift" },
@@ -112,8 +120,20 @@ export class LanguageClientManager {
     // used by single server support to keep a record of the project folders
     // that are not at the root of their workspace
     public subFolderWorkspaces: vscode.Uri[];
+    private namedOutputChannels: Map<string, LSPOutputChannel> = new Map();
+    /** Get the current state of the underlying LanguageClient */
+    public get state(): langclient.State {
+        if (!this.languageClient) {
+            return langclient.State.Stopped;
+        }
+        return this.languageClient.state;
+    }
 
     constructor(public workspaceContext: WorkspaceContext) {
+        this.namedOutputChannels.set(
+            LanguageClientManager.indexingLogName,
+            new LSPOutputChannel(LanguageClientManager.indexingLogName, false, true)
+        );
         this.singleServerSupport = workspaceContext.swiftVersion.isGreaterThanOrEqual(
             new Version(5, 7, 0)
         );
@@ -161,18 +181,40 @@ export class LanguageClientManager {
         }
         // on change config restart server
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
-            if (event.affectsConfiguration("swift.sourcekit-lsp")) {
-                vscode.window
-                    .showInformationMessage(
-                        "Changing LSP settings requires the language server be restarted.",
-                        "Ok"
-                    )
-                    .then(selected => {
-                        if (selected === "Ok") {
-                            this.restart();
-                        }
-                    });
+            if (!event.affectsConfiguration("swift.sourcekit-lsp")) {
+                return;
             }
+            let message =
+                "Changing SourceKit-LSP settings requires the language server be restarted. Would you like to restart it now?";
+            let restartLSPButton = "Restart Language Server";
+            // Enabling/Disabling sourcekit-lsp shows a special notification
+            if (event.affectsConfiguration("swift.sourcekit-lsp.disable")) {
+                if (configuration.lsp.disable) {
+                    if (this.state === langclient.State.Stopped) {
+                        // Language client is already stopped
+                        return;
+                    }
+                    message =
+                        "You have disabled the Swift language server, but it is still running. Would you like to stop it now?";
+                    restartLSPButton = "Stop Language Server";
+                } else {
+                    if (this.state !== langclient.State.Stopped) {
+                        // Langauge client is already running
+                        return;
+                    }
+                    message =
+                        "You have enabled the Swift language server. Would you like to start it now?";
+                    restartLSPButton = "Start Language Server";
+                }
+            } else if (configuration.lsp.disable && this.state === langclient.State.Stopped) {
+                // Ignore configuration changes if SourceKit-LSP is disabled
+                return;
+            }
+            vscode.window.showInformationMessage(message, restartLSPButton).then(selected => {
+                if (selected === restartLSPButton) {
+                    this.restart();
+                }
+            });
         });
 
         this.subscriptions.push(onChangeConfig);
@@ -203,6 +245,7 @@ export class LanguageClientManager {
         this.legacyInlayHints?.dispose();
         this.subscriptions.forEach(item => item.dispose());
         this.languageClient?.stop();
+        this.namedOutputChannels.forEach(channel => channel.dispose());
     }
 
     /**
@@ -527,6 +570,10 @@ export class LanguageClientManager {
             this.workspaceContext.outputChannel.log(`SourceKit-LSP setup`);
         }
 
+        client.onNotification(langclient.LogMessageNotification.type, params => {
+            this.logMessage(client, params as SourceKitLogMessageParams);
+        });
+
         // start client
         this.clientReadyPromise = client
             .start()
@@ -548,6 +595,34 @@ export class LanguageClientManager {
         this.cancellationToken = new vscode.CancellationTokenSource();
 
         return this.clientReadyPromise;
+    }
+
+    private logMessage(client: langclient.LanguageClient, params: SourceKitLogMessageParams) {
+        let logger: LSPLogger = client;
+        if (params.logName) {
+            const outputChannel =
+                this.namedOutputChannels.get(params.logName) ??
+                new LSPOutputChannel(params.logName);
+            this.namedOutputChannels.set(params.logName, outputChannel);
+            logger = outputChannel;
+        }
+        switch (params.type) {
+            case langclient.MessageType.Info:
+                logger.info(params.message);
+                break;
+            case langclient.MessageType.Debug:
+                logger.debug(params.message);
+                break;
+            case langclient.MessageType.Warning:
+                logger.warn(params.message);
+                break;
+            case langclient.MessageType.Error:
+                logger.error(params.message);
+                break;
+            case langclient.MessageType.Log:
+                logger.info(params.message);
+                break;
+        }
     }
 }
 

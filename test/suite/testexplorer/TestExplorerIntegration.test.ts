@@ -62,6 +62,18 @@ suite("Test Explorer Suite", function () {
 
         const testItems = tests.map(test => {
             const testItem = getTestItem(controller, test);
+            if (!testItem) {
+                const testsInController: string[] = [];
+                controller.items.forEach(item => {
+                    testsInController.push(
+                        `${item.id}: ${item.label} ${item.error ? `(error: ${item.error})` : ""}`
+                    );
+                });
+
+                assert.fail(
+                    `Unable to find ${test} in Test Controller. Items in test controller are: ${testsInController.join(", ")}`
+                );
+            }
             assert.ok(testItem);
             return testItem;
         });
@@ -112,6 +124,7 @@ suite("Test Explorer Suite", function () {
                     ["testPassing()", "testFailing()"],
                     "topLevelTestPassing()",
                     "topLevelTestFailing()",
+                    "parameterizedTest(_:)",
                     "MixedSwiftTestingSuite",
                     ["testPassing()", "testFailing()", "testDisabled()"],
                     "testWithKnownIssue()",
@@ -228,6 +241,27 @@ suite("Test Explorer Suite", function () {
                         });
                     });
 
+                    test("Runs parameterized test", async function () {
+                        const testRun = await runTest(
+                            testExplorer.controller,
+                            runProfile,
+                            "PackageTests.parameterizedTest(_:)"
+                        );
+
+                        assertTestResults(testRun, {
+                            passed: [
+                                "PackageTests.parameterizedTest(_:)/PackageTests.swift:35:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])",
+                                "PackageTests.parameterizedTest(_:)/PackageTests.swift:35:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [51])])",
+                            ],
+                            failed: [
+                                {
+                                    issues: ["Expectation failed: (arg → 2) != 2"],
+                                    test: "PackageTests.parameterizedTest(_:)/PackageTests.swift:35:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])",
+                                },
+                            ],
+                        });
+                    });
+
                     test("Runs Suite", async function () {
                         const testRun = await runTest(
                             testExplorer.controller,
@@ -236,10 +270,7 @@ suite("Test Explorer Suite", function () {
                         );
 
                         assertTestResults(testRun, {
-                            passed: [
-                                "PackageTests.MixedSwiftTestingSuite/testPassing()",
-                                "PackageTests.MixedSwiftTestingSuite",
-                            ],
+                            passed: ["PackageTests.MixedSwiftTestingSuite/testPassing()"],
                             skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],
                             failed: [
                                 {
@@ -261,7 +292,6 @@ suite("Test Explorer Suite", function () {
                         assertTestResults(testRun, {
                             passed: [
                                 "PackageTests.MixedSwiftTestingSuite/testPassing()",
-                                "PackageTests.MixedSwiftTestingSuite",
                                 "PackageTests.MixedXCTestSuite/testPassing",
                             ],
                             skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],

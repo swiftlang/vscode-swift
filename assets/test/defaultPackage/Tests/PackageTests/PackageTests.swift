@@ -24,12 +24,17 @@ final class MixedXCTestSuite: XCTestCase {
   }
 }
 
-#if swift(>=5.10)
+#if swift(>=6.0)
 import Testing
 
 @Test func topLevelTestPassing() {}
 @Test func topLevelTestFailing() {
   #expect(1 == 2)
+}
+
+@Test(arguments: [1, 2, 3])
+func parameterizedTest(_ arg: Int) {
+  #expect(arg != 2)
 }
 
 @Suite

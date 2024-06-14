@@ -72,6 +72,9 @@ export function assertTestControllerHierarchy(
 
 /**
  * Asserts on the result of a test run.
+ *
+ * The order of tests is not verified because swift-testing
+ * tests run in parallel and can complete in any order.
  */
 export function assertTestResults(
     testRun: TestRunProxy,
@@ -88,22 +91,24 @@ export function assertTestResults(
 ) {
     assert.deepEqual(
         {
-            passed: testRun.runState.passed.map(({ id }) => id),
-            failed: testRun.runState.failed.map(({ test, message }) => ({
-                test: test.id,
-                issues: Array.isArray(message)
-                    ? message.map(({ message }) => message)
-                    : [(message as vscode.TestMessage).message],
-            })),
-            skipped: testRun.runState.skipped.map(({ id }) => id),
-            errored: testRun.runState.errored.map(({ id }) => id),
+            passed: testRun.runState.passed.map(({ id }) => id).sort(),
+            failed: testRun.runState.failed
+                .map(({ test, message }) => ({
+                    test: test.id,
+                    issues: Array.isArray(message)
+                        ? message.map(({ message }) => message)
+                        : [(message as vscode.TestMessage).message],
+                }))
+                .sort(),
+            skipped: testRun.runState.skipped.map(({ id }) => id).sort(),
+            errored: testRun.runState.errored.map(({ id }) => id).sort(),
             unknown: testRun.runState.unknown,
         },
         {
-            passed: state.passed ?? [],
-            failed: state.failed ?? [],
-            skipped: state.skipped ?? [],
-            errored: state.errored ?? [],
+            passed: (state.passed ?? []).sort(),
+            failed: (state.failed ?? []).sort(),
+            skipped: (state.skipped ?? []).sort(),
+            errored: (state.errored ?? []).sort(),
             unknown: 0,
         }
     );

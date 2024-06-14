@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import { ITestRunState } from "./TestRunState";
+import { ITestRunState, TestIssueDiff } from "./TestRunState";
 import { sourceLocationToVSCodeLocation } from "../../utilities/utilities";
 import { MarkdownString, Location } from "vscode";
 
@@ -334,7 +334,9 @@ export class XCTestOutputParser implements IXCTestOutputParser {
                 runState.failedTest.file,
                 runState.failedTest.lineNumber
             );
-            runState.recordIssue(testIndex, runState.failedTest.message, false, location);
+            const message = runState.failedTest.message;
+            const diff = this.extractDiff(message);
+            runState.recordIssue(testIndex, message, false, location, diff);
         } else {
             runState.recordIssue(testIndex, "Failed", false);
         }
@@ -346,5 +348,18 @@ export class XCTestOutputParser implements IXCTestOutputParser {
     private skipTest(testIndex: number, runState: ITestRunState) {
         runState.skipped(testIndex);
         runState.failedTest = undefined;
+    }
+
+    private extractDiff(message: string): TestIssueDiff | undefined {
+        const regex = /\((.*)\) is not .* to \((.*)\)/ms;
+        const match = message.match(regex);
+        if (match && match[1] !== match[2]) {
+            return {
+                expected: match[1],
+                actual: match[2],
+            };
+        }
+
+        return undefined;
     }
 }

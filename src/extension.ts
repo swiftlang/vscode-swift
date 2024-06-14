@@ -34,6 +34,7 @@ import { showToolchainError } from "./ui/ToolchainSelection";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
 import { showReloadExtensionNotification } from "./ui/ReloadExtension";
+import { checkAndWarnAboutWindowsSymlinks } from "./ui/win32";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -49,8 +50,10 @@ export interface Api {
 export async function activate(context: vscode.ExtensionContext): Promise<Api | undefined> {
     try {
         console.debug("Activating Swift for Visual Studio Code...");
-
         const outputChannel = new SwiftOutputChannel();
+
+        checkAndWarnAboutWindowsSymlinks(outputChannel);
+
         const toolchain: SwiftToolchain | undefined = await SwiftToolchain.create()
             .then(toolchain => {
                 outputChannel.log(toolchain.swiftVersionString);
@@ -213,10 +216,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
 
         const testExplorerObserver = TestExplorer.observeFolders(workspaceContext);
 
-        if (configuration.debugger.useDebugAdapterFromToolchain) {
-            const lldbDebugAdapter = registerLLDBDebugAdapter(workspaceContext);
-            context.subscriptions.push(lldbDebugAdapter);
-        }
+        // Register swift-lldb debug provider
+        const lldbDebugAdapter = registerLLDBDebugAdapter(workspaceContext);
+        context.subscriptions.push(lldbDebugAdapter);
+
         const loggingDebugAdapter = registerLoggingDebugAdapterTracker();
 
         // setup workspace context with initial workspace folders
