@@ -98,6 +98,7 @@ interface SwiftToolchainItem extends vscode.QuickPickItem {
     type: "toolchain";
     toolchainPath: string;
     swiftFolderPath: string;
+    onDidSelect?(): Promise<void>;
 }
 
 /** A {@link vscode.QuickPickItem} that performs an action for the user */
@@ -151,17 +152,22 @@ async function getQuickPickItems(
     const toolchains = (await SwiftToolchain.getToolchainInstalls())
         .reverse()
         .map<SwiftToolchainItem>(toolchainPath => {
-            let label = path.basename(toolchainPath, ".xctoolchain");
-            if (label === "swift-latest") {
-                label = "Latest Installed Toolchain";
-            }
-            return {
+            const result: SwiftToolchainItem = {
                 type: "toolchain",
-                label,
+                label: path.basename(toolchainPath, ".xctoolchain"),
                 detail: toolchainPath,
                 toolchainPath: path.join(toolchainPath, "usr"),
                 swiftFolderPath: path.join(toolchainPath, "usr", "bin"),
             };
+            if (result.label === "swift-latest") {
+                result.label = "Latest Installed Toolchain";
+                result.onDidSelect = async () => {
+                    vscode.window.showInformationMessage(
+                        `The Swift extension is now configured to always use the most recently installed toolchain pointed at by the symbolic link "${toolchainPath}".`
+                    );
+                };
+            }
+            return result;
         });
     const swiftlyToolchains = (await SwiftToolchain.getSwiftlyToolchainInstalls())
         .reverse()
@@ -239,7 +245,10 @@ export async function showToolchainSelectionQuickPick(activeToolchain: SwiftTool
     if (selected?.type === "action") {
         await selected.run();
     } else if (selected?.type === "toolchain") {
-        await setToolchainPath(selected.swiftFolderPath, "prompt");
+        const isUpdated = await setToolchainPath(selected.swiftFolderPath, "prompt");
+        if (isUpdated && selected.onDidSelect) {
+            await selected.onDidSelect();
+        }
     }
 }
 
@@ -255,7 +264,7 @@ async function removeToolchainPath() {
 async function setToolchainPath(
     value: string | undefined,
     target?: vscode.ConfigurationTarget | "prompt"
-): Promise<void> {
+): Promise<boolean> {
     if (target === "prompt") {
         const items: (vscode.QuickPickItem & {
             target?: vscode.ConfigurationTarget;
@@ -281,7 +290,7 @@ async function setToolchainPath(
                 canPickMany: false,
             });
             if (!selected) {
-                return;
+                return false;
             }
             target = selected.target;
         } else {
@@ -289,6 +298,11 @@ async function setToolchainPath(
         }
     }
     await vscode.workspace.getConfiguration("swift").update("path", value, target);
+    await checkAndRemoveWorkspaceSetting(target);
+    return true;
+}
+
+async function checkAndRemoveWorkspaceSetting(target: vscode.ConfigurationTarget | undefined) {
     // Check to see if the configuration would be overridden by workspace settings
     if (target !== vscode.ConfigurationTarget.Global) {
         return;
