@@ -276,12 +276,6 @@
             ],
             "order": 9
           },
-          "swift.removeStaleSwiftcDiagnostics": {
-            "type": "boolean",
-            "default": true,
-            "markdownDescription": "Whether to clear old build diagnostics from `swiftc` when `SourceKit` indicates it has been fixed in the editor.",
-            "order": 10
-          },
           "swift.excludePathsFromPackageDependencies": {
             "description": "A list of paths to exclude from the Package Dependencies view.",
             "type": "array",
@@ -292,13 +286,13 @@
               ".git",
               ".github"
             ],
-            "order": 11
+            "order": 10
           },
           "swift.backgroundCompilation": {
             "type": "boolean",
             "default": false,
             "markdownDescription": "**Experimental**: Run `swift build` in the background whenever a file is saved.",
-            "order": 12
+            "order": 11
           },
           "swift.actionAfterBuildError": {
             "type": "string",
@@ -313,25 +307,25 @@
               "Focus on Build Task Terminal"
             ],
             "markdownDescription": "Action after a Build task generates errors.",
-            "order": 13
+            "order": 12
           },
           "swift.buildPath": {
             "type": "string",
             "default": "",
             "markdownDescription": "Path to the build directory passed to all swift package manager commands.",
-            "order": 14
+            "order": 13
           },
           "swift.disableSwiftPackageManagerIntegration": {
             "type": "boolean",
             "default": false,
             "markdownDescription": "Disables automated Build Tasks, Package Dependency view, Launch configuration generation and TestExplorer.",
-            "order": 15
+            "order": 14
           },
           "swift.showCreateSwiftProjectInWelcomePage": {
             "type": "boolean",
             "default": true,
             "description": "Controls whether or not the create new swift project button appears in the welcome page.",
-            "order": 16
+            "order": 15
           },
           "swift.openAfterCreateNewProject": {
             "type": "string",
@@ -349,7 +343,7 @@
             ],
             "default": "prompt",
             "description": "Controls whether to open a swift project automatically after creating it.",
-            "order": 17
+            "order": 16
           },
           "swift.showBuildStatus": {
             "type": "string",
@@ -367,14 +361,14 @@
               "Show the Swift build status in the \"Progress Message\" status bar item provided by VS Code.",
               "Show the Swift build status as a progress notification."
             ],
-            "order": 18
+            "order": 17
           },
           "swift.warnAboutSymlinkCreation": {
             "type": "boolean",
             "default": true,
             "description": "Controls whether or not the extension will warn about being unable to create symlinks. (Windows only)",
             "scope": "application",
-            "order": 19
+            "order": 18
           }
         }
       },

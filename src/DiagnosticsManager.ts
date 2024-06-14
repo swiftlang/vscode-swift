@@ -120,7 +120,7 @@ export class DiagnosticsManager implements vscode.Disposable {
             this.isSource(d, sources)
         );
         // Clean up any "fixed" swiftc diagnostics
-        if (configuration.removeStaleSwiftcDiagnostics && isFromSourceKit) {
+        if (isFromSourceKit) {
             this.removeDiagnostics(
                 removedDiagnostics,
                 d1 => !!newDiagnostics.find(d2 => isEqual(d1, d2))
