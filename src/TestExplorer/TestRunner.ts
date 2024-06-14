@@ -974,6 +974,9 @@ export class TestRunnerTestRunState implements ITestRunState {
             return;
         }
         const test = this.testRun.testItems[index];
+        if (test.children.size > 0) {
+            return;
+        }
         const startTime = this.startTimes.get(index);
 
         let duration: number;

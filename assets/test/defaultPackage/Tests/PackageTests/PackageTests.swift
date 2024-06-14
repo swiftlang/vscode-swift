@@ -32,6 +32,11 @@ import Testing
   #expect(1 == 2)
 }
 
+@Test(arguments: [1, 2, 3])
+func parameterizedTest(_ arg: Int) {
+  #expect(arg != 2)
+}
+
 @Suite
 struct MixedSwiftTestingSuite {
   @Test
