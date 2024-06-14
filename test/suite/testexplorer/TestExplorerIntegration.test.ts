@@ -26,8 +26,9 @@ import {
     syncPromise,
 } from "./utilities";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { TestKind, TestRunProxy } from "../../../src/TestExplorer/TestRunner";
+import { TestRunProxy } from "../../../src/TestExplorer/TestRunner";
 import { Version } from "../../../src/utilities/version";
+import { TestKind } from "../../../src/TestExplorer/TestKind";
 
 suite("Test Explorer Suite", function () {
     const MAX_TEST_RUN_TIME_MINUTES = 5;

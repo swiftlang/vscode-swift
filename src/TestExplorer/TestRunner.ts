@@ -38,22 +38,7 @@ import { TestClass, runnableTag, upsertTestItem } from "./TestDiscovery";
 import { TestCoverage } from "../coverage/LcovResults";
 import { TestingDebugConfigurationFactory } from "../debugger/buildConfig";
 import { SwiftExecution } from "../tasks/SwiftExecution";
-
-/** Workspace Folder events */
-export enum TestKind {
-    // run tests serially
-    standard = "Run Tests",
-    // run tests in parallel
-    parallel = "Run Tests (Parallel)",
-    // run tests and extract test coverage
-    coverage = "Run With Test Coverage",
-    // run tests with the debugger
-    debug = "Debug Tests",
-    // run tests compiled in release mode
-    release = "Run Tests (Release Mode)",
-    // run tests compiled in release mode with debugger
-    debugRelease = "Debug Tests (Release Mode)",
-}
+import { TestKind, isDebug, isRelease } from "./TestKind";
 
 export enum TestLibrary {
     xctest = "XCTest",
@@ -245,7 +230,7 @@ export class TestRunner {
     ) {
         this.testArgs = new TestRunArguments(
             this.ensureRequestIncludesTests(this.request),
-            testKind === TestKind.debug
+            isDebug(testKind)
         );
         this.testRun = new TestRunProxy(request, controller, this.testArgs, folderContext);
         this.xcTestOutputParser =
@@ -405,7 +390,7 @@ export class TestRunner {
     async runHandler(token: vscode.CancellationToken) {
         const runState = new TestRunnerTestRunState(this.testRun);
         try {
-            if (this.testKind === TestKind.debug || this.testKind === TestKind.debugRelease) {
+            if (isDebug(this.testKind)) {
                 await this.debugSession(token, runState);
             } else {
                 await this.runSession(token, runState);
@@ -696,7 +681,7 @@ export class TestRunner {
             return;
         }
 
-        if (this.testKind === TestKind.release || this.testKind === TestKind.debugRelease) {
+        if (isRelease(this.testKind)) {
             buildAllTask.definition.args = [
                 ...buildAllTask.definition.args,
                 "-c",

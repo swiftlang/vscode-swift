@@ -22,8 +22,9 @@ import { regexEscapedString, swiftRuntimeEnv } from "../utilities/utilities";
 import { DebugAdapter } from "./debugAdapter";
 import { TargetType } from "../SwiftPackage";
 import { Version } from "../utilities/version";
-import { TestKind, TestLibrary } from "../TestExplorer/TestRunner";
+import { TestLibrary } from "../TestExplorer/TestRunner";
 import { buildOptions } from "../tasks/SwiftTaskProvider";
+import { TestKind, isDebug, isRelease } from "../TestExplorer/TestKind";
 
 /**
  * Creates `vscode.DebugConfiguration`s for different combinations of
@@ -98,7 +99,7 @@ export class TestingDebugConfigurationFactory {
 
     /* eslint-disable no-case-declarations */
     private buildLinuxConfig(): vscode.DebugConfiguration | null {
-        if (this.isDebugBuild && this.testLibrary === TestLibrary.xctest) {
+        if (isDebug(this.testKind) && this.testLibrary === TestLibrary.xctest) {
             return {
                 ...this.baseConfig,
                 program: this.xcTestOutputPath,
@@ -330,9 +331,9 @@ export class TestingDebugConfigurationFactory {
     private addBuildOptionsToArgs(args: string[]): string[] {
         let result = [
             ...args,
-            ...buildOptions(this.ctx.workspaceContext.toolchain, this.isDebugBuild),
+            ...buildOptions(this.ctx.workspaceContext.toolchain, isDebug(this.testKind)),
         ];
-        if (this.isReleaseBuild) {
+        if (isRelease(this.testKind)) {
             result = [...result, "-c", "release", "-Xswiftc", "-enable-testing"];
         }
         return result;
@@ -353,16 +354,8 @@ export class TestingDebugConfigurationFactory {
         return BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
     }
 
-    private get isDebugBuild(): boolean {
-        return this.testKind === TestKind.debug || this.testKind === TestKind.debugRelease;
-    }
-
-    private get isReleaseBuild(): boolean {
-        return this.testKind === TestKind.release || this.testKind === TestKind.debugRelease;
-    }
-
     private get artifactFolderForTestKind(): string {
-        return this.isReleaseBuild ? "release" : "debug";
+        return isRelease(this.testKind) ? "release" : "debug";
     }
 
     private get xcTestOutputPath(): string {
