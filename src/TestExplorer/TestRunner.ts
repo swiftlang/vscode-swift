@@ -38,7 +38,7 @@ import { TestClass, runnableTag, upsertTestItem } from "./TestDiscovery";
 import { TestCoverage } from "../coverage/LcovResults";
 import { TestingDebugConfigurationFactory } from "../debugger/buildConfig";
 import { SwiftExecution } from "../tasks/SwiftExecution";
-import { TestKind, isDebug, isRelease } from "./TestKind";
+import { TestKind, isDebugging, isRelease } from "./TestKind";
 
 export enum TestLibrary {
     xctest = "XCTest",
@@ -230,7 +230,7 @@ export class TestRunner {
     ) {
         this.testArgs = new TestRunArguments(
             this.ensureRequestIncludesTests(this.request),
-            isDebug(testKind)
+            isDebugging(testKind)
         );
         this.testRun = new TestRunProxy(request, controller, this.testArgs, folderContext);
         this.xcTestOutputParser =
@@ -390,7 +390,7 @@ export class TestRunner {
     async runHandler(token: vscode.CancellationToken) {
         const runState = new TestRunnerTestRunState(this.testRun);
         try {
-            if (isDebug(this.testKind)) {
+            if (isDebugging(this.testKind)) {
                 await this.debugSession(token, runState);
             } else {
                 await this.runSession(token, runState);

@@ -24,7 +24,7 @@ import { TargetType } from "../SwiftPackage";
 import { Version } from "../utilities/version";
 import { TestLibrary } from "../TestExplorer/TestRunner";
 import { buildOptions } from "../tasks/SwiftTaskProvider";
-import { TestKind, isDebug, isRelease } from "../TestExplorer/TestKind";
+import { TestKind, isDebugging, isRelease } from "../TestExplorer/TestKind";
 
 /**
  * Creates `vscode.DebugConfiguration`s for different combinations of
@@ -99,7 +99,7 @@ export class TestingDebugConfigurationFactory {
 
     /* eslint-disable no-case-declarations */
     private buildLinuxConfig(): vscode.DebugConfiguration | null {
-        if (isDebug(this.testKind) && this.testLibrary === TestLibrary.xctest) {
+        if (isDebugging(this.testKind) && this.testLibrary === TestLibrary.xctest) {
             return {
                 ...this.baseConfig,
                 program: this.xcTestOutputPath,
@@ -331,7 +331,7 @@ export class TestingDebugConfigurationFactory {
     private addBuildOptionsToArgs(args: string[]): string[] {
         let result = [
             ...args,
-            ...buildOptions(this.ctx.workspaceContext.toolchain, isDebug(this.testKind)),
+            ...buildOptions(this.ctx.workspaceContext.toolchain, isDebugging(this.testKind)),
         ];
         if (isRelease(this.testKind)) {
             result = [...result, "-c", "release", "-Xswiftc", "-enable-testing"];

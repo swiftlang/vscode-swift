@@ -28,7 +28,7 @@ export enum TestKind {
     debugRelease = "Debug Tests (Release Mode)",
 }
 
-export function isDebug(testKind: TestKind): boolean {
+export function isDebugging(testKind: TestKind): boolean {
     return testKind === TestKind.debug || testKind === TestKind.debugRelease;
 }
 
