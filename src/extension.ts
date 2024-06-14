@@ -216,10 +216,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
 
         const testExplorerObserver = TestExplorer.observeFolders(workspaceContext);
 
-        if (configuration.debugger.useDebugAdapterFromToolchain) {
-            const lldbDebugAdapter = registerLLDBDebugAdapter(workspaceContext);
-            context.subscriptions.push(lldbDebugAdapter);
-        }
+        // Register swift-lldb debug provider
+        const lldbDebugAdapter = registerLLDBDebugAdapter(workspaceContext);
+        context.subscriptions.push(lldbDebugAdapter);
+
         const loggingDebugAdapter = registerLoggingDebugAdapterTracker();
 
         // setup workspace context with initial workspace folders

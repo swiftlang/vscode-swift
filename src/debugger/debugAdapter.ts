@@ -58,7 +58,7 @@ export class DebugAdapter {
             : workspace.toolchain.getToolchainExecutable(debugAdapter);
         if (!(await this.doesFileExist(lldbDebugAdapterPath))) {
             if (!quiet) {
-                vscode.window.showInformationMessage(
+                vscode.window.showErrorMessage(
                     useCustom
                         ? `Cannot find ${debugAdapter} debug adapter specified in setting Swift.Debugger.Path.`
                         : `Cannot find ${debugAdapter} debug adapter in your Swift toolchain.`

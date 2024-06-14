@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { ITestRunState } from "../../../src/TestExplorer/TestParsers/TestRunState";
+import { ITestRunState, TestIssueDiff } from "../../../src/TestExplorer/TestParsers/TestRunState";
 
 /** TestStatus */
 export enum TestStatus {
@@ -28,7 +28,12 @@ export enum TestStatus {
 interface TestItem {
     name: string;
     status: TestStatus;
-    issues?: { message: string; isKnown: boolean; location?: vscode.Location }[];
+    issues?: {
+        message: string | vscode.MarkdownString;
+        isKnown: boolean;
+        location?: vscode.Location;
+        diff?: TestIssueDiff;
+    }[];
     timing?: { duration: number } | { timestamp: number };
 }
 
@@ -97,13 +102,14 @@ export class TestRunState implements ITestRunState {
 
     recordIssue(
         index: number,
-        message: string,
-        isKnown: boolean = false,
-        location?: vscode.Location
+        message: string | vscode.MarkdownString,
+        isKnown: boolean,
+        location?: vscode.Location,
+        diff?: TestIssueDiff
     ): void {
         this.testItemFinder.tests[index].issues = [
             ...(this.testItemFinder.tests[index].issues ?? []),
-            { message, location, isKnown },
+            { message, location, isKnown, diff },
         ];
         this.testItemFinder.tests[index].status = TestStatus.failed;
     }
