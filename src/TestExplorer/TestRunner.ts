@@ -725,6 +725,13 @@ export class TestRunner {
 
                     swiftTestBuildConfig.testType = TestLibrary.swiftTesting;
                     swiftTestBuildConfig.preLaunchTask = null;
+
+                    // If we're testing in both frameworks we're going to start more than one debugging
+                    // session. If both build configurations have the same name LLDB will replace the
+                    // output of the first one in the Debug Console with the output of the second one.
+                    // If they each have a unique name the Debug Console gets a nice dropdown the user
+                    // can switch between to see the output for both sessions.
+                    swiftTestBuildConfig.name = `Swift Testing: ${swiftTestBuildConfig.name}`;
                     buildConfigs.push(swiftTestBuildConfig);
                 }
             }
@@ -750,6 +757,7 @@ export class TestRunner {
 
                     xcTestBuildConfig.testType = TestLibrary.xctest;
                     xcTestBuildConfig.preLaunchTask = null;
+                    xcTestBuildConfig.name = `XCTest: ${xcTestBuildConfig.name}`;
                     buildConfigs.push(xcTestBuildConfig);
                 }
             }
