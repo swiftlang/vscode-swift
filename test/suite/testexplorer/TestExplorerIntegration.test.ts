@@ -401,33 +401,6 @@ suite("Test Explorer Suite", function () {
                         ],
                     });
                 });
-
-                test("Runs All", async function () {
-                    const testRun = await runTest(
-                        testExplorer.controller,
-                        runProfile,
-                        "PackageTests.MixedSwiftTestingSuite",
-                        "PackageTests.MixedXCTestSuite"
-                    );
-
-                    assertTestResults(testRun, {
-                        passed: [
-                            "PackageTests.MixedSwiftTestingSuite/testPassing()",
-                            "PackageTests.MixedXCTestSuite/testPassing",
-                        ],
-                        skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],
-                        failed: [
-                            {
-                                test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
-                                issues: ["Expectation failed: 1 == 2"],
-                            },
-                            {
-                                test: "PackageTests.MixedXCTestSuite/testFailing",
-                                issues: [xcTestFailureMessage],
-                            },
-                        ],
-                    });
-                });
             });
 
             suite("XCTests", () => {

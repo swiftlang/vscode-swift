@@ -30,6 +30,10 @@ export function run(): Promise<void> {
         // Run all tests that are not marked with @slow
         options.grep = "@slow";
         options.invert = true;
+
+        console.log("\n\nRunning fast test suite, omitting tests marked with @slow.\n");
+    } else {
+        console.log("\n\nRunning full test suite, including tests marked with @slow.\n");
     }
 
     // Create the mocha test
