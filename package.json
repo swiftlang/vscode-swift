@@ -169,6 +169,11 @@
         "command": "swift.attachDebugger",
         "title": "Attach to Process...",
         "category": "Swift"
+      },
+      {
+        "command": "swift.clearDiagnosticsCollection",
+        "title": "Clear Diagnostics Collection",
+        "category": "Swift"
       }
     ],
     "configuration": [

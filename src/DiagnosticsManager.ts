@@ -25,6 +25,9 @@ interface ParsedDiagnostic {
 
 type DiagnosticsMap = Map<string, vscode.Diagnostic[]>;
 
+const isEqual = (d1: vscode.Diagnostic, d2: vscode.Diagnostic) =>
+    d1.range.start.isEqual(d2.range.start) && d1.message === d2.message;
+
 /**
  * Handles the collection and deduplication of diagnostics from
  * various {@link vscode.Diagnostic.source | Diagnostic sources}.
@@ -40,18 +43,15 @@ export class DiagnosticsManager implements vscode.Disposable {
 
     private diagnosticCollection: vscode.DiagnosticCollection =
         vscode.languages.createDiagnosticCollection("swift");
+    private allDiagnostics: Map<string, vscode.Diagnostic[]> = new Map();
 
     constructor(context: WorkspaceContext) {
         this.onDidChangeConfigurationDisposible = vscode.workspace.onDidChangeConfiguration(e => {
             if (e.affectsConfiguration("swift.diagnosticsCollection")) {
-                if (!this.includeSwiftcDiagnostics()) {
-                    // Clean up "swiftc" diagnostics
-                    this.removeSwiftcDiagnostics();
-                }
-                if (!this.includeSourceKitDiagnostics()) {
-                    // Clean up SourceKit diagnostics
-                    this.removeSourceKitDiagnostics();
-                }
+                this.diagnosticCollection.clear();
+                this.allDiagnostics.forEach((_, uri) =>
+                    this.updateDiagnosticsCollection(vscode.Uri.file(uri))
+                );
             }
         });
         this.onDidStartTaskDisposible = vscode.tasks.onDidStartTask(event => {
@@ -92,101 +92,137 @@ export class DiagnosticsManager implements vscode.Disposable {
      * @param uri {@link vscode.Uri Uri} of the file these diagonstics apply to
      * @param sources The source of the diagnostics which will apply for cleaning
      * up diagnostics that have been removed. See {@link swiftc} and {@link sourcekit}
-     * @param diagnostics Array of {@link vscode.Diagnostic}. This can be empty to remove old diagnostics for the specified `sources`.
+     * @param newDiagnostics Array of {@link vscode.Diagnostic}. This can be empty to remove old diagnostics for the specified `sources`.
      */
-    handleDiagnostics(uri: vscode.Uri, sources: string[], diagnostics: vscode.Diagnostic[]): void {
+    handleDiagnostics(
+        uri: vscode.Uri,
+        sources: string[],
+        newDiagnostics: vscode.Diagnostic[]
+    ): void {
+        const isFromSourceKit = !!DiagnosticsManager.sourcekit.find(s => sources.includes(s));
         // Is a descrepency between SourceKit-LSP and older versions
         // of Swift as to whether the first letter is capitalized or not,
         // so we'll always display messages capitalized to user and this
         // also will allow comparing messages when merging
-        diagnostics.forEach(this.capitalizeMessage);
-        const newDiagnostics = this.diagnosticCollection.get(uri)?.slice() || [];
+        newDiagnostics = newDiagnostics.map(this.capitalizeMessage);
+        const allDiagnostics = this.allDiagnostics.get(uri.fsPath)?.slice() || [];
         // Remove the old set of diagnostics from this source
-        this.removeDiagnostics(newDiagnostics, sources);
+        const removedDiagnostics = this.removeDiagnostics(allDiagnostics, d =>
+            this.isSource(d, sources)
+        );
+        // Clean up any "fixed" swiftc diagnostics
+        if (isFromSourceKit) {
+            this.removeDiagnostics(
+                removedDiagnostics,
+                d1 => !!newDiagnostics.find(d2 => isEqual(d1, d2))
+            );
+            this.removeDiagnostics(
+                allDiagnostics,
+                d1 => this.isSwiftc(d1) && !!removedDiagnostics.find(d2 => isEqual(d1, d2))
+            );
+        }
+        // Append the new diagnostics we just received
+        allDiagnostics.push(...newDiagnostics);
+        this.allDiagnostics.set(uri.fsPath, allDiagnostics);
+        // Update the collection
+        this.updateDiagnosticsCollection(uri);
+    }
+
+    private updateDiagnosticsCollection(uri: vscode.Uri): void {
+        const diagnostics = this.allDiagnostics.get(uri.fsPath) ?? [];
+        const swiftcDiagnostics = diagnostics.filter(d => this.isSwiftc(d));
+        const sourceKitDiagnostics = diagnostics.filter(d => this.isSourceKit(d));
+        const mergedDiagnostics: vscode.Diagnostic[] = [];
         switch (configuration.diagnosticsCollection) {
             case "keepSourceKit":
-                this.mergeDiagnostics(newDiagnostics, diagnostics, DiagnosticsManager.sourcekit);
+                mergedDiagnostics.push(...swiftcDiagnostics);
+                this.mergeDiagnostics(
+                    mergedDiagnostics,
+                    sourceKitDiagnostics,
+                    DiagnosticsManager.sourcekit
+                );
                 break;
             case "keepSwiftc":
-                this.mergeDiagnostics(newDiagnostics, diagnostics, DiagnosticsManager.swiftc);
+                mergedDiagnostics.push(...sourceKitDiagnostics);
+                this.mergeDiagnostics(
+                    mergedDiagnostics,
+                    swiftcDiagnostics,
+                    DiagnosticsManager.swiftc
+                );
                 break;
             case "onlySourceKit":
-                this.removeDiagnostics(newDiagnostics, DiagnosticsManager.swiftc); // Just in case
-                if (DiagnosticsManager.swiftc.find(s => sources.includes(s))) {
-                    break;
-                }
-                newDiagnostics.push(...diagnostics);
+                mergedDiagnostics.push(...sourceKitDiagnostics);
                 break;
             case "onlySwiftc":
-                this.removeDiagnostics(newDiagnostics, DiagnosticsManager.sourcekit); // Just in case
-                if (DiagnosticsManager.sourcekit.find(s => sources.includes(s))) {
-                    break;
-                }
-                newDiagnostics.push(...diagnostics);
+                mergedDiagnostics.push(...swiftcDiagnostics);
                 break;
             case "keepAll":
-                newDiagnostics.push(...diagnostics);
+                mergedDiagnostics.push(...sourceKitDiagnostics);
+                mergedDiagnostics.push(...swiftcDiagnostics);
                 break;
         }
-        this.diagnosticCollection.set(uri, newDiagnostics);
+        this.diagnosticCollection.set(uri, mergedDiagnostics);
     }
 
     private mergeDiagnostics(
-        combinedDiagnostics: vscode.Diagnostic[],
-        incomingDiagnostics: vscode.Diagnostic[],
+        mergedDiagnostics: vscode.Diagnostic[],
+        newDiagnostics: vscode.Diagnostic[],
         precedence: string[]
     ): void {
-        for (const diagnostic of incomingDiagnostics) {
+        for (const diagnostic of newDiagnostics) {
             // See if a duplicate diagnostic exists
-            const currentDiagnostic = combinedDiagnostics.find(
-                d =>
-                    d.range.start.isEqual(diagnostic.range.start) &&
-                    d.message === diagnostic.message
-            );
+            const currentDiagnostic = mergedDiagnostics.find(d => isEqual(d, diagnostic));
             if (currentDiagnostic) {
-                combinedDiagnostics.splice(combinedDiagnostics.indexOf(currentDiagnostic), 1);
+                mergedDiagnostics.splice(mergedDiagnostics.indexOf(currentDiagnostic), 1);
             }
 
             // Perform de-duplication
             if (precedence.includes(diagnostic.source || "")) {
-                combinedDiagnostics.push(diagnostic);
+                mergedDiagnostics.push(diagnostic);
                 continue;
             }
             if (!currentDiagnostic || !precedence.includes(currentDiagnostic.source || "")) {
-                combinedDiagnostics.push(diagnostic);
+                mergedDiagnostics.push(diagnostic);
                 continue;
             }
-            combinedDiagnostics.push(currentDiagnostic);
+            mergedDiagnostics.push(currentDiagnostic);
         }
     }
 
     private removeSwiftcDiagnostics() {
         this.diagnosticCollection.forEach((uri, diagnostics) => {
             const newDiagnostics = diagnostics.slice();
-            this.removeDiagnostics(newDiagnostics, DiagnosticsManager.swiftc);
+            this.removeDiagnostics(newDiagnostics, d => this.isSwiftc(d));
             if (diagnostics.length !== newDiagnostics.length) {
                 this.diagnosticCollection.set(uri, newDiagnostics);
             }
         });
     }
 
-    private removeSourceKitDiagnostics() {
-        this.diagnosticCollection.forEach((uri, diagnostics) => {
-            const newDiagnostics = diagnostics.slice();
-            this.removeDiagnostics(newDiagnostics, DiagnosticsManager.sourcekit);
-            if (diagnostics.length !== newDiagnostics.length) {
-                this.diagnosticCollection.set(uri, newDiagnostics);
-            }
-        });
+    private isSource(diagnostic: vscode.Diagnostic, sources: string[]): boolean {
+        return sources.includes(diagnostic.source || "");
     }
 
-    private removeDiagnostics(diagnostics: vscode.Diagnostic[], sources: string[]): void {
+    private isSwiftc(diagnostic: vscode.Diagnostic): boolean {
+        return this.isSource(diagnostic, DiagnosticsManager.swiftc);
+    }
+
+    private isSourceKit(diagnostic: vscode.Diagnostic): boolean {
+        return this.isSource(diagnostic, DiagnosticsManager.sourcekit);
+    }
+
+    private removeDiagnostics(
+        diagnostics: vscode.Diagnostic[],
+        matches: (d: vscode.Diagnostic) => boolean
+    ): vscode.Diagnostic[] {
+        const removed: vscode.Diagnostic[] = [];
         let i = diagnostics.length;
         while (i--) {
-            if (sources.includes(diagnostics[i].source || "")) {
-                diagnostics.splice(i, 1);
+            if (matches(diagnostics[i])) {
+                removed.push(...diagnostics.splice(i, 1));
             }
         }
+        return removed;
     }
 
     /**
@@ -194,6 +230,7 @@ export class DiagnosticsManager implements vscode.Disposable {
      */
     clear(): void {
         this.diagnosticCollection.clear();
+        this.allDiagnostics.clear();
     }
 
     dispose() {
@@ -238,7 +275,6 @@ export class DiagnosticsManager implements vscode.Disposable {
                             }
                             const relatedInformation =
                                 result as vscode.DiagnosticRelatedInformation;
-                            this.capitalizeMessage(relatedInformation);
                             if (
                                 lastDiagnostic.relatedInformation?.find(
                                     d =>
@@ -291,7 +327,7 @@ export class DiagnosticsManager implements vscode.Disposable {
             return;
         }
         const uri = match[1];
-        const message = match[5];
+        const message = this.capitalize(match[5]);
         const range = this.range(match[2], match[3]);
         const severity = this.severity(match[4]);
         if (severity === vscode.DiagnosticSeverity.Information) {
@@ -328,12 +364,16 @@ export class DiagnosticsManager implements vscode.Disposable {
         return severity;
     }
 
-    private capitalizeMessage(
-        diagnostic: vscode.Diagnostic | vscode.DiagnosticRelatedInformation
-    ): void {
-        const message = diagnostic.message;
-        diagnostic.message = message.charAt(0).toUpperCase() + message.slice(1);
+    private capitalize(message: string): string {
+        return message.charAt(0).toUpperCase() + message.slice(1);
     }
+
+    private capitalizeMessage = (diagnostic: vscode.Diagnostic): vscode.Diagnostic => {
+        const message = diagnostic.message;
+        diagnostic = { ...diagnostic };
+        diagnostic.message = this.capitalize(message);
+        return diagnostic;
+    };
 
     private onDidStartTaskDisposible: vscode.Disposable;
     private onDidChangeConfigurationDisposible: vscode.Disposable;
