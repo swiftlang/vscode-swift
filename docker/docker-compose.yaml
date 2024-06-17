@@ -14,6 +14,7 @@ services:
     image: vscode-swift:default
     environment:
       - CI=1
+      - FAST_TEST_RUN=1
     depends_on: [runtime-setup]
     volumes:
       - ~/.ssh:/root/.ssh

@@ -26,8 +26,9 @@ import {
     syncPromise,
 } from "./utilities";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { RunProfileName, TestRunProxy } from "../../../src/TestExplorer/TestRunner";
+import { TestRunProxy } from "../../../src/TestExplorer/TestRunner";
 import { Version } from "../../../src/utilities/version";
+import { TestKind } from "../../../src/TestExplorer/TestKind";
 
 suite("Test Explorer Suite", function () {
     const MAX_TEST_RUN_TIME_MINUTES = 5;
@@ -50,7 +51,7 @@ suite("Test Explorer Suite", function () {
 
     async function runTest(
         controller: vscode.TestController,
-        runProfile: RunProfileName,
+        runProfile: TestKind,
         ...tests: string[]
     ): Promise<TestRunProxy> {
         const targetProfile = testExplorer.testRunProfiles.find(
@@ -122,9 +123,13 @@ suite("Test Explorer Suite", function () {
                     ["testFailing()"],
                     "MixedXCTestSuite",
                     ["testPassing()", "testFailing()"],
+                    "DebugReleaseTestSuite",
+                    ["testRelease()", "testDebug()"],
                     "topLevelTestPassing()",
                     "topLevelTestFailing()",
                     "parameterizedTest(_:)",
+                    "testRelease()",
+                    "testDebug()",
                     "MixedSwiftTestingSuite",
                     ["testPassing()", "testFailing()", "testDisabled()"],
                     "testWithKnownIssue()",
@@ -137,6 +142,8 @@ suite("Test Explorer Suite", function () {
             assertTestControllerHierarchy(testExplorer.controller, [
                 "PackageTests",
                 [
+                    "DebugReleaseTestSuite",
+                    ["testDebug", "testRelease"],
                     "FailingXCTestSuite",
                     ["testFailing"],
                     "MixedXCTestSuite",
@@ -160,7 +167,7 @@ suite("Test Explorer Suite", function () {
         test("withKnownIssue", async () => {
             const testRun = await runTest(
                 testExplorer.controller,
-                RunProfileName.run,
+                TestKind.standard,
                 "PackageTests.testWithKnownIssue()"
             );
 
@@ -172,7 +179,7 @@ suite("Test Explorer Suite", function () {
         test("testWithKnownIssueAndUnknownIssue", async () => {
             const testRun = await runTest(
                 testExplorer.controller,
-                RunProfileName.run,
+                TestKind.standard,
                 "PackageTests.testWithKnownIssueAndUnknownIssue()"
             );
 
@@ -185,179 +192,265 @@ suite("Test Explorer Suite", function () {
                 ],
             });
         });
+
+        test("tests run in debug mode @slow", async function () {
+            const testRun = await runTest(
+                testExplorer.controller,
+                TestKind.standard,
+                "PackageTests.testDebug()"
+            );
+
+            assertTestResults(testRun, {
+                passed: ["PackageTests.testDebug()"],
+            });
+        });
+
+        test("test run in release mode @slow", async function () {
+            // Building in release takes a long time.
+            this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 2);
+
+            const passingRun = await runTest(
+                testExplorer.controller,
+                TestKind.release,
+                "PackageTests.testRelease()"
+            );
+            assertTestResults(passingRun, {
+                passed: ["PackageTests.testRelease()"],
+            });
+
+            const failingRun = await runTest(
+                testExplorer.controller,
+                TestKind.standard,
+                "PackageTests.testRelease()"
+            );
+
+            assertTestResults(failingRun, {
+                failed: [
+                    {
+                        test: "PackageTests.testRelease()",
+                        issues: ["Unconditionally failed", "Test was run in debug mode."],
+                    },
+                ],
+            });
+        });
+    });
+
+    suite("XCTest", () => {
+        test("tests run in debug mode @slow", async function () {
+            const testRun = await runTest(
+                testExplorer.controller,
+                TestKind.standard,
+                "PackageTests.DebugReleaseTestSuite/testDebug"
+            );
+
+            assertTestResults(testRun, {
+                passed: ["PackageTests.DebugReleaseTestSuite/testDebug"],
+            });
+        });
+
+        test("tests run in release mode @slow", async function () {
+            // Building in release takes a long time.
+            this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 2);
+
+            const passingRun = await runTest(
+                testExplorer.controller,
+                TestKind.release,
+                "PackageTests.DebugReleaseTestSuite/testRelease"
+            );
+
+            assertTestResults(passingRun, {
+                passed: ["PackageTests.DebugReleaseTestSuite/testRelease"],
+            });
+        });
     });
 
     // Do coverage last as it does a full rebuild, causing the stage after it to have to rebuild as well.
-    [RunProfileName.run, RunProfileName.runParallel, RunProfileName.coverage].forEach(
-        runProfile => {
-            let xcTestFailureMessage: string;
+    [TestKind.standard, TestKind.parallel, TestKind.coverage].forEach(runProfile => {
+        let xcTestFailureMessage: string;
 
-            beforeEach(() => {
-                // From 5.7 to 5.10 running with the --parallel option dumps the test results out
-                // to the console with no newlines, so it isn't possible to distinguish where errors
-                // begin and end. Consequently we can't record them, and so we manually mark them
-                // as passed or failed with the message from the xunit xml.
-                xcTestFailureMessage =
-                    runProfile === RunProfileName.runParallel &&
-                    !workspaceContext.toolchain.hasMultiLineParallelTestOutput
-                        ? "failed"
-                        : "failed - oh no";
-            });
+        beforeEach(() => {
+            // From 5.7 to 5.10 running with the --parallel option dumps the test results out
+            // to the console with no newlines, so it isn't possible to distinguish where errors
+            // begin and end. Consequently we can't record them, and so we manually mark them
+            // as passed or failed with the message from the xunit xml.
+            xcTestFailureMessage =
+                runProfile === TestKind.parallel &&
+                !workspaceContext.toolchain.hasMultiLineParallelTestOutput
+                    ? "failed"
+                    : "failed - oh no";
+        });
 
-            suite(runProfile, () => {
-                suite("swift-testing", function () {
-                    suiteSetup(function () {
-                        if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
-                            this.skip();
-                        }
-                    });
+        suite(runProfile, () => {
+            suite("swift-testing", function () {
+                suiteSetup(function () {
+                    if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+                        this.skip();
+                    }
+                });
 
-                    test("Runs passing test", async function () {
-                        const testRun = await runTest(
-                            testExplorer.controller,
-                            runProfile,
-                            "PackageTests.topLevelTestPassing()"
-                        );
+                test("Runs passing test", async function () {
+                    const testRun = await runTest(
+                        testExplorer.controller,
+                        runProfile,
+                        "PackageTests.topLevelTestPassing()"
+                    );
 
-                        assertTestResults(testRun, {
-                            passed: ["PackageTests.topLevelTestPassing()"],
-                        });
-                    });
-
-                    test("Runs failing test", async function () {
-                        const testRun = await runTest(
-                            testExplorer.controller,
-                            runProfile,
-                            "PackageTests.topLevelTestFailing()"
-                        );
-
-                        assertTestResults(testRun, {
-                            failed: [
-                                {
-                                    test: "PackageTests.topLevelTestFailing()",
-                                    issues: ["Expectation failed: 1 == 2"],
-                                },
-                            ],
-                        });
-                    });
-
-                    test("Runs parameterized test", async function () {
-                        const testRun = await runTest(
-                            testExplorer.controller,
-                            runProfile,
-                            "PackageTests.parameterizedTest(_:)"
-                        );
-
-                        assertTestResults(testRun, {
-                            passed: [
-                                "PackageTests.parameterizedTest(_:)/PackageTests.swift:35:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])",
-                                "PackageTests.parameterizedTest(_:)/PackageTests.swift:35:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [51])])",
-                            ],
-                            failed: [
-                                {
-                                    issues: ["Expectation failed: (arg → 2) != 2"],
-                                    test: "PackageTests.parameterizedTest(_:)/PackageTests.swift:35:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])",
-                                },
-                            ],
-                        });
-                    });
-
-                    test("Runs Suite", async function () {
-                        const testRun = await runTest(
-                            testExplorer.controller,
-                            runProfile,
-                            "PackageTests.MixedSwiftTestingSuite"
-                        );
-
-                        assertTestResults(testRun, {
-                            passed: ["PackageTests.MixedSwiftTestingSuite/testPassing()"],
-                            skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],
-                            failed: [
-                                {
-                                    test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
-                                    issues: ["Expectation failed: 1 == 2"],
-                                },
-                            ],
-                        });
-                    });
-
-                    test("Runs All", async function () {
-                        const testRun = await runTest(
-                            testExplorer.controller,
-                            runProfile,
-                            "PackageTests.MixedSwiftTestingSuite",
-                            "PackageTests.MixedXCTestSuite"
-                        );
-
-                        assertTestResults(testRun, {
-                            passed: [
-                                "PackageTests.MixedSwiftTestingSuite/testPassing()",
-                                "PackageTests.MixedXCTestSuite/testPassing",
-                            ],
-                            skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],
-                            failed: [
-                                {
-                                    test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
-                                    issues: ["Expectation failed: 1 == 2"],
-                                },
-                                {
-                                    test: "PackageTests.MixedXCTestSuite/testFailing",
-                                    issues: [xcTestFailureMessage],
-                                },
-                            ],
-                        });
+                    assertTestResults(testRun, {
+                        passed: ["PackageTests.topLevelTestPassing()"],
                     });
                 });
 
-                suite("XCTests", () => {
-                    test("Runs passing test", async function () {
-                        const testRun = await runTest(
-                            testExplorer.controller,
-                            runProfile,
-                            "PackageTests.PassingXCTestSuite"
-                        );
+                test("Runs failing test", async function () {
+                    const testRun = await runTest(
+                        testExplorer.controller,
+                        runProfile,
+                        "PackageTests.topLevelTestFailing()"
+                    );
 
-                        assertTestResults(testRun, {
-                            passed: ["PackageTests.PassingXCTestSuite/testPassing"],
-                        });
+                    assertTestResults(testRun, {
+                        failed: [
+                            {
+                                test: "PackageTests.topLevelTestFailing()",
+                                issues: ["Expectation failed: 1 == 2"],
+                            },
+                        ],
                     });
+                });
 
-                    test("Runs failing test", async function () {
-                        const testRun = await runTest(
-                            testExplorer.controller,
-                            runProfile,
-                            "PackageTests.FailingXCTestSuite/testFailing"
-                        );
-
-                        assertTestResults(testRun, {
-                            failed: [
-                                {
-                                    test: "PackageTests.FailingXCTestSuite/testFailing",
-                                    issues: [xcTestFailureMessage],
-                                },
-                            ],
-                        });
+                test("Runs Suite", async function () {
+                    const testRun = await runTest(
+                        testExplorer.controller,
+                        runProfile,
+                        "PackageTests.MixedSwiftTestingSuite"
+                    );
+                    assertTestResults(testRun, {
+                        passed: ["PackageTests.MixedSwiftTestingSuite/testPassing()"],
+                        skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],
+                        failed: [
+                            {
+                                test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
+                                issues: ["Expectation failed: 1 == 2"],
+                            },
+                        ],
                     });
+                });
 
-                    test("Runs Suite", async function () {
-                        const testRun = await runTest(
-                            testExplorer.controller,
-                            runProfile,
-                            "PackageTests.MixedXCTestSuite"
-                        );
+                test("Runs parameterized test", async function () {
+                    const testRun = await runTest(
+                        testExplorer.controller,
+                        runProfile,
+                        "PackageTests.parameterizedTest(_:)"
+                    );
 
-                        assertTestResults(testRun, {
-                            passed: ["PackageTests.MixedXCTestSuite/testPassing"],
-                            failed: [
-                                {
-                                    test: "PackageTests.MixedXCTestSuite/testFailing",
-                                    issues: [xcTestFailureMessage],
-                                },
-                            ],
-                        });
+                    assertTestResults(testRun, {
+                        passed: [
+                            "PackageTests.parameterizedTest(_:)/PackageTests.swift:49:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])",
+                            "PackageTests.parameterizedTest(_:)/PackageTests.swift:49:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [51])])",
+                        ],
+                        failed: [
+                            {
+                                issues: ["Expectation failed: (arg → 2) != 2"],
+                                test: "PackageTests.parameterizedTest(_:)/PackageTests.swift:49:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])",
+                            },
+                        ],
+                    });
+                });
+
+                test("Runs Suite", async function () {
+                    const testRun = await runTest(
+                        testExplorer.controller,
+                        runProfile,
+                        "PackageTests.MixedSwiftTestingSuite"
+                    );
+
+                    assertTestResults(testRun, {
+                        passed: ["PackageTests.MixedSwiftTestingSuite/testPassing()"],
+                        skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],
+                        failed: [
+                            {
+                                test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
+                                issues: ["Expectation failed: 1 == 2"],
+                            },
+                        ],
+                    });
+                });
+
+                test("Runs All", async function () {
+                    const testRun = await runTest(
+                        testExplorer.controller,
+                        runProfile,
+                        "PackageTests.MixedSwiftTestingSuite",
+                        "PackageTests.MixedXCTestSuite"
+                    );
+
+                    assertTestResults(testRun, {
+                        passed: [
+                            "PackageTests.MixedSwiftTestingSuite/testPassing()",
+                            "PackageTests.MixedXCTestSuite/testPassing",
+                        ],
+                        skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],
+                        failed: [
+                            {
+                                test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
+                                issues: ["Expectation failed: 1 == 2"],
+                            },
+                            {
+                                test: "PackageTests.MixedXCTestSuite/testFailing",
+                                issues: [xcTestFailureMessage],
+                            },
+                        ],
                     });
                 });
             });
-        }
-    );
+
+            suite("XCTests", () => {
+                test("Runs passing test", async function () {
+                    const testRun = await runTest(
+                        testExplorer.controller,
+                        runProfile,
+                        "PackageTests.PassingXCTestSuite"
+                    );
+
+                    assertTestResults(testRun, {
+                        passed: ["PackageTests.PassingXCTestSuite/testPassing"],
+                    });
+                });
+
+                test("Runs failing test", async function () {
+                    const testRun = await runTest(
+                        testExplorer.controller,
+                        runProfile,
+                        "PackageTests.FailingXCTestSuite/testFailing"
+                    );
+
+                    assertTestResults(testRun, {
+                        failed: [
+                            {
+                                test: "PackageTests.FailingXCTestSuite/testFailing",
+                                issues: [xcTestFailureMessage],
+                            },
+                        ],
+                    });
+                });
+
+                test("Runs Suite", async function () {
+                    const testRun = await runTest(
+                        testExplorer.controller,
+                        runProfile,
+                        "PackageTests.MixedXCTestSuite"
+                    );
+
+                    assertTestResults(testRun, {
+                        passed: ["PackageTests.MixedXCTestSuite/testPassing"],
+                        failed: [
+                            {
+                                test: "PackageTests.MixedXCTestSuite/testFailing",
+                                issues: [xcTestFailureMessage],
+                            },
+                        ],
+                    });
+                });
+            });
+        });
+    });
 });

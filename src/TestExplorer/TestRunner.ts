@@ -38,25 +38,7 @@ import { TestClass, runnableTag, upsertTestItem } from "./TestDiscovery";
 import { TestCoverage } from "../coverage/LcovResults";
 import { TestingDebugConfigurationFactory } from "../debugger/buildConfig";
 import { SwiftExecution } from "../tasks/SwiftExecution";
-
-/** Workspace Folder events */
-export enum TestKind {
-    // run tests serially
-    standard = "Standard",
-    // run tests in parallel
-    parallel = "Parallel",
-    // run tests and extract test coverage
-    coverage = "Coverage",
-    // run tests and extract test coverage
-    debug = "Debug",
-}
-
-export enum RunProfileName {
-    run = "Run Tests",
-    runParallel = "Run Tests (Parallel)",
-    coverage = "Test Coverage",
-    debug = "Debug Tests",
-}
+import { TestKind, isDebugging, isRelease } from "./TestKind";
 
 export enum TestLibrary {
     xctest = "XCTest",
@@ -248,7 +230,7 @@ export class TestRunner {
     ) {
         this.testArgs = new TestRunArguments(
             this.ensureRequestIncludesTests(this.request),
-            testKind === TestKind.debug
+            isDebugging(testKind)
         );
         this.testRun = new TestRunProxy(request, controller, this.testArgs, folderContext);
         this.xcTestOutputParser =
@@ -291,9 +273,9 @@ export class TestRunner {
         onCreateTestRun: vscode.EventEmitter<TestRunProxy>
     ): vscode.TestRunProfile[] {
         return [
-            // Add non-debug profile
+            // Add non-debug profiles
             controller.createRunProfile(
-                RunProfileName.run,
+                TestKind.standard,
                 vscode.TestRunProfileKind.Run,
                 async (request, token) => {
                     const runner = new TestRunner(
@@ -308,9 +290,8 @@ export class TestRunner {
                 true,
                 runnableTag
             ),
-            // Add non-debug profile
             controller.createRunProfile(
-                RunProfileName.runParallel,
+                TestKind.parallel,
                 vscode.TestRunProfileKind.Run,
                 async (request, token) => {
                     const runner = new TestRunner(
@@ -325,9 +306,25 @@ export class TestRunner {
                 false,
                 runnableTag
             ),
+            controller.createRunProfile(
+                TestKind.release,
+                vscode.TestRunProfileKind.Run,
+                async (request, token) => {
+                    const runner = new TestRunner(
+                        TestKind.release,
+                        request,
+                        folderContext,
+                        controller
+                    );
+                    onCreateTestRun.fire(runner.testRun);
+                    await runner.runHandler(token);
+                },
+                false,
+                runnableTag
+            ),
             // Add coverage profile
             controller.createRunProfile(
-                RunProfileName.coverage,
+                TestKind.coverage,
                 vscode.TestRunProfileKind.Coverage,
                 async (request, token) => {
                     const runner = new TestRunner(
@@ -350,11 +347,27 @@ export class TestRunner {
             ),
             // Add debug profile
             controller.createRunProfile(
-                RunProfileName.debug,
+                TestKind.debug,
                 vscode.TestRunProfileKind.Debug,
                 async (request, token) => {
                     const runner = new TestRunner(
                         TestKind.debug,
+                        request,
+                        folderContext,
+                        controller
+                    );
+                    onCreateTestRun.fire(runner.testRun);
+                    await runner.runHandler(token);
+                },
+                false,
+                runnableTag
+            ),
+            controller.createRunProfile(
+                TestKind.debugRelease,
+                vscode.TestRunProfileKind.Debug,
+                async (request, token) => {
+                    const runner = new TestRunner(
+                        TestKind.debugRelease,
                         request,
                         folderContext,
                         controller
@@ -377,7 +390,7 @@ export class TestRunner {
     async runHandler(token: vscode.CancellationToken) {
         const runState = new TestRunnerTestRunState(this.testRun);
         try {
-            if (this.testKind === TestKind.debug) {
+            if (isDebugging(this.testKind)) {
                 await this.debugSession(token, runState);
             } else {
                 await this.runSession(token, runState);
@@ -549,7 +562,13 @@ export class TestRunner {
                     kindLabel = " In Parallel";
                     break;
                 case TestKind.debug:
-                    kindLabel = "For Debugging";
+                    kindLabel = " For Debugging";
+                    break;
+                case TestKind.release:
+                    kindLabel = " in Release Mode";
+                    break;
+                case TestKind.debugRelease:
+                    kindLabel = " For Debugging in Release Mode";
                     break;
                 case TestKind.standard:
                     kindLabel = "";
@@ -662,6 +681,17 @@ export class TestRunner {
             return;
         }
 
+        if (isRelease(this.testKind)) {
+            buildAllTask.definition.args = [
+                ...buildAllTask.definition.args,
+                "-c",
+                "release",
+                "-Xswiftc",
+                "-enable-testing",
+            ];
+            buildAllTask.detail = `swift ${buildAllTask.definition.args.join(" ")}`;
+        }
+
         const subscriptions: vscode.Disposable[] = [];
         let buildExitCode = 0;
         const buildTask = vscode.tasks.onDidStartTask(e => {
@@ -699,30 +729,12 @@ export class TestRunner {
                 const swiftTestBuildConfig = TestingDebugConfigurationFactory.swiftTestingConfig(
                     this.folderContext,
                     fifoPipePath,
-                    TestKind.debug,
+                    this.testKind,
                     this.testArgs.swiftTestArgs,
                     true
                 );
 
                 if (swiftTestBuildConfig !== null) {
-                    // output test build configuration
-                    if (configuration.diagnostics) {
-                        const configJSON = JSON.stringify(swiftTestBuildConfig);
-                        this.workspaceContext.outputChannel.logDiagnostic(
-                            `swift-testing Debug Config: ${configJSON}`,
-                            this.folderContext.name
-                        );
-                    }
-
-                    // output test build configuration
-                    if (configuration.diagnostics) {
-                        const configJSON = JSON.stringify(swiftTestBuildConfig);
-                        this.workspaceContext.outputChannel.logDiagnostic(
-                            `swift-testing Debug Config: ${configJSON}`,
-                            this.folderContext.name
-                        );
-                    }
-
                     swiftTestBuildConfig.testType = TestLibrary.swiftTesting;
                     swiftTestBuildConfig.preLaunchTask = null;
 
@@ -732,6 +744,16 @@ export class TestRunner {
                     // If they each have a unique name the Debug Console gets a nice dropdown the user
                     // can switch between to see the output for both sessions.
                     swiftTestBuildConfig.name = `Swift Testing: ${swiftTestBuildConfig.name}`;
+
+                    // output test build configuration
+                    if (configuration.diagnostics) {
+                        const configJSON = JSON.stringify(swiftTestBuildConfig);
+                        this.workspaceContext.outputChannel.logDiagnostic(
+                            `swift-testing Debug Config: ${configJSON}`,
+                            this.folderContext.name
+                        );
+                    }
+
                     buildConfigs.push(swiftTestBuildConfig);
                 }
             }
@@ -740,12 +762,16 @@ export class TestRunner {
             if (this.testArgs.hasXCTests) {
                 const xcTestBuildConfig = TestingDebugConfigurationFactory.xcTestConfig(
                     this.folderContext,
-                    TestKind.debug,
+                    this.testKind,
                     this.testArgs.xcTestArgs,
                     true
                 );
 
                 if (xcTestBuildConfig !== null) {
+                    xcTestBuildConfig.testType = TestLibrary.xctest;
+                    xcTestBuildConfig.preLaunchTask = null;
+                    xcTestBuildConfig.name = `XCTest: ${xcTestBuildConfig.name}`;
+
                     // output test build configuration
                     if (configuration.diagnostics) {
                         const configJSON = JSON.stringify(xcTestBuildConfig);
@@ -755,9 +781,6 @@ export class TestRunner {
                         );
                     }
 
-                    xcTestBuildConfig.testType = TestLibrary.xctest;
-                    xcTestBuildConfig.preLaunchTask = null;
-                    xcTestBuildConfig.name = `XCTest: ${xcTestBuildConfig.name}`;
                     buildConfigs.push(xcTestBuildConfig);
                 }
             }

@@ -22,8 +22,9 @@ import { regexEscapedString, swiftRuntimeEnv } from "../utilities/utilities";
 import { DebugAdapter } from "./debugAdapter";
 import { TargetType } from "../SwiftPackage";
 import { Version } from "../utilities/version";
-import { TestKind, TestLibrary } from "../TestExplorer/TestRunner";
+import { TestLibrary } from "../TestExplorer/TestRunner";
 import { buildOptions } from "../tasks/SwiftTaskProvider";
+import { TestKind, isDebugging, isRelease } from "../TestExplorer/TestKind";
 
 /**
  * Creates `vscode.DebugConfiguration`s for different combinations of
@@ -98,7 +99,7 @@ export class TestingDebugConfigurationFactory {
 
     /* eslint-disable no-case-declarations */
     private buildLinuxConfig(): vscode.DebugConfiguration | null {
-        if (this.testKind === TestKind.debug && this.testLibrary === TestLibrary.xctest) {
+        if (isDebugging(this.testKind) && this.testLibrary === TestLibrary.xctest) {
             return {
                 ...this.baseConfig,
                 program: this.xcTestOutputPath,
@@ -118,28 +119,19 @@ export class TestingDebugConfigurationFactory {
         switch (this.testLibrary) {
             case TestLibrary.swiftTesting:
                 switch (this.testKind) {
+                    case TestKind.debugRelease:
                     case TestKind.debug:
                         // In the debug case we need to build the .swift-testing executable and then
                         // launch it with LLDB instead of going through `swift test`.
-                        const { folder } = getFolderAndNameSuffix(
-                            this.ctx,
-                            this.expandEnvVariables
-                        );
-                        const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(
-                            folder,
-                            true
-                        );
                         const toolchain = this.ctx.workspaceContext.toolchain;
                         const libraryPath = toolchain.swiftTestingLibraryPath();
                         const frameworkPath = toolchain.swiftTestingFrameworkPath();
                         const result = {
                             ...this.baseConfig,
-                            program: path.join(
-                                buildDirectory,
-                                "debug",
-                                `${this.ctx.swiftPackage.name}PackageTests.swift-testing`
+                            program: this.swiftTestingOutputPath,
+                            args: this.addBuildOptionsToArgs(
+                                this.addTestsToArgs(this.addSwiftTestingFlagsArgs([]))
                             ),
-                            args: this.addTestsToArgs(this.addSwiftTestingFlagsArgs([])),
                             env: {
                                 ...this.testEnv,
                                 ...this.sanitizerRuntimeEnvironment,
@@ -180,6 +172,7 @@ export class TestingDebugConfigurationFactory {
                 }
             case TestLibrary.xctest:
                 switch (this.testKind) {
+                    case TestKind.debugRelease:
                     case TestKind.debug:
                         const xcTestPath = this.ctx.workspaceContext.toolchain.xcTestPath;
                         // On macOS, find the path to xctest
@@ -187,7 +180,6 @@ export class TestingDebugConfigurationFactory {
                         if (xcTestPath === undefined) {
                             return null;
                         }
-
                         return {
                             ...this.baseConfig,
                             program: path.join(xcTestPath, "xctest"),
@@ -337,10 +329,14 @@ export class TestingDebugConfigurationFactory {
     }
 
     private addBuildOptionsToArgs(args: string[]): string[] {
-        return [
+        let result = [
             ...args,
-            ...buildOptions(this.ctx.workspaceContext.toolchain, this.testKind === TestKind.debug),
+            ...buildOptions(this.ctx.workspaceContext.toolchain, isDebugging(this.testKind)),
         ];
+        if (isRelease(this.testKind)) {
+            result = [...result, "-c", "release", "-Xswiftc", "-enable-testing"];
+        }
+        return result;
     }
 
     private swiftVersionGreaterOrEqual(major: number, minor: number, patch: number): boolean {
@@ -358,11 +354,23 @@ export class TestingDebugConfigurationFactory {
         return BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
     }
 
+    private get artifactFolderForTestKind(): string {
+        return isRelease(this.testKind) ? "release" : "debug";
+    }
+
     private get xcTestOutputPath(): string {
         return path.join(
             this.buildDirectory,
-            "debug",
+            this.artifactFolderForTestKind,
             this.ctx.swiftPackage.name + "PackageTests.xctest"
+        );
+    }
+
+    private get swiftTestingOutputPath(): string {
+        return path.join(
+            this.buildDirectory,
+            this.artifactFolderForTestKind,
+            `${this.ctx.swiftPackage.name}PackageTests.swift-testing`
         );
     }
 
