@@ -1,6 +1,27 @@
 # Changelog
 
-## 1.10.1
+## 1.10.2 - 2024-06-18
+
+### Added
+
+- Release test run profiles.
+- Allow SourceKit-LSP to write to multiple output channels.
+- Warn users about lack of symlink privileges on Windows
+
+### Changed
+
+- Renamed `swift-latest` to `Latest Installed Toolchain` in toolchain selection dialog.
+- Improved LSP configuration change notification.
+- Improved toolchain error message when swift.path exists in settings.
+
+### Fixed
+
+- Removed stale swiftc diagnostics when loading sourcekit-lsp diagnostics.
+- Only create fifo pipe when running swift-testing tests.
+- Always register the swift-lldb debug adapter provider.
+- Use proper lldb path on Windows.
+
+## 1.10.1 - 2024-06-10
 
 ### Fixed
 
@@ -8,7 +29,7 @@
 - Add user defined and optional sanitizer/diagnostics arguments to test builds
 - Silence Terminal on test runs.
 
-## 1.10.0
+## 1.10.0 - 2024-06-07
 
 ### Added
 
