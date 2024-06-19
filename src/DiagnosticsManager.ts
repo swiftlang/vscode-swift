@@ -190,12 +190,13 @@ export class DiagnosticsManager implements vscode.Disposable {
     }
 
     private removeSwiftcDiagnostics() {
-        this.diagnosticCollection.forEach((uri, diagnostics) => {
+        this.allDiagnostics.forEach((diagnostics, path) => {
             const newDiagnostics = diagnostics.slice();
             this.removeDiagnostics(newDiagnostics, d => this.isSwiftc(d));
             if (diagnostics.length !== newDiagnostics.length) {
-                this.diagnosticCollection.set(uri, newDiagnostics);
+                this.allDiagnostics.set(path, newDiagnostics);
             }
+            this.updateDiagnosticsCollection(vscode.Uri.file(path));
         });
     }
 
@@ -241,10 +242,6 @@ export class DiagnosticsManager implements vscode.Disposable {
 
     private includeSwiftcDiagnostics(): boolean {
         return configuration.diagnosticsCollection !== "onlySourceKit";
-    }
-
-    private includeSourceKitDiagnostics(): boolean {
-        return configuration.diagnosticsCollection !== "onlySwiftc";
     }
 
     private parseDiagnostics(swiftExecution: SwiftExecution): Promise<DiagnosticsMap> {
