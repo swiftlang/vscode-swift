@@ -532,6 +532,13 @@ export class TestRunner {
             if (error !== 1) {
                 this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
             } else {
+                // swift-testing tests don't have their run started until the .swift-testing binary has
+                // sent all of its `test` events, which enumerate the parameterized test cases. This means that
+                // build output is witheld until the run starts. If there is a compile error, unless we call
+                // `testRunStarted()` to flush the buffer of test result output, the build error will be silently
+                // discarded. If the test run has already started this is a no-op so its safe to call it multiple times.
+                this.testRun.testRunStarted();
+
                 this.swiftTestOutputParser.close();
             }
         } finally {
