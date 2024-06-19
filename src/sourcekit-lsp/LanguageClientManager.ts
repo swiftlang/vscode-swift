@@ -541,15 +541,13 @@ export class LanguageClientManager {
                     );
                 },
                 handleWorkDoneProgress: (() => {
-                    let restoringLSPStarted = false;
+                    let hasPrompted = false;
                     return async (token, params, next) => {
                         const result = await next(token, params);
-                        const title = (params as langclient.WorkDoneProgressBegin).title;
-                        if (title === "SourceKit-LSP: Restoring functionality") {
-                            restoringLSPStarted = true;
-                        } else if (params.kind === "end" && restoringLSPStarted) {
-                            restoringLSPStarted = false;
-                            await promptForDiagnostics(this.workspaceContext);
+                        if (!hasPrompted && token.toString().startsWith("sourcekitd-crashed")) {
+                            // Only prompt once in case sourcekit is in a crash loop
+                            hasPrompted = true;
+                            promptForDiagnostics(this.workspaceContext);
                         }
                         return result;
                     };
