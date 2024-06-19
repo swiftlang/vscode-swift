@@ -13,8 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { FolderContext } from "../FolderContext";
-import { TargetType } from "../SwiftPackage";
+import { SwiftPackage, TargetType } from "../SwiftPackage";
 import { LSPTestItem } from "../sourcekit-lsp/lspExtensions";
 import { reduceTestItemChildren } from "./TestUtils";
 
@@ -24,6 +23,10 @@ export interface TestClass extends Omit<Omit<LSPTestItem, "location">, "children
     children: TestClass[];
 }
 
+/**
+ * Tag that denotes TestItems should be runnable in the VS Code UI.
+ * Test items that do not have this tag will not have the green "run test" triangle button.
+ */
 export const runnableTag = new vscode.TestTag("runnable");
 
 /**
@@ -31,19 +34,19 @@ export const runnableTag = new vscode.TestTag("runnable");
  *
  * The function creates the TestTargets based off the test targets in the Swift
  * Package
- * @param folderContext Folder test classes came
+ * @param testController Test controller
+ * @param swiftPackage A swift package containing test targets
  * @param testClasses Array of test classes
  */
-export function updateTestsFromClasses(folderContext: FolderContext, testItems: TestClass[]) {
-    const testExplorer = folderContext.testExplorer;
-    if (!testExplorer) {
-        return;
-    }
-    const targets = folderContext.swiftPackage.getTargets(TargetType.test).map(target => {
+export function updateTestsFromClasses(
+    testController: vscode.TestController,
+    swiftPackage: SwiftPackage,
+    testItems: TestClass[]
+) {
+    const targets = swiftPackage.getTargets(TargetType.test).map(target => {
         const filteredItems = testItems.filter(
             testItem =>
-                testItem.location &&
-                folderContext.swiftPackage.getTarget(testItem.location.uri.fsPath) === target
+                testItem.location && swiftPackage.getTarget(testItem.location.uri.fsPath) === target
         );
         return {
             id: target.c99name,
@@ -55,7 +58,7 @@ export function updateTestsFromClasses(folderContext: FolderContext, testItems: 
             tags: [],
         } as TestClass;
     });
-    updateTests(testExplorer.controller, targets);
+    updateTests(testController, targets);
 }
 
 /**
