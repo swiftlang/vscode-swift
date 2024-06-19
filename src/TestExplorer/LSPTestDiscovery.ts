@@ -19,9 +19,26 @@ import {
     textDocumentTestsRequest,
     workspaceTestsRequest,
 } from "../sourcekit-lsp/lspExtensions";
-import { LanguageClientManager } from "../sourcekit-lsp/LanguageClientManager";
-import { LanguageClient } from "vscode-languageclient/node";
+import { InitializeResult, RequestType } from "vscode-languageclient/node";
 import { SwiftPackage, TargetType } from "../SwiftPackage";
+import { Converter } from "vscode-languageclient/lib/common/protocolConverter";
+
+interface ILanguageClient {
+    get initializeResult(): InitializeResult | undefined;
+    get protocol2CodeConverter(): Converter;
+
+    sendRequest<P, R, E>(
+        type: RequestType<P, R, E>,
+        params: P,
+        token?: vscode.CancellationToken
+    ): Promise<R>;
+}
+
+interface ILanguageClientManager {
+    useLanguageClient<Return>(process: {
+        (client: ILanguageClient, cancellationToken: vscode.CancellationToken): Promise<Return>;
+    }): Promise<Return>;
+}
 
 /**
  * Used to augment test discovery via `swift test --list-tests`.
@@ -34,7 +51,7 @@ import { SwiftPackage, TargetType } from "../SwiftPackage";
 export class LSPTestDiscovery {
     private capCache = new Map<string, boolean>();
 
-    constructor(private languageClient: LanguageClientManager) {}
+    constructor(private languageClient: ILanguageClientManager) {}
 
     /**
      * Return a list of tests in the supplied document.
@@ -82,24 +99,16 @@ export class LSPTestDiscovery {
      * above the supplied `minVersion`.
      */
     private checkExperimentalCapability(
-        client: LanguageClient,
+        client: ILanguageClient,
         method: string,
         minVersion: number
     ) {
-        const capKey = `${method}:${minVersion}`;
-        const cachedCap = this.capCache.get(capKey);
-        if (cachedCap !== undefined) {
-            return cachedCap;
-        }
-
         const experimentalCapability = client.initializeResult?.capabilities.experimental;
         if (!experimentalCapability) {
             throw new Error(`${method} requests not supported`);
         }
         const targetCapability = experimentalCapability[method];
-        const canUse = (targetCapability?.version ?? -1) >= minVersion;
-        this.capCache.set(capKey, canUse);
-        return canUse;
+        return (targetCapability?.version ?? -1) >= minVersion;
     }
 
     /**
@@ -107,18 +116,17 @@ export class LSPTestDiscovery {
      * updating the format of the location.
      */
     private transformToTestClass(
-        client: LanguageClient,
+        client: ILanguageClient,
         swiftPackage: SwiftPackage,
         input: LSPTestItem[]
     ): TestDiscovery.TestClass[] {
         return input.map(item => {
             const location = client.protocol2CodeConverter.asLocation(item.location);
-            const id = this.transformId(item, location, swiftPackage);
             return {
                 ...item,
-                id: id,
-                location: location,
+                id: this.transformId(item, location, swiftPackage),
                 children: this.transformToTestClass(client, swiftPackage, item.children),
+                location,
             };
         });
     }
@@ -141,10 +149,6 @@ export class LSPTestDiscovery {
             .find(target => swiftPackage.getTarget(location.uri.fsPath) === target);
 
         const id = target !== undefined ? `${target.c99name}.${item.id}` : item.id;
-        if (item.style === "XCTest") {
-            return id.replace(/\(\)$/, "");
-        } else {
-            return id;
-        }
+        return item.style === "XCTest" ? id.replace(/\(\)$/, "") : id;
     }
 }

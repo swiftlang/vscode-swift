@@ -110,7 +110,7 @@ export interface LSPTestItem {
      *
      * For a test suite, this may contain the individual test cases or nested suites.
      */
-    children: [LSPTestItem];
+    children: LSPTestItem[];
 
     /**
      * Tags associated with this test item.
