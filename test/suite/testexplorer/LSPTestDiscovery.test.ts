@@ -2,7 +2,7 @@
 //
 // This source file is part of the VS Code Swift open source project
 //
-// Copyright (c) 2021-2024 the VS Code Swift project authors
+// Copyright (c) 2024 the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -80,7 +80,7 @@ suite("LSPTestDiscovery Suite", () => {
         });
     });
 
-    suite("Empty resposes", () => {
+    suite("Empty responses", () => {
         test(textDocumentTestsRequest.method, async () => {
             client.setResponse(textDocumentTestsRequest, []);
 
