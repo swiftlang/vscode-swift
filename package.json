@@ -171,6 +171,11 @@
         "category": "Swift"
       },
       {
+        "command": "swift.captureDiagnostics",
+        "title": "Capture VS Code Swift Diagnostic Bundle",
+        "category": "Swift"
+      },
+      {
         "command": "swift.clearDiagnosticsCollection",
         "title": "Clear Diagnostics Collection",
         "category": "Swift"

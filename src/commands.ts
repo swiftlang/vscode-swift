@@ -2,7 +2,7 @@
 //
 // This source file is part of the VS Code Swift open source project
 //
-// Copyright (c) 2021-2023 the VS Code Swift project authors
+// Copyright (c) 2021-2024 the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -31,6 +31,7 @@ import { execFile } from "./utilities/utilities";
 import { SwiftExecOperation, TaskOperation } from "./tasks/TaskQueue";
 import { SwiftProjectTemplate } from "./toolchain/toolchain";
 import { showToolchainSelectionQuickPick, showToolchainError } from "./ui/ToolchainSelection";
+import { captureDiagnostics } from "./commands/captureDiagnostics";
 
 /**
  * References:
@@ -848,5 +849,6 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand("swift.clearDiagnosticsCollection", () =>
             ctx.diagnostics.clear()
         ),
+        vscode.commands.registerCommand("swift.captureDiagnostics", () => captureDiagnostics(ctx)),
     ];
 }

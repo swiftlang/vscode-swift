@@ -25,6 +25,8 @@ import { LanguageClient } from "vscode-languageclient/node";
 import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
 import { DiagnosticsManager } from "../DiagnosticsManager";
 import { LSPLogger, LSPOutputChannel } from "./LSPOutputChannel";
+import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
+import { promptForDiagnostics } from "../commands/captureDiagnostics";
 
 interface SourceKitLogMessageParams extends langclient.LogMessageParams {
     logName?: string;
@@ -104,7 +106,6 @@ export class LanguageClientManager {
      * null means in the process of restarting
      */
     private languageClient: langclient.LanguageClient | null | undefined;
-    private initializeResult?: langclient.InitializeResult;
     private cancellationToken?: vscode.CancellationTokenSource;
     private legacyInlayHints?: vscode.Disposable;
     private restartedPromise?: Promise<void>;
@@ -279,6 +280,10 @@ export class LanguageClientManager {
     async restart() {
         // force restart of language client
         await this.setLanguageClientFolder(this.currentWorkspaceFolder, true);
+    }
+
+    get languageClientOutputChannel(): SwiftOutputChannel | undefined {
+        return this.languageClient?.outputChannel as SwiftOutputChannel | undefined;
     }
 
     private async addFolder(folderContext: FolderContext) {
@@ -482,6 +487,7 @@ export class LanguageClientManager {
             documentSelector: LanguageClientManager.documentSelector,
             revealOutputChannelOn: langclient.RevealOutputChannelOn.Never,
             workspaceFolder: workspaceFolder,
+            outputChannel: new SwiftOutputChannel("SourceKit Language Server", false),
             middleware: {
                 provideDocumentSymbols: async (document, token, next) => {
                     const result = await next(document, token);
@@ -534,6 +540,23 @@ export class LanguageClientManager {
                         diagnostics
                     );
                 },
+                handleWorkDoneProgress: (() => {
+                    let lastPrompted = new Date(0).getTime();
+                    return async (token, params, next) => {
+                        const result = await next(token, params);
+                        const now = new Date().getTime();
+                        const oneHour = 60 * 60 * 1000;
+                        if (
+                            now - lastPrompted > oneHour &&
+                            token.toString().startsWith("sourcekitd-crashed")
+                        ) {
+                            // Only prompt once an hour in case sourcekit is in a crash loop
+                            lastPrompted = now;
+                            promptForDiagnostics(this.workspaceContext);
+                        }
+                        return result;
+                    };
+                })(),
             },
             errorHandler: new SourceKitLSPErrorHandler(5),
         };
@@ -581,7 +604,6 @@ export class LanguageClientManager {
                 if (this.workspaceContext.swiftVersion.isLessThan(new Version(5, 7, 0))) {
                     this.legacyInlayHints = activateLegacyInlayHints(client);
                 }
-                this.initializeResult = client.initializeResult;
             })
             .catch(reason => {
                 this.workspaceContext.outputChannel.log(`${reason}`);

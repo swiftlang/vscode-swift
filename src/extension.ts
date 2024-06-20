@@ -50,13 +50,12 @@ export interface Api {
 export async function activate(context: vscode.ExtensionContext): Promise<Api | undefined> {
     try {
         console.debug("Activating Swift for Visual Studio Code...");
-        const outputChannel = new SwiftOutputChannel();
+        const outputChannel = new SwiftOutputChannel("Swift");
 
         checkAndWarnAboutWindowsSymlinks(outputChannel);
 
         const toolchain: SwiftToolchain | undefined = await SwiftToolchain.create()
             .then(toolchain => {
-                outputChannel.log(toolchain.swiftVersionString);
                 toolchain.logDiagnostics(outputChannel);
                 contextKeys.createNewProjectAvailable = toolchain.swiftVersion.isGreaterThanOrEqual(
                     new Version(5, 8, 0)

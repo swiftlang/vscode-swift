@@ -15,11 +15,58 @@
 import * as vscode from "vscode";
 import configuration from "../configuration";
 
-export class SwiftOutputChannel {
+export class SwiftOutputChannel implements vscode.OutputChannel {
     private channel: vscode.OutputChannel;
+    private logStore: RollingLog;
 
-    constructor() {
-        this.channel = vscode.window.createOutputChannel("Swift");
+    /**
+     * Creates a vscode.OutputChannel that allows for later retrival of logs.
+     * @param name
+     */
+    constructor(
+        public name: string,
+        private logToConsole: boolean = true,
+        logStoreLinesSize: number = 250_000 // default to capturing 250k log lines
+    ) {
+        this.name = name;
+        this.logToConsole = process.env["CI"] !== "1" && logToConsole;
+        this.channel = vscode.window.createOutputChannel(name);
+        this.logStore = new RollingLog(logStoreLinesSize);
+    }
+
+    append(value: string): void {
+        this.channel.append(value);
+        this.logStore.append(value);
+
+        if (this.logToConsole) {
+            console.log(value);
+        }
+    }
+
+    appendLine(value: string): void {
+        this.channel.appendLine(value);
+        this.logStore.appendLine(value);
+
+        if (this.logToConsole) {
+            console.log(value);
+        }
+    }
+
+    replace(value: string): void {
+        this.channel.replace(value);
+        this.logStore.replace(value);
+    }
+
+    clear(): void {
+        this.channel.clear();
+    }
+
+    show(column?: unknown, preserveFocus?: boolean | undefined): void {
+        this.channel.show(preserveFocus);
+    }
+
+    hide(): void {
+        this.channel.hide();
     }
 
     dispose() {
@@ -33,7 +80,7 @@ export class SwiftOutputChannel {
         } else {
             fullMessage = message;
         }
-        this.sendLog(`${this.nowFormatted}: ${fullMessage}`);
+        this.appendLine(`${this.nowFormatted}: ${fullMessage}`);
     }
 
     logDiagnostic(message: string, label?: string) {
@@ -46,15 +93,7 @@ export class SwiftOutputChannel {
         } else {
             fullMessage = message;
         }
-        this.sendLog(`${this.nowFormatted}: ${fullMessage}`);
-    }
-
-    private sendLog(line: string) {
-        this.channel.appendLine(line);
-
-        if (process.env["CI"] !== "1") {
-            console.log(line);
-        }
+        this.appendLine(`${this.nowFormatted}: ${fullMessage}`);
     }
 
     get nowFormatted(): string {
@@ -64,5 +103,60 @@ export class SwiftOutputChannel {
             minute: "numeric",
             second: "numeric",
         });
+    }
+
+    get logs(): string[] {
+        return this.logStore.logs;
+    }
+}
+
+class RollingLog {
+    private _logs: (string | null)[];
+    private startIndex: number = 0;
+    private endIndex: number = 0;
+    private logCount: number = 0;
+
+    constructor(private maxLogs: number) {
+        this._logs = new Array(maxLogs).fill(null);
+    }
+
+    public get logs(): string[] {
+        const logs: string[] = [];
+        for (let i = 0; i < this.logCount; i++) {
+            logs.push(this._logs[(this.startIndex + i) % this.maxLogs]!);
+        }
+        return logs;
+    }
+
+    private incrementIndex(index: number): number {
+        return (index + 1) % this.maxLogs;
+    }
+
+    appendLine(log: string) {
+        if (this.logCount === this.maxLogs) {
+            this.startIndex = this.incrementIndex(this.startIndex);
+        } else {
+            this.logCount++;
+        }
+
+        this._logs[this.endIndex] = log;
+        this.endIndex = this.incrementIndex(this.endIndex);
+    }
+
+    append(log: string) {
+        const endIndex = this.endIndex - 1 < 0 ? Math.max(this.logCount - 1, 0) : this.endIndex;
+        if (this._logs[endIndex] === null) {
+            this.logCount = 1;
+        }
+        const newLogLine = (this._logs[endIndex] ?? "") + log;
+        this._logs[endIndex] = newLogLine;
+    }
+
+    replace(log: string) {
+        this._logs = new Array(this.maxLogs).fill(null);
+        this._logs[0] = log;
+        this.startIndex = 0;
+        this.endIndex = 1;
+        this.logCount = 1;
     }
 }

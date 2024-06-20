@@ -403,24 +403,31 @@ export class SwiftToolchain {
         return path.join(base, "Library/Frameworks");
     }
 
-    logDiagnostics(channel: SwiftOutputChannel) {
-        channel.logDiagnostic(`Swift Path: ${this.swiftFolderPath}`);
-        channel.logDiagnostic(`Toolchain Path: ${this.toolchainPath}`);
+    get diagnostics(): string {
+        let str = "";
+        str += this.swiftVersionString;
+        str += `\nSwift Path: ${this.swiftFolderPath}`;
+        str += `\nToolchain Path: ${this.toolchainPath}`;
         if (this.runtimePath) {
-            channel.logDiagnostic(`Runtime Library Path: ${this.runtimePath}`);
+            str += `\nRuntime Library Path: ${this.runtimePath}`;
         }
         if (this.defaultTarget) {
-            channel.logDiagnostic(`Default Target: ${this.defaultTarget}`);
+            str += `\nDefault Target: ${this.defaultTarget}`;
         }
         if (this.defaultSDK) {
-            channel.logDiagnostic(`Default SDK: ${this.defaultSDK}`);
+            str += `\nDefault SDK: ${this.defaultSDK}`;
         }
         if (this.customSDK) {
-            channel.logDiagnostic(`Custom SDK: ${this.customSDK}`);
+            str += `\nCustom SDK: ${this.customSDK}`;
         }
         if (this.xcTestPath) {
-            channel.logDiagnostic(`XCTest Path: ${this.xcTestPath}`);
+            str += `\nXCTest Path: ${this.xcTestPath}`;
         }
+        return str;
+    }
+
+    logDiagnostics(channel: SwiftOutputChannel) {
+        channel.logDiagnostic(this.diagnostics);
     }
 
     private static async getSwiftFolderPath(): Promise<string> {
