@@ -541,12 +541,17 @@ export class LanguageClientManager {
                     );
                 },
                 handleWorkDoneProgress: (() => {
-                    let hasPrompted = false;
+                    let lastPrompted = new Date(0).getTime();
                     return async (token, params, next) => {
                         const result = await next(token, params);
-                        if (!hasPrompted && token.toString().startsWith("sourcekitd-crashed")) {
-                            // Only prompt once in case sourcekit is in a crash loop
-                            hasPrompted = true;
+                        const now = new Date().getTime();
+                        const oneHour = 60 * 60 * 1000;
+                        if (
+                            now - lastPrompted > oneHour &&
+                            token.toString().startsWith("sourcekitd-crashed")
+                        ) {
+                            // Only prompt once an hour in case sourcekit is in a crash loop
+                            lastPrompted = now;
                             promptForDiagnostics(this.workspaceContext);
                         }
                         return result;
