@@ -35,3 +35,19 @@ function getScopeWorkspaceFolder(task: vscode.Task): string | undefined {
     }
     return;
 }
+
+export function checkIfBuildComplete(line: string): boolean {
+    // Output in this format for "build" and "test" commands
+    const completeRegex = /^Build complete!/gm;
+    let match = completeRegex.exec(line);
+    if (match) {
+        return true;
+    }
+    // Output in this format for "run" commands
+    const productCompleteRegex = /^Build of product '.*' complete!/gm;
+    match = productCompleteRegex.exec(line);
+    if (match) {
+        return true;
+    }
+    return false;
+}
