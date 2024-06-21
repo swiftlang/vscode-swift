@@ -55,7 +55,7 @@ The extension adds commands, available via the command palette.
 - **Run Command Plugin**: Display menu of command plugins for currently loaded packages.
 
 The following command is only available on macOS
-- **Select Xcode Developer Dir**: Select the version of Xcode you want to use swift tools from.
+- **Select Toolchain**: Select the version of Xcode you want to use swift tools from.
 - **Select Target Platform**: This is an experimental command used to get code completion for iOS, tvOS projects
 
 ### Package dependencies
