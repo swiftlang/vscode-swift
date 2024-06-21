@@ -276,6 +276,25 @@ suite("DiagnosticsManager Test Suite", async function () {
                 // Should have cleaned up
                 assert.equal(diagnostics.length, 0);
             });
+
+            // https://github.com/apple/swift/issues/73973
+            test("Ignore XCTest failures", async () => {
+                const testUri = vscode.Uri.file(
+                    `${workspaceFolder.uri.path}/Tests/MyCLITests/MyCLIXCTests.swift`
+                );
+                const fixture = testSwiftTask("swift", ["test"], workspaceFolder, toolchain);
+                await vscode.tasks.executeTask(fixture.task);
+                // Wait to spawn before writing
+                fixture.process.write("Build complete!");
+                fixture.process.write(
+                    `${testUri.path}:11: error: -[MyCLITests.MyCLIXCTests testFailure] : XCTAssertEqual failed: ("41") is not equal to ("42")`
+                );
+                fixture.process.close(1);
+                await waitForNoRunningTasks();
+                const diagnostics = vscode.languages.getDiagnostics(testUri);
+                // Should be empty
+                assert.equal(diagnostics.length, 0);
+            });
         });
     });
 
