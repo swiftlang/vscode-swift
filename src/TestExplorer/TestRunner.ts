@@ -107,6 +107,9 @@ export class TestRunProxy {
                 // level test item and users can cycle through them with the up/down arrows in the UI.
                 testClass.location = undefined;
 
+                // Results should inherit any tags from the parent.
+                testClass.tags = parent.tags.map(t => new vscode.TestTag(t.id));
+
                 const added = upsertTestItem(this.controller, testClass, parent);
 
                 // If we just update leaf nodes the root test controller never realizes that
