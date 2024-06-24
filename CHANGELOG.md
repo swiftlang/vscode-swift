@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.10.3 - 2024-06-24
+
+### Added
+
+- Issue diagnosis command `swift: Capture VS Code Swift Diagnostic Bundle`
+
+### Fixed
+
+- No longer show XCTest failures under Problems view
+- Fix an issue where stale diagnostics were not being removed
+
 ## 1.10.2 - 2024-06-18
 
 ### Added

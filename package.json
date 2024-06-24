@@ -2,7 +2,7 @@
   "name": "swift-lang",
   "displayName": "Swift",
   "description": "Swift Language Support for Visual Studio Code.",
-  "version": "1.10.2",
+  "version": "1.10.3",
   "publisher": "sswg",
   "icon": "icon.png",
   "repository": {
@@ -1173,7 +1173,7 @@
     "coverage": "c8 --clean npm run test",
     "compile-tests": "find ./assets/test -type d -name '.build' -exec rm -rf {} + && npm run compile && npm run esbuild",
     "package": "vsce package",
-    "dev-package": "vsce package --no-update-package-json 1.10.3-dev",
+    "dev-package": "vsce package --no-update-package-json 1.10.4-dev",
     "preview-package": "vsce package --pre-release",
     "tag": "./scripts/tag_release.sh $npm_package_version",
     "contributors": "./scripts/generate_contributors_list.sh"
