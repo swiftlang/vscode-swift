@@ -259,9 +259,7 @@ export async function showToolchainSelectionQuickPick(activeToolchain: SwiftTool
     const selected = await vscode.window.showQuickPick<SelectToolchainItem>(
         getQuickPickItems(activeToolchain).then(result => {
             xcodePaths = result
-                .filter(
-                    (i): i is XcodeToolchainItem => i.type === "toolchain" && i.category === "xcode"
-                )
+                .filter((i): i is XcodeToolchainItem => "category" in i && i.category === "xcode")
                 .map(xcode => xcode.xcodePath);
             return result;
         }),
@@ -282,7 +280,7 @@ export async function showToolchainSelectionQuickPick(activeToolchain: SwiftTool
         } else if (xcodePaths.length === 1) {
             developerDir = xcodePaths[0];
         } else if (process.platform === "darwin" && xcodePaths.length > 1) {
-            developerDir = await showXcodeSelectionQuickPick(xcodePaths);
+            developerDir = await showDeveloperDirQuickPick(xcodePaths);
             if (!developerDir) {
                 return;
             }
@@ -302,7 +300,7 @@ export async function showToolchainSelectionQuickPick(activeToolchain: SwiftTool
  * @param xcodePaths An array of paths to available Xcode installations on the system
  * @returns The selected DEVELOPER_DIR or undefined if the user cancelled selection
  */
-async function showXcodeSelectionQuickPick(xcodePaths: string[]): Promise<string | undefined> {
+async function showDeveloperDirQuickPick(xcodePaths: string[]): Promise<string | undefined> {
     const selected = await vscode.window.showQuickPick<vscode.QuickPickItem>(
         SwiftToolchain.getXcodeDeveloperDir(configuration.swiftEnvironmentVariables).then(
             existingDeveloperDir => {
@@ -331,7 +329,7 @@ async function showXcodeSelectionQuickPick(xcodePaths: string[]): Promise<string
         ),
         {
             title: "Select a developer directory",
-            placeHolder: "Pick an Xcode installation that VS Code will use",
+            placeHolder: "Pick an Xcode installation to use as the developer directory",
             canPickMany: false,
         }
     );
