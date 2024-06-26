@@ -91,25 +91,26 @@ export async function showToolchainError(): Promise<void> {
     }
 }
 
+/** A {@link vscode.QuickPickItem} that contains the path to an installed Swift toolchain */
 type SwiftToolchainItem = PublicSwiftToolchainItem | XcodeToolchainItem;
 
-/** A {@link vscode.QuickPickItem} that contains the path to an installed swift toolchain */
-interface PublicSwiftToolchainItem extends vscode.QuickPickItem {
+/** Common properties for a {@link vscode.QuickPickItem} that represents a Swift toolchain */
+interface BaseSwiftToolchainItem extends vscode.QuickPickItem {
     type: "toolchain";
-    category: "public" | "swiftly";
     toolchainPath: string;
     swiftFolderPath: string;
     onDidSelect?(): Promise<void>;
 }
 
-/** A {@link vscode.QuickPickItem} that contains the path to an installed Xcode toolchain */
-interface XcodeToolchainItem extends vscode.QuickPickItem {
-    type: "toolchain";
+/** A {@link vscode.QuickPickItem} for a Swift toolchain that has been installed manually */
+interface PublicSwiftToolchainItem extends BaseSwiftToolchainItem {
+    category: "public" | "swiftly";
+}
+
+/** A {@link vscode.QuickPickItem} for a Swift toolchain provided by an installed Xcode application */
+interface XcodeToolchainItem extends BaseSwiftToolchainItem {
     category: "xcode";
     xcodePath: string;
-    toolchainPath: string;
-    swiftFolderPath: string;
-    onDidSelect?(): Promise<void>;
 }
 
 /** A {@link vscode.QuickPickItem} that performs an action for the user */
@@ -431,7 +432,7 @@ async function checkAndRemoveWorkspaceSetting(target: vscode.ConfigurationTarget
     const inspect = vscode.workspace.getConfiguration("swift").inspect<string>("path");
     if (inspect?.workspaceValue) {
         const confirmation = await vscode.window.showWarningMessage(
-            "You already have the Swift path configured in Workspace Settings which takes precedence over User Settings." +
+            "You already have a Swift path configured in Workspace Settings which takes precedence over User Settings." +
                 " Would you like to remove the setting from your workspace and use the User Settings instead?",
             "Remove Workspace Setting"
         );
