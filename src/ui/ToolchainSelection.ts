@@ -266,13 +266,7 @@ async function setToolchainPath(
     if (target === "prompt") {
         const items: (vscode.QuickPickItem & {
             target?: vscode.ConfigurationTarget;
-        })[] = [
-            {
-                label: "User Configuration",
-                detail: "Add to VS Code user configuration.",
-                target: vscode.ConfigurationTarget.Global,
-            },
-        ];
+        })[] = [];
         if (vscode.workspace.workspaceFolders) {
             items.push({
                 label: "Workspace Configuration",
@@ -281,6 +275,11 @@ async function setToolchainPath(
                 target: vscode.ConfigurationTarget.Workspace,
             });
         }
+        items.push({
+            label: "User Configuration",
+            detail: "Add to VS Code user configuration.",
+            target: vscode.ConfigurationTarget.Global,
+        });
         if (items.length > 1) {
             const selected = await vscode.window.showQuickPick(items, {
                 title: "Toolchain Configuration",
