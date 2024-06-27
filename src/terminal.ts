@@ -51,16 +51,15 @@ export class SwiftEnvironmentVariablesManager implements vscode.Disposable {
     }
 
     private update() {
-        this.context.environmentVariableCollection.clear();
-        this.context.environmentVariableCollection.prepend(
-            "PATH",
-            this.toolchain.swiftFolderPath + pathSeparator
-        );
+        const environment = this.context.environmentVariableCollection;
+        environment.clear();
+
+        const pathEnv = environment.get("PATH")?.value ?? "";
+        if (!pathEnv.includes(this.toolchain.swiftFolderPath)) {
+            environment.prepend("PATH", this.toolchain.swiftFolderPath + pathSeparator);
+        }
         for (const variable in configuration.swiftEnvironmentVariables) {
-            this.context.environmentVariableCollection.replace(
-                variable,
-                configuration.swiftEnvironmentVariables[variable]
-            );
+            environment.replace(variable, configuration.swiftEnvironmentVariables[variable]);
         }
     }
 }
