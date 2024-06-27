@@ -30,15 +30,11 @@ export class SwiftEnvironmentVariablesManager implements vscode.Disposable {
         private context: vscode.ExtensionContext,
         private toolchain: SwiftToolchain
     ) {
-        if (!configuration.enableTerminalEnvironment) {
-            context.environmentVariableCollection.clear();
-            return;
-        }
-
         this.update();
         this.subscriptions.push(
             vscode.workspace.onDidChangeConfiguration(event => {
                 if (
+                    event.affectsConfiguration("swift.enableTerminalEnvironment") ||
                     event.affectsConfiguration("swift.path") ||
                     event.affectsConfiguration("swift.swiftEnvironmentVariables")
                 ) {
@@ -58,6 +54,10 @@ export class SwiftEnvironmentVariablesManager implements vscode.Disposable {
     private update() {
         const environment = this.context.environmentVariableCollection;
         environment.clear();
+
+        if (!configuration.enableTerminalEnvironment) {
+            return;
+        }
 
         const pathEnv = environment.get("PATH")?.value ?? "";
         if (!pathEnv.includes(this.toolchain.swiftFolderPath)) {
