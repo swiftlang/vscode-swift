@@ -35,6 +35,7 @@ import { SwiftToolchain } from "./toolchain/toolchain";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
 import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 import { checkAndWarnAboutWindowsSymlinks } from "./ui/win32";
+import { SwiftEnvironmentVariablesManager } from "./SwiftEnvironmentVariablesManager";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -96,6 +97,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
             showToolchainError();
             return;
         }
+        context.subscriptions.push(new SwiftEnvironmentVariablesManager(context, toolchain));
         const workspaceContext = await WorkspaceContext.create(outputChannel, toolchain);
         context.subscriptions.push(...commands.register(workspaceContext));
 
