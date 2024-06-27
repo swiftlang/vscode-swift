@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { SwiftToolchain } from "./toolchain/toolchain";
 import configuration from "./configuration";
 
 /** The separator to use between paths in the PATH environment variable */
@@ -26,10 +25,7 @@ const pathSeparator: string = process.platform === "win32" ? ";" : ":";
 export class SwiftEnvironmentVariablesManager implements vscode.Disposable {
     private subscriptions: vscode.Disposable[] = [];
 
-    constructor(
-        private context: vscode.ExtensionContext,
-        private toolchain: SwiftToolchain
-    ) {
+    constructor(private context: vscode.ExtensionContext) {
         this.update();
         this.subscriptions.push(
             vscode.workspace.onDidChangeConfiguration(event => {
@@ -59,9 +55,9 @@ export class SwiftEnvironmentVariablesManager implements vscode.Disposable {
             return;
         }
 
-        const pathEnv = environment.get("PATH")?.value ?? "";
-        if (!pathEnv.includes(this.toolchain.swiftFolderPath)) {
-            environment.prepend("PATH", this.toolchain.swiftFolderPath + pathSeparator);
+        const pathEnv = process.env["PATH"] ?? "";
+        if (!pathEnv.includes(configuration.path)) {
+            environment.prepend("PATH", configuration.path + pathSeparator);
         }
         for (const variable in configuration.swiftEnvironmentVariables) {
             environment.replace(variable, configuration.swiftEnvironmentVariables[variable]);
@@ -74,15 +70,13 @@ export class SwiftEnvironmentVariablesManager implements vscode.Disposable {
  * environment variables applied.
  */
 export class SwiftTerminalProfileProvider implements vscode.TerminalProfileProvider {
-    constructor(private toolchain: SwiftToolchain) {}
-
     provideTerminalProfile(): vscode.ProviderResult<vscode.TerminalProfile> {
         const env: vscode.TerminalOptions["env"] = {
             ...configuration.swiftEnvironmentVariables,
         };
         const pathEnv = process.env["PATH"] ?? "";
-        if (!pathEnv.includes(this.toolchain.swiftFolderPath)) {
-            env["PATH"] = this.toolchain.swiftFolderPath + pathSeparator + pathEnv;
+        if (!pathEnv.includes(configuration.path)) {
+            env["PATH"] = configuration.path + pathSeparator + pathEnv;
         }
         return new vscode.TerminalProfile({
             name: "Swift Terminal",

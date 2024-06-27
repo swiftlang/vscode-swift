@@ -340,7 +340,7 @@
           },
           "swift.enableTerminalEnvironment": {
             "type": "boolean",
-            "default": false,
+            "default": true,
             "description": "Controls whether or not the extension will contribute Swift environment variables to the integrated terminal.",
             "order": 15
           }

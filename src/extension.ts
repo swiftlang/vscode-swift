@@ -55,6 +55,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
 
         checkAndWarnAboutWindowsSymlinks(outputChannel);
 
+        context.subscriptions.push(new SwiftEnvironmentVariablesManager(context));
+        context.subscriptions.push(
+            vscode.window.registerTerminalProfileProvider(
+                "swift.terminalProfile",
+                new SwiftTerminalProfileProvider()
+            )
+        );
+
         const toolchain: SwiftToolchain | undefined = await SwiftToolchain.create()
             .then(toolchain => {
                 toolchain.logDiagnostics(outputChannel);
@@ -97,14 +105,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
             showToolchainError();
             return;
         }
-
-        context.subscriptions.push(new SwiftEnvironmentVariablesManager(context, toolchain));
-        context.subscriptions.push(
-            vscode.window.registerTerminalProfileProvider(
-                "swift.terminalProfile",
-                new SwiftTerminalProfileProvider(toolchain)
-            )
-        );
 
         const workspaceContext = await WorkspaceContext.create(outputChannel, toolchain);
         context.subscriptions.push(...commands.register(workspaceContext));
