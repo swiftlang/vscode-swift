@@ -44,6 +44,7 @@ export class SwiftEnvironmentVariablesManager implements vscode.Disposable {
     }
 
     dispose() {
+        this.context.environmentVariableCollection.clear();
         for (const disposable of this.subscriptions) {
             disposable.dispose();
         }
