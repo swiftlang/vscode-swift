@@ -64,3 +64,26 @@ export class SwiftEnvironmentVariablesManager implements vscode.Disposable {
         }
     }
 }
+
+/**
+ * A {@link vscode.TerminalProfileProvider} used to create a terminal with the appropriate Swift
+ * environment variables applied.
+ */
+export class SwiftTerminalProfileProvider implements vscode.TerminalProfileProvider {
+    constructor(private toolchain: SwiftToolchain) {}
+
+    provideTerminalProfile(): vscode.ProviderResult<vscode.TerminalProfile> {
+        const env: vscode.TerminalOptions["env"] = {
+            ...configuration.swiftEnvironmentVariables,
+        };
+        const pathEnv = process.env["PATH"] ?? "";
+        if (!pathEnv.includes(this.toolchain.swiftFolderPath)) {
+            env["PATH"] = this.toolchain.swiftFolderPath + pathSeparator + pathEnv;
+        }
+        return new vscode.TerminalProfile({
+            name: "Swift Terminal",
+            iconPath: new vscode.ThemeIcon("swift-icon"),
+            env,
+        });
+    }
+}

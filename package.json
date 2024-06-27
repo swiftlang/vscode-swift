@@ -30,6 +30,23 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "icons": {
+      "swift-icon": {
+        "description": "The official icon for the Swift programming language",
+        "default": {
+          "fontPath": "assets/icon-font.woff",
+          "fontCharacter": "\\E001"
+        }
+      }
+    },
+    "terminal": {
+      "profiles": [
+        {
+          "title": "Swift",
+          "id": "swift.terminalProfile"
+        }
+      ]
+    },
     "languages": [
       {
         "id": "swift",
