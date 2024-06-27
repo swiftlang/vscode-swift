@@ -24,14 +24,19 @@ const pathSeparator: string = process.platform === "win32" ? ";" : ":";
  * whenever the configuration changes.
  */
 export class SwiftEnvironmentVariablesManager implements vscode.Disposable {
-    private subscriptions: vscode.Disposable[];
+    private subscriptions: vscode.Disposable[] = [];
 
     constructor(
         private context: vscode.ExtensionContext,
         private toolchain: SwiftToolchain
     ) {
+        if (!configuration.enableTerminalEnvironment) {
+            context.environmentVariableCollection.clear();
+            return;
+        }
+
         this.update();
-        this.subscriptions = [
+        this.subscriptions.push(
             vscode.workspace.onDidChangeConfiguration(event => {
                 if (
                     event.affectsConfiguration("swift.path") ||
@@ -39,8 +44,8 @@ export class SwiftEnvironmentVariablesManager implements vscode.Disposable {
                 ) {
                     this.update();
                 }
-            }),
-        ];
+            })
+        );
     }
 
     dispose() {
