@@ -22,7 +22,7 @@ import configuration from "../configuration";
  * Open the installation page on Swift.org
  */
 export async function downloadToolchain() {
-    if (await vscode.env.openExternal(vscode.Uri.parse("https://www.swift.org/install/"))) {
+    if (await vscode.env.openExternal(vscode.Uri.parse("https://www.swift.org/install"))) {
         const selected = await showReloadExtensionNotification(
             "The Swift extension must be reloaded once you have downloaded and installed the new toolchain.",
             "Select Toolchain"
@@ -37,9 +37,7 @@ export async function downloadToolchain() {
  * Open the installation page for Swiftly
  */
 export async function installSwiftly() {
-    if (
-        await vscode.env.openExternal(vscode.Uri.parse("https://swift-server.github.io/swiftly/"))
-    ) {
+    if (await vscode.env.openExternal(vscode.Uri.parse("https://swiftlang.github.io/swiftly"))) {
         const selected = await showReloadExtensionNotification(
             "The Swift extension must be reloaded once you have downloaded and installed the new toolchain.",
             "Select Toolchain"
@@ -200,14 +198,14 @@ async function getQuickPickItems(
         actionItems.push({
             type: "action",
             label: "$(cloud-download) Install Swiftly for toolchain management...",
-            detail: "Install https://swift-server.github.io/swiftly/ to manage your toolchains on Linux",
+            detail: "Install https://swiftlang.github.io/swiftly to manage your toolchains on Linux",
             run: installSwiftly,
         });
     }
     actionItems.push({
         type: "action",
         label: "$(cloud-download) Download from Swift.org...",
-        detail: "Open https://swift.org/install/ to download and install a toolchain",
+        detail: "Open https://swift.org/install to download and install a toolchain",
         run: downloadToolchain,
     });
     actionItems.push({
@@ -268,13 +266,7 @@ async function setToolchainPath(
     if (target === "prompt") {
         const items: (vscode.QuickPickItem & {
             target?: vscode.ConfigurationTarget;
-        })[] = [
-            {
-                label: "User Configuration",
-                detail: "Add to VS Code user configuration.",
-                target: vscode.ConfigurationTarget.Global,
-            },
-        ];
+        })[] = [];
         if (vscode.workspace.workspaceFolders) {
             items.push({
                 label: "Workspace Configuration",
@@ -283,6 +275,11 @@ async function setToolchainPath(
                 target: vscode.ConfigurationTarget.Workspace,
             });
         }
+        items.push({
+            label: "User Configuration",
+            detail: "Add to VS Code user configuration.",
+            target: vscode.ConfigurationTarget.Global,
+        });
         if (items.length > 1) {
             const selected = await vscode.window.showQuickPick(items, {
                 title: "Toolchain Configuration",

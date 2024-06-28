@@ -326,7 +326,11 @@ export class TestExplorer {
         const tests = await this.lspTestDiscovery.getWorkspaceTests(
             this.folderContext.swiftPackage
         );
-        TestDiscovery.updateTestsFromClasses(this.folderContext, tests);
+        TestDiscovery.updateTestsFromClasses(
+            this.controller,
+            this.folderContext.swiftPackage,
+            tests
+        );
         this.onTestItemsDidChangeEmitter.fire(this.controller);
     }
 

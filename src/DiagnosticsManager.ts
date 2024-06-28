@@ -17,6 +17,7 @@ import stripAnsi = require("strip-ansi");
 import configuration from "./configuration";
 import { SwiftExecution } from "./tasks/SwiftExecution";
 import { WorkspaceContext } from "./WorkspaceContext";
+import { checkIfBuildComplete } from "./utilities/tasks";
 
 interface ParsedDiagnostic {
     uri: string;
@@ -262,6 +263,10 @@ export class DiagnosticsManager implements vscode.Disposable {
                     // Otherwise want to keep remaining data to pre-pend next write
                     remainingData = lines.pop();
                     for (const line of lines) {
+                        if (checkIfBuildComplete(line)) {
+                            done();
+                            return;
+                        }
                         const result = this.parseDiagnostic(line);
                         if (!result) {
                             continue;

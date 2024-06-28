@@ -17,6 +17,7 @@ import * as vscode from "vscode";
 import configuration, { ShowBuildStatusOptions } from "../configuration";
 import { RunningTask, StatusItem } from "./StatusItem";
 import { SwiftExecution } from "../tasks/SwiftExecution";
+import { checkIfBuildComplete } from "../utilities/tasks";
 
 /**
  * Progress of `swift` build, parsed from the
@@ -111,7 +112,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
         // be concerned with
         const lines = sanitizedData.split(/\r\n|\n|\r/gm).reverse();
         for (const line of lines) {
-            if (this.checkIfBuildComplete(line)) {
+            if (checkIfBuildComplete(line)) {
                 return true;
             }
             const progress = this.findBuildProgress(line);
@@ -124,22 +125,6 @@ export class SwiftBuildStatus implements vscode.Disposable {
                 update(`${name} fetching dependencies`);
                 return false;
             }
-        }
-        return false;
-    }
-
-    private checkIfBuildComplete(line: string): boolean {
-        // Output in this format for "build" and "test" commands
-        const completeRegex = /^Build complete!/gm;
-        let match = completeRegex.exec(line);
-        if (match) {
-            return true;
-        }
-        // Output in this format for "run" commands
-        const productCompleteRegex = /^Build of product '.*' complete!/gm;
-        match = productCompleteRegex.exec(line);
-        if (match) {
-            return true;
         }
         return false;
     }
