@@ -336,6 +336,20 @@ export class TestingDebugConfigurationFactory {
         if (isRelease(this.testKind)) {
             result = [...result, "-c", "release", "-Xswiftc", "-enable-testing"];
         }
+        // `link.exe` doesn't support duplicate weak symbols, and lld-link in an effort to
+        // match link.exe also doesn't support them by default. We can use `-lldmingw` to get
+        // lld-link to allow duplicate weak symbols, but that also changes its library search
+        // path behavior, which could(?) be unintended.
+        //
+        // On the `next` branch (6.1?) in llvm, the duplicate symbol behavior now has its own flag
+        // `-lld-allow-duplicate-weak` (https://github.com/llvm/llvm-project/pull/68077).
+        // Once this is available we should use it if possible, as it will suppress the warnings
+        // seen with `-lldmingw`.
+        //
+        // SEE: rdar://129337999
+        if (process.platform === "win32" && this.testKind === TestKind.coverage) {
+            result = [...result, "-Xlinker", "-lldmingw"];
+        }
         return result;
     }
 
