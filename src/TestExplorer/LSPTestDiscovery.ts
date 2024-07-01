@@ -148,7 +148,12 @@ export class LSPTestDiscovery {
             .getTargets(TargetType.test)
             .find(target => swiftPackage.getTarget(location.uri.fsPath) === target);
 
-        const id = target !== undefined ? `${target.c99name}.${item.id}` : item.id;
+        // If we're using an older sourcekit-lsp it doesn't prepend the target name
+        // to the test item id.
+        const id =
+            target !== undefined && !item.id.startsWith(`${target.c99name}.`)
+                ? `${target.c99name}.${item.id}`
+                : item.id;
         return item.style === "XCTest" ? id.replace(/\(\)$/, "") : id;
     }
 }
