@@ -55,8 +55,7 @@ export class SwiftEnvironmentVariablesManager implements vscode.Disposable {
             return;
         }
 
-        const pathEnv = process.env["PATH"] ?? "";
-        if (!pathEnv.includes(configuration.path)) {
+        if (configuration.path) {
             environment.prepend("PATH", configuration.path + pathSeparator);
         }
         for (const variable in configuration.swiftEnvironmentVariables) {
@@ -75,7 +74,7 @@ export class SwiftTerminalProfileProvider implements vscode.TerminalProfileProvi
             ...configuration.swiftEnvironmentVariables,
         };
         const pathEnv = process.env["PATH"] ?? "";
-        if (!pathEnv.includes(configuration.path)) {
+        if (configuration.path) {
             env["PATH"] = configuration.path + pathSeparator + pathEnv;
         }
         return new vscode.TerminalProfile({
