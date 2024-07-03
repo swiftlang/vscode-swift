@@ -330,7 +330,7 @@ async function showDeveloperDirQuickPick(xcodePaths: string[]): Promise<string |
         ),
         {
             title: "Select a developer directory",
-            placeHolder: "Pick an Xcode installation to use as the developer directory",
+            placeHolder: "Pick an Xcode installation to use as the developer directory and for the macOS SDK",
             canPickMany: false,
         }
     );
