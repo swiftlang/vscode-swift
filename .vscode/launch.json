@@ -24,15 +24,18 @@
 			"name": "Extension Tests",
 			"type": "extensionHost",
 			"request": "launch",
+			"testConfiguration": "${workspaceFolder}/.vscode-test.js",
+			"testConfigurationLabel": "integrationTests",
 			"args": [
 				"--profile=testing-debug",
-				"--extensionDevelopmentPath=${workspaceFolder}",
-				"--extensionTestsPath=${workspaceFolder}/out/test/suite/index",
 				"${workspaceFolder}/assets/test"
 			],
 			"outFiles": [
 				"${workspaceFolder}/out/**/*.js"
 			],
+			"env": {
+				"VSCODE_DEBUG": "1"
+			},
 			"preLaunchTask": "compile-tests"
 		}
 	]
