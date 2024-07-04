@@ -20,6 +20,7 @@ import { isPathInsidePath, swiftRuntimeEnv } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { activateLegacyInlayHints } from "./inlayHints";
+import { activatePeekDocuments } from "./peekDocuments";
 import { FolderContext } from "../FolderContext";
 import { LanguageClient } from "vscode-languageclient/node";
 import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
@@ -108,6 +109,7 @@ export class LanguageClientManager {
     private languageClient: langclient.LanguageClient | null | undefined;
     private cancellationToken?: vscode.CancellationTokenSource;
     private legacyInlayHints?: vscode.Disposable;
+    private peekDocuments?: vscode.Disposable;
     private restartedPromise?: Promise<void>;
     private currentWorkspaceFolder?: vscode.Uri;
     private waitingOnRestartCount: number;
@@ -244,6 +246,7 @@ export class LanguageClientManager {
         this.cancellationToken?.cancel();
         this.cancellationToken?.dispose();
         this.legacyInlayHints?.dispose();
+        this.peekDocuments?.dispose();
         this.subscriptions.forEach(item => item.dispose());
         this.languageClient?.stop();
         this.namedOutputChannels.forEach(channel => channel.dispose());
@@ -392,6 +395,8 @@ export class LanguageClientManager {
         this.currentWorkspaceFolder = workspaceFolder?.uri;
         this.legacyInlayHints?.dispose();
         this.legacyInlayHints = undefined;
+        this.peekDocuments?.dispose();
+        this.peekDocuments = undefined;
         if (client) {
             this.cancellationToken?.cancel();
             this.cancellationToken?.dispose();
@@ -559,6 +564,9 @@ export class LanguageClientManager {
                 })(),
             },
             errorHandler: new SourceKitLSPErrorHandler(5),
+            initializationOptions: {
+                "workspace/peekDocuments": true, // workaround for client capability to handle `PeekDocumentsRequest`
+            },
         };
 
         return new langclient.LanguageClient(
@@ -604,6 +612,8 @@ export class LanguageClientManager {
                 if (this.workspaceContext.swiftVersion.isLessThan(new Version(5, 7, 0))) {
                     this.legacyInlayHints = activateLegacyInlayHints(client);
                 }
+
+                this.peekDocuments = activatePeekDocuments(client);
             })
             .catch(reason => {
                 this.workspaceContext.outputChannel.log(`${reason}`);
