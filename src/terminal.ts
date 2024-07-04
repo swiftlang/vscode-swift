@@ -77,13 +77,18 @@ export class SwiftTerminalProfileProvider implements vscode.TerminalProfileProvi
         const env: vscode.TerminalOptions["env"] = {
             ...configuration.swiftEnvironmentVariables,
         };
-        const pathEnv = process.env["PATH"] ?? "";
-        if (configuration.path) {
-            env["PATH"] = configuration.path + pathSeparator + pathEnv;
+        if (!configuration.enableTerminalEnvironment) {
+            const disposable = vscode.window.onDidOpenTerminal(terminal => {
+                if (configuration.path) {
+                    terminal.sendText(`export PATH=${configuration.path + pathSeparator}$PATH`);
+                }
+                disposable.dispose();
+            });
         }
         return new vscode.TerminalProfile({
             name: "Swift Terminal",
             iconPath: new vscode.ThemeIcon("swift-icon"),
+            shellArgs: [],
             env,
         });
     }
