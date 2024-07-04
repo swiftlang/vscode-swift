@@ -56,10 +56,14 @@ export class SwiftEnvironmentVariablesManager implements vscode.Disposable {
         }
 
         if (configuration.path) {
-            environment.prepend("PATH", configuration.path + pathSeparator);
+            environment.prepend("PATH", configuration.path + pathSeparator, {
+                applyAtShellIntegration: true,
+            });
         }
         for (const variable in configuration.swiftEnvironmentVariables) {
-            environment.replace(variable, configuration.swiftEnvironmentVariables[variable]);
+            environment.replace(variable, configuration.swiftEnvironmentVariables[variable], {
+                applyAtShellIntegration: true,
+            });
         }
     }
 }
