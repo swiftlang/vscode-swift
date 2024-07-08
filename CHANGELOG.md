@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.10.4 - 2024-07-08
+
+### Added
+
+- `Swift` terminal profile
+- Set Swift environment variables in the integrated terminal
+
+### Fixed
+
+- Parameterized `swift-testing` tests inherit tags
+- Updated the Swiftly URL
+- Fix duplicate symbol linker error when building Windows tests with coverage
+- Update `DEVELOPER_DIR` for macOS toolchain selection
+
 ## 1.10.3 - 2024-06-24
 
 ### Added
