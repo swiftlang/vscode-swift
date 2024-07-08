@@ -37,6 +37,17 @@
 				"VSCODE_DEBUG": "1"
 			},
 			"preLaunchTask": "compile-tests"
+		},
+		{
+			"name": "Unit Tests",
+			"type": "extensionHost",
+			"request": "launch",
+			"testConfiguration": "${workspaceFolder}/.vscode-test.js",
+			"testConfigurationLabel": "unitTests",
+			"outFiles": [
+				"${workspaceFolder}/out/**/*.js"
+			],
+			"preLaunchTask": "compile-tests"
 		}
 	]
 }
