@@ -15,6 +15,7 @@
 import * as vscode from "vscode";
 import * as lcov from "lcov-parse";
 import * as asyncfs from "fs/promises";
+import * as path from "path";
 import { Writable } from "stream";
 import { promisify } from "util";
 import configuration from "../configuration";
@@ -23,6 +24,7 @@ import { execFileStreamOutput } from "../utilities/utilities";
 import { BuildFlags } from "../toolchain/BuildFlags";
 import { TestLibrary } from "../TestExplorer/TestRunner";
 import { DisposableFileCollection } from "../utilities/tempFolder";
+import { TargetType } from "../SwiftPackage";
 
 interface CodeCovFile {
     testLibrary: TestLibrary;
@@ -173,7 +175,7 @@ export class TestCoverage {
                 "--format",
                 "lcov",
                 ...coveredBinaries,
-                "--ignore-filename-regex=Tests|swift-testing|Testing|.build|Snippets|Plugins",
+                `--ignore-filename-regex=${this.ignoredFilenamesRegex()}`,
                 `--instr-profile=${mergedProfileFile}`,
             ],
             writableStream,
@@ -187,6 +189,20 @@ export class TestCoverage {
         );
 
         return buffer;
+    }
+
+    /**
+     * Constructs a string containing all the paths to exclude from the code coverage report.
+     * This should exclude everything in the `.build` folder as well as all the test targets.
+     */
+    private ignoredFilenamesRegex(): string {
+        const basePath = this.folderContext.folder.path;
+        const buildFolder = path.join(basePath, ".build");
+        const testTargets = this.folderContext.swiftPackage
+            .getTargets(TargetType.test)
+            .map(target => path.join(basePath, target.path));
+
+        return [buildFolder, ...testTargets].join("|");
     }
 
     private async loadLcov(lcovContents: string): Promise<lcov.LcovFile[]> {
