@@ -154,7 +154,12 @@ const configuration = {
             },
         };
     },
-
+    /** Files and directories to exclude from the code coverage. */
+    get excludeFromCodeCoverage(): string[] {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<string[]>("excludeFromCodeCoverage", []);
+    },
     /** Files and directories to exclude from the Package Dependencies view. */
     get excludePathsFromPackageDependencies(): string[] {
         return vscode.workspace

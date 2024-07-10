@@ -202,7 +202,11 @@ export class TestCoverage {
             .getTargets(TargetType.test)
             .map(target => path.join(basePath, target.path));
 
-        return [buildFolder, ...testTargets].join("|");
+        const excluded = configuration.excludeFromCodeCoverage.map(target =>
+            path.isAbsolute(target) ? target : path.join(basePath, target)
+        );
+
+        return [buildFolder, ...testTargets, ...excluded].join("|");
     }
 
     private async loadLcov(lcovContents: string): Promise<lcov.LcovFile[]> {
