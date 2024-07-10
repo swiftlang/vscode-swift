@@ -153,6 +153,11 @@
         "category": "Swift"
       },
       {
+        "command": "swift.reindexProject",
+        "title": "Re-Index Project",
+        "category": "Swift"
+      },
+      {
         "command": "swift.switchPlatform",
         "title": "Select Target Platform...",
         "category": "Swift"

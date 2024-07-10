@@ -174,3 +174,7 @@ export const textDocumentTestsRequest = new langclient.RequestType<
     LSPTestItem[],
     unknown
 >("textDocument/tests");
+
+export const reindexProjectRequest = new langclient.RequestType<null, unknown, unknown>(
+    "workspace/triggerReindex"
+);
