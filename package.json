@@ -525,7 +525,7 @@
           "swift.debugger.useDebugAdapterFromToolchain": {
             "type": "boolean",
             "default": false,
-            "markdownDescription": "Use lldb debug adapter packaged with Swift toolchain as your debug adapter. This is currently only available on Windows platforms using Swift 6",
+            "markdownDescription": "Use lldb debug adapter packaged with Swift toolchain as your debug adapter. This is currently only available on Windows or platforms using Swift 6",
             "order": 1
           },
           "swift.debugger.path": {
