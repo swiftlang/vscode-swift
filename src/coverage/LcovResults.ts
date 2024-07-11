@@ -198,6 +198,8 @@ export class TestCoverage {
     private ignoredFilenamesRegex(): string {
         const basePath = this.folderContext.folder.path;
         const buildFolder = path.join(basePath, ".build");
+        const snippetsFolder = path.join(basePath, "Snippets");
+        const pluginsFolder = path.join(basePath, "Plugins");
         const testTargets = this.folderContext.swiftPackage
             .getTargets(TargetType.test)
             .map(target => path.join(basePath, target.path));
@@ -206,7 +208,7 @@ export class TestCoverage {
             path.isAbsolute(target) ? target : path.join(basePath, target)
         );
 
-        return [buildFolder, ...testTargets, ...excluded].join("|");
+        return [buildFolder, snippetsFolder, pluginsFolder, ...testTargets, ...excluded].join("|");
     }
 
     private async loadLcov(lcovContents: string): Promise<lcov.LcovFile[]> {
