@@ -669,6 +669,10 @@
         {
           "command": "swift.attachDebugger",
           "when": "swift.lldbVSCodeAvailable"
+        },
+        {
+          "command": "swift.reindexProject",
+          "when": "swift.supportsReindexing"
         }
       ],
       "editor/context": [

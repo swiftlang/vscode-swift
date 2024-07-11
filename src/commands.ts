@@ -837,9 +837,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand("swift.debugSnippet", () => debugSnippet(ctx)),
         vscode.commands.registerCommand("swift.runPluginTask", () => runPluginTask()),
         vscode.commands.registerCommand("swift.restartLSPServer", () => restartLSPServer(ctx)),
-        ...(ctx.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))
-            ? [vscode.commands.registerCommand("swift.reindexProject", () => reindexProject(ctx))]
-            : []),
+        vscode.commands.registerCommand("swift.reindexProject", () => reindexProject(ctx)),
         vscode.commands.registerCommand("swift.insertFunctionComment", () =>
             insertFunctionComment(ctx)
         ),

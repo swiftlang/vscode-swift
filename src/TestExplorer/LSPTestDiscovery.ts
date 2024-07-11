@@ -49,8 +49,6 @@ interface ILanguageClientManager {
  * these results.
  */
 export class LSPTestDiscovery {
-    private capCache = new Map<string, boolean>();
-
     constructor(private languageClient: ILanguageClientManager) {}
 
     /**
