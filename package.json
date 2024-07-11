@@ -265,7 +265,7 @@
           "swift.diagnosticsCollection": {
             "type": "string",
             "default": "keepSourceKit",
-            "markdownDescription": "Controls how diagnostics from the various providers are merged into the `swift` diagnostics collection.",
+            "markdownDescription": "Controls how diagnostics from the various providers are merged into the collection of `swift` errors and warnings shown in the Problems pane.",
             "enum": [
               "onlySwiftc",
               "onlySourceKit",
@@ -285,7 +285,7 @@
           "swift.diagnosticsStyle": {
             "type": "string",
             "default": "llvm",
-            "markdownDescription": "Controls which `-diagnostic-style` option to pass to `swiftc` when running `swift` tasks.",
+            "markdownDescription": "The formatting style used when printing diagnostics in the Problems panel. Corresponds to the `-diagnostic-style` option to pass to `swiftc` when running `swift` tasks.",
             "enum": [
               "default",
               "llvm",
@@ -341,7 +341,7 @@
           "swift.enableTerminalEnvironment": {
             "type": "boolean",
             "default": true,
-            "markdownDescription": "Controls whether or not the extension will contribute Swift environment variables to the integrated terminal.",
+            "markdownDescription": "Controls whether or not the extension will contribute environment variables defined in `Swift: Environment Variables` to the integrated terminal. If this is set to `true` and a custom `Swift: Path` is also set then the swift path is appended to the terminal's `PATH`.",
             "order": 15
           }
         }
@@ -525,7 +525,7 @@
           "swift.debugger.useDebugAdapterFromToolchain": {
             "type": "boolean",
             "default": false,
-            "markdownDescription": "Use lldb debug adapter packaged with Swift toolchain as your debug adapter. This is currently only available on Windows platforms or macOS Swift 6",
+            "markdownDescription": "Use lldb debug adapter packaged with Swift toolchain as your debug adapter. This is currently only available on Windows platforms using Swift 6",
             "order": 1
           },
           "swift.debugger.path": {
