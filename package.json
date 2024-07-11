@@ -347,6 +347,19 @@
         }
       },
       {
+        "title": "Code Coverage",
+        "properties": {
+          "swift.excludeFromCodeCoverage": {
+            "description": "A list of paths to exclude from code coverage reports. Paths can be absolute or relative to the workspace root.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          }
+        }
+      },
+      {
         "title": "User Interface",
         "properties": {
           "swift.excludePathsFromPackageDependencies": {
