@@ -82,7 +82,11 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
         const funcPosition = new vscode.Position(position.line + 1, 0);
         const details = this.getFunctionDetails(document, funcPosition);
         if (details) {
-            if (details.parameters.length === 0 && details.returns === false) {
+            if (
+                details.parameters.length === 0 &&
+                details.returns === false &&
+                details.throws === false
+            ) {
                 return undefined;
             }
             const snippet = this.constructSnippet(details, false);
@@ -109,7 +113,7 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
         if (details) {
             const snippet = this.constructSnippet(details, true);
             const insertPosition = new vscode.Position(line, details.indent);
-            editor.insertSnippet(snippet, insertPosition);
+            await editor.insertSnippet(snippet, insertPosition);
         }
     }
 
@@ -208,10 +212,10 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
                 snippetIndex++;
             }
         }
-        /*if (details.throws) {
+        if (details.throws) {
             string += `\n/// - Throws: $${snippetIndex}`;
             snippetIndex++;
-        }*/
+        }
         if (details.returns) {
             string += `\n/// - Returns: $${snippetIndex}`;
         }
