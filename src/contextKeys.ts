@@ -80,6 +80,13 @@ const contextKeys = {
     set createNewProjectAvailable(value: boolean) {
         vscode.commands.executeCommand("setContext", "swift.createNewProjectAvailable", value);
     },
+
+    /**
+     * Whether the SourceKit-LSP server supports reindexing the workspace.
+     */
+    set supportsReindexing(value: boolean) {
+        vscode.commands.executeCommand("setContext", "swift.supportsReindexing", value);
+    },
 };
 
 export default contextKeys;

@@ -32,6 +32,7 @@ import { SwiftExecOperation, TaskOperation } from "./tasks/TaskQueue";
 import { SwiftProjectTemplate } from "./toolchain/toolchain";
 import { showToolchainSelectionQuickPick, showToolchainError } from "./ui/ToolchainSelection";
 import { captureDiagnostics } from "./commands/captureDiagnostics";
+import { reindexProjectRequest } from "./sourcekit-lsp/lspExtensions";
 
 /**
  * References:
@@ -656,6 +657,25 @@ function restartLSPServer(workspaceContext: WorkspaceContext): Promise<void> {
     return workspaceContext.languageClientManager.restart();
 }
 
+/** Request that the SourceKit-LSP server reindexes the workspace */
+function reindexProject(workspaceContext: WorkspaceContext): Promise<unknown> {
+    return workspaceContext.languageClientManager.useLanguageClient(async (client, token) => {
+        try {
+            return await client.sendRequest(reindexProjectRequest, {}, token);
+        } catch (err) {
+            const error = err as { code: number; message: string };
+            // methodNotFound, version of sourcekit-lsp is likely too old.
+            if (error.code === -32601) {
+                vscode.window.showWarningMessage(
+                    "The installed version of SourceKit-LSP does not support background indexing."
+                );
+            } else {
+                vscode.window.showWarningMessage(error.message);
+            }
+        }
+    });
+}
+
 /** Execute task and show UI while running */
 async function executeTaskWithUI(
     task: vscode.Task,
@@ -817,6 +837,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand("swift.debugSnippet", () => debugSnippet(ctx)),
         vscode.commands.registerCommand("swift.runPluginTask", () => runPluginTask()),
         vscode.commands.registerCommand("swift.restartLSPServer", () => restartLSPServer(ctx)),
+        vscode.commands.registerCommand("swift.reindexProject", () => reindexProject(ctx)),
         vscode.commands.registerCommand("swift.insertFunctionComment", () =>
             insertFunctionComment(ctx)
         ),

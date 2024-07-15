@@ -229,6 +229,14 @@ export class WorkspaceContext implements vscode.Disposable {
         } else {
             contextKeys.currentTargetType = undefined;
         }
+
+        // LSP can be configured per workspace to support reindexing
+        this.languageClientManager.useLanguageClient(async client => {
+            const experimentalCaps = client.initializeResult?.capabilities.experimental;
+            contextKeys.supportsReindexing =
+                experimentalCaps && experimentalCaps["workspace/triggerReindex"] !== undefined;
+        });
+
         setSnippetContextKey(this);
     }
 
