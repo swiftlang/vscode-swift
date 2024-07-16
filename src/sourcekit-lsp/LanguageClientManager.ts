@@ -566,6 +566,12 @@ export class LanguageClientManager {
             errorHandler: new SourceKitLSPErrorHandler(5),
             initializationOptions: {
                 "workspace/peekDocuments": true, // workaround for client capability to handle `PeekDocumentsRequest`
+                "textDocument/codeLens": {
+                    supportedCommands: {
+                        "swift.run": "swift.run",
+                        "swift.debug": "swift.debug",
+                    },
+                },
             },
         };
 
