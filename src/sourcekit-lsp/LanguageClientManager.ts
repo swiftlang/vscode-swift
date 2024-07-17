@@ -28,6 +28,7 @@ import { DiagnosticsManager } from "../DiagnosticsManager";
 import { LSPLogger, LSPOutputChannel } from "./LSPOutputChannel";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { promptForDiagnostics } from "../commands/captureDiagnostics";
+import { activateGetReferenceDocument } from "./getReferenceDocument";
 
 interface SourceKitLogMessageParams extends langclient.LogMessageParams {
     logName?: string;
@@ -110,6 +111,7 @@ export class LanguageClientManager {
     private cancellationToken?: vscode.CancellationTokenSource;
     private legacyInlayHints?: vscode.Disposable;
     private peekDocuments?: vscode.Disposable;
+    private getReferenceDocument?: vscode.Disposable;
     private restartedPromise?: Promise<void>;
     private currentWorkspaceFolder?: vscode.Uri;
     private waitingOnRestartCount: number;
@@ -247,6 +249,7 @@ export class LanguageClientManager {
         this.cancellationToken?.dispose();
         this.legacyInlayHints?.dispose();
         this.peekDocuments?.dispose();
+        this.getReferenceDocument?.dispose();
         this.subscriptions.forEach(item => item.dispose());
         this.languageClient?.stop();
         this.namedOutputChannels.forEach(channel => channel.dispose());
@@ -397,6 +400,8 @@ export class LanguageClientManager {
         this.legacyInlayHints = undefined;
         this.peekDocuments?.dispose();
         this.peekDocuments = undefined;
+        this.getReferenceDocument?.dispose();
+        this.getReferenceDocument = undefined;
         if (client) {
             this.cancellationToken?.cancel();
             this.cancellationToken?.dispose();
@@ -573,6 +578,7 @@ export class LanguageClientManager {
             initializationFailedHandler: () => false,
             initializationOptions: {
                 "workspace/peekDocuments": true, // workaround for client capability to handle `PeekDocumentsRequest`
+                "workspace/getReferenceDocument": true, // the client can handle URIs with scheme `sourcekit-lsp:`
                 "textDocument/codeLens": {
                     supportedCommands: {
                         "swift.run": "swift.run",
@@ -636,6 +642,8 @@ export class LanguageClientManager {
                 }
 
                 this.peekDocuments = activatePeekDocuments(client);
+                this.getReferenceDocument = activateGetReferenceDocument(client);
+                this.workspaceContext.subscriptions.push(this.getReferenceDocument);
             })
             .catch(reason => {
                 this.workspaceContext.outputChannel.log(`${reason}`);
