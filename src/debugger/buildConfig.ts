@@ -88,17 +88,15 @@ export class TestingDebugConfigurationFactory {
         }
 
         switch (process.platform) {
-            case "win32":
-                return this.buildWindowsConfig();
             case "darwin":
                 return this.buildDarwinConfg();
             default:
-                return this.buildLinuxConfig();
+                return this.buildNonDarwinConfig();
         }
     }
 
     /* eslint-disable no-case-declarations */
-    private buildLinuxConfig(): vscode.DebugConfiguration | null {
+    private buildNonDarwinConfig(): vscode.DebugConfiguration | null {
         if (isDebugging(this.testKind) && this.testLibrary === TestLibrary.xctest) {
             return {
                 ...this.baseConfig,
@@ -107,7 +105,6 @@ export class TestingDebugConfigurationFactory {
                 env: {
                     ...swiftRuntimeEnv(),
                     ...configuration.folder(this.ctx.workspaceFolder).testEnvironmentVariables,
-                    SWIFT_TESTING_ENABLED: "0",
                 },
             };
         } else {
@@ -237,16 +234,6 @@ export class TestingDebugConfigurationFactory {
                                     : this.baseConfig.preLaunchTask,
                         };
                 }
-        }
-    }
-
-    private buildWindowsConfig(): vscode.DebugConfiguration | null {
-        switch (this.testLibrary) {
-            case TestLibrary.swiftTesting:
-                // TODO: This is untested until rdar://128092675 is available in a windows SDK.
-                return this.buildDarwinConfg();
-            case TestLibrary.xctest:
-                return this.buildDarwinConfg();
         }
     }
     /* eslint-enable no-case-declarations */
