@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.10.5 - 2024-07-19
+
+### Added
+
+- Re-index project command.
+
+### Changed
+
+- Add setting to exclude files/directories from code coverage results.
+- Updated and refined settings descriptions.
+- Added "throws" section to doc comment template
+
+### Fixed
+
+- Use correct XCTest path when debugging Windows.
+
 ## 1.10.4 - 2024-07-08
 
 ### Added
