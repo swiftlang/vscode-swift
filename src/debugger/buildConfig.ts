@@ -89,14 +89,42 @@ export class TestingDebugConfigurationFactory {
 
         switch (process.platform) {
             case "darwin":
-                return this.buildDarwinConfg();
+                return this.buildDarwinConfig();
+            case "win32":
+                return this.buildWindowsConfig();
             default:
-                return this.buildNonDarwinConfig();
+                return this.buildLinuxConfig();
         }
     }
 
     /* eslint-disable no-case-declarations */
-    private buildNonDarwinConfig(): vscode.DebugConfiguration | null {
+    private buildWindowsConfig(): vscode.DebugConfiguration | null {
+        if (isDebugging(this.testKind) && this.testLibrary === TestLibrary.xctest) {
+            const testEnv = {
+                ...swiftRuntimeEnv(),
+                ...configuration.folder(this.ctx.workspaceFolder).testEnvironmentVariables,
+            };
+            // On Windows, add XCTest.dll to the Path
+            // and run the .xctest executable from the .build directory.
+            const runtimePath = this.ctx.workspaceContext.toolchain.runtimePath;
+            const xcTestPath = this.ctx.workspaceContext.toolchain.xcTestPath;
+            if (xcTestPath && xcTestPath !== runtimePath) {
+                testEnv.Path = `${xcTestPath};${testEnv.Path ?? process.env.Path}`;
+            }
+
+            return {
+                ...this.baseConfig,
+                program: this.xcTestOutputPath,
+                args: this.testList,
+                env: testEnv,
+            };
+        } else {
+            return this.buildDarwinConfig();
+        }
+    }
+
+    /* eslint-disable no-case-declarations */
+    private buildLinuxConfig(): vscode.DebugConfiguration | null {
         if (isDebugging(this.testKind) && this.testLibrary === TestLibrary.xctest) {
             return {
                 ...this.baseConfig,
@@ -108,11 +136,11 @@ export class TestingDebugConfigurationFactory {
                 },
             };
         } else {
-            return this.buildDarwinConfg();
+            return this.buildDarwinConfig();
         }
     }
 
-    private buildDarwinConfg(): vscode.DebugConfiguration | null {
+    private buildDarwinConfig(): vscode.DebugConfiguration | null {
         switch (this.testLibrary) {
             case TestLibrary.swiftTesting:
                 switch (this.testKind) {
