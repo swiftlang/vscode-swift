@@ -108,7 +108,7 @@ export class TestingDebugConfigurationFactory {
             // and run the .xctest executable from the .build directory.
             const runtimePath = this.ctx.workspaceContext.toolchain.runtimePath;
             const xcTestPath = this.ctx.workspaceContext.toolchain.xcTestPath;
-            if (xcTestPath !== runtimePath) {
+            if (xcTestPath && xcTestPath !== runtimePath) {
                 testEnv.Path = `${xcTestPath};${testEnv.Path ?? process.env.Path}`;
             }
 
