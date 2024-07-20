@@ -99,7 +99,7 @@ export class TestingDebugConfigurationFactory {
 
     /* eslint-disable no-case-declarations */
     private buildWindowsConfig(): vscode.DebugConfiguration | null {
-        if (isDebugging(this.testKind) && this.testLibrary === TestLibrary.xctest) {
+        if (isDebugging(this.testKind)) {
             const testEnv = {
                 ...swiftRuntimeEnv(),
                 ...configuration.folder(this.ctx.workspaceFolder).testEnvironmentVariables,
@@ -114,8 +114,8 @@ export class TestingDebugConfigurationFactory {
 
             return {
                 ...this.baseConfig,
-                program: this.xcTestOutputPath,
-                args: this.testList,
+                program: this.testExecutableOutputPath,
+                args: this.debuggingTestExecutableArgs,
                 env: testEnv,
             };
         } else {
@@ -401,6 +401,26 @@ export class TestingDebugConfigurationFactory {
             this.artifactFolderForTestKind,
             `${this.ctx.swiftPackage.name}PackageTests.swift-testing`
         );
+    }
+
+    private get testExecutableOutputPath(): string {
+        switch (this.testLibrary) {
+            case TestLibrary.swiftTesting:
+                return this.swiftTestingOutputPath;
+            case TestLibrary.xctest:
+                return this.xcTestOutputPath;
+        }
+    }
+
+    private get debuggingTestExecutableArgs(): string[] {
+        switch (this.testLibrary) {
+            case TestLibrary.swiftTesting:
+                return this.addBuildOptionsToArgs(
+                    this.addTestsToArgs(this.addSwiftTestingFlagsArgs([]))
+                );
+            case TestLibrary.xctest:
+                return this.testList;
+        }
     }
 
     private get sanitizerRuntimeEnvironment() {

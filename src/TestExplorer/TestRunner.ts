@@ -808,7 +808,7 @@ export class TestRunner {
                                 this.folderContext.name
                             );
                             LoggingDebugAdapterTracker.setDebugSessionCallback(session, output => {
-                                this.testRun.appendOutput(output);
+                                this.testRun.appendOutput(output.replace(/\n/g, "\r\n"));
                                 if (config.testType === TestLibrary.xctest) {
                                     this.xcTestOutputParser.parseResult(output, runState);
                                 }
