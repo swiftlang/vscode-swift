@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.10.6 - 2024-07-21
+
+### Fixed
+
+- Setting of Path when debugging tests to find XCTest.dll on Windows
+
 ## 1.10.5 - 2024-07-19
 
 ### Added
