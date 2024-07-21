@@ -115,6 +115,7 @@ class RollingLog {
     private startIndex: number = 0;
     private endIndex: number = 0;
     private logCount: number = 0;
+    private appending: boolean = false;
 
     constructor(private maxLogs: number) {
         this._logs = new Array(maxLogs).fill(null);
@@ -133,6 +134,12 @@ class RollingLog {
     }
 
     appendLine(log: string) {
+        // Writing to a new line that isn't the very first, increment the end index
+        if (this.logCount > 0) {
+            this.endIndex = this.incrementIndex(this.endIndex);
+        }
+
+        // We're over the window size, move the start index
         if (this.logCount === this.maxLogs) {
             this.startIndex = this.incrementIndex(this.startIndex);
         } else {
@@ -140,16 +147,15 @@ class RollingLog {
         }
 
         this._logs[this.endIndex] = log;
-        this.endIndex = this.incrementIndex(this.endIndex);
     }
 
     append(log: string) {
-        const endIndex = this.endIndex - 1 < 0 ? Math.max(this.logCount - 1, 0) : this.endIndex;
-        if (this._logs[endIndex] === null) {
+        if (this.logCount === 0) {
             this.logCount = 1;
         }
-        const newLogLine = (this._logs[endIndex] ?? "") + log;
-        this._logs[endIndex] = newLogLine;
+        const newLogLine = (this._logs[this.endIndex] ?? "") + log;
+        this._logs[this.endIndex] = newLogLine;
+        this.appending = true;
     }
 
     replace(log: string) {

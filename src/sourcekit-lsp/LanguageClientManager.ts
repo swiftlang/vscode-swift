@@ -434,11 +434,12 @@ export class LanguageClientManager {
             this.languageClient = undefined;
             return;
         }
-        const client = this.createLSPClient(folder);
-        return this.startClient(client);
+        return this.startClient(...this.createLSPClient(folder));
     }
 
-    private createLSPClient(folder?: vscode.Uri): langclient.LanguageClient {
+    private createLSPClient(
+        folder?: vscode.Uri
+    ): [langclient.LanguageClient, SourceKitLSPErrorHandler] {
         const toolchainSourceKitLSP =
             this.workspaceContext.toolchain.getToolchainExecutable("sourcekit-lsp");
         const lspConfig = configuration.lsp;
@@ -488,6 +489,7 @@ export class LanguageClientManager {
             workspaceFolder = { uri: folder, name: FolderContext.uriName(folder), index: 0 };
         }
 
+        const errorHandler = new SourceKitLSPErrorHandler(5);
         const clientOptions: langclient.LanguageClientOptions = {
             documentSelector: LanguageClientManager.documentSelector,
             revealOutputChannelOn: langclient.RevealOutputChannelOn.Never,
@@ -563,21 +565,30 @@ export class LanguageClientManager {
                     };
                 })(),
             },
-            errorHandler: new SourceKitLSPErrorHandler(5),
+            errorHandler,
+            // Avoid attempting to reinitialize multiple times. If we fail to initialize
+            // we aren't doing anything different the second time and so will fail again.
+            initializationFailedHandler: () => false,
             initializationOptions: {
                 "workspace/peekDocuments": true, // workaround for client capability to handle `PeekDocumentsRequest`
             },
         };
 
-        return new langclient.LanguageClient(
-            "swift.sourcekit-lsp",
-            "SourceKit Language Server",
-            serverOptions,
-            clientOptions
-        );
+        return [
+            new langclient.LanguageClient(
+                "swift.sourcekit-lsp",
+                "SourceKit Language Server",
+                serverOptions,
+                clientOptions
+            ),
+            errorHandler,
+        ];
     }
 
-    private async startClient(client: langclient.LanguageClient) {
+    private async startClient(
+        client: langclient.LanguageClient,
+        errorHandler: SourceKitLSPErrorHandler
+    ) {
         client.onDidChangeState(e => {
             // if state is now running add in any sub-folder workspaces that
             // we have cached. If this is the first time we are starting then
@@ -589,7 +600,6 @@ export class LanguageClientManager {
             ) {
                 this.addSubFolderWorkspaces(client);
             }
-            //console.log(e);
         });
         if (client.clientOptions.workspaceFolder) {
             this.workspaceContext.outputChannel.log(
@@ -609,6 +619,10 @@ export class LanguageClientManager {
         this.clientReadyPromise = client
             .start()
             .then(() => {
+                // Now that we've started up correctly, start the error handler to auto-restart
+                // if sourcekit-lsp crashes during normal operation.
+                errorHandler.enable();
+
                 if (this.workspaceContext.swiftVersion.isLessThan(new Version(5, 7, 0))) {
                     this.legacyInlayHints = activateLegacyInlayHints(client);
                 }
@@ -616,8 +630,16 @@ export class LanguageClientManager {
                 this.peekDocuments = activatePeekDocuments(client);
             })
             .catch(reason => {
-                this.workspaceContext.outputChannel.log(`${reason}`);
-                // if language client failed to initialise then shutdown and set to undefined
+                const lspOutputChannel = client.outputChannel as SwiftOutputChannel;
+                const outputChannelReason = lspOutputChannel.logs.filter(
+                    line => line.indexOf("Error:") === 0
+                )[0];
+
+                this.workspaceContext.outputChannel.log(
+                    outputChannelReason ? outputChannelReason : `${reason}`
+                );
+
+                // if language client failed to initialize then shutdown and set to undefined
                 this.languageClient?.stop();
                 this.languageClient = undefined;
                 throw reason;
@@ -665,9 +687,16 @@ export class LanguageClientManager {
  */
 class SourceKitLSPErrorHandler implements langclient.ErrorHandler {
     private restarts: number[];
+    private enabled: boolean = false;
 
     constructor(private maxRestartCount: number) {
         this.restarts = [];
+    }
+    /**
+     * Start listening for errors and requesting to restart the LSP server when appropriate.
+     */
+    enable() {
+        this.enabled = true;
     }
     /**
      * An error has occurred while writing or reading from the connection.
@@ -691,6 +720,13 @@ class SourceKitLSPErrorHandler implements langclient.ErrorHandler {
      * The connection to the server got closed.
      */
     closed(): langclient.CloseHandlerResult | Promise<langclient.CloseHandlerResult> {
+        if (!this.enabled) {
+            return {
+                action: langclient.CloseAction.DoNotRestart,
+                handled: true,
+            };
+        }
+
         this.restarts.push(Date.now());
         if (this.restarts.length <= this.maxRestartCount) {
             return { action: langclient.CloseAction.Restart };
