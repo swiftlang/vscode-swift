@@ -128,8 +128,8 @@ export class TestingDebugConfigurationFactory {
         if (isDebugging(this.testKind) && this.testLibrary === TestLibrary.xctest) {
             return {
                 ...this.baseConfig,
-                program: this.xcTestOutputPath,
-                args: [this.testList.join(",")],
+                program: this.testExecutableOutputPath,
+                args: this.debuggingTestExecutableArgs,
                 env: {
                     ...swiftRuntimeEnv(),
                     ...configuration.folder(this.ctx.workspaceFolder).testEnvironmentVariables,
