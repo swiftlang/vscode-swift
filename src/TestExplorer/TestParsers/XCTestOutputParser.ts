@@ -19,8 +19,7 @@ import { MarkdownString, Location } from "vscode";
 /** Regex for parsing XCTest output */
 interface TestRegex {
     started: RegExp;
-    passed: RegExp;
-    failed: RegExp;
+    finished: RegExp;
     error: RegExp;
     skipped: RegExp;
     startedSuite: RegExp;
@@ -28,14 +27,18 @@ interface TestRegex {
     failedSuite: RegExp;
 }
 
+enum TestCompletionState {
+    passed = "passed",
+    failed = "failed",
+    skipped = "skipped",
+}
+
 /** Regex for parsing darwin XCTest output */
 export const darwinTestRegex = {
     // Regex "Test Case '-[<test target> <class.function>]' started"
     started: /^Test Case '-\[(\S+)\s(.*)\]' started./,
-    // Regex "Test Case '-[<test target> <class.function>]' passed (<duration> seconds)"
-    passed: /^Test Case '-\[(\S+)\s(.*)\]' passed \((\d.*) seconds\)/,
-    // Regex "Test Case '-[<test target> <class.function>]' failed (<duration> seconds)"
-    failed: /^Test Case '-\[(\S+)\s(.*)\]' failed \((\d.*) seconds\)/,
+    // Regex "Test Case '-[<test target> <class.function>]' <completion_state> (<duration> seconds)"
+    finished: /^Test Case '-\[(\S+)\s(.*)\]' (.*) \((\d.*) seconds\)/,
     // Regex "<path/to/test>:<line number>: error: -[<test target> <class.function>] : <error>"
     error: /^(.+):(\d+):\serror:\s-\[(\S+)\s(.*)\] : (.*)$/,
     // Regex "<path/to/test>:<line number>: -[<test target> <class.function>] : Test skipped"
@@ -52,10 +55,8 @@ export const darwinTestRegex = {
 export const nonDarwinTestRegex = {
     // Regex "Test Case '-[<test target> <class.function>]' started"
     started: /^Test Case '(.*)\.(.*)' started/,
-    // Regex "Test Case '<class>.<function>' passed (<duration> seconds)"
-    passed: /^Test Case '(.*)\.(.*)' passed \((\d.*) seconds\)/,
-    // Regex "Test Case '-[<test target> <class.function>]' failed (<duration> seconds)"
-    failed: /^Test Case '(.*)\.(.*)' failed \((\d.*) seconds\)/,
+    // Regex "Test Case '<class>.<function>' <completion_state> (<duration> seconds)"
+    finished: /^Test Case '(.*)\.(.*)' (.*) \((\d.*) seconds\)/,
     // Regex "<path/to/test>:<line number>: error: <class>.<function> : <error>"
     error: /^(.+):(\d+):\serror:\s*(.*)\.(.*) : (.*)/,
     // Regex "<path/to/test>:<line number>: <class>.<function> : Test skipped"
@@ -128,6 +129,7 @@ class ParallelXCTestRunStateProxy implements ITestRunState {
     startedSuite(name: string): void {}
     passedSuite(name: string): void {}
     failedSuite(name: string): void {}
+    recordOutput(index: number | undefined, output: string): void {}
 }
 /* eslint-enable @typescript-eslint/no-unused-vars */
 
@@ -178,14 +180,29 @@ export class XCTestOutputParser implements IXCTestOutputParser {
                 const testName = `${startedMatch[1]}/${startedMatch[2]}`;
                 const startedTestIndex = runState.getTestItemIndex(testName, undefined);
                 this.startTest(startedTestIndex, runState);
+                this.appendTestOutput(startedTestIndex, line, runState);
                 continue;
             }
-            // Regex "Test Case '-[<test target> <class.function>]' failed (<duration> seconds)"
-            const failedMatch = this.regex.failed.exec(line);
-            if (failedMatch) {
-                const testName = `${failedMatch[1]}/${failedMatch[2]}`;
-                const failedTestIndex = runState.getTestItemIndex(testName, undefined);
-                this.failTest(failedTestIndex, { duration: +failedMatch[3] }, runState);
+            // Regex "Test Case '-[<test target> <class.function>]' <completion_state> (<duration> seconds)"
+            const finishedMatch = this.regex.finished.exec(line);
+            if (finishedMatch) {
+                const testName = `${finishedMatch[1]}/${finishedMatch[2]}`;
+                const testIndex = runState.getTestItemIndex(testName, undefined);
+                const state = finishedMatch[3] as TestCompletionState;
+                const duration = +finishedMatch[4];
+                switch (state) {
+                    case TestCompletionState.failed:
+                        this.failTest(testIndex, { duration }, runState);
+                        break;
+                    case TestCompletionState.passed:
+                        // Tests are passed in the second pass below.
+                        break;
+                    case TestCompletionState.skipped:
+                        this.skipTest(testIndex, runState);
+                        break;
+                }
+
+                this.appendTestOutput(testIndex, line, runState);
                 continue;
             }
             // Regex "<path/to/test>:<line number>: error: <class>.<function> : <error>"
@@ -200,6 +217,7 @@ export class XCTestOutputParser implements IXCTestOutputParser {
                     errorMatch[2],
                     runState
                 );
+                this.appendTestOutput(failedTestIndex, line, runState);
                 continue;
             }
             // Regex "<path/to/test>:<line number>: <class>.<function> : Test skipped"
@@ -208,24 +226,28 @@ export class XCTestOutputParser implements IXCTestOutputParser {
                 const testName = `${skippedMatch[3]}/${skippedMatch[4]}`;
                 const skippedTestIndex = runState.getTestItemIndex(testName, skippedMatch[1]);
                 this.skipTest(skippedTestIndex, runState);
+                this.appendTestOutput(skippedTestIndex, line, runState);
                 continue;
             }
             // Regex "Test Suite '-[<test target> <class.function>]' started"
             const startedSuiteMatch = this.regex.startedSuite.exec(line);
             if (startedSuiteMatch) {
                 this.startTestSuite(startedSuiteMatch[1], runState);
+                this.appendTestOutput(undefined, line, runState);
                 continue;
             }
             // Regex "Test Suite '-[<test target> <class.function>]' passed"
             const passedSuiteMatch = this.regex.passedSuite.exec(line);
             if (passedSuiteMatch) {
                 this.passTestSuite(passedSuiteMatch[1], runState);
+                this.appendTestOutput(undefined, line, runState);
                 continue;
             }
             // Regex "Test Suite '-[<test target> <class.function>]' failed"
             const failedSuiteMatch = this.regex.failedSuite.exec(line);
             if (failedSuiteMatch) {
                 this.failTestSuite(failedSuiteMatch[1], runState);
+                this.appendTestOutput(undefined, line, runState);
                 continue;
             }
             // unrecognised output could be the continuation of a previous error message
@@ -237,10 +259,10 @@ export class XCTestOutputParser implements IXCTestOutputParser {
         // to be passed.
         for (const line of lines) {
             // Regex "Test Case '<class>.<function>' passed (<duration> seconds)"
-            const passedMatch = this.regex.passed.exec(line);
-            if (passedMatch) {
+            const passedMatch = this.regex.finished.exec(line);
+            if (passedMatch && passedMatch[3] === TestCompletionState.passed) {
                 const testName = `${passedMatch[1]}/${passedMatch[2]}`;
-                const duration: number = +passedMatch[3];
+                const duration: number = +passedMatch[4];
                 const passedTestIndex = runState.getTestItemIndex(testName, undefined);
                 this.passTest(passedTestIndex, { duration }, runState);
                 continue;
@@ -320,6 +342,9 @@ export class XCTestOutputParser implements IXCTestOutputParser {
         // if we have a failed test message and it isn't complete
         if (runState.failedTest && runState.failedTest.complete !== true) {
             runState.failedTest.message += `\n${message}`;
+            this.appendTestOutput(runState.failedTest.testIndex, message, runState);
+        } else {
+            this.appendTestOutput(undefined, message, runState);
         }
     }
 
@@ -348,6 +373,11 @@ export class XCTestOutputParser implements IXCTestOutputParser {
     private skipTest(testIndex: number, runState: ITestRunState) {
         runState.skipped(testIndex);
         runState.failedTest = undefined;
+    }
+
+    private appendTestOutput(testIndex: number | undefined, line: string, runState: ITestRunState) {
+        // Need to add back in the newlines since output was split for parsing.
+        runState.recordOutput(testIndex, `${line}\r\n`);
     }
 
     private extractDiff(message: string): TestIssueDiff | undefined {

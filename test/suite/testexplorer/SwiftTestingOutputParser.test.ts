@@ -14,6 +14,7 @@
 
 import * as assert from "assert";
 import * as vscode from "vscode";
+import { beforeEach } from "mocha";
 import {
     SwiftTestEvent,
     EventRecord,
@@ -21,6 +22,8 @@ import {
     EventRecordPayload,
     EventMessage,
     SourceLocation,
+    TestSymbol,
+    SymbolRenderer,
 } from "../../../src/TestExplorer/TestParsers/SwiftTestingOutputParser";
 import { TestRunState, TestStatus } from "./MockTestRunState";
 import { Readable } from "stream";
@@ -37,10 +40,14 @@ class TestEventStream {
 }
 
 suite("SwiftTestingOutputParser Suite", () => {
-    const outputParser = new SwiftTestingOutputParser(
-        () => {},
-        () => {}
-    );
+    let outputParser: SwiftTestingOutputParser;
+
+    beforeEach(() => {
+        outputParser = new SwiftTestingOutputParser(
+            () => {},
+            () => {}
+        );
+    });
 
     type ExtractPayload<T> = T extends { payload: infer E } ? E : never;
     function testEvent(
@@ -75,11 +82,17 @@ suite("SwiftTestingOutputParser Suite", () => {
             testEvent("testCaseEnded", "MyTests.MyTests/testPass()"),
             testEvent("runEnded"),
         ]);
+
         await outputParser.watch("file:///mock/named/pipe", testRunState, events);
 
-        const runState = testRunState.tests[0];
-        assert.strictEqual(runState.status, TestStatus.passed);
-        assert.deepEqual(runState.timing, { timestamp: 0 });
+        assert.deepEqual(testRunState.tests, [
+            {
+                name: "MyTests.MyTests/testPass()",
+                status: TestStatus.passed,
+                timing: { timestamp: 0 },
+                output: [],
+            },
+        ]);
     });
 
     test("Skipped test", async () => {
@@ -89,10 +102,16 @@ suite("SwiftTestingOutputParser Suite", () => {
             testEvent("testSkipped", "MyTests.MyTests/testSkip()"),
             testEvent("runEnded"),
         ]);
+
         await outputParser.watch("file:///mock/named/pipe", testRunState, events);
 
-        const runState = testRunState.tests[0];
-        assert.strictEqual(runState.status, TestStatus.skipped);
+        assert.deepEqual(testRunState.tests, [
+            {
+                name: "MyTests.MyTests/testSkip()",
+                status: TestStatus.skipped,
+                output: [],
+            },
+        ]);
     });
 
     test("Failed test with one issue", async () => {
@@ -108,25 +127,36 @@ suite("SwiftTestingOutputParser Suite", () => {
             testEvent(
                 "issueRecorded",
                 "MyTests.MyTests/testFail()",
-                [{ text: "Expectation failed: bar == foo" }],
+                [{ text: "Expectation failed: bar == foo", symbol: TestSymbol.fail }],
                 issueLocation
             ),
             testEvent("testCaseEnded", "MyTests.MyTests/testFail()"),
             testEvent("runEnded"),
         ]);
+
         await outputParser.watch("file:///mock/named/pipe", testRunState, events);
 
-        const runState = testRunState.tests[0];
-        assert.strictEqual(runState.status, TestStatus.failed);
-        assert.deepEqual(runState.issues, [
+        assert.deepEqual(testRunState.tests, [
             {
-                message: "Expectation failed: bar == foo",
-                location: new vscode.Location(
-                    vscode.Uri.file(issueLocation._filePath),
-                    new vscode.Position(issueLocation.line - 1, issueLocation?.column ?? 0)
-                ),
-                isKnown: false,
-                diff: undefined,
+                name: "MyTests.MyTests/testFail()",
+                status: TestStatus.failed,
+                issues: [
+                    {
+                        message: "Expectation failed: bar == foo",
+                        location: new vscode.Location(
+                            vscode.Uri.file(issueLocation._filePath),
+                            new vscode.Position(issueLocation.line - 1, issueLocation?.column ?? 0)
+                        ),
+                        isKnown: false,
+                        diff: undefined,
+                    },
+                ],
+                timing: {
+                    timestamp: 0,
+                },
+                output: [
+                    `\u001b[91m${SymbolRenderer.symbol(TestSymbol.fail)}\u001b[0m Expectation failed: bar == foo\r\n`,
+                ],
             },
         ]);
     });
@@ -198,15 +228,78 @@ suite("SwiftTestingOutputParser Suite", () => {
                 testRunState.testItemFinder.tests.push({
                     name: testClass.id,
                     status: TestStatus.enqueued,
+                    output: [],
                 });
             }
         );
         await outputParser.watch("file:///mock/named/pipe", testRunState, events);
 
-        assert.strictEqual(testRunState.tests.length, 3);
-        testRunState.tests.forEach(runState => {
-            assert.strictEqual(runState.status, TestStatus.passed);
-            assert.deepEqual(runState.timing, { timestamp: 0 });
-        });
+        assert.deepEqual(testRunState.tests, [
+            {
+                name: "MyTests.MyTests/testParameterized()",
+                status: TestStatus.passed,
+                timing: { timestamp: 0 },
+                output: [],
+            },
+            {
+                name: "MyTests.MyTests/testParameterized()/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])",
+                status: TestStatus.passed,
+                timing: { timestamp: 0 },
+                output: [],
+            },
+            {
+                name: "MyTests.MyTests/testParameterized()/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])",
+                status: TestStatus.passed,
+                timing: { timestamp: 0 },
+                output: [],
+            },
+        ]);
+    });
+
+    test("Output is captured", async () => {
+        const testRunState = new TestRunState(
+            ["MyTests.MyTests/testOutput()", "MyTests.MyTests/testOutput2()"],
+            true
+        );
+        const symbol = TestSymbol.pass;
+        const renderedSymbol = SymbolRenderer.symbol(symbol);
+        const makeEvent = (kind: ExtractPayload<EventRecord>["kind"], testId?: string) =>
+            testEvent(kind, testId, [{ text: kind, symbol }]);
+
+        const events = new TestEventStream([
+            makeEvent("runStarted"),
+            makeEvent("testCaseStarted", "MyTests.MyTests/testOutput()"),
+            makeEvent("testCaseEnded", "MyTests.MyTests/testOutput()"),
+            makeEvent("testCaseStarted", "MyTests.MyTests/testOutput2()"),
+            makeEvent("testCaseEnded", "MyTests.MyTests/testOutput2()"),
+            makeEvent("runEnded"),
+        ]);
+
+        await outputParser.watch("file:///mock/named/pipe", testRunState, events);
+
+        assert.deepEqual(testRunState.tests, [
+            {
+                name: "MyTests.MyTests/testOutput()",
+                output: [
+                    `\u001b[92m${renderedSymbol}\u001b[0m testCaseStarted\r\n`,
+                    `\u001b[92m${renderedSymbol}\u001b[0m testCaseEnded\r\n`,
+                ],
+                status: TestStatus.passed,
+                timing: {
+                    timestamp: 0,
+                },
+            },
+            {
+                name: "MyTests.MyTests/testOutput2()",
+                output: [
+                    `\u001b[92m${renderedSymbol}\u001b[0m testCaseStarted\r\n`,
+                    `\u001b[92m${renderedSymbol}\u001b[0m testCaseEnded\r\n`,
+                ],
+                status: TestStatus.passed,
+                timing: {
+                    timestamp: 0,
+                },
+            },
+        ]);
     });
 });

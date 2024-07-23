@@ -22,7 +22,7 @@ import {
 } from "./TestEventStreamReader";
 import { ITestRunState } from "./TestRunState";
 import { TestClass } from "../TestDiscovery";
-import { sourceLocationToVSCodeLocation } from "../../utilities/utilities";
+import { regexEscapedString, sourceLocationToVSCodeLocation } from "../../utilities/utilities";
 import { exec } from "child_process";
 
 // All events produced by a swift-testing run will be one of these three types.
@@ -87,10 +87,12 @@ export interface TestCase {
 // Event types
 interface RunStarted {
     kind: "runStarted";
+    messages: EventMessage[];
 }
 
 interface RunEnded {
     kind: "runEnded";
+    messages: EventMessage[];
 }
 
 interface Instant {
@@ -137,7 +139,19 @@ interface IssueRecorded extends BaseEvent, TestCaseEvent {
     };
 }
 
+export enum TestSymbol {
+    default = "default",
+    skip = "skip",
+    passWithKnownIssue = "passWithKnownIssue",
+    fail = "fail",
+    pass = "pass",
+    difference = "difference",
+    warning = "warning",
+    details = "details",
+}
+
 export interface EventMessage {
+    symbol: TestSymbol;
     text: string;
 }
 
@@ -186,17 +200,45 @@ export class SwiftTestingOutputParser {
         reader.start(readlinePipe);
     }
 
+    /**
+     * Closes the FIFO pipe after a test run. This must be called at the
+     * end of a run regardless of the run's success or failure.
+     */
     public async close() {
         if (!this.path) {
             return;
         }
 
-        return new Promise<void>(resolve => {
+        await new Promise<void>(resolve => {
             exec(`echo '{}' > ${this.path}`, () => {
                 resolve();
             });
         });
     }
+
+    /**
+     * Parses stdout of a test run looking for lines that were not captured by
+     * a JSON event and injecting them in to the test run output.
+     * @param chunk A chunk of stdout emitted during a test run.
+     */
+    public parseStdout = (() => {
+        const values = Object.values(TestSymbol).map(symbol =>
+            regexEscapedString(SymbolRenderer.eventMessageSymbol(symbol))
+        );
+
+        // Build a regex of all the line beginnings that come out of swift-testing events.
+        const isSwiftTestingLineBeginning = new RegExp(`^${values.join("|")}`);
+
+        return (chunk: string, runState: ITestRunState) => {
+            for (const line of chunk.split("\n")) {
+                // Any line in stdout that fails to match as a swift-testing line is treated
+                // as a user printed value and recorded to the test run output with no associated test.
+                if (line.trim().length > 0 && isSwiftTestingLineBeginning.test(line) === false) {
+                    runState.recordOutput(undefined, `${line}\r\n`);
+                }
+            }
+        };
+    })();
 
     private createReader(path: string): INamedPipeReader {
         return process.platform === "win32"
@@ -265,6 +307,19 @@ export class SwiftTestingOutputParser {
         return fullNameIndex;
     }
 
+    private recordOutput(
+        runState: ITestRunState,
+        messages: EventMessage[],
+        testIndex: number | undefined
+    ) {
+        messages.forEach(message => {
+            runState.recordOutput(
+                testIndex,
+                `${SymbolRenderer.eventMessageSymbol(message.symbol)} ${message.text}\r\n`
+            );
+        });
+    }
+
     private parse(item: SwiftTestEvent, runState: ITestRunState) {
         if (
             item.kind === "test" &&
@@ -305,6 +360,8 @@ export class SwiftTestingOutputParser {
                 const testName = this.testName(item.payload.testID);
                 const testIndex = runState.getTestItemIndex(testName, undefined);
                 runState.started(testIndex, item.payload.instant.absolute);
+                this.recordOutput(runState, item.payload.messages, testIndex);
+                return;
             } else if (item.payload.kind === "testCaseStarted") {
                 const testID = this.idFromOptionalTestCase(
                     item.payload.testID,
@@ -312,10 +369,14 @@ export class SwiftTestingOutputParser {
                 );
                 const testIndex = this.getTestCaseIndex(runState, testID);
                 runState.started(testIndex, item.payload.instant.absolute);
+                this.recordOutput(runState, item.payload.messages, testIndex);
+                return;
             } else if (item.payload.kind === "testSkipped") {
                 const testName = this.testName(item.payload.testID);
                 const testIndex = runState.getTestItemIndex(testName, undefined);
                 runState.skipped(testIndex);
+                this.recordOutput(runState, item.payload.messages, testIndex);
+                return;
             } else if (item.payload.kind === "issueRecorded") {
                 const testID = this.idFromOptionalTestCase(
                     item.payload.testID,
@@ -333,6 +394,7 @@ export class SwiftTestingOutputParser {
                 item.payload.messages.forEach(message => {
                     runState.recordIssue(testIndex, message.text, isKnown, location);
                 });
+                this.recordOutput(runState, item.payload.messages, testIndex);
 
                 if (item.payload._testCase && testID !== item.payload.testID) {
                     const testIndex = this.getTestCaseIndex(runState, item.payload.testID);
@@ -340,9 +402,11 @@ export class SwiftTestingOutputParser {
                         runState.recordIssue(testIndex, message.text, isKnown, location);
                     });
                 }
+                return;
             } else if (item.payload.kind === "testEnded") {
                 const testName = this.testName(item.payload.testID);
                 const testIndex = runState.getTestItemIndex(testName, undefined);
+                this.recordOutput(runState, item.payload.messages, testIndex);
 
                 // When running a single test the testEnded and testCaseEnded events
                 // have the same ID, and so we'd end the same test twice.
@@ -351,12 +415,14 @@ export class SwiftTestingOutputParser {
                 }
                 this.completionMap.set(testIndex, true);
                 runState.completed(testIndex, { timestamp: item.payload.instant.absolute });
+                return;
             } else if (item.payload.kind === "testCaseEnded") {
                 const testID = this.idFromOptionalTestCase(
                     item.payload.testID,
                     item.payload._testCase
                 );
                 const testIndex = this.getTestCaseIndex(runState, testID);
+                this.recordOutput(runState, item.payload.messages, testIndex);
 
                 // When running a single test the testEnded and testCaseEnded events
                 // have the same ID, and so we'd end the same test twice.
@@ -365,7 +431,85 @@ export class SwiftTestingOutputParser {
                 }
                 this.completionMap.set(testIndex, true);
                 runState.completed(testIndex, { timestamp: item.payload.instant.absolute });
+                return;
             }
+
+            this.recordOutput(runState, item.payload.messages, undefined);
+        }
+    }
+}
+
+export class SymbolRenderer {
+    /**
+     * Converts a swift-testing symbol identifier in to a colorized unicode symbol.
+     *
+     * @param message An event message, typically found on an `EventRecordPayload`.
+     * @returns A string colorized with ANSI escape codes.
+     */
+    static eventMessageSymbol(symbol: TestSymbol): string {
+        return this.colorize(symbol, this.symbol(symbol));
+    }
+
+    // This is adapted from
+    // https://github.com/apple/swift-testing/blob/786ade71421eb1d8a9c1d99c902cf1c93096e7df/Sources/Testing/Events/Recorder/Event.Symbol.swift#L102
+    public static symbol(symbol: TestSymbol): string {
+        if (process.platform === "win32") {
+            switch (symbol) {
+                case TestSymbol.default:
+                    return "\u{25CA}"; // Unicode: LOZENGE
+                case TestSymbol.skip:
+                case TestSymbol.passWithKnownIssue:
+                case TestSymbol.fail:
+                    return "\u{00D7}"; // Unicode: MULTIPLICATION SIGN
+                case TestSymbol.pass:
+                    return "\u{221A}"; // Unicode: SQUARE ROOT
+                case TestSymbol.difference:
+                    return "\u{00B1}"; // Unicode: PLUS-MINUS SIGN
+                case TestSymbol.warning:
+                    return "\u{25B2}"; // Unicode: BLACK UP-POINTING TRIANGLE
+                case TestSymbol.details:
+                    return "\u{2192}"; // Unicode: RIGHTWARDS ARROW
+            }
+        } else {
+            switch (symbol) {
+                case TestSymbol.default:
+                    return "\u{25C7}"; // Unicode: WHITE DIAMOND
+                case TestSymbol.skip:
+                case TestSymbol.passWithKnownIssue:
+                case TestSymbol.fail:
+                    return "\u{2718}"; // Unicode: HEAVY BALLOT X
+                case TestSymbol.pass:
+                    return "\u{2714}"; // Unicode: HEAVY CHECK MARK
+                case TestSymbol.difference:
+                    return "\u{00B1}"; // Unicode: PLUS-MINUS SIGN
+                case TestSymbol.warning:
+                    return "\u{26A0}\u{FE0E}"; // Unicode: WARNING SIGN + VARIATION SELECTOR-15 (disable emoji)
+                case TestSymbol.details:
+                    return "\u{21B3}"; // Unicode: DOWNWARDS ARROW WITH TIP RIGHTWARDS
+            }
+        }
+    }
+
+    // This is adapted from
+    // https://github.com/apple/swift-testing/blob/786ade71421eb1d8a9c1d99c902cf1c93096e7df/Sources/Testing/Events/Recorder/Event.ConsoleOutputRecorder.swift#L164
+    private static colorize(symbolType: TestSymbol, symbol: string): string {
+        const ansiEscapeCodePrefix = "\u{001B}[";
+        const resetANSIEscapeCode = `${ansiEscapeCodePrefix}0m`;
+        switch (symbolType) {
+            case TestSymbol.default:
+            case TestSymbol.skip:
+            case TestSymbol.difference:
+            case TestSymbol.passWithKnownIssue:
+                return `${ansiEscapeCodePrefix}90m${symbol}${resetANSIEscapeCode}`;
+            case TestSymbol.pass:
+                return `${ansiEscapeCodePrefix}92m${symbol}${resetANSIEscapeCode}`;
+            case TestSymbol.fail:
+                return `${ansiEscapeCodePrefix}91m${symbol}${resetANSIEscapeCode}`;
+            case TestSymbol.warning:
+                return `${ansiEscapeCodePrefix}93m${symbol}${resetANSIEscapeCode}`;
+            case TestSymbol.details:
+            default:
+                return symbol;
         }
     }
 }

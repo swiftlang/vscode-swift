@@ -41,7 +41,9 @@ final class DebugReleaseTestSuite: XCTestCase {
 #if swift(>=6.0)
 import Testing
 
-@Test func topLevelTestPassing() {}
+@Test func topLevelTestPassing() {
+  print("A print statement in a test.")
+}
 @Test func topLevelTestFailing() {
   #expect(1 == 2)
 }

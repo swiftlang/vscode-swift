@@ -61,6 +61,9 @@ export interface ITestRunState {
 
     // failed suite
     failedSuite(name: string): void;
+
+    // record output to associate with a test
+    recordOutput(index: number | undefined, output: string): void;
 }
 
 export interface TestIssueDiff {
