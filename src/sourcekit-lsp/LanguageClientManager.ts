@@ -434,12 +434,14 @@ export class LanguageClientManager {
             this.languageClient = undefined;
             return;
         }
-        return this.startClient(...this.createLSPClient(folder));
+        const { client, errorHandler } = this.createLSPClient(folder);
+        return this.startClient(client, errorHandler);
     }
 
-    private createLSPClient(
-        folder?: vscode.Uri
-    ): [langclient.LanguageClient, SourceKitLSPErrorHandler] {
+    private createLSPClient(folder?: vscode.Uri): {
+        client: langclient.LanguageClient;
+        errorHandler: SourceKitLSPErrorHandler;
+    } {
         const toolchainSourceKitLSP =
             this.workspaceContext.toolchain.getToolchainExecutable("sourcekit-lsp");
         const lspConfig = configuration.lsp;
@@ -574,15 +576,15 @@ export class LanguageClientManager {
             },
         };
 
-        return [
-            new langclient.LanguageClient(
+        return {
+            client: new langclient.LanguageClient(
                 "swift.sourcekit-lsp",
                 "SourceKit Language Server",
                 serverOptions,
                 clientOptions
             ),
             errorHandler,
-        ];
+        };
     }
 
     private async startClient(
@@ -630,16 +632,7 @@ export class LanguageClientManager {
                 this.peekDocuments = activatePeekDocuments(client);
             })
             .catch(reason => {
-                const lspOutputChannel = client.outputChannel as SwiftOutputChannel;
-                const outputChannelReason = lspOutputChannel.logs.filter(
-                    line => line.indexOf("Error:") === 0
-                )[0];
-
-                this.workspaceContext.outputChannel.log(
-                    outputChannelReason ? outputChannelReason : `${reason}`
-                );
-
-                // if language client failed to initialize then shutdown and set to undefined
+                this.workspaceContext.outputChannel.log(`${reason}`);
                 this.languageClient?.stop();
                 this.languageClient = undefined;
                 throw reason;
