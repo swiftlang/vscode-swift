@@ -105,7 +105,8 @@ export class SwiftToolchain {
         private defaultTarget?: string,
         public defaultSDK?: string,
         public customSDK?: string,
-        public xcTestPath?: string
+        public xcTestPath?: string,
+        public swiftPMTestingHelperPath?: string
     ) {}
 
     static async create(): Promise<SwiftToolchain> {
@@ -123,6 +124,8 @@ export class SwiftToolchain {
             runtimePath,
             customSDK ?? defaultSDK
         );
+        const swiftPMTestingHelperPath = await this.getSwiftPMTestingHelperPath(toolchainPath);
+
         return new SwiftToolchain(
             swiftFolderPath,
             toolchainPath,
@@ -132,7 +135,8 @@ export class SwiftToolchain {
             targetInfo.target?.triple,
             defaultSDK,
             customSDK,
-            xcTestPath
+            xcTestPath,
+            swiftPMTestingHelperPath
         );
     }
 
@@ -576,6 +580,35 @@ export class SwiftToolchain {
     }
 
     /**
+     * @returns path to the swiftpm-testing-helper binary, if it exists.
+     */
+    private static async getSwiftPMTestingHelperPath(
+        toolchainPath: string
+    ): Promise<string | undefined> {
+        if (process.platform === "darwin") {
+            const toolchainSwiftPMHelperPath = path.join(
+                toolchainPath,
+                "libexec",
+                "swift",
+                "pm",
+                "swiftpm-testing-helper"
+            );
+
+            // Verify that the helper exists. Older toolchains wont have it and thats ok,
+            // it just means that XCTests and swift-testing tests exist in their own binaries
+            // and can each be run separately. If this path exists we know the tests exist in
+            // a unified binary and we need to use this utility to run the swift-testing tests
+            // on macOS. XCTests are still run with the xctest utility on macOS. The test binaries
+            // can be invoked directly on Linux/Windows.
+            if (await this.fileExists(toolchainSwiftPMHelperPath)) {
+                return toolchainSwiftPMHelperPath;
+            }
+        }
+
+        return undefined;
+    }
+
+    /**
      * @param targetInfo swift target info
      * @param swiftVersion parsed swift version
      * @param runtimePath path to Swift runtime
@@ -710,5 +743,18 @@ export class SwiftToolchain {
             version = Version.fromString(match[1]);
         }
         return version ?? new Version(0, 0, 0);
+    }
+
+    /**
+     * Check if a file exists.
+     * @returns true if the file exists at the supplied path
+     */
+    private static async fileExists(path: string): Promise<boolean> {
+        try {
+            await fs.access(path, fs.constants.F_OK);
+            return true;
+        } catch {
+            return false;
+        }
     }
 }
