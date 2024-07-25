@@ -56,6 +56,16 @@ suite("SwiftOutputChannel", function () {
         assert.deepEqual(channel.logs, ["b", "cd", "e"]);
     });
 
+    test("Appends after rolling over", () => {
+        channel.appendLine("a");
+        channel.appendLine("b");
+        channel.appendLine("c");
+        channel.appendLine("d");
+        channel.append("e");
+        channel.appendLine("f");
+        assert.deepEqual(channel.logs, ["c", "de", "f"]);
+    });
+
     test("Replaces", () => {
         channel.appendLine("a");
         channel.appendLine("b");
@@ -63,5 +73,12 @@ suite("SwiftOutputChannel", function () {
         channel.appendLine("d");
         channel.replace("e");
         assert.deepEqual(channel.logs, ["e"]);
+    });
+
+    test("AppendLine after append terminates appending line", () => {
+        channel.append("a");
+        channel.append("b");
+        channel.appendLine("c");
+        assert.deepEqual(channel.logs, ["ab", "c"]);
     });
 });
