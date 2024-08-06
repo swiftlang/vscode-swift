@@ -98,13 +98,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
                         "Changing the Swift SDK path requires the project be reloaded."
                     );
                 }
-                // Restart the LSP if background indexing settings are changed.
-                if (
-                    event.affectsConfiguration("swift.backgroundIndexing") ||
-                    event.affectsConfiguration("swift.backgroundPreparationMode")
-                ) {
-                    workspaceContext.languageClientManager.restart();
-                }
             })
         );
 

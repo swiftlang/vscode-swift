@@ -12,7 +12,7 @@ This document outlines useful configuration options not covered by the settings 
 
 If you're using a nightly (`main`) or recent `6.0` toolchain you can enable support for background indexing in Sourcekit-LSP. This removes the need to do a build before getting code completion and diagnostics.
 
-To enable support, set the `swift.backgroundIndexing` setting to `true`.
+To enable support, set the `swift.sourcekit-lsp.backgroundIndexing` setting to `true`.
 
 ### Support for 'Expand Macro'
 

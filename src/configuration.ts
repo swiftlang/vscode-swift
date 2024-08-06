@@ -227,12 +227,14 @@ const configuration = {
     },
     /** background indexing */
     get backgroundIndexing(): boolean {
-        return vscode.workspace.getConfiguration("swift").get("backgroundIndexing", false);
+        return vscode.workspace
+            .getConfiguration("swift.sourcekit-lsp")
+            .get("backgroundIndexing", false);
     },
     /** background preparation mode */
     get backgroundPreparationMode(): "build" | "noLazy" | "enabled" {
         return vscode.workspace
-            .getConfiguration("swift")
+            .getConfiguration("swift.sourcekit-lsp")
             .get("backgroundPreparationMode", "enabled");
     },
     /** focus on problems view whenever there is a build error */
