@@ -711,7 +711,10 @@ export class SwiftToolchain {
     private static async getSwiftTargetInfo(): Promise<SwiftTargetInfo> {
         try {
             try {
-                const { stdout } = await execSwift(["-print-target-info"], "default");
+                const { stdout } = await execSwift(
+                    ["-print-target-info", ...BuildFlags.disableSandboxFlags()],
+                    "default"
+                );
                 const targetInfo = JSON.parse(stdout.trimEnd()) as SwiftTargetInfo;
                 if (targetInfo.compilerVersion) {
                     return targetInfo;

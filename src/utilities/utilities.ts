@@ -165,6 +165,7 @@ export async function execSwift(
     }
     if (toolchain !== "default") {
         args = toolchain.buildFlags.withSwiftSDKFlags(args);
+        args = toolchain.buildFlags.withDisableSandboxFlags(args);
     }
     if (Object.keys(configuration.swiftEnvironmentVariables).length > 0) {
         // when adding environment vars we either combine with vars passed

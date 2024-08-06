@@ -291,6 +291,10 @@ const configuration = {
             .getConfiguration("swift")
             .get<boolean>("enableTerminalEnvironment", true);
     },
+    /** Whether or not to disable SwiftPM sandboxing */
+    get disableSandbox(): boolean {
+        return vscode.workspace.getConfiguration("swift").get<boolean>("disableSandbox", false);
+    },
 };
 
 export default configuration;
