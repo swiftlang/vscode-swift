@@ -271,7 +271,9 @@ export function createSwiftTask(
     cmdEnv: { [key: string]: string } = {}
 ): SwiftTask {
     const swift = toolchain.getToolchainExecutable("swift");
-    args = toolchain.buildFlags.withSwiftPackageFlags(toolchain.buildFlags.withSwiftSDKFlags(args));
+    args = toolchain.buildFlags.withSwiftSDKFlags(args);
+    args = toolchain.buildFlags.withSwiftPackageFlags(args);
+    args = toolchain.buildFlags.withDisableSandboxFlags(args);
 
     // Add relative path current working directory
     const cwd = config.cwd.fsPath;
