@@ -309,6 +309,23 @@
             "markdownDescription": "**Experimental**: Run `swift build` in the background whenever a file is saved. It is possible the background compilation will already be running when you attempt a compile yourself, so this is disabled by default.",
             "order": 10
           },
+          "swift.backgroundIndexing": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Enable or disable background indexing. This option will not work for Swift versions prior to 6.0.",
+            "order": 11
+          },
+          "swift.backgroundPreparationMode": {
+            "type": "string",
+            "enum": [
+              "build",
+              "noLazy",
+              "enabled"
+            ],
+            "default": "enabled",
+            "markdownDescription": "Determines how background indexing should prepare a target. This option will not work for Swift versions prior to 6.0. Possible values are:\n- `build`: Build a target to prepare it\n- `noLazy`: Prepare a target without generating object files but do not do lazy type checking and function body skipping\n- `enabled`: Prepare a target without generating object files and the like",
+            "order": 12
+          },
           "swift.actionAfterBuildError": {
             "type": "string",
             "default": "Focus Terminal",
@@ -322,32 +339,32 @@
               "Focus on Build Task Terminal"
             ],
             "markdownDescription": "Action after a Build task generates errors.",
-            "order": 11
+            "order": 13
           },
           "swift.buildPath": {
             "type": "string",
             "default": "",
             "markdownDescription": "The path to a directory that will be used for build artifacts. This path will be added to all swift package manager commands that are executed by vscode-swift extension via `--scratch-path` option. When no value provided - nothing gets passed to swift package manager and it will use its default value of `.build` folder in the workspace.\n\nYou can use absolute path for directory or the relative path, which will use the workspace path as a base. Note that VS Code does not respect tildes (`~`) in paths which represents user home folder under *nix systems.",
-            "order": 12
+            "order": 14
           },
           "swift.disableSwiftPackageManagerIntegration": {
             "type": "boolean",
             "default": false,
             "markdownDescription": "Disables automated Build Tasks, Package Dependency view, Launch configuration generation and TestExplorer.",
-            "order": 13
+            "order": 15
           },
           "swift.warnAboutSymlinkCreation": {
             "type": "boolean",
             "default": true,
             "markdownDescription": "Controls whether or not the extension will warn about being unable to create symlinks. (Windows only)",
             "scope": "application",
-            "order": 14
+            "order": 16
           },
           "swift.enableTerminalEnvironment": {
             "type": "boolean",
             "default": true,
             "markdownDescription": "Controls whether or not the extension will contribute environment variables defined in `Swift: Environment Variables` to the integrated terminal. If this is set to `true` and a custom `Swift: Path` is also set then the swift path is appended to the terminal's `PATH`.",
-            "order": 15
+            "order": 17
           }
         }
       },

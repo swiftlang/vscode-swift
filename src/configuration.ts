@@ -225,6 +225,16 @@ const configuration = {
             .getConfiguration("swift")
             .get<boolean>("backgroundCompilation", false);
     },
+    /** background indexing */
+    get backgroundIndexing(): boolean {
+        return vscode.workspace.getConfiguration("swift").get("backgroundIndexing", false);
+    },
+    /** background preparation mode */
+    get backgroundPreparationMode(): "build" | "noLazy" | "enabled" {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get("backgroundPreparationMode", "enabled");
+    },
     /** focus on problems view whenever there is a build error */
     get actionAfterBuildError(): ActionAfterBuildError {
         return vscode.workspace

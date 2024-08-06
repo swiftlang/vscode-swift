@@ -585,6 +585,8 @@ export class LanguageClientManager {
                         "swift.debug": "swift.debug",
                     },
                 },
+                backgroundIndexing: configuration.backgroundIndexing,
+                backgroundPreparationMode: configuration.backgroundPreparationMode,
             },
         };
 
