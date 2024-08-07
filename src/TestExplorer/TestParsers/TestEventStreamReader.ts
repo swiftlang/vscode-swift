@@ -74,8 +74,7 @@ export class UnixNamedPipeReader implements INamedPipeReader {
                     });
 
                     readable.on("drain", () => pipe.resume());
-
-                    pipe.on("error", () => fs.close(fd));
+                    pipe.on("error", () => pipe.close());
                     pipe.on("end", () => {
                         readable.push(null);
                         fs.close(fd);

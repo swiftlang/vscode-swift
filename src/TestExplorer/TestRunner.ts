@@ -425,11 +425,12 @@ export class TestRunner {
                     await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
                 }
 
-                const testBuildConfig = TestingDebugConfigurationFactory.swiftTestingConfig(
+                const testBuildConfig = await TestingDebugConfigurationFactory.swiftTestingConfig(
                     this.folderContext,
                     fifoPipePath,
                     this.testKind,
                     this.testArgs.swiftTestArgs,
+                    new Date(),
                     true
                 );
 
@@ -467,7 +468,7 @@ export class TestRunner {
         }
 
         if (this.testArgs.hasXCTests) {
-            const testBuildConfig = TestingDebugConfigurationFactory.xcTestConfig(
+            const testBuildConfig = await TestingDebugConfigurationFactory.xcTestConfig(
                 this.folderContext,
                 this.testKind,
                 this.testArgs.xcTestArgs,
@@ -710,6 +711,8 @@ export class TestRunner {
         });
         subscriptions.push(buildTask);
 
+        const buildStartTime = new Date();
+
         // Perform a build all before the tests are run. We want to avoid the "Debug Anyway" dialog
         // since choosing that with no prior build, when debugging swift-testing tests, will cause
         // the extension to start listening to the fifo pipe when no results will be produced,
@@ -731,13 +734,15 @@ export class TestRunner {
                     await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
                 }
 
-                const swiftTestBuildConfig = TestingDebugConfigurationFactory.swiftTestingConfig(
-                    this.folderContext,
-                    fifoPipePath,
-                    this.testKind,
-                    this.testArgs.swiftTestArgs,
-                    true
-                );
+                const swiftTestBuildConfig =
+                    await TestingDebugConfigurationFactory.swiftTestingConfig(
+                        this.folderContext,
+                        fifoPipePath,
+                        this.testKind,
+                        this.testArgs.swiftTestArgs,
+                        buildStartTime,
+                        true
+                    );
 
                 if (swiftTestBuildConfig !== null) {
                     swiftTestBuildConfig.testType = TestLibrary.swiftTesting;
@@ -765,7 +770,7 @@ export class TestRunner {
 
             // create launch config for testing
             if (this.testArgs.hasXCTests) {
-                const xcTestBuildConfig = TestingDebugConfigurationFactory.xcTestConfig(
+                const xcTestBuildConfig = await TestingDebugConfigurationFactory.xcTestConfig(
                     this.folderContext,
                     this.testKind,
                     this.testArgs.xcTestArgs,
