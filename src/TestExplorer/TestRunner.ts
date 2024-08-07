@@ -682,20 +682,9 @@ export class TestRunner {
 
     /** Run test session inside debugger */
     async debugSession(token: vscode.CancellationToken, runState: TestRunnerTestRunState) {
-        const buildAllTask = await getBuildAllTask(this.folderContext);
+        const buildAllTask = await getBuildAllTask(this.folderContext, isRelease(this.testKind));
         if (!buildAllTask) {
             return;
-        }
-
-        if (isRelease(this.testKind)) {
-            buildAllTask.definition.args = [
-                ...buildAllTask.definition.args,
-                "-c",
-                "release",
-                "-Xswiftc",
-                "-enable-testing",
-            ];
-            buildAllTask.detail = `swift ${buildAllTask.definition.args.join(" ")}`;
         }
 
         const subscriptions: vscode.Disposable[] = [];
