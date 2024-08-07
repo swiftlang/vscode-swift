@@ -701,7 +701,7 @@ export class TestRunner {
         const subscriptions: vscode.Disposable[] = [];
         let buildExitCode = 0;
         const buildTask = vscode.tasks.onDidStartTask(e => {
-            if (e.execution.task.name === "Build All") {
+            if (e.execution.task.name === buildAllTask.name) {
                 const exec = e.execution.task.execution as SwiftExecution;
                 const didCloseBuildTask = exec.onDidClose(exitCode => {
                     buildExitCode = exitCode ?? 0;

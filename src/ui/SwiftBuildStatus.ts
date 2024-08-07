@@ -76,7 +76,12 @@ export class SwiftBuildStatus implements vscode.Disposable {
                             done();
                         }
                     }),
-                    execution.onDidClose(done)
+                    execution.onDidClose(done),
+                    vscode.tasks.onDidEndTask(e => {
+                        if (e.execution.task === task) {
+                            done();
+                        }
+                    })
                 );
             });
         if (showBuildStatus === "progress" || showBuildStatus === "notification") {
