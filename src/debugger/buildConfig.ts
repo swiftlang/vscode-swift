@@ -69,6 +69,22 @@ export class TestingDebugConfigurationFactory {
         ).build();
     }
 
+    public static async testExecutableOutputPath(
+        ctx: FolderContext,
+        testKind: TestKind,
+        testLibrary: TestLibrary
+    ): Promise<string> {
+        return new TestingDebugConfigurationFactory(
+            ctx,
+            "",
+            testKind,
+            testLibrary,
+            [],
+            null,
+            true
+        ).testExecutableOutputPath();
+    }
+
     private constructor(
         private ctx: FolderContext,
         private fifoPipePath: string,

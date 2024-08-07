@@ -25,6 +25,8 @@ import { BuildFlags } from "../toolchain/BuildFlags";
 import { TestLibrary } from "../TestExplorer/TestRunner";
 import { DisposableFileCollection } from "../utilities/tempFolder";
 import { TargetType } from "../SwiftPackage";
+import { TestingDebugConfigurationFactory } from "../debugger/buildConfig";
+import { TestKind } from "../TestExplorer/TestKind";
 
 interface CodeCovFile {
     testLibrary: TestLibrary;
@@ -140,24 +142,26 @@ export class TestCoverage {
      * Exports a `.profdata` file using `llvm-cov export`, returning the result as a `Buffer`.
      */
     private async exportProfdata(types: TestLibrary[], mergedProfileFile: string): Promise<Buffer> {
-        const packageName = this.folderContext.swiftPackage.name;
-        const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(
-            this.folderContext.folder.fsPath,
-            true
-        );
-
-        const coveredBinaries: string[] = [];
+        const coveredBinaries = new Set<string>();
         if (types.includes(TestLibrary.xctest)) {
-            let xcTestBinary = `${buildDirectory}/debug/${packageName}PackageTests.xctest`;
+            let xcTestBinary = await TestingDebugConfigurationFactory.testExecutableOutputPath(
+                this.folderContext,
+                TestKind.coverage,
+                TestLibrary.xctest
+            );
             if (process.platform === "darwin") {
-                xcTestBinary += `/Contents/MacOS/${packageName}PackageTests`;
+                xcTestBinary += `/Contents/MacOS/${this.folderContext.swiftPackage.name}PackageTests`;
             }
-            coveredBinaries.push(xcTestBinary);
+            coveredBinaries.add(xcTestBinary);
         }
 
         if (types.includes(TestLibrary.swiftTesting)) {
-            const swiftTestBinary = `${buildDirectory}/debug/${packageName}PackageTests.swift-testing`;
-            coveredBinaries.push(swiftTestBinary);
+            const swiftTestBinary = await TestingDebugConfigurationFactory.testExecutableOutputPath(
+                this.folderContext,
+                TestKind.coverage,
+                TestLibrary.swiftTesting
+            );
+            coveredBinaries.add(swiftTestBinary);
         }
 
         let buffer = Buffer.alloc(0);
