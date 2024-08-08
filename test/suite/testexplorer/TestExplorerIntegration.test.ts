@@ -228,7 +228,7 @@ suite("Test Explorer Suite", function () {
                 failed: [
                     {
                         test: "PackageTests.testRelease()",
-                        issues: ["Unconditionally failed", "Test was run in debug mode."],
+                        issues: ["Issue recorded", "Test was run in debug mode."],
                     },
                 ],
             });
