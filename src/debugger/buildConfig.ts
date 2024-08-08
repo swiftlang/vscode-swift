@@ -38,7 +38,6 @@ export class TestingDebugConfigurationFactory {
         fifoPipePath: string,
         testKind: TestKind,
         testList: string[],
-        buildStartTime: Date,
         expandEnvVariables = false
     ): Promise<vscode.DebugConfiguration | null> {
         return new TestingDebugConfigurationFactory(
@@ -47,7 +46,6 @@ export class TestingDebugConfigurationFactory {
             testKind,
             TestLibrary.swiftTesting,
             testList,
-            buildStartTime,
             expandEnvVariables
         ).build();
     }
@@ -64,7 +62,6 @@ export class TestingDebugConfigurationFactory {
             testKind,
             TestLibrary.xctest,
             testList,
-            null,
             expandEnvVariables
         ).build();
     }
@@ -80,7 +77,6 @@ export class TestingDebugConfigurationFactory {
             testKind,
             testLibrary,
             [],
-            null,
             true
         ).testExecutableOutputPath();
     }
@@ -91,7 +87,6 @@ export class TestingDebugConfigurationFactory {
         private testKind: TestKind,
         private testLibrary: TestLibrary,
         private testList: string[],
-        private buildStartTime: Date | null,
         private expandEnvVariables = false
     ) {}
 
@@ -454,23 +449,33 @@ export class TestingDebugConfigurationFactory {
         );
     }
 
+    private buildDescriptionPath(): string {
+        return path.join(this.buildDirectory, this.artifactFolderForTestKind, "description.json");
+    }
+
     private async isUnifiedTestingBinary(): Promise<boolean> {
         // Toolchains that contain https://github.com/swiftlang/swift-package-manager/commit/844bd137070dcd18d0f46dd95885ef7907ea0697
         // no longer produce a .swift-testing binary, instead we want to use `unifiedTestingOutputPath`.
         // In order to determine if we're working with a unified binary we need to check if the .swift-testing
-        // binary _doesn't_ exist, and if it does exist we need to check that it wasn't built by an old toolchain
-        // and is still in the .build directory. We do this by checking its mtime and seeing if it is after
-        // the `buildStartTime`.
+        // binary was produced by the latest build. If it was then we are not using a unified binary.
 
         // TODO: When Swift 6 is released and enough time has passed that we're sure no one is building the .swift-testing
-        //       binary anymore this fs.stat workaround can be removed and `swiftTestingPath` can be returned. The
-        //       `buildStartTime` argument can be removed and the build config generation can be made synchronous again.
+        //       binary anymore this workaround can be removed and `swiftTestingPath` can be returned, and the build config
+        //       generation can be made synchronous again.
 
         try {
-            const stat = await fs.stat(this.swiftTestingOutputPath());
-            return !this.buildStartTime || stat.mtime.getTime() < this.buildStartTime.getTime();
+            const buildDescriptionStr = await fs.readFile(this.buildDescriptionPath(), "utf-8");
+            const buildDescription = JSON.parse(buildDescriptionStr);
+            const testProducts = buildDescription.builtTestProducts as { binaryPath: string }[];
+            if (!testProducts) {
+                return false;
+            }
+            const testBinaryPaths = testProducts.map(({ binaryPath }) => binaryPath);
+            const swiftTestingBinaryRealPath = await fs.realpath(this.swiftTestingOutputPath());
+            return !testBinaryPaths.includes(swiftTestingBinaryRealPath);
         } catch {
-            // If the .swift-testing binary doesn't exist then swift-testing tests are in the unified binary.
+            // If the .swift-testing binary wasn't produced by the latest build then we assume the
+            // swift-testing tests are in the unified binary.
             return true;
         }
     }
