@@ -430,7 +430,6 @@ export class TestRunner {
                     fifoPipePath,
                     this.testKind,
                     this.testArgs.swiftTestArgs,
-                    new Date(),
                     true
                 );
 
@@ -700,8 +699,6 @@ export class TestRunner {
         });
         subscriptions.push(buildTask);
 
-        const buildStartTime = new Date();
-
         // Perform a build all before the tests are run. We want to avoid the "Debug Anyway" dialog
         // since choosing that with no prior build, when debugging swift-testing tests, will cause
         // the extension to start listening to the fifo pipe when no results will be produced,
@@ -729,7 +726,6 @@ export class TestRunner {
                         fifoPipePath,
                         this.testKind,
                         this.testArgs.swiftTestArgs,
-                        buildStartTime,
                         true
                     );
 
