@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.10.7 - 2024-08-08
+
+### Changed
+
+- Support the new unified testing binary format released with Xcode 16 Beta 5
+- Improved error reporting when SourceKit-LSP fails to start
+
+### Fixed
+
+- When debugging XCTests on linux/windows the list of tests provided to XCTest should be comma separated
+
 ## 1.10.6 - 2024-07-21
 
 ### Fixed
