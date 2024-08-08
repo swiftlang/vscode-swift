@@ -241,7 +241,7 @@ export async function getBuildAllTask(
             task.source === "swift"
     );
     if (!task) {
-        throw Error("Build All Task does not exist");
+        task = createBuildAllTask(folderContext, release);
     }
 
     return task;
@@ -446,9 +446,8 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
                 continue;
             }
 
-            // Create both debug and release Build All tasks.
+            // Create debug Build All task.
             tasks.push(createBuildAllTask(folderContext, false));
-            tasks.push(createBuildAllTask(folderContext, true));
 
             const executables = folderContext.swiftPackage.executableProducts;
             for (const executable of executables) {
