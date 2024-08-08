@@ -15,12 +15,8 @@
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
-import {
-    execSwift,
-    getErrorDescription,
-    hashString,
-    isPathInsidePath,
-} from "./utilities/utilities";
+import { execSwift, getErrorDescription, hashString } from "./utilities/utilities";
+import { isPathInsidePath } from "./utilities/filesystem";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { BuildFlags } from "./toolchain/BuildFlags";
 

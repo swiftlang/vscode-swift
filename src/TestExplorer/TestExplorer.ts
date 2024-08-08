@@ -14,7 +14,8 @@
 
 import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
-import { getErrorDescription, isPathInsidePath } from "../utilities/utilities";
+import { getErrorDescription } from "../utilities/utilities";
+import { isPathInsidePath } from "../utilities/filesystem";
 import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
 import { TestRunProxy, TestRunner } from "./TestRunner";
 import { LSPTestDiscovery } from "./LSPTestDiscovery";

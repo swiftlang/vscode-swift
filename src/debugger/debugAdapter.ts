@@ -13,12 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as fs from "fs";
-import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
 import contextKeys from "../contextKeys";
-import { SwiftToolchain } from "../toolchain/toolchain";
+import { fileExists } from "../utilities/filesystem";
 import { Version } from "../utilities/version";
+import { WorkspaceContext } from "../WorkspaceContext";
 
 /**
  * Class managing which debug adapter we are using. Will only setup lldb-vscode/lldb-dap if it is available.
@@ -27,36 +26,34 @@ export class DebugAdapter {
     private static debugAdapaterExists = false;
 
     /** Debug adapter name */
-    static get adapterName(): string {
+    public static get adapterName(): string {
         return configuration.debugger.useDebugAdapterFromToolchain && this.debugAdapaterExists
             ? "swift-lldb"
             : "lldb";
     }
 
     /** Return debug adapter for toolchain */
-    static getDebugAdapter(toolchain: SwiftToolchain): string {
-        if (toolchain.swiftVersion.isLessThan(new Version(6, 0, 0))) {
-            return "lldb-vscode";
-        } else {
-            return "lldb-dap";
-        }
+    public static getDebugAdapter(swiftVersion: Version): string {
+        return swiftVersion.isLessThan(new Version(6, 0, 0)) ? "lldb-vscode" : "lldb-dap";
     }
+
     /**
      * Verify that the toolchain debug adapter exists
      * @param workspace WorkspaceContext
      * @param quiet Should dialog be displayed
      * @returns Is debugger available
      */
-    static async verifyDebugAdapterExists(
+    public static async verifyDebugAdapterExists(
         workspace: WorkspaceContext,
         quiet = false
     ): Promise<boolean> {
         const useCustom = configuration.debugger.debugAdapterPath.length > 0;
-        const debugAdapter = DebugAdapter.getDebugAdapter(workspace.toolchain);
+        const debugAdapter = DebugAdapter.getDebugAdapter(workspace.toolchain.swiftVersion);
         const lldbDebugAdapterPath = useCustom
             ? configuration.debugger.debugAdapterPath
             : workspace.toolchain.getToolchainExecutable(debugAdapter);
-        if (!(await this.doesFileExist(lldbDebugAdapterPath))) {
+
+        if (!(await fileExists(lldbDebugAdapterPath))) {
             if (!quiet) {
                 vscode.window.showErrorMessage(
                     useCustom
@@ -69,16 +66,9 @@ export class DebugAdapter {
             contextKeys.lldbVSCodeAvailable = false;
             return false;
         }
+
         this.debugAdapaterExists = true;
         contextKeys.lldbVSCodeAvailable = true;
         return true;
-    }
-
-    private static async doesFileExist(path: string): Promise<boolean> {
-        try {
-            return (await fs.promises.stat(path)).isFile();
-        } catch (e) {
-            return false;
-        }
     }
 }
