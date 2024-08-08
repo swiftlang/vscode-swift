@@ -110,7 +110,9 @@ export class SwiftPtyProcess implements SwiftProcess {
                 this.writeEmitter.fire(data);
             });
             this.spawnedProcess.onExit(event => {
-                if (typeof event.exitCode === "number") {
+                if (event.signal) {
+                    this.closeEmitter.fire(event.signal);
+                } else if (typeof event.exitCode === "number") {
                     this.closeEmitter.fire(event.exitCode);
                 } else {
                     this.closeEmitter.fire();
