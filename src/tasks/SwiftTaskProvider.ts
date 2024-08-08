@@ -134,21 +134,35 @@ const buildAllTaskCache = (() => {
     };
 })();
 
+function buildAllTaskName(release: boolean): string {
+    return release ? `${SwiftTaskProvider.buildAllName} - Release` : SwiftTaskProvider.buildAllName;
+}
+
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
-export function createBuildAllTask(folderContext: FolderContext): SwiftTask {
+export function createBuildAllTask(
+    folderContext: FolderContext,
+    release: boolean = false
+): SwiftTask {
     let additionalArgs = buildOptions(folderContext.workspaceContext.toolchain);
     if (folderContext.swiftPackage.getTargets(TargetType.test).length > 0) {
         additionalArgs.push(...testDiscoveryFlag(folderContext));
     }
-    let buildTaskName = SwiftTaskProvider.buildAllName;
+    let buildTaskName = buildAllTaskName(release);
+
     if (folderContext.relativePath.length > 0) {
         buildTaskName += ` (${folderContext.relativePath})`;
+    }
+    if (release) {
+        additionalArgs = [...additionalArgs, "-c", "release"];
     }
     // don't build tests for iOS etc as they don't compile
     if (folderContext.workspaceContext.toolchain.buildFlags.getDarwinTarget() === undefined) {
         additionalArgs = ["--build-tests", ...additionalArgs];
+        if (release) {
+            additionalArgs = [...additionalArgs, "-Xswiftc", "-enable-testing"];
+        }
     }
 
     // Create one Build All task per folder context, since this can be called multiple
@@ -183,8 +197,11 @@ export function createBuildAllTask(folderContext: FolderContext): SwiftTask {
  * @param folderContext Folder to get Build All Task for
  * @returns Build All Task
  */
-export async function getBuildAllTask(folderContext: FolderContext): Promise<vscode.Task> {
-    let buildTaskName = SwiftTaskProvider.buildAllName;
+export async function getBuildAllTask(
+    folderContext: FolderContext,
+    release: boolean = false
+): Promise<vscode.Task> {
+    let buildTaskName = buildAllTaskName(release);
     if (folderContext.relativePath.length > 0) {
         buildTaskName += ` (${folderContext.relativePath})`;
     }
@@ -429,7 +446,10 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
                 continue;
             }
 
-            tasks.push(createBuildAllTask(folderContext));
+            // Create both debug and release Build All tasks.
+            tasks.push(createBuildAllTask(folderContext, false));
+            tasks.push(createBuildAllTask(folderContext, true));
+
             const executables = folderContext.swiftPackage.executableProducts;
             for (const executable of executables) {
                 tasks.push(...createBuildTasks(executable, folderContext));
