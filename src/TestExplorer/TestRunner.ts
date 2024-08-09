@@ -698,7 +698,7 @@ export class TestRunner {
         await this.folderContext.taskQueue.queueOperation(new TaskOperation(buildAllTask));
 
         if (buildExitCode !== 0) {
-            throw new Error(`Build failed with exit code ${buildExitCode}`);
+            throw new Error(`${buildAllTask.name} failed with exit code ${buildExitCode}`);
         }
 
         const buildConfigs: Array<vscode.DebugConfiguration | undefined> = [];
