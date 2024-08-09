@@ -39,6 +39,7 @@ import { TestCoverage } from "../coverage/LcovResults";
 import { TestingDebugConfigurationFactory } from "../debugger/buildConfig";
 import { SwiftExecution } from "../tasks/SwiftExecution";
 import { TestKind, isDebugging, isRelease } from "./TestKind";
+import { reduceTestItemChildren } from "./TestUtils";
 
 export enum TestLibrary {
     xctest = "XCTest",
@@ -63,6 +64,7 @@ export class TestRunProxy {
         skipped: [] as vscode.TestItem[],
         errored: [] as vscode.TestItem[],
         unknown: 0,
+        output: [] as string[],
     };
 
     public get testItems(): vscode.TestItem[] {
@@ -197,9 +199,15 @@ export class TestRunProxy {
     public appendOutput(output: string) {
         if (this.testRun) {
             this.testRun.appendOutput(output);
+            this.runState.output.push(output);
         } else {
             this.queuedOutput.push(output);
         }
+    }
+
+    public appendOutputToTest(output: string, test: vscode.TestItem, location?: vscode.Location) {
+        this.testRun?.appendOutput(output, location, test);
+        this.runState.output.push(output);
     }
 
     public async computeCoverage() {
@@ -437,15 +445,7 @@ export class TestRunner {
                     return;
                 }
 
-                // Output test from stream
-                const outputStream = new stream.Writable({
-                    write: (chunk, encoding, next) => {
-                        const text = chunk.toString();
-                        this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
-                        next();
-                    },
-                });
-
+                const outputStream = this.testOutputWritable(TestLibrary.swiftTesting, runState);
                 if (token.isCancellationRequested) {
                     outputStream.end();
                     return;
@@ -476,16 +476,8 @@ export class TestRunner {
             if (testBuildConfig === null) {
                 return;
             }
-            // Parse output from stream and output to log
-            const parsedOutputStream = new stream.Writable({
-                write: (chunk, encoding, next) => {
-                    const text = chunk.toString();
-                    this.testRun.appendOutput(text.replace(/\n/g, "\r\n"));
-                    this.xcTestOutputParser.parseResult(text, runState);
-                    next();
-                },
-            });
 
+            const parsedOutputStream = this.testOutputWritable(TestLibrary.xctest, runState);
             if (token.isCancellationRequested) {
                 parsedOutputStream.end();
                 return;
@@ -797,12 +789,12 @@ export class TestRunner {
                                 "Start Test Debugging",
                                 this.folderContext.name
                             );
+
+                            const outputHandler = this.testOutputHandler(config.testType, runState);
                             LoggingDebugAdapterTracker.setDebugSessionCallback(session, output => {
-                                this.testRun.appendOutput(output.replace(/\n/g, "\r\n"));
-                                if (config.testType === TestLibrary.xctest) {
-                                    this.xcTestOutputParser.parseResult(output, runState);
-                                }
+                                outputHandler(output);
                             });
+
                             const cancellation = token.onCancellationRequested(() => {
                                 this.workspaceContext.outputChannel.logDiagnostic(
                                     "Test Debugging Cancelled",
@@ -864,6 +856,48 @@ export class TestRunner {
 
             // Run each debugging session sequentially
             await debugRuns.reduce((p, fn) => p.then(() => fn()), Promise.resolve());
+        });
+    }
+
+    /** Returns a callback that handles a chunk of stdout output from a test run. */
+    private testOutputHandler(
+        testLibrary: TestLibrary,
+        runState: TestRunnerTestRunState
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ): (chunk: any) => void {
+        let preambleComplete = false;
+        switch (testLibrary) {
+            case TestLibrary.swiftTesting:
+                return chunk => {
+                    // Capture all the output from the build process up until the test run starts.
+                    // From there the SwiftTestingOutputParser reconstructs the test output from the JSON events
+                    // emitted by the swift-testing binary during the run. This allows individual messages to be
+                    // associated with their respective tests while still producing a complete test run log.
+                    if (chunk.indexOf("Test run started.") !== -1) {
+                        preambleComplete = true;
+                    }
+                    if (!preambleComplete) {
+                        this.testRun.appendOutput(chunk.toString().replace(/\n/g, "\r\n"));
+                    } else {
+                        this.swiftTestOutputParser.parseStdout(chunk.toString(), runState);
+                    }
+                };
+            case TestLibrary.xctest:
+                return chunk => this.xcTestOutputParser.parseResult(chunk.toString(), runState);
+        }
+    }
+
+    /** Returns a `stream.Writable` that handles a chunk of stdout output from a test run. */
+    private testOutputWritable(
+        testLibrary: TestLibrary,
+        runState: TestRunnerTestRunState
+    ): stream.Writable {
+        const handler = this.testOutputHandler(testLibrary, runState);
+        return new stream.Writable({
+            write: (chunk, encoding, next) => {
+                handler(chunk);
+                next();
+            },
         });
     }
 
@@ -994,15 +1028,12 @@ export class TestRunnerTestRunState implements ITestRunState {
         this.startTimes.set(index, startTime);
     }
 
-    // set test item to have passed
+    // set test item to have passed or failed, depending on if any issues were recorded
     completed(index: number, timing: { duration: number } | { timestamp: number }) {
         if (this.isUnknownTest(index)) {
             return;
         }
         const test = this.testRun.testItems[index];
-        if (test.children.size > 0) {
-            return;
-        }
         const startTime = this.startTimes.get(index);
 
         let duration: number;
@@ -1019,11 +1050,17 @@ export class TestRunnerTestRunState implements ITestRunState {
             duration = timing.duration * 1000;
         }
 
-        const issues = this.issues.get(index) ?? [];
+        const isSuite = test.children.size > 0;
+        const issues = isSuite ? this.childrensIssues(test) : this.issues.get(index) ?? [];
         if (issues.length > 0) {
             const allUnknownIssues = issues.filter(({ isKnown }) => !isKnown);
             if (allUnknownIssues.length === 0) {
                 this.testRun.skipped(test);
+            } else if (isSuite) {
+                // Suites deliberately report no issues since the suite's children will,
+                // and we don't want to duplicate issues. This would make navigating via
+                // the "prev/next issue" buttons confusing.
+                this.testRun.failed(test, [], duration);
             } else {
                 this.testRun.failed(
                     test,
@@ -1037,6 +1074,31 @@ export class TestRunnerTestRunState implements ITestRunState {
 
         this.lastTestItem = this.currentTestItem;
         this.currentTestItem = undefined;
+    }
+
+    // Gather the issues of test children into a flat collection.
+    private childrensIssues(test: vscode.TestItem): {
+        isKnown: boolean;
+        message: vscode.TestMessage;
+    }[] {
+        const index = this.getTestItemIndex(test.id);
+        return [
+            ...(this.issues.get(index) ?? []),
+            ...reduceTestItemChildren(
+                test.children,
+                (acc, test) => [
+                    ...acc,
+                    ...this.childrensIssues(test).map(issue => {
+                        issue.message.message = `${test.label} \u{203A} ${issue.message.message}`;
+                        return {
+                            ...issue,
+                            message: issue.message,
+                        };
+                    }),
+                ],
+                [] as { isKnown: boolean; message: vscode.TestMessage }[]
+            ),
+        ];
     }
 
     recordIssue(
@@ -1095,5 +1157,21 @@ export class TestRunnerTestRunState implements ITestRunState {
     // failed suite
     failedSuite() {
         // Nothing to do here
+    }
+
+    recordOutput(index: number | undefined, output: string): void {
+        if (index === undefined || this.isUnknownTest(index)) {
+            this.testRun.appendOutput(output);
+            return;
+        }
+
+        const uri = this.testRun.testItems[index].uri;
+        const range = this.testRun.testItems[index].range;
+        let location: vscode.Location | undefined;
+        if (uri && range) {
+            location = new vscode.Location(uri, range);
+        }
+
+        this.testRun.appendOutputToTest(output, this.testRun.testItems[index], location);
     }
 }

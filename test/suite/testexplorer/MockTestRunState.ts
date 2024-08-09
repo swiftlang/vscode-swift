@@ -35,6 +35,7 @@ interface TestItem {
         diff?: TestIssueDiff;
     }[];
     timing?: { duration: number } | { timestamp: number };
+    output: string[];
 }
 
 interface ITestItemFinder {
@@ -75,7 +76,7 @@ export class TestRunState implements ITestRunState {
 
     constructor(testNames: string[], darwin: boolean) {
         const tests = testNames.map(name => {
-            return { name: name, status: TestStatus.enqueued };
+            return { name: name, status: TestStatus.enqueued, output: [] };
         });
         if (darwin) {
             this.testItemFinder = new DarwinTestItemFinder(tests);
@@ -116,6 +117,12 @@ export class TestRunState implements ITestRunState {
 
     skipped(index: number): void {
         this.testItemFinder.tests[index].status = TestStatus.skipped;
+    }
+
+    recordOutput(index: number | undefined, output: string): void {
+        if (index !== undefined) {
+            this.testItemFinder.tests[index].output.push(output);
+        }
     }
 
     // started suite

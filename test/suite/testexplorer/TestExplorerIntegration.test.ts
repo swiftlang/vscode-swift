@@ -298,6 +298,11 @@ suite("Test Explorer Suite", function () {
                     assertTestResults(testRun, {
                         passed: ["PackageTests.topLevelTestPassing()"],
                     });
+
+                    assert.strictEqual(
+                        testRun.runState.output.includes("A print statement in a test.\r\r\n"),
+                        true
+                    );
                 });
 
                 test("Runs failing test", async function () {
@@ -329,7 +334,11 @@ suite("Test Explorer Suite", function () {
                         failed: [
                             {
                                 test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
-                                issues: ["Expectation failed: 1 == 2"],
+                                issues: ["testFailing() \u{203A} Expectation failed: 1 == 2"],
+                            },
+                            {
+                                issues: [],
+                                test: "PackageTests.MixedSwiftTestingSuite",
                             },
                         ],
                     });
@@ -344,13 +353,17 @@ suite("Test Explorer Suite", function () {
 
                     assertTestResults(testRun, {
                         passed: [
-                            "PackageTests.parameterizedTest(_:)/PackageTests.swift:49:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])",
-                            "PackageTests.parameterizedTest(_:)/PackageTests.swift:49:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [51])])",
+                            "PackageTests.parameterizedTest(_:)/PackageTests.swift:51:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])",
+                            "PackageTests.parameterizedTest(_:)/PackageTests.swift:51:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [51])])",
                         ],
                         failed: [
                             {
-                                issues: ["Expectation failed: (arg → 2) != 2"],
-                                test: "PackageTests.parameterizedTest(_:)/PackageTests.swift:49:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])",
+                                issues: ["2 \u{203A} Expectation failed: (arg → 2) != 2"],
+                                test: "PackageTests.parameterizedTest(_:)/PackageTests.swift:51:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])",
+                            },
+                            {
+                                issues: [],
+                                test: "PackageTests.parameterizedTest(_:)",
                             },
                         ],
                     });
@@ -369,7 +382,11 @@ suite("Test Explorer Suite", function () {
                         failed: [
                             {
                                 test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
-                                issues: ["Expectation failed: 1 == 2"],
+                                issues: ["testFailing() \u{203A} Expectation failed: 1 == 2"],
+                            },
+                            {
+                                issues: [],
+                                test: "PackageTests.MixedSwiftTestingSuite",
                             },
                         ],
                     });
@@ -392,7 +409,11 @@ suite("Test Explorer Suite", function () {
                         failed: [
                             {
                                 test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
-                                issues: ["Expectation failed: 1 == 2"],
+                                issues: ["testFailing() \u{203A} Expectation failed: 1 == 2"],
+                            },
+                            {
+                                issues: [],
+                                test: "PackageTests.MixedSwiftTestingSuite",
                             },
                             {
                                 test: "PackageTests.MixedXCTestSuite/testFailing",
