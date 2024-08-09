@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
-import { isPathInsidePath } from "./utilities/utilities";
+import { isPathInsidePath } from "./utilities/filesystem";
 import { getBuildAllTask } from "./tasks/SwiftTaskProvider";
 import configuration from "./configuration";
 import { FolderContext } from "./FolderContext";

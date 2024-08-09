@@ -17,12 +17,8 @@ import * as path from "path";
 import { FolderContext } from "./FolderContext";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
-import {
-    pathExists,
-    isPathInsidePath,
-    swiftLibraryPathKey,
-    getErrorDescription,
-} from "./utilities/utilities";
+import { swiftLibraryPathKey, getErrorDescription } from "./utilities/utilities";
+import { pathExists, isPathInsidePath } from "./utilities/filesystem";
 import { getLLDBLibPath } from "./debugger/lldb";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 import { TemporaryFolder } from "./utilities/tempFolder";

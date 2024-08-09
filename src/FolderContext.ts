@@ -21,7 +21,7 @@ import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { WorkspaceContext, FolderEvent } from "./WorkspaceContext";
 import { BackgroundCompilation } from "./BackgroundCompilation";
 import { TaskQueue } from "./tasks/TaskQueue";
-import { isPathInsidePath } from "./utilities/utilities";
+import { isPathInsidePath } from "./utilities/filesystem";
 
 export class FolderContext implements vscode.Disposable {
     private packageWatcher: PackageWatcher;

@@ -14,7 +14,6 @@
 
 import * as vscode from "vscode";
 import * as cp from "child_process";
-import * as fs from "fs/promises";
 import * as path from "path";
 import * as Stream from "stream";
 import configuration from "../configuration";
@@ -229,32 +228,6 @@ export function getRepositoryName(url: string): string {
 }
 
 /**
- * Whether the given path exists.
- *
- * Does not check whether the user has permission to read the path.
- */
-export async function pathExists(...pathComponents: string[]): Promise<boolean> {
-    try {
-        await fs.access(path.join(...pathComponents));
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-/**
- * Return whether a file is inside a folder
- * @param subfolder child file/folder
- * @param folder parent folder
- * @returns if child file is inside parent folder
- */
-export function isPathInsidePath(subfolder: string, folder: string): boolean {
-    const relativePath = path.relative(folder, subfolder);
-    // return true if path doesnt start with '..'
-    return relativePath[0] !== "." || relativePath[1] !== ".";
-}
-
-/**
  * Return random string
  * @param length Length of string to return (max 16)
  * @returns Random string
@@ -310,18 +283,6 @@ export function hashString(str: string, seed = 0) {
     h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
     h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
     return 4294967296 * (2097151 & h2) + (h1 >>> 0);
-}
-
-/**
- * Expand ~ in file path to full $HOME folder
- * @param filepath File path
- * @returns full path
- */
-export function expandFilePathTilda(filepath: string): string {
-    if (process.platform !== "win32" && filepath[0] === "~" && process.env.HOME) {
-        return path.join(process.env.HOME, filepath.slice(1));
-    }
-    return filepath;
 }
 
 /**

@@ -24,7 +24,9 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
             executable: vscode.DebugAdapterExecutable | undefined
         ): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
             // use the executable specified in the settings or use version in toolchain
-            const debugAdapter = DebugAdapter.getDebugAdapter(workspaceContext.toolchain);
+            const debugAdapter = DebugAdapter.getDebugAdapter(
+                workspaceContext.toolchain.swiftVersion
+            );
             if (!executable) {
                 const lldbDebugAdapterPath =
                     configuration.debugger.debugAdapterPath.length > 0

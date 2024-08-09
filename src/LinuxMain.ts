@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { pathExists } from "./utilities/utilities";
+import { pathExists } from "./utilities/filesystem";
 
 /**
  * Cache the existence of `Tests/LinuxMain.swift`.
