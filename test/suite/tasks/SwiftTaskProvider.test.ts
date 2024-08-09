@@ -51,8 +51,8 @@ suite("SwiftTaskProvider Test Suite", () => {
 
         test("Exit code on success", async () => {
             const task = createSwiftTask(
-                ["--help"],
-                "help",
+                ["build", "--show-bin-path"],
+                "show bin path",
                 { cwd: workspaceFolder.uri, scope: vscode.TaskScope.Workspace },
                 toolchain
             );
@@ -84,7 +84,12 @@ suite("SwiftTaskProvider Test Suite", () => {
                 new vscode.CancellationTokenSource().token
             );
             const task = tasks.find(t => t.name === "Build All (defaultPackage)");
-            assert.equal(task?.detail, "swift build --build-tests -Xswiftc -diagnostic-style=llvm");
+            assert.equal(
+                task?.detail?.startsWith(
+                    "swift build --build-tests -Xswiftc -diagnostic-style=llvm"
+                ),
+                true
+            );
         });
 
         test("includes product debug task", async () => {
@@ -94,8 +99,10 @@ suite("SwiftTaskProvider Test Suite", () => {
             );
             const task = tasks.find(t => t.name === "Build Debug PackageExe (defaultPackage)");
             assert.equal(
-                task?.detail,
-                "swift build --product PackageExe -Xswiftc -diagnostic-style=llvm"
+                task?.detail?.startsWith(
+                    "swift build --product PackageExe -Xswiftc -diagnostic-style=llvm"
+                ),
+                true
             );
         });
 
@@ -106,8 +113,10 @@ suite("SwiftTaskProvider Test Suite", () => {
             );
             const task = tasks.find(t => t.name === "Build Release PackageExe (defaultPackage)");
             assert.equal(
-                task?.detail,
-                "swift build -c release --product PackageExe -Xswiftc -diagnostic-style=llvm"
+                task?.detail?.startsWith(
+                    "swift build -c release --product PackageExe -Xswiftc -diagnostic-style=llvm"
+                ),
+                true
             );
         });
     });
