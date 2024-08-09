@@ -225,6 +225,12 @@ const configuration = {
             .getConfiguration("swift")
             .get<boolean>("backgroundCompilation", false);
     },
+    /** background indexing */
+    get backgroundIndexing(): boolean {
+        return vscode.workspace
+            .getConfiguration("swift.sourcekit-lsp")
+            .get("backgroundIndexing", false);
+    },
     /** focus on problems view whenever there is a build error */
     get actionAfterBuildError(): ActionAfterBuildError {
         return vscode.workspace

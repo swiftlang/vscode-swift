@@ -299,7 +299,7 @@
             "markdownEnumDescriptions": [
               "Use whichever diagnostics style `swiftc` produces by default.",
               "Use the `llvm` diagnostic style. This allows the parsing of \"notes\".",
-              "Use the `swift` diagnostic style. This means that \"notes\" will not be parsed. This option will not work for Swift versions prior to 5.10."
+              "Use the `swift` diagnostic style. This means that \"notes\" will not be parsed. This option has no effect in Swift versions prior to 5.10."
             ],
             "order": 9
           },
@@ -457,6 +457,12 @@
                 "cpp"
               ]
             },
+            "order": 3
+          },
+          "swift.sourcekit-lsp.backgroundIndexing": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "**Experimental**: Enable or disable background indexing. This option has no effect in Swift versions prior to 6.0.",
             "order": 4
           },
           "swift.sourcekit-lsp.trace.server": {
@@ -476,28 +482,11 @@
             "markdownDescription": "Disable SourceKit-LSP",
             "order": 6
           },
-          "sourcekit-lsp.serverPath": {
-            "type": "string",
-            "markdownDescription": "The path of the `sourcekit-lsp` executable. The default is to look in the path where `swift` is found.",
-            "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.serverPath#` instead.",
-            "order": 1
-          },
-          "sourcekit-lsp.serverArguments": {
-            "type": "array",
-            "default": [],
-            "items": {
-              "type": "string"
-            },
-            "markdownDescription": "Arguments to pass to SourceKit-LSP. Keys and values should be provided as individual entries in the list. e.g. `['--log-level', 'debug']`",
-            "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.serverArguments#` instead.",
-            "order": 2
-          },
           "sourcekit-lsp.inlayHints.enabled": {
             "type": "boolean",
             "default": true,
             "markdownDescription": "Display Inlay Hints. Inlay Hints are variable annotations indicating their inferred type. They are only available if you are using Swift 5.6 or later.",
-            "markdownDeprecationMessage": "**Deprecated**: Please use `#editor.inlayHints.enabled#` instead.",
-            "order": 3
+            "markdownDeprecationMessage": "**Deprecated**: Please use `#editor.inlayHints.enabled#` instead."
           },
           "sourcekit-lsp.support-c-cpp": {
             "type": "string",
@@ -513,8 +502,21 @@
               "Disable when C/C++ extension is active"
             ],
             "markdownDescription": "Add LSP functionality for C/C++ files. By default this is set to disable when the C/C++ extension is active.",
-            "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.supported-languages#` instead.",
-            "order": 5
+            "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.supported-languages#` instead."
+          },
+          "sourcekit-lsp.serverPath": {
+            "type": "string",
+            "markdownDescription": "The path of the `sourcekit-lsp` executable. The default is to look in the path where `swift` is found.",
+            "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.serverPath#` instead."
+          },
+          "sourcekit-lsp.serverArguments": {
+            "type": "array",
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "markdownDescription": "Arguments to pass to SourceKit-LSP. Keys and values should be provided as individual entries in the list. e.g. `['--log-level', 'debug']`",
+            "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.serverArguments#` instead."
           },
           "sourcekit-lsp.trace.server": {
             "type": "string",
@@ -525,15 +527,13 @@
               "verbose"
             ],
             "markdownDescription": "Traces the communication between VS Code and the SourceKit-LSP language server.",
-            "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.trace.server#` instead.",
-            "order": 6
+            "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.trace.server#` instead."
           },
           "sourcekit-lsp.disable": {
             "type": "boolean",
             "default": false,
             "markdownDescription": "Disable the running of SourceKit-LSP.",
-            "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.disable#` instead.",
-            "order": 7
+            "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.disable#` instead."
           }
         }
       },

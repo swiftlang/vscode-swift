@@ -576,16 +576,7 @@ export class LanguageClientManager {
             // Avoid attempting to reinitialize multiple times. If we fail to initialize
             // we aren't doing anything different the second time and so will fail again.
             initializationFailedHandler: () => false,
-            initializationOptions: {
-                "workspace/peekDocuments": true, // workaround for client capability to handle `PeekDocumentsRequest`
-                "workspace/getReferenceDocument": true, // the client can handle URIs with scheme `sourcekit-lsp:`
-                "textDocument/codeLens": {
-                    supportedCommands: {
-                        "swift.run": "swift.run",
-                        "swift.debug": "swift.debug",
-                    },
-                },
-            },
+            initializationOptions: this.initializationOptions(),
         };
 
         return {
@@ -598,6 +589,30 @@ export class LanguageClientManager {
             errorHandler,
         };
     }
+
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    private initializationOptions(): any {
+        let options: any = {
+            "workspace/peekDocuments": true, // workaround for client capability to handle `PeekDocumentsRequest`
+            "workspace/getReferenceDocument": true, // the client can handle URIs with scheme `sourcekit-lsp:`
+            "textDocument/codeLens": {
+                supportedCommands: {
+                    "swift.run": "swift.run",
+                    "swift.debug": "swift.debug",
+                },
+            },
+        };
+
+        if (configuration.backgroundIndexing) {
+            options = {
+                ...options,
+                backgroundIndexing: configuration.backgroundIndexing,
+                backgroundPreparationMode: "enabled",
+            };
+        }
+        return options;
+    }
+    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     private async startClient(
         client: langclient.LanguageClient,
