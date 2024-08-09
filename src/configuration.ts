@@ -67,6 +67,12 @@ export interface FolderConfiguration {
     readonly disableAutoResolve: boolean;
 }
 
+/** REPL configuration */
+export interface REPLConfiguration {
+    /** Enable the native REPL */
+    readonly enable: boolean;
+}
+
 /**
  * Type-safe wrapper around configuration settings.
  */
@@ -170,6 +176,17 @@ const configuration = {
             },
         };
     },
+
+    get repl(): REPLConfiguration {
+        return {
+            get enable(): boolean {
+                return vscode.workspace
+                    .getConfiguration("swift.repl")
+                    .get<boolean>("enable", false);
+            },
+        };
+    },
+
     /** Files and directories to exclude from the code coverage. */
     get excludeFromCodeCoverage(): string[] {
         return vscode.workspace

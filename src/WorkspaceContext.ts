@@ -34,6 +34,7 @@ import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { DiagnosticsManager } from "./DiagnosticsManager";
 import { DocumentationManager } from "./documentation/DocumentationManager";
+import { REPL } from "./repl/REPL";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -53,6 +54,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public documentation: DocumentationManager;
     private lastFocusUri: vscode.Uri | undefined;
     private initialisationFinished = false;
+    private repl: REPL | undefined;
 
     private constructor(
         extensionContext: vscode.ExtensionContext,
@@ -663,6 +665,13 @@ export class WorkspaceContext implements vscode.Disposable {
 
     private observers = new Set<(listener: FolderEvent) => unknown>();
     private swiftFileObservers = new Set<(listener: SwiftFileEvent) => unknown>();
+
+    public getRepl(): REPL {
+        if (!this.repl) {
+            this.repl = new REPL(this);
+        }
+        return this.repl;
+    }
 }
 
 /** Workspace Folder Operation types */
