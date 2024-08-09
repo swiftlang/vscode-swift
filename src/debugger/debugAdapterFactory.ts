@@ -14,7 +14,6 @@
 
 import * as vscode from "vscode";
 import { WorkspaceContext } from "../WorkspaceContext";
-import configuration from "../configuration";
 import { DebugAdapter } from "./debugAdapter";
 
 export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
@@ -23,23 +22,16 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
             _session: vscode.DebugSession,
             executable: vscode.DebugAdapterExecutable | undefined
         ): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
-            // use the executable specified in the settings or use version in toolchain
-            const debugAdapter = DebugAdapter.getDebugAdapter(
-                workspaceContext.toolchain.swiftVersion
-            );
-            if (!executable) {
-                const lldbDebugAdapterPath =
-                    configuration.debugger.debugAdapterPath.length > 0
-                        ? configuration.debugger.debugAdapterPath
-                        : workspaceContext.toolchain.getToolchainExecutable(debugAdapter);
-                DebugAdapter.verifyDebugAdapterExists(workspaceContext).then(() => {
-                    /** Ignore */
-                });
-                executable = new vscode.DebugAdapterExecutable(lldbDebugAdapterPath, [], {});
+            if (executable) {
+                // make VS Code launch the debug adapter executable
+                return executable;
             }
 
-            // make VS Code launch the debug adapter executable
-            return executable;
+            return DebugAdapter.debugAdapterPath(workspaceContext.toolchain)
+                .then(path =>
+                    DebugAdapter.verifyDebugAdapterExists(workspaceContext).then(() => path)
+                )
+                .then(path => new vscode.DebugAdapterExecutable(path, [], {}));
         }
     }
 

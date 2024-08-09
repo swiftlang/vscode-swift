@@ -358,24 +358,38 @@ export class SwiftToolchain {
      * is not in macOS toolchain path
      */
     public async getLLDB(): Promise<string> {
-        let lldbPath = path.join(
+        const lldbPath = path.join(
             this.swiftFolderPath,
             process.platform === "win32" ? "lldb.exe" : "lldb"
         );
-        if (!(await pathExists(lldbPath))) {
-            if (process.platform !== "darwin") {
-                throw new Error("Failed to find LLDB in swift toolchain");
-            }
-            const xcodeDirectory = SwiftToolchain.getXcodeDirectory(this.swiftFolderPath);
-            if (!xcodeDirectory) {
-                throw new Error("Failed to find LLDB in swift toolchain");
-            }
-            const { stdout } = await execFile("xcrun", ["-find", "lldb"], {
-                env: { ...process.env, DEVELOPER_DIR: xcodeDirectory },
-            });
-            lldbPath = stdout.trimEnd();
+
+        if (await pathExists(lldbPath)) {
+            return lldbPath;
         }
-        return lldbPath;
+
+        if (process.platform !== "darwin") {
+            throw new Error("Failed to find LLDB in swift toolchain");
+        }
+        return this.findXcodeExecutable("lldb");
+    }
+
+    public async getLLDBDebugAdapter(): Promise<string> {
+        const dapName = "lldb-dap";
+        if (process.platform !== "darwin") {
+            return this.getToolchainExecutable(dapName);
+        }
+        return this.findXcodeExecutable(dapName);
+    }
+
+    private async findXcodeExecutable(executable: string): Promise<string> {
+        const xcodeDirectory = SwiftToolchain.getXcodeDirectory(this.toolchainPath);
+        if (!xcodeDirectory) {
+            throw new Error(`Failed to find ${executable} in Swift toolchain`);
+        }
+        const { stdout } = await execFile("xcrun", ["-find", executable], {
+            env: { ...process.env, DEVELOPER_DIR: xcodeDirectory },
+        });
+        return stdout.trimEnd();
     }
 
     private basePlatformDeveloperPath(): string | undefined {
