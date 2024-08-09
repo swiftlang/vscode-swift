@@ -518,7 +518,10 @@ export class WorkspaceContext implements vscode.Disposable {
     async focusUri(uri?: vscode.Uri) {
         this.currentDocument = uri ?? null;
         this.updateContextKeysForFile();
-        if (this.currentDocument?.scheme === "file") {
+        if (
+            this.currentDocument?.scheme === "file" ||
+            this.currentDocument?.scheme === "sourcekit-lsp"
+        ) {
             await this.focusPackageUri(this.currentDocument);
         }
     }

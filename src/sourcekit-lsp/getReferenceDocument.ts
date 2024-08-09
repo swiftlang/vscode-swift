@@ -22,7 +22,7 @@ export function activateGetReferenceDocument(client: langclient.LanguageClient):
         {
             provideTextDocumentContent: async (uri, token) => {
                 const params: GetReferenceDocumentParams = {
-                    uri: uri.toString(true),
+                    uri: uri.toString(),
                 };
 
                 const result = await client.sendRequest(GetReferenceDocumentRequest, params, token);

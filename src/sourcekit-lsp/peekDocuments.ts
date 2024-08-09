@@ -32,10 +32,7 @@ export function activatePeekDocuments(client: langclient.LanguageClient): vscode
 
             await vscode.commands.executeCommand(
                 "editor.action.peekLocations",
-                vscode.Uri.from({
-                    scheme: "file",
-                    path: new URL(params.uri).pathname,
-                }),
+                vscode.Uri.parse(new URL(params.uri).href, true),
                 new vscode.Position(params.position.line, params.position.character),
                 locations,
                 "peek"
