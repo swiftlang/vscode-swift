@@ -354,31 +354,46 @@ export class SwiftToolchain {
     }
 
     /**
-     * Cannot use `getToolchainExecutable` to get the LLDB executable as LLDB
-     * is not in macOS toolchain path
+     * Returns the path to the LLDB executable inside the selected toolchain.
+     * If the user is on macOS and has no OSS toolchain selected, also search
+     * inside Xcode.
+     * @returns The path to the `lldb` executable
+     * @throws Throws an error if the executable cannot be found
      */
     public async getLLDB(): Promise<string> {
-        const lldbPath = path.join(
-            this.swiftFolderPath,
-            process.platform === "win32" ? "lldb.exe" : "lldb"
-        );
-
-        if (await pathExists(lldbPath)) {
-            return lldbPath;
-        }
-
-        if (process.platform !== "darwin") {
-            throw new Error("Failed to find LLDB in swift toolchain");
-        }
-        return this.findXcodeExecutable("lldb");
+        return this.findToolchainOrXcodeExecutable("lldb");
     }
 
+    /**
+     * Returns the path to the LLDB debug adapter executable inside the selected
+     * toolchain. If the user is on macOS and has no OSS toolchain selected, also
+     * search inside Xcode.
+     * @returns The path to the `lldb-dap` executable
+     * @throws Throws an error if the executable cannot be found
+     */
     public async getLLDBDebugAdapter(): Promise<string> {
-        const dapName = "lldb-dap";
-        if (process.platform !== "darwin") {
-            return this.getToolchainExecutable(dapName);
+        return this.findToolchainOrXcodeExecutable("lldb-dap");
+    }
+
+    /**
+     * Search for the supplied executable in the toolchain.
+     * If the user is on macOS and has no OSS toolchain selected, also
+     * search inside Xcode.
+     */
+    private async findToolchainOrXcodeExecutable(executable: string): Promise<string> {
+        const toolchainExecutablePath = path.join(
+            this.swiftFolderPath,
+            process.platform === "win32" ? `${executable}.exe` : executable
+        );
+
+        if (await pathExists(toolchainExecutablePath)) {
+            return toolchainExecutablePath;
         }
-        return this.findXcodeExecutable(dapName);
+
+        if (process.platform !== "darwin") {
+            throw new Error(`Failed to find ${executable} in swift toolchain`);
+        }
+        return this.findXcodeExecutable(executable);
     }
 
     private async findXcodeExecutable(executable: string): Promise<string> {
