@@ -49,13 +49,13 @@ suite("Event emitter example", async function () {
 });
 ```
 
-### Mocking global variables
+### Overriding constant values
 
-The `globalVariableMock` function allows for overriding the value for some global constant.
+The `mockValue` function allows for temporarily overriding the value for some constant.
 
 ```ts
 suite("Environment variable example", async function () {
-    const envMock = globalVariableMock(process, "env");
+    const envMock = mockValue(process, "env");
 
     test("Linux", async () => {
         env.setValue({ DEVELOPER_DIR: '/path/to/Xcode.app' });
@@ -70,7 +70,7 @@ It can also be used to mock the extension [configuration](../../src/configuratio
 ```ts
 import configuration from "../../../src/configuration";
 suite("SwiftBuildStatus Unit Test Suite", async function () {
-    const statusConfig = globalVariableMock(configuration, "showBuildStatus");
+    const statusConfig = mockValue(configuration, "showBuildStatus");
 
     test("Shows notification", async () => {
         statusConfig.setValue("notification");

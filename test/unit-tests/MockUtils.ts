@@ -14,7 +14,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { setup, teardown } from "mocha";
 import { Disposable, Event, EventEmitter } from "vscode";
-import { instance, mock } from "ts-mockito";
+import { instance, mock, when } from "ts-mockito";
+import { MethodToStub } from "ts-mockito/lib/MethodToStub";
 
 export function getMochaHooks(): { setup: typeof setup; teardown: typeof teardown } {
     if (!("setup" in global && "teardown" in global)) {
@@ -135,33 +136,54 @@ export function eventListenerMock<T, K extends EventsOf<T>>(
     obj: T,
     method: K
 ): ListenerInterceptor<EventType<T[K]>> {
-    const interceptor = new ListenerInterceptorImpl<EventType<T[K]>>();
-    const originalValue: T[K] = obj[method];
     const mocha = getMochaHooks();
+    let interceptor: ListenerInterceptorImpl<EventType<T[K]>>;
+    let originalValue: T[K];
     mocha.setup(() => {
-        Object.defineProperty(obj, method, { value: interceptor.addListener });
+        interceptor = new ListenerInterceptorImpl<EventType<T[K]>>();
+        originalValue = obj[method];
+        if (originalValue instanceof MethodToStub) {
+            when(originalValue).thenReturn(interceptor.addListener as any);
+        } else {
+            Object.defineProperty(obj, method, { value: interceptor.addListener });
+        }
     });
     // Restore original value at teardown
     mocha.teardown(() => {
-        Object.defineProperty(obj, method, { value: originalValue });
+        if (!(obj[method] instanceof MethodToStub)) {
+            Object.defineProperty(obj, method, { value: originalValue });
+        }
     });
-    return interceptor;
+    // Return the proxy to the interceptor
+    return new Proxy(
+        {},
+        {
+            get: (target: any, property: string): any => {
+                if (!interceptor) {
+                    throw Error("Interceptor proxy accessed before setup()");
+                }
+                return (interceptor as any)[property];
+            },
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            set: (target: any, property: string, value: any): boolean => {
+                // Ignore
+                return true;
+            },
+        }
+    );
 }
 
 /**
- * Allows setting the global value.
+ * Allows setting the constant value.
  */
-export interface GlobalVariableMock<T> {
+export interface ValueMock<T> {
     setValue(value: T): void;
 }
 
 /**
- * Create a new GlobalVariableMock that is restored after a test completes.
+ * Create a new ValueMock that is restored after a test completes.
  */
-export function globalVariableMock<T, K extends keyof T>(
-    obj: T,
-    property: K
-): GlobalVariableMock<T[K]> {
+export function mockValue<T, K extends keyof T>(obj: T, property: K): ValueMock<T[K]> {
     let setupComplete: boolean = false;
     let originalValue: T[K];
     const mocha = getMochaHooks();
@@ -175,15 +197,56 @@ export function globalVariableMock<T, K extends keyof T>(
         Object.defineProperty(obj, property, { value: originalValue });
         setupComplete = false;
     });
-    // Return a GlobalVariableMock that allows for easy mocking of the value
+    // Return a ValueMock that allows for easy mocking of the value
     return {
         setValue(value: T[K]): void {
             if (!setupComplete) {
                 throw new Error(
-                    `'${String(property)}' cannot be set before globalVariableMock() completes its setup through Mocha`
+                    `'${String(property)}' cannot be set before mockValue() completes its setup through Mocha`
                 );
             }
             Object.defineProperty(obj, property, { value: value });
         },
     };
+}
+
+type Constructor<T> = T extends abstract new (...args: any) => any ? T : never;
+type Instance<T> = InstanceType<Constructor<T>>;
+
+export function mockConstructor<T, K extends keyof T>(obj: T, property: K): Instance<T[K]> {
+    const clazz = obj[property] as Constructor<T[K]>;
+    let realMock: Instance<T[K]>;
+
+    // Replace constructor with a proxy that returns mock instance
+    const classValueMock = mockValue(obj, property);
+    const mocha = getMochaHooks();
+    mocha.setup(() => {
+        realMock = mock(clazz);
+        classValueMock.setValue(
+            new Proxy(clazz, {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                construct(target) {
+                    return instance(realMock) as object;
+                },
+            }) as T[K]
+        );
+    });
+
+    // Return the proxy to the real mock
+    return new Proxy(
+        {},
+        {
+            get: (target: any, property: string): any => {
+                if (!realMock) {
+                    throw Error("Mock proxy accessed before setup()");
+                }
+                return (realMock as any)[property];
+            },
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            set: (target: any, property: string, value: any): boolean => {
+                // Ignore
+                return true;
+            },
+        }
+    );
 }
