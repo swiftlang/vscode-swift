@@ -21,6 +21,7 @@ import configuration from "../../../src/configuration";
 import { mockValue } from "../MockUtils";
 
 suite("BuildFlags Test Suite", () => {
+    const platformConfig = mockValue(process, "platform");
     let toolchain: SwiftToolchain;
     let buildFlags: BuildFlags;
 
@@ -28,6 +29,10 @@ suite("BuildFlags Test Suite", () => {
         toolchain = mock(SwiftToolchain);
         when(toolchain.swiftVersion).thenReturn(new Version(6, 0, 0));
         buildFlags = new BuildFlags(instance(toolchain));
+    });
+
+    setup(() => {
+        platformConfig.setValue("darwin");
     });
 
     suite("getDarwinTarget", () => {
