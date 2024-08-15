@@ -50,7 +50,7 @@ export interface DebuggerConfiguration {
     /** Are we using debug adapter provided with Toolchain */
     readonly useDebugAdapterFromToolchain: boolean;
     /** Return path to debug adapter */
-    readonly debugAdapterPath: string;
+    readonly customDebugAdapterPath: string;
 }
 
 /** workspace folder configuration */
@@ -149,7 +149,7 @@ const configuration = {
                     .getConfiguration("swift.debugger")
                     .get<boolean>("useDebugAdapterFromToolchain", false);
             },
-            get debugAdapterPath(): string {
+            get customDebugAdapterPath(): string {
                 return vscode.workspace.getConfiguration("swift.debugger").get<string>("path", "");
             },
         };
