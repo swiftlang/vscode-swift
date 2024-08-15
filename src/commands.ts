@@ -33,6 +33,8 @@ import { SwiftProjectTemplate } from "./toolchain/toolchain";
 import { showToolchainSelectionQuickPick, showToolchainError } from "./ui/ToolchainSelection";
 import { captureDiagnostics } from "./commands/captureDiagnostics";
 import { reindexProjectRequest } from "./sourcekit-lsp/lspExtensions";
+import { TestRunner, TestRunnerTestRunState } from "./TestExplorer/TestRunner";
+import { TestKind } from "./TestExplorer/TestKind";
 
 /**
  * References:
@@ -734,6 +736,54 @@ function openInExternalEditor(packageNode: PackageNode) {
     }
 }
 
+async function runTestMultipleTimes(
+    ctx: WorkspaceContext,
+    test: vscode.TestItem,
+    untilFailure: boolean
+) {
+    const str = await vscode.window.showInputBox({
+        prompt: "Label: ",
+        placeHolder: `${untilFailure ? "Maximum " : ""}# of times to run`,
+        validateInput: value => (/^[1-9]\d*$/.test(value) ? undefined : "Enter an integer value"),
+    });
+
+    if (!str || !ctx.currentFolder?.testExplorer) {
+        return;
+    }
+
+    const numExecutions = parseInt(str);
+    const testExplorer = ctx.currentFolder.testExplorer;
+    const runner = new TestRunner(
+        TestKind.standard,
+        new vscode.TestRunRequest([test]),
+        ctx.currentFolder,
+        testExplorer.controller
+    );
+
+    testExplorer.onDidCreateTestRunEmitter.fire(runner.testRun);
+
+    const testRunState = new TestRunnerTestRunState(runner.testRun);
+    const token = new vscode.CancellationTokenSource();
+
+    vscode.commands.executeCommand("workbench.panel.testResults.view.focus");
+
+    for (let i = 0; i < numExecutions; i++) {
+        runner.setIteration(i);
+        runner.testRun.appendOutput(`\x1b[36mBeginning Test Iteration #${i + 1}\x1b[0m\n`);
+
+        await runner.runSession(token.token, testRunState);
+
+        if (
+            untilFailure &&
+            (runner.testRun.runState.failed.length > 0 ||
+                runner.testRun.runState.errored.length > 0)
+        ) {
+            break;
+        }
+    }
+    runner.testRun.end();
+}
+
 /**
  * Switches the target SDK to the platform selected in a QuickPick UI.
  */
@@ -841,6 +891,12 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand("swift.run", () => runBuild(ctx)),
         vscode.commands.registerCommand("swift.debug", () => debugBuild(ctx)),
         vscode.commands.registerCommand("swift.cleanBuild", () => cleanBuild(ctx)),
+        vscode.commands.registerCommand("swift.runTestsMultipleTimes", item =>
+            runTestMultipleTimes(ctx, item, false)
+        ),
+        vscode.commands.registerCommand("swift.runTestsUntilFailure", item =>
+            runTestMultipleTimes(ctx, item, true)
+        ),
         // Note: This is only available on macOS (gated in `package.json`) because its the only OS that has the iOS SDK available.
         vscode.commands.registerCommand("swift.switchPlatform", () => switchPlatform()),
         vscode.commands.registerCommand("swift.resetPackage", () => resetPackage(ctx)),
