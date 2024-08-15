@@ -1215,6 +1215,7 @@
     "format": "prettier --check src test",
     "pretest": "npm run compile && find ./assets/test -type d -name '.build' -exec rm -rf {} + && find . -type d -name 'Package.resolved' -exec rm -rf {} + && tsc -p ./",
     "test": "vscode-test",
+    "integration-test": "vscode-test --label integrationTests",
     "unit-test": "vscode-test --label unitTests",
     "coverage": "npm run pretest && vscode-test --coverage",
     "compile-tests": "find ./assets/test -type d -name '.build' -exec rm -rf {} + && npm run compile && npm run esbuild",

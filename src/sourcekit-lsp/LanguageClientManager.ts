@@ -154,10 +154,10 @@ export class LanguageClientManager {
                     }
                     switch (event) {
                         case FolderEvent.add:
-                            this.addFolder(folderContext);
+                            await this.addFolder(folderContext);
                             break;
                         case FolderEvent.remove:
-                            this.removeFolder(folderContext);
+                            await this.removeFolder(folderContext);
                             break;
                     }
                 }
@@ -295,7 +295,7 @@ export class LanguageClientManager {
 
     private async addFolder(folderContext: FolderContext) {
         if (!folderContext.isRootFolder) {
-            this.useLanguageClient(async client => {
+            await this.useLanguageClient(async client => {
                 const uri = folderContext.folder;
                 this.subFolderWorkspaces.push(folderContext.folder);
 
@@ -312,7 +312,7 @@ export class LanguageClientManager {
 
     private async removeFolder(folderContext: FolderContext) {
         if (!folderContext.isRootFolder) {
-            this.useLanguageClient(async client => {
+            await this.useLanguageClient(async client => {
                 const uri = folderContext.folder;
                 this.subFolderWorkspaces = this.subFolderWorkspaces.filter(item => item !== uri);
 
@@ -708,7 +708,7 @@ export class LanguageClientManager {
  * an error message that asks if you want to restart the sourcekit-lsp server again
  * after so many crashes
  */
-class SourceKitLSPErrorHandler implements langclient.ErrorHandler {
+export class SourceKitLSPErrorHandler implements langclient.ErrorHandler {
     private restarts: number[];
     private enabled: boolean = false;
 

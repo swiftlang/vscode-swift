@@ -23,7 +23,7 @@ import {
 } from "ts-mockito";
 import configuration from "../../../src/configuration";
 import * as vscode from "vscode";
-import { eventListenerMock, globalVariableMock, mockNamespace } from "../MockUtils";
+import { eventListenerMock, mockValue, mockNamespace } from "../MockUtils";
 import { SwiftExecution } from "../../../src/tasks/SwiftExecution";
 import { TestSwiftProcess } from "../../fixtures";
 import { StatusItem } from "../../../src/ui/StatusItem";
@@ -32,7 +32,7 @@ import { SwiftBuildStatus } from "../../../src/ui/SwiftBuildStatus";
 suite("SwiftBuildStatus Unit Test Suite", async function () {
     const windowMock = mockNamespace(vscode, "window");
     const listenerMock = eventListenerMock(vscode.tasks, "onDidStartTask");
-    const configurationMock = globalVariableMock(configuration, "showBuildStatus");
+    const configurationMock = mockValue(configuration, "showBuildStatus");
 
     let mockedStatusItem: StatusItem;
     let mockedTask: vscode.Task;
