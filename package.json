@@ -1217,7 +1217,7 @@
     "test": "vscode-test",
     "integration-test": "vscode-test --label integrationTests",
     "unit-test": "vscode-test --label unitTests",
-    "coverage": "npm run pretest && vscode-test --coverage",
+    "coverage": "npm run compile-tests && vscode-test --coverage",
     "compile-tests": "find ./assets/test -type d -name '.build' -exec rm -rf {} + && npm run compile && npm run esbuild",
     "package": "vsce package",
     "dev-package": "vsce package --no-update-package-json 1.10.8-dev",
