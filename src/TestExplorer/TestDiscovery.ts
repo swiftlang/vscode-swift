@@ -159,6 +159,27 @@ function deepMergeTestItemChildren(existingItem: vscode.TestItem, newItem: vscod
 }
 
 /**
+ * Given a `TestClass` adds the TestClasses tags to each of its children.
+ * Does not apply recursively.
+ * @param testClass A test class whose tags should be propagated to its children.
+ * @returns A `TestClass` whose children include the parent's tags.
+ */
+function applyTagsToChildren(testClass: TestClass): TestClass {
+    return {
+        ...testClass,
+        children: testClass.children.reduce((children, child) => {
+            return [
+                ...children,
+                {
+                    ...child,
+                    tags: [...child.tags, ...testClass.tags],
+                },
+            ];
+        }, [] as TestClass[]),
+    };
+}
+
+/**
  * Updates the existing `vscode.TestItem` if it exists with the same ID as the `TestClass`,
  * otherwise creates an add a new one. The location on the returned vscode.TestItem is always updated.
  */
@@ -202,6 +223,12 @@ export function upsertTestItem(
     if (existingItem) {
         deepMergeTestItemChildren(existingItem, newItem);
     }
+
+    // In VS Code tags are not inherited automatically, so if we're recieving a suite we need
+    // to set a suites tag on all of its children. Because test items are added top down the children
+    // aren't updated recursively all at once, but rather one level at a time which then propagages
+    // parent tags down the tree as children are upserted.
+    testItem = applyTagsToChildren(testItem);
 
     // Manually add the test style as a tag so we can filter by test type.
     newItem.tags = [{ id: testItem.style }, ...testItem.tags];
