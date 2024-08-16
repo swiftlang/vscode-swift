@@ -30,6 +30,7 @@ import { LSPLogger, LSPOutputChannel } from "./LSPOutputChannel";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { promptForDiagnostics } from "../commands/captureDiagnostics";
 import { activateGetReferenceDocument } from "./getReferenceDocument";
+import { uriConverters } from "./uriConverters";
 
 interface SourceKitLogMessageParams extends langclient.LogMessageParams {
     logName?: string;
@@ -574,6 +575,7 @@ export class LanguageClientManager {
                     };
                 })(),
             },
+            uriConverters: uriConverters,
             errorHandler,
             // Avoid attempting to reinitialize multiple times. If we fail to initialize
             // we aren't doing anything different the second time and so will fail again.
