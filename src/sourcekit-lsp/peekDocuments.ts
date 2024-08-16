@@ -21,9 +21,8 @@ export function activatePeekDocuments(client: langclient.LanguageClient): vscode
         PeekDocumentsRequest.method,
         async (params: PeekDocumentsParams) => {
             const locations = params.locations.map(uri => {
-                const url = new URL(uri);
                 const location = new vscode.Location(
-                    vscode.Uri.parse(url.href, true),
+                    client.protocol2CodeConverter.asUri(uri),
                     new vscode.Position(0, 0)
                 );
 
@@ -32,10 +31,7 @@ export function activatePeekDocuments(client: langclient.LanguageClient): vscode
 
             await vscode.commands.executeCommand(
                 "editor.action.peekLocations",
-                vscode.Uri.from({
-                    scheme: "file",
-                    path: new URL(params.uri).pathname,
-                }),
+                client.protocol2CodeConverter.asUri(params.uri),
                 new vscode.Position(params.position.line, params.position.character),
                 locations,
                 "peek"

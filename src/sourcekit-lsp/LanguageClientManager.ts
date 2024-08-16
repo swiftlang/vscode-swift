@@ -44,6 +44,7 @@ export class LanguageClientManager {
 
     // document selector used by language client
     static appleLangDocumentSelector = [
+        { scheme: "sourcekit-lsp", language: "swift" },
         { scheme: "file", language: "swift" },
         { scheme: "untitled", language: "swift" },
         { scheme: "file", language: "objective-c" },
