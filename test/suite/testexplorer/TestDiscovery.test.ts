@@ -31,6 +31,7 @@ suite("TestDiscovery Suite", () => {
     interface SimplifiedTestItem {
         id: string;
         children: SimplifiedTestItem[];
+        tags: readonly { id: string }[];
     }
 
     function testControllerChildren(collection: vscode.TestItemCollection): SimplifiedTestItem[] {
@@ -38,7 +39,11 @@ suite("TestDiscovery Suite", () => {
             collection,
             (acc, item) => [
                 ...acc,
-                { id: item.id, children: testControllerChildren(item.children) },
+                {
+                    id: item.id,
+                    tags: [...item.tags.map(tag => ({ id: tag.id }))],
+                    children: testControllerChildren(item.children),
+                },
             ],
             [] as SimplifiedTestItem[]
         );
@@ -77,7 +82,7 @@ suite("TestDiscovery Suite", () => {
         updateTests(testController, [testItem("bar")]);
 
         assert.deepStrictEqual(testControllerChildren(testController.items), [
-            { id: "bar", children: [] },
+            { id: "bar", tags: [{ id: "XCTest" }, { id: "runnable" }], children: [] },
         ]);
     });
 
@@ -109,9 +114,10 @@ suite("TestDiscovery Suite", () => {
         assert.deepStrictEqual(testControllerChildren(testController.items), [
             {
                 id: "foo",
+                tags: [{ id: "XCTest" }, { id: "runnable" }],
                 children: [
-                    { id: "baz", children: [] },
-                    { id: "bar", children: [] },
+                    { id: "baz", tags: [{ id: "XCTest" }, { id: "runnable" }], children: [] },
+                    { id: "bar", tags: [{ id: "XCTest" }, { id: "runnable" }], children: [] },
                 ],
             },
         ]);
@@ -140,7 +146,13 @@ suite("TestDiscovery Suite", () => {
         updateTests(testController, [newFoo]);
 
         assert.deepStrictEqual(testControllerChildren(testController.items), [
-            { id: "foo", children: [{ id: "bar", children: [] }] },
+            {
+                id: "foo",
+                tags: [{ id: "XCTest" }, { id: "runnable" }],
+                children: [
+                    { id: "bar", tags: [{ id: "XCTest" }, { id: "runnable" }], children: [] },
+                ],
+            },
         ]);
         assert.deepStrictEqual(testController.items.get("foo")?.uri, newLocation.uri);
         assert.deepStrictEqual(testController.items.get("foo")?.label, "New Label");
@@ -168,7 +180,57 @@ suite("TestDiscovery Suite", () => {
         updateTestsFromClasses(testController, swiftPackage, [item]);
 
         assert.deepStrictEqual(testControllerChildren(testController.items), [
-            { id: "TestTarget", children: [{ id: "bar", children: [] }] },
+            {
+                id: "TestTarget",
+                tags: [{ id: "test-target" }, { id: "runnable" }],
+                children: [
+                    { id: "bar", tags: [{ id: "XCTest" }, { id: "runnable" }], children: [] },
+                ],
+            },
+        ]);
+    });
+
+    test("Children in suites with tags inherit the suite's tags", async () => {
+        const testSuite = testItem("suite");
+        testSuite.tags = [{ id: "rootTag" }];
+        const childSuite = testItem("childSuite");
+        childSuite.tags = [{ id: "childSuiteTag" }];
+        const childTest = testItem("childTest");
+        childTest.tags = [{ id: "childTestTag" }];
+        childSuite.children = [childTest];
+        testSuite.children = [childSuite];
+
+        updateTests(testController, [testSuite]);
+
+        assert.deepEqual(testControllerChildren(testController.items), [
+            {
+                id: "suite",
+                tags: [{ id: "XCTest" }, { id: "rootTag" }, { id: "runnable" }],
+                children: [
+                    {
+                        id: "childSuite",
+                        tags: [
+                            { id: "XCTest" },
+                            { id: "childSuiteTag" },
+                            { id: "rootTag" },
+                            { id: "runnable" },
+                        ],
+                        children: [
+                            {
+                                id: "childTest",
+                                children: [],
+                                tags: [
+                                    { id: "XCTest" },
+                                    { id: "childTestTag" },
+                                    { id: "childSuiteTag" },
+                                    { id: "rootTag" },
+                                    { id: "runnable" },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
         ]);
     });
 });
