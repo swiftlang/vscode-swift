@@ -59,6 +59,7 @@ module.exports = defineConfig({
         // you can specify additional test configurations, too
     ],
     coverage: {
+        includeAll: true,
         include: ["**/src/**"],
         reporter: ["text", "html"],
     },
