@@ -226,8 +226,7 @@
           "swift.path": {
             "type": "string",
             "default": "",
-            "markdownDescription": "Override the default path of the folder containing the Swift executables. The default is to look in the `PATH` environment variable. This path is also used to search for other executables used by the extension like `sourcekit-lsp` and `lldb`.",
-            "order": 1
+            "markdownDescription": "Override the default path of the folder containing the Swift executables. The default is to look in the `PATH` environment variable. This path is also used to search for other executables used by the extension like `sourcekit-lsp` and `lldb`."
           },
           "swift.buildArguments": {
             "type": "array",
@@ -235,8 +234,16 @@
             "items": {
               "type": "string"
             },
-            "markdownDescription": "Additional arguments to pass to `swift build`. Keys and values should be provided as individual entries in the list. If you have created a copy of the build task in `tasks.json` then these build arguments will not be propogated to that task.",
-            "order": 2
+            "markdownDescription": "Additional arguments to pass to `swift build`. Keys and values should be provided as individual entries in the list. If you have created a copy of the build task in `tasks.json` then these build arguments will not be propogated to that task."
+          },
+          "swift.testBuildArguments": {
+            "type": "array",
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "markdownDescription": "Additional arguments to pass to the `swift test` or `swift build` commands used when building and running tests from within VS Code.",
+            "scope": "machine-overridable"
           },
           "swift.testEnvironmentVariables": {
             "type": "object",
@@ -247,8 +254,7 @@
             },
             "default": {},
             "markdownDescription": "Environment variables to set when running tests. To set environment variables when debugging an application you should edit the `env` field in the relevant `launch.json` configuration.",
-            "scope": "machine-overridable",
-            "order": 3
+            "scope": "machine-overridable"
           },
           "swift.sanitizer": {
             "type": "string",
@@ -259,29 +265,25 @@
               "address"
             ],
             "markdownDescription": "Runtime [sanitizer instrumentation](https://www.swift.org/documentation/server/guides/llvm-sanitizers.html).",
-            "scope": "machine-overridable",
-            "order": 4
+            "scope": "machine-overridable"
           },
           "swift.searchSubfoldersForPackages": {
             "type": "boolean",
             "default": false,
             "markdownDescription": "Search sub-folders of workspace folder for Swift Packages at start up.",
-            "scope": "machine-overridable",
-            "order": 5
+            "scope": "machine-overridable"
           },
           "swift.autoGenerateLaunchConfigurations": {
             "type": "boolean",
             "default": true,
             "markdownDescription": "When loading a `Package.swift`, auto-generate `launch.json` configurations for running any executables.",
-            "scope": "machine-overridable",
-            "order": 6
+            "scope": "machine-overridable"
           },
           "swift.disableAutoResolve": {
             "type": "boolean",
             "default": false,
             "markdownDescription": "Disable automatic running of `swift package resolve` whenever the `Package.swift` or `Package.resolve` files are updated. This will also disable searching for command plugins and the initial test discovery process.",
-            "scope": "machine-overridable",
-            "order": 7
+            "scope": "machine-overridable"
           },
           "swift.diagnosticsCollection": {
             "type": "string",
@@ -300,8 +302,7 @@
               "When merging diagnostics, give precedence to diagnostics from `swiftc`.",
               "When merging diagnostics, give precedence to diagnostics from `SourceKit`.",
               "Keep diagnostics from all providers."
-            ],
-            "order": 8
+            ]
           },
           "swift.diagnosticsStyle": {
             "type": "string",
@@ -316,14 +317,12 @@
               "Use whichever diagnostics style `swiftc` produces by default.",
               "Use the `llvm` diagnostic style. This allows the parsing of \"notes\".",
               "Use the `swift` diagnostic style. This means that \"notes\" will not be parsed. This option has no effect in Swift versions prior to 5.10."
-            ],
-            "order": 9
+            ]
           },
           "swift.backgroundCompilation": {
             "type": "boolean",
             "default": false,
-            "markdownDescription": "**Experimental**: Run `swift build` in the background whenever a file is saved. It is possible the background compilation will already be running when you attempt a compile yourself, so this is disabled by default.",
-            "order": 10
+            "markdownDescription": "**Experimental**: Run `swift build` in the background whenever a file is saved. It is possible the background compilation will already be running when you attempt a compile yourself, so this is disabled by default."
           },
           "swift.actionAfterBuildError": {
             "type": "string",
@@ -337,33 +336,28 @@
               "Focus on Problems View",
               "Focus on Build Task Terminal"
             ],
-            "markdownDescription": "Action after a Build task generates errors.",
-            "order": 11
+            "markdownDescription": "Action after a Build task generates errors."
           },
           "swift.buildPath": {
             "type": "string",
             "default": "",
-            "markdownDescription": "The path to a directory that will be used for build artifacts. This path will be added to all swift package manager commands that are executed by vscode-swift extension via `--scratch-path` option. When no value provided - nothing gets passed to swift package manager and it will use its default value of `.build` folder in the workspace.\n\nYou can use absolute path for directory or the relative path, which will use the workspace path as a base. Note that VS Code does not respect tildes (`~`) in paths which represents user home folder under *nix systems.",
-            "order": 12
+            "markdownDescription": "The path to a directory that will be used for build artifacts. This path will be added to all swift package manager commands that are executed by vscode-swift extension via `--scratch-path` option. When no value provided - nothing gets passed to swift package manager and it will use its default value of `.build` folder in the workspace.\n\nYou can use absolute path for directory or the relative path, which will use the workspace path as a base. Note that VS Code does not respect tildes (`~`) in paths which represents user home folder under *nix systems."
           },
           "swift.disableSwiftPackageManagerIntegration": {
             "type": "boolean",
             "default": false,
-            "markdownDescription": "Disables automated Build Tasks, Package Dependency view, Launch configuration generation and TestExplorer.",
-            "order": 13
+            "markdownDescription": "Disables automated Build Tasks, Package Dependency view, Launch configuration generation and TestExplorer."
           },
           "swift.warnAboutSymlinkCreation": {
             "type": "boolean",
             "default": true,
             "markdownDescription": "Controls whether or not the extension will warn about being unable to create symlinks. (Windows only)",
-            "scope": "application",
-            "order": 14
+            "scope": "application"
           },
           "swift.enableTerminalEnvironment": {
             "type": "boolean",
             "default": true,
-            "markdownDescription": "Controls whether or not the extension will contribute environment variables defined in `Swift: Environment Variables` to the integrated terminal. If this is set to `true` and a custom `Swift: Path` is also set then the swift path is appended to the terminal's `PATH`.",
-            "order": 15
+            "markdownDescription": "Controls whether or not the extension will contribute environment variables defined in `Swift: Environment Variables` to the integrated terminal. If this is set to `true` and a custom `Swift: Path` is also set then the swift path is appended to the terminal's `PATH`."
           }
         }
       },

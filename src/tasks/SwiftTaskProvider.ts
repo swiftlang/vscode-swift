@@ -15,13 +15,14 @@
 import * as vscode from "vscode";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderContext } from "../FolderContext";
-import { Product, TargetType } from "../SwiftPackage";
+import { Product } from "../SwiftPackage";
 import configuration, { ShowBuildStatusOptions } from "../configuration";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { SwiftExecution } from "../tasks/SwiftExecution";
 import { resolveTaskCwd } from "../utilities/tasks";
+import { BuildConfigurationFactory } from "../debugger/buildConfig";
 
 /**
  * References:
@@ -54,25 +55,6 @@ interface TaskPlatformSpecificConfig {
 
 export interface SwiftTask extends vscode.Task {
     execution: SwiftExecution;
-}
-
-/** flag for enabling test discovery */
-function testDiscoveryFlag(ctx: FolderContext): string[] {
-    // Test discovery is only available in SwiftPM 5.1 and later.
-    if (ctx.workspaceContext.swiftVersion.isLessThan(new Version(5, 1, 0))) {
-        return [];
-    }
-    // Test discovery is always enabled on Darwin.
-    if (process.platform !== "darwin") {
-        const hasLinuxMain = ctx.linuxMain.exists;
-        const testDiscoveryByDefault = ctx.workspaceContext.swiftVersion.isGreaterThanOrEqual(
-            new Version(5, 4, 0)
-        );
-        if (hasLinuxMain || !testDiscoveryByDefault) {
-            return ["--enable-test-discovery"];
-        }
-    }
-    return [];
 }
 
 /** arguments for generating debug builds */
@@ -145,24 +127,11 @@ export function createBuildAllTask(
     folderContext: FolderContext,
     release: boolean = false
 ): SwiftTask {
-    let additionalArgs = buildOptions(folderContext.workspaceContext.toolchain);
-    if (folderContext.swiftPackage.getTargets(TargetType.test).length > 0) {
-        additionalArgs.push(...testDiscoveryFlag(folderContext));
-    }
+    const args = BuildConfigurationFactory.buildAll(folderContext, false, release).args;
     let buildTaskName = buildAllTaskName(release);
 
     if (folderContext.relativePath.length > 0) {
         buildTaskName += ` (${folderContext.relativePath})`;
-    }
-    if (release) {
-        additionalArgs = [...additionalArgs, "-c", "release"];
-    }
-    // don't build tests for iOS etc as they don't compile
-    if (folderContext.workspaceContext.toolchain.buildFlags.getDarwinTarget() === undefined) {
-        additionalArgs = ["--build-tests", ...additionalArgs];
-        if (release) {
-            additionalArgs = [...additionalArgs, "-Xswiftc", "-enable-testing"];
-        }
     }
 
     // Create one Build All task per folder context, since this can be called multiple
@@ -174,7 +143,7 @@ export function createBuildAllTask(
     }
 
     const task = createSwiftTask(
-        ["build", ...additionalArgs],
+        args,
         buildTaskName,
         {
             group: vscode.TaskGroup.Build,

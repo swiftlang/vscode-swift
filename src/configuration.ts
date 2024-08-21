@@ -57,6 +57,8 @@ export interface DebuggerConfiguration {
 export interface FolderConfiguration {
     /** Environment variables to set when running tests */
     readonly testEnvironmentVariables: { [key: string]: string };
+    /** Extra arguments to set when building tests */
+    readonly testBuildArguments: string[];
     /** search sub-folder of workspace folder for Swift Packages */
     readonly searchSubfoldersForPackages: boolean;
     /** auto-generate launch.json configurations */
@@ -118,6 +120,12 @@ const configuration = {
                 return vscode.workspace
                     .getConfiguration("swift", workspaceFolder)
                     .get<{ [key: string]: string }>("testEnvironmentVariables", {});
+            },
+            /** Extra arguments to pass to swift test and swift build when running and debugging tests. */
+            get testBuildArguments(): string[] {
+                return vscode.workspace
+                    .getConfiguration("swift", workspaceFolder)
+                    .get<string[]>("testBuildArguments", []);
             },
             /** auto-generate launch.json configurations */
             get autoGenerateLaunchConfigurations(): boolean {

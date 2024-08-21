@@ -2,7 +2,11 @@ import PackageLib
 import XCTest
 
 final class PassingXCTestSuite: XCTestCase {
-  func testPassing() throws {}
+  func testPassing() throws {
+    #if !TEST_ARGUMENT_SET_VIA_TEST_BUILD_ARGUMENTS_SETTING
+    XCTFail("Expected TEST_ARGUMENT_SET_VIA_TEST_BUILD_ARGUMENTS_SETTING to be set at compilation")
+    #endif
+  }
 }
 
 // Should not run when PassingXCTestSuite is run.
@@ -43,7 +47,11 @@ import Testing
 
 @Test func topLevelTestPassing() {
   print("A print statement in a test.")
+  #if !TEST_ARGUMENT_SET_VIA_TEST_BUILD_ARGUMENTS_SETTING
+    Issue.record("Expected TEST_ARGUMENT_SET_VIA_TEST_BUILD_ARGUMENTS_SETTING to be set at compilation")
+  #endif
 }
+
 @Test func topLevelTestFailing() {
   #expect(1 == 2)
 }
