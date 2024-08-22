@@ -556,8 +556,9 @@ export class TestingDebugConfigurationFactory {
 export function getFolderAndNameSuffix(
     ctx: FolderContext,
     expandEnvVariables = false,
-    nodePath: typeof path = path
+    platform?: "posix" | "win32"
 ): { folder: string; nameSuffix: string } {
+    const nodePath = platform === "posix" ? path.posix : platform === "win32" ? path.win32 : path;
     const workspaceFolder = expandEnvVariables
         ? ctx.workspaceFolder.uri.fsPath
         : `\${workspaceFolder:${ctx.workspaceFolder.name}}`;

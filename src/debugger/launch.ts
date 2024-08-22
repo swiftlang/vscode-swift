@@ -108,8 +108,8 @@ export function getLaunchConfiguration(
 // Return array of DebugConfigurations for executables based on what is in Package.swift
 function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfiguration[] {
     const executableProducts = ctx.swiftPackage.executableProducts;
-    const { folder, nameSuffix } = getFolderAndNameSuffix(ctx, undefined, path.posix);
-    const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, false, path.posix);
+    const { folder, nameSuffix } = getFolderAndNameSuffix(ctx, undefined, "posix");
+    const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, false, "posix");
     return executableProducts.flatMap(product => {
         const baseConfig = {
             type: DebugAdapter.adapterName,

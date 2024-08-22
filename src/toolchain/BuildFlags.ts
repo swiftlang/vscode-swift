@@ -101,8 +101,10 @@ export class BuildFlags {
     static buildDirectoryFromWorkspacePath(
         workspacePath: string,
         absolute = false,
-        nodePath: typeof path = path
+        platform?: "posix" | "win32"
     ): string {
+        const nodePath =
+            platform === "posix" ? path.posix : platform === "win32" ? path.win32 : path;
         const buildPath = configuration.buildPath.length > 0 ? configuration.buildPath : ".build";
         if (!nodePath.isAbsolute(buildPath) && absolute) {
             return nodePath.join(workspacePath, buildPath);
