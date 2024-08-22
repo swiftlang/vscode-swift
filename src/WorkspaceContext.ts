@@ -25,7 +25,7 @@ import { TemporaryFolder } from "./utilities/tempFolder";
 import { TaskManager } from "./tasks/TaskManager";
 import { BackgroundCompilation } from "./BackgroundCompilation";
 import { makeDebugConfigurations } from "./debugger/launch";
-import configuration from "./configuration";
+import configuration, { Configuration, VSCodeConfiguration } from "./configuration";
 import contextKeys from "./contextKeys";
 import { setSnippetContextKey } from "./SwiftSnippets";
 import { CommentCompletionProviders } from "./editor/CommentCompletion";
@@ -49,6 +49,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public diagnostics: DiagnosticsManager;
     public subscriptions: vscode.Disposable[];
     public commentCompletionProvider: CommentCompletionProviders;
+    public configuration: Configuration;
     private lastFocusUri: vscode.Uri | undefined;
     private initialisationFinished = false;
 
@@ -64,6 +65,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.diagnostics = new DiagnosticsManager(this);
         this.currentDocument = null;
         this.commentCompletionProvider = new CommentCompletionProviders();
+        this.configuration = new VSCodeConfiguration();
 
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(async event => {
             // on runtime path config change, regenerate launch.json
@@ -103,24 +105,6 @@ export class WorkspaceContext implements vscode.Disposable {
                             );
                         }
                     });
-            }
-            // on change of swift debugger type
-            if (
-                event.affectsConfiguration("swift.debugger.useDebugAdapterFromToolchain") ||
-                event.affectsConfiguration("swift.debugger.path")
-            ) {
-                if (configuration.debugger.useDebugAdapterFromToolchain) {
-                    if (!(await DebugAdapter.verifyDebugAdapterExists(this))) {
-                        return;
-                    }
-                }
-                this.folders.forEach(
-                    async ctx =>
-                        await makeDebugConfigurations(
-                            ctx,
-                            "Launch configurations need to be updated after changing the debug adapter."
-                        )
-                );
             }
         });
         const backgroundCompilationOnDidSave = BackgroundCompilation.start(this);

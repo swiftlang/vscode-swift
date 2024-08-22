@@ -550,10 +550,10 @@
       {
         "title": "Debugger",
         "properties": {
-          "swift.debugger.useDebugAdapterFromToolchain": {
+          "swift.debugger.useCodeLLDB": {
             "type": "boolean",
             "default": false,
-            "markdownDescription": "Use lldb debug adapter packaged with Swift toolchain as your debug adapter. This is currently only available on Windows or platforms using Swift 6",
+            "markdownDescription": "Use the CodeLLDB extension for debugging instead of lldb-dap. Note: lldb-dap is not available in toolchains prior to Swift 6.0.0 and CodeLLDB will be used instead.",
             "order": 1
           },
           "swift.debugger.path": {
@@ -1036,12 +1036,12 @@
                   "array",
                   "string"
                 ],
-                "description": "Program arguments.",
+                "description": "Arguments to provide to the program.",
                 "default": []
               },
               "cwd": {
                 "type": "string",
-                "description": "Program working directory.",
+                "description": "The working directory that the program will be launched within.",
                 "default": "${workspaceRoot}"
               },
               "env": {
@@ -1237,9 +1237,9 @@
     "format": "prettier --check src test",
     "pretest": "npm run compile && find ./assets/test -type d -name '.build' -exec rm -rf {} + && find . -type d -name 'Package.resolved' -exec rm -rf {} + && tsc -p ./",
     "test": "vscode-test",
-    "integration-test": "vscode-test --label integrationTests",
-    "unit-test": "vscode-test --label unitTests",
-    "coverage": "npm run pretest && vscode-test --coverage",
+    "integration-test": "npm test -- --label integrationTests",
+    "unit-test": "npm test -- --label unitTests",
+    "coverage": "npm test -- --coverage",
     "compile-tests": "find ./assets/test -type d -name '.build' -exec rm -rf {} + && npm run compile && npm run esbuild",
     "package": "vsce package",
     "dev-package": "vsce package --no-update-package-json 1.10.8-dev",

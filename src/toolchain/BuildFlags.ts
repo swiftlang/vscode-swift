@@ -98,10 +98,14 @@ export class BuildFlags {
      * Get build path from configuration if exists or return a fallback .build directory in given workspace
      * @param filesystem path to workspace that will be used as a fallback loacation with .build directory
      */
-    static buildDirectoryFromWorkspacePath(workspacePath: string, absolute = false): string {
+    static buildDirectoryFromWorkspacePath(
+        workspacePath: string,
+        absolute = false,
+        nodePath: typeof path = path
+    ): string {
         const buildPath = configuration.buildPath.length > 0 ? configuration.buildPath : ".build";
-        if (!path.isAbsolute(buildPath) && absolute) {
-            return path.join(workspacePath, buildPath);
+        if (!nodePath.isAbsolute(buildPath) && absolute) {
+            return nodePath.join(workspacePath, buildPath);
         } else {
             return buildPath;
         }

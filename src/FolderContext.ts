@@ -22,6 +22,7 @@ import { WorkspaceContext, FolderEvent } from "./WorkspaceContext";
 import { BackgroundCompilation } from "./BackgroundCompilation";
 import { TaskQueue } from "./tasks/TaskQueue";
 import { isPathInsidePath } from "./utilities/filesystem";
+import { WorkspaceConfiguration } from "./configuration";
 
 export class FolderContext implements vscode.Disposable {
     private packageWatcher: PackageWatcher;
@@ -29,6 +30,9 @@ export class FolderContext implements vscode.Disposable {
     public hasResolveErrors = false;
     public testExplorer?: TestExplorer;
     public taskQueue: TaskQueue;
+    public get configuration(): WorkspaceConfiguration {
+        return this.workspaceContext.configuration.get(this.workspaceFolder);
+    }
 
     /**
      * FolderContext constructor

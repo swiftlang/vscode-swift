@@ -356,7 +356,6 @@ export class TestingDebugConfigurationFactory {
         return {
             type: DebugAdapter.adapterName,
             request: "custom",
-            sourceLanguages: ["swift"],
             name: `Test ${this.ctx.swiftPackage.name}`,
             targetCreateCommands: [`file -a ${arch} ${xctestPath}/xctest`],
             processCreateCommands: [
@@ -541,7 +540,6 @@ export class TestingDebugConfigurationFactory {
         return {
             type: DebugAdapter.adapterName,
             request: "launch",
-            sourceLanguages: ["swift"],
             name: `Test ${this.ctx.swiftPackage.name}`,
             cwd: folder,
             args: [],
@@ -557,7 +555,8 @@ export class TestingDebugConfigurationFactory {
 
 export function getFolderAndNameSuffix(
     ctx: FolderContext,
-    expandEnvVariables = false
+    expandEnvVariables = false,
+    nodePath: typeof path = path
 ): { folder: string; nameSuffix: string } {
     const workspaceFolder = expandEnvVariables
         ? ctx.workspaceFolder.uri.fsPath
@@ -568,7 +567,7 @@ export function getFolderAndNameSuffix(
         folder = workspaceFolder;
         nameSuffix = "";
     } else {
-        folder = path.join(workspaceFolder, ctx.relativePath);
+        folder = nodePath.join(workspaceFolder, ctx.relativePath);
         nameSuffix = ` (${ctx.relativePath})`;
     }
     return { folder: folder, nameSuffix: nameSuffix };

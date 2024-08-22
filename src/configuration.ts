@@ -47,8 +47,8 @@ export interface LSPConfiguration {
 
 /** debugger configuration */
 export interface DebuggerConfiguration {
-    /** Are we using debug adapter provided with Toolchain */
-    readonly useDebugAdapterFromToolchain: boolean;
+    /** Whether or not to use CodeLLDB for debugging instead of lldb-dap */
+    readonly useCodeLLDB: boolean;
     /** Return path to debug adapter */
     readonly customDebugAdapterPath: string;
 }
@@ -143,11 +143,10 @@ const configuration = {
     /** debugger configuration */
     get debugger(): DebuggerConfiguration {
         return {
-            /** Should we use the debug adapter included in the Toolchain or CodeLLDB */
-            get useDebugAdapterFromToolchain(): boolean {
+            get useCodeLLDB(): boolean {
                 return vscode.workspace
                     .getConfiguration("swift.debugger")
-                    .get<boolean>("useDebugAdapterFromToolchain", false);
+                    .get<boolean>("useCodeLLDB", false);
             },
             get customDebugAdapterPath(): string {
                 return vscode.workspace.getConfiguration("swift.debugger").get<string>("path", "");
@@ -300,3 +299,67 @@ const configuration = {
 };
 
 export default configuration;
+
+export interface SwiftConfiguration {
+    /** Environment variables to set when running tests */
+    readonly testEnvironmentVariables: { [key: string]: string };
+    /** search sub-folder of workspace folder for Swift Packages */
+    readonly searchSubfoldersForPackages: boolean;
+    /** auto-generate launch.json configurations */
+    readonly autoGenerateLaunchConfigurations: boolean;
+    /** disable automatic running of swift package resolve */
+    readonly disableAutoResolve: boolean;
+}
+
+export interface LaunchConfiguration {
+    configurations: vscode.DebugConfiguration[];
+}
+
+export interface ConfigurationSection {
+    get<T>(section: string, defaultValue: T): T;
+    update<T>(section: string, value: T): void;
+}
+
+export class WorkspaceConfiguration {
+    swift: SwiftConfiguration;
+    launch: LaunchConfiguration;
+
+    constructor(config: ConfigurationSection) {
+        this.swift = {
+            /** Environment variables to set when running tests */
+            get testEnvironmentVariables(): { [key: string]: string } {
+                return config.get<{ [key: string]: string }>("swift.testEnvironmentVariables", {});
+            },
+            /** auto-generate launch.json configurations */
+            get autoGenerateLaunchConfigurations(): boolean {
+                return config.get("swift.autoGenerateLaunchConfigurations", true);
+            },
+            /** disable automatic running of swift package resolve */
+            get disableAutoResolve(): boolean {
+                return config.get<boolean>("swift.disableAutoResolve", false);
+            },
+            /** search sub-folder of workspace folder for Swift Packages */
+            get searchSubfoldersForPackages(): boolean {
+                return config.get<boolean>("swift.searchSubfoldersForPackages", false);
+            },
+        };
+        this.launch = {
+            get configurations(): vscode.DebugConfiguration[] {
+                return config.get("launch.configurations", []);
+            },
+            set configurations(configurations: vscode.DebugConfiguration[]) {
+                config.update("launch.configurations", configurations);
+            },
+        };
+    }
+}
+
+export interface Configuration {
+    get(scope?: vscode.ConfigurationScope): WorkspaceConfiguration;
+}
+
+export class VSCodeConfiguration implements Configuration {
+    get(scope?: vscode.ConfigurationScope): WorkspaceConfiguration {
+        return new WorkspaceConfiguration(vscode.workspace.getConfiguration(undefined, scope));
+    }
+}
