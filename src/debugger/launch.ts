@@ -110,7 +110,6 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
     const executableProducts = ctx.swiftPackage.executableProducts;
     const { folder, nameSuffix } = getFolderAndNameSuffix(ctx, undefined, path.posix);
     const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, false, path.posix);
-    const binaryExtension = process.platform === "win32" ? ".exe" : "";
     return executableProducts.flatMap(product => {
         const baseConfig = {
             type: DebugAdapter.adapterName,
@@ -123,13 +122,13 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
             {
                 ...baseConfig,
                 name: `Debug ${product.name}${nameSuffix}`,
-                program: path.posix.join(buildDirectory, "debug", product.name + binaryExtension),
+                program: path.posix.join(buildDirectory, "debug", product.name),
                 preLaunchTask: `swift: Build Debug ${product.name}${nameSuffix}`,
             },
             {
                 ...baseConfig,
                 name: `Release ${product.name}${nameSuffix}`,
-                program: path.posix.join(buildDirectory, "release", product.name + binaryExtension),
+                program: path.posix.join(buildDirectory, "release", product.name),
                 preLaunchTask: `swift: Build Release ${product.name}${nameSuffix}`,
             },
         ];
