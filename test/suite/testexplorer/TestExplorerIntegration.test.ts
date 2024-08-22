@@ -31,6 +31,10 @@ import { TestRunProxy } from "../../../src/TestExplorer/TestRunner";
 import { Version } from "../../../src/utilities/version";
 import { TestKind } from "../../../src/TestExplorer/TestKind";
 import { mockNamespace } from "../../unit-tests/MockUtils";
+import {
+    MessageRenderer,
+    TestSymbol,
+} from "../../../src/TestExplorer/TestParsers/SwiftTestingOutputParser";
 
 suite("Test Explorer Suite", function () {
     const MAX_TEST_RUN_TIME_MINUTES = 5;
@@ -196,7 +200,12 @@ suite("Test Explorer Suite", function () {
                 failed: [
                     {
                         test: "PackageTests.testWithKnownIssueAndUnknownIssue()",
-                        issues: ["Expectation failed: 2 == 3"],
+                        issues: [
+                            MessageRenderer.render({
+                                symbol: TestSymbol.fail,
+                                text: "Expectation failed: 2 == 3",
+                            }),
+                        ],
                     },
                 ],
             });
@@ -387,7 +396,12 @@ suite("Test Explorer Suite", function () {
                         failed: [
                             {
                                 test: "PackageTests.topLevelTestFailing()",
-                                issues: ["Expectation failed: 1 == 2"],
+                                issues: [
+                                    MessageRenderer.render({
+                                        symbol: TestSymbol.fail,
+                                        text: "Expectation failed: 1 == 2",
+                                    }),
+                                ],
                             },
                         ],
                     });
@@ -399,13 +413,16 @@ suite("Test Explorer Suite", function () {
                         runProfile,
                         "PackageTests.MixedSwiftTestingSuite"
                     );
+
                     assertTestResults(testRun, {
                         passed: ["PackageTests.MixedSwiftTestingSuite/testPassing()"],
                         skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],
                         failed: [
                             {
                                 test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
-                                issues: ["testFailing() \u{203A} Expectation failed: 1 == 2"],
+                                issues: [
+                                    `testFailing() \u{203A} ${MessageRenderer.render({ symbol: TestSymbol.fail, text: "Expectation failed: 1 == 2" })}`,
+                                ],
                             },
                             {
                                 issues: [],
@@ -429,7 +446,12 @@ suite("Test Explorer Suite", function () {
                         ],
                         failed: [
                             {
-                                issues: ["2 \u{203A} Expectation failed: (arg → 2) != 2"],
+                                issues: [
+                                    `2 \u{203A} ${MessageRenderer.render({
+                                        symbol: TestSymbol.fail,
+                                        text: "Expectation failed: (arg → 2) != 2",
+                                    })}`,
+                                ],
                                 test: "PackageTests.parameterizedTest(_:)/PackageTests.swift:51:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])",
                             },
                             {
@@ -453,7 +475,9 @@ suite("Test Explorer Suite", function () {
                         failed: [
                             {
                                 test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
-                                issues: ["testFailing() \u{203A} Expectation failed: 1 == 2"],
+                                issues: [
+                                    `testFailing() \u{203A} ${MessageRenderer.render({ symbol: TestSymbol.fail, text: "Expectation failed: 1 == 2" })}`,
+                                ],
                             },
                             {
                                 issues: [],
@@ -480,7 +504,9 @@ suite("Test Explorer Suite", function () {
                         failed: [
                             {
                                 test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
-                                issues: ["testFailing() \u{203A} Expectation failed: 1 == 2"],
+                                issues: [
+                                    `testFailing() \u{203A} ${MessageRenderer.render({ symbol: TestSymbol.fail, text: "Expectation failed: 1 == 2" })}`,
+                                ],
                             },
                             {
                                 issues: [],
