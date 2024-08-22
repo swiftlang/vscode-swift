@@ -16,12 +16,20 @@ import * as assert from "assert";
 import { DebugAdapter } from "../../../src/debugger/debugAdapter";
 import { LLDBDebugConfigurationProvider } from "../../../src/debugger/debugAdapterFactory";
 import { Version } from "../../../src/utilities/version";
+import { mockNamespace } from "../MockUtils";
+import configuration from "../../../src/configuration";
+import { when } from "ts-mockito";
 
 suite("Debug Adapter Factory Test Suite", () => {
     const swift6 = new Version(6, 0, 0);
     const swift510 = new Version(5, 10, 1);
+    const mockDebugConfig = mockNamespace(configuration, "debugger");
 
     suite("LLDBDebugConfigurationProvider Test Suite", () => {
+        setup(() => {
+            when(mockDebugConfig.useCodeLLDB).thenReturn(false);
+        });
+
         test("uses lldb-dap for swift versions >=6.0.0", async () => {
             const configProvider = new LLDBDebugConfigurationProvider("darwin", swift6);
             const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
@@ -35,6 +43,19 @@ suite("Debug Adapter Factory Test Suite", () => {
 
         test("delegates to CodeLLDB for swift versions <6.0.0", async () => {
             const configProvider = new LLDBDebugConfigurationProvider("darwin", swift510);
+            const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
+                name: "Test Launch Config",
+                type: DebugAdapter.adapterName,
+                request: "launch",
+                program: "${workspaceFolder}/.build/debug/executable",
+            });
+            assert.strictEqual(launchConfig.type, "lldb");
+            assert.deepStrictEqual(launchConfig.sourceLanguages, ["swift"]);
+        });
+
+        test("delegates to CodeLLDB on Swift 6.0.0 if setting swift.debugger.useCodeLLDB is explicitly enabled", async () => {
+            when(mockDebugConfig.useCodeLLDB).thenReturn(true);
+            const configProvider = new LLDBDebugConfigurationProvider("darwin", swift6);
             const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
                 name: "Test Launch Config",
                 type: DebugAdapter.adapterName,
