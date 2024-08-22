@@ -19,6 +19,7 @@ import { BuildFlags } from "../toolchain/BuildFlags";
 import { stringArrayInEnglish, swiftLibraryPathKey, swiftRuntimeEnv } from "../utilities/utilities";
 import { DebugAdapter } from "./debugAdapter";
 import { getFolderAndNameSuffix } from "./buildConfig";
+import configuration from "../configuration";
 
 /**
  * Edit launch.json based on contents of Swift Package.
@@ -28,10 +29,11 @@ import { getFolderAndNameSuffix } from "./buildConfig";
  * @param yes automatically answer yes to dialogs
  */
 export async function makeDebugConfigurations(ctx: FolderContext, message?: string, yes = false) {
-    if (!ctx.configuration.swift.autoGenerateLaunchConfigurations) {
+    if (!configuration.folder(ctx.workspaceFolder).autoGenerateLaunchConfigurations) {
         return;
     }
-    const launchConfigs = ctx.configuration.launch.configurations;
+    const wsLaunchSection = vscode.workspace.getConfiguration("launch", ctx.folder);
+    const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
     // list of keys that can be updated in config merge
     const keysToUpdate = [
         "program",
@@ -87,7 +89,11 @@ export async function makeDebugConfigurations(ctx: FolderContext, message?: stri
     }
 
     if (edited) {
-        ctx.configuration.launch.configurations = launchConfigs;
+        await wsLaunchSection.update(
+            "configurations",
+            launchConfigs,
+            vscode.ConfigurationTarget.WorkspaceFolder
+        );
     }
 }
 

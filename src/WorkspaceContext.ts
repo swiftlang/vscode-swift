@@ -25,7 +25,7 @@ import { TemporaryFolder } from "./utilities/tempFolder";
 import { TaskManager } from "./tasks/TaskManager";
 import { BackgroundCompilation } from "./BackgroundCompilation";
 import { makeDebugConfigurations } from "./debugger/launch";
-import configuration, { Configuration, VSCodeConfiguration } from "./configuration";
+import configuration from "./configuration";
 import contextKeys from "./contextKeys";
 import { setSnippetContextKey } from "./SwiftSnippets";
 import { CommentCompletionProviders } from "./editor/CommentCompletion";
@@ -49,7 +49,6 @@ export class WorkspaceContext implements vscode.Disposable {
     public diagnostics: DiagnosticsManager;
     public subscriptions: vscode.Disposable[];
     public commentCompletionProvider: CommentCompletionProviders;
-    public configuration: Configuration;
     private lastFocusUri: vscode.Uri | undefined;
     private initialisationFinished = false;
 
@@ -65,7 +64,6 @@ export class WorkspaceContext implements vscode.Disposable {
         this.diagnostics = new DiagnosticsManager(this);
         this.currentDocument = null;
         this.commentCompletionProvider = new CommentCompletionProviders();
-        this.configuration = new VSCodeConfiguration();
 
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(async event => {
             // on runtime path config change, regenerate launch.json
