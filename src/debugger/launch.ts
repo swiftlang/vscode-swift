@@ -115,7 +115,7 @@ export function getLaunchConfiguration(
 function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfiguration[] {
     const executableProducts = ctx.swiftPackage.executableProducts;
     const { folder, nameSuffix } = getFolderAndNameSuffix(ctx, undefined, "posix");
-    const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, false, "posix");
+    const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true, "posix");
     return executableProducts.flatMap(product => {
         const baseConfig = {
             type: DebugAdapter.adapterName,
