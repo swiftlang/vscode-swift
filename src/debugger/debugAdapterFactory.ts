@@ -20,20 +20,18 @@ import { Version } from "../utilities/version";
 
 export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
     class LLDBDebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFactory {
-        createDebugAdapterDescriptor(
+        async createDebugAdapterDescriptor(
             _session: vscode.DebugSession,
             executable: vscode.DebugAdapterExecutable | undefined
-        ): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
+        ): Promise<vscode.DebugAdapterDescriptor> {
             if (executable) {
                 // make VS Code launch the debug adapter executable
                 return executable;
             }
 
-            return DebugAdapter.debugAdapterPath(workspaceContext.toolchain)
-                .then(path =>
-                    DebugAdapter.verifyDebugAdapterExists(workspaceContext).then(() => path)
-                )
-                .then(path => new vscode.DebugAdapterExecutable(path, [], {}));
+            const adapterPath = await DebugAdapter.debugAdapterPath(workspaceContext.toolchain);
+            await DebugAdapter.verifyDebugAdapterExists(workspaceContext);
+            return new vscode.DebugAdapterExecutable(adapterPath, [], {});
         }
     }
 
@@ -83,7 +81,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             launchConfig.program += ".exe";
         }
         // Delegate to CodeLLDB if that's the debug adapter we have selected
-        if (DebugAdapter.getDebugAdapter(this.swiftVersion) === "lldb-vscode") {
+        if (DebugAdapter.getDebugAdapterType(this.swiftVersion) === "lldb-vscode") {
             launchConfig.type = "lldb";
             launchConfig.sourceLanguages = ["swift"];
         }
