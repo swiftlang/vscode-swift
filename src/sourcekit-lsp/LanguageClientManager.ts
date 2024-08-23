@@ -658,9 +658,15 @@ export class LanguageClientManager {
                     this.legacyInlayHints = activateLegacyInlayHints(client);
                 }
 
+                // TODO: This may have to be adjusted to the version
+                // https://github.com/swiftlang/sourcekit-lsp/pull/1639
+                // is merged to
+                if (this.workspaceContext.swiftVersion.isLessThan(new Version(6, 1, 0))) {
+                    this.legacyGetReferenceDocument = activateLegacyGetReferenceDocument(client);
+                    this.workspaceContext.subscriptions.push(this.legacyGetReferenceDocument);
+                }
+
                 this.peekDocuments = activatePeekDocuments(client);
-                this.legacyGetReferenceDocument = activateLegacyGetReferenceDocument(client);
-                this.workspaceContext.subscriptions.push(this.legacyGetReferenceDocument);
             })
             .catch(reason => {
                 this.workspaceContext.outputChannel.log(`${reason}`);
