@@ -57,7 +57,7 @@ export const PeekDocumentsRequest = new langclient.RequestType<
 >("workspace/peekDocuments");
 
 // Get Reference Document
-export interface GetReferenceDocumentParams {
+export interface LegacyGetReferenceDocumentParams {
     /**
      * The `DocumentUri` of the custom scheme url for which content is required
      */
@@ -67,7 +67,7 @@ export interface GetReferenceDocumentParams {
 /**
  * Response containing `content` of `GetReferenceDocumentRequest`
  */
-export interface GetReferenceDocumentResult {
+export interface LegacyGetReferenceDocumentResult {
     content: string;
 }
 
@@ -75,9 +75,9 @@ export interface GetReferenceDocumentResult {
  * Request from the client to the server asking for contents of a URI having a custom scheme
  * For example: "sourcekit-lsp:"
  */
-export const GetReferenceDocumentRequest = new langclient.RequestType<
-    GetReferenceDocumentParams,
-    GetReferenceDocumentResult,
+export const LegacyGetReferenceDocumentRequest = new langclient.RequestType<
+    LegacyGetReferenceDocumentParams,
+    LegacyGetReferenceDocumentResult,
     unknown
 >("workspace/getReferenceDocument");
 
