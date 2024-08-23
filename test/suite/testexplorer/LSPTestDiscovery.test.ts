@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as assert from "assert";
+import { strict as assert } from "assert";
 import * as vscode from "vscode";
 import * as ls from "vscode-languageserver-protocol";
-import * as p2c from "vscode-languageclient/lib/common/protocolConverter";
+import * as p2c from "vscode-languageclient/$test/common/protocolConverter";
 import { beforeEach } from "mocha";
 import { InitializeResult, RequestType } from "vscode-languageclient";
 import { LSPTestDiscovery } from "../../../src/TestExplorer/LSPTestDiscovery";
@@ -55,7 +55,7 @@ class TestLanguageClient {
         };
     }
     get protocol2CodeConverter(): p2c.Converter {
-        return p2c.createConverter(undefined, true, true);
+        return p2c.createConverter(undefined, true, true, true);
     }
 
     sendRequest<P, R, E>(type: RequestType<P, R, E>): Promise<R> {

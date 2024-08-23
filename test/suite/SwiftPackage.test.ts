@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as assert from "assert";
+import { strict as assert } from "assert";
 import { testAssetUri } from "../fixtures";
 import { SwiftPackage } from "../../src/SwiftPackage";
 import { SwiftToolchain } from "../../src/toolchain/toolchain";

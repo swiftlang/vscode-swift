@@ -29,7 +29,7 @@ import { DiagnosticsManager } from "../DiagnosticsManager";
 import { LSPLogger, LSPOutputChannel } from "./LSPOutputChannel";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { promptForDiagnostics } from "../commands/captureDiagnostics";
-import { activateGetReferenceDocument } from "./getReferenceDocument";
+import { activateLegacyGetReferenceDocument } from "./getReferenceDocument";
 
 interface SourceKitLogMessageParams extends langclient.LogMessageParams {
     logName?: string;
@@ -113,7 +113,7 @@ export class LanguageClientManager {
     private cancellationToken?: vscode.CancellationTokenSource;
     private legacyInlayHints?: vscode.Disposable;
     private peekDocuments?: vscode.Disposable;
-    private getReferenceDocument?: vscode.Disposable;
+    private legacyGetReferenceDocument?: vscode.Disposable;
     private restartedPromise?: Promise<void>;
     private currentWorkspaceFolder?: vscode.Uri;
     private waitingOnRestartCount: number;
@@ -251,7 +251,7 @@ export class LanguageClientManager {
         this.cancellationToken?.dispose();
         this.legacyInlayHints?.dispose();
         this.peekDocuments?.dispose();
-        this.getReferenceDocument?.dispose();
+        this.legacyGetReferenceDocument?.dispose();
         this.subscriptions.forEach(item => item.dispose());
         this.languageClient?.stop();
         this.namedOutputChannels.forEach(channel => channel.dispose());
@@ -402,8 +402,8 @@ export class LanguageClientManager {
         this.legacyInlayHints = undefined;
         this.peekDocuments?.dispose();
         this.peekDocuments = undefined;
-        this.getReferenceDocument?.dispose();
-        this.getReferenceDocument = undefined;
+        this.legacyGetReferenceDocument?.dispose();
+        this.legacyGetReferenceDocument = undefined;
         if (client) {
             this.cancellationToken?.cancel();
             this.cancellationToken?.dispose();
@@ -581,13 +581,19 @@ export class LanguageClientManager {
             initializationOptions: this.initializationOptions(),
         };
 
+        const client = new langclient.LanguageClient(
+            "swift.sourcekit-lsp",
+            "SourceKit Language Server",
+            serverOptions,
+            clientOptions
+        );
+
+        // TODO: Remove once LSP 3.18 is official (we currently need this for
+        // the proposed `workspace/textDocumentContent` API)
+        client.registerProposedFeatures();
+
         return {
-            client: new langclient.LanguageClient(
-                "swift.sourcekit-lsp",
-                "SourceKit Language Server",
-                serverOptions,
-                clientOptions
-            ),
+            client,
             errorHandler,
         };
     }
@@ -658,9 +664,15 @@ export class LanguageClientManager {
                     this.legacyInlayHints = activateLegacyInlayHints(client);
                 }
 
+                // TODO: This may have to be adjusted to the version
+                // https://github.com/swiftlang/sourcekit-lsp/pull/1639
+                // is merged to
+                if (this.workspaceContext.swiftVersion.isLessThan(new Version(6, 1, 0))) {
+                    this.legacyGetReferenceDocument = activateLegacyGetReferenceDocument(client);
+                    this.workspaceContext.subscriptions.push(this.legacyGetReferenceDocument);
+                }
+
                 this.peekDocuments = activatePeekDocuments(client);
-                this.getReferenceDocument = activateGetReferenceDocument(client);
-                this.workspaceContext.subscriptions.push(this.getReferenceDocument);
             })
             .catch(reason => {
                 this.workspaceContext.outputChannel.log(`${reason}`);

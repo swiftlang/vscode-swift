@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as assert from "assert";
+import { strict as assert } from "assert";
 import { TaskManager } from "../../../src/tasks/TaskManager";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { globalWorkspaceContextPromise } from "../extension.test";
