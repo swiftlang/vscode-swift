@@ -21,7 +21,7 @@ import {
 } from "../sourcekit-lsp/lspExtensions";
 import { InitializeResult, RequestType } from "vscode-languageclient/node";
 import { SwiftPackage, TargetType } from "../SwiftPackage";
-import { Converter } from "vscode-languageclient/lib/common/protocolConverter";
+import { Converter } from "vscode-languageclient/$test/common/protocolConverter";
 
 interface ILanguageClient {
     get initializeResult(): InitializeResult | undefined;
