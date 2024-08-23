@@ -581,13 +581,19 @@ export class LanguageClientManager {
             initializationOptions: this.initializationOptions(),
         };
 
+        const client = new langclient.LanguageClient(
+            "swift.sourcekit-lsp",
+            "SourceKit Language Server",
+            serverOptions,
+            clientOptions
+        );
+
+        // TODO: Remove once LSP 3.18 is official (we currently need this for
+        // the proposed `workspace/textDocumentContent` API)
+        client.registerProposedFeatures();
+
         return {
-            client: new langclient.LanguageClient(
-                "swift.sourcekit-lsp",
-                "SourceKit Language Server",
-                serverOptions,
-                clientOptions
-            ),
+            client,
             errorHandler,
         };
     }
