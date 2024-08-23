@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as assert from "assert";
+import { strict as assert } from "assert";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 
 suite("SwiftOutputChannel", function () {

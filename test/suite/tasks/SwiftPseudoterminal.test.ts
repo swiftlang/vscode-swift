@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as assert from "assert";
+import { strict as assert } from "assert";
 import * as vscode from "vscode";
 import { TestSwiftProcess } from "../../fixtures";
 import { waitForClose, waitForWrite } from "../../utilities";

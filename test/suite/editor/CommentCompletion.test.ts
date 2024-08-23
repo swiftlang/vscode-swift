@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as assert from "assert";
+import { strict as assert } from "assert";
 import * as vscode from "vscode";
 import { CommentCompletionProviders } from "../../../src/editor/CommentCompletion";
 

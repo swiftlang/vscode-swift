@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as assert from "assert";
+import { strict as assert } from "assert";
 import { beforeEach } from "mocha";
 import { when, anything } from "ts-mockito";
 import { testAssetUri } from "../../fixtures";

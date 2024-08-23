@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as assert from "assert";
+import { strict as assert } from "assert";
 import { beforeEach } from "mocha";
 import { TestRunArguments } from "../../../src/TestExplorer/TestRunArguments";
 
