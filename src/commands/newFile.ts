@@ -15,7 +15,6 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as vscode from "vscode";
-import { fileExists, pathExists } from "../utilities/filesystem";
 
 const extension = "swift";
 const defaultFileName = `Untitled.${extension}`;
@@ -29,17 +28,16 @@ export async function newSwiftFile(
     if (uri) {
         // Attempt to create the file at the given directory.
         const dir = (await isDirectory(uri)) ? uri.fsPath : path.dirname(uri.fsPath);
-        const defaultName = path.join(dir, defaultFileName);
-        const givenPath = await vscode.window.showInputBox({
-            value: defaultName,
-            valueSelection: [dir.length + 1, defaultName.length - extension.length - 1],
-            prompt: "Enter a file path to be created",
-            validateInput: validatePathValid,
+        const defaultName = vscode.Uri.file(path.join(dir, defaultFileName));
+        const targetUri = await vscode.window.showSaveDialog({
+            defaultUri: defaultName,
+            title: "Enter a file path to be created",
         });
-        if (!givenPath) {
+
+        if (!targetUri) {
             return;
         }
-        const targetUri = vscode.Uri.file(givenPath);
+
         try {
             await fs.writeFile(targetUri.fsPath, "", "utf-8");
             const document = await vscode.workspace.openTextDocument(targetUri);
@@ -55,20 +53,4 @@ export async function newSwiftFile(
         });
         await vscode.window.showTextDocument(document);
     }
-}
-
-async function validatePathValid(input: string) {
-    const inputPath = vscode.Uri.file(input).fsPath;
-    const filePathExists = await fileExists(inputPath);
-    if (filePathExists) {
-        return `Supplied path ${inputPath} already exists`;
-    }
-
-    const inputDir = path.dirname(inputPath);
-    const dirExists = await pathExists(inputDir);
-    if (!dirExists) {
-        return `Supplied directory ${inputDir} doesn't exist`;
-    }
-
-    return undefined;
 }

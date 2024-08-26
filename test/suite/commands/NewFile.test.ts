@@ -2,7 +2,7 @@
 //
 // This source file is part of the VS Code Swift open source project
 //
-// Copyright (c) 2023 the VS Code Swift project authors
+// Copyright (c) 2024 the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -38,7 +38,9 @@ suite("NewFile Command Test Suite", () => {
         const folder = await TemporaryFolder.create();
         const file = path.join(folder.path, "MyFile.swift");
 
-        when(windowMock.showInputBox(anything())).thenReturn(Promise.resolve(file));
+        when(windowMock.showSaveDialog(anything())).thenReturn(
+            Promise.resolve(vscode.Uri.file(file))
+        );
 
         await newSwiftFile(vscode.Uri.file(folder.path), () => Promise.resolve(true));
 
