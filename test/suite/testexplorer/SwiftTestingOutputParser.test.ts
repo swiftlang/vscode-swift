@@ -24,6 +24,7 @@ import {
     SourceLocation,
     TestSymbol,
     SymbolRenderer,
+    MessageRenderer,
 } from "../../../src/TestExplorer/TestParsers/SwiftTestingOutputParser";
 import { TestRunState, TestStatus } from "./MockTestRunState";
 import { Readable } from "stream";
@@ -114,7 +115,7 @@ suite("SwiftTestingOutputParser Suite", () => {
         ]);
     });
 
-    test("Failed test with one issue", async () => {
+    async function performTestFailure(messages: EventMessage[]) {
         const testRunState = new TestRunState(["MyTests.MyTests/testFail()"], true);
         const issueLocation = {
             _filePath: "file:///some/file.swift",
@@ -124,17 +125,15 @@ suite("SwiftTestingOutputParser Suite", () => {
         const events = new TestEventStream([
             testEvent("runStarted"),
             testEvent("testCaseStarted", "MyTests.MyTests/testFail()"),
-            testEvent(
-                "issueRecorded",
-                "MyTests.MyTests/testFail()",
-                [{ text: "Expectation failed: bar == foo", symbol: TestSymbol.fail }],
-                issueLocation
-            ),
+            testEvent("issueRecorded", "MyTests.MyTests/testFail()", messages, issueLocation),
             testEvent("testCaseEnded", "MyTests.MyTests/testFail()"),
             testEvent("runEnded"),
         ]);
 
         await outputParser.watch("file:///mock/named/pipe", testRunState, events);
+
+        const renderedMessages = messages.map(message => MessageRenderer.render(message));
+        const fullFailureMessage = renderedMessages.join("\n");
 
         assert.deepEqual(testRunState.tests, [
             {
@@ -142,7 +141,7 @@ suite("SwiftTestingOutputParser Suite", () => {
                 status: TestStatus.failed,
                 issues: [
                     {
-                        message: "Expectation failed: bar == foo",
+                        message: fullFailureMessage,
                         location: new vscode.Location(
                             vscode.Uri.file(issueLocation._filePath),
                             new vscode.Position(issueLocation.line - 1, issueLocation?.column ?? 0)
@@ -154,10 +153,23 @@ suite("SwiftTestingOutputParser Suite", () => {
                 timing: {
                     timestamp: 0,
                 },
-                output: [
-                    `\u001b[91m${SymbolRenderer.symbol(TestSymbol.fail)}\u001b[0m Expectation failed: bar == foo\r\n`,
-                ],
+                output: renderedMessages.map(message => `${message}\r\n`),
             },
+        ]);
+    }
+
+    test("Failed with an issue that has a comment", async () => {
+        await performTestFailure([
+            { text: "Expectation failed: bar == foo", symbol: TestSymbol.fail },
+            { symbol: TestSymbol.details, text: "// One" },
+            { symbol: TestSymbol.details, text: "// Two" },
+            { symbol: TestSymbol.details, text: "// Three" },
+        ]);
+    });
+
+    test("Failed test with one issue", async () => {
+        await performTestFailure([
+            { text: "Expectation failed: bar == foo", symbol: TestSymbol.fail },
         ]);
     });
 
