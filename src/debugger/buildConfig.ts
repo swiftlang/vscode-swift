@@ -61,7 +61,7 @@ export class BuildConfigurationFactory {
             if (this.isTestBuild) {
                 additionalArgs = [
                     ...additionalArgs,
-                    ...configuration.folder(this.ctx.workspaceFolder).testBuildArguments,
+                    ...configuration.folder(this.ctx.workspaceFolder).additionalTestArguments,
                 ];
             }
         }
@@ -470,7 +470,10 @@ export class TestingConfigurationFactory {
         }
 
         // Add in any user specified test arguments.
-        result = [...result, ...configuration.folder(this.ctx.workspaceFolder).testBuildArguments];
+        result = [
+            ...result,
+            ...configuration.folder(this.ctx.workspaceFolder).additionalTestArguments,
+        ];
 
         // `link.exe` doesn't support duplicate weak symbols, and lld-link in an effort to
         // match link.exe also doesn't support them by default. We can use `-lldmingw` to get

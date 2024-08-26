@@ -1,6 +1,6 @@
 {
     "swift.disableAutoResolve": true,
-    "swift.testBuildArguments": [
+    "swift.additionalTestArguments": [
         "-Xswiftc",
         "-DTEST_ARGUMENT_SET_VIA_TEST_BUILD_ARGUMENTS_SETTING"
     ]
