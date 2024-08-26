@@ -263,6 +263,31 @@ Test Case '-[MyTests.MyTests`;
             });
         });
 
+        test("Suite", () => {
+            const testRunState = new TestRunState(["MyTests", "MyTests.MyTests/testPass"], true);
+            const input = `Test Suite 'MyTests' started at 2024-08-26 13:19:25.325.
+Test Case '-[MyTests.MyTests testPass]' started.
+Test Case '-[MyTests.MyTests testPass]' passed (0.001 seconds).
+Test Suite 'MyTests' passed at 2024-08-26 13:19:25.328.
+         Executed 1 test, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+`;
+            outputParser.parseResult(input, testRunState);
+
+            assert.deepEqual(testRunState.tests, [
+                {
+                    name: "MyTests",
+                    output: [],
+                    status: TestStatus.passed,
+                },
+                {
+                    name: "MyTests.MyTests/testPass",
+                    status: TestStatus.passed,
+                    timing: { duration: 0.001 },
+                    output: inputToTestOutput(input).slice(1, -2), // trim the suite text
+                },
+            ]);
+        });
+
         suite("Diffs", () => {
             const testRun = (message: string, expected?: string, actual?: string) => {
                 const testRunState = new TestRunState(["MyTests.MyTests/testFail"], true);

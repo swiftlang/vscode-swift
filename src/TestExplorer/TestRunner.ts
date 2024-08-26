@@ -1193,12 +1193,40 @@ export class TestRunnerTestRunState implements ITestRunState {
         // Nothing to do here
     }
     // passed suite
-    passedSuite() {
-        // Nothing to do here
+    passedSuite(name: string) {
+        // Regular runs don't provide the full suite name (Target.Suite)
+        // in the output, so reference the last passing/failing test item
+        // and derive the suite from that.
+
+        // However, when running a parallel test run the XUnit XML output
+        // provides the full suite name, and the `lastTestItem` set is not
+        // guarenteed to be in this suite due to the parallel nature of the run.
+
+        // If we can look the suite up by name then we're doing a parallel run
+        // and can mark it as passed, otherwise derive the suite from the last
+        // completed test item.
+        const suiteIndex = this.testRun.getTestIndex(name);
+        if (suiteIndex !== -1) {
+            this.testRun.passed(this.testRun.testItems[suiteIndex]);
+        } else {
+            const lastClassTestItem = this.lastTestItem?.parent;
+            if (lastClassTestItem && lastClassTestItem.id.endsWith(`.${name}`)) {
+                this.testRun.passed(lastClassTestItem);
+            }
+        }
     }
     // failed suite
-    failedSuite() {
-        // Nothing to do here
+    failedSuite(name: string) {
+        // See comment in `passedSuite` for more context.
+        const suiteIndex = this.testRun.getTestIndex(name);
+        if (suiteIndex !== -1) {
+            this.testRun.failed(this.testRun.testItems[suiteIndex], []);
+        } else {
+            const lastClassTestItem = this.lastTestItem?.parent;
+            if (lastClassTestItem && lastClassTestItem.id.endsWith(`.${name}`)) {
+                this.testRun.failed(lastClassTestItem, []);
+            }
+        }
     }
 
     recordOutput(index: number | undefined, output: string): void {
