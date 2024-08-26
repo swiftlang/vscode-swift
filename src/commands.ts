@@ -35,6 +35,7 @@ import { captureDiagnostics } from "./commands/captureDiagnostics";
 import { reindexProjectRequest } from "./sourcekit-lsp/lspExtensions";
 import { TestRunner, TestRunnerTestRunState } from "./TestExplorer/TestRunner";
 import { TestKind } from "./TestExplorer/TestKind";
+import { evaluateExpression } from "./repl/command";
 
 /**
  * References:
@@ -940,5 +941,6 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             ctx.diagnostics.clear()
         ),
         vscode.commands.registerCommand("swift.captureDiagnostics", () => captureDiagnostics(ctx)),
+        vscode.commands.registerCommand("swift.evaluate", () => evaluateExpression(ctx)),
     ];
 }

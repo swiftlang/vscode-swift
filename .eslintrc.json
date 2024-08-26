@@ -12,7 +12,15 @@
     "no-throw-literal": "warn",
     "semi": "off",
     "@typescript-eslint/no-non-null-assertion": "off",
-    "@typescript-eslint/semi": "error"
+    "@typescript-eslint/semi": "error",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ]
   },
   "extends": [
       "eslint:recommended",
