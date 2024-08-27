@@ -37,6 +37,7 @@ import { resetPackage } from "./commands/resetPackage";
 import { updateDependencies } from "./commands/dependencies/update";
 import { runPluginTask } from "./commands/runPluginTask";
 import { runTestMultipleTimes } from "./commands/testMultipleTimes";
+import { newSwiftFile } from "./commands/newFile";
 
 /**
  * References:
@@ -67,6 +68,7 @@ export function registerToolchainCommands(
  */
 export function register(ctx: WorkspaceContext): vscode.Disposable[] {
     return [
+        vscode.commands.registerCommand("swift.newFile", uri => newSwiftFile(uri)),
         vscode.commands.registerCommand("swift.resolveDependencies", () =>
             resolveDependencies(ctx)
         ),

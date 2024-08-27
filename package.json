@@ -80,6 +80,12 @@
         "category": "Swift"
       },
       {
+        "command": "swift.newFile",
+        "title": "Create New Swift File...",
+        "shortTitle": "Swift File",
+        "category": "Swift"
+      },
+      {
         "command": "swift.updateDependencies",
         "title": "Update Package Dependencies",
         "icon": "$(cloud-download)",
@@ -601,6 +607,10 @@
     ],
     "keybindings": [
       {
+        "command": "swift.newFile",
+        "key": "Alt+S Alt+N"
+      },
+      {
         "command": "swift.insertFunctionComment",
         "key": "Alt+Ctrl+/",
         "mac": "Alt+Cmd+/",
@@ -618,6 +628,19 @@
           "command": "swift.runTestsUntilFailure",
           "group": "testExtras",
           "when": "testId"
+        }
+      ],
+      "file/newFile": [
+        {
+          "command": "swift.newFile",
+          "group": "file"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "swift.newFile",
+          "group": "swift",
+          "when": "swift.isActivated"
         }
       ],
       "commandPalette": [
