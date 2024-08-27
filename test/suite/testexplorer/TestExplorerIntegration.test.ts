@@ -370,14 +370,14 @@ suite("Test Explorer Suite", function () {
         });
 
         suite(runProfile, () => {
-            suite("swift-testing", function () {
+            suite(`swift-testing (${runProfile})`, function () {
                 suiteSetup(function () {
                     if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
                         this.skip();
                     }
                 });
 
-                test("Runs passing test", async function () {
+                test(`Runs passing test ${runProfile}`, async function () {
                     const testRun = await runTest(
                         testExplorer.controller,
                         runProfile,
@@ -394,7 +394,7 @@ suite("Test Explorer Suite", function () {
                     );
                 });
 
-                test("Runs failing test", async function () {
+                test(`Runs failing test ${runProfile}`, async function () {
                     const testRun = await runTest(
                         testExplorer.controller,
                         runProfile,
@@ -416,7 +416,7 @@ suite("Test Explorer Suite", function () {
                     });
                 });
 
-                test("Runs Suite", async function () {
+                test(`Runs Suite ${runProfile}`, async function () {
                     const testRun = await runTest(
                         testExplorer.controller,
                         runProfile,
@@ -441,7 +441,7 @@ suite("Test Explorer Suite", function () {
                     });
                 });
 
-                test("Runs parameterized test", async function () {
+                test(`Runs parameterized test ${runProfile}`, async function () {
                     const testRun = await runTest(
                         testExplorer.controller,
                         runProfile,
@@ -471,7 +471,7 @@ suite("Test Explorer Suite", function () {
                     });
                 });
 
-                test("Runs Suite", async function () {
+                test(`Runs Suite (${runProfile})`, async function () {
                     const testRun = await runTest(
                         testExplorer.controller,
                         runProfile,
@@ -496,7 +496,7 @@ suite("Test Explorer Suite", function () {
                     });
                 });
 
-                test("Runs All", async function () {
+                test(`Runs All (${runProfile})`, async function () {
                     const testRun = await runTest(
                         testExplorer.controller,
                         runProfile,
@@ -534,7 +534,7 @@ suite("Test Explorer Suite", function () {
                 });
             });
 
-            suite("XCTests", () => {
+            suite(`XCTests (${runProfile})`, () => {
                 test("Runs passing test", async function () {
                     const testRun = await runTest(
                         testExplorer.controller,
