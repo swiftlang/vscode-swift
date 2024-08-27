@@ -612,6 +612,18 @@
       }
     ],
     "menus": {
+      "testing/item/gutter": [
+        {
+          "command": "swift.runTestsMultipleTimes",
+          "group": "testExtras",
+          "when": "testId"
+        },
+        {
+          "command": "swift.runTestsUntilFailure",
+          "group": "testExtras",
+          "when": "testId"
+        }
+      ],
       "testing/item/context": [
         {
           "command": "swift.runTestsMultipleTimes",
