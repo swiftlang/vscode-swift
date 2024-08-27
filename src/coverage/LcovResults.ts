@@ -25,7 +25,7 @@ import { BuildFlags } from "../toolchain/BuildFlags";
 import { TestLibrary } from "../TestExplorer/TestRunner";
 import { DisposableFileCollection } from "../utilities/tempFolder";
 import { TargetType } from "../SwiftPackage";
-import { TestingDebugConfigurationFactory } from "../debugger/buildConfig";
+import { TestingConfigurationFactory } from "../debugger/buildConfig";
 import { TestKind } from "../TestExplorer/TestKind";
 
 interface CodeCovFile {
@@ -144,7 +144,7 @@ export class TestCoverage {
     private async exportProfdata(types: TestLibrary[], mergedProfileFile: string): Promise<Buffer> {
         const coveredBinaries = new Set<string>();
         if (types.includes(TestLibrary.xctest)) {
-            let xcTestBinary = await TestingDebugConfigurationFactory.testExecutableOutputPath(
+            let xcTestBinary = await TestingConfigurationFactory.testExecutableOutputPath(
                 this.folderContext,
                 TestKind.coverage,
                 TestLibrary.xctest
@@ -156,7 +156,7 @@ export class TestCoverage {
         }
 
         if (types.includes(TestLibrary.swiftTesting)) {
-            const swiftTestBinary = await TestingDebugConfigurationFactory.testExecutableOutputPath(
+            const swiftTestBinary = await TestingConfigurationFactory.testExecutableOutputPath(
                 this.folderContext,
                 TestKind.coverage,
                 TestLibrary.swiftTesting

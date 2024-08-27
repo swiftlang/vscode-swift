@@ -24,15 +24,86 @@ import { DebugAdapter } from "./debugAdapter";
 import { TargetType } from "../SwiftPackage";
 import { Version } from "../utilities/version";
 import { TestLibrary } from "../TestExplorer/TestRunner";
-import { buildOptions } from "../tasks/SwiftTaskProvider";
 import { TestKind, isDebugging, isRelease } from "../TestExplorer/TestKind";
+import { buildOptions } from "../tasks/SwiftTaskProvider";
+
+export class BuildConfigurationFactory {
+    public static buildAll(
+        ctx: FolderContext,
+        isTestBuild: boolean,
+        isRelease: boolean
+    ): vscode.DebugConfiguration {
+        return new BuildConfigurationFactory(ctx, isTestBuild, isRelease).build();
+    }
+
+    private constructor(
+        private ctx: FolderContext,
+        private isTestBuild: boolean,
+        private isRelease: boolean
+    ) {}
+
+    private build(): vscode.DebugConfiguration {
+        let additionalArgs = buildOptions(this.ctx.workspaceContext.toolchain);
+        if (this.ctx.swiftPackage.getTargets(TargetType.test).length > 0) {
+            additionalArgs.push(...this.testDiscoveryFlag(this.ctx));
+        }
+
+        if (this.isRelease) {
+            additionalArgs = [...additionalArgs, "-c", "release"];
+        }
+
+        // don't build tests for iOS etc as they don't compile
+        if (this.ctx.workspaceContext.toolchain.buildFlags.getDarwinTarget() === undefined) {
+            additionalArgs = ["--build-tests", ...additionalArgs];
+            if (this.isRelease) {
+                additionalArgs = [...additionalArgs, "-Xswiftc", "-enable-testing"];
+            }
+            if (this.isTestBuild) {
+                additionalArgs = [
+                    ...additionalArgs,
+                    ...configuration.folder(this.ctx.workspaceFolder).additionalTestArguments,
+                ];
+            }
+        }
+
+        return {
+            ...this.baseConfig,
+            program: "swift",
+            args: ["build", ...additionalArgs],
+            env: {},
+        };
+    }
+
+    /** flag for enabling test discovery */
+    private testDiscoveryFlag(ctx: FolderContext): string[] {
+        // Test discovery is only available in SwiftPM 5.1 and later.
+        if (ctx.workspaceContext.swiftVersion.isLessThan(new Version(5, 1, 0))) {
+            return [];
+        }
+        // Test discovery is always enabled on Darwin.
+        if (process.platform !== "darwin") {
+            const hasLinuxMain = ctx.linuxMain.exists;
+            const testDiscoveryByDefault = ctx.workspaceContext.swiftVersion.isGreaterThanOrEqual(
+                new Version(5, 4, 0)
+            );
+            if (hasLinuxMain || !testDiscoveryByDefault) {
+                return ["--enable-test-discovery"];
+            }
+        }
+        return [];
+    }
+
+    private get baseConfig() {
+        return getBaseConfig(this.ctx, true);
+    }
+}
 
 /**
  * Creates `vscode.DebugConfiguration`s for different combinations of
  * testing library, test kind and platform. Use the static `swiftTestingConfig`
  * and `xcTestConfig` functions to create
  */
-export class TestingDebugConfigurationFactory {
+export class TestingConfigurationFactory {
     public static async swiftTestingConfig(
         ctx: FolderContext,
         fifoPipePath: string,
@@ -40,7 +111,7 @@ export class TestingDebugConfigurationFactory {
         testList: string[],
         expandEnvVariables = false
     ): Promise<vscode.DebugConfiguration | null> {
-        return new TestingDebugConfigurationFactory(
+        return new TestingConfigurationFactory(
             ctx,
             fifoPipePath,
             testKind,
@@ -56,7 +127,7 @@ export class TestingDebugConfigurationFactory {
         testList: string[],
         expandEnvVariables = false
     ): Promise<vscode.DebugConfiguration | null> {
-        return new TestingDebugConfigurationFactory(
+        return new TestingConfigurationFactory(
             ctx,
             "",
             testKind,
@@ -71,7 +142,7 @@ export class TestingDebugConfigurationFactory {
         testKind: TestKind,
         testLibrary: TestLibrary
     ): Promise<string> {
-        return new TestingDebugConfigurationFactory(
+        return new TestingConfigurationFactory(
             ctx,
             "",
             testKind,
@@ -397,6 +468,13 @@ export class TestingDebugConfigurationFactory {
         if (isRelease(this.testKind)) {
             result = [...result, "-c", "release", "-Xswiftc", "-enable-testing"];
         }
+
+        // Add in any user specified test arguments.
+        result = [
+            ...result,
+            ...configuration.folder(this.ctx.workspaceFolder).additionalTestArguments,
+        ];
+
         // `link.exe` doesn't support duplicate weak symbols, and lld-link in an effort to
         // match link.exe also doesn't support them by default. We can use `-lldmingw` to get
         // lld-link to allow duplicate weak symbols, but that also changes its library search
@@ -537,22 +615,26 @@ export class TestingDebugConfigurationFactory {
     }
 
     private get baseConfig() {
-        const { folder, nameSuffix } = getFolderAndNameSuffix(this.ctx, this.expandEnvVariables);
-        return {
-            type: DebugAdapter.adapterName,
-            request: "launch",
-            sourceLanguages: ["swift"],
-            name: `Test ${this.ctx.swiftPackage.name}`,
-            cwd: folder,
-            args: [],
-            preLaunchTask: `swift: Build All${nameSuffix}`,
-            terminal: "console",
-        };
+        return getBaseConfig(this.ctx, this.expandEnvVariables);
     }
 
     private get hasTestTarget(): boolean {
         return this.ctx.swiftPackage.getTargets(TargetType.test).length > 0;
     }
+}
+
+function getBaseConfig(ctx: FolderContext, expandEnvVariables: boolean) {
+    const { folder, nameSuffix } = getFolderAndNameSuffix(ctx, expandEnvVariables);
+    return {
+        type: DebugAdapter.adapterName,
+        request: "launch",
+        sourceLanguages: ["swift"],
+        name: `Test ${ctx.swiftPackage.name}`,
+        cwd: folder,
+        args: [],
+        preLaunchTask: `swift: Build All${nameSuffix}`,
+        terminal: "console",
+    };
 }
 
 export function getFolderAndNameSuffix(

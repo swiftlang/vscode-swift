@@ -450,8 +450,8 @@ suite("Test Explorer Suite", function () {
 
                     assertTestResults(testRun, {
                         passed: [
-                            "PackageTests.parameterizedTest(_:)/PackageTests.swift:51:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])",
-                            "PackageTests.parameterizedTest(_:)/PackageTests.swift:51:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [51])])",
+                            "PackageTests.parameterizedTest(_:)/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])",
+                            "PackageTests.parameterizedTest(_:)/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [51])])",
                         ],
                         failed: [
                             {
@@ -461,7 +461,7 @@ suite("Test Explorer Suite", function () {
                                         text: "Expectation failed: (arg → 2) != 2",
                                     })}`,
                                 ],
-                                test: "PackageTests.parameterizedTest(_:)/PackageTests.swift:51:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])",
+                                test: "PackageTests.parameterizedTest(_:)/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])",
                             },
                             {
                                 issues: [],

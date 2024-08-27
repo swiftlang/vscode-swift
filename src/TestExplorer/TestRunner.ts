@@ -19,7 +19,7 @@ import * as os from "os";
 import * as asyncfs from "fs/promises";
 import { FolderContext } from "../FolderContext";
 import { execFile, getErrorDescription } from "../utilities/utilities";
-import { createSwiftTask, getBuildAllTask } from "../tasks/SwiftTaskProvider";
+import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
 import {
@@ -36,8 +36,7 @@ import { TestRunArguments } from "./TestRunArguments";
 import { TemporaryFolder } from "../utilities/tempFolder";
 import { TestClass, runnableTag, upsertTestItem } from "./TestDiscovery";
 import { TestCoverage } from "../coverage/LcovResults";
-import { TestingDebugConfigurationFactory } from "../debugger/buildConfig";
-import { SwiftExecution } from "../tasks/SwiftExecution";
+import { BuildConfigurationFactory, TestingConfigurationFactory } from "../debugger/buildConfig";
 import { TestKind, isDebugging, isRelease } from "./TestKind";
 import { reduceTestItemChildren } from "./TestUtils";
 
@@ -202,6 +201,11 @@ export class TestRunProxy {
     }
 
     public async end() {
+        // If the test run never started (typically due to a build error)
+        // start it to flush any queued output, and then immediately end it.
+        if (!this.runStarted) {
+            this.testRunStarted();
+        }
         this.testRun?.end();
         this.testRunCompleteEmitter.fire();
     }
@@ -473,7 +477,7 @@ export class TestRunner {
                     await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
                 }
 
-                const testBuildConfig = await TestingDebugConfigurationFactory.swiftTestingConfig(
+                const testBuildConfig = await TestingConfigurationFactory.swiftTestingConfig(
                     this.folderContext,
                     fifoPipePath,
                     this.testKind,
@@ -507,7 +511,7 @@ export class TestRunner {
         }
 
         if (this.testArgs.hasXCTests) {
-            const testBuildConfig = await TestingDebugConfigurationFactory.xcTestConfig(
+            const testBuildConfig = await TestingConfigurationFactory.xcTestConfig(
                 this.folderContext,
                 this.testKind,
                 this.testArgs.xcTestArgs,
@@ -714,34 +718,31 @@ export class TestRunner {
 
     /** Run test session inside debugger */
     async debugSession(token: vscode.CancellationToken, runState: TestRunnerTestRunState) {
-        const buildAllTask = await getBuildAllTask(this.folderContext, isRelease(this.testKind));
-        if (!buildAllTask) {
-            return;
+        // Perform a build all first to produce the binaries we'll run later.
+        let buildOutput = "";
+        try {
+            await this.runStandardSession(
+                token,
+                // discard the output as we dont want to associate it with the test run.
+                new stream.Writable({
+                    write: (chunk, encoding, next) => {
+                        buildOutput += chunk.toString();
+                        next();
+                    },
+                }),
+                BuildConfigurationFactory.buildAll(
+                    this.folderContext,
+                    true,
+                    isRelease(this.testKind)
+                ),
+                this.testKind
+            );
+        } catch (buildExitCode) {
+            runState.recordOutput(undefined, buildOutput);
+            throw new Error(`Build failed with exit code ${buildExitCode}`);
         }
 
         const subscriptions: vscode.Disposable[] = [];
-        let buildExitCode = 0;
-        const buildTask = vscode.tasks.onDidStartTask(e => {
-            if (e.execution.task.name === buildAllTask.name) {
-                const exec = e.execution.task.execution as SwiftExecution;
-                const didCloseBuildTask = exec.onDidClose(exitCode => {
-                    buildExitCode = exitCode ?? 0;
-                });
-                subscriptions.push(didCloseBuildTask);
-            }
-        });
-        subscriptions.push(buildTask);
-
-        // Perform a build all before the tests are run. We want to avoid the "Debug Anyway" dialog
-        // since choosing that with no prior build, when debugging swift-testing tests, will cause
-        // the extension to start listening to the fifo pipe when no results will be produced,
-        // hanging the test run.
-        await this.folderContext.taskQueue.queueOperation(new TaskOperation(buildAllTask));
-
-        if (buildExitCode !== 0) {
-            throw new Error(`${buildAllTask.name} failed with exit code ${buildExitCode}`);
-        }
-
         const buildConfigs: Array<vscode.DebugConfiguration | undefined> = [];
         const fifoPipePath = this.generateFifoPipePath();
 
@@ -753,14 +754,13 @@ export class TestRunner {
                     await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
                 }
 
-                const swiftTestBuildConfig =
-                    await TestingDebugConfigurationFactory.swiftTestingConfig(
-                        this.folderContext,
-                        fifoPipePath,
-                        this.testKind,
-                        this.testArgs.swiftTestArgs,
-                        true
-                    );
+                const swiftTestBuildConfig = await TestingConfigurationFactory.swiftTestingConfig(
+                    this.folderContext,
+                    fifoPipePath,
+                    this.testKind,
+                    this.testArgs.swiftTestArgs,
+                    true
+                );
 
                 if (swiftTestBuildConfig !== null) {
                     swiftTestBuildConfig.testType = TestLibrary.swiftTesting;
@@ -788,7 +788,7 @@ export class TestRunner {
 
             // create launch config for testing
             if (this.testArgs.hasXCTests) {
-                const xcTestBuildConfig = await TestingDebugConfigurationFactory.xcTestConfig(
+                const xcTestBuildConfig = await TestingConfigurationFactory.xcTestConfig(
                     this.folderContext,
                     this.testKind,
                     this.testArgs.xcTestArgs,
