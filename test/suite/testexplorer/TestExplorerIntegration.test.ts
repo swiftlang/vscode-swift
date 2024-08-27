@@ -278,7 +278,10 @@ suite("Test Explorer Suite", function () {
                 await eventPromise(testRun.onTestRunComplete);
 
                 assertTestResults(testRun, {
-                    passed: ["PackageTests.MixedXCTestSuite/testPassing"],
+                    passed: [
+                        "PackageTests.MixedXCTestSuite",
+                        "PackageTests.MixedXCTestSuite/testPassing",
+                    ],
                 });
             });
         });
@@ -293,7 +296,10 @@ suite("Test Explorer Suite", function () {
             );
 
             assertTestResults(testRun, {
-                passed: ["PackageTests.DebugReleaseTestSuite/testDebug"],
+                passed: [
+                    "PackageTests.DebugReleaseTestSuite",
+                    "PackageTests.DebugReleaseTestSuite/testDebug",
+                ],
             });
         });
 
@@ -308,7 +314,10 @@ suite("Test Explorer Suite", function () {
             );
 
             assertTestResults(passingRun, {
-                passed: ["PackageTests.DebugReleaseTestSuite/testRelease"],
+                passed: [
+                    "PackageTests.DebugReleaseTestSuite",
+                    "PackageTests.DebugReleaseTestSuite/testRelease",
+                ],
             });
         });
 
@@ -516,6 +525,10 @@ suite("Test Explorer Suite", function () {
                                 test: "PackageTests.MixedXCTestSuite/testFailing",
                                 issues: [xcTestFailureMessage],
                             },
+                            {
+                                issues: [],
+                                test: "PackageTests.MixedXCTestSuite",
+                            },
                         ],
                     });
                 });
@@ -530,7 +543,10 @@ suite("Test Explorer Suite", function () {
                     );
 
                     assertTestResults(testRun, {
-                        passed: ["PackageTests.PassingXCTestSuite/testPassing"],
+                        passed: [
+                            "PackageTests.PassingXCTestSuite",
+                            "PackageTests.PassingXCTestSuite/testPassing",
+                        ],
                     });
                 });
 
@@ -546,6 +562,10 @@ suite("Test Explorer Suite", function () {
                             {
                                 test: "PackageTests.FailingXCTestSuite/testFailing",
                                 issues: [xcTestFailureMessage],
+                            },
+                            {
+                                issues: [],
+                                test: "PackageTests.FailingXCTestSuite",
                             },
                         ],
                     });
@@ -564,6 +584,10 @@ suite("Test Explorer Suite", function () {
                             {
                                 test: "PackageTests.MixedXCTestSuite/testFailing",
                                 issues: [xcTestFailureMessage],
+                            },
+                            {
+                                issues: [],
+                                test: "PackageTests.MixedXCTestSuite",
                             },
                         ],
                     });

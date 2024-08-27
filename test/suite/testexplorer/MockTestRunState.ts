@@ -130,11 +130,13 @@ export class TestRunState implements ITestRunState {
         //
     }
     // passed suite
-    passedSuite() {
-        //
+    passedSuite(name: string) {
+        const index = this.testItemFinder.getIndex(name);
+        this.testItemFinder.tests[index].status = TestStatus.passed;
     }
     // failed suite
-    failedSuite() {
-        //
+    failedSuite(name: string) {
+        const index = this.testItemFinder.getIndex(name);
+        this.testItemFinder.tests[index].status = TestStatus.failed;
     }
 }

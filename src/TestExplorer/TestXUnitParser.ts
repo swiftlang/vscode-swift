@@ -66,11 +66,15 @@ export class TestXUnitParser {
         let failures = 0;
         let errors = 0;
         xUnit.testsuites.testsuite.forEach(testsuite => {
+            const suiteFailures = parseInt(testsuite.$.failures);
+            failures += suiteFailures;
             tests = tests + parseInt(testsuite.$.tests);
-            failures += parseInt(testsuite.$.failures);
             errors += parseInt(testsuite.$.errors);
+
+            let className: string | undefined;
             testsuite.testcase.forEach(testcase => {
-                const id = `${testcase.$.classname}/${testcase.$.name}`;
+                className = testcase.$.classname;
+                const id = `${className}/${testcase.$.name}`;
                 const index = runState.getTestItemIndex(id);
 
                 // From 5.7 to 5.10 running with the --parallel option dumps the test results out
@@ -85,6 +89,14 @@ export class TestXUnitParser {
                 }
                 runState.completed(index, { duration: testcase.$.time });
             });
+
+            if (className !== undefined) {
+                if (className && suiteFailures === 0) {
+                    runState.passedSuite(className);
+                } else if (className) {
+                    runState.failedSuite(className);
+                }
+            }
         });
         return { tests: tests, failures: failures, errors: errors };
     }
