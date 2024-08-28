@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.11.0 - 2024-08-28
+
+### Added
+
+- Added New Swift File command ([#1018](https://github.com/swiftlang/vscode-swift/pull/1018))
+- Added the `swift.sourcekit-lsp.backgroundIndexing` setting to enable experimental background indexing in SourceKit-LSP with Swift 6 ([#992](https://github.com/swiftlang/vscode-swift/issues/992))
+- Added the `swift.additionalTestArguments` setting to add arguments to `swift test` and `swift build --build-tests` commands used when building and running tests within VS Code ([#1020](https://github.com/swiftlang/vscode-swift/pull/1020))
+- Run tests multiple times by right clicking them in the Test Explorer > Run Multiple Times ([#1009](https://github.com/swiftlang/vscode-swift/pull/1009))
+- Run tests until a failure (or a maximum number) by right clicking them in the Test Explorer > Run Until Failure ([#1009](https://github.com/swiftlang/vscode-swift/pull/1009))
+
+### Changed
+
+- Comments preceding a failing [swift-testing](https://github.com/swiftlang/swift-testing) expectations are included in the test output to match command line behavior ([#1025](https://github.com/swiftlang/vscode-swift/pull/1025))
+
+### Fixed
+
+- Properly forward exit code if a task is terminated by the user with CTRL/CMD+C ([#1006](https://github.com/swiftlang/vscode-swift/pull/1006))
+- Update path of `lldb-dap` on Darwin ([#1008](https://github.com/swiftlang/vscode-swift/pull/1008))
+- Mark XCTest suites as passed/failed immediately on suite completion ([#1031](https://github.com/swiftlang/vscode-swift/pull/1031))
+- swift-testing tags on suites should be inherited by child suites and tests ([#1015](https://github.com/swiftlang/vscode-swift/pull/1015))
+- More reliably detect if the test binary is a unified [swift-testing](https://github.com/swiftlang/swift-testing) + XCTest binary ([#1004](https://github.com/swiftlang/vscode-swift/pull/1004))
+
 ## 1.10.7 - 2024-08-08
 
 ### Changed
