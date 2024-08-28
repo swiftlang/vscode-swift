@@ -14,7 +14,6 @@
 
 import * as vscode from "vscode";
 import { WorkspaceContext } from "../WorkspaceContext";
-import { withQuickPick } from "../ui/QuickPick";
 import { execFile, getErrorDescription } from "../utilities/utilities";
 
 /**
@@ -39,15 +38,18 @@ export async function attachDebugger(ctx: WorkspaceContext) {
                 return [];
             }
         });
-        await withQuickPick("Select Process", processPickItems, async selected => {
+        const picked = await vscode.window.showQuickPick(processPickItems, {
+            placeHolder: "Select Process",
+        });
+        if (picked) {
             const debugConfig: vscode.DebugConfiguration = {
                 type: "swift-lldb",
                 request: "attach",
                 name: "Attach",
-                pid: selected.pid,
+                pid: picked.pid,
             };
             await vscode.debug.startDebugging(undefined, debugConfig);
-        });
+        }
     } catch (error) {
         vscode.window.showErrorMessage(`Failed to run LLDB: ${getErrorDescription(error)}`);
     }
