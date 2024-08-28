@@ -1256,10 +1256,11 @@
     "vadimcn.vscode-lldb"
   ],
   "scripts": {
-    "vscode:prepublish": "npm run esbuild-base -- --minify",
-    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18",
+    "vscode:prepublish": "npm run esbuild-bundle",
+    "esbuild-base": "rm -rf ./dist && esbuild './src/**/*.ts' --outdir=dist --format=cjs --platform=node --target=node18",
     "esbuild": "npm run esbuild-base -- --sourcemap",
     "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+    "esbuild-bundle": "rm -rf ./dist && esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18 --minify",
     "compile": "tsc",
     "watch": "tsc --watch",
     "lint": "eslint ./ --ext ts && tsc --noEmit",

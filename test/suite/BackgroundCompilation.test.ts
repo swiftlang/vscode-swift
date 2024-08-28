@@ -49,9 +49,8 @@ suite("BackgroundCompilation Test Suite", () => {
         });
 
         const uri = testAssetUri("defaultPackage/Sources/PackageExe/main.swift");
-        await vscode.workspace
-            .openTextDocument(uri.fsPath)
-            .then(doc => vscode.window.showTextDocument(doc));
+        const doc = await vscode.workspace.openTextDocument(uri.fsPath);
+        await vscode.window.showTextDocument(doc);
         await vscode.workspace.save(uri);
 
         await taskPromise;
