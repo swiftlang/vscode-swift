@@ -389,7 +389,7 @@ suite("Test Explorer Suite", function () {
                     });
 
                     assert.strictEqual(
-                        testRun.runState.output.includes("A print statement in a test.\r\r\n"),
+                        testRun.runState.output.includes("A print statement in a test.\r\n"),
                         true
                     );
                 });

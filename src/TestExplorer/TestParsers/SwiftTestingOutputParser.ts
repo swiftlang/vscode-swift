@@ -13,17 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as readline from "readline";
-import { Readable } from "stream";
-import {
-    INamedPipeReader,
-    UnixNamedPipeReader,
-    WindowsNamedPipeReader,
-} from "./TestEventStreamReader";
 import { ITestRunState } from "./TestRunState";
 import { TestClass } from "../TestDiscovery";
-import { regexEscapedString, sourceLocationToVSCodeLocation } from "../../utilities/utilities";
-import { exec } from "child_process";
+import { sourceLocationToVSCodeLocation } from "../../utilities/utilities";
+import { StringColor } from "../../utilities/ansi";
+import { ITestOutputParser } from "./XCTestOutputParser";
 
 // All events produced by a swift-testing run will be one of these three types.
 // Detailed information about swift-testing's JSON schema is available here:
@@ -162,10 +156,12 @@ export interface SourceLocation {
     column: number;
 }
 
-export class SwiftTestingOutputParser {
+export class SwiftTestingOutputParser implements ITestOutputParser {
+    public logs: string[] = [];
+
     private completionMap = new Map<number, boolean>();
     private testCaseMap = new Map<string, Map<string, TestCase>>();
-    private path?: string;
+    private preambleComplete = false;
 
     constructor(
         public testRunStarted: () => void,
@@ -173,98 +169,66 @@ export class SwiftTestingOutputParser {
     ) {}
 
     /**
-     * Watches for test events on the named pipe at the supplied path.
-     * As events are read they are parsed and recorded in the test run state.
+     * Parse test run output looking for both raw output and JSON events.
+     * @param output A chunk of stdout emitted during a test run.
+     * @param runState The test run state to be updated by the output
+     * @param logger A logging function to capture output not associated with a specific test.
      */
-    public async watch(
-        path: string,
-        runState: ITestRunState,
-        pipeReader?: INamedPipeReader
-    ): Promise<void> {
-        this.path = path;
+    parseResult(output: string, runState: ITestRunState, logger: (output: string) => void): void {
+        this.logs.push(output);
 
-        // Creates a reader based on the platform unless being provided in a test context.
-        const reader = pipeReader ?? this.createReader(path);
-        const readlinePipe = new Readable({
-            read() {},
-        });
+        for (const line of output.split("\n")) {
+            if (line.startsWith("{")) {
+                try {
+                    // On Windows lines end will end with some ANSI characters, so
+                    // work around that by trying to parse from the start of the line
+                    // to the last '}' character.
+                    const closingBrace = line.lastIndexOf("}");
+                    if (closingBrace === -1) {
+                        // Break out of the try block and continue
+                        throw new Error("No closing brace found");
+                    }
 
-        // Use readline to automatically chunk the data into lines,
-        // and then take each line and parse it as JSON.
-        const rl = readline.createInterface({
-            input: readlinePipe,
-            crlfDelay: Infinity,
-        });
+                    const maybeJSON = line.substring(0, closingBrace + 1);
 
-        rl.on("line", line => this.parse(JSON.parse(line), runState));
-
-        reader.start(readlinePipe);
-    }
-
-    /**
-     * Closes the FIFO pipe after a test run. This must be called at the
-     * end of a run regardless of the run's success or failure.
-     */
-    public async close() {
-        if (!this.path) {
-            return;
-        }
-
-        await new Promise<void>(resolve => {
-            exec(`echo '{}' > ${this.path}`, () => {
-                resolve();
-            });
-        });
-    }
-
-    /**
-     * Parses stdout of a test run looking for lines that were not captured by
-     * a JSON event and injecting them in to the test run output.
-     * @param chunk A chunk of stdout emitted during a test run.
-     */
-    public parseStdout = (() => {
-        const values = [
-            ...Object.values(TestSymbol)
-                .filter(symbol => symbol !== TestSymbol.none)
-                .map(symbol =>
-                    regexEscapedString(
-                        // Trim the ANSI reset code from the search since some lines
-                        // are fully colorized from the symbol to the end of line.
-                        SymbolRenderer.eventMessageSymbol(symbol).replace(
-                            SymbolRenderer.resetANSIEscapeCode,
-                            ""
-                        )
-                    )
-                ),
-            // It is possible there is no symbol for a line produced by swift-testing,
-            // for instance if the user has a multi line comment before a failing expectation
-            // only the first line of the printed comment will have a symbol, but to make the
-            // indentation consistent the subsequent lines will have three spaces. We don't want
-            // to treat this as output produced by the user during the test run, so omit these.
-            // This isn't ideal since this will swallow lines the user prints if they start with
-            // three spaces, but until we have user output as part of the JSON event stream we have
-            // this workaround.
-            "   ",
-        ];
-
-        // Build a regex of all the line beginnings that come out of swift-testing events.
-        const isSwiftTestingLineBeginning = new RegExp(`^${values.join("|")}`);
-
-        return (chunk: string, runState: ITestRunState) => {
-            for (const line of chunk.split("\n")) {
-                // Any line in stdout that fails to match as a swift-testing line is treated
-                // as a user printed value and recorded to the test run output with no associated test.
-                if (line.trim().length > 0 && isSwiftTestingLineBeginning.test(line) === false) {
-                    runState.recordOutput(undefined, `${line}\r\n`);
+                    const event = JSON.parse(maybeJSON);
+                    if (this.isValidEvent(event)) {
+                        this.parse(event, runState);
+                        this.preambleComplete = true;
+                        continue;
+                    }
+                } catch {
+                    // Output wasn't valid JSON, continue and treat it like regular output
                 }
             }
-        };
-    })();
 
-    private createReader(path: string): INamedPipeReader {
-        return process.platform === "win32"
-            ? new WindowsNamedPipeReader(path)
-            : new UnixNamedPipeReader(path);
+            // Any line in stdout that fails to match as a swift-testing line is treated
+            // as a user printed value and recorded to the test run output with no associated test.
+            const trimmed = line.trim();
+            if (this.preambleComplete && trimmed.length > 0) {
+                logger(`${trimmed}\r\n`);
+            }
+        }
+    }
+
+    /**
+     * Type guard for validating that an event is a valid SwiftTestEvent.
+     * This is not an exaustive validation, but it is sufficient for our purposes.
+     *
+     * @param event The event to validate.
+     * @returns `true` if the event is a valid SwiftTestEvent, `false` otherwise.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private isValidEvent(event: any): event is SwiftTestEvent {
+        return (
+            typeof event === "object" &&
+            event !== null &&
+            (event.kind === "test" ||
+                event.kind === "event" ||
+                event.kind === "metadata" ||
+                event.kind === "runStarted" ||
+                event.kind === "runEnded")
+        );
     }
 
     private testName(id: string): string {
@@ -506,7 +470,7 @@ export class SwiftTestingOutputParser {
                 return;
             }
 
-            this.recordOutput(runState, item.payload.messages, undefined);
+            // this.recordOutput(runState, item.payload.messages, undefined);
         }
     }
 }
@@ -523,14 +487,12 @@ export class MessageRenderer {
     }
 
     private static colorize(symbolType: TestSymbol, message: string): string {
-        const ansiEscapeCodePrefix = "\u{001B}[";
-        const resetANSIEscapeCode = `${ansiEscapeCodePrefix}0m`;
         switch (symbolType) {
             case TestSymbol.details:
             case TestSymbol.skip:
             case TestSymbol.difference:
             case TestSymbol.passWithKnownIssue:
-                return `${ansiEscapeCodePrefix}90m${message}${resetANSIEscapeCode}`;
+                return StringColor.default(message);
             default:
                 return message;
         }
@@ -547,9 +509,6 @@ export class SymbolRenderer {
     static eventMessageSymbol(symbol: TestSymbol): string {
         return this.colorize(symbol, this.symbol(symbol));
     }
-
-    static ansiEscapeCodePrefix = "\u{001B}[";
-    static resetANSIEscapeCode = `${SymbolRenderer.ansiEscapeCodePrefix}0m`;
 
     // This is adapted from
     // https://github.com/apple/swift-testing/blob/786ade71421eb1d8a9c1d99c902cf1c93096e7df/Sources/Testing/Events/Recorder/Event.Symbol.swift#L102
@@ -604,13 +563,13 @@ export class SymbolRenderer {
             case TestSymbol.skip:
             case TestSymbol.difference:
             case TestSymbol.passWithKnownIssue:
-                return `${SymbolRenderer.ansiEscapeCodePrefix}90m${symbol}${SymbolRenderer.resetANSIEscapeCode}`;
+                return StringColor.default(symbol);
             case TestSymbol.pass:
-                return `${SymbolRenderer.ansiEscapeCodePrefix}92m${symbol}${SymbolRenderer.resetANSIEscapeCode}`;
+                return StringColor.green(symbol);
             case TestSymbol.fail:
-                return `${SymbolRenderer.ansiEscapeCodePrefix}91m${symbol}${SymbolRenderer.resetANSIEscapeCode}`;
+                return StringColor.red(symbol);
             case TestSymbol.warning:
-                return `${SymbolRenderer.ansiEscapeCodePrefix}93m${symbol}${SymbolRenderer.resetANSIEscapeCode}`;
+                return StringColor.yellow(symbol);
             case TestSymbol.none:
             default:
                 return symbol;

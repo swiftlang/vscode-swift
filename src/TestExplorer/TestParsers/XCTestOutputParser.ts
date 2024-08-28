@@ -69,12 +69,15 @@ export const nonDarwinTestRegex = {
     failedSuite: /^Test Suite '(.*)' failed/,
 };
 
-export interface IXCTestOutputParser {
-    parseResult(output: string, runState: ITestRunState): void;
+export interface ITestOutputParser {
+    logs: string[];
+    parseResult(output: string, runState: ITestRunState, logger: (output: string) => void): void;
 }
 
-export class ParallelXCTestOutputParser implements IXCTestOutputParser {
+export class ParallelXCTestOutputParser implements ITestOutputParser {
     private outputParser: XCTestOutputParser;
+
+    public logs: string[] = [];
 
     /**
      * Create an ParallelXCTestOutputParser.
@@ -88,6 +91,8 @@ export class ParallelXCTestOutputParser implements IXCTestOutputParser {
     }
 
     public parseResult(output: string, runState: ITestRunState) {
+        this.logs = [output];
+
         // From 5.7 to 5.10 running with the --parallel option dumps the test results out
         // to the console with no newlines, so it isn't possible to distinguish where errors
         // begin and end. Consequently we can't record them, and so we manually mark them
@@ -133,7 +138,9 @@ class ParallelXCTestRunStateProxy implements ITestRunState {
 }
 /* eslint-enable @typescript-eslint/no-unused-vars */
 
-export class XCTestOutputParser implements IXCTestOutputParser {
+export class XCTestOutputParser implements ITestOutputParser {
+    public logs: string[] = [];
+
     private regex: TestRegex;
 
     /**
@@ -149,6 +156,8 @@ export class XCTestOutputParser implements IXCTestOutputParser {
      * @param output Output from `swift test`
      */
     public parseResult(output: string, runState: ITestRunState) {
+        this.logs.push(output);
+
         const output2 = output.replace(/\r\n/g, "\n");
         const lines = output2.split("\n");
         if (runState.excess) {

@@ -18,6 +18,7 @@ import { SwiftPseudoterminal } from "./SwiftPseudoterminal";
 
 export interface SwiftExecutionOptions extends vscode.ProcessExecutionOptions {
     presentation?: vscode.TaskPresentationOptions;
+    ttyCols?: number;
 }
 
 /**
@@ -33,7 +34,11 @@ export class SwiftExecution extends vscode.CustomExecution {
         swiftProcess: SwiftProcess = new SwiftPtyProcess(command, args, options)
     ) {
         super(async () => {
-            return new SwiftPseudoterminal(swiftProcess, options.presentation || {});
+            return new SwiftPseudoterminal(
+                swiftProcess,
+                options.presentation || {},
+                options.ttyCols
+            );
         });
         this.onDidWrite = swiftProcess.onDidWrite;
         this.onDidClose = swiftProcess.onDidClose;

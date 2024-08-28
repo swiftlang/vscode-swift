@@ -446,6 +446,7 @@ export class TestingConfigurationFactory {
             "0",
             "--experimental-event-stream-output",
             this.fifoPipePath,
+            "--quiet",
         ];
     }
 

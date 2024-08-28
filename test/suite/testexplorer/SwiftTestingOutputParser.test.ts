@@ -27,17 +27,9 @@ import {
     MessageRenderer,
 } from "../../../src/TestExplorer/TestParsers/SwiftTestingOutputParser";
 import { TestRunState, TestStatus } from "./MockTestRunState";
-import { Readable } from "stream";
 
-class TestEventStream {
-    constructor(private items: SwiftTestEvent[]) {}
-
-    async start(readable: Readable) {
-        this.items.forEach(item => {
-            readable.push(`${JSON.stringify(item)}\n`);
-        });
-        readable.push(null);
-    }
+function buildEventStream(items: (SwiftTestEvent | string)[]): string {
+    return items.map(item => (typeof item === "string" ? item : JSON.stringify(item))).join("\n");
 }
 
 suite("SwiftTestingOutputParser Suite", () => {
@@ -49,6 +41,22 @@ suite("SwiftTestingOutputParser Suite", () => {
             () => {}
         );
     });
+
+    async function parseResults(
+        parser: SwiftTestingOutputParser,
+        events: string,
+        testRunState: TestRunState,
+        expectedLogOutput: string[] = []
+    ) {
+        const logs: string[] = [];
+        await parser.parseResult(events, testRunState, output => logs.push(output));
+        assert.deepStrictEqual(
+            logs,
+            expectedLogOutput.map(line => `${line}\r\n`),
+            "Unexpected test run log output"
+        );
+        return testRunState.tests;
+    }
 
     type ExtractPayload<T> = T extends { payload: infer E } ? E : never;
     function testEvent(
@@ -77,16 +85,16 @@ suite("SwiftTestingOutputParser Suite", () => {
 
     test("Passed test", async () => {
         const testRunState = new TestRunState(["MyTests.MyTests/testPass()"], true);
-        const events = new TestEventStream([
+        const events = buildEventStream([
             testEvent("runStarted"),
             testEvent("testCaseStarted", "MyTests.MyTests/testPass()"),
             testEvent("testCaseEnded", "MyTests.MyTests/testPass()"),
             testEvent("runEnded"),
         ]);
 
-        await outputParser.watch("file:///mock/named/pipe", testRunState, events);
+        const results = await parseResults(outputParser, events, testRunState);
 
-        assert.deepEqual(testRunState.tests, [
+        assert.deepEqual(results, [
             {
                 name: "MyTests.MyTests/testPass()",
                 status: TestStatus.passed,
@@ -98,15 +106,15 @@ suite("SwiftTestingOutputParser Suite", () => {
 
     test("Skipped test", async () => {
         const testRunState = new TestRunState(["MyTests.MyTests/testSkip()"], true);
-        const events = new TestEventStream([
+        const events = buildEventStream([
             testEvent("runStarted"),
             testEvent("testSkipped", "MyTests.MyTests/testSkip()"),
             testEvent("runEnded"),
         ]);
 
-        await outputParser.watch("file:///mock/named/pipe", testRunState, events);
+        const results = await parseResults(outputParser, events, testRunState);
 
-        assert.deepEqual(testRunState.tests, [
+        assert.deepEqual(results, [
             {
                 name: "MyTests.MyTests/testSkip()",
                 status: TestStatus.skipped,
@@ -122,7 +130,7 @@ suite("SwiftTestingOutputParser Suite", () => {
             line: 1,
             column: 2,
         };
-        const events = new TestEventStream([
+        const events = buildEventStream([
             testEvent("runStarted"),
             testEvent("testCaseStarted", "MyTests.MyTests/testFail()"),
             testEvent("issueRecorded", "MyTests.MyTests/testFail()", messages, issueLocation),
@@ -130,12 +138,12 @@ suite("SwiftTestingOutputParser Suite", () => {
             testEvent("runEnded"),
         ]);
 
-        await outputParser.watch("file:///mock/named/pipe", testRunState, events);
+        const results = await parseResults(outputParser, events, testRunState);
 
         const renderedMessages = messages.map(message => MessageRenderer.render(message));
         const fullFailureMessage = renderedMessages.join("\n");
 
-        assert.deepEqual(testRunState.tests, [
+        assert.deepEqual(results, [
             {
                 name: "MyTests.MyTests/testFail()",
                 status: TestStatus.failed,
@@ -175,7 +183,7 @@ suite("SwiftTestingOutputParser Suite", () => {
 
     test("Parameterized test", async () => {
         const testRunState = new TestRunState(["MyTests.MyTests/testParameterized()"], true);
-        const events = new TestEventStream([
+        const events = buildEventStream([
             {
                 kind: "test",
                 payload: {
@@ -244,9 +252,9 @@ suite("SwiftTestingOutputParser Suite", () => {
                 });
             }
         );
-        await outputParser.watch("file:///mock/named/pipe", testRunState, events);
+        const results = await parseResults(outputParser, events, testRunState);
 
-        assert.deepEqual(testRunState.tests, [
+        assert.deepEqual(results, [
             {
                 name: "MyTests.MyTests/testParameterized()",
                 status: TestStatus.passed,
@@ -268,7 +276,73 @@ suite("SwiftTestingOutputParser Suite", () => {
         ]);
     });
 
-    test("Output is captured", async () => {
+    suite("Output capture", () => {
+        test("Output is captured", async () => {
+            const testRunState = new TestRunState(["MyTests.MyTests/testPass()"], true);
+            const events = buildEventStream([
+                "its preamble and should be ignored",
+                testEvent("runStarted"),
+                testEvent("testCaseStarted", "MyTests.MyTests/testPass()"),
+                "the test output",
+                testEvent("testCaseEnded", "MyTests.MyTests/testPass()"),
+                testEvent("runEnded"),
+                "its over",
+            ]);
+
+            const results = await parseResults(outputParser, events, testRunState, [
+                "the test output",
+                "its over",
+            ]);
+
+            assert.deepEqual(outputParser.logs, [events]);
+            assert.deepEqual(results, [
+                {
+                    name: "MyTests.MyTests/testPass()",
+                    status: TestStatus.passed,
+                    timing: { timestamp: 0 },
+                    output: [],
+                },
+            ]);
+        });
+
+        test("Output that resembles JSON but isn't is captured", async () => {
+            const testRunState = new TestRunState([], true);
+            const events = buildEventStream([
+                testEvent("runStarted"),
+                '{ "kind_of_like_json_with_no_closing_brace": ""',
+                testEvent("runEnded"),
+                "its over",
+            ]);
+
+            const results = await parseResults(outputParser, events, testRunState, [
+                '{ "kind_of_like_json_with_no_closing_brace": ""',
+                "its over",
+            ]);
+
+            assert.deepEqual(outputParser.logs, [events]);
+            assert.deepEqual(results, []);
+        });
+
+        test("Output that is JSON but isn't a test event", async () => {
+            const testRunState = new TestRunState([], true);
+            const events = buildEventStream([
+                testEvent("runStarted"),
+                '{ "valid_json": true }',
+                testEvent("runEnded"),
+                "its over",
+            ]);
+
+            const results = await parseResults(outputParser, events, testRunState, [
+                '{ "valid_json": true }',
+                "its over",
+            ]);
+
+            assert.deepEqual(outputParser.logs, [events]);
+            assert.deepEqual(results, []);
+        });
+    });
+
+    test("Multiple test cases", async () => {
         const testRunState = new TestRunState(
             ["MyTests.MyTests/testOutput()", "MyTests.MyTests/testOutput2()"],
             true
@@ -278,7 +352,7 @@ suite("SwiftTestingOutputParser Suite", () => {
         const makeEvent = (kind: ExtractPayload<EventRecord>["kind"], testId?: string) =>
             testEvent(kind, testId, [{ text: kind, symbol }]);
 
-        const events = new TestEventStream([
+        const events = buildEventStream([
             makeEvent("runStarted"),
             makeEvent("testCaseStarted", "MyTests.MyTests/testOutput()"),
             makeEvent("testCaseEnded", "MyTests.MyTests/testOutput()"),
@@ -287,9 +361,9 @@ suite("SwiftTestingOutputParser Suite", () => {
             makeEvent("runEnded"),
         ]);
 
-        await outputParser.watch("file:///mock/named/pipe", testRunState, events);
+        const results = await parseResults(outputParser, events, testRunState);
 
-        assert.deepEqual(testRunState.tests, [
+        assert.deepEqual(results, [
             {
                 name: "MyTests.MyTests/testOutput()",
                 output: [

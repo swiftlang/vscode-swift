@@ -327,6 +327,11 @@ export function createSwiftTask(
             cwd: fullCwd,
             env: env,
             presentation,
+            // Some Windows task configurations will inject newlines at the default,
+            // column width which breaks some tasks that rely on parsing tty output.
+            // Work around this by setting the column width of the terminal to
+            // Int32.MAX_VALUE and let the VS Code terminal renderer wrap the output.
+            ttyCols: 2147483647, // max Int32 value
         })
     );
     // This doesn't include any quotes added by VS Code.

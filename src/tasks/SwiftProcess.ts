@@ -89,7 +89,7 @@ export class SwiftPtyProcess implements SwiftProcess {
     constructor(
         public readonly command: string,
         public readonly args: string[],
-        private options: vscode.ProcessExecutionOptions = {}
+        private options: vscode.ProcessExecutionOptions & { ttyCols?: number } = {}
     ) {}
 
     spawn(): void {
@@ -103,6 +103,7 @@ export class SwiftPtyProcess implements SwiftProcess {
             this.spawnedProcess = spawn(this.command, this.args, {
                 cwd: this.options.cwd,
                 env: { ...process.env, ...this.options.env },
+                cols: this.options.ttyCols,
                 useConpty,
             });
             this.spawnEmitter.fire();

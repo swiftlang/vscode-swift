@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as assert from "assert";
+import { beforeEach } from "mocha";
 import {
     darwinTestRegex,
     nonDarwinTestRegex,
@@ -29,7 +30,10 @@ suite("XCTestOutputParser Suite", () => {
             .map(line => `${line}\r\n`);
 
     suite("Darwin", () => {
-        const outputParser = new XCTestOutputParser(darwinTestRegex);
+        let outputParser: XCTestOutputParser;
+        beforeEach(() => {
+            outputParser = new XCTestOutputParser(darwinTestRegex);
+        });
 
         test("Passed Test", () => {
             const testRunState = new TestRunState(["MyTests.MyTests/testPass"], true);
@@ -46,6 +50,15 @@ Test Case '-[MyTests.MyTests testPass]' passed (0.001 seconds).
                     output: inputToTestOutput(input),
                 },
             ]);
+        });
+
+        test("Captures logs", () => {
+            const testRunState = new TestRunState(["MyTests.MyTests/testPass"], true);
+            const input = `Test Case '-[MyTests.MyTests testPass]' started.
+Test Case '-[MyTests.MyTests testPass]' passed (0.001 seconds).`;
+            outputParser.parseResult(input, testRunState);
+
+            assert.deepEqual(outputParser.logs, [input]);
         });
 
         test("Multiple Passed Tests", () => {

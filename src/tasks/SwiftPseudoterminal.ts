@@ -27,7 +27,8 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Dispos
 
     constructor(
         private swiftProcess: SwiftProcess,
-        private options: vscode.TaskPresentationOptions
+        private options: vscode.TaskPresentationOptions,
+        private ttyCols?: number
     ) {}
 
     private disposables: vscode.Disposable[] = [];
@@ -97,7 +98,10 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Dispos
     }
 
     setDimensions(dimensions: vscode.TerminalDimensions): void {
-        this.swiftProcess.setDimensions(dimensions);
+        this.swiftProcess.setDimensions({
+            columns: this.ttyCols ?? dimensions.columns,
+            rows: dimensions.rows,
+        });
     }
 
     onDidWrite: vscode.Event<string> = this.writeEmitter.event;
