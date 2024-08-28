@@ -31,7 +31,8 @@
 				"${workspaceFolder}/assets/test"
 			],
 			"outFiles": [
-				"${workspaceFolder}/out/**/*.js"
+				"${workspaceFolder}/out/**/*.js",
+				"${workspaceFolder}/dist/**/*.js"
 			],
 			"env": {
 				"VSCODE_DEBUG": "1"

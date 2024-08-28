@@ -33,12 +33,11 @@ module.exports = defineConfig({
             mocha: {
                 ui: "tdd",
                 color: true,
-                // so doesn't timeout when breakpoint is hit
-                timeout: isDebugRun ? Number.MAX_SAFE_INTEGER : 3000,
                 timeout,
                 forbidOnly: isCIBuild,
                 grep: isFastTestRun ? "@slow" : undefined,
                 invert: isFastTestRun,
+                slow: 10000
             },
             installExtensions: ["vadimcn.vscode-lldb"],
             reuseMachineInstall: !isCIBuild,
@@ -50,16 +49,17 @@ module.exports = defineConfig({
             mocha: {
                 ui: "tdd",
                 color: true,
-                // so doesn't timeout when breakpoint is hit
-                timeout: isDebugRun ? Number.MAX_SAFE_INTEGER : 3000,
+                timeout,
                 forbidOnly: isCIBuild,
+                slow: 100
             },
             reuseMachineInstall: !isCIBuild,
         },
         // you can specify additional test configurations, too
     ],
     coverage: {
-        include: ["**/src/**"],
-        reporter: ["text", "html"],
+        includeAll: true,
+        exclude: ["**/test/**"],
+        reporter: ["text", "lcov"], // "lcov" also generates HTML
     },
 });

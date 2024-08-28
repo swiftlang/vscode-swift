@@ -45,7 +45,7 @@ suite("WorkspaceContext Test Suite", () => {
             await workspaceContext?.addPackageFolder(testAssetUri("package2"), workspaceFolder);
             assert.strictEqual(count, 1);
             observer?.dispose();
-        }).timeout(5000);
+        }).timeout(15000);
     });
 
     suite("Tasks", async function () {

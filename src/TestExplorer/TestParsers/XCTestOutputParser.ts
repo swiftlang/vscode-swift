@@ -195,7 +195,7 @@ export class XCTestOutputParser implements IXCTestOutputParser {
                         this.failTest(testIndex, { duration }, runState);
                         break;
                     case TestCompletionState.passed:
-                        // Tests are passed in the second pass below.
+                        this.passTest(testIndex, { duration }, runState);
                         break;
                     case TestCompletionState.skipped:
                         this.skipTest(testIndex, runState);
@@ -252,21 +252,6 @@ export class XCTestOutputParser implements IXCTestOutputParser {
             }
             // unrecognised output could be the continuation of a previous error message
             this.continueErrorMessage(line, runState);
-        }
-
-        // We need to run the passed checks in a separate pass to ensure we aren't in the situation
-        // where there is a symbol clash between different test targets and set the wrong test
-        // to be passed.
-        for (const line of lines) {
-            // Regex "Test Case '<class>.<function>' passed (<duration> seconds)"
-            const passedMatch = this.regex.finished.exec(line);
-            if (passedMatch && passedMatch[3] === TestCompletionState.passed) {
-                const testName = `${passedMatch[1]}/${passedMatch[2]}`;
-                const duration: number = +passedMatch[4];
-                const passedTestIndex = runState.getTestItemIndex(testName, undefined);
-                this.passTest(passedTestIndex, { duration }, runState);
-                continue;
-            }
         }
     }
 

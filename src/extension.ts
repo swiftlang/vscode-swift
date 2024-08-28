@@ -36,6 +36,7 @@ import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
 import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 import { checkAndWarnAboutWindowsSymlinks } from "./ui/win32";
 import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "./terminal";
+import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -169,7 +170,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
                         ) {
                             await folder.backgroundCompilation.runTask();
                         } else {
-                            await commands.resolveFolderDependencies(folder, true);
+                            await resolveFolderDependencies(folder, true);
                         }
                         if (
                             workspace.toolchain.swiftVersion.isGreaterThanOrEqual(
@@ -208,7 +209,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
                             folder.swiftPackage.foundPackage &&
                             !configuration.folder(folder.workspaceFolder).disableAutoResolve
                         ) {
-                            await commands.resolveFolderDependencies(folder, true);
+                            await resolveFolderDependencies(folder, true);
                         }
                         break;
 
@@ -217,7 +218,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
                             folder.swiftPackage.foundPackage &&
                             !configuration.folder(folder.workspaceFolder).disableAutoResolve
                         ) {
-                            await commands.resolveFolderDependencies(folder, true);
+                            await resolveFolderDependencies(folder, true);
                         }
                 }
             }

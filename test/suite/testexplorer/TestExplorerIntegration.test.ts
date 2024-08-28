@@ -31,6 +31,10 @@ import { TestRunProxy } from "../../../src/TestExplorer/TestRunner";
 import { Version } from "../../../src/utilities/version";
 import { TestKind } from "../../../src/TestExplorer/TestKind";
 import { mockNamespace } from "../../unit-tests/MockUtils";
+import {
+    MessageRenderer,
+    TestSymbol,
+} from "../../../src/TestExplorer/TestParsers/SwiftTestingOutputParser";
 
 suite("Test Explorer Suite", function () {
     const MAX_TEST_RUN_TIME_MINUTES = 5;
@@ -196,7 +200,12 @@ suite("Test Explorer Suite", function () {
                 failed: [
                     {
                         test: "PackageTests.testWithKnownIssueAndUnknownIssue()",
-                        issues: ["Expectation failed: 2 == 3"],
+                        issues: [
+                            MessageRenderer.render({
+                                symbol: TestSymbol.fail,
+                                text: "Expectation failed: 2 == 3",
+                            }),
+                        ],
                     },
                 ],
             });
@@ -269,7 +278,10 @@ suite("Test Explorer Suite", function () {
                 await eventPromise(testRun.onTestRunComplete);
 
                 assertTestResults(testRun, {
-                    passed: ["PackageTests.MixedXCTestSuite/testPassing"],
+                    passed: [
+                        "PackageTests.MixedXCTestSuite",
+                        "PackageTests.MixedXCTestSuite/testPassing",
+                    ],
                 });
             });
         });
@@ -284,7 +296,10 @@ suite("Test Explorer Suite", function () {
             );
 
             assertTestResults(testRun, {
-                passed: ["PackageTests.DebugReleaseTestSuite/testDebug"],
+                passed: [
+                    "PackageTests.DebugReleaseTestSuite",
+                    "PackageTests.DebugReleaseTestSuite/testDebug",
+                ],
             });
         });
 
@@ -299,7 +314,10 @@ suite("Test Explorer Suite", function () {
             );
 
             assertTestResults(passingRun, {
-                passed: ["PackageTests.DebugReleaseTestSuite/testRelease"],
+                passed: [
+                    "PackageTests.DebugReleaseTestSuite",
+                    "PackageTests.DebugReleaseTestSuite/testRelease",
+                ],
             });
         });
 
@@ -352,14 +370,14 @@ suite("Test Explorer Suite", function () {
         });
 
         suite(runProfile, () => {
-            suite("swift-testing", function () {
+            suite(`swift-testing (${runProfile})`, function () {
                 suiteSetup(function () {
                     if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
                         this.skip();
                     }
                 });
 
-                test("Runs passing test", async function () {
+                test(`Runs passing test ${runProfile}`, async function () {
                     const testRun = await runTest(
                         testExplorer.controller,
                         runProfile,
@@ -376,7 +394,7 @@ suite("Test Explorer Suite", function () {
                     );
                 });
 
-                test("Runs failing test", async function () {
+                test(`Runs failing test ${runProfile}`, async function () {
                     const testRun = await runTest(
                         testExplorer.controller,
                         runProfile,
@@ -387,25 +405,33 @@ suite("Test Explorer Suite", function () {
                         failed: [
                             {
                                 test: "PackageTests.topLevelTestFailing()",
-                                issues: ["Expectation failed: 1 == 2"],
+                                issues: [
+                                    MessageRenderer.render({
+                                        symbol: TestSymbol.fail,
+                                        text: "Expectation failed: 1 == 2",
+                                    }),
+                                ],
                             },
                         ],
                     });
                 });
 
-                test("Runs Suite", async function () {
+                test(`Runs Suite ${runProfile}`, async function () {
                     const testRun = await runTest(
                         testExplorer.controller,
                         runProfile,
                         "PackageTests.MixedSwiftTestingSuite"
                     );
+
                     assertTestResults(testRun, {
                         passed: ["PackageTests.MixedSwiftTestingSuite/testPassing()"],
                         skipped: ["PackageTests.MixedSwiftTestingSuite/testDisabled()"],
                         failed: [
                             {
                                 test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
-                                issues: ["testFailing() \u{203A} Expectation failed: 1 == 2"],
+                                issues: [
+                                    `testFailing() \u{203A} ${MessageRenderer.render({ symbol: TestSymbol.fail, text: "Expectation failed: 1 == 2" })}`,
+                                ],
                             },
                             {
                                 issues: [],
@@ -415,7 +441,7 @@ suite("Test Explorer Suite", function () {
                     });
                 });
 
-                test("Runs parameterized test", async function () {
+                test(`Runs parameterized test ${runProfile}`, async function () {
                     const testRun = await runTest(
                         testExplorer.controller,
                         runProfile,
@@ -424,13 +450,18 @@ suite("Test Explorer Suite", function () {
 
                     assertTestResults(testRun, {
                         passed: [
-                            "PackageTests.parameterizedTest(_:)/PackageTests.swift:51:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])",
-                            "PackageTests.parameterizedTest(_:)/PackageTests.swift:51:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [51])])",
+                            "PackageTests.parameterizedTest(_:)/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])",
+                            "PackageTests.parameterizedTest(_:)/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [51])])",
                         ],
                         failed: [
                             {
-                                issues: ["2 \u{203A} Expectation failed: (arg → 2) != 2"],
-                                test: "PackageTests.parameterizedTest(_:)/PackageTests.swift:51:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])",
+                                issues: [
+                                    `2 \u{203A} ${MessageRenderer.render({
+                                        symbol: TestSymbol.fail,
+                                        text: "Expectation failed: (arg → 2) != 2",
+                                    })}`,
+                                ],
+                                test: "PackageTests.parameterizedTest(_:)/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])",
                             },
                             {
                                 issues: [],
@@ -440,7 +471,7 @@ suite("Test Explorer Suite", function () {
                     });
                 });
 
-                test("Runs Suite", async function () {
+                test(`Runs Suite (${runProfile})`, async function () {
                     const testRun = await runTest(
                         testExplorer.controller,
                         runProfile,
@@ -453,7 +484,9 @@ suite("Test Explorer Suite", function () {
                         failed: [
                             {
                                 test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
-                                issues: ["testFailing() \u{203A} Expectation failed: 1 == 2"],
+                                issues: [
+                                    `testFailing() \u{203A} ${MessageRenderer.render({ symbol: TestSymbol.fail, text: "Expectation failed: 1 == 2" })}`,
+                                ],
                             },
                             {
                                 issues: [],
@@ -463,7 +496,7 @@ suite("Test Explorer Suite", function () {
                     });
                 });
 
-                test("Runs All", async function () {
+                test(`Runs All (${runProfile})`, async function () {
                     const testRun = await runTest(
                         testExplorer.controller,
                         runProfile,
@@ -480,7 +513,9 @@ suite("Test Explorer Suite", function () {
                         failed: [
                             {
                                 test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
-                                issues: ["testFailing() \u{203A} Expectation failed: 1 == 2"],
+                                issues: [
+                                    `testFailing() \u{203A} ${MessageRenderer.render({ symbol: TestSymbol.fail, text: "Expectation failed: 1 == 2" })}`,
+                                ],
                             },
                             {
                                 issues: [],
@@ -490,12 +525,16 @@ suite("Test Explorer Suite", function () {
                                 test: "PackageTests.MixedXCTestSuite/testFailing",
                                 issues: [xcTestFailureMessage],
                             },
+                            {
+                                issues: [],
+                                test: "PackageTests.MixedXCTestSuite",
+                            },
                         ],
                     });
                 });
             });
 
-            suite("XCTests", () => {
+            suite(`XCTests (${runProfile})`, () => {
                 test("Runs passing test", async function () {
                     const testRun = await runTest(
                         testExplorer.controller,
@@ -504,7 +543,10 @@ suite("Test Explorer Suite", function () {
                     );
 
                     assertTestResults(testRun, {
-                        passed: ["PackageTests.PassingXCTestSuite/testPassing"],
+                        passed: [
+                            "PackageTests.PassingXCTestSuite",
+                            "PackageTests.PassingXCTestSuite/testPassing",
+                        ],
                     });
                 });
 
@@ -520,6 +562,10 @@ suite("Test Explorer Suite", function () {
                             {
                                 test: "PackageTests.FailingXCTestSuite/testFailing",
                                 issues: [xcTestFailureMessage],
+                            },
+                            {
+                                issues: [],
+                                test: "PackageTests.FailingXCTestSuite",
                             },
                         ],
                     });
@@ -538,6 +584,10 @@ suite("Test Explorer Suite", function () {
                             {
                                 test: "PackageTests.MixedXCTestSuite/testFailing",
                                 issues: [xcTestFailureMessage],
+                            },
+                            {
+                                issues: [],
+                                test: "PackageTests.MixedXCTestSuite",
                             },
                         ],
                     });
