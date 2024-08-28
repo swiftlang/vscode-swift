@@ -31,11 +31,10 @@ export class DebugAdapter {
 
     /** Return debug adapter for toolchain */
     public static getDebugAdapterType(swiftVersion: Version): "lldb-vscode" | "lldb-dap" {
-        return configuration.debugger.useCodeLLDB
-            ? "lldb-vscode"
-            : swiftVersion.isLessThan(new Version(6, 0, 0))
-              ? "lldb-vscode"
-              : "lldb-dap";
+        return swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
+            configuration.debugger.useDebugAdapterFromToolchain
+            ? "lldb-dap"
+            : "lldb-vscode";
     }
 
     /** Return the path to the debug adapter */

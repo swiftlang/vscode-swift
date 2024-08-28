@@ -550,10 +550,10 @@
       {
         "title": "Debugger",
         "properties": {
-          "swift.debugger.useCodeLLDB": {
+          "swift.debugger.useDebugAdapterFromToolchain": {
             "type": "boolean",
-            "default": false,
-            "markdownDescription": "Use the CodeLLDB extension for debugging instead of lldb-dap. Note: lldb-dap is not available in toolchains prior to Swift 6.0.0 and CodeLLDB will be used instead.",
+            "default": true,
+            "markdownDescription": "Use the LLDB debug adapter packaged with the Swift toolchain as your debug adapter. Note: this is only available starting with Swift 6. The CodeLLDB extension will be used if your Swift toolchain does not contain lldb-dap.",
             "order": 1
           },
           "swift.debugger.path": {

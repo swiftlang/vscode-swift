@@ -27,7 +27,7 @@ suite("Debug Adapter Factory Test Suite", () => {
 
     suite("LLDBDebugConfigurationProvider Test Suite", () => {
         setup(() => {
-            when(mockDebugConfig.useCodeLLDB).thenReturn(false);
+            when(mockDebugConfig.useDebugAdapterFromToolchain).thenReturn(true);
         });
 
         test("uses lldb-dap for swift versions >=6.0.0", async () => {
@@ -53,8 +53,8 @@ suite("Debug Adapter Factory Test Suite", () => {
             assert.deepStrictEqual(launchConfig.sourceLanguages, ["swift"]);
         });
 
-        test("delegates to CodeLLDB on Swift 6.0.0 if setting swift.debugger.useCodeLLDB is explicitly enabled", async () => {
-            when(mockDebugConfig.useCodeLLDB).thenReturn(true);
+        test("delegates to CodeLLDB on Swift 6.0.0 if setting swift.debugger.useDebugAdapterFromToolchain is explicitly disabled", async () => {
+            when(mockDebugConfig.useDebugAdapterFromToolchain).thenReturn(false);
             const configProvider = new LLDBDebugConfigurationProvider("darwin", swift6);
             const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
                 name: "Test Launch Config",

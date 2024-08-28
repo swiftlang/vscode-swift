@@ -48,7 +48,7 @@ export interface LSPConfiguration {
 /** debugger configuration */
 export interface DebuggerConfiguration {
     /** Whether or not to use CodeLLDB for debugging instead of lldb-dap */
-    readonly useCodeLLDB: boolean;
+    readonly useDebugAdapterFromToolchain: boolean;
     /** Return path to debug adapter */
     readonly customDebugAdapterPath: string;
 }
@@ -143,10 +143,10 @@ const configuration = {
     /** debugger configuration */
     get debugger(): DebuggerConfiguration {
         return {
-            get useCodeLLDB(): boolean {
+            get useDebugAdapterFromToolchain(): boolean {
                 return vscode.workspace
                     .getConfiguration("swift.debugger")
-                    .get<boolean>("useCodeLLDB", false);
+                    .get<boolean>("useDebugAdapterFromToolchain", true);
             },
             get customDebugAdapterPath(): string {
                 return vscode.workspace.getConfiguration("swift.debugger").get<string>("path", "");
