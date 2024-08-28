@@ -76,12 +76,16 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand("swift.run", () => runBuild(ctx)),
         vscode.commands.registerCommand("swift.debug", () => debugBuild(ctx)),
         vscode.commands.registerCommand("swift.cleanBuild", () => cleanBuild(ctx)),
-        vscode.commands.registerCommand("swift.runTestsMultipleTimes", item =>
-            runTestMultipleTimes(ctx, item, false)
-        ),
-        vscode.commands.registerCommand("swift.runTestsUntilFailure", item =>
-            runTestMultipleTimes(ctx, item, true)
-        ),
+        vscode.commands.registerCommand("swift.runTestsMultipleTimes", item => {
+            if (ctx.currentFolder) {
+                runTestMultipleTimes(ctx.currentFolder, item, false);
+            }
+        }),
+        vscode.commands.registerCommand("swift.runTestsUntilFailure", item => {
+            if (ctx.currentFolder) {
+                runTestMultipleTimes(ctx.currentFolder, item, true);
+            }
+        }),
         // Note: This is only available on macOS (gated in `package.json`) because its the only OS that has the iOS SDK available.
         vscode.commands.registerCommand("swift.switchPlatform", () => switchPlatform()),
         vscode.commands.registerCommand("swift.resetPackage", () => resetPackage(ctx)),
