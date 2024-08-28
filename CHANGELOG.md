@@ -5,7 +5,7 @@
 ### Added
 
 - Added New Swift File command ([#1018](https://github.com/swiftlang/vscode-swift/pull/1018))
-- Added the `swift.sourcekit-lsp.backgroundIndexing` setting to enable background indexing in SourceKit-LSP with Swift 6 ([#992](https://github.com/swiftlang/vscode-swift/issues/992))
+- Added the `swift.sourcekit-lsp.backgroundIndexing` setting to enable experimental background indexing in SourceKit-LSP with Swift 6 ([#992](https://github.com/swiftlang/vscode-swift/issues/992))
 - Added the `swift.additionalTestArguments` setting to add arguments to `swift test` and `swift build --build-tests` commands used when building and running tests within VS Code ([#1020](https://github.com/swiftlang/vscode-swift/pull/1020))
 - Run tests multiple times by right clicking them in the Test Explorer > Run Multiple Times ([#1009](https://github.com/swiftlang/vscode-swift/pull/1009))
 - Run tests until a failure (or a maximum number) by right clicking them in the Test Explorer > Run Until Failure ([#1009](https://github.com/swiftlang/vscode-swift/pull/1009))
