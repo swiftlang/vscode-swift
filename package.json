@@ -1264,7 +1264,7 @@
     "compile": "tsc",
     "watch": "tsc --watch",
     "lint": "eslint ./ --ext ts && tsc --noEmit",
-    "format": "prettier --check src test",
+    "format": "prettier --check *.json src test",
     "pretest": "npm run compile && find ./assets/test -type d -name '.build' -exec rm -rf {} + && find . -type d -name 'Package.resolved' -exec rm -rf {} + && tsc -p ./",
     "test": "vscode-test",
     "integration-test": "vscode-test --label integrationTests",
