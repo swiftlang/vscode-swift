@@ -45,6 +45,18 @@ export enum TestLibrary {
     swiftTesting = "swift-testing",
 }
 
+export interface TestRunState {
+    failed: {
+        test: vscode.TestItem;
+        message: vscode.TestMessage | readonly vscode.TestMessage[];
+    }[];
+    passed: vscode.TestItem[];
+    skipped: vscode.TestItem[];
+    errored: vscode.TestItem[];
+    unknown: number;
+    output: string[];
+}
+
 export class TestRunProxy {
     private testRun?: vscode.TestRun;
     private addedTestItems: { testClass: TestClass; parentIndex: number }[] = [];
@@ -60,17 +72,14 @@ export class TestRunProxy {
     // Allows for introspection on the state of TestItems after a test run.
     public runState = TestRunProxy.initialTestRunState();
 
-    private static initialTestRunState() {
+    public static initialTestRunState(): TestRunState {
         return {
-            failed: [] as {
-                test: vscode.TestItem;
-                message: vscode.TestMessage | readonly vscode.TestMessage[];
-            }[],
-            passed: [] as vscode.TestItem[],
-            skipped: [] as vscode.TestItem[],
-            errored: [] as vscode.TestItem[],
+            failed: [],
+            passed: [],
+            skipped: [],
+            errored: [],
             unknown: 0,
-            output: [] as string[],
+            output: [],
         };
     }
 
@@ -464,7 +473,10 @@ export class TestRunner {
     }
 
     /** Run test session without attaching to a debugger */
-    async runSession(token: vscode.CancellationToken, runState: TestRunnerTestRunState) {
+    async runSession(
+        token: vscode.CancellationToken,
+        runState: TestRunnerTestRunState
+    ): Promise<TestRunState> {
         // Run swift-testing first, then XCTest.
         // swift-testing being parallel by default should help these run faster.
         if (this.testArgs.hasSwiftTestingTests) {
@@ -486,13 +498,13 @@ export class TestRunner {
                 );
 
                 if (testBuildConfig === null) {
-                    return;
+                    return this.testRun.runState;
                 }
 
                 const outputStream = this.testOutputWritable(TestLibrary.swiftTesting, runState);
                 if (token.isCancellationRequested) {
                     outputStream.end();
-                    return;
+                    return this.testRun.runState;
                 }
 
                 // Watch the pipe for JSONL output and parse the events into test explorer updates.
@@ -518,13 +530,13 @@ export class TestRunner {
                 true
             );
             if (testBuildConfig === null) {
-                return;
+                return this.testRun.runState;
             }
 
             const parsedOutputStream = this.testOutputWritable(TestLibrary.xctest, runState);
             if (token.isCancellationRequested) {
                 parsedOutputStream.end();
-                return;
+                return this.testRun.runState;
             }
 
             // XCTestRuns are started immediately
@@ -539,6 +551,8 @@ export class TestRunner {
                 TestLibrary.xctest
             );
         }
+
+        return this.testRun.runState;
     }
 
     private async launchTests(
