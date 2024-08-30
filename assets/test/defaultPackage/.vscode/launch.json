@@ -1,11 +1,8 @@
 {
     "configurations": [
         {
-            "type": "lldb",
+            "type": "swift-lldb",
             "request": "launch",
-            "sourceLanguages": [
-                "swift"
-            ],
             "name": "Debug package1",
             "program": "${workspaceFolder:defaultPackage}/.build/debug/package1",
             "args": [],
@@ -13,11 +10,8 @@
             "preLaunchTask": "swift: Build Debug package1"
         },
         {
-            "type": "lldb",
+            "type": "swift-lldb",
             "request": "launch",
-            "sourceLanguages": [
-                "swift"
-            ],
             "name": "Release package1",
             "program": "${workspaceFolder:defaultPackage}/.build/release/package1",
             "args": [],
