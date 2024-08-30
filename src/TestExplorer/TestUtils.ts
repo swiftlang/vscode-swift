@@ -29,3 +29,15 @@ export function reduceTestItemChildren<U>(
     });
     return accumulator;
 }
+
+/**
+ * Returns a flattented, iterable collection of test items in the collection.
+ */
+export function flattenTestItemCollection(coll: vscode.TestItemCollection): vscode.TestItem[] {
+    const items: vscode.TestItem[] = [];
+    coll.forEach(item => {
+        items.push(item);
+        items.push(...flattenTestItemCollection(item.children));
+    });
+    return items;
+}

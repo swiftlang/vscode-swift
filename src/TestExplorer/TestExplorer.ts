@@ -27,6 +27,7 @@ import * as TestDiscovery from "./TestDiscovery";
 import { TargetType } from "../SwiftPackage";
 import { parseTestsFromSwiftTestListOutput } from "./SPMTestDiscovery";
 import { parseTestsFromDocumentSymbols } from "./DocumentSymbolTestDiscovery";
+import { flattenTestItemCollection } from "./TestUtils";
 
 /** Build test explorer UI */
 export class TestExplorer {
@@ -56,8 +57,6 @@ export class TestExplorer {
         this.controller.resolveHandler = async item => {
             if (!item) {
                 await this.discoverTestsInWorkspace();
-            } else {
-                //
             }
         };
 
@@ -106,6 +105,7 @@ export class TestExplorer {
             this.onTestItemsDidChangeEmitter,
             this.onDidCreateTestRunEmitter,
             ...this.testRunProfiles,
+            this.onTestItemsDidChange(() => this.updateSwiftTestContext()),
         ];
     }
 
@@ -161,7 +161,18 @@ export class TestExplorer {
         });
     }
 
-    /** Called whenever we have new document symbols */
+    /**
+     * Sets the `swift.tests` context variable which is used by commands
+     * to determine if the test item belongs to the Swift extension.
+     */
+    private updateSwiftTestContext() {
+        const items = flattenTestItemCollection(this.controller.items).map(({ id }) => id);
+        vscode.commands.executeCommand("setContext", "swift.tests", items);
+    }
+
+    /**
+     * Called whenever we have new document symbols
+     */
     private static onDocumentSymbols(
         folder: FolderContext,
         document: vscode.TextDocument,

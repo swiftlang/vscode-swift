@@ -616,30 +616,31 @@
         {
           "command": "swift.runTestsMultipleTimes",
           "group": "testExtras",
-          "when": "testId"
+          "when": "testId in swift.tests"
         },
         {
           "command": "swift.runTestsUntilFailure",
           "group": "testExtras",
-          "when": "testId"
+          "when": "testId in swift.tests"
         }
       ],
       "testing/item/context": [
         {
           "command": "swift.runTestsMultipleTimes",
           "group": "testExtras",
-          "when": "testId"
+          "when": "testId in swift.tests"
         },
         {
           "command": "swift.runTestsUntilFailure",
           "group": "testExtras",
-          "when": "testId"
+          "when": "testId in swift.tests"
         }
       ],
       "file/newFile": [
         {
           "command": "swift.newFile",
-          "group": "file"
+          "group": "file",
+          "when": "swift.isActivated"
         }
       ],
       "explorer/context": [
