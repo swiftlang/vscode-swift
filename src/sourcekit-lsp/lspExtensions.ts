@@ -57,7 +57,7 @@ export const PeekDocumentsRequest = new langclient.RequestType<
 >("workspace/peekDocuments");
 
 // Get Reference Document
-export interface GetReferenceDocumentParams {
+export interface TextDocumentContentParams {
     /**
      * The `DocumentUri` of the custom scheme url for which content is required
      */
@@ -65,9 +65,9 @@ export interface GetReferenceDocumentParams {
 }
 
 /**
- * Response containing `content` of `GetReferenceDocumentRequest`
+ * Response containing `content` of `TextDocumentContentRequest`
  */
-export interface GetReferenceDocumentResult {
+export interface TextDocumentContentResult {
     content: string;
 }
 
@@ -75,11 +75,11 @@ export interface GetReferenceDocumentResult {
  * Request from the client to the server asking for contents of a URI having a custom scheme
  * For example: "sourcekit-lsp:"
  */
-export const GetReferenceDocumentRequest = new langclient.RequestType<
-    GetReferenceDocumentParams,
-    GetReferenceDocumentResult,
+export const TextDocumentContentRequest = new langclient.RequestType<
+    TextDocumentContentParams,
+    TextDocumentContentResult,
     unknown
->("workspace/getReferenceDocument");
+>("workspace/textDocumentContent");
 
 // Inlay Hints (pre Swift 5.6)
 export interface LegacyInlayHintsParams {
