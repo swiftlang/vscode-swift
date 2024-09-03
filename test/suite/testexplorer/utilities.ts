@@ -71,6 +71,16 @@ export function assertTestControllerHierarchy(
 }
 
 /**
+ * Asserts that the array contains the value.
+ *
+ * @param array The array to check.
+ * @param value The value to check for.
+ */
+export function assertContains<T>(array: T[], value: T) {
+    assert.ok(array.includes(value), `${value} is not in ${array}`);
+}
+
+/**
  * Asserts on the result of a test run.
  *
  * The order of tests is not verified because swift-testing
