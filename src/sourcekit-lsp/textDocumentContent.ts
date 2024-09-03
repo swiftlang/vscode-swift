@@ -14,21 +14,21 @@
 
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
-import { GetReferenceDocumentParams, GetReferenceDocumentRequest } from "./lspExtensions";
+import { TextDocumentContentParams, TextDocumentContentRequest } from "./lspExtensions";
 
-export function activateGetReferenceDocument(client: langclient.LanguageClient): vscode.Disposable {
-    const getReferenceDocument = vscode.workspace.registerTextDocumentContentProvider(
+export function activateTextDocumentContent(client: langclient.LanguageClient): vscode.Disposable {
+    const textDocumentContent = vscode.workspace.registerTextDocumentContentProvider(
         "sourcekit-lsp",
         {
             provideTextDocumentContent: async (uri, token) => {
-                const params: GetReferenceDocumentParams = {
+                const params: TextDocumentContentParams = {
                     uri: client.code2ProtocolConverter.asUri(uri),
                 };
 
-                const result = await client.sendRequest(GetReferenceDocumentRequest, params, token);
+                const result = await client.sendRequest(TextDocumentContentRequest, params, token);
 
                 if (result) {
-                    return result.content;
+                    return result.text;
                 } else {
                     return "Unable to retrieve reference document";
                 }
@@ -36,5 +36,5 @@ export function activateGetReferenceDocument(client: langclient.LanguageClient):
         }
     );
 
-    return getReferenceDocument;
+    return textDocumentContent;
 }
