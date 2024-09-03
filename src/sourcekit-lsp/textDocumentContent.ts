@@ -28,7 +28,7 @@ export function activateTextDocumentContent(client: langclient.LanguageClient): 
                 const result = await client.sendRequest(TextDocumentContentRequest, params, token);
 
                 if (result) {
-                    return result.content;
+                    return result.text;
                 } else {
                     return "Unable to retrieve reference document";
                 }

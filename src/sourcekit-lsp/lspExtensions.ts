@@ -68,7 +68,7 @@ export interface TextDocumentContentParams {
  * Response containing `content` of `TextDocumentContentRequest`
  */
 export interface TextDocumentContentResult {
-    content: string;
+    text: string;
 }
 
 /**
