@@ -14,30 +14,23 @@
 
 import * as vscode from "vscode";
 import { WorkspaceContext } from "../WorkspaceContext";
-import { execFile, getErrorDescription } from "../utilities/utilities";
+import { getLldbProcess } from "../debugger/lldb";
 
 /**
- * Attach the debugger to a running process.
+ * Attaches the LLDB debugger to a running process selected by the user.
+ *
+ * This function retrieves a list of processes using `getLldbProcess`, then presents
+ * a process picker to the user. If the user selects a process, it configures LLDB
+ * to attach to that process and starts the debugging session in VS Code.
+ *
+ * @param {WorkspaceContext} ctx - The workspace context, which provides access to toolchain and configuration details.
+ * @returns {Promise<void>} - A promise that resolves when the debugger is successfully attached or the user cancels the operation.
+ *
+ * @throws Will display an error message if no processes are available, or if the debugger fails to attach to the selected process.
  */
 export async function attachDebugger(ctx: WorkspaceContext) {
-    // use LLDB to get list of processes
-    const lldb = await ctx.toolchain.getLLDB();
-    try {
-        const { stdout } = await execFile(lldb, [
-            "--batch",
-            "--no-lldbinit",
-            "--one-line",
-            "platform process list --show-args --all-users",
-        ]);
-        const entries = stdout.split("\n");
-        const processPickItems = entries.flatMap(line => {
-            const match = /^(\d+)\s+\d+\s+\S+\s+\S+\s+(.+)$/.exec(line);
-            if (match) {
-                return [{ pid: parseInt(match[1]), label: `${match[1]}: ${match[2]}` }];
-            } else {
-                return [];
-            }
-        });
+    const processPickItems = await getLldbProcess(ctx);
+    if (processPickItems !== undefined) {
         const picked = await vscode.window.showQuickPick(processPickItems, {
             placeHolder: "Select Process",
         });
@@ -50,7 +43,5 @@ export async function attachDebugger(ctx: WorkspaceContext) {
             };
             await vscode.debug.startDebugging(undefined, debugConfig);
         }
-    } catch (error) {
-        vscode.window.showErrorMessage(`Failed to run LLDB: ${getErrorDescription(error)}`);
     }
 }
