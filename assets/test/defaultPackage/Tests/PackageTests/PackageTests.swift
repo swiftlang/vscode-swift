@@ -45,8 +45,12 @@ final class DebugReleaseTestSuite: XCTestCase {
 #if swift(>=6.0)
 import Testing
 
-@Test func topLevelTestPassing() {
+@Test func topLevelTestPassing() async throws {
   print("A print statement in a test.")
+  // Work around test output potentially occuring after the test end event.
+  // See https://github.com/swiftlang/vscode-swift/issues/1054
+  try await Task.sleep(nanoseconds: 100_000_000)
+
   #if !TEST_ARGUMENT_SET_VIA_TEST_BUILD_ARGUMENTS_SETTING
     Issue.record("Expected TEST_ARGUMENT_SET_VIA_TEST_BUILD_ARGUMENTS_SETTING to be set at compilation")
   #endif
