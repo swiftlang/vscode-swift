@@ -30,6 +30,11 @@ export interface TestClass extends Omit<Omit<LSPTestItem, "location">, "children
 export const runnableTag = new vscode.TestTag("runnable");
 
 /**
+ * Tags that should not be duplicated on TestItems when applying parent tags to children.
+ */
+const defaultTags = [runnableTag.id, "test-target", "XCTest", "swift-testing"];
+
+/**
  * Update Test Controller TestItems based off array of TestClasses.
  *
  * The function creates the TestTargets based off the test targets in the Swift
@@ -165,17 +170,13 @@ function deepMergeTestItemChildren(existingItem: vscode.TestItem, newItem: vscod
  * @returns A `TestClass` whose children include the parent's tags.
  */
 function applyTagsToChildren(testClass: TestClass): TestClass {
+    const tagsToAdd = testClass.tags.filter(tag => !defaultTags.includes(tag.id));
     return {
         ...testClass,
-        children: testClass.children.reduce((children, child) => {
-            return [
-                ...children,
-                {
-                    ...child,
-                    tags: [...child.tags, ...testClass.tags],
-                },
-            ];
-        }, [] as TestClass[]),
+        children: testClass.children.map(child => ({
+            ...child,
+            tags: [...child.tags, ...tagsToAdd],
+        })),
     };
 }
 

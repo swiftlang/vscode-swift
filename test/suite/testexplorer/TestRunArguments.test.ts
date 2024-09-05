@@ -149,4 +149,19 @@ suite("TestRunArguments Suite", () => {
             [swiftTestSuite.id, testTarget.id, anotherSwiftTest.id]
         );
     });
+
+    test("Entire test target", () => {
+        const testArgs = new TestRunArguments(
+            new vscode.TestRunRequest([testTarget], [], undefined),
+            false
+        );
+        assert.equal(testArgs.hasXCTests, true);
+        assert.equal(testArgs.hasSwiftTestingTests, true);
+        assert.deepEqual(testArgs.xcTestArgs, [`${testTarget.id}.*`]);
+        assert.deepEqual(testArgs.swiftTestArgs, [`${testTarget.id}.*`]);
+        assert.deepEqual(
+            testArgs.testItems.map(item => item.id),
+            [xcSuite.id, xcTest.id, swiftTestSuite.id, swiftTest.id]
+        );
+    });
 });
