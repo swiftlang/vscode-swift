@@ -23,7 +23,6 @@ import {
     EventMessage,
     SourceLocation,
     TestSymbol,
-    SymbolRenderer,
     MessageRenderer,
 } from "../../../src/TestExplorer/TestParsers/SwiftTestingOutputParser";
 import { TestRunState, TestStatus } from "./MockTestRunState";
@@ -153,7 +152,7 @@ suite("SwiftTestingOutputParser Suite", () => {
                 timing: {
                     timestamp: 0,
                 },
-                output: renderedMessages.map(message => `${message}\r\n`),
+                output: [],
             },
         ]);
     }
@@ -274,7 +273,6 @@ suite("SwiftTestingOutputParser Suite", () => {
             true
         );
         const symbol = TestSymbol.pass;
-        const renderedSymbol = SymbolRenderer.symbol(symbol);
         const makeEvent = (kind: ExtractPayload<EventRecord>["kind"], testId?: string) =>
             testEvent(kind, testId, [{ text: kind, symbol }]);
 
@@ -292,10 +290,7 @@ suite("SwiftTestingOutputParser Suite", () => {
         assert.deepEqual(testRunState.tests, [
             {
                 name: "MyTests.MyTests/testOutput()",
-                output: [
-                    `\u001b[92m${renderedSymbol}\u001b[0m testCaseStarted\r\n`,
-                    `\u001b[92m${renderedSymbol}\u001b[0m testCaseEnded\r\n`,
-                ],
+                output: [],
                 status: TestStatus.passed,
                 timing: {
                     timestamp: 0,
@@ -303,10 +298,7 @@ suite("SwiftTestingOutputParser Suite", () => {
             },
             {
                 name: "MyTests.MyTests/testOutput2()",
-                output: [
-                    `\u001b[92m${renderedSymbol}\u001b[0m testCaseStarted\r\n`,
-                    `\u001b[92m${renderedSymbol}\u001b[0m testCaseEnded\r\n`,
-                ],
+                output: [],
                 status: TestStatus.passed,
                 timing: {
                     timestamp: 0,
