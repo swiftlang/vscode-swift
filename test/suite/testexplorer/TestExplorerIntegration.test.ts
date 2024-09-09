@@ -20,6 +20,7 @@ import { testAssetUri } from "../../fixtures";
 import { globalWorkspaceContextPromise } from "../extension.test";
 import { TestExplorer } from "../../../src/TestExplorer/TestExplorer";
 import {
+    assertContains,
     assertTestControllerHierarchy,
     assertTestResults,
     eventPromise,
@@ -242,11 +243,20 @@ suite("Test Explorer Suite", function () {
                 "PackageTests.testRelease()"
             );
 
+            const issueLine1 = MessageRenderer.render({
+                symbol: TestSymbol.fail,
+                text: "Issue recorded",
+            });
+            const issueLine2 = MessageRenderer.render({
+                symbol: TestSymbol.details,
+                text: "Test was run in debug mode.",
+            });
+            const issueText = `${issueLine1}\n${issueLine2}`;
             assertTestResults(failingRun, {
                 failed: [
                     {
                         test: "PackageTests.testRelease()",
-                        issues: ["Issue recorded", "Test was run in debug mode."],
+                        issues: [issueText],
                     },
                 ],
             });
@@ -377,24 +387,20 @@ suite("Test Explorer Suite", function () {
                     }
                 });
 
-                test(`Runs passing test ${runProfile}`, async function () {
+                test(`Runs passing test (${runProfile})`, async function () {
                     const testRun = await runTest(
                         testExplorer.controller,
                         runProfile,
                         "PackageTests.topLevelTestPassing()"
                     );
 
+                    assertContains(testRun.runState.output, "A print statement in a test.\r\r\n");
                     assertTestResults(testRun, {
                         passed: ["PackageTests.topLevelTestPassing()"],
                     });
-
-                    assert.strictEqual(
-                        testRun.runState.output.includes("A print statement in a test.\r\r\n"),
-                        true
-                    );
                 });
 
-                test(`Runs failing test ${runProfile}`, async function () {
+                test(`Runs failing test (${runProfile})`, async function () {
                     const testRun = await runTest(
                         testExplorer.controller,
                         runProfile,
@@ -416,7 +422,7 @@ suite("Test Explorer Suite", function () {
                     });
                 });
 
-                test(`Runs Suite ${runProfile}`, async function () {
+                test(`Runs Suite (${runProfile})`, async function () {
                     const testRun = await runTest(
                         testExplorer.controller,
                         runProfile,
@@ -441,7 +447,7 @@ suite("Test Explorer Suite", function () {
                     });
                 });
 
-                test(`Runs parameterized test ${runProfile}`, async function () {
+                test(`Runs parameterized test (${runProfile})`, async function () {
                     const testRun = await runTest(
                         testExplorer.controller,
                         runProfile,
