@@ -92,30 +92,19 @@ export class TestRunArguments {
             // If no children were added we can skip adding this parent.
             if (xcTestArgs.length + swiftTestArgs.length === 0) {
                 return previousValue;
-            } else if (
-                xcTestArgs.length + swiftTestArgs.length === testItem.children.size &&
-                testItem.parent
-            ) {
-                // If we've added all the children to the list of arguments, just add
-                // the parent instead of each individual child. This crafts a minimal set
-                // of test/suites that run all the test cases requested with the smallest list
-                // of arguments. The testItem has to have a parent to perform this optimization.
-                // If it does not we break the ability to run both swift testing tests and XCTests
-                // in the same run, since test targets can have both types of tests in them.
-                const isXCTest = !!testItem.tags.find(tag => tag.id === "XCTest");
+            } else if (this.itemContainsAllArgs(testItem, xcTestArgs, swiftTestArgs)) {
+                // If we're including every chlid in the parent, we can simplify the
+                // arguments and just use the parent
+                const { xcTestResult, swiftTestResult } = this.simplifyTestArgs(
+                    testItem,
+                    xcTestArgs,
+                    swiftTestArgs
+                );
+
                 return {
                     testItems: [...previousValue.testItems, ...testItems],
-                    swiftTestArgs: [
-                        ...previousValue.swiftTestArgs,
-                        // Append a trailing slash to match a suite name exactly.
-                        // This prevents TestTarget.MySuite matching TestTarget.MySuite2.
-                        ...(!isXCTest ? [`${testItem.id}/`] : []),
-                    ],
-                    xcTestArgs: [
-                        ...previousValue.xcTestArgs,
-                        // Debugging XCTests require exact matches, so we don't ned a trailing slash.
-                        ...(isXCTest ? [this.isDebug ? testItem.id : `${testItem.id}/`] : []),
-                    ],
+                    xcTestArgs: [...previousValue.xcTestArgs, ...xcTestResult],
+                    swiftTestArgs: [...previousValue.swiftTestArgs, ...swiftTestResult],
                 };
             } else {
                 // If we've only added some of the children the append to our test list
@@ -126,6 +115,58 @@ export class TestRunArguments {
                 };
             }
         };
+    }
+
+    private itemContainsAllArgs(
+        testItem: vscode.TestItem,
+        xcTestArgs: string[],
+        swiftTestArgs: string[]
+    ): boolean {
+        return xcTestArgs.length + swiftTestArgs.length === testItem.children.size;
+    }
+
+    private simplifyTestArgs(
+        testItem: vscode.TestItem,
+        xcTestArgs: string[],
+        swiftTestArgs: string[]
+    ): { xcTestResult: string[]; swiftTestResult: string[] } {
+        if (
+            testItem.parent &&
+            this.itemContainsAllArgs(testItem.parent, xcTestArgs, swiftTestArgs)
+        ) {
+            return this.simplifyTestArgs(testItem.parent, xcTestArgs, swiftTestArgs);
+        } else {
+            // If we've worked all the way up to a test target, it may have both swift-testing
+            // and XCTests.
+            const isTestTarget = !!testItem.tags.find(tag => tag.id === "test-target");
+            if (isTestTarget) {
+                return {
+                    // Add a trailing .* to match a test target name exactly.
+                    // This prevents TestTarget matching TestTarget2.
+                    xcTestResult: xcTestArgs.length > 0 ? [`${testItem.id}.*`] : [],
+                    swiftTestResult: swiftTestArgs.length > 0 ? [`${testItem.id}.*`] : [],
+                };
+            }
+
+            // If we've added all the children to the list of arguments, just add
+            // the parent instead of each individual child. This crafts a minimal set
+            // of test/suites that run all the test cases requested with the smallest list
+            // of arguments. The testItem has to have a parent to perform this optimization.
+            // If it does not we break the ability to run both swift testing tests and XCTests
+            // in the same run, since test targets can have both types of tests in them.
+            const isXCTest = !!testItem.tags.find(tag => tag.id === "XCTest");
+            return {
+                swiftTestResult: [
+                    // Append a trailing slash to match a suite name exactly.
+                    // This prevents TestTarget.MySuite matching TestTarget.MySuite2.
+                    ...(!isXCTest ? [`${testItem.id}/`] : []),
+                ],
+                xcTestResult: [
+                    // Debugging XCTests require exact matches, so we don't ned a trailing slash.
+                    ...(isXCTest ? [this.isDebug ? testItem.id : `${testItem.id}/`] : []),
+                ],
+            };
+        }
     }
 
     private processTestItem(
