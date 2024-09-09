@@ -22,7 +22,7 @@ import {
 } from "./TestEventStreamReader";
 import { ITestRunState } from "./TestRunState";
 import { TestClass } from "../TestDiscovery";
-import { regexEscapedString, sourceLocationToVSCodeLocation } from "../../utilities/utilities";
+import { sourceLocationToVSCodeLocation } from "../../utilities/utilities";
 import { exec } from "child_process";
 
 // All events produced by a swift-testing run will be one of these three types.
@@ -222,44 +222,13 @@ export class SwiftTestingOutputParser {
      * a JSON event and injecting them in to the test run output.
      * @param chunk A chunk of stdout emitted during a test run.
      */
-    public parseStdout = (() => {
-        const values = [
-            ...Object.values(TestSymbol)
-                .filter(symbol => symbol !== TestSymbol.none)
-                .map(symbol =>
-                    regexEscapedString(
-                        // Trim the ANSI reset code from the search since some lines
-                        // are fully colorized from the symbol to the end of line.
-                        SymbolRenderer.eventMessageSymbol(symbol).replace(
-                            SymbolRenderer.resetANSIEscapeCode,
-                            ""
-                        )
-                    )
-                ),
-            // It is possible there is no symbol for a line produced by swift-testing,
-            // for instance if the user has a multi line comment before a failing expectation
-            // only the first line of the printed comment will have a symbol, but to make the
-            // indentation consistent the subsequent lines will have three spaces. We don't want
-            // to treat this as output produced by the user during the test run, so omit these.
-            // This isn't ideal since this will swallow lines the user prints if they start with
-            // three spaces, but until we have user output as part of the JSON event stream we have
-            // this workaround.
-            "   ",
-        ];
-
-        // Build a regex of all the line beginnings that come out of swift-testing events.
-        const isSwiftTestingLineBeginning = new RegExp(`^${values.join("|")}`);
-
-        return (chunk: string, runState: ITestRunState) => {
-            for (const line of chunk.split("\n")) {
-                // Any line in stdout that fails to match as a swift-testing line is treated
-                // as a user printed value and recorded to the test run output with no associated test.
-                if (line.trim().length > 0 && isSwiftTestingLineBeginning.test(line) === false) {
-                    runState.recordOutput(undefined, `${line}\r\n`);
-                }
+    public parseStdout(chunk: string, runState: ITestRunState) {
+        for (const line of chunk.split("\n")) {
+            if (line.trim().length > 0) {
+                runState.recordOutput(undefined, `${line}\r\n`);
             }
-        };
-    })();
+        }
+    }
 
     private createReader(path: string): INamedPipeReader {
         return process.platform === "win32"
@@ -326,16 +295,6 @@ export class SwiftTestingOutputParser {
             return runState.getTestItemIndex(this.testName(testID), undefined);
         }
         return fullNameIndex;
-    }
-
-    private recordOutput(
-        runState: ITestRunState,
-        messages: EventMessage[],
-        testIndex: number | undefined
-    ) {
-        messages.forEach(message => {
-            runState.recordOutput(testIndex, `${MessageRenderer.render(message)}\r\n`);
-        });
     }
 
     /**
@@ -411,11 +370,11 @@ export class SwiftTestingOutputParser {
                 // Notify the runner that we've recieved all the test cases and
                 // are going to start running tests now.
                 this.testRunStarted();
+                return;
             } else if (item.payload.kind === "testStarted") {
                 const testName = this.testName(item.payload.testID);
                 const testIndex = runState.getTestItemIndex(testName, undefined);
                 runState.started(testIndex, item.payload.instant.absolute);
-                this.recordOutput(runState, item.payload.messages, testIndex);
                 return;
             } else if (item.payload.kind === "testCaseStarted") {
                 const testID = this.idFromOptionalTestCase(
@@ -424,13 +383,11 @@ export class SwiftTestingOutputParser {
                 );
                 const testIndex = this.getTestCaseIndex(runState, testID);
                 runState.started(testIndex, item.payload.instant.absolute);
-                this.recordOutput(runState, item.payload.messages, testIndex);
                 return;
             } else if (item.payload.kind === "testSkipped") {
                 const testName = this.testName(item.payload.testID);
                 const testIndex = runState.getTestItemIndex(testName, undefined);
                 runState.skipped(testIndex);
-                this.recordOutput(runState, item.payload.messages, testIndex);
                 return;
             } else if (item.payload.kind === "issueRecorded") {
                 const testID = this.idFromOptionalTestCase(
@@ -466,8 +423,6 @@ export class SwiftTestingOutputParser {
                     );
                 });
 
-                this.recordOutput(runState, messages, testIndex);
-
                 if (item.payload._testCase && testID !== item.payload.testID) {
                     const testIndex = this.getTestCaseIndex(runState, item.payload.testID);
                     messages.forEach(message => {
@@ -478,7 +433,6 @@ export class SwiftTestingOutputParser {
             } else if (item.payload.kind === "testEnded") {
                 const testName = this.testName(item.payload.testID);
                 const testIndex = runState.getTestItemIndex(testName, undefined);
-                this.recordOutput(runState, item.payload.messages, testIndex);
 
                 // When running a single test the testEnded and testCaseEnded events
                 // have the same ID, and so we'd end the same test twice.
@@ -494,7 +448,6 @@ export class SwiftTestingOutputParser {
                     item.payload._testCase
                 );
                 const testIndex = this.getTestCaseIndex(runState, testID);
-                this.recordOutput(runState, item.payload.messages, testIndex);
 
                 // When running a single test the testEnded and testCaseEnded events
                 // have the same ID, and so we'd end the same test twice.
@@ -505,8 +458,6 @@ export class SwiftTestingOutputParser {
                 runState.completed(testIndex, { timestamp: item.payload.instant.absolute });
                 return;
             }
-
-            this.recordOutput(runState, item.payload.messages, undefined);
         }
     }
 }
