@@ -38,6 +38,7 @@ import { updateDependencies } from "./commands/dependencies/update";
 import { runPluginTask } from "./commands/runPluginTask";
 import { runTestMultipleTimes } from "./commands/testMultipleTimes";
 import { newSwiftFile } from "./commands/newFile";
+import { runAllTestsParallel } from "./commands/runParallelTests";
 
 /**
  * References:
@@ -131,5 +132,9 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             ctx.diagnostics.clear()
         ),
         vscode.commands.registerCommand("swift.captureDiagnostics", () => captureDiagnostics(ctx)),
+        vscode.commands.registerCommand(
+            "swift.runAllTestsParallel",
+            async () => await runAllTestsParallel(ctx)
+        ),
     ];
 }

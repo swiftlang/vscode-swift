@@ -217,6 +217,11 @@
         "command": "swift.runTestsUntilFailure",
         "title": "Run Until Failure...",
         "category": "Swift"
+      },
+      {
+        "command": "swift.runAllTestsParallel",
+        "title": "Run All Tests in Parallel",
+        "category": "Test"
       }
     ],
     "configuration": [
@@ -738,6 +743,10 @@
         {
           "command": "swift.reindexProject",
           "when": "swift.supportsReindexing"
+        },
+        {
+          "command": "swift.runAllTestsParallel",
+          "when": "swift.isActivated"
         }
       ],
       "editor/context": [
