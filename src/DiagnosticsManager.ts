@@ -39,7 +39,7 @@ const isEqual = (d1: vscode.Diagnostic, d2: vscode.Diagnostic) =>
  */
 export class DiagnosticsManager implements vscode.Disposable {
     // Prior to Swift 6 "sourcekitd" was the source
-    static sourcekit: string[] = ["SourceKit", "sourcekitd"];
+    static sourcekit: string[] = ["SourceKit", "sourcekitd", "clang"];
     static swiftc: string[] = ["swiftc"];
 
     private diagnosticCollection: vscode.DiagnosticCollection =
@@ -105,7 +105,7 @@ export class DiagnosticsManager implements vscode.Disposable {
         // of Swift as to whether the first letter is capitalized or not,
         // so we'll always display messages capitalized to user and this
         // also will allow comparing messages when merging
-        newDiagnostics = newDiagnostics.map(this.capitalizeMessage);
+        newDiagnostics = newDiagnostics.map(this.capitalizeMessage).map(this.cleanMessage);
         const allDiagnostics = this.allDiagnostics.get(uri.fsPath)?.slice() || [];
         // Remove the old set of diagnostics from this source
         const removedDiagnostics = this.removeDiagnostics(allDiagnostics, d =>
@@ -323,13 +323,13 @@ export class DiagnosticsManager implements vscode.Disposable {
     private parseDiagnostic(
         line: string
     ): ParsedDiagnostic | vscode.DiagnosticRelatedInformation | undefined {
-        const diagnosticRegex = /^(.*?):(\d+)(?::(\d+))?:\s+(warning|error|note):\s+(.*)$/g;
+        const diagnosticRegex = /^(.*?):(\d+)(?::(\d+))?:\s+(warning|error|note):\s+([^\\[]*)/g;
         const match = diagnosticRegex.exec(line);
         if (!match) {
             return;
         }
         const uri = match[1];
-        const message = this.capitalize(match[5]);
+        const message = this.capitalize(match[5]).trim();
         const range = this.range(match[2], match[3]);
         const severity = this.severity(match[4]);
         if (severity === vscode.DiagnosticSeverity.Information) {
@@ -374,6 +374,12 @@ export class DiagnosticsManager implements vscode.Disposable {
         const message = diagnostic.message;
         diagnostic = { ...diagnostic };
         diagnostic.message = this.capitalize(message);
+        return diagnostic;
+    };
+
+    private cleanMessage = (diagnostic: vscode.Diagnostic) => {
+        diagnostic = { ...diagnostic };
+        diagnostic.message = diagnostic.message.replace("(fix available)", "").trim();
         return diagnostic;
     };
 
