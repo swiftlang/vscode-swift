@@ -154,7 +154,7 @@ const configuration = {
             get useDebugAdapterFromToolchain(): boolean {
                 return vscode.workspace
                     .getConfiguration("swift.debugger")
-                    .get<boolean>("useDebugAdapterFromToolchain", true);
+                    .get<boolean>("useDebugAdapterFromToolchain", false);
             },
             get customDebugAdapterPath(): string {
                 return vscode.workspace.getConfiguration("swift.debugger").get<string>("path", "");
