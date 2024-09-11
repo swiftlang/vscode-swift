@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import { expect } from "chai";
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
+import { expect } from "chai";
 import { DebugAdapter } from "../../../src/debugger/debugAdapter";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
@@ -25,9 +25,28 @@ import {
     MockedObject,
     mockObject,
     instance,
-    mockFn,
     mockGlobalModule,
+    mockFn,
 } from "../../MockUtils";
+import configuration from "../../../src/configuration";
+
+suite("customDebugAdapterPath take precedent", () => {
+    const mockDebugConfig = mockGlobalObject(configuration, "debugger");
+
+    test("customDebugAdapterPath take precedent", async () => {
+        const mockToolchain = mockObject<SwiftToolchain>({});
+        const mockContext = mockObject<WorkspaceContext>({
+            toolchain: instance(mockToolchain),
+        });
+        const expectPath = "/something/cool-lldb";
+        mockDebugConfig.customDebugAdapterPath = expectPath;
+
+        const path = await DebugAdapter.debugAdapterPath(mockContext.toolchain);
+        expect(path).to.deep.equal(expectPath);
+    });
+
+    // gap to be covered by integration test: lldb-dap darwin vs. non darwin
+});
 
 suite("verifyDebugAdapterExists false return Tests", () => {
     const mockedWindow = mockGlobalObject(vscode, "window");
@@ -58,12 +77,10 @@ suite("verifyDebugAdapterExists false return Tests", () => {
     });
 
     test("should return false regardless of quiet setting", async () => {
-        // Test with quiet = true
         await expect(
             DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), true)
         ).to.eventually.equal(false, "Should return false when quiet is true");
 
-        // Test with quiet = false
         await expect(
             DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), false)
         ).to.eventually.equal(false, "Should return false when quiet is false");
@@ -78,4 +95,6 @@ suite("verifyDebugAdapterExists false return Tests", () => {
         await DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), true);
         expect(mockedWindow.showErrorMessage).to.not.have.been.called;
     });
+
+    // gap to be covered by integration test: true return of verifyDebugAdapterExists
 });
