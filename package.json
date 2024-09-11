@@ -217,6 +217,11 @@
         "command": "swift.runTestsUntilFailure",
         "title": "Run Until Failure...",
         "category": "Swift"
+      },
+      {
+        "command": "swift.runAllTestsParallel",
+        "title": "Run All Tests in Parallel",
+        "category": "Test"
       }
     ],
     "configuration": [
@@ -435,7 +440,7 @@
           "swift.sourcekit-lsp.serverPath": {
             "type": "string",
             "markdownDescription": "The path of the `sourcekit-lsp` executable. The default is to look in the path where `swift` is found.",
-            "markdownDeprecationMessage": "**Deprecated**: The sourcekit-lsp executable relies on outputs from tools in your current toolchain. If your sourcekit-lsp version does not match your toolchain you may experience unexpected behaviour.",
+            "markdownDeprecationMessage": "**Deprecated**: The sourcekit-lsp executable relies on outputs from tools in your current toolchain. If your sourcekit-lsp version does not match your toolchain you may experience unexpected behaviour. Only modify this setting when developing sourcekit-lsp.",
             "order": 1
           },
           "swift.sourcekit-lsp.serverArguments": {
@@ -616,30 +621,31 @@
         {
           "command": "swift.runTestsMultipleTimes",
           "group": "testExtras",
-          "when": "testId"
+          "when": "testId in swift.tests"
         },
         {
           "command": "swift.runTestsUntilFailure",
           "group": "testExtras",
-          "when": "testId"
+          "when": "testId in swift.tests"
         }
       ],
       "testing/item/context": [
         {
           "command": "swift.runTestsMultipleTimes",
           "group": "testExtras",
-          "when": "testId"
+          "when": "testId in swift.tests"
         },
         {
           "command": "swift.runTestsUntilFailure",
           "group": "testExtras",
-          "when": "testId"
+          "when": "testId in swift.tests"
         }
       ],
       "file/newFile": [
         {
           "command": "swift.newFile",
-          "group": "file"
+          "group": "file",
+          "when": "swift.isActivated"
         }
       ],
       "explorer/context": [
@@ -737,6 +743,10 @@
         {
           "command": "swift.reindexProject",
           "when": "swift.supportsReindexing"
+        },
+        {
+          "command": "swift.runAllTestsParallel",
+          "when": "swift.isActivated"
         }
       ],
       "editor/context": [
@@ -1264,7 +1274,7 @@
     "compile": "tsc",
     "watch": "tsc --watch",
     "lint": "eslint ./ --ext ts && tsc --noEmit",
-    "format": "prettier --check src test",
+    "format": "prettier --check *.json src test",
     "pretest": "npm run compile && find ./assets/test -type d -name '.build' -exec rm -rf {} + && find . -type d -name 'Package.resolved' -exec rm -rf {} + && tsc -p ./",
     "test": "vscode-test",
     "integration-test": "npm test -- --label integrationTests",

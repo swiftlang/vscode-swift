@@ -14,8 +14,8 @@
 
 import * as vscode from "vscode";
 import { TestKind } from "../TestExplorer/TestKind";
-import { TestRunner, TestRunnerTestRunState } from "../TestExplorer/TestRunner";
-import { WorkspaceContext } from "../WorkspaceContext";
+import { TestRunner, TestRunnerTestRunState, TestRunState } from "../TestExplorer/TestRunner";
+import { FolderContext } from "../FolderContext";
 
 /**
  * Runs the supplied TestItem a number of times. The user is prompted with a dialog
@@ -25,9 +25,10 @@ import { WorkspaceContext } from "../WorkspaceContext";
  * @param untilFailure If `true` stop running the test if it fails
  */
 export async function runTestMultipleTimes(
-    ctx: WorkspaceContext,
+    currentFolder: FolderContext,
     test: vscode.TestItem,
-    untilFailure: boolean
+    untilFailure: boolean,
+    testRunner?: () => Promise<TestRunState>
 ) {
     const str = await vscode.window.showInputBox({
         prompt: "Label: ",
@@ -35,16 +36,16 @@ export async function runTestMultipleTimes(
         validateInput: value => (/^[1-9]\d*$/.test(value) ? undefined : "Enter an integer value"),
     });
 
-    if (!str || !ctx.currentFolder?.testExplorer) {
+    if (!str || !currentFolder.testExplorer) {
         return;
     }
 
     const numExecutions = parseInt(str);
-    const testExplorer = ctx.currentFolder.testExplorer;
+    const testExplorer = currentFolder.testExplorer;
     const runner = new TestRunner(
         TestKind.standard,
         new vscode.TestRunRequest([test]),
-        ctx.currentFolder,
+        currentFolder,
         testExplorer.controller
     );
 
@@ -55,19 +56,22 @@ export async function runTestMultipleTimes(
 
     vscode.commands.executeCommand("workbench.panel.testResults.view.focus");
 
+    const runStates: TestRunState[] = [];
     for (let i = 0; i < numExecutions; i++) {
         runner.setIteration(i);
         runner.testRun.appendOutput(`\x1b[36mBeginning Test Iteration #${i + 1}\x1b[0m\n`);
 
-        await runner.runSession(token.token, testRunState);
+        const runState = await (testRunner !== undefined
+            ? testRunner()
+            : runner.runSession(token.token, testRunState));
 
-        if (
-            untilFailure &&
-            (runner.testRun.runState.failed.length > 0 ||
-                runner.testRun.runState.errored.length > 0)
-        ) {
+        runStates.push(runState);
+
+        if (untilFailure && (runState.failed.length > 0 || runState.errored.length > 0)) {
             break;
         }
     }
     runner.testRun.end();
+
+    return runStates;
 }

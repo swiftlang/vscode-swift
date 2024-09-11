@@ -440,10 +440,10 @@ export class TestingConfigurationFactory {
     private addSwiftTestingFlagsArgs(args: string[]): string[] {
         return [
             ...args,
-            "--enable-experimental-swift-testing",
-            "--experimental-event-stream-version",
+            "--enable-swift-testing",
+            "--event-stream-version",
             "0",
-            "--experimental-event-stream-output",
+            "--event-stream-output-path",
             this.fifoPipePath,
         ];
     }
