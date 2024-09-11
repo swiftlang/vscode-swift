@@ -30,7 +30,7 @@ import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { registerLLDBDebugAdapter } from "../../../src/debugger/debugAdapterFactory";
 
-suite("attachDebugger Unit Test Suite with Thenable Capture", () => {
+suite("attachDebugger Unit Test Suite", () => {
     const lldbSpy = spy(lldb);
     const mockContext = mock(WorkspaceContext);
     const mockToolchain = mock(SwiftToolchain);
@@ -41,7 +41,7 @@ suite("attachDebugger Unit Test Suite with Thenable Capture", () => {
         when(mockContext.toolchain).thenReturn(instance(mockToolchain));
     });
 
-    test("should call startDebugging with correct debugConfig and capture the return Thenable", async () => {
+    test("should call startDebugging with correct debugConfig", async () => {
         // Setup fake debug adapter
         registerLLDBDebugAdapter(instance(mockContext));
 
