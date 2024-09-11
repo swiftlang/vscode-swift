@@ -82,11 +82,11 @@ export const uriConverters = {
         let username: string;
         let password: string;
         const atInAuthority = value.authority.indexOf("@");
-        if (atInAuthority != -1) {
+        if (atInAuthority !== -1) {
             host = value.authority.substring(atInAuthority + 1);
             const auth = value.authority.substring(0, atInAuthority);
             const colonInAuth = auth.indexOf(":");
-            if (colonInAuth == -1) {
+            if (colonInAuth === -1) {
                 username = auth;
                 password = "";
             } else {
