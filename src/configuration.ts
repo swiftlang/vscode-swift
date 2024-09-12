@@ -152,6 +152,15 @@ const configuration = {
     get debugger(): DebuggerConfiguration {
         return {
             get useDebugAdapterFromToolchain(): boolean {
+                // Enabled by default only when we're on Windows arm64 since CodeLLDB does not support
+                // this platform and gives an awful error message.
+                if (process.platform === "win32" && process.arch === "arm64") {
+                    // We need to use inspect to find out if the value is explicitly set.
+                    const inspect = vscode.workspace
+                        .getConfiguration("swift.debugger")
+                        .inspect<boolean>("useDebugAdapterFromToolchain");
+                    return inspect?.workspaceValue ?? inspect?.globalValue ?? true;
+                }
                 return vscode.workspace
                     .getConfiguration("swift.debugger")
                     .get<boolean>("useDebugAdapterFromToolchain", false);

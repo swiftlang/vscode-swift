@@ -336,10 +336,10 @@ export class SwiftToolchain {
     /**
      * Return fullpath for toolchain executable
      */
-    public getToolchainExecutable(exe: string): string {
+    public getToolchainExecutable(executable: string): string {
         // should we add `.exe` at the end of the executable name
-        const windowsExeSuffix = process.platform === "win32" ? ".exe" : "";
-        return `${this.toolchainPath}/bin/${exe}${windowsExeSuffix}`;
+        const executableSuffix = process.platform === "win32" ? ".exe" : "";
+        return path.join(this.toolchainPath, "bin", executable + executableSuffix);
     }
 
     private static getXcodeDirectory(toolchainPath: string): string | undefined {
