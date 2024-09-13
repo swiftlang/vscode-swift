@@ -104,24 +104,6 @@ export class WorkspaceContext implements vscode.Disposable {
                         }
                     });
             }
-            // on change of swift debugger type
-            if (
-                event.affectsConfiguration("swift.debugger.useDebugAdapterFromToolchain") ||
-                event.affectsConfiguration("swift.debugger.path")
-            ) {
-                if (configuration.debugger.useDebugAdapterFromToolchain) {
-                    if (!(await DebugAdapter.verifyDebugAdapterExists(this))) {
-                        return;
-                    }
-                }
-                this.folders.forEach(
-                    async ctx =>
-                        await makeDebugConfigurations(
-                            ctx,
-                            "Launch configurations need to be updated after changing the debug adapter."
-                        )
-                );
-            }
         });
         const backgroundCompilationOnDidSave = BackgroundCompilation.start(this);
         const contextKeysUpdate = this.observeFolders((folder, event) => {
@@ -443,7 +425,7 @@ export class WorkspaceContext implements vscode.Disposable {
     /** find LLDB version and setup path in CodeLLDB */
     async setLLDBVersion() {
         // check we are using CodeLLDB
-        if (DebugAdapter.adapterName !== "lldb") {
+        if (DebugAdapter.getDebugAdapterType(this.swiftVersion) !== "lldb-vscode") {
             return;
         }
         const libPathResult = await getLLDBLibPath(this.toolchain);

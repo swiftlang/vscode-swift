@@ -14,12 +14,12 @@
 
 import * as path from "path";
 import * as vscode from "vscode";
-import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
 import { BuildFlags } from "../toolchain/BuildFlags";
 import { stringArrayInEnglish, swiftLibraryPathKey, swiftRuntimeEnv } from "../utilities/utilities";
 import { DebugAdapter } from "./debugAdapter";
 import { getFolderAndNameSuffix } from "./buildConfig";
+import configuration from "../configuration";
 
 /**
  * Edit launch.json based on contents of Swift Package.
@@ -102,7 +102,7 @@ export function getLaunchConfiguration(
     target: string,
     folderCtx: FolderContext
 ): vscode.DebugConfiguration | undefined {
-    const wsLaunchSection = vscode.workspace.getConfiguration("launch", folderCtx.folder);
+    const wsLaunchSection = vscode.workspace.getConfiguration("launch", folderCtx.workspaceFolder);
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
     const { folder } = getFolderAndNameSuffix(folderCtx);
     const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
@@ -114,14 +114,12 @@ export function getLaunchConfiguration(
 // Return array of DebugConfigurations for executables based on what is in Package.swift
 function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfiguration[] {
     const executableProducts = ctx.swiftPackage.executableProducts;
-    const { folder, nameSuffix } = getFolderAndNameSuffix(ctx);
-    const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
-    const binaryExtension = process.platform === "win32" ? ".exe" : "";
+    const { folder, nameSuffix } = getFolderAndNameSuffix(ctx, undefined, "posix");
+    const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true, "posix");
     return executableProducts.flatMap(product => {
         const baseConfig = {
             type: DebugAdapter.adapterName,
             request: "launch",
-            sourceLanguages: ["swift"],
             args: [],
             cwd: folder,
             env: swiftRuntimeEnv(true),
@@ -130,13 +128,13 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
             {
                 ...baseConfig,
                 name: `Debug ${product.name}${nameSuffix}`,
-                program: path.join(buildDirectory, "debug", product.name + binaryExtension),
+                program: path.posix.join(buildDirectory, "debug", product.name),
                 preLaunchTask: `swift: Build Debug ${product.name}${nameSuffix}`,
             },
             {
                 ...baseConfig,
                 name: `Release ${product.name}${nameSuffix}`,
-                program: path.join(buildDirectory, "release", product.name + binaryExtension),
+                program: path.posix.join(buildDirectory, "release", product.name),
                 preLaunchTask: `swift: Build Release ${product.name}${nameSuffix}`,
             },
         ];
@@ -159,9 +157,8 @@ export function createSnippetConfiguration(
     return {
         type: DebugAdapter.adapterName,
         request: "launch",
-        sourceLanguages: ["swift"],
         name: `Run ${snippetName}`,
-        program: path.join(buildDirectory, "debug", snippetName),
+        program: path.posix.join(buildDirectory, "debug", snippetName),
         args: [],
         cwd: folder,
         env: swiftRuntimeEnv(true),

@@ -13,25 +13,25 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import * as path from "path";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { DebugAdapter } from "./debugAdapter";
+import { Version } from "../utilities/version";
 
 export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
     class LLDBDebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFactory {
-        createDebugAdapterDescriptor(
+        async createDebugAdapterDescriptor(
             _session: vscode.DebugSession,
             executable: vscode.DebugAdapterExecutable | undefined
-        ): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
+        ): Promise<vscode.DebugAdapterDescriptor> {
             if (executable) {
                 // make VS Code launch the debug adapter executable
                 return executable;
             }
 
-            return DebugAdapter.debugAdapterPath(workspaceContext.toolchain)
-                .then(path =>
-                    DebugAdapter.verifyDebugAdapterExists(workspaceContext).then(() => path)
-                )
-                .then(path => new vscode.DebugAdapterExecutable(path, [], {}));
+            const adapterPath = await DebugAdapter.debugAdapterPath(workspaceContext.toolchain);
+            await DebugAdapter.verifyDebugAdapterExists(workspaceContext);
+            return new vscode.DebugAdapterExecutable(adapterPath, [], {});
         }
     }
 
@@ -41,7 +41,10 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
     );
     const debugConfigProvider = vscode.debug.registerDebugConfigurationProvider(
         "swift-lldb",
-        new LLDBDebugConfigurationProvider()
+        new LLDBDebugConfigurationProvider(
+            process.platform,
+            workspaceContext.toolchain.swiftVersion
+        )
     );
     return {
         dispose: () => {
@@ -60,7 +63,12 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
  * This could also be used to augment the configuration with values from the settings
  * althought it isn't at the moment.
  */
-class LLDBDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
+export class LLDBDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
+    constructor(
+        private platform: NodeJS.Platform,
+        private swiftVersion: Version
+    ) {}
+
     async resolveDebugConfiguration(
         folder: vscode.WorkspaceFolder | undefined,
         launchConfig: vscode.DebugConfiguration,
@@ -68,6 +76,15 @@ class LLDBDebugConfigurationProvider implements vscode.DebugConfigurationProvide
         cancellation?: vscode.CancellationToken
     ): Promise<vscode.DebugConfiguration> {
         launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
+        // Fix the program path on Windows to include the ".exe" extension
+        if (this.platform === "win32" && path.extname(launchConfig.program) !== ".exe") {
+            launchConfig.program += ".exe";
+        }
+        // Delegate to CodeLLDB if that's the debug adapter we have selected
+        if (DebugAdapter.getDebugAdapterType(this.swiftVersion) === "lldb-vscode") {
+            launchConfig.type = "lldb";
+            launchConfig.sourceLanguages = ["swift"];
+        }
         return launchConfig;
     }
 

@@ -1,7 +1,7 @@
 {
     "configurations": [
         {
-            "type": "lldb",
+            "type": "swift-lldb",
             "request": "launch",
             "sourceLanguages": [
                 "swift"
@@ -13,7 +13,7 @@
             "preLaunchTask": "swift: Build Debug PackageExe (defaultPackage)"
         },
         {
-            "type": "lldb",
+            "type": "swift-lldb",
             "request": "launch",
             "sourceLanguages": [
                 "swift"

@@ -427,7 +427,6 @@ export class TestingConfigurationFactory {
         return {
             type: DebugAdapter.adapterName,
             request: "custom",
-            sourceLanguages: ["swift"],
             name: `Test ${this.ctx.swiftPackage.name}`,
             targetCreateCommands: [`file -a ${arch} ${xctestPath}/xctest`],
             processCreateCommands: [
@@ -639,8 +638,10 @@ function getBaseConfig(ctx: FolderContext, expandEnvVariables: boolean) {
 
 export function getFolderAndNameSuffix(
     ctx: FolderContext,
-    expandEnvVariables = false
+    expandEnvVariables = false,
+    platform?: "posix" | "win32"
 ): { folder: string; nameSuffix: string } {
+    const nodePath = platform === "posix" ? path.posix : platform === "win32" ? path.win32 : path;
     const workspaceFolder = expandEnvVariables
         ? ctx.workspaceFolder.uri.fsPath
         : `\${workspaceFolder:${ctx.workspaceFolder.name}}`;
@@ -650,7 +651,7 @@ export function getFolderAndNameSuffix(
         folder = workspaceFolder;
         nameSuffix = "";
     } else {
-        folder = path.join(workspaceFolder, ctx.relativePath);
+        folder = nodePath.join(workspaceFolder, ctx.relativePath);
         nameSuffix = ` (${ctx.relativePath})`;
     }
     return { folder: folder, nameSuffix: nameSuffix };

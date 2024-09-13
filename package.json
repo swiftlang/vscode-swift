@@ -558,7 +558,7 @@
           "swift.debugger.useDebugAdapterFromToolchain": {
             "type": "boolean",
             "default": false,
-            "markdownDescription": "Use lldb debug adapter packaged with Swift toolchain as your debug adapter. This is currently only available on Windows or platforms using Swift 6",
+            "markdownDescription": "Use the LLDB debug adapter packaged with the Swift toolchain as your debug adapter. Note: this is only available starting with Swift 6. The CodeLLDB extension will be used if your Swift toolchain does not contain lldb-dap.",
             "order": 1
           },
           "swift.debugger.path": {
@@ -1075,12 +1075,12 @@
                   "array",
                   "string"
                 ],
-                "description": "Program arguments.",
+                "description": "Arguments to provide to the program.",
                 "default": []
               },
               "cwd": {
                 "type": "string",
-                "description": "Program working directory.",
+                "description": "The working directory that the program will be launched within.",
                 "default": "${workspaceRoot}"
               },
               "env": {
@@ -1277,9 +1277,9 @@
     "format": "prettier --check *.json src test",
     "pretest": "npm run compile && find ./assets/test -type d -name '.build' -exec rm -rf {} + && find . -type d -name 'Package.resolved' -exec rm -rf {} + && tsc -p ./",
     "test": "vscode-test",
-    "integration-test": "vscode-test --label integrationTests",
-    "unit-test": "vscode-test --label unitTests",
-    "coverage": "npm run compile-tests && vscode-test --coverage",
+    "integration-test": "npm test -- --label integrationTests",
+    "unit-test": "npm test -- --label unitTests",
+    "coverage": "npm test -- --coverage",
     "compile-tests": "find ./assets/test -type d -name '.build' -exec rm -rf {} + && npm run compile && npm run esbuild",
     "package": "vsce package",
     "dev-package": "vsce package --no-update-package-json 1.11.1-dev",
