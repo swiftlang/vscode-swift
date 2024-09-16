@@ -21,5 +21,11 @@ export function requireNativeModule<T>(id: string): T {
     if (vscode.env.remoteName) {
         return require(`${vscode.env.appRoot}/node_modules/${id}`);
     }
-    return require(`${vscode.env.appRoot}/node_modules.asar/${id}`);
+    // https://github.com/microsoft/vscode/commit/a162831c17ad0d675f1f0d5c3f374fd1514f04b5
+    // VSCode has moved node-pty out of asar bundle
+    try {
+        return require(`${vscode.env.appRoot}/node_modules.asar/${id}`);
+    } catch {
+        return require(`${vscode.env.appRoot}/node_modules/${id}`);
+    }
 }
