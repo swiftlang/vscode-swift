@@ -147,6 +147,8 @@ export class TestExplorer {
                             }
                         } else if (!hasTestTargets && folder.hasTestExplorer()) {
                             folder.removeTestExplorer();
+                        } else if (folder.hasTestExplorer()) {
+                            folder.refreshTestExplorer();
                         }
                     }
                     break;

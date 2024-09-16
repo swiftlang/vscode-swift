@@ -161,6 +161,13 @@ export class FolderContext implements vscode.Disposable {
         this.testExplorer = undefined;
     }
 
+    /** Refresh the tests in the test explorer for this folder */
+    refreshTestExplorer() {
+        if (this.testExplorer?.controller.resolveHandler) {
+            this.testExplorer.controller.resolveHandler(undefined);
+        }
+    }
+
     /** Return if package folder has a test explorer */
     hasTestExplorer() {
         return this.testExplorer !== undefined;
