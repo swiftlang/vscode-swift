@@ -91,7 +91,11 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand("swift.switchPlatform", () => switchPlatform()),
         vscode.commands.registerCommand("swift.resetPackage", () => resetPackage(ctx)),
         vscode.commands.registerCommand("swift.runScript", () => runSwiftScript(ctx)),
-        vscode.commands.registerCommand("swift.openPackage", () => openPackage(ctx)),
+        vscode.commands.registerCommand("swift.openPackage", () => {
+            if (ctx.currentFolder) {
+                openPackage(ctx.toolchain.swiftVersion, ctx.currentFolder.folder);
+            }
+        }),
         vscode.commands.registerCommand("swift.runSnippet", () => runSnippet(ctx)),
         vscode.commands.registerCommand("swift.debugSnippet", () => debugSnippet(ctx)),
         vscode.commands.registerCommand("swift.runPluginTask", () => runPluginTask()),
