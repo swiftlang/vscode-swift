@@ -16,25 +16,33 @@ import * as vscode from "vscode";
 import * as assert from "assert";
 import * as swiftExtension from "../../src/extension";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
-import { testAssetUri } from "../fixtures";
 import { getBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { SwiftExecution } from "../../src/tasks/SwiftExecution";
+import { testAssetUri } from "../fixtures";
+import { FolderContext } from "../../src/FolderContext";
 
+export const rootWorkspaceFolder = vscode.workspace.workspaceFolders?.values().next().value;
 export const globalWorkspaceContextPromise = new Promise<WorkspaceContext>(resolve => {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.values().next().value;
+    if (!workspaceFolder) {
+        throw new Error("No workspace folders found in workspace");
+    }
     const ext = vscode.extensions.getExtension<swiftExtension.Api>("sswg.swift-lang")!;
-    ext.activate()
-        .then(api => {
-            const packageFolder = testAssetUri("defaultPackage");
-            const workspaceFolder = vscode.workspace.workspaceFolders?.values().next().value;
-            if (!workspaceFolder) {
-                throw new Error("No workspace folders found in workspace");
-            }
-            return api.workspaceContext.addPackageFolder(packageFolder, workspaceFolder);
-        })
-        .then(folder => {
-            resolve(folder!.workspaceContext);
-        });
+    ext.activate().then(api => {
+        const packageFolder = testAssetUri("defaultPackage");
+        api.workspaceContext
+            .addPackageFolder(packageFolder, rootWorkspaceFolder)
+            .then(() => resolve(api.workspaceContext));
+    });
 });
+export const folderContextPromise = async (name: string): Promise<FolderContext> => {
+    const workspaceContext = await globalWorkspaceContextPromise;
+    let folder = workspaceContext.folders.find(f => f.workspaceFolder.name === `test/${name}`);
+    if (!folder) {
+        folder = await workspaceContext.addPackageFolder(testAssetUri(name), rootWorkspaceFolder);
+    }
+    return folder;
+};
 
 suite("Extension Test Suite", () => {
     let workspaceContext: WorkspaceContext;

@@ -57,15 +57,15 @@ export class DiagnosticsManager implements vscode.Disposable {
         });
         this.onDidStartTaskDisposible = vscode.tasks.onDidStartTask(event => {
             // Will only try to provide diagnostics for `swift` tasks
-            const execution = event.execution.task.execution;
-            if (!(execution && execution instanceof SwiftExecution)) {
+            const task = event.execution.task;
+            if (task.definition.type !== "swift") {
                 return;
             }
             if (!this.includeSwiftcDiagnostics()) {
                 return;
             }
             // Provide new list of diagnostics
-            const swiftExecution = execution as SwiftExecution;
+            const swiftExecution = task.execution as SwiftExecution;
             const provideDiagnostics: Promise<DiagnosticsMap> =
                 this.parseDiagnostics(swiftExecution);
 

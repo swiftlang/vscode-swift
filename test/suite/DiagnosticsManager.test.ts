@@ -21,15 +21,18 @@ import { testAssetWorkspaceFolder, testSwiftTask } from "../fixtures";
 import { createBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { DiagnosticsManager } from "../../src/DiagnosticsManager";
 import { FolderContext } from "../../src/FolderContext";
-import { SwiftOutputChannel } from "../../src/ui/SwiftOutputChannel";
 import { Version } from "../../src/utilities/version";
+import { folderContextPromise, globalWorkspaceContextPromise } from "./extension.test";
 
-const waitForDiagnostics = (uris: vscode.Uri[]) =>
+const waitForDiagnostics = (uris: vscode.Uri[], allowEmpty: boolean = true) =>
     new Promise<void>(res =>
         vscode.languages.onDidChangeDiagnostics(e => {
             const paths = e.uris.map(u => u.path);
             for (const uri of uris) {
                 if (!paths.includes(uri.path)) {
+                    return;
+                }
+                if (!allowEmpty && !vscode.languages.getDiagnostics(uri).length) {
                     return;
                 }
             }
@@ -87,27 +90,15 @@ suite("DiagnosticsManager Test Suite", async function () {
     let cppUri: vscode.Uri;
     let cppHeaderUri: vscode.Uri;
 
-    suiteSetup(async () => {
-        toolchain = await SwiftToolchain.create();
-        workspaceContext = await WorkspaceContext.create(
-            new SwiftOutputChannel("Swift"),
-            toolchain
-        );
+    suiteSetup(async function () {
+        workspaceContext = await globalWorkspaceContextPromise;
+        toolchain = workspaceContext.toolchain;
         workspaceFolder = testAssetWorkspaceFolder("diagnostics");
         cWorkspaceFolder = testAssetWorkspaceFolder("diagnosticsC");
         cppWorkspaceFolder = testAssetWorkspaceFolder("diagnosticsCpp");
-        folderContext = await workspaceContext.addPackageFolder(
-            workspaceFolder.uri,
-            workspaceFolder
-        );
-        cFolderContext = await workspaceContext.addPackageFolder(
-            cWorkspaceFolder.uri,
-            cWorkspaceFolder
-        );
-        cppFolderContext = await workspaceContext.addPackageFolder(
-            cppWorkspaceFolder.uri,
-            cppWorkspaceFolder
-        );
+        folderContext = await folderContextPromise("diagnostics");
+        cFolderContext = await folderContextPromise("diagnosticsC");
+        cppFolderContext = await folderContextPromise("diagnosticsCpp");
         mainUri = vscode.Uri.file(`${workspaceFolder.uri.path}/Sources/main.swift`);
         funcUri = vscode.Uri.file(`${workspaceFolder.uri.path}/Sources/func.swift`);
         cUri = vscode.Uri.file(`${cWorkspaceFolder.uri.path}/Sources/MyPoint/MyPoint.c`);
@@ -288,40 +279,6 @@ suite("DiagnosticsManager Test Suite", async function () {
                     ),
                     true
                 );
-            });
-        });
-
-        suite("SourceKit-LSP diagnostics", () => {
-            teardown(async () => {
-                await vscode.commands.executeCommand("workbench.action.closeAllEditors");
-            });
-
-            test("Provides clang diagnostics", async () => {
-                // Open file
-                const promise = waitForDiagnostics([cUri]);
-                const document = await vscode.workspace.openTextDocument(cUri);
-                await vscode.languages.setTextDocumentLanguage(document, "swift");
-                await vscode.window.showTextDocument(document);
-                await promise;
-                await waitForNoRunningTasks();
-
-                // Diagnostic message used as-is
-                const expectedDiagnostic1 = new vscode.Diagnostic(
-                    new vscode.Range(new vscode.Position(5, 10), new vscode.Position(5, 13)),
-                    "Use of undeclared identifier 'bar'",
-                    vscode.DiagnosticSeverity.Error
-                );
-                expectedDiagnostic1.source = "clang"; // Set by LSP
-                assertHasDiagnostic(cUri, expectedDiagnostic1);
-
-                // Remove "(fix available)" from string from SourceKit
-                const expectedDiagnostic2 = new vscode.Diagnostic(
-                    new vscode.Range(new vscode.Position(7, 4), new vscode.Position(7, 10)),
-                    "Expected ';' after expression",
-                    vscode.DiagnosticSeverity.Error
-                );
-                expectedDiagnostic2.source = "clang"; // Set by LSP
-                assertHasDiagnostic(cUri, expectedDiagnostic2);
             });
         });
 
@@ -890,5 +847,99 @@ suite("DiagnosticsManager Test Suite", async function () {
             assertHasDiagnostic(mainUri, swiftcErrorDiagnostic);
             assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
         });
+    });
+
+    suite("SourceKit-LSP diagnostics", () => {
+        suiteSetup(async function () {
+            if (workspaceContext.swiftVersion.isLessThan(new Version(5, 7, 0))) {
+                this.skip();
+                return;
+            }
+            workspaceContext.diagnostics.clear();
+            workspaceContext.focusFolder(null);
+            await swiftConfig.update("diagnosticsCollection", "onlySourceKit"); // So waitForDiagnostics only resolves from LSP
+        });
+
+        suiteTeardown(async () => {
+            await swiftConfig.update("diagnosticsCollection", undefined);
+        });
+
+        teardown(async () => {
+            await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+        });
+
+        test("Provides swift diagnostics", async () => {
+            // Build for indexing
+            let task = createBuildAllTask(folderContext);
+            await executeTaskAndWaitForResult(task);
+
+            // Open file
+            const promise = waitForDiagnostics([mainUri], false);
+            const document = await vscode.workspace.openTextDocument(mainUri);
+            await vscode.languages.setTextDocumentLanguage(document, "swift");
+            await vscode.window.showTextDocument(document);
+
+            task = createBuildAllTask(folderContext);
+            await executeTaskAndWaitForResult(task);
+
+            // Retrigger diagnostics
+            await workspaceContext.focusFolder(folderContext);
+            await promise;
+
+            const lspSource = toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))
+                ? "SourceKit"
+                : "sourcekitd";
+
+            // Include warning
+            const expectedDiagnostic1 = new vscode.Diagnostic(
+                new vscode.Range(new vscode.Position(1, 8), new vscode.Position(1, 8)),
+                "Initialization of variable 'unused' was never used; consider replacing with assignment to '_' or removing it",
+                vscode.DiagnosticSeverity.Warning
+            );
+            expectedDiagnostic1.source = lspSource; // Set by LSP
+            assertHasDiagnostic(mainUri, expectedDiagnostic1);
+
+            // Include error
+            const expectedDiagnostic2 = new vscode.Diagnostic(
+                new vscode.Range(new vscode.Position(7, 0), new vscode.Position(7, 3)),
+                "Cannot assign to value: 'bar' is a 'let' constant",
+                vscode.DiagnosticSeverity.Error
+            );
+            expectedDiagnostic2.source = lspSource; // Set by LSP
+            assertHasDiagnostic(mainUri, expectedDiagnostic2);
+        }).timeout(2 * 60 * 1000); // Allow 2 minutes to build
+
+        test("Provides clang diagnostics", async () => {
+            // Build for indexing
+            const task = createBuildAllTask(cFolderContext);
+            await executeTaskAndWaitForResult(task);
+
+            // Open file
+            const promise = waitForDiagnostics([cUri], false);
+            const document = await vscode.workspace.openTextDocument(cUri);
+            await vscode.languages.setTextDocumentLanguage(document, "c");
+            await vscode.window.showTextDocument(document);
+
+            // Retrigger diagnostics
+            await workspaceContext.focusFolder(cFolderContext);
+            await promise;
+
+            const expectedDiagnostic1 = new vscode.Diagnostic(
+                new vscode.Range(new vscode.Position(5, 10), new vscode.Position(5, 13)),
+                "Use of undeclared identifier 'bar'",
+                vscode.DiagnosticSeverity.Error
+            );
+            expectedDiagnostic1.source = "clang"; // Set by LSP
+            assertHasDiagnostic(cUri, expectedDiagnostic1);
+
+            // Remove "(fix available)" from string from SourceKit
+            const expectedDiagnostic2 = new vscode.Diagnostic(
+                new vscode.Range(new vscode.Position(7, 4), new vscode.Position(7, 10)),
+                "Expected ';' after expression",
+                vscode.DiagnosticSeverity.Error
+            );
+            expectedDiagnostic2.source = "clang"; // Set by LSP
+            assertHasDiagnostic(cUri, expectedDiagnostic2);
+        }).timeout(2 * 60 * 1000); // Allow 2 minutes to build
     });
 });
