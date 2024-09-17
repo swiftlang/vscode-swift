@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.11.1 - 2024-09-17
+
+### Fixed
+
+- Fix extension activation when running with latest VS Code insiders build ([#1073](https://github.com/swiftlang/vscode-swift/pull/1073))
+- Make LLDB launch configurations platform agnostic ([#1024](https://github.com/swiftlang/vscode-swift/pull/1024))
+- Prevent race condition when printing test output from swift-testing ([#1058](https://github.com/swiftlang/vscode-swift/pull/1058))
+
 ## 1.11.0 - 2024-08-28
 
 ### Added
