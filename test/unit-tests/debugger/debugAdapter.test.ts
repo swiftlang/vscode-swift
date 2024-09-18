@@ -20,7 +20,7 @@ import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import { Version } from "../../../src/utilities/version";
-import { fn, mockNamespace, MockedObject, mockObject } from "../MockUtils2";
+import { doNothing, mockNamespace, MockedObject, mockObject, instance } from "../MockUtils2";
 
 suite("verifyDebugAdapterExists false return Tests", () => {
     const mockedWindow = mockNamespace(vscode, "window");
@@ -36,16 +36,16 @@ suite("verifyDebugAdapterExists false return Tests", () => {
         const swiftVersion = new Version(5, 3, 0); // Any version
         mockToolchain = mockObject<SwiftToolchain>({
             swiftVersion,
-            getLLDBDebugAdapter: fn(),
-            getToolchainExecutable: fn(),
+            getLLDBDebugAdapter: doNothing(),
+            getToolchainExecutable: doNothing(),
         });
         mockOutputChannel = mockObject<SwiftOutputChannel>({
-            log: fn(),
+            log: doNothing(),
         });
         mockWorkspaceContext = mockObject<WorkspaceContext>({
-            toolchain: mockToolchain,
+            toolchain: instance(mockToolchain),
             swiftVersion,
-            outputChannel: mockOutputChannel,
+            outputChannel: instance(mockOutputChannel),
         });
     });
 
@@ -56,22 +56,22 @@ suite("verifyDebugAdapterExists false return Tests", () => {
     test("should return false regardless of quiet setting", async () => {
         // Test with quiet = true
         await expect(
-            DebugAdapter.verifyDebugAdapterExists(mockWorkspaceContext, true)
+            DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), true)
         ).to.eventually.equal(false, "Should return false when quiet is true");
 
         // Test with quiet = false
         await expect(
-            DebugAdapter.verifyDebugAdapterExists(mockWorkspaceContext, false)
+            DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), false)
         ).to.eventually.equal(false, "Should return false when quiet is false");
     });
 
     test("should call showErrorMessage when quiet is false", async () => {
-        await DebugAdapter.verifyDebugAdapterExists(mockWorkspaceContext, false);
+        await DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), false);
         expect(mockedWindow.showErrorMessage).to.have.been.called;
     });
 
     test("should not call showErrorMessage when quiet is true", async () => {
-        await DebugAdapter.verifyDebugAdapterExists(mockWorkspaceContext, true);
+        await DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), true);
         expect(mockedWindow.showErrorMessage).to.not.have.been.called;
     });
 });

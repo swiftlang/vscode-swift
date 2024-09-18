@@ -14,7 +14,7 @@
 import * as vscode from "vscode";
 import * as sinon from "sinon";
 
-export function fn(): (...args: any[]) => any {
+export function doNothing(): (...args: any[]) => any {
     return () => {
         throw new Error("Not implemented.");
     };
@@ -25,9 +25,15 @@ export type MockedFunction<T extends (...args: any[]) => any> = sinon.SinonStub<
     ReturnType<T>
 >;
 
-export type MockedObject<T> = T & {
+export type MockedObject<T> = {
     -readonly [K in keyof T]: T[K] extends (...args: any[]) => any ? MockedFunction<T[K]> : T[K];
 };
+
+type InstanceOf<T> = T extends MockedObject<infer Object> ? Object : never;
+
+export function instance<T extends MockedObject<any>>(obj: T): InstanceOf<T> {
+    return obj as any;
+}
 
 function replaceFunctionsWithSinonStubs<T>(obj: Partial<T>): MockedObject<T> {
     const result: any = {};
@@ -65,6 +71,10 @@ function makeProxyObject<T>(obj: MockedObject<T>): MockedObject<T> {
 export function mockObject<T>(overrides: Partial<T>): MockedObject<T> {
     const clonedObject = replaceFunctionsWithSinonStubs<T>(overrides);
     return makeProxyObject<T>(clonedObject);
+}
+
+export function mockFn<T extends (...args: any[]) => any>(): MockedFunction<T> {
+    return sinon.stub();
 }
 
 type ObjectsOf<T> = {
