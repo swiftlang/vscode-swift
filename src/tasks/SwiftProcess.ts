@@ -94,16 +94,17 @@ export class SwiftPtyProcess implements SwiftProcess {
 
     spawn(): void {
         try {
+            const isWindows = process.platform === "win32";
             // The pty process hangs on Windows when debugging the extension if we use conpty
             // See https://github.com/microsoft/node-pty/issues/640
-            const useConpty =
-                process.platform === "win32" && process.env["VSCODE_DEBUG"] === "1"
-                    ? false
-                    : undefined;
+            const useConpty = isWindows && process.env["VSCODE_DEBUG"] === "1" ? false : true;
             this.spawnedProcess = spawn(this.command, this.args, {
                 cwd: this.options.cwd,
                 env: { ...process.env, ...this.options.env },
                 useConpty,
+                // https://github.com/swiftlang/vscode-swift/issues/1074
+                // Causing weird truncation issues
+                cols: !isWindows || useConpty ? undefined : 2147483647, // Max int32
             });
             this.spawnEmitter.fire();
             this.spawnedProcess.onData(data => {
@@ -136,6 +137,11 @@ export class SwiftPtyProcess implements SwiftProcess {
     }
 
     setDimensions(dimensions: vscode.TerminalDimensions): void {
+        // https://github.com/swiftlang/vscode-swift/issues/1074
+        // Causing weird truncation issues
+        if (process.platform === "win32") {
+            return;
+        }
         this.spawnedProcess?.resize(dimensions.columns, dimensions.rows);
     }
 
