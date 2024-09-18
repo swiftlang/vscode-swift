@@ -14,10 +14,19 @@
 import * as vscode from "vscode";
 import * as sinon from "sinon";
 
+/**
+ * A convenience function for reducing boilerplate in calls to mockObject().
+ *
+ * Returns a function that does nothing:
+ *
+ *     const mockedObject = mockObject<SomeInterface>({
+ *         fn1: doNothing(),
+ *         fn2: doNothing(),
+ *         fn3: doNothing(),
+ *     });
+ * */
 export function doNothing(): (...args: any[]) => any {
-    return () => {
-        throw new Error("Not implemented.");
-    };
+    return () => {};
 }
 
 export type MockedFunction<T extends (...args: any[]) => any> = sinon.SinonStub<
@@ -29,8 +38,16 @@ export type MockedObject<T> = {
     -readonly [K in keyof T]: T[K] extends (...args: any[]) => any ? MockedFunction<T[K]> : T[K];
 };
 
-type InstanceOf<T> = T extends MockedObject<infer Object> ? Object : never;
+export type InstanceOf<T> = T extends MockedObject<infer Object> ? Object : never;
 
+/**
+ * Casts the given MockedObject into the same type as the class it is trying to mock.
+ *
+ * This is only necessary when trying to mock a class that contains private properties.
+ *
+ * @param obj The MockedObject
+ * @returns The underlying class that the MockedObject is mocking
+ */
 export function instance<T extends MockedObject<any>>(obj: T): InstanceOf<T> {
     return obj as any;
 }
@@ -68,11 +85,22 @@ function makeProxyObject<T>(obj: MockedObject<T>): MockedObject<T> {
     });
 }
 
+/**
+ * Creates a MockedObject from an interface or class. Converts any functions to Sinon stubs.
+ *
+ * @param overrides An object containing the properties of the interface or class that will be mocked
+ * @returns A MockedObject that contains the same properties as the real interface or class
+ */
 export function mockObject<T>(overrides: Partial<T>): MockedObject<T> {
     const clonedObject = replaceFunctionsWithSinonStubs<T>(overrides);
     return makeProxyObject<T>(clonedObject);
 }
 
+/**
+ * Convenience function that creates a Sinon stub with the correct arguments and return type.
+ *
+ * @returns A Sinon stub for the function
+ */
 export function mockFn<T extends (...args: any[]) => any>(): MockedFunction<T> {
     return sinon.stub();
 }
