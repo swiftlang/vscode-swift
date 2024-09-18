@@ -12,56 +12,66 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as assert from "assert";
+import { expect } from "chai";
 import * as vscode from "vscode";
-import * as fs from "../../../src/utilities/filesystem";
+import * as mockFS from "mock-fs";
 import { DebugAdapter } from "../../../src/debugger/debugAdapter";
-import { mockNamespace } from "../MockUtils";
-import { mock, instance, when, spy, verify, anyString, anything } from "ts-mockito";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import { Version } from "../../../src/utilities/version";
+import { fn, mockNamespace, MockedObject, mockObject } from "../MockUtils2";
 
 suite("verifyDebugAdapterExists false return Tests", () => {
-    const mockContext = mock(WorkspaceContext);
-    const mockToolchain = mock(SwiftToolchain);
-    const mockSwift = mock(SwiftOutputChannel);
-    const windowStub = mockNamespace(vscode, "window");
-    const fsSpy = spy(fs);
+    const mockedWindow = mockNamespace(vscode, "window");
+
+    let mockWorkspaceContext: MockedObject<WorkspaceContext>;
+    let mockToolchain: MockedObject<SwiftToolchain>;
+    let mockOutputChannel: MockedObject<SwiftOutputChannel>;
 
     setup(() => {
-        when(fsSpy.fileExists(anything())).thenResolve(false);
+        // Mock the file system
+        mockFS();
+        // Mock the WorkspaceContext and related dependencies
+        const swiftVersion = new Version(5, 3, 0); // Any version
+        mockToolchain = mockObject<SwiftToolchain>({
+            swiftVersion,
+            getLLDBDebugAdapter: fn(),
+            getToolchainExecutable: fn(),
+        });
+        mockOutputChannel = mockObject<SwiftOutputChannel>({
+            log: fn(),
+        });
+        mockWorkspaceContext = mockObject<WorkspaceContext>({
+            toolchain: mockToolchain,
+            swiftVersion,
+            outputChannel: mockOutputChannel,
+        });
+    });
 
-        // Mock other dependencies in the mockContext
-        when(mockContext.toolchain).thenReturn(instance(mockToolchain));
-        when(mockContext.outputChannel).thenReturn(instance(mockSwift));
-        when(mockToolchain.swiftVersion).thenReturn(new Version(5, 3, 0)); // Any version
+    teardown(() => {
+        mockFS.restore();
     });
 
     test("should return false regardless of quiet setting", async () => {
         // Test with quiet = true
-        const resultQuietTrue = await DebugAdapter.verifyDebugAdapterExists(
-            instance(mockContext),
-            true
-        );
-        assert.strictEqual(resultQuietTrue, false, "Should return false when quiet is true");
+        await expect(
+            DebugAdapter.verifyDebugAdapterExists(mockWorkspaceContext, true)
+        ).to.eventually.equal(false, "Should return false when quiet is true");
 
         // Test with quiet = false
-        const resultQuietFalse = await DebugAdapter.verifyDebugAdapterExists(
-            instance(mockContext),
-            false
-        );
-        assert.strictEqual(resultQuietFalse, false, "Should return false when quiet is false");
+        await expect(
+            DebugAdapter.verifyDebugAdapterExists(mockWorkspaceContext, false)
+        ).to.eventually.equal(false, "Should return false when quiet is false");
     });
 
     test("should call showErrorMessage when quiet is false", async () => {
-        await DebugAdapter.verifyDebugAdapterExists(instance(mockContext), false);
-        verify(windowStub.showErrorMessage(anyString())).called();
+        await DebugAdapter.verifyDebugAdapterExists(mockWorkspaceContext, false);
+        expect(mockedWindow.showErrorMessage).to.have.been.called;
     });
 
     test("should not call showErrorMessage when quiet is true", async () => {
-        await DebugAdapter.verifyDebugAdapterExists(instance(mockContext), true);
-        verify(windowStub.showErrorMessage(anyString())).never();
+        await DebugAdapter.verifyDebugAdapterExists(mockWorkspaceContext, true);
+        expect(mockedWindow.showErrorMessage).to.not.have.been.called;
     });
 });

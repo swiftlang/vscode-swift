@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as assert from "assert";
+import { expect } from "chai";
 import * as vscode from "vscode";
 import { uriConverters } from "../../../src/sourcekit-lsp/uriConverters";
 
@@ -21,20 +21,20 @@ import { uriConverters } from "../../../src/sourcekit-lsp/uriConverters";
 function checkUri(input: string, verifyUri: (uri: vscode.Uri) => void) {
     const uri = uriConverters.protocol2Code(input);
     verifyUri(uri);
-    assert.equal(uriConverters.code2Protocol(uri), input);
+    expect(uriConverters.code2Protocol(uri)).to.equal(input);
 }
 
 suite("uriConverters Suite", () => {
     suite("Default Coding", () => {
         test("Space in host", () => {
             checkUri("file://host%20with%20space/", uri => {
-                assert.equal(uri.authority, "host with space");
+                expect(uri.authority).to.equal("host with space");
             });
         });
 
         test("Space in path", () => {
             checkUri("file://host/with%20space", uri => {
-                assert.equal(uri.path, "/with space");
+                expect(uri.path).to.equal("/with space");
             });
         });
 
@@ -42,31 +42,30 @@ suite("uriConverters Suite", () => {
             // If this test starts passing, the underlying VS Code issue that requires us to have custom URI coding
             // has been fixed and we should be able to remove our custom uri converter.
             const uri = uriConverters.protocol2Code("scheme://host?outer=inner%3Dvalue");
-            assert.equal(
-                uri.toString(/*skipEncoding*/ false),
+            expect(uri.toString(/*skipEncoding*/ false)).to.equal(
                 "scheme://host?outer%3Dinner%3Dvalue"
             );
-            assert.equal(uri.toString(/*skipEncoding*/ true), "scheme://host?outer=inner=value");
+            expect(uri.toString(/*skipEncoding*/ true)).to.equal("scheme://host?outer=inner=value");
         });
     });
 
     suite("Custom Coding", () => {
         test("Basic", () => {
             checkUri("sourcekit-lsp://host?outer=inner%3Dvalue", uri => {
-                assert.equal(uri.query, "outer=inner%3Dvalue");
+                expect(uri.query).to.equal("outer=inner%3Dvalue");
             });
         });
 
         test("Percent-encoded hash in query", () => {
             checkUri("sourcekit-lsp://host?outer=with%23hash", uri => {
-                assert.equal(uri.query, "outer=with%23hash");
+                expect(uri.query).to.equal("outer=with%23hash");
             });
         });
 
         test("Query and fragment", () => {
             checkUri("sourcekit-lsp://host?outer=with%23hash#fragment", uri => {
-                assert.equal(uri.query, "outer=with%23hash");
-                assert.equal(uri.fragment, "fragment");
+                expect(uri.query).to.equal("outer=with%23hash");
+                expect(uri.fragment).to.equal("fragment");
             });
         });
 
@@ -75,37 +74,37 @@ suite("uriConverters Suite", () => {
             // ambiguities around username in the authority (see the `Encoded '@' in host` test).
             // For now, rely on SourceKit-LSP not using any characters that need percent-encoding here.
             checkUri("sourcekit-lsp://host%20with%20space", uri => {
-                assert.equal(uri.authority, "host%20with%20space");
+                expect(uri.authority).to.equal("host%20with%20space");
             });
         });
 
         test("Encoded '@' in host", () => {
             checkUri("sourcekit-lsp://user%40with-at@host%40with-at", uri => {
-                assert.equal(uri.authority, "user%40with-at@host%40with-at");
+                expect(uri.authority).to.equal("user%40with-at@host%40with-at");
             });
         });
 
         test("Percent encoding in path", () => {
             checkUri("sourcekit-lsp://host/with%20space", uri => {
-                assert.equal(uri.path, "/with%20space");
+                expect(uri.path).to.equal("/with%20space");
             });
         });
 
         test("No query", () => {
             checkUri("sourcekit-lsp://host/with/path", uri => {
-                assert.equal(uri.query, "");
+                expect(uri.query).to.equal("");
             });
         });
 
         test("With username", () => {
             checkUri("sourcekit-lsp://user@host", uri => {
-                assert.equal(uri.authority, "user@host");
+                expect(uri.authority).to.equal("user@host");
             });
         });
 
         test("With username and password", () => {
             checkUri("sourcekit-lsp://user:pass@host", uri => {
-                assert.equal(uri.authority, "user:pass@host");
+                expect(uri.authority).to.equal("user:pass@host");
             });
         });
     });

@@ -18,7 +18,7 @@ import { ArgumentFilter, BuildFlags } from "../../../src/toolchain/BuildFlags";
 import { Version } from "../../../src/utilities/version";
 import { instance, mock, when } from "ts-mockito";
 import configuration from "../../../src/configuration";
-import { mockValue } from "../MockUtils";
+import { mockValue } from "../MockUtils2";
 
 suite("BuildFlags Test Suite", () => {
     const platformConfig = mockValue(process, "platform");

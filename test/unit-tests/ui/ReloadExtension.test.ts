@@ -11,11 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import { anyString, anything, verify, when } from "ts-mockito";
-import { equal } from "assert";
+import { expect } from "chai";
 import { showReloadExtensionNotification } from "../../../src/ui/ReloadExtension";
 import * as vscode from "vscode";
-import { mockNamespace } from "../MockUtils";
+import { mockNamespace } from "../MockUtils2";
 
 suite("ReloadExtension Unit Test Suite", async function () {
     const windowMock = mockNamespace(vscode, "window");
@@ -24,25 +23,27 @@ suite("ReloadExtension Unit Test Suite", async function () {
     test("Shows user a warning", async () => {
         // No behaviour setup, let's just check if we showed them the notification
         await showReloadExtensionNotification("Want to reload?");
-        verify(windowMock.showWarningMessage("Want to reload?", "Reload Extensions")).called();
+        expect(windowMock.showWarningMessage).to.have.been.calledWith(
+            "Want to reload?",
+            "Reload Extensions"
+        );
     });
 
     test('"Reload Extensions" is clicked', async () => {
         // What happens if they click this button?
-        when(windowMock.showWarningMessage(anyString(), "Reload Extensions")).thenReturn(
-            Promise.resolve("Reload Extensions")
-        );
+        windowMock.showWarningMessage.resolves("Reload Extensions" as any);
         await showReloadExtensionNotification("Want to reload?");
-        verify(commandsMock.executeCommand("workbench.action.reloadWindow")).called();
+        expect(commandsMock.executeCommand).to.have.been.calledWith(
+            "workbench.action.reloadWindow"
+        );
     });
 
     test("Provide a different button", async () => {
         // What if we provide another option?
-        when(
-            windowMock.showWarningMessage("Want to reload?", "Reload Extensions", "Ignore")
-        ).thenReturn(Promise.resolve("Ignore"));
-        const result = await showReloadExtensionNotification("Want to reload?", "Ignore");
-        equal(result, "Ignore");
-        verify(commandsMock.executeCommand(anything())).never();
+        windowMock.showWarningMessage.resolves("Ignore" as any);
+        await expect(
+            showReloadExtensionNotification("Want to reload?", "Ignore")
+        ).to.eventually.equal("Ignore");
+        expect(commandsMock.executeCommand).to.not.have.been.called;
     });
 });
