@@ -38,7 +38,7 @@ export type MockedObject<T> = {
     -readonly [K in keyof T]: T[K] extends (...args: any[]) => any ? MockedFunction<T[K]> : T[K];
 };
 
-export type InstanceOf<T> = T extends MockedObject<infer Object> ? Object : never;
+export type InstanceOf<T> = T extends MockedObject<infer Obj> ? Obj : never;
 
 /**
  * Casts the given MockedObject into the same type as the class it is trying to mock.
@@ -68,13 +68,17 @@ function makeProxyObject<T>(obj: MockedObject<T>): MockedObject<T> {
     return new Proxy<any>(obj, {
         get(target, property) {
             if (!Object.prototype.hasOwnProperty.call(target, property)) {
-                throw new Error("Attempted to access a property that was not mocked.");
+                throw new Error(
+                    `Attempted to access property '${String(property)}', but it was not mocked.`
+                );
             }
             return target[property];
         },
         set(target, property, value) {
             if (!Object.prototype.hasOwnProperty.call(target, property)) {
-                throw new Error("Attempted to access a property that was not mocked.");
+                throw new Error(
+                    `Attempted to access property '${String(property)}', but it was not mocked.`
+                );
             }
             if (typeof target[property] === "function") {
                 throw new Error("Cannot set the value of a function property in a mocked object");
@@ -136,6 +140,45 @@ export function mockNamespace<T, K extends ObjectsOf<T>>(obj: T, property: K): M
     // Restore original value at teardown
     teardown(() => {
         Object.defineProperty(obj, property, { value: originalValue });
+    });
+    // Return the proxy to the real mock
+    return new Proxy<any>(originalValue, {
+        get(target, property) {
+            if (!realMock) {
+                throw Error("Mock proxy accessed before setup()");
+            }
+            return (realMock as any)[property];
+        },
+        set(target, property, value) {
+            (realMock as any)[property] = value;
+            return true;
+        },
+    });
+}
+
+function shallowClone<T>(obj: T): T {
+    const result: any = {};
+    for (const property of Object.getOwnPropertyNames(obj)) {
+        result[property] = (obj as any)[property];
+    }
+    return result;
+}
+
+export function mockModule<T>(mod: T): MockedObject<T> {
+    let realMock: MockedObject<T>;
+    const originalValue: T = shallowClone(mod);
+    // Create the mock at setup
+    setup(() => {
+        realMock = mockObject(mod);
+        for (const property of Object.getOwnPropertyNames(realMock)) {
+            Object.defineProperty(mod, property, { value: (realMock as any)[property] });
+        }
+    });
+    // Restore original value at teardown
+    teardown(() => {
+        for (const property of Object.getOwnPropertyNames(originalValue)) {
+            Object.defineProperty(mod, property, { value: (originalValue as any)[property] });
+        }
     });
     // Return the proxy to the real mock
     return new Proxy<any>(originalValue, {

@@ -12,44 +12,55 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as assert from "assert";
+import { expect } from "chai";
 import * as util from "../../../src/utilities/utilities";
 import * as vscode from "vscode";
 import { getLldbProcess } from "../../../src/debugger/lldb";
-import { mockNamespace } from "../MockUtils";
-import { mock, instance, when, spy, verify, anyString, anything } from "ts-mockito";
+import {
+    doNothing,
+    instance,
+    MockedObject,
+    mockModule,
+    mockNamespace,
+    mockObject,
+} from "../MockUtils2";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 
 suite("getLldbProcess Unit Test Suite", () => {
-    const utilSpy = spy(util);
-    const mockContext = mock(WorkspaceContext);
-    const mockToolchain = mock(SwiftToolchain);
+    const utilMock = mockModule(util);
     const windowMock = mockNamespace(vscode, "window");
 
+    let mockContext: MockedObject<WorkspaceContext>;
+    let mockToolchain: MockedObject<SwiftToolchain>;
+
     setup(() => {
-        when(mockContext.toolchain).thenReturn(instance(mockToolchain));
-        when(mockToolchain.getLLDB()).thenResolve("/path/to/lldb");
+        mockToolchain = mockObject<SwiftToolchain>({
+            getLLDB: doNothing(),
+        });
+        mockToolchain.getLLDB.resolves("/path/to/lldb");
+        mockContext = mockObject<WorkspaceContext>({
+            toolchain: instance(mockToolchain),
+        });
     });
 
     test("should return an empty list when no processes are found", async () => {
-        when(utilSpy.execFile(anyString(), anything())).thenResolve({ stdout: "", stderr: "" });
+        utilMock.execFile.resolves({ stdout: "", stderr: "" });
 
         const result = await getLldbProcess(instance(mockContext));
 
-        assert.deepStrictEqual(result, []);
+        expect(result).to.be.an("array").that.is.empty;
     });
 
     test("should return a list with one process", async () => {
-        const singleProcessOutput = `1234    5678    user1   group1   SingleProcess\n`;
-        when(utilSpy.execFile(anyString(), anything())).thenResolve({
-            stdout: singleProcessOutput,
+        utilMock.execFile.resolves({
+            stdout: `1234    5678    user1   group1   SingleProcess\n`,
             stderr: "",
         });
 
         const result = await getLldbProcess(instance(mockContext));
 
-        assert.deepStrictEqual(result, [{ pid: 1234, label: "1234: SingleProcess" }]);
+        expect(result).to.deep.equal([{ pid: 1234, label: "1234: SingleProcess" }]);
     });
 
     test("should return a list with many processes", async () => {
@@ -59,8 +70,7 @@ suite("getLldbProcess Unit Test Suite", () => {
                 return `${1000 + i}    2000    user${i}   group${i}   Process${i}`;
             })
             .join("\n");
-
-        when(utilSpy.execFile(anyString(), anything())).thenResolve({
+        utilMock.execFile.resolves({
             stdout: manyProcessesOutput,
             stderr: "",
         });
@@ -74,16 +84,18 @@ suite("getLldbProcess Unit Test Suite", () => {
                 pid: 1000 + i,
                 label: `${1000 + i}: Process${i}`,
             }));
-        assert.deepStrictEqual(result, expected);
+        expect(result).to.deep.equal(expected);
     });
 
     test("should handle errors correctly", async () => {
-        when(utilSpy.execFile(anyString(), anything())).thenReject(new Error("LLDB Error"));
+        utilMock.execFile.rejects(new Error("LLDB Error"));
+        utilMock.getErrorDescription.returns("LLDB Error");
 
         const result = await getLldbProcess(instance(mockContext));
 
-        assert.strictEqual(result, undefined);
-
-        verify(windowMock.showErrorMessage("Failed to run LLDB: LLDB Error")).once();
+        expect(result).to.equal(undefined);
+        expect(windowMock.showErrorMessage).to.have.been.calledWith(
+            "Failed to run LLDB: LLDB Error"
+        );
     });
 });

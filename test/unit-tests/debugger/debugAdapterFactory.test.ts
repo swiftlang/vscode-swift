@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as assert from "assert";
+import { expect } from "chai";
 import { DebugAdapter } from "../../../src/debugger/debugAdapter";
 import { LLDBDebugConfigurationProvider } from "../../../src/debugger/debugAdapterFactory";
 import { Version } from "../../../src/utilities/version";
@@ -37,7 +37,7 @@ suite("Debug Adapter Factory Test Suite", () => {
                 request: "launch",
                 program: "${workspaceFolder}/.build/debug/executable",
             });
-            assert.strictEqual(launchConfig.type, DebugAdapter.adapterName);
+            expect(launchConfig).to.containSubset({ type: DebugAdapter.adapterName });
         });
 
         test("delegates to CodeLLDB for swift versions <6.0.0", async () => {
@@ -48,8 +48,10 @@ suite("Debug Adapter Factory Test Suite", () => {
                 request: "launch",
                 program: "${workspaceFolder}/.build/debug/executable",
             });
-            assert.strictEqual(launchConfig.type, "lldb");
-            assert.deepStrictEqual(launchConfig.sourceLanguages, ["swift"]);
+            expect(launchConfig).to.containSubset({
+                type: "lldb",
+                sourceLanguages: ["swift"],
+            });
         });
 
         test("delegates to CodeLLDB on Swift 6.0.0 if setting swift.debugger.useDebugAdapterFromToolchain is explicitly disabled", async () => {
@@ -61,8 +63,10 @@ suite("Debug Adapter Factory Test Suite", () => {
                 request: "launch",
                 program: "${workspaceFolder}/.build/debug/executable",
             });
-            assert.strictEqual(launchConfig.type, "lldb");
-            assert.deepStrictEqual(launchConfig.sourceLanguages, ["swift"]);
+            expect(launchConfig).to.containSubset({
+                type: "lldb",
+                sourceLanguages: ["swift"],
+            });
         });
 
         test("modifies program to add file extension on Windows", async () => {
@@ -73,10 +77,9 @@ suite("Debug Adapter Factory Test Suite", () => {
                 request: "launch",
                 program: "${workspaceFolder}/.build/debug/executable",
             });
-            assert.strictEqual(
-                launchConfig.program,
-                "${workspaceFolder}/.build/debug/executable.exe"
-            );
+            expect(launchConfig).to.containSubset({
+                program: "${workspaceFolder}/.build/debug/executable.exe",
+            });
         });
 
         test("does not modify program on Windows if file extension is already present", async () => {
@@ -87,10 +90,9 @@ suite("Debug Adapter Factory Test Suite", () => {
                 request: "launch",
                 program: "${workspaceFolder}/.build/debug/executable.exe",
             });
-            assert.strictEqual(
-                launchConfig.program,
-                "${workspaceFolder}/.build/debug/executable.exe"
-            );
+            expect(launchConfig).to.containSubset({
+                program: "${workspaceFolder}/.build/debug/executable.exe",
+            });
         });
 
         test("does not modify program on macOS", async () => {
@@ -101,7 +103,9 @@ suite("Debug Adapter Factory Test Suite", () => {
                 request: "launch",
                 program: "${workspaceFolder}/.build/debug/executable",
             });
-            assert.strictEqual(launchConfig.program, "${workspaceFolder}/.build/debug/executable");
+            expect(launchConfig).to.containSubset({
+                program: "${workspaceFolder}/.build/debug/executable",
+            });
         });
 
         test("does not modify program on Linux", async () => {
@@ -112,7 +116,9 @@ suite("Debug Adapter Factory Test Suite", () => {
                 request: "launch",
                 program: "${workspaceFolder}/.build/debug/executable",
             });
-            assert.strictEqual(launchConfig.program, "${workspaceFolder}/.build/debug/executable");
+            expect(launchConfig).to.containSubset({
+                program: "${workspaceFolder}/.build/debug/executable",
+            });
         });
     });
 });

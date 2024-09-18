@@ -12,33 +12,31 @@
 //
 //===----------------------------------------------------------------------===//
 
+import { expect } from "chai";
 import * as vscode from "vscode";
 import * as lldb from "../../../src/debugger/lldb";
 import { attachDebugger } from "../../../src/commands/attachDebugger";
-import { mockNamespace } from "../MockUtils";
-import {
-    mock,
-    instance,
-    when,
-    spy,
-    verify,
-    anything,
-    deepEqual,
-    objectContaining,
-} from "ts-mockito";
+import { mockObject, mockNamespace, mockModule, MockedObject, instance } from "../MockUtils2";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { registerLLDBDebugAdapter } from "../../../src/debugger/debugAdapterFactory";
+import { Version } from "../../../src/utilities/version";
 
 suite("attachDebugger Unit Test Suite", () => {
-    const lldbSpy = spy(lldb);
-    const mockContext = mock(WorkspaceContext);
-    const mockToolchain = mock(SwiftToolchain);
+    const lldbMock = mockModule(lldb);
     const windowMock = mockNamespace(vscode, "window");
     const debugMock = mockNamespace(vscode, "debug");
 
+    let mockContext: MockedObject<WorkspaceContext>;
+    let mockToolchain: MockedObject<SwiftToolchain>;
+
     setup(() => {
-        when(mockContext.toolchain).thenReturn(instance(mockToolchain));
+        mockToolchain = mockObject<SwiftToolchain>({
+            swiftVersion: new Version(6, 0, 0),
+        });
+        mockContext = mockObject<WorkspaceContext>({
+            toolchain: instance(mockToolchain),
+        });
     });
 
     test("should call startDebugging with correct debugConfig", async () => {
@@ -50,25 +48,15 @@ suite("attachDebugger Unit Test Suite", () => {
             { pid: 1234, label: "1234: Process1" },
             { pid: 2345, label: "2345: Process2" },
         ];
-        when(lldbSpy.getLldbProcess(anything())).thenResolve(processPickItems);
-
-        // Mock showQuickPick to return a selected process.
-        // It's unfortunate that anthing will match the wrong function, so we have to hard code which makes the test more brittle.
-        // So just change here when the test starts failing.
-        when(
-            windowMock.showQuickPick(
-                deepEqual(processPickItems),
-                deepEqual({ placeHolder: "Select Process" })
-            ) as Promise<(typeof processPickItems)[0]>
-        ).thenResolve(processPickItems[0]);
+        lldbMock.getLldbProcess.resolves(processPickItems);
+        windowMock.showQuickPick.callsFake(async items => (await items)[0]);
 
         // Call attachDebugger
         await attachDebugger(instance(mockContext));
 
         // Verify startDebugging was called with the right pid.
         // Integration level check needed: actual config return a fulfilled promise.
-        verify(
-            debugMock.startDebugging(undefined, objectContaining(processPickItems[0].pid))
-        ).once();
+        expect(debugMock.startDebugging).to.have.been.calledOnce;
+        expect(debugMock.startDebugging.args[0][1]).to.containSubset({ pid: 1234 });
     });
 });
