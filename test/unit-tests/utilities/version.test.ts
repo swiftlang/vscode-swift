@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as assert from "assert";
+import { expect } from "chai";
 import { Version } from "../../../src/utilities/version";
 
 suite("Version Suite", () => {
@@ -20,95 +20,95 @@ suite("Version Suite", () => {
         test("parses major.minor", () => {
             const version = Version.fromString("5.10");
 
-            assert.equal(version?.major, 5);
-            assert.equal(version?.minor, 10);
-            assert.equal(version?.patch, 0);
+            expect(version?.major).to.equal(5);
+            expect(version?.minor).to.equal(10);
+            expect(version?.patch).to.equal(0);
         });
 
         test("parses major.minor.patch", () => {
             const version = Version.fromString("5.10.1");
 
-            assert.equal(version?.major, 5);
-            assert.equal(version?.minor, 10);
-            assert.equal(version?.patch, 1);
+            expect(version?.major).to.equal(5);
+            expect(version?.minor).to.equal(10);
+            expect(version?.patch).to.equal(1);
         });
 
         test("ignores extra digits", () => {
             const version = Version.fromString("5.10.1.2");
 
-            assert.equal(version?.major, 5);
-            assert.equal(version?.minor, 10);
-            assert.equal(version?.patch, 1);
+            expect(version?.major).to.equal(5);
+            expect(version?.minor).to.equal(10);
+            expect(version?.patch).to.equal(1);
         });
 
         test("ignores extra characters", () => {
             let version = Version.fromString("5.10.1.2 abc");
 
-            assert.equal(version?.major, 5);
-            assert.equal(version?.minor, 10);
-            assert.equal(version?.patch, 1);
+            expect(version?.major).to.equal(5);
+            expect(version?.minor).to.equal(10);
+            expect(version?.patch).to.equal(1);
 
             version = Version.fromString("abc1.2.3");
 
-            assert.equal(version?.major, 1);
-            assert.equal(version?.minor, 2);
-            assert.equal(version?.patch, 3);
+            expect(version?.major).to.equal(1);
+            expect(version?.minor).to.equal(2);
+            expect(version?.patch).to.equal(3);
         });
 
         test("no digits", () => {
             const version = Version.fromString("a.b.c");
 
-            assert.equal(version, undefined);
+            expect(version).to.equal(undefined);
         });
 
         test("only one character", () => {
             const version = Version.fromString("1");
 
-            assert.equal(version, undefined);
+            expect(version).to.equal(undefined);
         });
     });
 
     test("toString", () => {
-        assert.equal(new Version(5, 10, 1).toString(), "5.10.1");
+        expect(new Version(5, 10, 1).toString(), "5.10.1");
     });
 
     test("isLessThan", () => {
-        assert.equal(new Version(5, 10, 1).isLessThan(new Version(6, 0, 0)), true);
-        assert.equal(new Version(5, 9, 0).isLessThan(new Version(5, 10, 0)), true);
-        assert.equal(new Version(5, 10, 0).isLessThan(new Version(5, 10, 1)), true);
-        assert.equal(new Version(5, 10, 1).isLessThan(new Version(5, 10, 1)), false);
-        assert.equal(new Version(5, 10, 0).isLessThan(new Version(5, 9, 0)), false);
-        assert.equal(new Version(5, 10, 1).isLessThan(new Version(5, 10, 0)), false);
-        assert.equal(new Version(6, 0, 0).isLessThan(new Version(5, 10, 1)), false);
+        expect(new Version(5, 10, 1).isLessThan(new Version(6, 0, 0))).to.equal(true);
+        expect(new Version(5, 9, 0).isLessThan(new Version(5, 10, 0))).to.equal(true);
+        expect(new Version(5, 10, 0).isLessThan(new Version(5, 10, 1))).to.equal(true);
+        expect(new Version(5, 10, 1).isLessThan(new Version(5, 10, 1))).to.equal(false);
+        expect(new Version(5, 10, 0).isLessThan(new Version(5, 9, 0))).to.equal(false);
+        expect(new Version(5, 10, 1).isLessThan(new Version(5, 10, 0))).to.equal(false);
+        expect(new Version(6, 0, 0).isLessThan(new Version(5, 10, 1))).to.equal(false);
     });
 
     test("isLessThanOrEqual", () => {
-        assert.equal(new Version(5, 10, 1).isLessThanOrEqual(new Version(6, 0, 0)), true);
-        assert.equal(new Version(5, 9, 0).isLessThanOrEqual(new Version(5, 10, 0)), true);
-        assert.equal(new Version(5, 10, 0).isLessThanOrEqual(new Version(5, 10, 1)), true);
-        assert.equal(new Version(5, 10, 1).isLessThanOrEqual(new Version(5, 10, 1)), true);
-        assert.equal(new Version(5, 10, 0).isLessThanOrEqual(new Version(5, 9, 0)), false);
-        assert.equal(new Version(5, 10, 1).isLessThanOrEqual(new Version(5, 10, 0)), false);
-        assert.equal(new Version(6, 0, 0).isLessThanOrEqual(new Version(5, 10, 1)), false);
+        expect(new Version(5, 10, 1).isLessThanOrEqual(new Version(6, 0, 0))).to.equal(true);
+        expect(new Version(5, 9, 0).isLessThanOrEqual(new Version(5, 10, 0))).to.equal(true);
+        expect(new Version(5, 10, 0).isLessThanOrEqual(new Version(5, 10, 1))).to.equal(true);
+        expect(new Version(5, 10, 1).isLessThanOrEqual(new Version(5, 10, 1))).to.equal(true);
+        expect(new Version(5, 10, 0).isLessThanOrEqual(new Version(5, 9, 0))).to.equal(false);
+        expect(new Version(5, 10, 1).isLessThanOrEqual(new Version(5, 10, 0))).to.equal(false);
+        expect(new Version(6, 0, 0).isLessThanOrEqual(new Version(5, 10, 1))).to.equal(false);
     });
 
     test("isGreaterThan", () => {
-        assert.equal(new Version(5, 10, 1).isGreaterThan(new Version(6, 0, 0)), false);
-        assert.equal(new Version(5, 9, 0).isGreaterThan(new Version(5, 10, 0)), false);
-        assert.equal(new Version(5, 10, 0).isGreaterThan(new Version(5, 10, 1)), false);
-        assert.equal(new Version(5, 10, 1).isGreaterThan(new Version(5, 10, 1)), false);
-        assert.equal(new Version(5, 10, 0).isGreaterThan(new Version(5, 9, 0)), true);
-        assert.equal(new Version(5, 10, 1).isGreaterThan(new Version(5, 10, 0)), true);
-        assert.equal(new Version(6, 0, 0).isGreaterThan(new Version(5, 10, 1)), true);
+        expect(new Version(5, 10, 1).isGreaterThan(new Version(6, 0, 0))).to.equal(false);
+        expect(new Version(5, 9, 0).isGreaterThan(new Version(5, 10, 0))).to.equal(false);
+        expect(new Version(5, 10, 0).isGreaterThan(new Version(5, 10, 1))).to.equal(false);
+        expect(new Version(5, 10, 1).isGreaterThan(new Version(5, 10, 1))).to.equal(false);
+        expect(new Version(5, 10, 0).isGreaterThan(new Version(5, 9, 0))).to.equal(true);
+        expect(new Version(5, 10, 1).isGreaterThan(new Version(5, 10, 0))).to.equal(true);
+        expect(new Version(6, 0, 0).isGreaterThan(new Version(5, 10, 1))).to.equal(true);
     });
 
     test("isGreaterThanOrEqual", () => {
-        assert.equal(new Version(5, 10, 1).isGreaterThanOrEqual(new Version(6, 0, 0)), false);
-        assert.equal(new Version(5, 9, 0).isGreaterThanOrEqual(new Version(5, 10, 0)), false);
-        assert.equal(new Version(5, 10, 0).isGreaterThanOrEqual(new Version(5, 10, 1)), false);
-        assert.equal(new Version(5, 10, 1).isGreaterThanOrEqual(new Version(5, 10, 1)), true);
-        assert.equal(new Version(5, 10, 0).isGreaterThanOrEqual(new Version(5, 9, 0)), true);
-        assert.equal(new Version(5, 10, 1).isGreaterThanOrEqual(new Version(5, 10, 0)), true);
-        assert.equal(new Version(6, 0, 0).isGreaterThanOrEqual(new Version(5, 10, 1)), true);
+        expect(new Version(5, 10, 1).isGreaterThanOrEqual(new Version(6, 0, 0))).to.equal(false);
+        expect(new Version(5, 9, 0).isGreaterThanOrEqual(new Version(5, 10, 0))).to.equal(false);
+        expect(new Version(5, 10, 0).isGreaterThanOrEqual(new Version(5, 10, 1))).to.equal(false);
+        expect(new Version(5, 10, 1).isGreaterThanOrEqual(new Version(5, 10, 1))).to.equal(true);
+        expect(new Version(5, 10, 0).isGreaterThanOrEqual(new Version(5, 9, 0))).to.equal(true);
+        expect(new Version(5, 10, 1).isGreaterThanOrEqual(new Version(5, 10, 0))).to.equal(true);
+        expect(new Version(6, 0, 0).isGreaterThanOrEqual(new Version(5, 10, 1))).to.equal(true);
     });
 });
