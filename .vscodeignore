@@ -1,5 +1,7 @@
 .github/**
 .gitignore
+.mailmap
+.nvmrc
 .vscode/**
 .vscode-test/**
 docker/**
@@ -9,8 +11,14 @@ out/**
 scripts/**
 src/**
 test/**
+coverage/**
+docs/**
+.devcontainer/**
 **/.eslintrc.json
 **/.prettierignore
 **/.prettierrc.json
 **/tsconfig.json
 **/*.map
+.vscode-test.js
+CHANGELOG.md
+CONTRIBUTORS.txt
