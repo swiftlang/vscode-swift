@@ -26,6 +26,9 @@ export const globalWorkspaceContextPromise = new Promise<WorkspaceContext>(resol
         .then(api => {
             const packageFolder = testAssetUri("defaultPackage");
             const workspaceFolder = vscode.workspace.workspaceFolders?.values().next().value;
+            if (!workspaceFolder) {
+                throw new Error("No workspace folders found in workspace");
+            }
             return api.workspaceContext.addPackageFolder(packageFolder, workspaceFolder);
         })
         .then(folder => {
