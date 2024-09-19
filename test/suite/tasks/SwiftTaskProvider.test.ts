@@ -68,7 +68,12 @@ suite("SwiftTaskProvider Test Suite", () => {
                 new SwiftToolchain(
                     "/invalid/swift/path",
                     "/invalid/toolchain/path",
-                    "1.2.3",
+                    {
+                        compilerVersion: "1.2.3",
+                        paths: {
+                            runtimeLibraryPaths: [],
+                        },
+                    },
                     new Version(1, 2, 3)
                 )
             );
