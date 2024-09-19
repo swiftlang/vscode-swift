@@ -13,9 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as assert from "assert";
 import { expect } from "chai";
-import { mock, when, instance, verify, spy, anything, reset } from "ts-mockito";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { DebugAdapter } from "../../../src/debugger/debugAdapter";
 import {
@@ -24,7 +22,13 @@ import {
 } from "../../../src/debugger/debugAdapterFactory";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { Version } from "../../../src/utilities/version";
-import { mockGlobalObject } from "../../MockUtils";
+import {
+    mockGlobalObject,
+    MockedObject,
+    mockObject,
+    instance,
+    mockGlobalModule,
+} from "../../MockUtils";
 import configuration from "../../../src/configuration";
 
 suite("Debug Adapter Factory Test Suite", () => {
@@ -132,73 +136,64 @@ suite("Debug Adapter Factory Test Suite", () => {
 });
 
 suite("debugAdapterFactory Tests", () => {
-    let mockContext: WorkspaceContext;
-    const mockToolchain = mock(SwiftToolchain);
-    let mockSession: vscode.DebugSession;
+    const mockAdapter = mockGlobalModule(DebugAdapter);
+    let mockContext: MockedObject<WorkspaceContext>;
+    let mockToolchain: MockedObject<SwiftToolchain>;
+    const mockSession = mockObject<vscode.DebugSession>({});
 
     setup(() => {
-        mockContext = mock(WorkspaceContext);
-        when(mockContext.toolchain).thenReturn(instance(mockToolchain));
-        mockSession = mock<vscode.DebugSession>();
+        mockToolchain = mockObject<SwiftToolchain>({});
+        mockContext = mockObject<WorkspaceContext>({
+            toolchain: instance(mockToolchain),
+        });
     });
 
     test("should return DebugAdapterExecutable when path and verification succeed", async () => {
-        const spyAdapter = spy(DebugAdapter);
         const toolchainPath = "/path/to/debug/adapter";
 
-        when(spyAdapter.debugAdapterPath(anything())).thenResolve(toolchainPath);
-        when(spyAdapter.verifyDebugAdapterExists(anything())).thenResolve(true);
+        mockAdapter.debugAdapterPath.resolves(toolchainPath);
+        mockAdapter.verifyDebugAdapterExists.resolves(true);
 
         const factory = new LLDBDebugAdapterExecutableFactory(instance(mockContext));
         const result = await factory.createDebugAdapterDescriptor(instance(mockSession), undefined);
 
-        assert.strictEqual(result instanceof vscode.DebugAdapterExecutable, true);
-        assert.strictEqual((result as vscode.DebugAdapterExecutable).command, toolchainPath);
+        expect(result).to.be.instanceOf(vscode.DebugAdapterExecutable);
+        expect((result as vscode.DebugAdapterExecutable).command).to.equal(toolchainPath);
 
-        verify(spyAdapter.debugAdapterPath(anything())).once();
-        verify(spyAdapter.verifyDebugAdapterExists(anything())).once();
-        reset(spyAdapter);
+        expect(mockAdapter.debugAdapterPath).to.have.been.calledOnce;
+        expect(mockAdapter.verifyDebugAdapterExists).to.have.been.calledOnce;
     });
 
     test("should throw error if debugAdapterPath fails", async () => {
-        const spyAdapter = spy(DebugAdapter);
         const errorMessage = "Failed to get debug adapter path";
 
-        when(spyAdapter.debugAdapterPath(anything())).thenReject(new Error(errorMessage));
+        mockAdapter.debugAdapterPath.rejects(new Error(errorMessage));
 
         const factory = new LLDBDebugAdapterExecutableFactory(instance(mockContext));
 
-        await assert.rejects(async () => {
-            await factory.createDebugAdapterDescriptor(instance(mockSession), undefined);
-        }, new Error(errorMessage));
+        await expect(
+            factory.createDebugAdapterDescriptor(instance(mockSession), undefined)
+        ).to.eventually.be.rejectedWith(Error, errorMessage);
 
-        verify(spyAdapter.debugAdapterPath(anything())).once();
-        verify(spyAdapter.verifyDebugAdapterExists(anything())).never();
-        reset(spyAdapter);
+        expect(mockAdapter.debugAdapterPath).to.have.been.calledOnce;
+        expect(mockAdapter.verifyDebugAdapterExists).to.not.have.been.called;
     });
 
     test("should throw error if verifyDebugAdapterExists fails", async () => {
-        const spyAdapter = spy(DebugAdapter);
         const toolchainPath = "/path/to/debug/adapter";
         const errorMessage = "Failed to verify debug adapter exists";
 
-        when(spyAdapter.debugAdapterPath(instance(mockContext).toolchain)).thenResolve(
-            toolchainPath
-        );
-        when(spyAdapter.verifyDebugAdapterExists(instance(mockContext))).thenReject(
-            new Error(errorMessage)
-        );
+        mockAdapter.debugAdapterPath.resolves(toolchainPath);
+        mockAdapter.verifyDebugAdapterExists.rejects(new Error(errorMessage));
 
         const factory = new LLDBDebugAdapterExecutableFactory(instance(mockContext));
 
-        await assert.rejects(async () => {
-            await factory.createDebugAdapterDescriptor(instance(mockSession), undefined);
-        }, new Error(errorMessage));
+        await expect(
+            factory.createDebugAdapterDescriptor(instance(mockSession), undefined)
+        ).to.eventually.be.rejectedWith(Error, errorMessage);
 
-        // Verify that both methods were called
-        verify(spyAdapter.debugAdapterPath(anything())).once();
-        verify(spyAdapter.verifyDebugAdapterExists(anything())).once();
-        reset(spyAdapter);
+        expect(mockAdapter.debugAdapterPath).to.have.been.calledOnce;
+        expect(mockAdapter.verifyDebugAdapterExists).to.have.been.calledOnce;
     });
 });
 
@@ -218,12 +213,12 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
 
         const result = provider.convertEnvironmentVariables(env);
 
-        assert.deepStrictEqual(result, ["VAR1=value1", "VAR2=value2"]);
+        expect(result).to.deep.equal(["VAR1=value1", "VAR2=value2"]);
     });
 
     test("should return undefined when environment variables are undefined", () => {
         const result = provider.convertEnvironmentVariables(undefined);
-        assert.strictEqual(result, undefined);
+        expect(result).to.deep.equal(undefined);
     });
 
     test("should resolve debug configuration with converted environment variables", async () => {
@@ -239,7 +234,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
 
         const resolvedConfig = await provider.resolveDebugConfiguration(undefined, launchConfig);
 
-        assert.deepStrictEqual(resolvedConfig.env, ["VAR1=value1", "VAR2=value2"]);
+        expect(resolvedConfig.env).to.deep.equal(["VAR1=value1", "VAR2=value2"]);
     });
 
     test("should handle one environment variable", () => {
@@ -248,14 +243,14 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         };
         const result = provider.convertEnvironmentVariables(env);
 
-        assert.deepStrictEqual(result, ["VAR1=value1"]);
+        expect(result).to.deep.equal(["VAR1=value1"]);
     });
 
     test("should handle empty environment variables", () => {
         const env = {};
         const result = provider.convertEnvironmentVariables(env);
 
-        assert.deepStrictEqual(result, []);
+        expect(result).to.deep.equal([]);
     });
 
     test("should handle a large number of environment variables", () => {
@@ -269,6 +264,6 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
 
         // Verify that all 1000 environment variables are properly converted
         const expected = Array.from({ length: 1000 }, (_, i) => `VAR${i}=value${i}`);
-        assert.deepStrictEqual(result, expected);
+        expect(result).to.deep.equal(expected);
     });
 });
