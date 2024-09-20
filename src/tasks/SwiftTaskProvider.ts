@@ -116,8 +116,14 @@ const buildAllTaskCache = (() => {
     };
 })();
 
-function buildAllTaskName(release: boolean): string {
-    return release ? `${SwiftTaskProvider.buildAllName} - Release` : SwiftTaskProvider.buildAllName;
+function buildAllTaskName(folderContext: FolderContext, release: boolean): string {
+    let buildTaskName = release
+        ? `${SwiftTaskProvider.buildAllName} - Release`
+        : SwiftTaskProvider.buildAllName;
+    if (folderContext.relativePath.length > 0) {
+        buildTaskName += ` (${folderContext.relativePath})`;
+    }
+    return buildTaskName;
 }
 
 /**
@@ -128,11 +134,7 @@ export function createBuildAllTask(
     release: boolean = false
 ): SwiftTask {
     const args = BuildConfigurationFactory.buildAll(folderContext, false, release).args;
-    let buildTaskName = buildAllTaskName(release);
-
-    if (folderContext.relativePath.length > 0) {
-        buildTaskName += ` (${folderContext.relativePath})`;
-    }
+    const buildTaskName = buildAllTaskName(folderContext, release);
 
     // Create one Build All task per folder context, since this can be called multiple
     // times and we want the same instance each time. Otherwise, VS Code may try and execute
@@ -170,11 +172,7 @@ export async function getBuildAllTask(
     folderContext: FolderContext,
     release: boolean = false
 ): Promise<vscode.Task> {
-    let buildTaskName = buildAllTaskName(release);
-    if (folderContext.relativePath.length > 0) {
-        buildTaskName += ` (${folderContext.relativePath})`;
-    }
-
+    const buildTaskName = buildAllTaskName(folderContext, release);
     const folderWorkingDir = folderContext.workspaceFolder.uri.fsPath;
     // search for build all task in task.json first, that are valid for folder
     const workspaceTasks = (await vscode.tasks.fetchTasks()).filter(task => {
