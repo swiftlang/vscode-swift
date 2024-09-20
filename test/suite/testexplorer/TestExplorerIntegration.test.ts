@@ -148,6 +148,8 @@ suite("Test Explorer Suite", function () {
                     ["testPassing()", "testFailing()", "testDisabled()"],
                     "testWithKnownIssue()",
                     "testWithKnownIssueAndUnknownIssue()",
+                    "DuplicateSuffixTests",
+                    ["testPassing()", "testPassingSuffix()"],
                 ],
             ]);
         } else if (workspaceContext.swiftVersion.isLessThanOrEqual(new Version(5, 10, 0))) {
@@ -158,6 +160,8 @@ suite("Test Explorer Suite", function () {
                 [
                     "DebugReleaseTestSuite",
                     ["testDebug", "testRelease"],
+                    "DuplicateSuffixTests",
+                    ["testPassing", "testPassingSuffix"],
                     "FailingXCTestSuite",
                     ["testFailing"],
                     "MixedXCTestSuite",
@@ -327,6 +331,21 @@ suite("Test Explorer Suite", function () {
                 passed: [
                     "PackageTests.DebugReleaseTestSuite",
                     "PackageTests.DebugReleaseTestSuite/testRelease",
+                ],
+            });
+        });
+
+        suite("Only runs specified test", async function () {
+            const passingRun = await runTest(
+                testExplorer.controller,
+                TestKind.standard,
+                "PackageTests.DuplicateSuffixTests/testPassing"
+            );
+
+            assertTestResults(passingRun, {
+                passed: [
+                    "PackageTests.DuplicateSuffixTests",
+                    "PackageTests.DebugReleaseTestSuite/testPassing",
                 ],
             });
         });
