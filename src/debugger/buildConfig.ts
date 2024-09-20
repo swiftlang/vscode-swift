@@ -191,12 +191,17 @@ export class TestingConfigurationFactory {
                 ...swiftRuntimeEnv(),
                 ...configuration.folder(this.ctx.workspaceFolder).testEnvironmentVariables,
             };
-            // On Windows, add XCTest.dll to the Path
+            // On Windows, add XCTest.dll/Testing.dll to the Path
             // and run the .xctest executable from the .build directory.
             const runtimePath = this.ctx.workspaceContext.toolchain.runtimePath;
             const xcTestPath = this.ctx.workspaceContext.toolchain.xcTestPath;
             if (xcTestPath && xcTestPath !== runtimePath) {
                 testEnv.Path = `${xcTestPath};${testEnv.Path ?? process.env.Path}`;
+            }
+
+            const swiftTestingPath = this.ctx.workspaceContext.toolchain.swiftTestingPath;
+            if (swiftTestingPath && swiftTestingPath !== runtimePath) {
+                testEnv.Path = `${swiftTestingPath};${testEnv.Path ?? process.env.Path}`;
             }
 
             return {
@@ -513,7 +518,9 @@ export class TestingConfigurationFactory {
     }
 
     private get artifactFolderForTestKind(): string {
-        return isRelease(this.testKind) ? "release" : "debug";
+        const mode = isRelease(this.testKind) ? "release" : "debug";
+        const triple = this.ctx.workspaceContext.toolchain.unversionedTriple;
+        return triple ? path.join(triple, mode) : mode;
     }
 
     private xcTestOutputPath(): string {

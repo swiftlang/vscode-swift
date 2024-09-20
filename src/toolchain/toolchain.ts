@@ -31,6 +31,7 @@ import { Sanitizer } from "./Sanitizer";
 interface InfoPlist {
     DefaultProperties: {
         XCTEST_VERSION: string | undefined;
+        SWIFT_TESTING_VERSION: string | undefined;
     };
 }
 
@@ -50,6 +51,7 @@ interface SwiftTargetInfo {
     compilerVersion: string;
     target?: {
         triple: string;
+        unversionedTriple: string;
         [name: string]: string | string[];
     };
     paths: {
@@ -97,18 +99,22 @@ export function getDarwinTargetTriple(target: DarwinCompatibleTarget): string | 
 }
 
 export class SwiftToolchain {
+    public swiftVersionString: string;
+
     constructor(
         public swiftFolderPath: string, // folder swift executable in $PATH was found in
         public toolchainPath: string, // toolchain folder. One folder up from swift bin folder. This is to support toolchains without usr folder
-        public swiftVersionString: string, // Swift version as a string, including description
+        private targetInfo: SwiftTargetInfo,
         public swiftVersion: Version, // Swift version as semVar variable
         public runtimePath?: string, // runtime library included in output from `swift -print-target-info`
-        private defaultTarget?: string,
         public defaultSDK?: string,
         public customSDK?: string,
         public xcTestPath?: string,
+        public swiftTestingPath?: string,
         public swiftPMTestingHelperPath?: string
-    ) {}
+    ) {
+        this.swiftVersionString = targetInfo.compilerVersion;
+    }
 
     static async create(): Promise<SwiftToolchain> {
         const swiftFolderPath = await this.getSwiftFolderPath();
@@ -125,20 +131,30 @@ export class SwiftToolchain {
             runtimePath,
             customSDK ?? defaultSDK
         );
+        const swiftTestingPath = await this.getSwiftTestingPath(
+            targetInfo,
+            swiftVersion,
+            runtimePath,
+            customSDK ?? defaultSDK
+        );
         const swiftPMTestingHelperPath = await this.getSwiftPMTestingHelperPath(toolchainPath);
 
         return new SwiftToolchain(
             swiftFolderPath,
             toolchainPath,
-            targetInfo.compilerVersion,
+            targetInfo,
             swiftVersion,
             runtimePath,
-            targetInfo.target?.triple,
             defaultSDK,
             customSDK,
             xcTestPath,
+            swiftTestingPath,
             swiftPMTestingHelperPath
         );
+    }
+
+    public get unversionedTriple(): string | undefined {
+        return this.targetInfo.target?.unversionedTriple;
     }
 
     /** build flags */
@@ -445,8 +461,8 @@ export class SwiftToolchain {
         if (this.runtimePath) {
             str += `\nRuntime Library Path: ${this.runtimePath}`;
         }
-        if (this.defaultTarget) {
-            str += `\nDefault Target: ${this.defaultTarget}`;
+        if (this.targetInfo.target?.triple) {
+            str += `\nDefault Target: ${this.targetInfo.target?.triple}`;
         }
         if (this.defaultSDK) {
             str += `\nDefault SDK: ${this.defaultSDK}`;
@@ -645,6 +661,31 @@ export class SwiftToolchain {
      * @param sdkroot path to swift SDK
      * @returns path to folder where xctest can be found
      */
+    private static async getSwiftTestingPath(
+        targetInfo: SwiftTargetInfo,
+        swiftVersion: Version,
+        runtimePath: string | undefined,
+        sdkroot: string | undefined
+    ): Promise<string | undefined> {
+        if (process.platform !== "win32") {
+            return undefined;
+        }
+        return this.getWindowsPlatformDLLPath(
+            "Testing",
+            targetInfo,
+            swiftVersion,
+            runtimePath,
+            sdkroot
+        );
+    }
+
+    /**
+     * @param targetInfo swift target info
+     * @param swiftVersion parsed swift version
+     * @param runtimePath path to Swift runtime
+     * @param sdkroot path to swift SDK
+     * @returns path to folder where xctest can be found
+     */
     private static async getXCTestPath(
         targetInfo: SwiftTargetInfo,
         swiftFolderPath: string,
@@ -663,78 +704,93 @@ export class SwiftToolchain {
                 return path.join(developerDir, "usr", "bin");
             }
             case "win32": {
-                // look up runtime library directory for XCTest alternatively
-                const fallbackPath =
-                    runtimePath !== undefined &&
-                    (await pathExists(path.join(runtimePath, "XCTest.dll")))
-                        ? runtimePath
-                        : undefined;
-                if (!sdkroot) {
-                    return fallbackPath;
-                }
-                const platformPath = path.dirname(path.dirname(path.dirname(sdkroot)));
-                const platformManifest = path.join(platformPath, "Info.plist");
-                if ((await pathExists(platformManifest)) !== true) {
-                    if (fallbackPath) {
-                        return fallbackPath;
-                    }
-                    vscode.window.showWarningMessage(
-                        "XCTest not found due to non-standardized library layout. Tests explorer won't work as expected."
-                    );
-                    return undefined;
-                }
-                const data = await fs.readFile(platformManifest, "utf8");
-                let infoPlist;
-                try {
-                    infoPlist = plist.parse(data) as unknown as InfoPlist;
-                } catch (error) {
-                    vscode.window.showWarningMessage(
-                        `Unable to parse ${platformManifest}: ${error}`
-                    );
-                    return undefined;
-                }
-                const version = infoPlist.DefaultProperties.XCTEST_VERSION;
-                if (!version) {
-                    throw Error("Info.plist is missing the XCTEST_VERSION key.");
-                }
-
-                if (swiftVersion.isGreaterThanOrEqual(new Version(5, 7, 0))) {
-                    let bindir: string;
-                    const arch = targetInfo.target?.triple.split("-", 1)[0];
-                    switch (arch) {
-                        case "x86_64":
-                            bindir = "bin64";
-                            break;
-                        case "i686":
-                            bindir = "bin32";
-                            break;
-                        case "aarch64":
-                            bindir = "bin64a";
-                            break;
-                        default:
-                            throw Error(`unsupported architecture ${arch}`);
-                    }
-                    return path.join(
-                        platformPath,
-                        "Developer",
-                        "Library",
-                        `XCTest-${version}`,
-                        "usr",
-                        bindir
-                    );
-                } else {
-                    return path.join(
-                        platformPath,
-                        "Developer",
-                        "Library",
-                        `XCTest-${version}`,
-                        "usr",
-                        "bin"
-                    );
-                }
+                return await this.getWindowsPlatformDLLPath(
+                    "XCTest",
+                    targetInfo,
+                    swiftVersion,
+                    runtimePath,
+                    sdkroot
+                );
             }
         }
         return undefined;
+    }
+
+    private static async getWindowsPlatformDLLPath(
+        type: "XCTest" | "Testing",
+        targetInfo: SwiftTargetInfo,
+        swiftVersion: Version,
+        runtimePath: string | undefined,
+        sdkroot: string | undefined
+    ): Promise<string | undefined> {
+        // look up runtime library directory for XCTest/Testing alternatively
+        const fallbackPath =
+            runtimePath !== undefined && (await pathExists(path.join(runtimePath, `${type}.dll`)))
+                ? runtimePath
+                : undefined;
+        if (!sdkroot) {
+            return fallbackPath;
+        }
+
+        const platformPath = path.dirname(path.dirname(path.dirname(sdkroot)));
+        const platformManifest = path.join(platformPath, "Info.plist");
+        if ((await pathExists(platformManifest)) !== true) {
+            if (fallbackPath) {
+                return fallbackPath;
+            }
+            vscode.window.showWarningMessage(
+                `${type} not found due to non-standardized library layout. Tests explorer won't work as expected.`
+            );
+            return undefined;
+        }
+        const data = await fs.readFile(platformManifest, "utf8");
+        let infoPlist;
+        try {
+            infoPlist = plist.parse(data) as unknown as InfoPlist;
+        } catch (error) {
+            vscode.window.showWarningMessage(`Unable to parse ${platformManifest}: ${error}`);
+            return undefined;
+        }
+        const plistKey = type === "XCTest" ? "XCTEST_VERSION" : "SWIFT_TESTING_VERSION";
+        const version = infoPlist.DefaultProperties[plistKey];
+        if (!version) {
+            throw Error(`Info.plist is missing the ${plistKey} key.`);
+        }
+
+        if (swiftVersion.isGreaterThanOrEqual(new Version(5, 7, 0))) {
+            let bindir: string;
+            const arch = targetInfo.target?.triple.split("-", 1)[0];
+            switch (arch) {
+                case "x86_64":
+                    bindir = "bin64";
+                    break;
+                case "i686":
+                    bindir = "bin32";
+                    break;
+                case "aarch64":
+                    bindir = "bin64a";
+                    break;
+                default:
+                    throw Error(`unsupported architecture ${arch}`);
+            }
+            return path.join(
+                platformPath,
+                "Developer",
+                "Library",
+                `${type}-${version}`,
+                "usr",
+                bindir
+            );
+        } else {
+            return path.join(
+                platformPath,
+                "Developer",
+                "Library",
+                `${type}-${version}`,
+                "usr",
+                "bin"
+            );
+        }
     }
 
     /** @returns swift target info */
