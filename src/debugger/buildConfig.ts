@@ -449,7 +449,13 @@ export class TestingConfigurationFactory {
     }
 
     private addTestsToArgs(args: string[]): string[] {
-        return [...args, ...this.testList.flatMap(arg => ["--filter", regexEscapedString(arg)])];
+        return [
+            ...args,
+            ...this.testList.flatMap(arg => [
+                "--filter",
+                regexEscapedString(arg, new Set(["$", "^"])),
+            ]),
+        ];
     }
 
     private addXCTestExecutableTestsToArgs(args: string[]): string[] {

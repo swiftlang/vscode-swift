@@ -175,6 +175,13 @@ suite("Utilities Test Suite", () => {
             );
         });
 
+        test("should escape a string that omits some characters", () => {
+            assert.strictEqual(
+                regexEscapedString(".^$|()?[]/:", new Set(["^", "$", "a"])),
+                "\\.^$\\|\\(\\)\\?\\[\\]\\/\\:"
+            );
+        });
+
         test("should return an empty string when input is an empty string", () => {
             assert.strictEqual(regexEscapedString(""), "");
         });

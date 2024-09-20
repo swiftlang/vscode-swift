@@ -306,10 +306,10 @@ const regexEscapedCharacters = new Set(["(", ")", "[", "]", ".", "$", "^", "?", 
  * @param string A string to escape
  * @returns The escaped string
  */
-export function regexEscapedString(string: string): string {
+export function regexEscapedString(string: string, omitting?: Set<string>): string {
     let result = "";
     for (const c of string) {
-        if (regexEscapedCharacters.has(c)) {
+        if (regexEscapedCharacters.has(c) && (!omitting || !omitting.has(c))) {
             result += `\\${c}`;
         } else {
             result += c;
