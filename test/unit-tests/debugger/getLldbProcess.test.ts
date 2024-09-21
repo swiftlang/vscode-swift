@@ -23,7 +23,7 @@ import {
     mockModule,
     mockNamespace,
     mockObject,
-} from "../MockUtils2";
+} from "../MockUtils";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 

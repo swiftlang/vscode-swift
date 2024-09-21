@@ -18,7 +18,7 @@ import { expect } from "chai";
 import { match } from "sinon";
 import * as path from "path";
 import { newSwiftFile } from "../../../src/commands/newFile";
-import { mockNamespace } from "../../unit-tests/MockUtils2";
+import { mockNamespace } from "../../unit-tests/MockUtils";
 import { TemporaryFolder } from "../../../src/utilities/tempFolder";
 import { fileExists } from "../../../src/utilities/filesystem";
 

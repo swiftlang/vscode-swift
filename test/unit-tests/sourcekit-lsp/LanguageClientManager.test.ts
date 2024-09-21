@@ -30,7 +30,7 @@ import {
     AsyncEventEmitter,
     mockNamespace,
     mockValue,
-} from "../MockUtils2";
+} from "../MockUtils";
 import * as langClient from "vscode-languageclient/node";
 import {
     Code2ProtocolConverter,

@@ -16,7 +16,7 @@ import { expect } from "chai";
 import { DebugAdapter } from "../../../src/debugger/debugAdapter";
 import { LLDBDebugConfigurationProvider } from "../../../src/debugger/debugAdapterFactory";
 import { Version } from "../../../src/utilities/version";
-import { mockNamespace } from "../MockUtils2";
+import { mockNamespace } from "../MockUtils";
 import configuration from "../../../src/configuration";
 
 suite("Debug Adapter Factory Test Suite", () => {

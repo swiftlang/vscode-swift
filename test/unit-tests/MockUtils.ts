@@ -11,21 +11,154 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { setup, teardown } from "mocha";
-import { Disposable, Event, EventEmitter } from "vscode";
-import { instance, mock, when } from "ts-mockito";
-import { MethodToStub } from "ts-mockito/lib/MethodToStub";
+import * as vscode from "vscode";
+import * as sinon from "sinon";
 
-export function getMochaHooks(): { setup: typeof setup; teardown: typeof teardown } {
-    if (!("setup" in global && "teardown" in global)) {
-        throw new Error("MockUtils can only be used when running under mocha");
-    }
-    return {
-        setup: global.setup,
-        teardown: global.teardown,
-    };
+/**
+ * A convenience function for reducing boilerplate in calls to mockObject().
+ *
+ * Returns a function that does nothing:
+ *
+ *     const mockedObject = mockObject<SomeInterface>({
+ *         fn1: doNothing(),
+ *         fn2: doNothing(),
+ *         fn3: doNothing(),
+ *     });
+ * */
+export function doNothing(): (...args: any) => any {
+    return () => {};
 }
+
+export type MockedFunction<T extends (...args: any) => any> = sinon.SinonStub<
+    Parameters<T>,
+    ReturnType<T>
+>;
+
+export type MockedObject<T> = {
+    -readonly [K in keyof T]: T[K] extends (...args: any) => any
+        ? MockedFunction<T[K]>
+        : T[K] extends abstract new (...args: any[]) => any
+          ? MockedClass<T[K]>
+          : T[K];
+};
+
+export type InstanceOf<T> =
+    T extends MockedObject<infer Obj> ? Obj : T extends MockedClass<infer Clazz> ? Clazz : never;
+
+/**
+ * Casts the given MockedObject into the same type as the class it is trying to mock.
+ *
+ * This is only necessary when trying to mock a class that contains private properties.
+ *
+ * @param obj The MockedObject
+ * @returns The underlying class that the MockedObject is mocking
+ */
+export function instance<T extends MockedClass<any>>(obj: T): InstanceOf<T>;
+export function instance<T extends MockedObject<any>>(obj: T): InstanceOf<T>;
+export function instance(obj: any): any {
+    return obj;
+}
+
+function replaceWithMocks<T>(obj: Partial<T>): MockedObject<T> {
+    const result: any = {};
+    for (const property of Object.getOwnPropertyNames(obj)) {
+        try {
+            const value = (obj as any)[property];
+            if (typeof value === "function") {
+                result[property] = sinon.stub();
+            } else {
+                result[property] = value;
+            }
+        } catch (error) {
+            // Certain VSCode internals are locked behind API flags that will
+            // throw an error if not set. Hang onto the error and throw it later
+            // if this property is actually accessed by the test.
+            (error as any)._wasThrownByRealObject = true;
+            result[property] = error;
+        }
+    }
+    return result;
+}
+
+function makeProxyObject<T>(obj: MockedObject<T>): MockedObject<T> {
+    function checkAndAcquireValueFromTarget(target: any, property: string | symbol): any {
+        if (!Object.prototype.hasOwnProperty.call(target, property)) {
+            throw new Error(
+                `Attempted to access property '${String(property)}', but it was not mocked.`
+            );
+        }
+        const value = target[property];
+        if (value && Object.prototype.hasOwnProperty.call(value, "_wasThrownByRealObject")) {
+            throw value;
+        }
+        return value;
+    }
+    return new Proxy<any>(obj, {
+        get(target, property) {
+            return checkAndAcquireValueFromTarget(target, property);
+        },
+        set(target, property, value) {
+            checkAndAcquireValueFromTarget(target, property);
+            target[property] = value;
+            return true;
+        },
+    });
+}
+
+/**
+ * Creates a MockedObject from an interface or class. Converts any functions to Sinon stubs.
+ *
+ * @param overrides An object containing the properties of the interface or class that will be mocked
+ * @returns A MockedObject that contains the same properties as the real interface or class
+ */
+export function mockObject<T>(overrides: Partial<T>): MockedObject<T> {
+    const clonedObject = replaceWithMocks<T>(overrides);
+    return makeProxyObject<T>(clonedObject);
+}
+
+export type ConstructorArgumentsOf<T> = T extends abstract new (...args: infer Arguments) => any
+    ? Arguments
+    : never;
+
+export type MockedClass<T extends abstract new (...args: any) => any> = sinon.SinonStub<
+    ConstructorArgumentsOf<T>,
+    InstanceType<T>
+>;
+
+export function mockClass<T extends abstract new (...args: any) => any>(): MockedClass<T> {
+    return sinon.stub<ConstructorArgumentsOf<T>, InstanceType<T>>();
+}
+
+export async function waitForReturnedPromises(
+    mockedFn: MockedFunction<(...args: any) => Thenable<any>>
+): Promise<void> {
+    for (const promise in mockedFn.returnValues) {
+        await promise;
+    }
+}
+
+/**
+ * Convenience function that creates a Sinon stub with the correct arguments and return type.
+ *
+ * @returns A Sinon stub for the function
+ */
+export function mockFn<T extends (...args: any[]) => any>(): MockedFunction<T> {
+    return sinon.stub();
+}
+
+type MockableObject<T> = T extends object
+    ? T extends Array<any>
+        ? never
+        : T extends Set<any>
+          ? never
+          : T extends Map<any, any>
+            ? never
+            : T
+    : never;
+
+type MockableObjectsOf<T> = {
+    [K in keyof T]: T[K] extends MockableObject<T[K]> ? K : never;
+}[keyof T];
 
 /**
  * Create a new mock for each test that gets cleaned up automatically afterwards. This function makes use of the fact that
@@ -43,157 +176,109 @@ export function getMochaHooks(): { setup: typeof setup; teardown: typeof teardow
  * @param obj The object to create the stub inside
  * @param property The method inside the object to be stubbed
  */
-export function mockNamespace<T, K extends keyof T>(obj: T, property: K): T[K] {
-    let realMock: T[K];
+export function mockNamespace<T, K extends MockableObjectsOf<T>>(
+    obj: T,
+    property: K
+): MockedObject<T[K]> {
+    let realMock: MockedObject<T[K]>;
     const originalValue: T[K] = obj[property];
-    const mocha = getMochaHooks();
     // Create the mock at setup
-    mocha.setup(() => {
-        realMock = mock<T[K]>();
-        Object.defineProperty(obj, property, { value: instance(realMock) });
+    setup(() => {
+        realMock = mockObject(obj[property]);
+        Object.defineProperty(obj, property, { value: realMock });
     });
     // Restore original value at teardown
-    mocha.teardown(() => {
+    teardown(() => {
         Object.defineProperty(obj, property, { value: originalValue });
     });
     // Return the proxy to the real mock
-    return new Proxy(originalValue, {
-        get: (target: any, property: string): any => {
+    return new Proxy<any>(originalValue, {
+        get(target, property) {
             if (!realMock) {
                 throw Error("Mock proxy accessed before setup()");
             }
             return (realMock as any)[property];
         },
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        set: (target: any, property: string, value: any): boolean => {
-            // Ignore
+        set(target, property, value) {
+            (realMock as any)[property] = value;
             return true;
         },
     });
 }
 
-/** Retrieves the type of event given to the generic vscode.Event<T> */
-export type EventType<T> = T extends Event<infer E> ? E : never;
-
-/** The listener function that receives events. */
-export type Listener<T> = T extends Event<infer E> ? (e: E) => any : never;
-
-/** Allows sending an event to all intercepted listeners. */
-export interface ListenerInterceptor<T> {
-    onDidAddListener: Event<(event: T) => any>;
-
-    /** Send an event notification to the intercepted listener(s). */
-    notifyAll(event: T): Promise<void>;
+function shallowClone<T>(obj: T): T {
+    const result: any = {};
+    for (const property of Object.getOwnPropertyNames(obj)) {
+        result[property] = (obj as any)[property];
+    }
+    return result;
 }
 
-class ListenerInterceptorImpl<T> implements ListenerInterceptor<T> {
-    private listeners: ((event: T) => any)[];
-    private _onDidChangeListeners: EventEmitter<(event: T) => any>;
-
-    constructor() {
-        this.listeners = [];
-        this._onDidChangeListeners = new EventEmitter();
-        this.onDidAddListener = this._onDidChangeListeners.event;
-    }
-
-    async notifyAll(event: T): Promise<void> {
-        await Promise.all(this.listeners.map(async listener => await listener(event)));
-    }
-
-    addListener: Event<T> = (listener, thisArgs) => {
-        if (thisArgs) {
-            listener = listener.bind(thisArgs);
-        }
-        this.listeners.push(listener);
-        this._onDidChangeListeners.fire(listener);
-        return { dispose: () => mock(Disposable) };
-    };
-
-    onDidAddListener: Event<(event: T) => any>;
-}
-
-/** Retrieves all properties of an object that are of the type vscode.Event<T>. */
-type EventsOf<T> = {
-    [K in keyof T]: T[K] extends Event<any> ? K : never;
-}[keyof T];
-
-/**
- * Create a ListenerInterceptor that intercepts all listeners attached to a VS Code event function. This function stubs out the
- * given method during Mocha setup and restores it during teardown.
- *
- * This lets us avoid boilerplate by creating an interceptor in one line:
- *
- *     const interceptor = eventListenerMock(vscode.workspace, 'onDidChangeWorkspaceFolders');
- *
- *     test('Some test', () => {
- *       interceptor.notify(event);
- *     })
- *
- * @param obj The object to create the stub inside
- * @param method The name of the method to stub within the object. Must be of the type Event<any>.
- */
-export function eventListenerMock<T, K extends EventsOf<T>>(
-    obj: T,
-    method: K
-): ListenerInterceptor<EventType<T[K]>> {
-    const mocha = getMochaHooks();
-    let interceptor: ListenerInterceptorImpl<EventType<T[K]>>;
-    let originalValue: T[K];
-    mocha.setup(() => {
-        interceptor = new ListenerInterceptorImpl<EventType<T[K]>>();
-        originalValue = obj[method];
-        if (originalValue instanceof MethodToStub) {
-            when(originalValue).thenReturn(interceptor.addListener as any);
-        } else {
-            Object.defineProperty(obj, method, { value: interceptor.addListener });
+export function mockModule<T>(mod: T): MockedObject<T> {
+    let realMock: MockedObject<T>;
+    const originalValue: T = shallowClone(mod);
+    // Create the mock at setup
+    setup(() => {
+        realMock = mockObject(mod);
+        for (const property of Object.getOwnPropertyNames(realMock)) {
+            try {
+                Object.defineProperty(mod, property, {
+                    value: (realMock as any)[property],
+                    configurable: true,
+                });
+            } catch {
+                // Some properties of a module just can't be mocked and that's fine
+            }
         }
     });
     // Restore original value at teardown
-    mocha.teardown(() => {
-        if (!(obj[method] instanceof MethodToStub)) {
-            Object.defineProperty(obj, method, { value: originalValue });
+    teardown(() => {
+        for (const property of Object.getOwnPropertyNames(originalValue)) {
+            try {
+                Object.defineProperty(mod, property, {
+                    value: (originalValue as any)[property],
+                    configurable: true,
+                });
+            } catch {
+                // Some properties of a module just can't be mocked and that's fine
+            }
         }
     });
-    // Return the proxy to the interceptor
-    return new Proxy(
-        {},
-        {
-            get: (target: any, property: string): any => {
-                if (!interceptor) {
-                    throw Error("Interceptor proxy accessed before setup()");
-                }
-                return (interceptor as any)[property];
-            },
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            set: (target: any, property: string, value: any): boolean => {
-                // Ignore
-                return true;
-            },
-        }
-    );
+    // Return the proxy to the real mock
+    return new Proxy<any>(originalValue, {
+        get(target, property) {
+            if (!realMock) {
+                throw Error("Mock proxy accessed before setup()");
+            }
+            return (realMock as any)[property];
+        },
+        set(target, property, value) {
+            (realMock as any)[property] = value;
+            return true;
+        },
+    });
 }
 
 /**
  * Allows setting the constant value.
  */
-export interface ValueMock<T> {
+export interface MockedValue<T> {
     setValue(value: T): void;
 }
 
 /**
  * Create a new ValueMock that is restored after a test completes.
  */
-export function mockValue<T, K extends keyof T>(obj: T, property: K): ValueMock<T[K]> {
+export function mockValue<T, K extends keyof T>(obj: T, property: K): MockedValue<T[K]> {
     let setupComplete: boolean = false;
     let originalValue: T[K];
-    const mocha = getMochaHooks();
     // Grab the original value during setup
-    mocha.setup(() => {
+    setup(() => {
         originalValue = obj[property];
         setupComplete = true;
     });
     // Restore the original value on teardown
-    mocha.teardown(() => {
+    teardown(() => {
         Object.defineProperty(obj, property, { value: originalValue });
         setupComplete = false;
     });
@@ -201,52 +286,62 @@ export function mockValue<T, K extends keyof T>(obj: T, property: K): ValueMock<
     return {
         setValue(value: T[K]): void {
             if (!setupComplete) {
-                throw new Error(
-                    `'${String(property)}' cannot be set before mockValue() completes its setup through Mocha`
-                );
+                throw new Error("Mocks cannot be accessed outside of test functions");
             }
             Object.defineProperty(obj, property, { value: value });
         },
     };
 }
 
-type Constructor<T> = T extends abstract new (...args: any) => any ? T : never;
-type Instance<T> = InstanceType<Constructor<T>>;
+/** Retrieves all properties of an object that are of the type vscode.Event<T>. */
+type EventsOf<T> = {
+    [K in keyof T]: T[K] extends vscode.Event<any> ? K : never;
+}[keyof T];
 
-export function mockConstructor<T, K extends keyof T>(obj: T, property: K): Instance<T[K]> {
-    const clazz = obj[property] as Constructor<T[K]>;
-    let realMock: Instance<T[K]>;
+/** Retrieves the type of event given to the generic vscode.Event<T> */
+export type EventType<T> = T extends vscode.Event<infer E> ? E : never;
 
-    // Replace constructor with a proxy that returns mock instance
-    const classValueMock = mockValue(obj, property);
-    const mocha = getMochaHooks();
-    mocha.setup(() => {
-        realMock = mock(clazz);
-        classValueMock.setValue(
-            new Proxy(clazz, {
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                construct(target) {
-                    return instance(realMock) as object;
-                },
-            }) as T[K]
-        );
+export function mockEventEmitter<T, K extends EventsOf<T>>(
+    obj: T,
+    property: K
+): AsyncEventEmitter<EventType<T[K]>> {
+    let eventEmitter: vscode.EventEmitter<EventType<T[K]>>;
+    const originalValue: T[K] = obj[property];
+    // Create the mock at setup
+    setup(() => {
+        eventEmitter = new vscode.EventEmitter();
+        Object.defineProperty(obj, property, { value: eventEmitter.event });
     });
+    // Restore original value at teardown
+    teardown(() => {
+        Object.defineProperty(obj, property, { value: originalValue });
+    });
+    // Return the proxy to the EventEmitter
+    return new Proxy(new AsyncEventEmitter(), {
+        get(target, property) {
+            if (!eventEmitter) {
+                throw Error("Mock proxy accessed before setup()");
+            }
+            return (eventEmitter as any)[property];
+        },
+        set(target, property, value) {
+            (eventEmitter as any)[property] = value;
+            return true;
+        },
+    });
+}
 
-    // Return the proxy to the real mock
-    return new Proxy(
-        {},
-        {
-            get: (target: any, property: string): any => {
-                if (!realMock) {
-                    throw Error("Mock proxy accessed before setup()");
-                }
-                return (realMock as any)[property];
-            },
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            set: (target: any, property: string, value: any): boolean => {
-                // Ignore
-                return true;
-            },
+export class AsyncEventEmitter<T> {
+    private listeners: Set<(event: T) => any> = new Set();
+
+    event: vscode.Event<T> = (listener: (event: T) => unknown): vscode.Disposable => {
+        this.listeners.add(listener);
+        return new vscode.Disposable(() => this.listeners.delete(listener));
+    };
+
+    async fire(event: T): Promise<void> {
+        for (const listener of this.listeners) {
+            await listener(event);
         }
-    );
+    }
 }

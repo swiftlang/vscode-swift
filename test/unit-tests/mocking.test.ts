@@ -14,7 +14,7 @@
 
 import { expect } from "chai";
 import { stub } from "sinon";
-import { mockObject } from "./MockUtils2";
+import { mockObject } from "./MockUtils";
 import { Version } from "../../src/utilities/version";
 
 // A test suite for test code? Crazy, right?

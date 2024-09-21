@@ -16,7 +16,7 @@ import { expect } from "chai";
 import * as vscode from "vscode";
 import * as lldb from "../../../src/debugger/lldb";
 import { attachDebugger } from "../../../src/commands/attachDebugger";
-import { mockObject, mockNamespace, mockModule, MockedObject, instance } from "../MockUtils2";
+import { mockObject, mockNamespace, mockModule, MockedObject, instance } from "../MockUtils";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { registerLLDBDebugAdapter } from "../../../src/debugger/debugAdapterFactory";

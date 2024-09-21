@@ -23,7 +23,7 @@ import {
     mockEventEmitter,
     instance,
     waitForReturnedPromises,
-} from "../MockUtils2";
+} from "../MockUtils";
 import { SwiftExecution } from "../../../src/tasks/SwiftExecution";
 import { TestSwiftProcess } from "../../fixtures";
 import { StatusItem } from "../../../src/ui/StatusItem";

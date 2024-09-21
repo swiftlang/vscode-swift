@@ -1319,7 +1319,6 @@
     "sinon": "^19.0.2",
     "sinon-chai": "^3.7.0",
     "strip-ansi": "^6.0.1",
-    "ts-mockito": "^2.6.1",
     "typescript": "^5.5.3"
   },
   "dependencies": {

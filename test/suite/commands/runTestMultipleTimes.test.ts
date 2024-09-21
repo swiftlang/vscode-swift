@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import { expect } from "chai";
 import { runTestMultipleTimes } from "../../../src/commands/testMultipleTimes";
-import { mockNamespace } from "../../unit-tests/MockUtils2";
+import { mockNamespace } from "../../unit-tests/MockUtils";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { FolderContext } from "../../../src/FolderContext";

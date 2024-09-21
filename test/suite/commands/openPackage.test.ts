@@ -17,7 +17,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { expect } from "chai";
 import { match } from "sinon";
-import { mockModule, mockNamespace } from "../../unit-tests/MockUtils2";
+import { mockModule, mockNamespace } from "../../unit-tests/MockUtils";
 import { openPackage } from "../../../src/commands/openPackage";
 import { Version } from "../../../src/utilities/version";
 import * as fs from "../../../src/utilities/filesystem";

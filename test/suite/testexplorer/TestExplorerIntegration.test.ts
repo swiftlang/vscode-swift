@@ -30,7 +30,7 @@ import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { TestRunProxy } from "../../../src/TestExplorer/TestRunner";
 import { Version } from "../../../src/utilities/version";
 import { TestKind } from "../../../src/TestExplorer/TestKind";
-import { mockNamespace } from "../../unit-tests/MockUtils2";
+import { mockNamespace } from "../../unit-tests/MockUtils";
 import {
     MessageRenderer,
     TestSymbol,
