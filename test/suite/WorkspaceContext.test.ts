@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import * as assert from "assert";
 import { testAssetUri } from "../fixtures";
-import { FolderEvent, WorkspaceContext } from "../../src/WorkspaceContext";
+import { FolderOperation, WorkspaceContext } from "../../src/WorkspaceContext";
 import { createBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { globalWorkspaceContextPromise } from "./extension.test";
 import { Version } from "../../src/utilities/version";
@@ -32,11 +32,11 @@ suite("WorkspaceContext Test Suite", () => {
     suite("Folder Events", () => {
         test("Add", async () => {
             let count = 0;
-            const observer = workspaceContext?.observeFolders((folder, operation) => {
+            const observer = workspaceContext?.onDidChangeFolders(({ folder, operation }) => {
                 assert(folder !== null);
                 assert.strictEqual(folder!.swiftPackage.name, "package2");
                 switch (operation) {
-                    case FolderEvent.add:
+                    case FolderOperation.add:
                         count++;
                         break;
                 }

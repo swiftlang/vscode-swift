@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import { getErrorDescription } from "../utilities/utilities";
 import { isPathInsidePath } from "../utilities/filesystem";
-import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
+import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
 import { TestRunProxy, TestRunner } from "./TestRunner";
 import { LSPTestDiscovery } from "./LSPTestDiscovery";
 import { Version } from "../utilities/version";
@@ -92,7 +92,7 @@ export class TestExplorer {
         });
 
         // add file watcher to catch changes to swift test files
-        const fileWatcher = this.folderContext.workspaceContext.observeSwiftFiles(uri => {
+        const fileWatcher = this.folderContext.workspaceContext.onDidChangeSwiftFiles(({ uri }) => {
             if (this.testFileEdited === false && this.folderContext.getTestTarget(uri)) {
                 this.testFileEdited = true;
             }
@@ -120,9 +120,9 @@ export class TestExplorer {
      * @returns Observer disposable
      */
     static observeFolders(workspaceContext: WorkspaceContext): vscode.Disposable {
-        return workspaceContext.observeFolders((folder, event, workspace) => {
-            switch (event) {
-                case FolderEvent.add:
+        return workspaceContext.onDidChangeFolders(({ folder, operation, workspace }) => {
+            switch (operation) {
+                case FolderOperation.add:
                     if (folder) {
                         if (folder.swiftPackage.getTargets(TargetType.test).length > 0) {
                             folder.addTestExplorer();
@@ -134,7 +134,7 @@ export class TestExplorer {
                         }
                     }
                     break;
-                case FolderEvent.packageUpdated:
+                case FolderOperation.packageUpdated:
                     if (folder) {
                         const hasTestTargets =
                             folder.swiftPackage.getTargets(TargetType.test).length > 0;
@@ -152,7 +152,7 @@ export class TestExplorer {
                         }
                     }
                     break;
-                case FolderEvent.focus:
+                case FolderOperation.focus:
                     if (folder) {
                         workspace.languageClientManager.documentSymbolWatcher = (
                             document,

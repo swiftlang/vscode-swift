@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import { TaskOperation } from "../tasks/TaskQueue";
-import { FolderEvent } from "../WorkspaceContext";
+import { FolderOperation } from "../WorkspaceContext";
 
 /**
  * Execute task and show UI while running.
@@ -71,6 +71,6 @@ export function updateAfterError(result: boolean, folderContext: FolderContext) 
     folderContext.hasResolveErrors = !result;
 
     if (triggerResolvedUpdatedEvent && !folderContext.hasResolveErrors) {
-        folderContext.fireEvent(FolderEvent.resolvedUpdated);
+        folderContext.fireEvent(FolderOperation.resolvedUpdated);
     }
 }

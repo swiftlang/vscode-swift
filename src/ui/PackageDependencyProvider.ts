@@ -17,7 +17,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
-import { FolderEvent } from "../WorkspaceContext";
+import { FolderOperation } from "../WorkspaceContext";
 import { FolderContext } from "../FolderContext";
 import contextKeys from "../contextKeys";
 import {
@@ -128,28 +128,30 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
     }
 
     observeFolders(treeView: vscode.TreeView<TreeNode>) {
-        this.workspaceObserver = this.workspaceContext.observeFolders((folder, event) => {
-            switch (event) {
-                case FolderEvent.focus:
-                    if (!folder) {
-                        return;
-                    }
-                    treeView.title = `Package Dependencies (${folder.name})`;
-                    this.didChangeTreeDataEmitter.fire();
-                    break;
-                case FolderEvent.unfocus:
-                    treeView.title = `Package Dependencies`;
-                    this.didChangeTreeDataEmitter.fire();
-                    break;
-                case FolderEvent.resolvedUpdated:
-                    if (!folder) {
-                        return;
-                    }
-                    if (folder === this.workspaceContext.currentFolder) {
+        this.workspaceObserver = this.workspaceContext.onDidChangeFolders(
+            ({ folder, operation }) => {
+                switch (operation) {
+                    case FolderOperation.focus:
+                        if (!folder) {
+                            return;
+                        }
+                        treeView.title = `Package Dependencies (${folder.name})`;
                         this.didChangeTreeDataEmitter.fire();
-                    }
+                        break;
+                    case FolderOperation.unfocus:
+                        treeView.title = `Package Dependencies`;
+                        this.didChangeTreeDataEmitter.fire();
+                        break;
+                    case FolderOperation.resolvedUpdated:
+                        if (!folder) {
+                            return;
+                        }
+                        if (folder === this.workspaceContext.currentFolder) {
+                            this.didChangeTreeDataEmitter.fire();
+                        }
+                }
             }
-        });
+        );
     }
 
     getTreeItem(element: TreeNode): vscode.TreeItem {

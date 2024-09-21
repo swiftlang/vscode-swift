@@ -21,21 +21,13 @@ import {
     MockedObject,
     doNothing,
     mockEventEmitter,
-    MockedFunction,
     instance,
+    waitForReturnedPromises,
 } from "../MockUtils2";
 import { SwiftExecution } from "../../../src/tasks/SwiftExecution";
 import { TestSwiftProcess } from "../../fixtures";
 import { StatusItem } from "../../../src/ui/StatusItem";
 import { SwiftBuildStatus } from "../../../src/ui/SwiftBuildStatus";
-
-async function waitForReturnedPromises(
-    mockedFn: MockedFunction<(...args: any) => Thenable<any>>
-): Promise<void> {
-    for (const promise in mockedFn.returnValues) {
-        await promise;
-    }
-}
 
 suite("SwiftBuildStatus Unit Test Suite", async function () {
     const windowMock = mockNamespace(vscode, "window");

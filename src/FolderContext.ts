@@ -18,7 +18,7 @@ import { LinuxMain } from "./LinuxMain";
 import { PackageWatcher } from "./PackageWatcher";
 import { SwiftPackage, Target, TargetType } from "./SwiftPackage";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
-import { WorkspaceContext, FolderEvent } from "./WorkspaceContext";
+import { WorkspaceContext, FolderOperation } from "./WorkspaceContext";
 import { BackgroundCompilation } from "./BackgroundCompilation";
 import { TaskQueue } from "./tasks/TaskQueue";
 import { isPathInsidePath } from "./utilities/filesystem";
@@ -141,7 +141,7 @@ export class FolderContext implements vscode.Disposable {
      * Fire an event to all folder observers
      * @param event event type
      */
-    async fireEvent(event: FolderEvent) {
+    async fireEvent(event: FolderOperation) {
         this.workspaceContext.fireEvent(this, event);
     }
 

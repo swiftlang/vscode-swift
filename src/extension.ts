@@ -17,7 +17,7 @@ import * as commands from "./commands";
 import * as debug from "./debugger/launch";
 import { PackageDependenciesProvider } from "./ui/PackageDependencyProvider";
 import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
-import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
+import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { LanguageStatusItems } from "./ui/LanguageStatusItems";
@@ -136,10 +136,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
         const swiftModuleDocumentProvider = getReadOnlyDocumentProvider();
 
         // observer for logging workspace folder addition/removal
-        const logObserver = workspaceContext.observeFolders((folderContext, event) => {
+        const logObserver = workspaceContext.onDidChangeFolders(({ folder, operation }) => {
             workspaceContext.outputChannel.log(
-                `${event}: ${folderContext?.folder.fsPath}`,
-                folderContext?.name
+                `${operation}: ${folder?.folder.fsPath}`,
+                folder?.name
             );
         });
 
@@ -152,8 +152,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
         dependenciesProvider.observeFolders(dependenciesView);
 
         // observer that will resolve package and build launch configurations
-        const resolvePackageObserver = workspaceContext.observeFolders(
-            async (folder, event, workspace) => {
+        const resolvePackageObserver = workspaceContext.onDidChangeFolders(
+            async ({ folder, operation, workspace }) => {
                 // function called when a folder is added. I broke this out so we can trigger it
                 // without having to await for it.
                 async function folderAdded(folder: FolderContext, workspace: WorkspaceContext) {
@@ -192,8 +192,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
                 if (!folder) {
                     return;
                 }
-                switch (event) {
-                    case FolderEvent.add:
+                switch (operation) {
+                    case FolderOperation.add:
                         // Create launch.json files based on package description.
                         debug.makeDebugConfigurations(folder);
                         if (folder.swiftPackage.foundPackage) {
@@ -202,7 +202,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
                         }
                         break;
 
-                    case FolderEvent.packageUpdated:
+                    case FolderOperation.packageUpdated:
                         // Create launch.json files based on package description.
                         debug.makeDebugConfigurations(folder);
                         if (
@@ -213,7 +213,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
                         }
                         break;
 
-                    case FolderEvent.resolvedUpdated:
+                    case FolderOperation.resolvedUpdated:
                         if (
                             folder.swiftPackage.foundPackage &&
                             !configuration.folder(folder.workspaceFolder).disableAutoResolve

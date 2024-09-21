@@ -13,10 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as assert from "assert";
-import { anything, when } from "ts-mockito";
+import { expect } from "chai";
 import { runTestMultipleTimes } from "../../../src/commands/testMultipleTimes";
-import { mockNamespace } from "../../unit-tests/MockUtils";
+import { mockNamespace } from "../../unit-tests/MockUtils2";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { FolderContext } from "../../../src/FolderContext";
@@ -48,24 +47,24 @@ suite("Test Multiple Times Command Test Suite", () => {
             "Test Item For Testing"
         );
 
-        assert.ok(item);
-        testItem = item;
+        expect(item).to.not.be.undefined;
+        testItem = item!;
     });
 
     test("Runs successfully after testing 0 times", async () => {
-        when(windowMock.showInputBox(anything())).thenReturn(Promise.resolve("0"));
+        windowMock.showInputBox.resolves("0");
         const runState = await runTestMultipleTimes(folderContext, testItem, false);
-        assert.deepStrictEqual(runState, []);
+        expect(runState).to.be.an("array").that.is.empty;
     });
 
     test("Runs successfully after testing 3 times", async () => {
-        when(windowMock.showInputBox(anything())).thenReturn(Promise.resolve("3"));
+        windowMock.showInputBox.resolves("3");
 
         const runState = await runTestMultipleTimes(folderContext, testItem, false, () =>
             Promise.resolve(TestRunProxy.initialTestRunState())
         );
 
-        assert.deepStrictEqual(runState, [
+        expect(runState).to.deep.equal([
             TestRunProxy.initialTestRunState(),
             TestRunProxy.initialTestRunState(),
             TestRunProxy.initialTestRunState(),
@@ -73,7 +72,7 @@ suite("Test Multiple Times Command Test Suite", () => {
     });
 
     test("Stops after a failure on the 2nd iteration ", async () => {
-        when(windowMock.showInputBox(anything())).thenReturn(Promise.resolve("3"));
+        windowMock.showInputBox.resolves("3");
 
         const failure = {
             ...TestRunProxy.initialTestRunState(),
@@ -88,6 +87,6 @@ suite("Test Multiple Times Command Test Suite", () => {
             return Promise.resolve(TestRunProxy.initialTestRunState());
         });
 
-        assert.deepStrictEqual(runState, [TestRunProxy.initialTestRunState(), failure]);
+        expect(runState).to.deep.equal([TestRunProxy.initialTestRunState(), failure]);
     });
 });

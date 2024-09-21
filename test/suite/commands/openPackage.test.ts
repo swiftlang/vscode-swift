@@ -15,8 +15,9 @@
 // import * as assert from "assert";
 import * as vscode from "vscode";
 import * as path from "path";
-import { anything, objectContaining, spy, verify, when } from "ts-mockito";
-import { mockNamespace } from "../../unit-tests/MockUtils";
+import { expect } from "chai";
+import { match } from "sinon";
+import { mockModule, mockNamespace } from "../../unit-tests/MockUtils2";
 import { openPackage } from "../../../src/commands/openPackage";
 import { Version } from "../../../src/utilities/version";
 import * as fs from "../../../src/utilities/filesystem";
@@ -24,25 +25,27 @@ import * as fs from "../../../src/utilities/filesystem";
 suite("OpenPackage Command Test Suite", () => {
     const workspaceMock = mockNamespace(vscode, "workspace");
     const windowMock = mockNamespace(vscode, "window");
-    const fsSpy = spy(fs);
+    const filesystemMock = mockModule(fs);
 
     async function runTestWithMockFs(version: Version, expected: string, paths: string[]) {
         const basePath = "/test";
         const expectedPath = path.join(basePath, expected);
         paths.forEach(p => {
-            when(fsSpy.fileExists(path.join(basePath, p))).thenResolve(true);
+            filesystemMock.fileExists.withArgs(path.join(basePath, p)).resolves(true);
         });
-        when(windowMock.showTextDocument(anything())).thenResolve();
+        windowMock.showTextDocument.resolves();
         await openPackage(version, vscode.Uri.file(basePath));
 
-        verify(workspaceMock.openTextDocument(objectContaining({ fsPath: expectedPath }))).once();
-        verify(windowMock.showTextDocument(anything())).once();
+        expect(workspaceMock.openTextDocument).to.have.been.calledOnceWith(
+            match.has("fsPath", expectedPath)
+        );
+        expect(windowMock.showTextDocument).to.have.been.calledOnce;
     }
 
     test("Opens nothing when there is no package.swift", async () => {
         await openPackage(new Version(6, 0, 0), vscode.Uri.file("/test"));
 
-        verify(windowMock.showTextDocument(anything())).never();
+        expect(windowMock.showTextDocument).to.not.have.been.called;
     });
 
     test("Opens Package.swift file", async () => {
