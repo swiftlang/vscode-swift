@@ -12,24 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
-import * as sinon from "sinon";
+import { stub, SinonStub } from "sinon";
 
-/**
- * A convenience function for reducing boilerplate in calls to mockObject().
- *
- * Returns a function that does nothing:
- *
- *     const mockedObject = mockObject<SomeInterface>({
- *         fn1: doNothing(),
- *         fn2: doNothing(),
- *         fn3: doNothing(),
- *     });
- * */
-export function doNothing(): (...args: any) => any {
-    return () => {};
-}
-
-export type MockedFunction<T extends (...args: any) => any> = sinon.SinonStub<
+export type MockedFunction<T extends (...args: any[]) => any> = SinonStub<
     Parameters<T>,
     ReturnType<T>
 >;
@@ -59,13 +44,22 @@ export function instance(obj: any): any {
     return obj;
 }
 
-function replaceWithMocks<T>(obj: Partial<T>): MockedObject<T> {
+/**
+ * Checks whether or not the given object is a stub or spy.
+ *
+ * @param obj The object to check
+ */
+function isStub(obj: any): boolean {
+    return obj && (obj.displayName === "stub" || obj.displayName === "spy");
+}
+
+function replaceWithMocks<T>(obj: Partial<T | MockedObject<T>>): MockedObject<T> {
     const result: any = {};
     for (const property of Object.getOwnPropertyNames(obj)) {
         try {
             const value = (obj as any)[property];
-            if (typeof value === "function") {
-                result[property] = sinon.stub();
+            if (typeof value === "function" && !isStub(value)) {
+                result[property] = stub();
             } else {
                 result[property] = value;
             }
@@ -120,13 +114,13 @@ export type ConstructorArgumentsOf<T> = T extends abstract new (...args: infer A
     ? Arguments
     : never;
 
-export type MockedClass<T extends abstract new (...args: any) => any> = sinon.SinonStub<
+export type MockedClass<T extends abstract new (...args: any) => any> = SinonStub<
     ConstructorArgumentsOf<T>,
     InstanceType<T>
 >;
 
 export function mockClass<T extends abstract new (...args: any) => any>(): MockedClass<T> {
-    return sinon.stub<ConstructorArgumentsOf<T>, InstanceType<T>>();
+    return stub<ConstructorArgumentsOf<T>, InstanceType<T>>();
 }
 
 export async function waitForReturnedPromises(
@@ -142,8 +136,14 @@ export async function waitForReturnedPromises(
  *
  * @returns A Sinon stub for the function
  */
-export function mockFn<T extends (...args: any[]) => any>(): MockedFunction<T> {
-    return sinon.stub();
+export function mockFn<T extends (...args: any[]) => any>(
+    stubFunction?: (_: MockedFunction<T>) => void
+): T {
+    const result: MockedFunction<T> = stub();
+    if (stubFunction) {
+        stubFunction(result);
+    }
+    return result as any;
 }
 
 type MockableObject<T> = T extends object

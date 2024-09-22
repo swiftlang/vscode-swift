@@ -17,9 +17,9 @@ import * as util from "../../../src/utilities/utilities";
 import * as vscode from "vscode";
 import { getLldbProcess } from "../../../src/debugger/lldb";
 import {
-    doNothing,
     instance,
     MockedObject,
+    mockFn,
     mockModule,
     mockNamespace,
     mockObject,
@@ -36,9 +36,8 @@ suite("getLldbProcess Unit Test Suite", () => {
 
     setup(() => {
         mockToolchain = mockObject<SwiftToolchain>({
-            getLLDB: doNothing(),
+            getLLDB: mockFn(s => s.resolves("/path/to/lldb")),
         });
-        mockToolchain.getLLDB.resolves("/path/to/lldb");
         mockContext = mockObject<WorkspaceContext>({
             toolchain: instance(mockToolchain),
         });

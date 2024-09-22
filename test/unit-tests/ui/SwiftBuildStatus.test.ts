@@ -19,10 +19,10 @@ import {
     mockNamespace,
     mockObject,
     MockedObject,
-    doNothing,
     mockEventEmitter,
     instance,
     waitForReturnedPromises,
+    mockFn,
 } from "../MockUtils";
 import { SwiftExecution } from "../../../src/tasks/SwiftExecution";
 import { TestSwiftProcess } from "../../fixtures";
@@ -53,21 +53,22 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
                 increment?: number;
             }>
         >({
-            report: doNothing(),
+            report: mockFn(),
         });
         windowMock.withProgress.callsFake(async (options, task) => {
             const cts = new vscode.CancellationTokenSource();
             await task(mockedProgress, cts.token);
         });
         mockedStatusItem = mockObject<StatusItem>({
-            showStatusWhileRunning: doNothing(),
-            start: doNothing(),
-            update: doNothing(),
-            end: doNothing(),
-            dispose: doNothing(),
-        });
-        mockedStatusItem.showStatusWhileRunning.callsFake(async (task, process) => {
-            await process();
+            showStatusWhileRunning: mockFn(s =>
+                s.callsFake(async (task, process) => {
+                    await process();
+                })
+            ),
+            start: mockFn(),
+            update: mockFn(),
+            end: mockFn(),
+            dispose: mockFn(),
         });
         testSwiftProcess = new TestSwiftProcess("swift", ["build"]);
         swiftExecution = new SwiftExecution(
@@ -85,7 +86,7 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
         );
         mockedTaskExecution = mockObject<vscode.TaskExecution>({
             task: task,
-            terminate() {},
+            terminate: mockFn(),
         });
     });
 

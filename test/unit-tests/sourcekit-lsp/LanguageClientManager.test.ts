@@ -24,12 +24,12 @@ import {
     MockedObject,
     mockObject,
     instance,
-    doNothing,
     mockModule,
     waitForReturnedPromises,
     AsyncEventEmitter,
     mockNamespace,
     mockValue,
+    mockFn,
 } from "../MockUtils";
 import * as langClient from "vscode-languageclient/node";
 import {
@@ -78,39 +78,33 @@ suite("LanguageClientManager Suite", () => {
         mockedVSCodeWorkspace.onDidDeleteFiles.callsFake(deleteFilesEmitter.event);
         // Mock the WorkspaceContext and SwiftToolchain
         mockedBuildFlags = mockObject<BuildFlags>({
-            buildPathFlags: doNothing(),
-            swiftDriverSDKFlags: doNothing(),
-            swiftDriverTargetFlags: doNothing(),
+            buildPathFlags: mockFn(s => s.returns([])),
+            swiftDriverSDKFlags: mockFn(s => s.returns([])),
+            swiftDriverTargetFlags: mockFn(s => s.returns([])),
         });
-        mockedBuildFlags.buildPathFlags.returns([]);
-        mockedBuildFlags.swiftDriverSDKFlags.returns([]);
-        mockedBuildFlags.swiftDriverTargetFlags.returns([]);
         mockedToolchain = mockObject<SwiftToolchain>({
             swiftVersion: new Version(6, 0, 0),
             buildFlags: mockedBuildFlags,
-            getToolchainExecutable: doNothing(),
+            getToolchainExecutable: mockFn(s =>
+                s.withArgs("sourcekit-lsp").returns("/path/to/toolchain/bin/sourcekit-lsp")
+            ),
         });
-        mockedToolchain.getToolchainExecutable
-            .withArgs("sourcekit-lsp")
-            .returns("/path/to/toolchain/bin/sourcekit-lsp");
         mockedOutputChannel = mockObject<SwiftOutputChannel>({
-            log: doNothing(),
-            logDiagnostic: doNothing(),
+            log: s => s,
+            logDiagnostic: s => s,
         });
+        didChangeFoldersEmitter = new AsyncEventEmitter();
         mockedWorkspace = mockObject<WorkspaceContext>({
             toolchain: instance(mockedToolchain),
             swiftVersion: new Version(6, 0, 0),
             outputChannel: instance(mockedOutputChannel),
             subscriptions: [],
             folders: [],
-            onDidChangeFolders: doNothing(),
+            onDidChangeFolders: mockFn(s => s.callsFake(didChangeFoldersEmitter.event)),
         });
-        didChangeFoldersEmitter = new AsyncEventEmitter();
-        mockedWorkspace.onDidChangeFolders.callsFake(didChangeFoldersEmitter.event);
         mockedConverter = mockObject<Code2ProtocolConverter>({
-            asUri: doNothing(),
+            asUri: mockFn(s => s.callsFake(uri => uri.fsPath)),
         });
-        mockedConverter.asUri.callsFake(uri => uri.fsPath);
         changeStateEmitter = new AsyncEventEmitter();
         languageClientMock = mockObject<LanguageClient>({
             state: State.Stopped,
@@ -118,43 +112,42 @@ suite("LanguageClientManager Suite", () => {
             clientOptions: {},
             outputChannel: instance(
                 mockObject<vscode.OutputChannel>({
-                    dispose: doNothing(),
+                    dispose: mockFn(),
                 })
             ),
-            start: doNothing(),
-            stop: doNothing(),
-            onRequest: doNothing(),
-            sendNotification: doNothing(),
-            onNotification: doNothing(),
-            onDidChangeState: doNothing(),
+            start: mockFn(s =>
+                s.callsFake(async () => {
+                    const oldState = languageClientMock.state;
+                    if (oldState !== State.Stopped) {
+                        return;
+                    }
+                    languageClientMock.state = State.Starting;
+                    await changeStateEmitter.fire({
+                        oldState: oldState,
+                        newState: State.Starting,
+                    });
+                    languageClientMock.state = State.Running;
+                    await changeStateEmitter.fire({
+                        oldState: State.Starting,
+                        newState: State.Running,
+                    });
+                })
+            ),
+            stop: mockFn(s =>
+                s.callsFake(async () => {
+                    const oldState = languageClientMock.state;
+                    languageClientMock.state = State.Stopped;
+                    await changeStateEmitter.fire({
+                        oldState,
+                        newState: State.Stopped,
+                    });
+                })
+            ),
+            onRequest: mockFn(),
+            sendNotification: mockFn(s => s.resolves()),
+            onNotification: mockFn(s => s.returns(new vscode.Disposable(() => {}))),
+            onDidChangeState: mockFn(s => s.callsFake(changeStateEmitter.event)),
         });
-        languageClientMock.start.callsFake(async () => {
-            const oldState = languageClientMock.state;
-            if (oldState !== State.Stopped) {
-                return;
-            }
-            languageClientMock.state = State.Starting;
-            await changeStateEmitter.fire({
-                oldState: oldState,
-                newState: State.Starting,
-            });
-            languageClientMock.state = State.Running;
-            await changeStateEmitter.fire({
-                oldState: State.Starting,
-                newState: State.Running,
-            });
-        });
-        languageClientMock.stop.callsFake(async () => {
-            const oldState = languageClientMock.state;
-            languageClientMock.state = State.Stopped;
-            await changeStateEmitter.fire({
-                oldState,
-                newState: State.Stopped,
-            });
-        });
-        languageClientMock.onDidChangeState.callsFake(changeStateEmitter.event);
-        languageClientMock.onNotification.returns(new vscode.Disposable(() => {}));
-        languageClientMock.sendNotification.resolves();
         // `new LanguageClient()` will always return the mocked LanguageClient
         mockedLangClientModule.LanguageClient.returns(instance(languageClientMock));
         // LSP configuration defaults

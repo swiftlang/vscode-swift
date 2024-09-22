@@ -20,7 +20,7 @@ import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import { Version } from "../../../src/utilities/version";
-import { doNothing, mockNamespace, MockedObject, mockObject, instance } from "../MockUtils";
+import { mockNamespace, MockedObject, mockObject, instance, mockFn } from "../MockUtils";
 
 suite("verifyDebugAdapterExists false return Tests", () => {
     const mockedWindow = mockNamespace(vscode, "window");
@@ -36,11 +36,11 @@ suite("verifyDebugAdapterExists false return Tests", () => {
         const swiftVersion = new Version(5, 3, 0); // Any version
         mockToolchain = mockObject<SwiftToolchain>({
             swiftVersion,
-            getLLDBDebugAdapter: doNothing(),
-            getToolchainExecutable: doNothing(),
+            getLLDBDebugAdapter: mockFn(),
+            getToolchainExecutable: mockFn(),
         });
         mockOutputChannel = mockObject<SwiftOutputChannel>({
-            log: doNothing(),
+            log: mockFn(),
         });
         mockWorkspaceContext = mockObject<WorkspaceContext>({
             toolchain: instance(mockToolchain),
