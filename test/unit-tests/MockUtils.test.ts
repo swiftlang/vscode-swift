@@ -14,7 +14,18 @@
 
 import { expect } from "chai";
 import { stub } from "sinon";
-import { mockFn, mockObject, waitForReturnedPromises } from "./MockUtils";
+import * as vscode from "vscode";
+import * as fs from "fs/promises";
+import {
+    AsyncEventEmitter,
+    mockFn,
+    mockGlobalEvent,
+    mockGlobalModule,
+    mockGlobalObject,
+    mockGlobalValue,
+    mockObject,
+    waitForReturnedPromises,
+} from "./MockUtils";
 import { Version } from "../../src/utilities/version";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -44,7 +55,7 @@ suite("MockUtils Test Suite", () => {
     });
 
     suite("mockObject()", () => {
-        test("can mock an interface", () => {
+        test("can mock properties of an interface", () => {
             interface TestInterface {
                 a: number;
                 b: string;
@@ -131,6 +142,24 @@ suite("MockUtils Test Suite", () => {
             expect(sut.b).to.equal("this is a string");
             expect(sut.d()).to.equal(6);
         });
+
+        test("re-throws errors that occurred during the mocking process", () => {
+            interface TestInterface {
+                a: number;
+            }
+            const sut = mockObject<TestInterface>(
+                new Proxy(
+                    { a: 4 },
+                    {
+                        get() {
+                            throw new Error("Cannot access this property");
+                        },
+                    }
+                )
+            );
+
+            expect(() => sut.a).to.throw("Cannot access this property");
+        });
     });
 
     suite("mockFn()", () => {
@@ -160,6 +189,85 @@ suite("MockUtils Test Suite", () => {
                     "compiler error"
                 );
             });
+        });
+    });
+
+    suite("mockGlobalObject()", () => {
+        const mockedWorkspace = mockGlobalObject(vscode, "workspace");
+
+        test("can mock the workspace object from the VSCode API", async () => {
+            mockedWorkspace.asRelativePath.returns("relative");
+
+            expect(vscode.workspace.asRelativePath("absolute")).to.equal("relative");
+            expect(mockedWorkspace.asRelativePath).to.have.been.calledOnceWithExactly("absolute");
+        });
+    });
+
+    suite("mockGlobalModule()", () => {
+        const mockedFS = mockGlobalModule(fs);
+
+        test("can mock the fs/promises module", async () => {
+            mockedFS.readFile.resolves("file contents");
+
+            await expect(fs.readFile("some_file")).to.eventually.equal("file contents");
+            expect(mockedFS.readFile).to.have.been.calledOnceWithExactly("some_file");
+        });
+    });
+
+    suite("mockGlobalValue()", () => {
+        const platform = mockGlobalValue(process, "platform");
+
+        test("can set the value of a global variable", () => {
+            platform.setValue("android");
+            expect(process.platform).to.equal("android");
+        });
+    });
+
+    suite("mockGlobalEvent()", () => {
+        const didCreateFiles = mockGlobalEvent(vscode.workspace, "onDidCreateFiles");
+
+        test("can trigger events from the VSCode API", async () => {
+            const listener = stub();
+            vscode.workspace.onDidCreateFiles(listener);
+
+            await didCreateFiles.fire({ files: [] });
+            expect(listener).to.have.been.calledOnceWithExactly({ files: [] });
+        });
+    });
+
+    suite("AsyncEventEmitter", () => {
+        test("waits for listener's promise to resolve before resolving fire()", async () => {
+            const events: number[] = [];
+            const sut = new AsyncEventEmitter<number>();
+            sut.event(async num => {
+                await new Promise<void>(resolve => {
+                    setTimeout(resolve, 1);
+                });
+                events.push(num);
+            });
+
+            await sut.fire(1);
+            await sut.fire(2);
+            await sut.fire(3);
+
+            expect(events).to.deep.equal([1, 2, 3]);
+        });
+
+        test("event listeners can stop listening using the provided Disposable", async () => {
+            const listener1 = stub();
+            const listener2 = stub();
+            const listener3 = stub();
+            const sut = new AsyncEventEmitter<void>();
+
+            sut.event(listener1);
+            sut.event(listener2).dispose();
+            sut.event(listener3);
+
+            await sut.fire();
+
+            expect(listener1).to.have.been.calledOnce;
+            expect(listener2).to.not.have.been.called;
+            expect(listener3).to.have.been.calledOnce;
         });
     });
 });

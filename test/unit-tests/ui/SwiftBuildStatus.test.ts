@@ -93,7 +93,7 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
         configurationMock.setValue("never");
 
         new SwiftBuildStatus(instance(mockedStatusItem));
-        didStartTaskMock.fire({ execution: mockedTaskExecution });
+        await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         expect(mockedStatusItem.showStatusWhileRunning).to.not.have.been.called;
         expect(windowMock.withProgress).to.not.have.been.called;
@@ -104,7 +104,7 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
         configurationMock.setValue("swiftStatus");
 
         new SwiftBuildStatus(instance(mockedStatusItem));
-        didStartTaskMock.fire({ execution: mockedTaskExecution });
+        await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         expect(mockedStatusItem.showStatusWhileRunning).to.not.have.been.called;
         expect(windowMock.withProgress).to.not.have.been.called;
@@ -114,7 +114,7 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
         configurationMock.setValue("swiftStatus");
 
         new SwiftBuildStatus(instance(mockedStatusItem));
-        didStartTaskMock.fire({ execution: mockedTaskExecution });
+        await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         expect(mockedStatusItem.showStatusWhileRunning).to.have.been.calledWith(
             mockedTaskExecution.task
@@ -126,7 +126,7 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
         configurationMock.setValue("progress");
 
         new SwiftBuildStatus(instance(mockedStatusItem));
-        didStartTaskMock.fire({ execution: mockedTaskExecution });
+        await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         expect(windowMock.withProgress).to.have.been.calledWith({
             location: vscode.ProgressLocation.Window,
@@ -138,7 +138,7 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
         configurationMock.setValue("notification");
 
         new SwiftBuildStatus(instance(mockedStatusItem));
-        didStartTaskMock.fire({ execution: mockedTaskExecution });
+        await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         expect(windowMock.withProgress).to.have.been.calledWith({
             location: vscode.ProgressLocation.Notification,
@@ -150,12 +150,12 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
         // Setup progress
         configurationMock.setValue("progress");
         new SwiftBuildStatus(instance(mockedStatusItem));
-        didStartTaskMock.fire({ execution: mockedTaskExecution });
+        await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         // Setup swiftStatus
         configurationMock.setValue("swiftStatus");
         new SwiftBuildStatus(instance(mockedStatusItem));
-        didStartTaskMock.fire({ execution: mockedTaskExecution });
+        await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         testSwiftProcess.write(
             "Fetching https://github.com/apple/example-package-figlet from cache\n" +
@@ -173,12 +173,12 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
         // Setup progress
         configurationMock.setValue("progress");
         new SwiftBuildStatus(instance(mockedStatusItem));
-        didStartTaskMock.fire({ execution: mockedTaskExecution });
+        await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         // Setup swiftStatus
         configurationMock.setValue("swiftStatus");
         new SwiftBuildStatus(instance(mockedStatusItem));
-        didStartTaskMock.fire({ execution: mockedTaskExecution });
+        await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         testSwiftProcess.write(
             "Fetching https://github.com/apple/example-package-figlet from cache\n" +
@@ -201,12 +201,12 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
         // Setup progress
         configurationMock.setValue("progress");
         new SwiftBuildStatus(instance(mockedStatusItem));
-        didStartTaskMock.fire({ execution: mockedTaskExecution });
+        await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         // Setup swiftStatus
         configurationMock.setValue("swiftStatus");
         new SwiftBuildStatus(instance(mockedStatusItem));
-        didStartTaskMock.fire({ execution: mockedTaskExecution });
+        await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         testSwiftProcess.write(
             "Fetching https://github.com/apple/example-package-figlet from cache\n" +
