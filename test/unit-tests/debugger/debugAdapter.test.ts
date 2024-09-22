@@ -20,7 +20,7 @@ import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import { Version } from "../../../src/utilities/version";
-import { mockGlobalObject, MockedObject, mockObject, instance, mockFn } from "../MockUtils";
+import { mockGlobalObject, MockedObject, mockObject, instance, mockFn } from "../../MockUtils";
 
 suite("verifyDebugAdapterExists false return Tests", () => {
     const mockedWindow = mockGlobalObject(vscode, "window");

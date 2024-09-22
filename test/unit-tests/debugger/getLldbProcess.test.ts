@@ -23,7 +23,7 @@ import {
     mockGlobalModule,
     mockGlobalObject,
     mockObject,
-} from "../MockUtils";
+} from "../../MockUtils";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 

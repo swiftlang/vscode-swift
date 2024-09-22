@@ -14,7 +14,7 @@
 import { expect } from "chai";
 import { showReloadExtensionNotification } from "../../../src/ui/ReloadExtension";
 import * as vscode from "vscode";
-import { mockGlobalObject } from "../MockUtils";
+import { mockGlobalObject } from "../../MockUtils";
 
 suite("ReloadExtension Unit Test Suite", async function () {
     const windowMock = mockGlobalObject(vscode, "window");

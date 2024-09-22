@@ -25,7 +25,7 @@ import {
     mockGlobalValue,
     mockObject,
     waitForReturnedPromises,
-} from "./MockUtils";
+} from "../MockUtils";
 import { Version } from "../../src/utilities/version";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

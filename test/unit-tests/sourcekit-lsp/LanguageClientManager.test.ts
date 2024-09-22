@@ -30,7 +30,7 @@ import {
     mockGlobalObject,
     mockGlobalValue,
     mockFn,
-} from "../MockUtils";
+} from "../../MockUtils";
 import * as langClient from "vscode-languageclient/node";
 import {
     Code2ProtocolConverter,

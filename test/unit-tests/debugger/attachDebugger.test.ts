@@ -22,7 +22,7 @@ import {
     mockGlobalModule,
     MockedObject,
     instance,
-} from "../MockUtils";
+} from "../../MockUtils";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { registerLLDBDebugAdapter } from "../../../src/debugger/debugAdapterFactory";

@@ -17,7 +17,7 @@ import { DarwinCompatibleTarget, SwiftToolchain } from "../../../src/toolchain/t
 import { ArgumentFilter, BuildFlags } from "../../../src/toolchain/BuildFlags";
 import { Version } from "../../../src/utilities/version";
 import configuration from "../../../src/configuration";
-import { mockObject, mockGlobalValue, MockedObject, instance } from "../MockUtils";
+import { mockObject, mockGlobalValue, MockedObject, instance } from "../../MockUtils";
 
 suite("BuildFlags Test Suite", () => {
     const mockedPlatform = mockGlobalValue(process, "platform");
