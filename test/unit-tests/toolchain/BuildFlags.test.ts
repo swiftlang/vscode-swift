@@ -17,10 +17,10 @@ import { DarwinCompatibleTarget, SwiftToolchain } from "../../../src/toolchain/t
 import { ArgumentFilter, BuildFlags } from "../../../src/toolchain/BuildFlags";
 import { Version } from "../../../src/utilities/version";
 import configuration from "../../../src/configuration";
-import { mockObject, mockValue, MockedObject, instance } from "../MockUtils";
+import { mockObject, mockGlobalValue, MockedObject, instance } from "../MockUtils";
 
 suite("BuildFlags Test Suite", () => {
-    const mockedPlatform = mockValue(process, "platform");
+    const mockedPlatform = mockGlobalValue(process, "platform");
     let mockedToolchain: MockedObject<SwiftToolchain>;
     let buildFlags: BuildFlags;
 
@@ -36,7 +36,7 @@ suite("BuildFlags Test Suite", () => {
     });
 
     suite("getDarwinTarget", () => {
-        const sdkConfig = mockValue(configuration, "sdk");
+        const sdkConfig = mockGlobalValue(configuration, "sdk");
 
         test("iPhoneOS", () => {
             sdkConfig.setValue("/some/other/full/test/path/iPhoneOS15.0.sdk");
@@ -77,7 +77,7 @@ suite("BuildFlags Test Suite", () => {
     });
 
     suite("swiftpmSDKFlags", () => {
-        const sdkConfig = mockValue(configuration, "sdk");
+        const sdkConfig = mockGlobalValue(configuration, "sdk");
 
         test("no configuration provided", async () => {
             sdkConfig.setValue("");
@@ -106,7 +106,7 @@ suite("BuildFlags Test Suite", () => {
     });
 
     suite("swiftDriverSDKFlags", () => {
-        const sdkConfig = mockValue(configuration, "sdk");
+        const sdkConfig = mockGlobalValue(configuration, "sdk");
 
         test("direct", () => {
             sdkConfig.setValue("/some/other/full/test/path/WatchOS.sdk");
@@ -128,7 +128,7 @@ suite("BuildFlags Test Suite", () => {
     });
 
     suite("swiftDriverTargetFlags", () => {
-        const sdkConfig = mockValue(configuration, "sdk");
+        const sdkConfig = mockGlobalValue(configuration, "sdk");
 
         test("direct", () => {
             sdkConfig.setValue("/some/other/full/test/path/WatchOS.sdk");
@@ -150,7 +150,7 @@ suite("BuildFlags Test Suite", () => {
     });
 
     suite("buildPathFlags", () => {
-        const buildPathConfig = mockValue(configuration, "buildPath");
+        const buildPathConfig = mockGlobalValue(configuration, "buildPath");
 
         test("no configuration provided", async () => {
             buildPathConfig.setValue("");
@@ -176,7 +176,7 @@ suite("BuildFlags Test Suite", () => {
     });
 
     suite("buildDirectoryFromWorkspacePath", async () => {
-        const buildPathConfig = mockValue(configuration, "buildPath");
+        const buildPathConfig = mockGlobalValue(configuration, "buildPath");
 
         test("no configuration provided", () => {
             buildPathConfig.setValue("");
@@ -216,7 +216,7 @@ suite("BuildFlags Test Suite", () => {
     });
 
     suite("withSwiftSDKFlags", () => {
-        const sdkConfig = mockValue(configuration, "sdk");
+        const sdkConfig = mockGlobalValue(configuration, "sdk");
 
         test("package", () => {
             for (const sub of ["dump-symbol-graph", "diagnose-api-breaking-changes", "resolve"]) {

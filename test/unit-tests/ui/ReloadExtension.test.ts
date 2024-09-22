@@ -14,11 +14,11 @@
 import { expect } from "chai";
 import { showReloadExtensionNotification } from "../../../src/ui/ReloadExtension";
 import * as vscode from "vscode";
-import { mockNamespace } from "../MockUtils";
+import { mockGlobalObject } from "../MockUtils";
 
 suite("ReloadExtension Unit Test Suite", async function () {
-    const windowMock = mockNamespace(vscode, "window");
-    const commandsMock = mockNamespace(vscode, "commands");
+    const windowMock = mockGlobalObject(vscode, "window");
+    const commandsMock = mockGlobalObject(vscode, "commands");
 
     test("Shows user a warning", async () => {
         // No behaviour setup, let's just check if we showed them the notification

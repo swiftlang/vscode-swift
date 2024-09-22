@@ -20,16 +20,16 @@ import {
     instance,
     MockedObject,
     mockFn,
-    mockModule,
-    mockNamespace,
+    mockGlobalModule,
+    mockGlobalObject,
     mockObject,
 } from "../MockUtils";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 
 suite("getLldbProcess Unit Test Suite", () => {
-    const utilMock = mockModule(util);
-    const windowMock = mockNamespace(vscode, "window");
+    const utilMock = mockGlobalModule(util);
+    const windowMock = mockGlobalObject(vscode, "window");
 
     let mockContext: MockedObject<WorkspaceContext>;
     let mockToolchain: MockedObject<SwiftToolchain>;

@@ -16,16 +16,22 @@ import { expect } from "chai";
 import * as vscode from "vscode";
 import * as lldb from "../../../src/debugger/lldb";
 import { attachDebugger } from "../../../src/commands/attachDebugger";
-import { mockObject, mockNamespace, mockModule, MockedObject, instance } from "../MockUtils";
+import {
+    mockObject,
+    mockGlobalObject,
+    mockGlobalModule,
+    MockedObject,
+    instance,
+} from "../MockUtils";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { registerLLDBDebugAdapter } from "../../../src/debugger/debugAdapterFactory";
 import { Version } from "../../../src/utilities/version";
 
 suite("attachDebugger Unit Test Suite", () => {
-    const lldbMock = mockModule(lldb);
-    const windowMock = mockNamespace(vscode, "window");
-    const debugMock = mockNamespace(vscode, "debug");
+    const lldbMock = mockGlobalModule(lldb);
+    const windowMock = mockGlobalObject(vscode, "window");
+    const debugMock = mockGlobalObject(vscode, "debug");
 
     let mockContext: MockedObject<WorkspaceContext>;
     let mockToolchain: MockedObject<SwiftToolchain>;

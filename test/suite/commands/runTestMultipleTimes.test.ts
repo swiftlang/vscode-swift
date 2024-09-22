@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import { expect } from "chai";
 import { runTestMultipleTimes } from "../../../src/commands/testMultipleTimes";
-import { mockNamespace } from "../../unit-tests/MockUtils";
+import { mockGlobalObject } from "../../unit-tests/MockUtils";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { FolderContext } from "../../../src/FolderContext";
@@ -24,7 +24,7 @@ import { testAssetWorkspaceFolder } from "../../fixtures";
 import { TestRunProxy } from "../../../src/TestExplorer/TestRunner";
 
 suite("Test Multiple Times Command Test Suite", () => {
-    const windowMock = mockNamespace(vscode, "window");
+    const windowMock = mockGlobalObject(vscode, "window");
 
     let folderContext: FolderContext;
     let testItem: vscode.TestItem;

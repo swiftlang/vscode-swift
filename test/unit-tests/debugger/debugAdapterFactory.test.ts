@@ -16,13 +16,13 @@ import { expect } from "chai";
 import { DebugAdapter } from "../../../src/debugger/debugAdapter";
 import { LLDBDebugConfigurationProvider } from "../../../src/debugger/debugAdapterFactory";
 import { Version } from "../../../src/utilities/version";
-import { mockNamespace } from "../MockUtils";
+import { mockGlobalObject } from "../MockUtils";
 import configuration from "../../../src/configuration";
 
 suite("Debug Adapter Factory Test Suite", () => {
     const swift6 = new Version(6, 0, 0);
     const swift510 = new Version(5, 10, 1);
-    const mockDebugConfig = mockNamespace(configuration, "debugger");
+    const mockDebugConfig = mockGlobalObject(configuration, "debugger");
 
     suite("LLDBDebugConfigurationProvider Test Suite", () => {
         setup(() => {

@@ -15,13 +15,12 @@ import { expect } from "chai";
 import configuration from "../../../src/configuration";
 import * as vscode from "vscode";
 import {
-    mockValue,
-    mockNamespace,
+    mockGlobalValue,
+    mockGlobalObject,
     mockObject,
     MockedObject,
-    mockEventEmitter,
+    mockGlobalEvent,
     instance,
-    waitForReturnedPromises,
     mockFn,
 } from "../MockUtils";
 import { SwiftExecution } from "../../../src/tasks/SwiftExecution";
@@ -30,9 +29,9 @@ import { StatusItem } from "../../../src/ui/StatusItem";
 import { SwiftBuildStatus } from "../../../src/ui/SwiftBuildStatus";
 
 suite("SwiftBuildStatus Unit Test Suite", async function () {
-    const windowMock = mockNamespace(vscode, "window");
-    const didStartTaskMock = mockEventEmitter(vscode.tasks, "onDidStartTask");
-    const configurationMock = mockValue(configuration, "showBuildStatus");
+    const windowMock = mockGlobalObject(vscode, "window");
+    const didStartTaskMock = mockGlobalEvent(vscode.tasks, "onDidStartTask");
+    const configurationMock = mockGlobalValue(configuration, "showBuildStatus");
 
     let mockedProgress: MockedObject<
         vscode.Progress<{
@@ -165,9 +164,6 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
                 "Fetched https://github.com/apple/swift-testing.git from cache (0.77s)\n"
         );
 
-        await waitForReturnedPromises(windowMock.withProgress);
-        await waitForReturnedPromises(mockedStatusItem.showStatusWhileRunning);
-
         const expected = "My Task fetching dependencies";
         expect(mockedProgress.report).to.have.been.calledWith({ message: expected });
         expect(mockedStatusItem.update).to.have.been.calledWith(mockedTaskExecution.task, expected);
@@ -189,9 +185,6 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
                 "[6/7] Building main.swift\n" +
                 "[7/7] Applying MyCLI\n"
         );
-
-        await waitForReturnedPromises(windowMock.withProgress);
-        await waitForReturnedPromises(mockedStatusItem.showStatusWhileRunning);
 
         const expected = "My Task [7/7]";
         expect(mockedProgress.report).to.have.been.calledWith({ message: expected });
@@ -221,9 +214,6 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
                 "[7/7] Applying MyCLI\n" +
                 "Build complete!"
         );
-
-        await waitForReturnedPromises(windowMock.withProgress);
-        await waitForReturnedPromises(mockedStatusItem.showStatusWhileRunning);
 
         // Report nothing
         expect(mockedProgress.report).to.not.have.been.called;

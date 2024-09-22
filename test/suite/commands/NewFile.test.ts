@@ -17,14 +17,14 @@ import { expect } from "chai";
 import { match } from "sinon";
 import * as path from "path";
 import { newSwiftFile } from "../../../src/commands/newFile";
-import { mockNamespace } from "../../unit-tests/MockUtils";
+import { mockGlobalObject } from "../../unit-tests/MockUtils";
 import { TemporaryFolder } from "../../../src/utilities/tempFolder";
 import { fileExists } from "../../../src/utilities/filesystem";
 
 suite("NewFile Command Test Suite", () => {
-    const workspaceMock = mockNamespace(vscode, "workspace");
-    const windowMock = mockNamespace(vscode, "window");
-    const languagesMock = mockNamespace(vscode, "languages");
+    const workspaceMock = mockGlobalObject(vscode, "workspace");
+    const windowMock = mockGlobalObject(vscode, "window");
+    const languagesMock = mockGlobalObject(vscode, "languages");
 
     test("Creates a blank file if no URI is provided", async () => {
         await newSwiftFile(undefined);

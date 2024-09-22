@@ -20,10 +20,10 @@ import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import { Version } from "../../../src/utilities/version";
-import { mockNamespace, MockedObject, mockObject, instance, mockFn } from "../MockUtils";
+import { mockGlobalObject, MockedObject, mockObject, instance, mockFn } from "../MockUtils";
 
 suite("verifyDebugAdapterExists false return Tests", () => {
-    const mockedWindow = mockNamespace(vscode, "window");
+    const mockedWindow = mockGlobalObject(vscode, "window");
 
     let mockWorkspaceContext: MockedObject<WorkspaceContext>;
     let mockToolchain: MockedObject<SwiftToolchain>;

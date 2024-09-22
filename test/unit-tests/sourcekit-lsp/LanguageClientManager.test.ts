@@ -24,11 +24,11 @@ import {
     MockedObject,
     mockObject,
     instance,
-    mockModule,
+    mockGlobalModule,
     waitForReturnedPromises,
     AsyncEventEmitter,
-    mockNamespace,
-    mockValue,
+    mockGlobalObject,
+    mockGlobalValue,
     mockFn,
 } from "../MockUtils";
 import * as langClient from "vscode-languageclient/node";
@@ -54,13 +54,13 @@ suite("LanguageClientManager Suite", () => {
     let mockedToolchain: MockedObject<SwiftToolchain>;
     let mockedBuildFlags: MockedObject<BuildFlags>;
 
-    const mockedLangClientModule = mockModule(langClient);
-    const mockedConfig = mockModule(configuration);
-    const mockedEnvironment = mockValue(process, "env");
-    const mockedLspConfig = mockNamespace(configuration, "lsp");
-    const mockedVSCodeWindow = mockNamespace(vscode, "window");
-    const mockedVSCodeExtensions = mockNamespace(vscode, "extensions");
-    const mockedVSCodeWorkspace = mockNamespace(vscode, "workspace");
+    const mockedLangClientModule = mockGlobalModule(langClient);
+    const mockedConfig = mockGlobalModule(configuration);
+    const mockedEnvironment = mockGlobalValue(process, "env");
+    const mockedLspConfig = mockGlobalObject(configuration, "lsp");
+    const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
+    const mockedVSCodeExtensions = mockGlobalObject(vscode, "extensions");
+    const mockedVSCodeWorkspace = mockGlobalObject(vscode, "workspace");
     let changeConfigEmitter: AsyncEventEmitter<vscode.ConfigurationChangeEvent>;
     let createFilesEmitter: AsyncEventEmitter<vscode.FileCreateEvent>;
     let deleteFilesEmitter: AsyncEventEmitter<vscode.FileDeleteEvent>;

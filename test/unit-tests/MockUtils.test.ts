@@ -13,7 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import { expect } from "chai";
-import { mockFn, mockObject } from "./MockUtils";
+import { stub } from "sinon";
+import { mockFn, mockObject, waitForReturnedPromises } from "./MockUtils";
 import { Version } from "../../src/utilities/version";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -23,6 +24,25 @@ function emptyFunction(..._: any): any {
 
 // A test suite for test code? Crazy, right?
 suite("MockUtils Test Suite", () => {
+    suite("waitForReturnedPromises()", () => {
+        test("waits for all promises to complete before resolving", async () => {
+            const values: number[] = [];
+            const stubbedFn = stub<[number], Promise<void>>().callsFake(async num => {
+                await new Promise<void>(resolve => {
+                    setTimeout(resolve, 1);
+                });
+                values.push(num);
+            });
+            stubbedFn(1);
+            stubbedFn(2);
+            stubbedFn(3);
+
+            expect(values).to.deep.equal([]);
+            await waitForReturnedPromises(stubbedFn);
+            expect(values).to.deep.equal([1, 2, 3]);
+        });
+    });
+
     suite("mockObject()", () => {
         test("can mock an interface", () => {
             interface TestInterface {
@@ -135,8 +155,10 @@ suite("MockUtils Test Suite", () => {
 
         test("retains type information when mocking a function", () => {
             mockFn<() => number>(s => {
-                // @ts-expect-error - string is not compatible with number
-                s.returns("compiler error");
+                s.returns(
+                    // @ts-expect-error - string is not compatible with number
+                    "compiler error"
+                );
             });
         });
     });
