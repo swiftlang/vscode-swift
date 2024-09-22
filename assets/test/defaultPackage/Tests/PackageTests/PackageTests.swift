@@ -100,3 +100,8 @@ struct MixedSwiftTestingSuite {
 }
 
 #endif
+
+final class DuplicateSuffixTests: XCTestCase {
+  func testPassing() throws {}
+  func testPassingSuffix() throws {}
+}

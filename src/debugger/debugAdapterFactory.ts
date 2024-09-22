@@ -77,9 +77,14 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
     ): Promise<vscode.DebugConfiguration> {
         launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
         // Fix the program path on Windows to include the ".exe" extension
-        if (this.platform === "win32" && path.extname(launchConfig.program) !== ".exe") {
+        if (
+            this.platform === "win32" &&
+            launchConfig.testType === undefined &&
+            path.extname(launchConfig.program) !== ".exe"
+        ) {
             launchConfig.program += ".exe";
         }
+
         // Delegate to CodeLLDB if that's the debug adapter we have selected
         if (DebugAdapter.getDebugAdapterType(this.swiftVersion) === "lldb-vscode") {
             launchConfig.type = "lldb";

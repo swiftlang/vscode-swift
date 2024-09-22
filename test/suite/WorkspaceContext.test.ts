@@ -42,6 +42,9 @@ suite("WorkspaceContext Test Suite", () => {
                 }
             });
             const workspaceFolder = vscode.workspace.workspaceFolders?.values().next().value;
+            if (!workspaceFolder) {
+                throw new Error("No workspace folders found in workspace");
+            }
             await workspaceContext?.addPackageFolder(testAssetUri("package2"), workspaceFolder);
             assert.strictEqual(count, 1);
             observer?.dispose();

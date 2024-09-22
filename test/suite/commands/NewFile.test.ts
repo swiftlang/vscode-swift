@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// import * as assert from "assert";
 import * as vscode from "vscode";
 import { expect } from "chai";
 import { match } from "sinon";
