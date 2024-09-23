@@ -23,7 +23,11 @@ import {
     getBuildAllTask,
 } from "../../../src/tasks/SwiftTaskProvider";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
-import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities";
+import {
+    executeTaskAndWaitForResult,
+    waitForEndTaskProcess,
+    waitForNoRunningTasks,
+} from "../../utilities";
 import { Version } from "../../../src/utilities/version";
 import { FolderContext } from "../../../src/FolderContext";
 import { mockNamespace } from "../../unit-tests/MockUtils";
@@ -37,7 +41,7 @@ suite("SwiftTaskProvider Test Suite", () => {
 
     suiteSetup(async () => {
         workspaceContext = await globalWorkspaceContextPromise;
-        toolchain = await SwiftToolchain.create();
+        toolchain = workspaceContext.toolchain;
         assert.notEqual(workspaceContext.folders.length, 0);
         workspaceFolder = workspaceContext.folders[0].workspaceFolder;
 
@@ -84,10 +88,49 @@ suite("SwiftTaskProvider Test Suite", () => {
     });
 
     suite("provideTasks", () => {
-        test("includes build all task", async () => {
-            const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
-            const task = tasks.find(t => t.name === "Build All (defaultPackage)");
-            assert.equal(task?.detail, "swift build --build-tests -Xswiftc -diagnostic-style=llvm");
+        suite("includes build all task from extension", () => {
+            let task: vscode.Task | undefined;
+
+            setup(async () => {
+                const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
+                task = tasks.find(t => t.name === "Build All (defaultPackage)");
+            });
+
+            test("provided", async () => {
+                assert.equal(
+                    task?.detail,
+                    "swift build --build-tests -Xswiftc -diagnostic-style=llvm"
+                );
+            });
+
+            test("executes", async () => {
+                assert(task);
+                const exitPromise = waitForEndTaskProcess(task);
+                await vscode.tasks.executeTask(task);
+                const exitCode = await exitPromise;
+                assert.equal(exitCode, 0);
+            }).timeout(120000); // 2 minutes to build
+        });
+
+        suite("includes build all task from tasks.json", () => {
+            let task: vscode.Task | undefined;
+
+            setup(async () => {
+                const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
+                task = tasks.find(t => t.name === "swift: Build All from tasks.json");
+            });
+
+            test("provided", async () => {
+                assert.equal(task?.detail, "swift build --build-tests");
+            });
+
+            test("executes", async () => {
+                assert(task);
+                const exitPromise = waitForEndTaskProcess(task);
+                await vscode.tasks.executeTask(task);
+                const exitCode = await exitPromise;
+                assert.equal(exitCode, 0);
+            }).timeout(120000); // 2 minutes to build
         });
 
         test("includes product debug task", async () => {
