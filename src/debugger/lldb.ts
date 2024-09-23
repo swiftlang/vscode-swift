@@ -62,7 +62,7 @@ export async function getLLDBLibPath(toolchain: SwiftToolchain): Promise<Result<
     }
 }
 
-async function findLibLLDB(pathHint: string): Promise<string | undefined> {
+export async function findLibLLDB(pathHint: string): Promise<string | undefined> {
     const stat = await fs.stat(pathHint);
     if (stat.isFile()) {
         return pathHint;
@@ -92,7 +92,7 @@ async function findLibLLDB(pathHint: string): Promise<string | undefined> {
     return undefined;
 }
 
-async function findFileByPattern(path: string, pattern: RegExp): Promise<string | null> {
+export async function findFileByPattern(path: string, pattern: RegExp): Promise<string | null> {
     try {
         const files = await fs.readdir(path);
         for (const file of files) {
