@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.11.2 - 2024-09-23
+
+### Fixed
+
+- Fixed several debugging issues on Windows ([#1083](https://github.com/swiftlang/vscode-swift/pull/1083))
+- Correct filtering of test names that share a common prefix ([#1086](https://github.com/swiftlang/vscode-swift/pull/1086))
+- Prevent truncation of diagnostic messages on Windows ([#1082](https://github.com/swiftlang/vscode-swift/pull/1082))
+- Provide diagnostics for C/C++ source ([#1062](https://github.com/swiftlang/vscode-swift/pull/1062))
+
 ## 1.11.1 - 2024-09-17
 
 ### Fixed
