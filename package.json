@@ -1275,7 +1275,7 @@
     "watch": "tsc --watch",
     "lint": "eslint ./ --ext ts && tsc --noEmit",
     "format": "prettier --check *.json src test",
-    "pretest": "npm run compile && npm run esbuild && del-cli ./assets/test/**/.build",
+    "pretest": "npm run compile-tests",
     "test": "vscode-test",
     "integration-test": "npm test -- --label integrationTests",
     "unit-test": "npm test -- --label unitTests",
