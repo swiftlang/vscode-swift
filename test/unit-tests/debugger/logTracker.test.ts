@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { expect } from "chai";
-import { mockObject, instance, MockedObject } from "../MockUtils2";
+import { mockObject, instance, MockedObject } from "../../MockUtils";
 import {
     LoggingDebugAdapterTracker,
     LoggingDebugAdapterTrackerFactory,
@@ -8,7 +8,7 @@ import {
 import sinon = require("sinon");
 
 suite("LoggingDebugAdapterTrackerFactory Test Suite", () => {
-    let factory = new LoggingDebugAdapterTrackerFactory();
+    const factory = new LoggingDebugAdapterTrackerFactory();
 
     // Clean up the static members before each test to ensure isolation
     teardown(() => {
