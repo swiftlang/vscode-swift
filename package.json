@@ -595,6 +595,12 @@
             "markdownDescription": "The path of the SDK to compile against (`--sdk` parameter). This is of use when supporting non-standard SDK layouts on Windows and using custom SDKs. The default SDK is determined by the environment on macOS and Windows.",
             "order": 3
           },
+          "swift.disableSandox": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Disable sandboxing when running SwiftPM commands. You will almost always want this setting disabled.",
+            "order": 4
+          },
           "swift.diagnostics": {
             "type": "boolean",
             "default": false,
