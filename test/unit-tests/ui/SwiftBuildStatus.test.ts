@@ -73,7 +73,7 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
     });
 
     test("Ignore non-swift task", async () => {
-        when(mockedTask.execution).thenReturn(new vscode.ShellExecution("swift"));
+        when(mockedTask.definition).thenReturn({ type: "shell" });
         configurationMock.setValue("swiftStatus");
 
         new SwiftBuildStatus(instance(mockedStatusItem));
