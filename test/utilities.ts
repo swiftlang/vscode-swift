@@ -121,7 +121,7 @@ export function waitForEndTaskProcess(task: vscode.Task): Promise<number | undef
         const disposables: vscode.Disposable[] = [];
         disposables.push(
             vscode.tasks.onDidEndTaskProcess(e => {
-                if (task.name !== e.execution.task.name) {
+                if (task.detail !== e.execution.task.detail) {
                     return;
                 }
                 disposables.forEach(d => d.dispose());

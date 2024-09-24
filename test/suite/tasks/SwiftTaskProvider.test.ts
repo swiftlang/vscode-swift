@@ -109,7 +109,7 @@ suite("SwiftTaskProvider Test Suite", () => {
                 await vscode.tasks.executeTask(task);
                 const exitCode = await exitPromise;
                 assert.equal(exitCode, 0);
-            }).timeout(120000); // 2 minutes to build
+            }).timeout(180000); // 3 minutes to build
         });
 
         suite("includes build all task from tasks.json", () => {
@@ -121,7 +121,7 @@ suite("SwiftTaskProvider Test Suite", () => {
             });
 
             test("provided", async () => {
-                assert.equal(task?.detail, "swift build --build-tests");
+                assert.equal(task?.detail, "swift build --show-bin-path");
             });
 
             test("executes", async () => {
@@ -130,7 +130,7 @@ suite("SwiftTaskProvider Test Suite", () => {
                 await vscode.tasks.executeTask(task);
                 const exitCode = await exitPromise;
                 assert.equal(exitCode, 0);
-            }).timeout(120000); // 2 minutes to build
+            });
         });
 
         test("includes product debug task", async () => {

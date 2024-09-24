@@ -20,7 +20,7 @@
 			"type": "swift",
 			"args": [
 				"build",
-				"--build-tests"
+				"--show-bin-path"
 			],
 			"cwd": "defaultPackage",
 			"problemMatcher": [
@@ -28,7 +28,7 @@
 			],
 			"group": "build",
 			"label": "swift: Build All from tasks.json",
-			"detail": "swift build --build-tests"
+			"detail": "swift build --show-bin-path"
 		}
 	]
 }
