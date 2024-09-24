@@ -40,7 +40,7 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
         }>
     >;
     let mockedStatusItem: MockedObject<StatusItem>;
-    let task: MockedObject<vscode.Task>;
+    let mockedTask: MockedObject<vscode.Task>;
     let swiftExecution: SwiftExecution;
     let testSwiftProcess: TestSwiftProcess;
     let mockedTaskExecution: MockedObject<vscode.TaskExecution>;
@@ -76,7 +76,7 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
             {},
             testSwiftProcess
         );
-        task = new vscode.Task(
+        mockedTask = new vscode.Task(
             { type: "swift" },
             vscode.TaskScope.Global,
             "My Task",
@@ -84,7 +84,7 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
             swiftExecution
         );
         mockedTaskExecution = mockObject<vscode.TaskExecution>({
-            task: task,
+            task: mockedTask,
             terminate: mockFn(),
         });
     });
@@ -100,7 +100,7 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
     });
 
     test("Ignore non-swift task", async () => {
-        task.execution = new vscode.ShellExecution("swift");
+        mockedTask.definition = { type: "shell" };
         configurationMock.setValue("swiftStatus");
 
         new SwiftBuildStatus(instance(mockedStatusItem));

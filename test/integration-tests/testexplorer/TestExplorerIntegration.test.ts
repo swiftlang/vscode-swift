@@ -299,6 +299,21 @@ suite("Test Explorer Suite", function () {
     });
 
     suite("XCTest", () => {
+        test("Only runs specified test", async function () {
+            const passingRun = await runTest(
+                testExplorer.controller,
+                TestKind.standard,
+                "PackageTests.DuplicateSuffixTests/testPassing"
+            );
+
+            assertTestResults(passingRun, {
+                passed: [
+                    "PackageTests.DuplicateSuffixTests",
+                    "PackageTests.DuplicateSuffixTests/testPassing",
+                ],
+            });
+        });
+
         test("tests run in debug mode @slow", async function () {
             const testRun = await runTest(
                 testExplorer.controller,
@@ -328,21 +343,6 @@ suite("Test Explorer Suite", function () {
                 passed: [
                     "PackageTests.DebugReleaseTestSuite",
                     "PackageTests.DebugReleaseTestSuite/testRelease",
-                ],
-            });
-        });
-
-        suite("Only runs specified test", async function () {
-            const passingRun = await runTest(
-                testExplorer.controller,
-                TestKind.standard,
-                "PackageTests.DuplicateSuffixTests/testPassing"
-            );
-
-            assertTestResults(passingRun, {
-                passed: [
-                    "PackageTests.DuplicateSuffixTests",
-                    "PackageTests.DebugReleaseTestSuite/testPassing",
                 ],
             });
         });

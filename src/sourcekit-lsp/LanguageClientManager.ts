@@ -544,7 +544,7 @@ export class LanguageClientManager {
                     const document = uri as vscode.TextDocument;
                     this.workspaceContext.diagnostics.handleDiagnostics(
                         document.uri ?? uri,
-                        DiagnosticsManager.sourcekit,
+                        DiagnosticsManager.isSourcekit,
                         result?.items ?? []
                     );
                     return undefined;
@@ -552,7 +552,7 @@ export class LanguageClientManager {
                 handleDiagnostics: (uri, diagnostics) => {
                     this.workspaceContext.diagnostics.handleDiagnostics(
                         uri,
-                        DiagnosticsManager.sourcekit,
+                        DiagnosticsManager.isSourcekit,
                         diagnostics
                     );
                 },

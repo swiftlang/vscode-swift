@@ -16,12 +16,9 @@ import * as vscode from "vscode";
 import { expect } from "chai";
 import { runTestMultipleTimes } from "../../../src/commands/testMultipleTimes";
 import { mockGlobalObject } from "../../MockUtils";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { FolderContext } from "../../../src/FolderContext";
-import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
-import { testAssetWorkspaceFolder } from "../../fixtures";
 import { TestRunProxy } from "../../../src/TestExplorer/TestRunner";
+import { folderContextPromise } from "../extension.test";
 
 suite("Test Multiple Times Command Test Suite", () => {
     const windowMock = mockGlobalObject(vscode, "window");
@@ -30,16 +27,7 @@ suite("Test Multiple Times Command Test Suite", () => {
     let testItem: vscode.TestItem;
 
     suiteSetup(async () => {
-        const toolchain = await SwiftToolchain.create();
-        const workspaceContext = await WorkspaceContext.create(
-            new SwiftOutputChannel("Swift"),
-            toolchain
-        );
-        const workspaceFolder = testAssetWorkspaceFolder("diagnostics");
-        folderContext = await workspaceContext.addPackageFolder(
-            workspaceFolder.uri,
-            workspaceFolder
-        );
+        folderContext = await folderContextPromise("diagnostics");
         folderContext.addTestExplorer();
 
         const item = folderContext.testExplorer?.controller.createTestItem(

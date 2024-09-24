@@ -52,7 +52,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
 
     private handleTaskStatus(task: vscode.Task): void {
         // Only care about swift tasks
-        if (!(task.execution && task.execution instanceof SwiftExecution)) {
+        if (task.definition.type !== "swift") {
             return;
         }
         // Default to setting if task doesn't overwrite
