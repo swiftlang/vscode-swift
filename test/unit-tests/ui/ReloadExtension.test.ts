@@ -12,38 +12,48 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import { showReloadExtensionNotification } from "../../../src/ui/ReloadExtension";
-import * as vscode from "vscode";
 import { mockGlobalObject } from "../../MockUtils";
+import * as vscode from "vscode";
+import { showReloadExtensionNotification } from "../../../src/ui/ReloadExtension";
 
-suite("ReloadExtension Unit Test Suite", async function () {
-    const windowMock = mockGlobalObject(vscode, "window");
-    const commandsMock = mockGlobalObject(vscode, "commands");
+suite("showReloadExtensionNotification()", async function () {
+    const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
+    const mockedVSCodeCommands = mockGlobalObject(vscode, "commands");
 
-    test("Shows user a warning", async () => {
-        // No behaviour setup, let's just check if we showed them the notification
+    test("displays a warning message asking the user if they would like to reload the window", async () => {
+        mockedVSCodeWindow.showWarningMessage.resolves(undefined);
+
         await showReloadExtensionNotification("Want to reload?");
-        expect(windowMock.showWarningMessage).to.have.been.calledWith(
+
+        expect(mockedVSCodeWindow.showWarningMessage).to.have.been.calledOnceWithExactly(
             "Want to reload?",
             "Reload Extensions"
         );
+        expect(mockedVSCodeCommands.executeCommand).to.not.have.been.called;
     });
 
-    test('"Reload Extensions" is clicked', async () => {
-        // What happens if they click this button?
-        windowMock.showWarningMessage.resolves("Reload Extensions" as any);
+    test("reloads the extension if the user clicks the 'Reload Extensions' button", async () => {
+        mockedVSCodeWindow.showWarningMessage.resolves("Reload Extensions" as any);
+
         await showReloadExtensionNotification("Want to reload?");
-        expect(commandsMock.executeCommand).to.have.been.calledWith(
+
+        expect(mockedVSCodeCommands.executeCommand).to.have.been.calledOnceWithExactly(
             "workbench.action.reloadWindow"
         );
     });
 
-    test("Provide a different button", async () => {
-        // What if we provide another option?
-        windowMock.showWarningMessage.resolves("Ignore" as any);
+    test("can be configured to display additional buttons that the user can click", async () => {
+        mockedVSCodeWindow.showWarningMessage.resolves("Ignore" as any);
+
         await expect(
             showReloadExtensionNotification("Want to reload?", "Ignore")
         ).to.eventually.equal("Ignore");
-        expect(commandsMock.executeCommand).to.not.have.been.called;
+
+        expect(mockedVSCodeWindow.showWarningMessage).to.have.been.calledOnceWithExactly(
+            "Want to reload?",
+            "Reload Extensions",
+            "Ignore"
+        );
+        expect(mockedVSCodeCommands.executeCommand).to.not.have.been.called;
     });
 });
