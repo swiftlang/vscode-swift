@@ -8,9 +8,8 @@ A brief description of each framework can be found below:
 -   [**Chai**](https://www.chaijs.com/): An assertion library. It allows you to express expectations for your code’s behavior using natural language.
 -   [**Sinon**](https://sinonjs.org/): A powerful mocking and spying library that allows you to create spies, stubs, and mocks to test how your code interacts with other components.
 
-## Overview
+## Overview <!-- omit in toc -->
 
-- [Overview](#overview)
 - [Organizing Tests](#organizing-tests)
 - [Running the Tests](#running-the-tests)
 - [Writing Unit Tests](#writing-unit-tests)
