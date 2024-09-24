@@ -29,6 +29,17 @@
 			"group": "build",
 			"label": "swift: Build All from tasks.json",
 			"detail": "swift build --show-bin-path"
+		},
+		{
+			"type": "swift-plugin",
+			"command": "command_plugin",
+			"args": ["--foo"],
+			"cwd": "command-plugin",
+			"problemMatcher": [
+				"$swiftc"
+			],
+			"label": "swift: command-plugin from tasks.json",
+			"detail": "swift package command_plugin --foo"
 		}
 	]
 }

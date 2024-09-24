@@ -20,6 +20,7 @@ import configuration from "../configuration";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { SwiftExecution } from "../tasks/SwiftExecution";
 import { resolveTaskCwd } from "../utilities/tasks";
+import { SwiftTask } from "./SwiftTaskProvider";
 
 // Interface class for defining task configuration
 interface TaskConfig {
@@ -113,7 +114,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
      * @param config
      * @returns
      */
-    createSwiftPluginTask(plugin: PackagePlugin, config: TaskConfig): vscode.Task {
+    createSwiftPluginTask(plugin: PackagePlugin, config: TaskConfig): SwiftTask {
         const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
 
         // Add relative path current working directory
@@ -155,7 +156,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         }
         task.detail = `${prefix}swift ${swiftArgs.join(" ")}`;
         task.presentationOptions = presentation;
-        return task;
+        return task as SwiftTask;
     }
 
     /**
