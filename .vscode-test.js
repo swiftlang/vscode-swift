@@ -27,7 +27,7 @@ module.exports = defineConfig({
     tests: [
         {
             label: "integrationTests",
-            files: ["out/test/common.js", "out/test/suite/**/*.test.js"],
+            files: ["out/test/common.js", "out/test/integration-tests/**/*.test.js"],
             version: "stable",
             workspaceFolder: "./assets/test",
             mocha: {
