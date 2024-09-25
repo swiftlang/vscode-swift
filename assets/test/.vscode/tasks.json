@@ -15,6 +15,20 @@
 			"group": "build",
 			"label": "swift: Build All (defaultPackage)",
 			"detail": "swift build --build-tests --verbose"
+		},
+		{
+			"type": "swift",
+			"args": [
+				"build",
+				"--show-bin-path"
+			],
+			"cwd": "defaultPackage",
+			"problemMatcher": [
+				"$swiftc"
+			],
+			"group": "build",
+			"label": "swift: Build All from tasks.json",
+			"detail": "swift build --show-bin-path"
 		}
 	]
 }

@@ -18,7 +18,7 @@ import * as path from "path";
 export class RunningTask {
     constructor(public task: vscode.Task | string) {}
     get name(): string {
-        if (this.task instanceof vscode.Task) {
+        if (typeof this.task !== "string") {
             const folder = this.task.definition.cwd as string;
             if (folder) {
                 return `${this.task.name} (${path.basename(folder)})`;
@@ -115,7 +115,7 @@ export class StatusItem {
      */
     private showTask(task: RunningTask, message?: string) {
         message = message ?? task.name;
-        if (task.task instanceof vscode.Task) {
+        if (typeof task.task !== "string") {
             this.show(`$(sync~spin) ${message}`, message, "workbench.action.tasks.showTasks");
         } else {
             this.show(`$(sync~spin) ${message}`, message);
