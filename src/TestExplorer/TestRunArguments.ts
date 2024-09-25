@@ -200,7 +200,10 @@ export class TestRunArguments {
                 // Only add leaf items to the list of arguments to pass to the test runner.
                 if (this.isLeafTestItem(testItem, !!isXCTest)) {
                     if (isXCTest) {
-                        xcTestArgs.push(`${testItem.id}$`);
+                        // Tests in debug are specified exactly, otherwise
+                        // add the regex line ending character to avoid capturing
+                        // unwanted tests.
+                        xcTestArgs.push(this.isDebug ? testItem.id : `${testItem.id}$`);
                     } else {
                         swiftTestArgs.push(testItem.id);
                     }
