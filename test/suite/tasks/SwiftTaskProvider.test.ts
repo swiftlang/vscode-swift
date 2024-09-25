@@ -103,7 +103,7 @@ suite("SwiftTaskProvider Test Suite", () => {
                 );
             });
 
-            test("executes", async () => {
+            test("executes @slow", async () => {
                 assert(task);
                 const exitPromise = waitForEndTaskProcess(task);
                 await vscode.tasks.executeTask(task);
