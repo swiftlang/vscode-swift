@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.11.3 - 2024-09-23
+
+### Fixed
+
+- XCTest output is not recorded when using CodeLLDB ([#1100](https://github.com/swiftlang/vscode-swift/pull/1100))
+- Only add line terminator to selector when not debugging tests ([#1097](https://github.com/swiftlang/vscode-swift/pull/1097))
+- Warn instead of error on missing test framework version on Windows ([#1098](https://github.com/swiftlang/vscode-swift/pull/1098))
+
 ## 1.11.2 - 2024-09-23
 
 ### Fixed
