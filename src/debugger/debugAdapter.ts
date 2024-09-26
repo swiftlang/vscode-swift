@@ -24,9 +24,13 @@ import { SwiftToolchain } from "../toolchain/toolchain";
  * Class managing which debug adapter we are using. Will only setup lldb-vscode/lldb-dap if it is available.
  */
 export class DebugAdapter {
+    private static debugAdapaterExists = false;
+
     /** Debug adapter name */
     public static get adapterName(): string {
-        return "swift-lldb";
+        return configuration.debugger.useDebugAdapterFromToolchain && this.debugAdapaterExists
+            ? "swift-lldb"
+            : "lldb";
     }
 
     /** Return debug adapter for toolchain */
@@ -74,10 +78,12 @@ export class DebugAdapter {
                 );
             }
             workspace.outputChannel.log(`Failed to find ${lldbDebugAdapterPath}`);
+            this.debugAdapaterExists = false;
             contextKeys.lldbVSCodeAvailable = false;
             return false;
         }
 
+        this.debugAdapaterExists = true;
         contextKeys.lldbVSCodeAvailable = true;
         return true;
     }
