@@ -1278,6 +1278,7 @@
     "pretest": "npm run compile-tests",
     "test": "vscode-test",
     "test-ci": "docker/test-ci.sh",
+    "test-nightly": "docker/test-nightly.sh",
     "integration-test": "npm test -- --label integrationTests",
     "unit-test": "npm test -- --label unitTests",
     "coverage": "npm test -- --coverage",
