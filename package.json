@@ -1277,7 +1277,7 @@
     "format": "prettier --check *.json src test",
     "pretest": "npm run compile-tests",
     "test": "vscode-test",
-    "test-ci": "docker compose -f docker/docker-compose.yaml -f docker/docker-compose.*.${SWIFT_VERSION:=main}.yaml -p swift-vscode-${SWIFT_VERSION:=main}-prb run --rm test",
+    "test-ci": "docker/test-ci.sh",
     "integration-test": "npm test -- --label integrationTests",
     "unit-test": "npm test -- --label unitTests",
     "coverage": "npm test -- --coverage",
