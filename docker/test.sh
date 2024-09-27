@@ -4,7 +4,13 @@ current_directory=$(pwd)
 
 mkdir /tmp/code
 # Add the -v flag to see what is getting copied in to the working folder
-rsync -a --exclude 'node_modules' --exclude '.git' --exclude '.vscode-test' --exclude '.build' ./ /tmp/code/
+rsync -a --exclude "node_modules" \
+    --exclude "out" \
+    --exclude "dist" \
+    --exclude ".git" \
+    --exclude ".vscode-test" \
+    --exclude ".build" \
+    ./ /tmp/code/
 cd /tmp/code
 
 npm ci
