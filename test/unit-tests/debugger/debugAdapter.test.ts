@@ -14,16 +14,24 @@
 
 import { expect } from "chai";
 import * as vscode from "vscode";
-import * as mockFS from "mock-fs";
+import * as fs from "fs/promises";
 import { DebugAdapter } from "../../../src/debugger/debugAdapter";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import { Version } from "../../../src/utilities/version";
-import { mockGlobalObject, MockedObject, mockObject, instance, mockFn } from "../../MockUtils";
+import {
+    mockGlobalObject,
+    MockedObject,
+    mockObject,
+    instance,
+    mockFn,
+    mockGlobalModule,
+} from "../../MockUtils";
 
 suite("verifyDebugAdapterExists false return Tests", () => {
     const mockedWindow = mockGlobalObject(vscode, "window");
+    const mockedFS = mockGlobalModule(fs);
 
     let mockWorkspaceContext: MockedObject<WorkspaceContext>;
     let mockToolchain: MockedObject<SwiftToolchain>;
@@ -31,7 +39,7 @@ suite("verifyDebugAdapterExists false return Tests", () => {
 
     setup(() => {
         // Mock the file system
-        mockFS();
+        mockedFS.stat.throws(new Error("File does not exist"));
         // Mock the WorkspaceContext and related dependencies
         const swiftVersion = new Version(5, 3, 0); // Any version
         mockToolchain = mockObject<SwiftToolchain>({
@@ -47,10 +55,6 @@ suite("verifyDebugAdapterExists false return Tests", () => {
             swiftVersion,
             outputChannel: instance(mockOutputChannel),
         });
-    });
-
-    teardown(() => {
-        mockFS.restore();
     });
 
     test("should return false regardless of quiet setting", async () => {
