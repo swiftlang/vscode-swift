@@ -27,8 +27,7 @@
 			"testConfiguration": "${workspaceFolder}/.vscode-test.js",
 			"testConfigurationLabel": "integrationTests",
 			"args": [
-				"--profile=testing-debug",
-				"${workspaceFolder}/assets/test"
+				"--profile=testing-debug"
 			],
 			"outFiles": [
 				"${workspaceFolder}/out/**/*.js",

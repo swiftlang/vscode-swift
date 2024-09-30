@@ -15,38 +15,42 @@
 import * as vscode from "vscode";
 import * as assert from "assert";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { globalWorkspaceContextPromise } from "../extension.test";
-import { SwiftTaskProvider, createSwiftTask } from "../../../src/tasks/SwiftTaskProvider";
+import { folderContextPromise, globalWorkspaceContextPromise } from "../extension.test";
+import {
+    SwiftTaskProvider,
+    createSwiftTask,
+    createBuildAllTask,
+    getBuildAllTask,
+} from "../../../src/tasks/SwiftTaskProvider";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
-import { SwiftExecution } from "../../../src/tasks/SwiftExecution";
-import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities";
+import {
+    executeTaskAndWaitForResult,
+    waitForEndTaskProcess,
+    waitForNoRunningTasks,
+} from "../../utilities";
 import { Version } from "../../../src/utilities/version";
+import { FolderContext } from "../../../src/FolderContext";
+import { mockGlobalObject } from "../../MockUtils";
 
 suite("SwiftTaskProvider Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     let toolchain: SwiftToolchain;
     let workspaceFolder: vscode.WorkspaceFolder;
+    let folderContext: FolderContext;
 
     suiteSetup(async () => {
         workspaceContext = await globalWorkspaceContextPromise;
-        toolchain = await SwiftToolchain.create();
+        toolchain = workspaceContext.toolchain;
         assert.notEqual(workspaceContext.folders.length, 0);
         workspaceFolder = workspaceContext.folders[0].workspaceFolder;
+
+        // Make sure have another folder
+        folderContext = await folderContextPromise("diagnostics");
     });
 
     suite("createSwiftTask", () => {
         setup(async () => {
             await waitForNoRunningTasks();
-        });
-
-        test("uses SwiftExecution", async () => {
-            const task = createSwiftTask(
-                ["--help"],
-                "help",
-                { cwd: workspaceFolder.uri, scope: vscode.TaskScope.Workspace },
-                toolchain
-            );
-            assert.equal(task.execution instanceof SwiftExecution, true);
         });
 
         test("Exit code on success", async () => {
@@ -83,20 +87,53 @@ suite("SwiftTaskProvider Test Suite", () => {
     });
 
     suite("provideTasks", () => {
-        test("includes build all task", async () => {
-            const taskProvider = new SwiftTaskProvider(workspaceContext);
-            const tasks = await taskProvider.provideTasks(
-                new vscode.CancellationTokenSource().token
-            );
-            const task = tasks.find(t => t.name === "Build All (defaultPackage)");
-            assert.equal(task?.detail, "swift build --build-tests -Xswiftc -diagnostic-style=llvm");
+        suite("includes build all task from extension", () => {
+            let task: vscode.Task | undefined;
+
+            setup(async () => {
+                const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
+                task = tasks.find(t => t.name === "Build All (defaultPackage)");
+            });
+
+            test("provided", async () => {
+                assert.equal(
+                    task?.detail,
+                    "swift build --build-tests -Xswiftc -diagnostic-style=llvm"
+                );
+            });
+
+            test("executes @slow", async () => {
+                assert(task);
+                const exitPromise = waitForEndTaskProcess(task);
+                await vscode.tasks.executeTask(task);
+                const exitCode = await exitPromise;
+                assert.equal(exitCode, 0);
+            }).timeout(180000); // 3 minutes to build
+        });
+
+        suite("includes build all task from tasks.json", () => {
+            let task: vscode.Task | undefined;
+
+            setup(async () => {
+                const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
+                task = tasks.find(t => t.name === "swift: Build All from tasks.json");
+            });
+
+            test("provided", async () => {
+                assert.equal(task?.detail, "swift build --show-bin-path");
+            });
+
+            test("executes", async () => {
+                assert(task);
+                const exitPromise = waitForEndTaskProcess(task);
+                await vscode.tasks.executeTask(task);
+                const exitCode = await exitPromise;
+                assert.equal(exitCode, 0);
+            });
         });
 
         test("includes product debug task", async () => {
-            const taskProvider = new SwiftTaskProvider(workspaceContext);
-            const tasks = await taskProvider.provideTasks(
-                new vscode.CancellationTokenSource().token
-            );
+            const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
             const task = tasks.find(t => t.name === "Build Debug PackageExe (defaultPackage)");
             assert.equal(
                 task?.detail,
@@ -115,37 +152,38 @@ suite("SwiftTaskProvider Test Suite", () => {
                 "swift build -c release --product PackageExe -Xswiftc -diagnostic-style=llvm"
             );
         });
+
+        test("includes additional folders", async () => {
+            const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
+            const diagnosticTasks = tasks.filter(t => t.name.endsWith("(diagnostics)"));
+            assert.equal(diagnosticTasks.length, 3);
+        });
     });
 
-    suite("resolveTask", () => {
-        test("uses SwiftExecution", async () => {
-            const taskProvider = new SwiftTaskProvider(workspaceContext);
-            const task = new vscode.Task(
-                {
-                    type: "swift",
-                    args: ["run", "PackageExe"],
-                    env: { FOO: "bar" },
-                    cwd: workspaceFolder.uri.fsPath,
-                },
-                workspaceFolder,
-                "run PackageExe",
-                "swift"
+    suite("createBuildAllTask", () => {
+        test("should return same task instance", async () => {
+            assert.strictEqual(
+                createBuildAllTask(folderContext),
+                createBuildAllTask(folderContext)
             );
-            const resolvedTask = taskProvider.resolveTask(
-                task,
-                new vscode.CancellationTokenSource().token
+        });
+
+        test("different task returned for release mode", async () => {
+            assert.notEqual(
+                createBuildAllTask(folderContext),
+                createBuildAllTask(folderContext, true)
             );
-            assert.equal(resolvedTask.execution instanceof SwiftExecution, true);
-            const swiftExecution = resolvedTask.execution as SwiftExecution;
-            assert.equal(
-                swiftExecution.options.cwd,
-                workspaceFolder.uri.fsPath,
-                "Sets correct cwd"
-            );
-            assert.equal(
-                swiftExecution.options.env?.FOO,
-                "bar",
-                "Sets provided environment variables"
+        });
+    });
+
+    suite("getBuildAllTask", () => {
+        const tasksMock = mockGlobalObject(vscode, "tasks");
+
+        test("creates build all task when it cannot find one", async () => {
+            tasksMock.fetchTasks.resolves([]);
+            assert.strictEqual(
+                await getBuildAllTask(folderContext),
+                createBuildAllTask(folderContext)
             );
         });
     });

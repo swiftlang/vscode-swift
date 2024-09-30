@@ -314,6 +314,29 @@ suite("Test Explorer Suite", function () {
             });
         });
 
+        suite("Debugging", () => {
+            suiteSetup(function () {
+                if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+                    this.skip();
+                }
+            });
+
+            test("Debugs specified test", async function () {
+                const passingRun = await runTest(
+                    testExplorer.controller,
+                    TestKind.debug,
+                    "PackageTests.PassingXCTestSuite/testPassing"
+                );
+
+                assertTestResults(passingRun, {
+                    passed: [
+                        "PackageTests.PassingXCTestSuite",
+                        "PackageTests.PassingXCTestSuite/testPassing",
+                    ],
+                });
+            });
+        });
+
         test("tests run in debug mode @slow", async function () {
             const testRun = await runTest(
                 testExplorer.controller,

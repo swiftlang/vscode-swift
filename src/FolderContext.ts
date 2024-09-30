@@ -131,7 +131,7 @@ export class FolderContext implements vscode.Disposable {
     /** Load Swift Plugins and store in Package */
     async loadSwiftPlugins() {
         const plugins = await SwiftPackage.loadPlugins(
-            this.workspaceFolder.uri,
+            this.folder,
             this.workspaceContext.toolchain
         );
         this.swiftPackage.plugins = plugins;

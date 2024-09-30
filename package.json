@@ -2,7 +2,7 @@
   "name": "swift-lang",
   "displayName": "Swift",
   "description": "Swift Language Support for Visual Studio Code.",
-  "version": "1.11.2",
+  "version": "1.11.3",
   "publisher": "sswg",
   "icon": "icon.png",
   "repository": {
@@ -1277,6 +1277,7 @@
     "format": "prettier --check *.json src test",
     "pretest": "npm run compile-tests",
     "test": "vscode-test",
+    "test-ci": "docker/test-ci.sh",
     "integration-test": "npm test -- --label integrationTests",
     "unit-test": "npm test -- --label unitTests",
     "coverage": "npm test -- --coverage",

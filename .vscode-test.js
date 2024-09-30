@@ -28,7 +28,7 @@ module.exports = defineConfig({
         {
             label: "integrationTests",
             files: ["out/test/common.js", "out/test/integration-tests/**/*.test.js"],
-            version: "stable",
+            version: process.env["VSCODE_VERSION"] ?? "stable",
             workspaceFolder: "./assets/test",
             mocha: {
                 ui: "tdd",
@@ -45,7 +45,7 @@ module.exports = defineConfig({
         {
             label: "unitTests",
             files: ["out/test/common.js", "out/test/unit-tests/**/*.test.js"],
-            version: "stable",
+            version: process.env["VSCODE_VERSION"] ?? "stable",
             mocha: {
                 ui: "tdd",
                 color: true,
