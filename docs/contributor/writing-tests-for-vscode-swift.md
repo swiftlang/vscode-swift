@@ -1,6 +1,6 @@
-# Writing Effective Tests <!-- omit in toc -->
+# Writing Tests for the VS Code Swift Extension <!-- omit in toc -->
 
-This document provides guidance to contributors on how to create effective test cases for contributions to the [VSCode Swift extension](https://github.com/swiftlang/vscode-swift) using **Mocha**, **Chai**, and **Sinon**. These tools are widely used for testing JavaScript/TypeScript code and will help ensure that your code is reliable and maintainable.
+This document provides guidance to contributors on how to write test cases for contributions to the [VSCode Swift extension](https://github.com/swiftlang/vscode-swift) using **Mocha**, **Chai**, and **Sinon**. These tools are widely used for testing JavaScript/TypeScript code and will help ensure that your code is reliable and maintainable.
 
 A brief description of each framework can be found below:
 
