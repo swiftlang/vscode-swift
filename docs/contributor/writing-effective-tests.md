@@ -16,7 +16,7 @@ A brief description of each framework can be found below:
   - [Mocking interfaces, classes, and functions](#mocking-interfaces-classes-and-functions)
   - [Mocking VS Code events](#mocking-vs-code-events)
   - [Mocking global modules](#mocking-global-modules)
-    - [Mocking global interfaces](#mocking-global-interfaces)
+    - [Mocking global objects](#mocking-global-objects)
     - [Mocking global events](#mocking-global-events)
     - [Setting global constants](#setting-global-constants)
     - [Mocking an entire module](#mocking-an-entire-module)
@@ -224,38 +224,7 @@ test("example of mocking an asynchronous event within a mocked object", async ()
 
 Sometimes it is necessary to mock behavior that is provided by modules. A prime example of this is the VS Code API. In these cases you can use the global variants of the previously mentioned functions.
 
-These global mocking functions automatically handle `setup()` and `teardown()` through Mocha so that you don't have to do this yourself. This greatly simplifies writing tests. For example, you _could_ write a test that mocks a piece of the VS Code API like so:
-
-```typescript
-import { expect } from "chai";
-import { mockFn, mockObject, MockedObject } from "../MockUtils";
-import * as vscode from "vscode";
-
-suite("Mocking a Global Interface", async function () {
-    let mockedVSCodeWindow: MockedObject<typeof vscode["window"]>;
-    let originalWindowObject: typeof vscode["window"];
-
-    setup() {
-        originalWindowObject = vscode.window;
-        mockedVSCodeWindow = mockObject<typeof vscode["window"]>({
-            showInformationMessage: mockFn(),
-        });
-        Object.defineProperty(vscode, "window", { value: mockedVSCodeWindow });
-    }
-
-    teardown() {
-        Object.defineProperty(vscode, "window", { value: originalWindowObject });
-    }
-
-    test("define behavior for a global function", async () => {
-        mockedVSCodeWindow.showInformationMessage.resolves(undefined);
-
-        // ... trigger and verify behavior
-    });
-});
-```
-
-However, you can remove the need for custom `setup()` and `teardown()` methods by using `mockGlobalObject()` instead:
+These global mocking functions automatically handle `setup()` and `teardown()` through Mocha so that you don't have to do this yourself. The only caveat is that the global methods must be called at the `suite()` level rather than inside a `test()` case:
 
 ```typescript
 import { expect } from "chai";
@@ -263,6 +232,8 @@ import { mockGlobalObject } from "../MockUtils";
 import * as vscode from "vscode";
 
 suite("Mocking a Global Interface", async function () {
+    // Runs Mocha's setup() and teardown() functions to stub out vscode.window automatically
+    // Notice how this is a constant defined at the root of the suite() and not in test()
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
 
     test("define behavior for a global function", async () => {
@@ -273,7 +244,7 @@ suite("Mocking a Global Interface", async function () {
 });
 ```
 
-#### Mocking global interfaces
+#### Mocking global objects
 
 `MockUtils` contains a method called `mockGlobalObject()` that can be used to mock an object that is part of a module:
 
