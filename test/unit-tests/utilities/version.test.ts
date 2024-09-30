@@ -73,42 +73,42 @@ suite("Version Suite", () => {
     });
 
     test("isLessThan", () => {
-        expect(new Version(5, 10, 1).isLessThan(new Version(6, 0, 0))).to.equal(true);
-        expect(new Version(5, 9, 0).isLessThan(new Version(5, 10, 0))).to.equal(true);
-        expect(new Version(5, 10, 0).isLessThan(new Version(5, 10, 1))).to.equal(true);
-        expect(new Version(5, 10, 1).isLessThan(new Version(5, 10, 1))).to.equal(false);
-        expect(new Version(5, 10, 0).isLessThan(new Version(5, 9, 0))).to.equal(false);
-        expect(new Version(5, 10, 1).isLessThan(new Version(5, 10, 0))).to.equal(false);
-        expect(new Version(6, 0, 0).isLessThan(new Version(5, 10, 1))).to.equal(false);
+        expect(new Version(5, 10, 1).isLessThan(new Version(6, 0, 0))).to.be.true;
+        expect(new Version(5, 9, 0).isLessThan(new Version(5, 10, 0))).to.be.true;
+        expect(new Version(5, 10, 0).isLessThan(new Version(5, 10, 1))).to.be.true;
+        expect(new Version(5, 10, 1).isLessThan(new Version(5, 10, 1))).to.be.false;
+        expect(new Version(5, 10, 0).isLessThan(new Version(5, 9, 0))).to.be.false;
+        expect(new Version(5, 10, 1).isLessThan(new Version(5, 10, 0))).to.be.false;
+        expect(new Version(6, 0, 0).isLessThan(new Version(5, 10, 1))).to.be.false;
     });
 
     test("isLessThanOrEqual", () => {
-        expect(new Version(5, 10, 1).isLessThanOrEqual(new Version(6, 0, 0))).to.equal(true);
-        expect(new Version(5, 9, 0).isLessThanOrEqual(new Version(5, 10, 0))).to.equal(true);
-        expect(new Version(5, 10, 0).isLessThanOrEqual(new Version(5, 10, 1))).to.equal(true);
-        expect(new Version(5, 10, 1).isLessThanOrEqual(new Version(5, 10, 1))).to.equal(true);
-        expect(new Version(5, 10, 0).isLessThanOrEqual(new Version(5, 9, 0))).to.equal(false);
-        expect(new Version(5, 10, 1).isLessThanOrEqual(new Version(5, 10, 0))).to.equal(false);
-        expect(new Version(6, 0, 0).isLessThanOrEqual(new Version(5, 10, 1))).to.equal(false);
+        expect(new Version(5, 10, 1).isLessThanOrEqual(new Version(6, 0, 0))).to.be.true;
+        expect(new Version(5, 9, 0).isLessThanOrEqual(new Version(5, 10, 0))).to.be.true;
+        expect(new Version(5, 10, 0).isLessThanOrEqual(new Version(5, 10, 1))).to.be.true;
+        expect(new Version(5, 10, 1).isLessThanOrEqual(new Version(5, 10, 1))).to.be.true;
+        expect(new Version(5, 10, 0).isLessThanOrEqual(new Version(5, 9, 0))).to.be.false;
+        expect(new Version(5, 10, 1).isLessThanOrEqual(new Version(5, 10, 0))).to.be.false;
+        expect(new Version(6, 0, 0).isLessThanOrEqual(new Version(5, 10, 1))).to.be.false;
     });
 
     test("isGreaterThan", () => {
-        expect(new Version(5, 10, 1).isGreaterThan(new Version(6, 0, 0))).to.equal(false);
-        expect(new Version(5, 9, 0).isGreaterThan(new Version(5, 10, 0))).to.equal(false);
-        expect(new Version(5, 10, 0).isGreaterThan(new Version(5, 10, 1))).to.equal(false);
-        expect(new Version(5, 10, 1).isGreaterThan(new Version(5, 10, 1))).to.equal(false);
-        expect(new Version(5, 10, 0).isGreaterThan(new Version(5, 9, 0))).to.equal(true);
-        expect(new Version(5, 10, 1).isGreaterThan(new Version(5, 10, 0))).to.equal(true);
-        expect(new Version(6, 0, 0).isGreaterThan(new Version(5, 10, 1))).to.equal(true);
+        expect(new Version(5, 10, 1).isGreaterThan(new Version(6, 0, 0))).to.be.false;
+        expect(new Version(5, 9, 0).isGreaterThan(new Version(5, 10, 0))).to.be.false;
+        expect(new Version(5, 10, 0).isGreaterThan(new Version(5, 10, 1))).to.be.false;
+        expect(new Version(5, 10, 1).isGreaterThan(new Version(5, 10, 1))).to.be.false;
+        expect(new Version(5, 10, 0).isGreaterThan(new Version(5, 9, 0))).to.be.true;
+        expect(new Version(5, 10, 1).isGreaterThan(new Version(5, 10, 0))).to.be.true;
+        expect(new Version(6, 0, 0).isGreaterThan(new Version(5, 10, 1))).to.be.true;
     });
 
     test("isGreaterThanOrEqual", () => {
-        expect(new Version(5, 10, 1).isGreaterThanOrEqual(new Version(6, 0, 0))).to.equal(false);
-        expect(new Version(5, 9, 0).isGreaterThanOrEqual(new Version(5, 10, 0))).to.equal(false);
-        expect(new Version(5, 10, 0).isGreaterThanOrEqual(new Version(5, 10, 1))).to.equal(false);
-        expect(new Version(5, 10, 1).isGreaterThanOrEqual(new Version(5, 10, 1))).to.equal(true);
-        expect(new Version(5, 10, 0).isGreaterThanOrEqual(new Version(5, 9, 0))).to.equal(true);
-        expect(new Version(5, 10, 1).isGreaterThanOrEqual(new Version(5, 10, 0))).to.equal(true);
-        expect(new Version(6, 0, 0).isGreaterThanOrEqual(new Version(5, 10, 1))).to.equal(true);
+        expect(new Version(5, 10, 1).isGreaterThanOrEqual(new Version(6, 0, 0))).to.be.false;
+        expect(new Version(5, 9, 0).isGreaterThanOrEqual(new Version(5, 10, 0))).to.be.false;
+        expect(new Version(5, 10, 0).isGreaterThanOrEqual(new Version(5, 10, 1))).to.be.false;
+        expect(new Version(5, 10, 1).isGreaterThanOrEqual(new Version(5, 10, 1))).to.be.true;
+        expect(new Version(5, 10, 0).isGreaterThanOrEqual(new Version(5, 9, 0))).to.be.true;
+        expect(new Version(5, 10, 1).isGreaterThanOrEqual(new Version(5, 10, 0))).to.be.true;
+        expect(new Version(6, 0, 0).isGreaterThanOrEqual(new Version(5, 10, 1))).to.be.true;
     });
 });

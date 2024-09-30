@@ -11,12 +11,11 @@ A brief description of each framework can be found below:
 ## Overview <!-- omit in toc -->
 
 - [Organizing Tests](#organizing-tests)
-- [Running the Tests](#running-the-tests)
 - [Writing Unit Tests](#writing-unit-tests)
 - [Mocking Utilities](#mocking-utilities)
   - [Mocking interfaces, classes, and functions](#mocking-interfaces-classes-and-functions)
   - [Mocking VS Code events](#mocking-vs-code-events)
-  - [Mocking modules](#mocking-modules)
+  - [Mocking global modules](#mocking-global-modules)
     - [Mocking global interfaces](#mocking-global-interfaces)
     - [Mocking global events](#mocking-global-events)
     - [Setting global constants](#setting-global-constants)
@@ -32,17 +31,10 @@ Tests are currently organized into one of two directories:
 
 There are plans to add a third set of smoke tests that will have no mocking at all and actually click through the VS Code user interface to perform actions. For more information see the [Swift for Visual Studio Code test strategy](./test-strategy.md) document.
 
-## Running the Tests
-
-NPM scripts exist to run both unit and integration tests. In your terminal you can run `npm run unit-tests` to execute the unit tests or `npm run integration-test` to run the integration tests. These can also be launched with the `--coverage` flag to display converage information. For example:
-
-```bash
-npm run unit-test -- --coverage
-```
-
-If any test fails, Mocha will provide detailed information to help you debug the issue.
-
 ## Writing Unit Tests
+
+> [!NOTE]
+> This section will guide you through contributing a simple test that mocks out some VS Code UI pieces. For more information on individual mocking methods, see the [Mocking Utilties](#mocking-utilities) section.
 
 Unit tests should be organized in a way that reflects the structure of the project. For example, let's say you were writing unit tests for the [`showReloadExtensionNotification()`](../../src/ui/ReloadExtension.ts) function under `src/ui/ReloadExtensions.ts`. You would want to first create a unit test file that mirrors the structure of that feature’s implementation:
 
@@ -228,11 +220,42 @@ test("example of mocking an asynchronous event within a mocked object", async ()
 });
 ```
 
-### Mocking modules
+### Mocking global modules
 
 Sometimes it is necessary to mock behavior that is provided by modules. A prime example of this is the VS Code API. In these cases you can use the global variants of the previously mentioned functions.
 
-#### Mocking global interfaces
+These global mocking functions automatically handle `setup()` and `teardown()` through Mocha so that you don't have to do this yourself. This greatly simplifies writing tests. For example, you _could_ write a test that mocks a piece of the VS Code API like so:
+
+```typescript
+import { expect } from "chai";
+import { mockFn, mockObject, MockedObject } from "../MockUtils";
+import * as vscode from "vscode";
+
+suite("Mocking a Global Interface", async function () {
+    let mockedVSCodeWindow: MockedObject<typeof vscode["window"]>;
+    let originalWindowObject: typeof vscode["window"];
+
+    setup() {
+        originalWindowObject = vscode.window;
+        mockedVSCodeWindow = mockObject<typeof vscode["window"]>({
+            showInformationMessage: mockFn(),
+        });
+        Object.defineProperty(vscode, "window", { value: mockedVSCodeWindow });
+    }
+
+    teardown() {
+        Object.defineProperty(vscode, "window", { value: originalWindowObject });
+    }
+
+    test("define behavior for a global function", async () => {
+        mockedVSCodeWindow.showInformationMessage.resolves(undefined);
+
+        // ... trigger and verify behavior
+    });
+});
+```
+
+However, you can remove the need for custom `setup()` and `teardown()` methods by using `mockGlobalObject()` instead:
 
 ```typescript
 import { expect } from "chai";
@@ -240,7 +263,27 @@ import { mockGlobalObject } from "../MockUtils";
 import * as vscode from "vscode";
 
 suite("Mocking a Global Interface", async function () {
-    const mockedVSCodeWindow = mockGlobalObject
+    const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
+
+    test("define behavior for a global function", async () => {
+        mockedVSCodeWindow.showInformationMessage.resolves(undefined);
+
+        // ... trigger and verify behavior
+    });
+});
+```
+
+#### Mocking global interfaces
+
+`MockUtils` contains a method called `mockGlobalObject()` that can be used to mock an object that is part of a module:
+
+```typescript
+import { expect } from "chai";
+import { mockGlobalObject } from "../MockUtils";
+import * as vscode from "vscode";
+
+suite("Mocking a Global Interface", async function () {
+    const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
 
     test("define behavior for a global function", async () => {
         mockedVSCodeWindow.showInformationMessage.resolves(undefined);
