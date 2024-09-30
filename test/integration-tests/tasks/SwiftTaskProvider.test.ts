@@ -30,8 +30,7 @@ import {
 } from "../../utilities";
 import { Version } from "../../../src/utilities/version";
 import { FolderContext } from "../../../src/FolderContext";
-import { mockNamespace } from "../../unit-tests/MockUtils";
-import { anything, when } from "ts-mockito";
+import { mockGlobalObject } from "../../MockUtils";
 
 suite("SwiftTaskProvider Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -178,11 +177,10 @@ suite("SwiftTaskProvider Test Suite", () => {
     });
 
     suite("getBuildAllTask", () => {
-        const tasksMock = mockNamespace(vscode, "tasks");
+        const tasksMock = mockGlobalObject(vscode, "tasks");
 
         test("creates build all task when it cannot find one", async () => {
-            when(tasksMock.fetchTasks()).thenReturn(Promise.resolve([]));
-            when(tasksMock.fetchTasks(anything())).thenReturn(Promise.resolve([]));
+            tasksMock.fetchTasks.resolves([]);
             assert.strictEqual(
                 await getBuildAllTask(folderContext),
                 createBuildAllTask(folderContext)

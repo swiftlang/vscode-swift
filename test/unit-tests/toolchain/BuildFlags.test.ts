@@ -12,73 +12,81 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as assert from "assert";
+import { expect } from "chai";
 import { DarwinCompatibleTarget, SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { ArgumentFilter, BuildFlags } from "../../../src/toolchain/BuildFlags";
 import { Version } from "../../../src/utilities/version";
-import { instance, mock, when } from "ts-mockito";
 import configuration from "../../../src/configuration";
-import { mockValue } from "../MockUtils";
+import { mockObject, mockGlobalValue, MockedObject, instance } from "../../MockUtils";
 
 suite("BuildFlags Test Suite", () => {
-    const platformConfig = mockValue(process, "platform");
-    let toolchain: SwiftToolchain;
+    const mockedPlatform = mockGlobalValue(process, "platform");
+    let mockedToolchain: MockedObject<SwiftToolchain>;
     let buildFlags: BuildFlags;
 
     suiteSetup(async () => {
-        toolchain = mock(SwiftToolchain);
-        when(toolchain.swiftVersion).thenReturn(new Version(6, 0, 0));
-        buildFlags = new BuildFlags(instance(toolchain));
+        mockedToolchain = mockObject<SwiftToolchain>({
+            swiftVersion: new Version(6, 0, 0),
+        });
+        buildFlags = new BuildFlags(instance(mockedToolchain));
     });
 
     setup(() => {
-        platformConfig.setValue("darwin");
+        mockedPlatform.setValue("darwin");
     });
 
     suite("getDarwinTarget", () => {
-        const sdkConfig = mockValue(configuration, "sdk");
+        const sdkConfig = mockGlobalValue(configuration, "sdk");
 
         test("iPhoneOS", () => {
             sdkConfig.setValue("/some/other/full/test/path/iPhoneOS15.0.sdk");
-            assert.deepEqual(buildFlags.getDarwinTarget()?.target, DarwinCompatibleTarget.iOS);
-            assert.deepEqual(buildFlags.getDarwinTarget()?.version, "15.0");
+            expect(buildFlags.getDarwinTarget()).to.containSubset({
+                target: DarwinCompatibleTarget.iOS,
+                version: "15.0",
+            });
         });
 
         test("AppleTVOS", () => {
             sdkConfig.setValue("/some/other/full/test/path/AppleTVOS4.1.2.sdk");
-            assert.deepEqual(buildFlags.getDarwinTarget()?.target, DarwinCompatibleTarget.tvOS);
-            assert.deepEqual(buildFlags.getDarwinTarget()?.version, "4.1.2");
+            expect(buildFlags.getDarwinTarget()).to.containSubset({
+                target: DarwinCompatibleTarget.tvOS,
+                version: "4.1.2",
+            });
         });
 
         test("WatchOS", () => {
             sdkConfig.setValue("/some/other/full/test/path/WatchOS7.0.sdk");
-            assert.deepEqual(buildFlags.getDarwinTarget()?.target, DarwinCompatibleTarget.watchOS);
-            assert.deepEqual(buildFlags.getDarwinTarget()?.version, "7.0");
+            expect(buildFlags.getDarwinTarget()).to.containSubset({
+                target: DarwinCompatibleTarget.watchOS,
+                version: "7.0",
+            });
         });
 
         test("XROS", () => {
             sdkConfig.setValue("/some/other/full/test/path/XROS2.0.sdk");
-            assert.deepEqual(buildFlags.getDarwinTarget()?.target, DarwinCompatibleTarget.visionOS);
-            assert.deepEqual(buildFlags.getDarwinTarget()?.version, "2.0");
+            expect(buildFlags.getDarwinTarget()).to.containSubset({
+                target: DarwinCompatibleTarget.visionOS,
+                version: "2.0",
+            });
         });
 
         test("invalid name", () => {
             sdkConfig.setValue("/some/other/full/test/path/UhOh1.2.3.sdk");
-            assert.deepEqual(buildFlags.getDarwinTarget(), undefined);
+            expect(buildFlags.getDarwinTarget()).to.equal(undefined);
         });
     });
 
     suite("swiftpmSDKFlags", () => {
-        const sdkConfig = mockValue(configuration, "sdk");
+        const sdkConfig = mockGlobalValue(configuration, "sdk");
 
         test("no configuration provided", async () => {
             sdkConfig.setValue("");
-            assert.deepStrictEqual(buildFlags.swiftpmSDKFlags(), []);
+            expect(buildFlags.swiftpmSDKFlags()).to.be.an("array").that.is.empty;
         });
 
         test("configuration provided", () => {
             sdkConfig.setValue("/some/other/full/test/path");
-            assert.deepStrictEqual(buildFlags.swiftpmSDKFlags(), [
+            expect(buildFlags.swiftpmSDKFlags()).to.deep.equal([
                 "--sdk",
                 "/some/other/full/test/path",
             ]);
@@ -86,7 +94,7 @@ suite("BuildFlags Test Suite", () => {
 
         test("include target", () => {
             sdkConfig.setValue("/some/other/full/test/path/WatchOS.sdk");
-            assert.deepStrictEqual(buildFlags.swiftpmSDKFlags(), [
+            expect(buildFlags.swiftpmSDKFlags()).to.deep.equal([
                 "--sdk",
                 "/some/other/full/test/path/WatchOS.sdk",
                 "-Xswiftc",
@@ -98,11 +106,11 @@ suite("BuildFlags Test Suite", () => {
     });
 
     suite("swiftDriverSDKFlags", () => {
-        const sdkConfig = mockValue(configuration, "sdk");
+        const sdkConfig = mockGlobalValue(configuration, "sdk");
 
         test("direct", () => {
             sdkConfig.setValue("/some/other/full/test/path/WatchOS.sdk");
-            assert.deepStrictEqual(buildFlags.swiftDriverSDKFlags(), [
+            expect(buildFlags.swiftDriverSDKFlags()).to.deep.equal([
                 "-sdk",
                 "/some/other/full/test/path/WatchOS.sdk",
             ]);
@@ -110,7 +118,7 @@ suite("BuildFlags Test Suite", () => {
 
         test("indirect", () => {
             sdkConfig.setValue("/some/other/full/test/path/WatchOS.sdk");
-            assert.deepStrictEqual(buildFlags.swiftDriverSDKFlags(true), [
+            expect(buildFlags.swiftDriverSDKFlags(true)).to.deep.equal([
                 "-Xswiftc",
                 "-sdk",
                 "-Xswiftc",
@@ -120,11 +128,11 @@ suite("BuildFlags Test Suite", () => {
     });
 
     suite("swiftDriverTargetFlags", () => {
-        const sdkConfig = mockValue(configuration, "sdk");
+        const sdkConfig = mockGlobalValue(configuration, "sdk");
 
         test("direct", () => {
             sdkConfig.setValue("/some/other/full/test/path/WatchOS.sdk");
-            assert.deepStrictEqual(buildFlags.swiftDriverTargetFlags(), [
+            expect(buildFlags.swiftDriverTargetFlags()).to.deep.equal([
                 "-target",
                 "arm64-apple-watchos",
             ]);
@@ -132,7 +140,7 @@ suite("BuildFlags Test Suite", () => {
 
         test("indirect", () => {
             sdkConfig.setValue("/some/other/full/test/path/WatchOS.sdk");
-            assert.deepStrictEqual(buildFlags.swiftDriverTargetFlags(true), [
+            expect(buildFlags.swiftDriverTargetFlags(true)).to.deep.equal([
                 "-Xswiftc",
                 "-target",
                 "-Xswiftc",
@@ -142,25 +150,25 @@ suite("BuildFlags Test Suite", () => {
     });
 
     suite("buildPathFlags", () => {
-        const buildPathConfig = mockValue(configuration, "buildPath");
+        const buildPathConfig = mockGlobalValue(configuration, "buildPath");
 
         test("no configuration provided", async () => {
             buildPathConfig.setValue("");
-            assert.deepStrictEqual(buildFlags.buildPathFlags(), []);
+            expect(buildFlags.buildPathFlags()).to.be.an("array").that.is.empty;
         });
 
         test("configuration provided", () => {
             buildPathConfig.setValue("/some/other/full/test/path");
-            assert.deepStrictEqual(buildFlags.buildPathFlags(), [
+            expect(buildFlags.buildPathFlags()).to.deep.equal([
                 "--scratch-path",
                 "/some/other/full/test/path",
             ]);
         });
 
         test("configuration provided, before swift 5.8", () => {
-            when(toolchain.swiftVersion).thenReturn(new Version(5, 7, 0));
+            mockedToolchain.swiftVersion = new Version(5, 7, 0);
             buildPathConfig.setValue("/some/other/full/test/path");
-            assert.deepStrictEqual(buildFlags.buildPathFlags(), [
+            expect(buildFlags.buildPathFlags()).to.deep.equal([
                 "--build-path",
                 "/some/other/full/test/path",
             ]);
@@ -168,120 +176,124 @@ suite("BuildFlags Test Suite", () => {
     });
 
     suite("buildDirectoryFromWorkspacePath", async () => {
-        const buildPathConfig = mockValue(configuration, "buildPath");
+        const buildPathConfig = mockGlobalValue(configuration, "buildPath");
 
         test("no configuration provided", () => {
             buildPathConfig.setValue("");
 
-            assert.strictEqual(
-                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false),
-                ".build"
-            );
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equal(".build");
 
-            assert.strictEqual(
-                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true),
-                "/some/full/workspace/test/path/.build"
-            );
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
+            ).to.equal("/some/full/workspace/test/path/.build");
         });
 
         test("absolute configuration provided", () => {
             buildPathConfig.setValue("/some/other/full/test/path");
 
-            assert.strictEqual(
-                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false),
-                "/some/other/full/test/path"
-            );
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equal("/some/other/full/test/path");
 
-            assert.strictEqual(
-                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true),
-                "/some/other/full/test/path"
-            );
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
+            ).to.equal("/some/other/full/test/path");
         });
 
         test("relative configuration provided", () => {
             buildPathConfig.setValue("some/relative/test/path");
 
-            assert.strictEqual(
-                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false),
-                "some/relative/test/path"
-            );
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equal("some/relative/test/path");
 
-            assert.strictEqual(
-                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true),
-                "/some/full/workspace/test/path/some/relative/test/path"
-            );
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
+            ).to.equal("/some/full/workspace/test/path/some/relative/test/path");
         });
     });
 
     suite("withSwiftSDKFlags", () => {
-        const sdkConfig = mockValue(configuration, "sdk");
+        const sdkConfig = mockGlobalValue(configuration, "sdk");
 
         test("package", () => {
             for (const sub of ["dump-symbol-graph", "diagnose-api-breaking-changes", "resolve"]) {
                 sdkConfig.setValue("");
-                assert.deepStrictEqual(
-                    buildFlags.withSwiftSDKFlags(["package", sub, "--disable-sandbox"]),
-                    ["package", sub, "--disable-sandbox"]
-                );
+                expect(
+                    buildFlags.withSwiftSDKFlags(["package", sub, "--disable-sandbox"])
+                ).to.deep.equal(["package", sub, "--disable-sandbox"]);
 
                 sdkConfig.setValue("/some/full/path/to/sdk");
-                assert.deepStrictEqual(
-                    buildFlags.withSwiftSDKFlags(["package", sub, "--disable-sandbox"]),
-                    ["package", sub, "--sdk", "/some/full/path/to/sdk", "--disable-sandbox"]
-                );
+                expect(
+                    buildFlags.withSwiftSDKFlags(["package", sub, "--disable-sandbox"])
+                ).to.deep.equal([
+                    "package",
+                    sub,
+                    "--sdk",
+                    "/some/full/path/to/sdk",
+                    "--disable-sandbox",
+                ]);
             }
 
             sdkConfig.setValue("");
-            assert.deepStrictEqual(
-                buildFlags.withSwiftSDKFlags(["package", "init", "--disable-sandbox"]),
-                ["package", "init", "--disable-sandbox"]
-            );
+            expect(
+                buildFlags.withSwiftSDKFlags(["package", "init", "--disable-sandbox"])
+            ).to.deep.equal(["package", "init", "--disable-sandbox"]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
-            assert.deepStrictEqual(
-                buildFlags.withSwiftSDKFlags(["package", "init", "--disable-sandbox"]),
-                ["package", "init", "--disable-sandbox"]
-            );
+            expect(
+                buildFlags.withSwiftSDKFlags(["package", "init", "--disable-sandbox"])
+            ).to.deep.equal(["package", "init", "--disable-sandbox"]);
         });
 
         test("build", () => {
             sdkConfig.setValue("");
-            assert.deepStrictEqual(
-                buildFlags.withSwiftSDKFlags(["build", "--target", "MyExecutable"]),
-                ["build", "--target", "MyExecutable"]
-            );
+            expect(
+                buildFlags.withSwiftSDKFlags(["build", "--target", "MyExecutable"])
+            ).to.deep.equal(["build", "--target", "MyExecutable"]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
-            assert.deepStrictEqual(
-                buildFlags.withSwiftSDKFlags(["build", "--target", "MyExecutable"]),
-                ["build", "--sdk", "/some/full/path/to/sdk", "--target", "MyExecutable"]
-            );
+            expect(
+                buildFlags.withSwiftSDKFlags(["build", "--target", "MyExecutable"])
+            ).to.deep.equal([
+                "build",
+                "--sdk",
+                "/some/full/path/to/sdk",
+                "--target",
+                "MyExecutable",
+            ]);
         });
 
         test("run", () => {
             sdkConfig.setValue("");
-            assert.deepStrictEqual(
-                buildFlags.withSwiftSDKFlags(["run", "--product", "MyExecutable"]),
-                ["run", "--product", "MyExecutable"]
-            );
+            expect(
+                buildFlags.withSwiftSDKFlags(["run", "--product", "MyExecutable"])
+            ).to.deep.equal(["run", "--product", "MyExecutable"]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
-            assert.deepStrictEqual(
-                buildFlags.withSwiftSDKFlags(["run", "--product", "MyExecutable"]),
-                ["run", "--sdk", "/some/full/path/to/sdk", "--product", "MyExecutable"]
-            );
+            expect(
+                buildFlags.withSwiftSDKFlags(["run", "--product", "MyExecutable"])
+            ).to.deep.equal([
+                "run",
+                "--sdk",
+                "/some/full/path/to/sdk",
+                "--product",
+                "MyExecutable",
+            ]);
         });
 
         test("test", () => {
             sdkConfig.setValue("");
-            assert.deepStrictEqual(buildFlags.withSwiftSDKFlags(["test", "--filter", "MyTests"]), [
+            expect(buildFlags.withSwiftSDKFlags(["test", "--filter", "MyTests"])).to.deep.equal([
                 "test",
                 "--filter",
                 "MyTests",
             ]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
-            assert.deepStrictEqual(buildFlags.withSwiftSDKFlags(["test", "--filter", "MyTests"]), [
+            expect(buildFlags.withSwiftSDKFlags(["test", "--filter", "MyTests"])).to.deep.equal([
                 "test",
                 "--sdk",
                 "/some/full/path/to/sdk",
@@ -292,49 +304,37 @@ suite("BuildFlags Test Suite", () => {
 
         test("other commands", () => {
             sdkConfig.setValue("");
-            assert.deepStrictEqual(buildFlags.withSwiftSDKFlags(["help", "repl"]), [
-                "help",
-                "repl",
-            ]);
+            expect(buildFlags.withSwiftSDKFlags(["help", "repl"])).to.deep.equal(["help", "repl"]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
-            assert.deepStrictEqual(buildFlags.withSwiftSDKFlags(["help", "repl"]), [
-                "help",
-                "repl",
-            ]);
+            expect(buildFlags.withSwiftSDKFlags(["help", "repl"])).to.deep.equal(["help", "repl"]);
         });
     });
 
     test("filterArguments", () => {
-        const argumentFilter: ArgumentFilter[] = [
-            { argument: "-one", include: 1 },
-            { argument: "-1", include: 1 },
-            { argument: "-zero", include: 0 },
-            { argument: "-two", include: 2 },
-        ];
-        assert.notStrictEqual(BuildFlags.filterArguments(["-test", "this"], argumentFilter), []);
-        assert.notStrictEqual(BuildFlags.filterArguments(["-test", "-zero"], argumentFilter), [
-            "-zero",
+        function filterArguments(args: string[]): string[] {
+            const argumentFilter: ArgumentFilter[] = [
+                { argument: "-one", include: 1 },
+                { argument: "-1", include: 1 },
+                { argument: "-zero", include: 0 },
+                { argument: "-two", include: 2 },
+            ];
+            return BuildFlags.filterArguments(args, argumentFilter);
+        }
+        expect(filterArguments(["-test", "this"])).to.be.an("array").that.is.empty;
+        expect(filterArguments(["-test", "-zero"])).to.deep.equal(["-zero"]);
+        expect(filterArguments(["-one", "inc1", "test"])).to.deep.equal(["-one", "inc1"]);
+        expect(filterArguments(["-two", "inc1", "inc2"])).to.deep.equal(["-two", "inc1", "inc2"]);
+        expect(filterArguments(["-ignore", "-one", "inc1", "test"])).to.deep.equal([
+            "-one",
+            "inc1",
         ]);
-        assert.notStrictEqual(
-            BuildFlags.filterArguments(["-one", "inc1", "test"], argumentFilter),
-            ["-one", "inc1"]
-        );
-        assert.notStrictEqual(
-            BuildFlags.filterArguments(["-two", "inc1", "inc2"], argumentFilter),
-            ["-one", "inc1", "inc2"]
-        );
-        assert.notStrictEqual(
-            BuildFlags.filterArguments(["-ignore", "-one", "inc1", "test"], argumentFilter),
-            ["-one", "inc1"]
-        );
-        assert.notStrictEqual(
-            BuildFlags.filterArguments(["-one", "inc1", "test", "-1", "inc2"], argumentFilter),
-            ["-one", "inc1", "-1", "inc2"]
-        );
-        assert.notStrictEqual(
-            BuildFlags.filterArguments(["-one=1", "-zero=0", "-one1=1"], argumentFilter),
-            ["-one=1"]
-        );
+        expect(filterArguments(["-one", "inc1", "test", "-1", "inc2"])).to.deep.equal([
+            "-one",
+            "inc1",
+            "-1",
+            "inc2",
+        ]);
+        expect(filterArguments(["-one=1", "-zero=0", "-one1=1"])).to.deep.equal(["-one=1"]);
     });
 });

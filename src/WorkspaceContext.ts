@@ -106,21 +106,21 @@ export class WorkspaceContext implements vscode.Disposable {
             }
         });
         const backgroundCompilationOnDidSave = BackgroundCompilation.start(this);
-        const contextKeysUpdate = this.observeFolders((folder, event) => {
-            switch (event) {
-                case FolderEvent.remove:
+        const contextKeysUpdate = this.onDidChangeFolders(event => {
+            switch (event.operation) {
+                case FolderOperation.remove:
                     this.updatePluginContextKey();
                     break;
-                case FolderEvent.focus:
-                    this.updateContextKeys(folder);
+                case FolderOperation.focus:
+                    this.updateContextKeys(event.folder);
                     this.updateContextKeysForFile();
                     break;
-                case FolderEvent.unfocus:
-                    this.updateContextKeys(folder);
+                case FolderOperation.unfocus:
+                    this.updateContextKeys(event.folder);
                     break;
-                case FolderEvent.resolvedUpdated:
-                    if (folder === this.currentFolder) {
-                        this.updateContextKeys(folder);
+                case FolderOperation.resolvedUpdated:
+                    if (event.folder === this.currentFolder) {
+                        this.updateContextKeys(event.folder);
                     }
             }
         });
@@ -139,13 +139,19 @@ export class WorkspaceContext implements vscode.Disposable {
         });
         const swiftFileWatcher = vscode.workspace.createFileSystemWatcher("**/*.swift");
         swiftFileWatcher.onDidCreate(uri => {
-            this.swiftFileObservers.forEach(observer => observer(uri, FileEvent.created));
+            this.swiftFileObservers.forEach(observer =>
+                observer({ uri, operation: FileOperation.created })
+            );
         });
         swiftFileWatcher.onDidChange(uri => {
-            this.swiftFileObservers.forEach(observer => observer(uri, FileEvent.changed));
+            this.swiftFileObservers.forEach(observer =>
+                observer({ uri, operation: FileOperation.changed })
+            );
         });
         swiftFileWatcher.onDidDelete(uri => {
-            this.swiftFileObservers.forEach(observer => observer(uri, FileEvent.deleted));
+            this.swiftFileObservers.forEach(observer =>
+                observer({ uri, operation: FileOperation.deleted })
+            );
         });
 
         this.subscriptions = [
@@ -276,11 +282,11 @@ export class WorkspaceContext implements vscode.Disposable {
     /**
      * Fire an event to all folder observers
      * @param folder folder to fire event for
-     * @param event event type
+     * @param operation event type
      */
-    async fireEvent(folder: FolderContext | null, event: FolderEvent) {
+    async fireEvent(folder: FolderContext | null, operation: FolderOperation) {
         for (const observer of this.observers) {
-            await observer(folder, event, this);
+            await observer({ folder, operation, workspace: this });
         }
     }
 
@@ -298,12 +304,12 @@ export class WorkspaceContext implements vscode.Disposable {
 
         // send unfocus event for previous folder observers
         if (this.currentFolder !== undefined) {
-            await this.fireEvent(this.currentFolder, FolderEvent.unfocus);
+            await this.fireEvent(this.currentFolder, FolderOperation.unfocus);
         }
         this.currentFolder = folderContext;
 
         // send focus event to all observers
-        await this.fireEvent(folderContext, FolderEvent.focus);
+        await this.fireEvent(folderContext, FolderOperation.focus);
     }
 
     /**
@@ -372,7 +378,7 @@ export class WorkspaceContext implements vscode.Disposable {
         const folderContext = await FolderContext.create(folder, workspaceFolder, this);
         this.folders.push(folderContext);
 
-        await this.fireEvent(folderContext, FolderEvent.add);
+        await this.fireEvent(folderContext, FolderOperation.add);
 
         return folderContext;
     }
@@ -395,31 +401,21 @@ export class WorkspaceContext implements vscode.Disposable {
             const observersReversed = [...this.observers];
             observersReversed.reverse();
             for (const observer of observersReversed) {
-                await observer(folder, FolderEvent.remove, this);
+                await observer({ folder, operation: FolderOperation.remove, workspace: this });
             }
             folder.dispose();
         });
         this.folders = this.folders.filter(folder => folder.workspaceFolder !== workspaceFolder);
     }
 
-    /**
-     * Add workspace folder event observer
-     * @param fn observer function to be called when event occurs
-     * @returns disposable object
-     */
-    observeFolders(fn: WorkspaceFoldersObserver): vscode.Disposable {
-        this.observers.add(fn);
-        return { dispose: () => this.observers.delete(fn) };
+    onDidChangeFolders(listener: (event: FolderEvent) => unknown): vscode.Disposable {
+        this.observers.add(listener);
+        return { dispose: () => this.observers.delete(listener) };
     }
 
-    /**
-     * Add swift file event observer
-     * @param fn observer function to be called when event occurs
-     * @returns disposable object
-     */
-    observeSwiftFiles(fn: SwiftFileObserver): vscode.Disposable {
-        this.swiftFileObservers.add(fn);
-        return { dispose: () => this.swiftFileObservers.delete(fn) };
+    onDidChangeSwiftFiles(listener: (event: SwiftFileEvent) => unknown): vscode.Disposable {
+        this.swiftFileObservers.add(listener);
+        return { dispose: () => this.swiftFileObservers.delete(listener) };
     }
 
     /** find LLDB version and setup path in CodeLLDB */
@@ -622,7 +618,7 @@ export class WorkspaceContext implements vscode.Disposable {
     private async unfocusCurrentFolder() {
         // send unfocus event for previous folder observers
         if (this.currentFolder !== undefined) {
-            await this.fireEvent(this.currentFolder, FolderEvent.unfocus);
+            await this.fireEvent(this.currentFolder, FolderOperation.unfocus);
         }
         this.currentFolder = undefined;
     }
@@ -638,12 +634,12 @@ export class WorkspaceContext implements vscode.Disposable {
         return autoGenerate;
     }
 
-    private observers: Set<WorkspaceFoldersObserver> = new Set();
-    private swiftFileObservers: Set<SwiftFileObserver> = new Set();
+    private observers = new Set<(listener: FolderEvent) => unknown>();
+    private swiftFileObservers = new Set<(listener: SwiftFileEvent) => unknown>();
 }
 
-/** Workspace Folder events */
-export enum FolderEvent {
+/** Workspace Folder Operation types */
+export enum FolderOperation {
     // Package folder has been added
     add = "add",
     // Package folder has been removed
@@ -658,15 +654,15 @@ export enum FolderEvent {
     resolvedUpdated = "resolvedUpdated",
 }
 
-/** Workspace Folder observer function */
-export type WorkspaceFoldersObserver = (
-    folder: FolderContext | null,
-    operation: FolderEvent,
-    workspace: WorkspaceContext
-) => unknown;
+/** Workspace Folder Event */
+export interface FolderEvent {
+    operation: FolderOperation;
+    workspace: WorkspaceContext;
+    folder: FolderContext | null;
+}
 
-/** File events */
-export enum FileEvent {
+/** File Operation types */
+export enum FileOperation {
     // File has been created
     created = "created",
     // File has been changed
@@ -675,5 +671,8 @@ export enum FileEvent {
     deleted = "deleted",
 }
 
-/** Swift File observer function */
-export type SwiftFileObserver = (uri: vscode.Uri, event: FileEvent) => unknown;
+/** Swift File Event */
+export interface SwiftFileEvent {
+    operation: FileOperation;
+    uri: vscode.Uri;
+}

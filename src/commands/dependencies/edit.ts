@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import { createSwiftTask } from "../../tasks/SwiftTaskProvider";
-import { FolderEvent, WorkspaceContext } from "../../WorkspaceContext";
+import { FolderOperation, WorkspaceContext } from "../../WorkspaceContext";
 import { executeTaskWithUI } from "../utilities";
 
 /**
@@ -47,7 +47,7 @@ export async function editDependency(identifier: string, ctx: WorkspaceContext) 
     );
 
     if (success) {
-        ctx.fireEvent(currentFolder, FolderEvent.resolvedUpdated);
+        ctx.fireEvent(currentFolder, FolderOperation.resolvedUpdated);
         // add folder to workspace
         const index = vscode.workspace.workspaceFolders?.length ?? 0;
         vscode.workspace.updateWorkspaceFolders(index, 0, {

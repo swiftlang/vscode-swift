@@ -14,34 +14,44 @@
 
 import * as vscode from "vscode";
 import * as assert from "assert";
+import { match } from "sinon";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftPluginTaskProvider } from "../../../src/tasks/SwiftPluginTaskProvider";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { SwiftExecution } from "../../../src/tasks/SwiftExecution";
 import { Version } from "../../../src/utilities/version";
 import { BuildFlags } from "../../../src/toolchain/BuildFlags";
-import { anything, deepEqual, instance, mock, when } from "ts-mockito";
+import { instance, MockedObject, mockFn, mockObject } from "../../MockUtils";
 
 suite("SwiftPluginTaskProvider Unit Test Suite", () => {
-    let workspaceContext: WorkspaceContext;
+    let workspaceContext: MockedObject<WorkspaceContext>;
     let workspaceFolder: vscode.WorkspaceFolder;
-    let toolchain: SwiftToolchain;
-    let buildFlags: BuildFlags;
+    let toolchain: MockedObject<SwiftToolchain>;
+    let buildFlags: MockedObject<BuildFlags>;
 
     setup(async () => {
-        workspaceContext = mock(WorkspaceContext);
-        toolchain = mock(SwiftToolchain);
-        buildFlags = mock(BuildFlags);
+        buildFlags = mockObject<BuildFlags>({
+            withSwiftSDKFlags: mockFn(s => s.callsFake(args => args)),
+        });
+        toolchain = mockObject<SwiftToolchain>({
+            swiftVersion: new Version(6, 0, 0),
+            buildFlags: instance(buildFlags),
+            getToolchainExecutable: mockFn(s => s.withArgs("swift").returns("/path/to/bin/swift")),
+        });
+        workspaceContext = mockObject<WorkspaceContext>({
+            toolchain: instance(toolchain),
+            get swiftVersion() {
+                return toolchain.swiftVersion;
+            },
+            set swiftVersion(version) {
+                toolchain.swiftVersion = version;
+            },
+        });
         workspaceFolder = {
             uri: vscode.Uri.file("/path/to/workspace"),
             name: "myWorkspace",
             index: 0,
         };
-        when(buildFlags.withSwiftSDKFlags(anything())).thenCall(args => args);
-        when(toolchain.swiftVersion).thenReturn(new Version(6, 0, 0));
-        when(toolchain.buildFlags).thenReturn(instance(buildFlags));
-        when(toolchain.getToolchainExecutable("swift")).thenReturn("/path/to/bin/swift");
-        when(workspaceContext.toolchain).thenReturn(instance(toolchain));
     });
 
     suite("resolveTask", () => {
@@ -182,12 +192,9 @@ suite("SwiftPluginTaskProvider Unit Test Suite", () => {
         });
 
         test("includes sdk flags", async () => {
-            when(buildFlags.withSwiftSDKFlags(deepEqual(["package", "my-plugin"]))).thenReturn([
-                "package",
-                "my-plugin",
-                "--sdk",
-                "/path/to/sdk",
-            ]);
+            buildFlags.withSwiftSDKFlags
+                .withArgs(match(["package", "my-plugin"]))
+                .returns(["package", "my-plugin", "--sdk", "/path/to/sdk"]);
             const taskProvider = new SwiftPluginTaskProvider(instance(workspaceContext));
             const task = new vscode.Task(
                 {

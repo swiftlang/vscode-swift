@@ -27,7 +27,7 @@ module.exports = defineConfig({
     tests: [
         {
             label: "integrationTests",
-            files: ["out/test/suite/**/*.test.js"],
+            files: ["out/test/common.js", "out/test/integration-tests/**/*.test.js"],
             version: process.env["VSCODE_VERSION"] ?? "stable",
             workspaceFolder: "./assets/test",
             mocha: {
@@ -44,7 +44,7 @@ module.exports = defineConfig({
         },
         {
             label: "unitTests",
-            files: ["out/test/unit-tests/**/*.test.js"],
+            files: ["out/test/common.js", "out/test/unit-tests/**/*.test.js"],
             version: process.env["VSCODE_VERSION"] ?? "stable",
             mocha: {
                 ui: "tdd",
@@ -59,7 +59,7 @@ module.exports = defineConfig({
     ],
     coverage: {
         includeAll: true,
-        exclude: ["**/test/**"],
+        exclude: ["**/test/unit-tests/**", "**/test/integration-tests/**"],
         reporter: ["text", "lcov"], // "lcov" also generates HTML
     },
 });

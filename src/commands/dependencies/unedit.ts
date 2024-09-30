@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
-import { FolderEvent, WorkspaceContext } from "../../WorkspaceContext";
+import { FolderOperation, WorkspaceContext } from "../../WorkspaceContext";
 import { SwiftExecOperation } from "../../tasks/TaskQueue";
 import { FolderContext } from "../../FolderContext";
 
@@ -54,7 +54,7 @@ async function uneditFolderDependency(
         );
         await folder.taskQueue.queueOperation(uneditOperation);
 
-        ctx.fireEvent(folder, FolderEvent.resolvedUpdated);
+        ctx.fireEvent(folder, FolderOperation.resolvedUpdated);
         // find workspace folder, and check folder still exists
         const folderIndex = vscode.workspace.workspaceFolders?.findIndex(
             item => item.name === identifier

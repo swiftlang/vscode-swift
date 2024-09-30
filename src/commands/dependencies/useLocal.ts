@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { FolderEvent, WorkspaceContext } from "../../WorkspaceContext";
+import { FolderOperation, WorkspaceContext } from "../../WorkspaceContext";
 import { createSwiftTask } from "../../tasks/SwiftTaskProvider";
 import { executeTaskWithUI } from "../utilities";
 
@@ -60,6 +60,6 @@ export async function useLocalDependency(identifier: string, ctx: WorkspaceConte
         true
     );
     if (success) {
-        ctx.fireEvent(currentFolder, FolderEvent.resolvedUpdated);
+        ctx.fireEvent(currentFolder, FolderOperation.resolvedUpdated);
     }
 }

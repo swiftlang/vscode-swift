@@ -74,6 +74,9 @@ Please keep your PRs to a minimal number of changes. If a PR is large, try to sp
 
 ### Testing
 
+> [!NOTE]
+> For a detailed guide on how to write tests for the VS Code Swift extension, see [the guide about writing tests for the VS Code Swift extension](docs/contributor/writing-tests-for-vscode-swift.md).
+
 Where possible any new feature should have tests that go along with it, to ensure it works and will continue to work in the future. When a PR is submitted one of the prerequisites for it to be merged is that all tests pass.
 
 For information on levels of testing done in this extension, see the [test strategy](docs/contributor/test-strategy.md).
@@ -82,8 +85,15 @@ To get started running tests first import the `testing-debug.code-profile` VS Co
 
 Now you can run tests locally using either of the following methods:
 
-- From VS Code, by selecting "Extension Tests" in the Run and Debug activity.
-- Using `npm run test` from the command line (when VS Code is not running, or you'll get an error)
+- From VS Code, by selecting `Extension Tests` in the Run and Debug activity.
+- Using `npm run test` from your terminal
+  - You can also use `npm run unit-test` or `npm run integration-test` to specifically run the Unit Tests or Integration Tests respectively.
+
+Tests can also be launched from the terminal with the `--coverage` flag to display converage information. For example:
+
+```bash
+npm run unit-test -- --coverage
+```
 
 ## sourcekit-lsp
 

@@ -13,40 +13,40 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as assert from "assert";
+import { expect } from "chai";
+import { match } from "sinon";
 import * as path from "path";
-import { anything, deepEqual, verify, when } from "ts-mockito";
 import { newSwiftFile } from "../../../src/commands/newFile";
-import { mockNamespace } from "../../unit-tests/MockUtils";
+import { mockGlobalObject } from "../../MockUtils";
 import { TemporaryFolder } from "../../../src/utilities/tempFolder";
 import { fileExists } from "../../../src/utilities/filesystem";
 
 suite("NewFile Command Test Suite", () => {
-    const workspaceMock = mockNamespace(vscode, "workspace");
-    const windowMock = mockNamespace(vscode, "window");
-    const languagesMock = mockNamespace(vscode, "languages");
+    const workspaceMock = mockGlobalObject(vscode, "workspace");
+    const windowMock = mockGlobalObject(vscode, "window");
+    const languagesMock = mockGlobalObject(vscode, "languages");
 
     test("Creates a blank file if no URI is provided", async () => {
         await newSwiftFile(undefined);
 
-        verify(workspaceMock.openTextDocument(deepEqual({ language: "swift" }))).once();
-        verify(windowMock.showTextDocument(anything())).once();
+        expect(workspaceMock.openTextDocument).to.have.been.calledWith({ language: "swift" });
+        expect(windowMock.showTextDocument).to.have.been.calledOnce;
     });
 
     test("Creates file at provided directory", async () => {
         const folder = await TemporaryFolder.create();
         const file = path.join(folder.path, "MyFile.swift");
-
-        when(windowMock.showSaveDialog(anything())).thenReturn(
-            Promise.resolve(vscode.Uri.file(file))
-        );
+        windowMock.showSaveDialog.resolves(vscode.Uri.file(file));
 
         await newSwiftFile(vscode.Uri.file(folder.path), () => Promise.resolve(true));
 
-        assert.ok(await fileExists(file));
+        await expect(fileExists(file)).to.eventually.be.true;
 
-        verify(workspaceMock.openTextDocument(anything())).once();
-        verify(languagesMock.setTextDocumentLanguage(anything(), "swift")).once();
-        verify(windowMock.showTextDocument(anything())).once();
+        expect(workspaceMock.openTextDocument).to.have.been.calledOnce;
+        expect(languagesMock.setTextDocumentLanguage).to.have.been.calledOnceWith(
+            match.any,
+            "swift"
+        );
+        expect(windowMock.showTextDocument).to.have.been.calledOnce;
     });
 });

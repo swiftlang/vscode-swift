@@ -12,397 +12,382 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as assert from "assert";
 import * as vscode from "vscode";
-import { FolderEvent, WorkspaceContext } from "../../../src/WorkspaceContext";
-import {
-    LanguageClientError,
-    LanguageClientManager,
-    SourceKitLSPErrorHandler,
-} from "../../../src/sourcekit-lsp/LanguageClientManager";
-import {
-    anyFunction,
-    anything,
-    instance,
-    mock,
-    when,
-    verify,
-    anyString,
-    capture,
-} from "ts-mockito";
+import { expect } from "chai";
+import { match } from "sinon";
+import { FolderEvent, FolderOperation, WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Version } from "../../../src/utilities/version";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { BuildFlags } from "../../../src/toolchain/BuildFlags";
-import configuration from "../../../src/configuration";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
-import { eventListenerMock, mockValue, mockConstructor, mockNamespace } from "../MockUtils";
-import * as languageClient from "vscode-languageclient/node";
+import {
+    MockedObject,
+    mockObject,
+    instance,
+    mockGlobalModule,
+    waitForReturnedPromises,
+    AsyncEventEmitter,
+    mockGlobalObject,
+    mockGlobalValue,
+    mockFn,
+} from "../../MockUtils";
+import * as langClient from "vscode-languageclient/node";
+import {
+    Code2ProtocolConverter,
+    DidChangeWorkspaceFoldersNotification,
+    DidChangeWorkspaceFoldersParams,
+    LanguageClient,
+    State,
+    StateChangeEvent,
+} from "vscode-languageclient/node";
+import { LanguageClientManager } from "../../../src/sourcekit-lsp/LanguageClientManager";
+import configuration from "../../../src/configuration";
 import { FolderContext } from "../../../src/FolderContext";
 
 suite("LanguageClientManager Suite", () => {
-    let workspace: WorkspaceContext;
-    let toolchain: SwiftToolchain;
-    let sut: LanguageClientManager;
+    let languageClientMock: MockedObject<LanguageClient>;
+    let mockedConverter: MockedObject<Code2ProtocolConverter>;
+    let changeStateEmitter: AsyncEventEmitter<StateChangeEvent>;
+    let mockedWorkspace: MockedObject<WorkspaceContext>;
+    let didChangeFoldersEmitter: AsyncEventEmitter<FolderEvent>;
+    let mockedOutputChannel: MockedObject<SwiftOutputChannel>;
+    let mockedToolchain: MockedObject<SwiftToolchain>;
+    let mockedBuildFlags: MockedObject<BuildFlags>;
 
-    const languageClientMock = mockConstructor(languageClient, "LanguageClient");
-    const onDidChangeStateMock = eventListenerMock(languageClientMock, "onDidChangeState");
-    const lspConfig = mockValue(configuration, "lsp");
+    const mockedLangClientModule = mockGlobalModule(langClient);
+    const mockedConfig = mockGlobalModule(configuration);
+    const mockedEnvironment = mockGlobalValue(process, "env");
+    const mockedLspConfig = mockGlobalObject(configuration, "lsp");
+    const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
+    const mockedVSCodeExtensions = mockGlobalObject(vscode, "extensions");
+    const mockedVSCodeWorkspace = mockGlobalObject(vscode, "workspace");
+    let changeConfigEmitter: AsyncEventEmitter<vscode.ConfigurationChangeEvent>;
+    let createFilesEmitter: AsyncEventEmitter<vscode.FileCreateEvent>;
+    let deleteFilesEmitter: AsyncEventEmitter<vscode.FileDeleteEvent>;
 
     setup(async () => {
-        workspace = mock(WorkspaceContext);
-        toolchain = mock(SwiftToolchain);
-        when(workspace.swiftVersion).thenReturn(new Version(6, 0, 0));
-        when(toolchain.getToolchainExecutable("sourcekit-lsp")).thenReturn(
-            "/path/to/toolchain/bin/sourcekit-lsp"
-        );
-        const toolchainInstance = instance(toolchain);
-        when(toolchain.buildFlags).thenReturn(new BuildFlags(toolchainInstance));
-        when(workspace.toolchain).thenReturn(toolchainInstance);
-        when(workspace.outputChannel).thenReturn(new SwiftOutputChannel("Swift Test", false, 100));
-        when(workspace.subscriptions).thenReturn([]);
-        when(workspace.observeFolders(anything())).thenReturn(new vscode.Disposable(() => {}));
-
-        when(languageClientMock.onNotification(anything(), anyFunction())).thenReturn(
-            new vscode.Disposable(() => {})
-        );
-        when(languageClientMock.clientOptions).thenReturn({});
-        when(languageClientMock.start).thenReturn(() => Promise.resolve());
+        // Mock pieces of the VSCode API
+        mockedVSCodeWindow.activeTextEditor = undefined;
+        mockedVSCodeWindow.showInformationMessage.resolves();
+        mockedVSCodeExtensions.getExtension.returns(undefined);
+        changeConfigEmitter = new AsyncEventEmitter();
+        mockedVSCodeWorkspace.onDidChangeConfiguration.callsFake(changeConfigEmitter.event);
+        createFilesEmitter = new AsyncEventEmitter();
+        mockedVSCodeWorkspace.onDidCreateFiles.callsFake(createFilesEmitter.event);
+        deleteFilesEmitter = new AsyncEventEmitter();
+        mockedVSCodeWorkspace.onDidDeleteFiles.callsFake(deleteFilesEmitter.event);
+        // Mock the WorkspaceContext and SwiftToolchain
+        mockedBuildFlags = mockObject<BuildFlags>({
+            buildPathFlags: mockFn(s => s.returns([])),
+            swiftDriverSDKFlags: mockFn(s => s.returns([])),
+            swiftDriverTargetFlags: mockFn(s => s.returns([])),
+        });
+        mockedToolchain = mockObject<SwiftToolchain>({
+            swiftVersion: new Version(6, 0, 0),
+            buildFlags: mockedBuildFlags,
+            getToolchainExecutable: mockFn(s =>
+                s.withArgs("sourcekit-lsp").returns("/path/to/toolchain/bin/sourcekit-lsp")
+            ),
+        });
+        mockedOutputChannel = mockObject<SwiftOutputChannel>({
+            log: s => s,
+            logDiagnostic: s => s,
+        });
+        didChangeFoldersEmitter = new AsyncEventEmitter();
+        mockedWorkspace = mockObject<WorkspaceContext>({
+            toolchain: instance(mockedToolchain),
+            swiftVersion: new Version(6, 0, 0),
+            outputChannel: instance(mockedOutputChannel),
+            subscriptions: [],
+            folders: [],
+            onDidChangeFolders: mockFn(s => s.callsFake(didChangeFoldersEmitter.event)),
+        });
+        mockedConverter = mockObject<Code2ProtocolConverter>({
+            asUri: mockFn(s => s.callsFake(uri => uri.fsPath)),
+        });
+        changeStateEmitter = new AsyncEventEmitter();
+        languageClientMock = mockObject<LanguageClient>({
+            state: State.Stopped,
+            code2ProtocolConverter: instance(mockedConverter),
+            clientOptions: {},
+            outputChannel: instance(
+                mockObject<vscode.OutputChannel>({
+                    dispose: mockFn(),
+                })
+            ),
+            start: mockFn(s =>
+                s.callsFake(async () => {
+                    const oldState = languageClientMock.state;
+                    if (oldState !== State.Stopped) {
+                        return;
+                    }
+                    languageClientMock.state = State.Starting;
+                    await changeStateEmitter.fire({
+                        oldState: oldState,
+                        newState: State.Starting,
+                    });
+                    languageClientMock.state = State.Running;
+                    await changeStateEmitter.fire({
+                        oldState: State.Starting,
+                        newState: State.Running,
+                    });
+                })
+            ),
+            stop: mockFn(s =>
+                s.callsFake(async () => {
+                    const oldState = languageClientMock.state;
+                    languageClientMock.state = State.Stopped;
+                    await changeStateEmitter.fire({
+                        oldState,
+                        newState: State.Stopped,
+                    });
+                })
+            ),
+            onRequest: mockFn(),
+            sendNotification: mockFn(s => s.resolves()),
+            onNotification: mockFn(s => s.returns(new vscode.Disposable(() => {}))),
+            onDidChangeState: mockFn(s => s.callsFake(changeStateEmitter.event)),
+        });
+        // `new LanguageClient()` will always return the mocked LanguageClient
+        mockedLangClientModule.LanguageClient.returns(instance(languageClientMock));
+        // LSP configuration defaults
+        mockedConfig.path = "";
+        mockedConfig.buildArguments = [];
+        mockedConfig.backgroundIndexing = false;
+        mockedConfig.swiftEnvironmentVariables = {};
+        mockedLspConfig.supportCFamily = "cpptools-inactive";
+        mockedLspConfig.disable = false;
+        mockedLspConfig.serverPath = "";
+        mockedLspConfig.serverArguments = [];
+        // Process environment variables
+        mockedEnvironment.setValue({});
     });
 
-    suite("state", () => {
-        setup(() => {});
+    test("launches SourceKit-LSP on startup", async () => {
+        const sut = new LanguageClientManager(instance(mockedWorkspace));
+        await waitForReturnedPromises(languageClientMock.start);
 
-        test("Not initialized yet", async () => {
-            lspConfig.setValue({
-                disable: true,
-                serverPath: "/path/to/sourcekit-lsp",
-                serverArguments: [],
-                inlayHintsEnabled: false,
-                supportCFamily: "disable",
-                supportedLanguages: [],
-            });
-            sut = new LanguageClientManager(instance(workspace));
-
-            assert.equal(sut.state, languageClient.State.Stopped);
-        });
-
-        test("Returns LanguageClient's state", async () => {
-            lspConfig.setValue({
-                disable: false,
-                serverPath: "/path/to/sourcekit-lsp",
-                serverArguments: [],
-                inlayHintsEnabled: false,
-                supportCFamily: "disable",
-                supportedLanguages: [],
-            });
-            sut = new LanguageClientManager(instance(workspace));
-            when(languageClientMock.state).thenReturn(languageClient.State.Running);
-
-            assert.equal(sut.state, languageClient.State.Running);
-        });
+        expect(sut.state).to.equal(State.Running);
+        expect(mockedLangClientModule.LanguageClient).to.have.been.calledOnceWith(
+            /* id */ match.string,
+            /* name */ match.string,
+            /* serverOptions */ match.has("command", "/path/to/toolchain/bin/sourcekit-lsp"),
+            /* clientOptions */ match.object
+        );
+        expect(languageClientMock.start).to.have.been.calledOnce;
     });
 
-    suite("onDidChangeState", () => {
+    test("notifies SourceKit-LSP of WorkspaceFolder changes", async () => {
+        const folder1 = mockObject<FolderContext>({
+            isRootFolder: false,
+            folder: vscode.Uri.file("/folder1"),
+            workspaceFolder: {
+                uri: vscode.Uri.file("/folder1"),
+                name: "folder1",
+                index: 0,
+            },
+            workspaceContext: instance(mockedWorkspace),
+        });
+        const folder2 = mockObject<FolderContext>({
+            isRootFolder: false,
+            folder: vscode.Uri.file("/folder2"),
+            workspaceFolder: {
+                uri: vscode.Uri.file("/folder2"),
+                name: "folder2",
+                index: 1,
+            },
+            workspaceContext: instance(mockedWorkspace),
+        });
+        new LanguageClientManager(instance(mockedWorkspace));
+        await waitForReturnedPromises(languageClientMock.start);
+
+        // Add the first folder
+        mockedWorkspace.folders.push(instance(folder1));
+        await didChangeFoldersEmitter.fire({
+            operation: FolderOperation.add,
+            folder: instance(folder1),
+            workspace: instance(mockedWorkspace),
+        });
+        expect(languageClientMock.sendNotification).to.have.been.calledOnceWith(
+            DidChangeWorkspaceFoldersNotification.type,
+            {
+                event: {
+                    added: [{ name: "folder1", uri: "/folder1" }],
+                    removed: [],
+                },
+            } as DidChangeWorkspaceFoldersParams
+        );
+
+        languageClientMock.sendNotification.resetHistory();
+
+        // Add another folder
+        mockedWorkspace.folders.push(instance(folder2));
+        await didChangeFoldersEmitter.fire({
+            operation: FolderOperation.add,
+            folder: instance(folder2),
+            workspace: instance(mockedWorkspace),
+        });
+        expect(languageClientMock.sendNotification).to.have.been.calledOnceWith(
+            DidChangeWorkspaceFoldersNotification.type,
+            {
+                event: {
+                    added: [{ name: "folder2", uri: "/folder2" }],
+                    removed: [],
+                },
+            } as DidChangeWorkspaceFoldersParams
+        );
+
+        languageClientMock.sendNotification.resetHistory();
+
+        // Remove the first folder
+        mockedWorkspace.folders.slice(1);
+        await didChangeFoldersEmitter.fire({
+            operation: FolderOperation.remove,
+            folder: instance(folder1),
+            workspace: instance(mockedWorkspace),
+        });
+        expect(languageClientMock.sendNotification).to.have.been.calledWith(
+            DidChangeWorkspaceFoldersNotification.type,
+            {
+                event: {
+                    added: [],
+                    removed: [{ name: "folder1", uri: "/folder1" }],
+                },
+            } as DidChangeWorkspaceFoldersParams
+        );
+    });
+
+    test("doesn't launch SourceKit-LSP if disabled by the user", async () => {
+        mockedLspConfig.disable = true;
+        const sut = new LanguageClientManager(instance(mockedWorkspace));
+        await waitForReturnedPromises(languageClientMock.start);
+
+        expect(sut.state).to.equal(State.Stopped);
+        expect(mockedLangClientModule.LanguageClient).to.not.have.been.called;
+        expect(languageClientMock.start).to.not.have.been.called;
+    });
+
+    test("user can provide a custom SourceKit-LSP executable", async () => {
+        mockedLspConfig.serverPath = "/path/to/my/custom/sourcekit-lsp";
+        const sut = new LanguageClientManager(instance(mockedWorkspace));
+        await waitForReturnedPromises(languageClientMock.start);
+
+        expect(sut.state).to.equal(State.Running);
+        expect(mockedLangClientModule.LanguageClient).to.have.been.calledOnceWith(
+            /* id */ match.string,
+            /* name */ match.string,
+            /* serverOptions */ match.has("command", "/path/to/my/custom/sourcekit-lsp"),
+            /* clientOptions */ match.object
+        );
+        expect(languageClientMock.start).to.have.been.calledOnce;
+    });
+
+    suite("SourceKit-LSP version doesn't support workspace folders", () => {
+        let folder1: MockedObject<FolderContext>;
+        let folder2: MockedObject<FolderContext>;
+
         setup(() => {
-            const workspaceUri = vscode.Uri.file("/path/to/workspace");
-            when(languageClientMock.code2ProtocolConverter).thenReturn({
-                asUri: () => workspaceUri.path,
-            } as never);
-            sut = new LanguageClientManager(instance(workspace));
-            sut.subFolderWorkspaces.push(workspaceUri);
-        });
-
-        test("Running", async () => {
-            onDidChangeStateMock.notifyAll({
-                oldState: languageClient.State.Starting,
-                newState: languageClient.State.Running,
+            mockedToolchain.swiftVersion = new Version(5, 6, 0);
+            mockedWorkspace.swiftVersion = new Version(5, 6, 0);
+            folder1 = mockObject<FolderContext>({
+                isRootFolder: false,
+                folder: vscode.Uri.file("/folder1"),
+                workspaceFolder: {
+                    uri: vscode.Uri.file("/folder1"),
+                    name: "folder1",
+                    index: 0,
+                },
+                workspaceContext: instance(mockedWorkspace),
             });
-
-            verify(
-                languageClientMock.sendNotification(
-                    languageClient.DidChangeWorkspaceFoldersNotification.type,
-                    anything()
-                )
-            ).once();
-        });
-
-        test("Stopped", async () => {
-            onDidChangeStateMock.notifyAll({
-                oldState: languageClient.State.Starting,
-                newState: languageClient.State.Stopped,
+            folder2 = mockObject<FolderContext>({
+                isRootFolder: false,
+                folder: vscode.Uri.file("/folder2"),
+                workspaceFolder: {
+                    uri: vscode.Uri.file("/folder2"),
+                    name: "folder2",
+                    index: 1,
+                },
+                workspaceContext: instance(mockedWorkspace),
             });
-
-            verify(
-                languageClientMock.sendNotification(
-                    languageClient.DidChangeWorkspaceFoldersNotification.type,
-                    anything()
-                )
-            ).never();
-        });
-    });
-
-    suite("onDidChangeConfiguration", () => {
-        const eventMock = mock<vscode.ConfigurationChangeEvent>();
-        const onDidChangeConfigurationMock = eventListenerMock(
-            vscode.workspace,
-            "onDidChangeConfiguration"
-        );
-        const windowMock = mockNamespace(vscode, "window");
-
-        setup(() => {
-            when(eventMock.affectsConfiguration("swift.sourcekit-lsp")).thenReturn(true);
-            when(eventMock.affectsConfiguration("swift.sourcekit-lsp.disable")).thenReturn(true);
-            sut = new LanguageClientManager(instance(workspace));
         });
 
-        test("Stop", async () => {
-            when(languageClientMock.state).thenReturn(languageClient.State.Running);
-            lspConfig.setValue({
-                disable: true,
-                serverPath: "/path/to/sourcekit-lsp",
-                serverArguments: [],
-                inlayHintsEnabled: false,
-                supportCFamily: "disable",
-                supportedLanguages: [],
-            });
+        test("doesn't launch SourceKit-LSP on startup", async () => {
+            const sut = new LanguageClientManager(instance(mockedWorkspace));
+            await waitForReturnedPromises(languageClientMock.start);
 
-            onDidChangeConfigurationMock.notifyAll(instance(eventMock));
-
-            verify(windowMock.showInformationMessage(anyString(), "Stop Language Server")).once();
+            expect(sut.state).to.equal(State.Stopped);
+            expect(mockedLangClientModule.LanguageClient).to.not.have.been.called;
+            expect(languageClientMock.start).to.not.have.been.called;
         });
 
-        test("Already stopped", async () => {
-            when(languageClientMock.state).thenReturn(languageClient.State.Stopped);
-            lspConfig.setValue({
-                disable: true,
-                serverPath: "/path/to/sourcekit-lsp",
-                serverArguments: [],
-                inlayHintsEnabled: false,
-                supportCFamily: "disable",
-                supportedLanguages: [],
-            });
-
-            onDidChangeConfigurationMock.notifyAll(instance(eventMock));
-
-            verify(windowMock.showInformationMessage(anyString(), anyString())).never();
-        });
-
-        test("Start", async () => {
-            when(languageClientMock.state).thenReturn(languageClient.State.Stopped);
-            lspConfig.setValue({
-                disable: false,
-                serverPath: "/path/to/sourcekit-lsp",
-                serverArguments: [],
-                inlayHintsEnabled: false,
-                supportCFamily: "disable",
-                supportedLanguages: [],
-            });
-
-            onDidChangeConfigurationMock.notifyAll(instance(eventMock));
-
-            verify(windowMock.showInformationMessage(anyString(), "Start Language Server")).once();
-        });
-
-        test("Restart", async () => {
-            when(languageClientMock.state).thenReturn(languageClient.State.Running);
-            when(eventMock.affectsConfiguration("swift.sourcekit-lsp.disable")).thenReturn(false);
-            lspConfig.setValue({
-                disable: false,
-                serverPath: "/path/to/other/sourcekit-lsp",
-                serverArguments: [],
-                inlayHintsEnabled: false,
-                supportCFamily: "disable",
-                supportedLanguages: [],
-            });
-
-            onDidChangeConfigurationMock.notifyAll(instance(eventMock));
-
-            verify(
-                windowMock.showInformationMessage(anyString(), "Restart Language Server")
-            ).once();
-        });
-    });
-
-    suite("useLanguageClient", () => {
-        test("Server startup succeeds", async () => {
-            sut = new LanguageClientManager(instance(workspace));
-
-            await sut.useLanguageClient(
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                async (client, token) => {
-                    assert.ok(client);
-                }
+        test("launches SourceKit-LSP when a Swift file is opened", async () => {
+            mockedVSCodeWindow.activeTextEditor = instance(
+                mockObject<vscode.TextEditor>({
+                    document: instance(
+                        mockObject<vscode.TextDocument>({
+                            uri: vscode.Uri.file("/folder1/file.swift"),
+                        })
+                    ),
+                })
             );
+            const sut = new LanguageClientManager(instance(mockedWorkspace));
+            await waitForReturnedPromises(languageClientMock.start);
+
+            // Add the folder to the workspace
+            await didChangeFoldersEmitter.fire({
+                operation: FolderOperation.add,
+                folder: instance(folder1),
+                workspace: instance(mockedWorkspace),
+            });
+
+            expect(sut.state).to.equal(State.Running);
+            expect(mockedLangClientModule.LanguageClient).to.have.been.calledOnceWith(
+                /* id */ match.string,
+                /* name */ match.string,
+                /* serverOptions */ match.object,
+                /* clientOptions */ match.hasNested("workspaceFolder.uri.path", "/folder1")
+            );
+            expect(languageClientMock.start).to.have.been.calledOnce;
         });
 
-        test("Server fails to startup", async () => {
-            when(languageClientMock.start).thenReturn(() => Promise.reject(new Error("Uh oh!")));
-            sut = new LanguageClientManager(instance(workspace));
+        test("changes SourceKit-LSP's workspaceFolder when a new folder is focussed", async () => {
+            const mockedTextDocument = mockObject<vscode.TextDocument>({
+                uri: vscode.Uri.file("/folder1/file.swift"),
+            });
+            mockedVSCodeWindow.activeTextEditor = instance(
+                mockObject<vscode.TextEditor>({
+                    document: instance(mockedTextDocument),
+                })
+            );
+            const sut = new LanguageClientManager(instance(mockedWorkspace));
+            await waitForReturnedPromises(languageClientMock.start);
 
-            // Before promise resolves, will return the error
-            const error: Error = await sut
-                .useLanguageClient(
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    async (client, token) => {
-                        /* Ignore */
-                    }
-                )
-                .catch(e => e);
-            assert.equal(error.message, "Uh oh!");
-
-            // Subsequent times throws `LanguageClientUnavailable`
-            try {
-                await sut.useLanguageClient(
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    async (client, token) => {
-                        /* Ignore */
-                    }
-                );
-                assert.fail("Language client shouldn't have started");
-            } catch (e) {
-                assert.equal(e, LanguageClientError.LanguageClientUnavailable);
-            }
-        });
-    });
-
-    test("addFolder", async () => {
-        const workspaceContext = instance(workspace);
-        sut = new LanguageClientManager(workspaceContext);
-        const [callback] = capture(workspace.observeFolders).last();
-        const folderUri = vscode.Uri.file("/path/to/folder");
-        when(languageClientMock.code2ProtocolConverter).thenReturn({
-            asUri: () => folderUri.path,
-        } as never);
-        const folderContext = mock(FolderContext);
-        when(folderContext.folder).thenReturn(folderUri);
-
-        verify(
-            languageClientMock.sendNotification(
-                languageClient.DidChangeWorkspaceFoldersNotification.type,
-                anything()
-            )
-        ).never();
-
-        await callback(instance(folderContext), FolderEvent.add, workspaceContext);
-
-        const [type, data] = capture(languageClientMock.sendNotification).last();
-        assert.equal(type, languageClient.DidChangeWorkspaceFoldersNotification.type);
-        assert.equal(data.event.added[0].uri, "/path/to/folder");
-    });
-
-    test("removeFolder", async () => {
-        const workspaceContext = instance(workspace);
-        sut = new LanguageClientManager(workspaceContext);
-        const [callback] = capture(workspace.observeFolders).last();
-        const folderUri = vscode.Uri.file("/path/to/folder");
-        when(languageClientMock.code2ProtocolConverter).thenReturn({
-            asUri: () => folderUri.path,
-        } as never);
-        const folderContext = mock(FolderContext);
-        when(folderContext.folder).thenReturn(folderUri);
-
-        verify(
-            languageClientMock.sendNotification(
-                languageClient.DidChangeWorkspaceFoldersNotification.type,
-                anything()
-            )
-        ).never();
-
-        await callback(instance(folderContext), FolderEvent.remove, workspaceContext);
-
-        const [type, data] = capture(languageClientMock.sendNotification).last();
-        assert.equal(type, languageClient.DidChangeWorkspaceFoldersNotification.type);
-        assert.equal(data.event.removed[0].uri, "/path/to/folder");
-    });
-
-    suite("SourceKitLSPErrorHandler", () => {
-        const windowMock = mockNamespace(vscode, "window");
-
-        suite("closed", () => {
-            test("Not enabled", async () => {
-                const sut = new SourceKitLSPErrorHandler(3);
-
-                const { action } = await sut.closed();
-
-                assert.equal(action, languageClient.CloseAction.DoNotRestart);
+            // Add the first folder to the workspace
+            mockedTextDocument.uri = vscode.Uri.file("/folder1/file.swift");
+            await didChangeFoldersEmitter.fire({
+                operation: FolderOperation.add,
+                folder: instance(folder1),
+                workspace: instance(mockedWorkspace),
             });
 
-            test("Restart, show error after out of retries", async () => {
-                when(
-                    windowMock.showErrorMessage(anyString(), anyString(), anyString())
-                ).thenResolve();
-                const sut = new SourceKitLSPErrorHandler(2);
-                sut.enable();
-
-                await sut.closed();
-                verify(windowMock.showErrorMessage(anyString(), anyString(), anyString())).never();
-
-                await sut.closed();
-                verify(windowMock.showErrorMessage(anyString(), anyString(), anyString())).never();
-
-                await sut.closed();
-                verify(windowMock.showErrorMessage(anyString(), anyString(), anyString())).once();
+            // Trigger a focus event for the second folder
+            mockedTextDocument.uri = vscode.Uri.file("/folder2/file.swift");
+            await didChangeFoldersEmitter.fire({
+                operation: FolderOperation.focus,
+                folder: instance(folder2),
+                workspace: instance(mockedWorkspace),
             });
 
-            test("Restart, restart after out of retries", async () => {
-                when(windowMock.showErrorMessage(anyString(), anyString(), anyString())).thenReturn(
-                    Promise.resolve("Yes")
-                );
-                const sut = new SourceKitLSPErrorHandler(2);
-                sut.enable();
-
-                let { action } = await sut.closed();
-                assert.equal(action, languageClient.CloseAction.Restart);
-
-                ({ action } = await sut.closed());
-                assert.equal(action, languageClient.CloseAction.Restart);
-
-                ({ action } = await sut.closed());
-                assert.equal(action, languageClient.CloseAction.Restart);
-            });
-
-            test("Restart, don't restart after out of retries", async () => {
-                when(windowMock.showErrorMessage(anyString(), anyString(), anyString())).thenReturn(
-                    Promise.resolve("No")
-                );
-                const sut = new SourceKitLSPErrorHandler(2);
-                sut.enable();
-
-                let { action } = await sut.closed();
-                assert.equal(action, languageClient.CloseAction.Restart);
-
-                ({ action } = await sut.closed());
-                assert.equal(action, languageClient.CloseAction.Restart);
-
-                ({ action } = await sut.closed());
-                assert.equal(action, languageClient.CloseAction.DoNotRestart);
-            });
-        });
-
-        suite("error", () => {
-            test("Unknown count", async () => {
-                const sut = new SourceKitLSPErrorHandler(2);
-
-                const { action } = await sut.error(new Error("Uh oh!"), undefined, undefined);
-
-                assert.equal(action, languageClient.ErrorAction.Shutdown);
-            });
-
-            test("Remaining error count", async () => {
-                const sut = new SourceKitLSPErrorHandler(2);
-
-                const { action } = await sut.error(new Error("Uh oh!"), undefined, 2);
-
-                assert.equal(action, languageClient.ErrorAction.Continue);
-            });
-
-            test("Surpassed error count", async () => {
-                const sut = new SourceKitLSPErrorHandler(2);
-
-                const { action } = await sut.error(new Error("Uh oh!"), undefined, 4);
-
-                assert.equal(action, languageClient.ErrorAction.Shutdown);
-            });
+            expect(sut.state).to.equal(State.Running);
+            expect(mockedLangClientModule.LanguageClient).to.have.been.calledTwice;
+            expect(mockedLangClientModule.LanguageClient).to.have.been.calledWith(
+                /* id */ match.string,
+                /* name */ match.string,
+                /* serverOptions */ match.object,
+                /* clientOptions */ match.hasNested("workspaceFolder.uri.path", "/folder2")
+            );
+            expect(languageClientMock.start).to.have.been.calledTwice;
+            expect(languageClientMock.start).to.have.been.calledAfter(languageClientMock.stop);
         });
     });
 });

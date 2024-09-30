@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import { Command } from "vscode-languageclient";
 import { LanguageClientManager } from "../sourcekit-lsp/LanguageClientManager";
-import { WorkspaceContext, FolderEvent } from "../WorkspaceContext";
+import { WorkspaceContext, FolderOperation } from "../WorkspaceContext";
 
 export class LanguageStatusItems implements vscode.Disposable {
     private packageSwiftItem: vscode.LanguageStatusItem;
@@ -40,9 +40,9 @@ export class LanguageStatusItems implements vscode.Disposable {
         this.packageSwiftItem.accessibilityInformation = { label: "There is no Package.swift" };
 
         // Update Package.swift item based on current focus
-        const onFocus = workspaceContext.observeFolders(async (folder, event) => {
-            switch (event) {
-                case FolderEvent.focus:
+        const onFocus = workspaceContext.onDidChangeFolders(async ({ folder, operation }) => {
+            switch (operation) {
+                case FolderOperation.focus:
                     if (folder && folder.swiftPackage.foundPackage) {
                         this.packageSwiftItem.text = "Package.swift";
                         this.packageSwiftItem.command = Command.create(

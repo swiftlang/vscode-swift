@@ -19,7 +19,7 @@ import configuration from "../configuration";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { isPathInsidePath } from "../utilities/filesystem";
 import { Version } from "../utilities/version";
-import { FolderEvent, WorkspaceContext } from "../WorkspaceContext";
+import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
 import { activateLegacyInlayHints } from "./inlayHints";
 import { activatePeekDocuments } from "./peekDocuments";
 import { FolderContext } from "../FolderContext";
@@ -148,44 +148,42 @@ export class LanguageClientManager {
         this.subscriptions = [];
         this.subFolderWorkspaces = [];
         if (this.singleServerSupport) {
-            // add/remove folders from server
-            const observeFoldersDisposable = workspaceContext.observeFolders(
-                async (folderContext, event) => {
-                    if (!folderContext) {
+            this.subscriptions.push(
+                // add/remove folders from server
+                workspaceContext.onDidChangeFolders(async ({ folder, operation }) => {
+                    if (!folder) {
                         return;
                     }
-                    switch (event) {
-                        case FolderEvent.add:
-                            await this.addFolder(folderContext);
+                    switch (operation) {
+                        case FolderOperation.add:
+                            await this.addFolder(folder);
                             break;
-                        case FolderEvent.remove:
-                            await this.removeFolder(folderContext);
+                        case FolderOperation.remove:
+                            await this.removeFolder(folder);
                             break;
                     }
-                }
+                })
             );
-            this.subscriptions.push(observeFoldersDisposable);
             this.setLanguageClientFolder(undefined);
         } else {
-            // stop and start server for each folder based on which file I am looking at
-            const observeFoldersDisposable = workspaceContext.observeFolders(
-                async (folderContext, event) => {
-                    switch (event) {
-                        case FolderEvent.add:
-                            if (folderContext && folderContext.folder) {
+            this.subscriptions.push(
+                // stop and start server for each folder based on which file I am looking at
+                workspaceContext.onDidChangeFolders(async ({ folder, operation }) => {
+                    switch (operation) {
+                        case FolderOperation.add:
+                            if (folder && folder.folder) {
                                 // if active document is inside folder then setup language client
-                                if (this.isActiveFileInFolder(folderContext.folder)) {
-                                    await this.setLanguageClientFolder(folderContext.folder);
+                                if (this.isActiveFileInFolder(folder.folder)) {
+                                    await this.setLanguageClientFolder(folder.folder);
                                 }
                             }
                             break;
-                        case FolderEvent.focus:
-                            await this.setLanguageClientFolder(folderContext?.folder);
+                        case FolderOperation.focus:
+                            await this.setLanguageClientFolder(folder?.folder);
                             break;
                     }
-                }
+                })
             );
-            this.subscriptions.push(observeFoldersDisposable);
         }
         // on change config restart server
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
@@ -272,12 +270,12 @@ export class LanguageClientManager {
         ): Promise<Return>;
     }): Promise<Return> {
         if (!this.languageClient || !this.clientReadyPromise) {
-            throw LanguageClientError.LanguageClientUnavailable;
+            throw new Error(LanguageClientError.LanguageClientUnavailable);
         }
         return this.clientReadyPromise.then(
             () => {
                 if (!this.languageClient || !this.cancellationToken) {
-                    throw LanguageClientError.LanguageClientUnavailable;
+                    throw new Error(LanguageClientError.LanguageClientUnavailable);
                 }
                 return process(this.languageClient, this.cancellationToken.token);
             },
@@ -368,7 +366,7 @@ export class LanguageClientManager {
                     index: 0,
                 };
             }
-            this.restartLanguageClient(workspaceFolder);
+            await this.restartLanguageClient(workspaceFolder);
         }
     }
 
@@ -423,6 +421,7 @@ export class LanguageClientManager {
                     }
                     this.workspaceContext.outputChannel.log(`${reason}`);
                 });
+            await this.restartedPromise;
         }
     }
 
@@ -786,6 +785,6 @@ export class SourceKitLSPErrorHandler implements langclient.ErrorHandler {
 }
 
 /** Language client errors */
-export enum LanguageClientError {
-    LanguageClientUnavailable,
+export const enum LanguageClientError {
+    LanguageClientUnavailable = "Language Client Unavailable",
 }

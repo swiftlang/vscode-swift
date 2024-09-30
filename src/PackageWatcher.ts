@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import { FolderContext } from "./FolderContext";
-import { FolderEvent, WorkspaceContext } from "./WorkspaceContext";
+import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
@@ -79,7 +79,7 @@ export class PackageWatcher {
     async handlePackageSwiftChange() {
         // Load SwiftPM Package.swift description
         await this.folderContext.reload();
-        this.workspaceContext.fireEvent(this.folderContext, FolderEvent.packageUpdated);
+        this.workspaceContext.fireEvent(this.folderContext, FolderOperation.packageUpdated);
     }
 
     /**
@@ -92,7 +92,7 @@ export class PackageWatcher {
         await this.folderContext.reloadPackageResolved();
         // if file contents has changed then send resolve updated message
         if (this.folderContext.swiftPackage.resolved?.fileHash !== packageResolvedHash) {
-            this.workspaceContext.fireEvent(this.folderContext, FolderEvent.resolvedUpdated);
+            this.workspaceContext.fireEvent(this.folderContext, FolderOperation.resolvedUpdated);
         }
     }
 }
