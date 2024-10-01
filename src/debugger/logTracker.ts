@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import { DebugAdapter } from "./debugAdapter";
-import { WorkspaceContext } from "../WorkspaceContext";
+import { Version } from "../utilities/version";
 
 /**
  * Factory class for building LoggingDebugAdapterTracker
@@ -39,11 +39,34 @@ interface DebugMessage {
     body: OutputEventBody;
 }
 
-export function registerLoggingDebugAdapterTracker(ctx: WorkspaceContext): vscode.Disposable {
-    return vscode.debug.registerDebugAdapterTrackerFactory(
-        DebugAdapter.getLaunchConfigType(ctx.swiftVersion),
-        new LoggingDebugAdapterTrackerFactory()
-    );
+/**
+ * Register the LoggingDebugAdapterTrackerFactory with the VS Code debug adapter tracker
+ * @returns A disposable to be disposed when the extension is deactivated
+ */
+export function registerLoggingDebugAdapterTracker(swiftVersion: Version): vscode.Disposable {
+    const register = () =>
+        vscode.debug.registerDebugAdapterTrackerFactory(
+            DebugAdapter.getLaunchConfigType(swiftVersion),
+            new LoggingDebugAdapterTrackerFactory()
+        );
+
+    // Maintains the disposable for the last registered debug adapter.
+    let debugAdapterDisposable = register();
+    const changeMonitor = vscode.workspace.onDidChangeConfiguration(event => {
+        if (event.affectsConfiguration("swift.debugger.useDebugAdapterFromToolchain")) {
+            // Dispose the old adapter and reconfigure with the new settings.
+            debugAdapterDisposable.dispose();
+            debugAdapterDisposable = register();
+        }
+    });
+
+    // Return a disposable that cleans everything up.
+    return {
+        dispose() {
+            changeMonitor.dispose();
+            debugAdapterDisposable.dispose();
+        },
+    };
 }
 
 /**
@@ -63,6 +86,8 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
         const loggingDebugAdapter = this.debugSessionIdMap[session.id];
         if (loggingDebugAdapter) {
             loggingDebugAdapter.cb = cb;
+        } else {
+            console.error("Could not find debug adapter for session:", session.id);
         }
     }
 

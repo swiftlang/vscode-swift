@@ -27,12 +27,12 @@ import { SwiftToolchain } from "../toolchain/toolchain";
  * @returns minimal required environment for Swift product
  */
 export function swiftRuntimeEnv(
-    base: NodeJS.ProcessEnv | boolean = process.env
+    base: NodeJS.ProcessEnv | boolean = process.env,
+    runtimePath: string = configuration.runtimePath
 ): { [key: string]: string } | undefined {
-    if (configuration.runtimePath === "") {
+    if (runtimePath === "") {
         return undefined;
     }
-    const runtimePath = configuration.runtimePath;
     const key = swiftLibraryPathKey();
     const separator = process.platform === "win32" ? ";" : ":";
     switch (base) {

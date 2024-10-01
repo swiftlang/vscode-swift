@@ -8,9 +8,6 @@ let package = Package(
     platforms: [
         .macOS(.v13)
     ],
-    dependencies: [
-        .package(url: "https://github.com/apple/swift-testing.git", branch: "main")
-    ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
         // Targets can depend on other targets in this package, and on products in packages this package depends on.
@@ -24,10 +21,7 @@ let package = Package(
         ),
         .testTarget(
             name: "PackageTests",
-            dependencies: [
-                "PackageLib",
-                .product(name: "Testing", package: "swift-testing")
-            ]
+            dependencies: ["PackageLib"]
         ),
     ]
 )

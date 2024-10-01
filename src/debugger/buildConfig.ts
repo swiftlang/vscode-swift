@@ -223,7 +223,10 @@ export class TestingConfigurationFactory {
                 program: await this.testExecutableOutputPath(),
                 args: await this.debuggingTestExecutableArgs(),
                 env: {
-                    ...swiftRuntimeEnv(),
+                    ...swiftRuntimeEnv(
+                        process.env,
+                        this.ctx.workspaceContext.toolchain.runtimePath ?? configuration.runtimePath
+                    ),
                     ...configuration.folder(this.ctx.workspaceFolder).testEnvironmentVariables,
                 },
             };

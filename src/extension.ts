@@ -29,9 +29,7 @@ import { SwiftPluginTaskProvider } from "./tasks/SwiftPluginTaskProvider";
 import configuration from "./configuration";
 import { Version } from "./utilities/version";
 import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
-import { registerLoggingDebugAdapterTracker } from "./debugger/logTracker";
-import { registerLLDBDebugAdapter } from "./debugger/debugAdapterFactory";
-import { DebugAdapter } from "./debugger/debugAdapter";
+import { registerDebugger } from "./debugger/debugAdapterFactory";
 import contextKeys from "./contextKeys";
 import { showToolchainError } from "./ui/ToolchainSelection";
 import { SwiftToolchain } from "./toolchain/toolchain";
@@ -83,6 +81,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
             });
 
         context.subscriptions.push(...commands.registerToolchainCommands(toolchain));
+
+        if (!toolchain) {
+            showToolchainError();
+            return;
+        }
+
+        const workspaceContext = await WorkspaceContext.create(outputChannel, toolchain);
+        context.subscriptions.push(...commands.register(workspaceContext));
+        context.subscriptions.push(workspaceContext);
+        context.subscriptions.push(registerDebugger(workspaceContext));
+
         context.subscriptions.push(
             vscode.workspace.onDidChangeConfiguration(event => {
                 // on toolchain config change, reload window
@@ -104,22 +113,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
                 }
             })
         );
-
-        if (!toolchain) {
-            showToolchainError();
-            return;
-        }
-
-        const workspaceContext = await WorkspaceContext.create(outputChannel, toolchain);
-        context.subscriptions.push(...commands.register(workspaceContext));
-
-        context.subscriptions.push(workspaceContext);
-
-        // setup swift version of LLDB. Don't await on this as it can run in the background
-        DebugAdapter.verifyDebugAdapterExists(workspaceContext, true).catch(error => {
-            outputChannel.log(error);
-        });
-        workspaceContext.setLLDBVersion();
 
         // listen for workspace folder changes and active text editor changes
         workspaceContext.setupEventListeners();
@@ -231,18 +224,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
 
         const testExplorerObserver = TestExplorer.observeFolders(workspaceContext);
 
-        // Register swift-lldb debug provider
-        const lldbDebugAdapter = registerLLDBDebugAdapter(workspaceContext);
-        context.subscriptions.push(lldbDebugAdapter);
-
-        const loggingDebugAdapter = registerLoggingDebugAdapterTracker(workspaceContext);
-
         // setup workspace context with initial workspace folders
         workspaceContext.addWorkspaceFolders();
 
         // Register any disposables for cleanup when the extension deactivates.
         context.subscriptions.push(
-            loggingDebugAdapter,
             resolvePackageObserver,
             testExplorerObserver,
             swiftModuleDocumentProvider,
@@ -265,14 +251,4 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
         vscode.window.showErrorMessage(`Activating Swift extension failed: ${errorMessage}`);
         throw error;
     }
-}
-
-/**
- * Deactivate the extension.
- *
- * Any disposables registered in `context.subscriptions` will be automatically
- * disposed of, so there's nothing left to do here.
- */
-export function deactivate() {
-    return;
 }

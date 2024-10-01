@@ -72,11 +72,7 @@ suite("Extension Test Suite", () => {
 
     suite("Workspace", () => {
         /** Verify tasks.json is being loaded */
-        test("Tasks.json", async () => {
-            // Skip if running CI as it takes too long
-            if (process.env.CI) {
-                return;
-            }
+        test("Tasks.json @slow", async () => {
             const folder = workspaceContext.folders.find(f => f.name === "test/defaultPackage");
             assert(folder);
             const buildAllTask = await getBuildAllTask(folder);
