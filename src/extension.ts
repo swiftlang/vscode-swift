@@ -232,7 +232,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
         const lldbDebugAdapter = registerLLDBDebugAdapter(workspaceContext);
         context.subscriptions.push(lldbDebugAdapter);
 
-        const loggingDebugAdapter = registerLoggingDebugAdapterTracker();
+        const loggingDebugAdapter = registerLoggingDebugAdapterTracker(workspaceContext);
 
         // setup workspace context with initial workspace folders
         workspaceContext.addWorkspaceFolders();

@@ -14,6 +14,7 @@
 
 import * as vscode from "vscode";
 import { DebugAdapter } from "./debugAdapter";
+import { WorkspaceContext } from "../WorkspaceContext";
 
 /**
  * Factory class for building LoggingDebugAdapterTracker
@@ -38,9 +39,9 @@ interface DebugMessage {
     body: OutputEventBody;
 }
 
-export function registerLoggingDebugAdapterTracker(): vscode.Disposable {
+export function registerLoggingDebugAdapterTracker(ctx: WorkspaceContext): vscode.Disposable {
     return vscode.debug.registerDebugAdapterTrackerFactory(
-        DebugAdapter.adapterName,
+        DebugAdapter.getAdapterName(ctx),
         new LoggingDebugAdapterTrackerFactory()
     );
 }

@@ -12,6 +12,7 @@ A brief description of each framework can be found below:
 
 - [Organizing Tests](#organizing-tests)
 - [Writing Unit Tests](#writing-unit-tests)
+- [Mocking the File System](#mocking-the-file-system)
 - [Mocking Utilities](#mocking-utilities)
   - [Mocking interfaces, classes, and functions](#mocking-interfaces-classes-and-functions)
   - [Mocking VS Code events](#mocking-vs-code-events)
@@ -112,6 +113,30 @@ suite("ReloadExtension Unit Test Suite", () => {
 ```
 
 You may have also noticed that we needed to cast the `"Reload Extensions"` string to `any` when resolving `showWarningMessage()`. Unforunately, this may be necessary for methods that have incompatible overloaded signatures due to a TypeScript issue that remains unfixed.
+
+## Mocking the File System
+
+The [`mock-fs`](https://github.com/tschaub/mock-fs) module can be used to temporarily replace Node's built-in `fs` module with an in-memory file system. This can be useful for testing logic that uses the `fs` module without actually reaching out to the file system. Just make sure that you add a `teardown()` block that restores the `fs` module after each test:
+
+```typescript
+import * as chai from "chai";
+import * as mockFS from "mock-fs";
+import * as fs from "fs/promises";
+
+suite("mock-fs example", () => {
+    teardown(() => {
+        mockFS.restore();
+    });
+
+    test("mock out a file on disk", async () => {
+        mockFS({
+            "/path/to/some/file": "Some really cool file contents",
+        });
+        await expect(fs.readFile("/path/to/some/file", "utf-8"))
+            .to.eventually.equal("Some really cool file contents");
+    });
+});
+```
 
 ## Mocking Utilities
 

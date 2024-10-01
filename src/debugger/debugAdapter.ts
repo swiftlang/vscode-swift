@@ -19,26 +19,35 @@ import { fileExists } from "../utilities/filesystem";
 import { Version } from "../utilities/version";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { SwiftToolchain } from "../toolchain/toolchain";
+import { FolderContext } from "../FolderContext";
 
 /**
  * Class managing which debug adapter we are using. Will only setup lldb-vscode/lldb-dap if it is available.
  */
 export class DebugAdapter {
-    private static debugAdapaterExists = false;
-
     /** Debug adapter name */
-    public static get adapterName(): string {
-        return configuration.debugger.useDebugAdapterFromToolchain && this.debugAdapaterExists
-            ? "swift-lldb"
-            : "lldb";
+    public static getAdapterName(
+        context: WorkspaceContext | FolderContext | Version
+    ): "swift-lldb" | "lldb" {
+        return DebugAdapter.getDebugAdapterType(context) === "lldb-dap" ? "swift-lldb" : "lldb";
     }
 
     /** Return debug adapter for toolchain */
-    public static getDebugAdapterType(swiftVersion: Version): "lldb-vscode" | "lldb-dap" {
+    public static getDebugAdapterType(
+        context: WorkspaceContext | FolderContext | Version
+    ): "lldb" | "lldb-dap" {
+        let swiftVersion: Version;
+        if (context instanceof Version) {
+            swiftVersion = context;
+        } else if (context instanceof FolderContext) {
+            swiftVersion = context.workspaceContext.swiftVersion;
+        } else {
+            swiftVersion = context.swiftVersion;
+        }
         return swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
             configuration.debugger.useDebugAdapterFromToolchain
             ? "lldb-dap"
-            : "lldb-vscode";
+            : "lldb";
     }
 
     /** Return the path to the debug adapter */
@@ -49,26 +58,36 @@ export class DebugAdapter {
         }
 
         const debugAdapter = this.getDebugAdapterType(toolchain.swiftVersion);
-        if (process.platform === "darwin" && debugAdapter === "lldb-dap") {
-            return await toolchain.getLLDBDebugAdapter();
+        if (debugAdapter === "lldb-dap") {
+            return toolchain.getLLDBDebugAdapter();
         } else {
-            return toolchain.getToolchainExecutable(debugAdapter);
+            return toolchain.getLLDB();
         }
     }
 
     /**
-     * Verify that the toolchain debug adapter exists
+     * Verify that the toolchain debug adapter exists and display an error message to the user
+     * if it doesn't.
+     *
+     * Has the side effect of setting the `swift.lldbVSCodeAvailable` context key depending
+     * on the result.
+     *
      * @param workspace WorkspaceContext
-     * @param quiet Should dialog be displayed
-     * @returns Is debugger available
+     * @param quiet Whether or not the dialog should be displayed if the adapter does not exist
+     * @returns Whether or not the debug adapter exists
      */
     public static async verifyDebugAdapterExists(
         workspace: WorkspaceContext,
         quiet = false
     ): Promise<boolean> {
-        const lldbDebugAdapterPath = await this.debugAdapterPath(workspace.toolchain);
+        const lldbDebugAdapterPath = await this.debugAdapterPath(workspace.toolchain).catch(
+            error => {
+                workspace.outputChannel.log(error);
+                return undefined;
+            }
+        );
 
-        if (!(await fileExists(lldbDebugAdapterPath))) {
+        if (!lldbDebugAdapterPath || !(await fileExists(lldbDebugAdapterPath))) {
             if (!quiet) {
                 const debugAdapterName = this.getDebugAdapterType(workspace.toolchain.swiftVersion);
                 vscode.window.showErrorMessage(
@@ -78,12 +97,10 @@ export class DebugAdapter {
                 );
             }
             workspace.outputChannel.log(`Failed to find ${lldbDebugAdapterPath}`);
-            this.debugAdapaterExists = false;
             contextKeys.lldbVSCodeAvailable = false;
             return false;
         }
 
-        this.debugAdapaterExists = true;
         contextKeys.lldbVSCodeAvailable = true;
         return true;
     }
