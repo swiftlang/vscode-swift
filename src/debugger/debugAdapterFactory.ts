@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 //===----------------------------------------------------------------------===//
 //
 // This source file is part of the VS Code Swift open source project
@@ -19,25 +20,9 @@ import { DebugAdapter } from "./debugAdapter";
 import { Version } from "../utilities/version";
 
 export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
-    class LLDBDebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFactory {
-        async createDebugAdapterDescriptor(
-            _session: vscode.DebugSession,
-            executable: vscode.DebugAdapterExecutable | undefined
-        ): Promise<vscode.DebugAdapterDescriptor> {
-            if (executable) {
-                // make VS Code launch the debug adapter executable
-                return executable;
-            }
-
-            const adapterPath = await DebugAdapter.debugAdapterPath(workspaceContext.toolchain);
-            await DebugAdapter.verifyDebugAdapterExists(workspaceContext);
-            return new vscode.DebugAdapterExecutable(adapterPath, [], {});
-        }
-    }
-
     const debugAdpaterFactory = vscode.debug.registerDebugAdapterDescriptorFactory(
         "swift-lldb",
-        new LLDBDebugAdapterExecutableFactory()
+        new LLDBDebugAdapterExecutableFactory(workspaceContext)
     );
     const debugConfigProvider = vscode.debug.registerDebugConfigurationProvider(
         "swift-lldb",
@@ -54,6 +39,43 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
     };
 }
 
+/**
+ * A factory class for creating and providing the executable descriptor for the LLDB Debug Adapter.
+ * This class implements the vscode.DebugAdapterDescriptorFactory interface and is responsible for
+ * determining the path to the LLDB Debug Adapter executable and ensuring it exists before launching
+ * a debug session.
+ *
+ * This class uses the workspace context to:
+ *  - Resolve the path to the debug adapter executable.
+ *  - Verify that the debug adapter exists in the toolchain.
+ *
+ * The main method of this class, `createDebugAdapterDescriptor`, is invoked by VS Code to supply
+ * the debug adapter executable when a debug session is started. The executable parameter by default
+ * will be provided in package.json > contributes > debuggers > program if defined, but since we will
+ * determine the executable via the toolchain anyway, this is now redundant and will be ignored.
+ *
+ * @implements {vscode.DebugAdapterDescriptorFactory}
+ */
+export class LLDBDebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFactory {
+    private workspaceContext: WorkspaceContext;
+
+    constructor(workspaceContext: WorkspaceContext) {
+        this.workspaceContext = workspaceContext;
+    }
+
+    createDebugAdapterDescriptor(
+        session: vscode.DebugSession,
+        executable: vscode.DebugAdapterExecutable | undefined
+    ): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
+        // Use the stored workspaceContext
+        return DebugAdapter.debugAdapterPath(this.workspaceContext.toolchain)
+            .then(path =>
+                DebugAdapter.verifyDebugAdapterExists(this.workspaceContext).then(() => path)
+            )
+            .then(path => new vscode.DebugAdapterExecutable(path, [], {}));
+    }
+}
+
 /** Provide configurations for lldb-vscode/lldb-dap
  *
  * Converts launch configuration that user supplies into a version that the lldb-vscode/lldb-dap
@@ -61,7 +83,7 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
  * to an array of strings in format "var=value".
  *
  * This could also be used to augment the configuration with values from the settings
- * althought it isn't at the moment.
+ * although it isn't at the moment.
  */
 export class LLDBDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
     constructor(
@@ -72,7 +94,6 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
     async resolveDebugConfiguration(
         folder: vscode.WorkspaceFolder | undefined,
         launchConfig: vscode.DebugConfiguration,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         cancellation?: vscode.CancellationToken
     ): Promise<vscode.DebugConfiguration> {
         launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
