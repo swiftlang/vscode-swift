@@ -195,75 +195,78 @@ suite("debugAdapterFactory Tests", () => {
         expect(mockAdapter.debugAdapterPath).to.have.been.calledOnce;
         expect(mockAdapter.verifyDebugAdapterExists).to.have.been.calledOnce;
     });
-});
 
-suite("LLDBDebugConfigurationProvider Tests", () => {
-    let provider: LLDBDebugConfigurationProvider;
-    const swift6 = new Version(6, 0, 0);
+    suite("LLDBDebugConfigurationProvider Tests", () => {
+        let provider: LLDBDebugConfigurationProvider;
+        const swift6 = new Version(6, 0, 0);
 
-    setup(() => {
-        provider = new LLDBDebugConfigurationProvider("darwin", swift6);
-    });
+        setup(() => {
+            provider = new LLDBDebugConfigurationProvider("darwin", swift6);
+        });
 
-    test("should convert environment variables to string[] format", () => {
-        const env = {
-            VAR1: "value1",
-            VAR2: "value2",
-        };
-
-        const result = provider.convertEnvironmentVariables(env);
-
-        expect(result).to.deep.equal(["VAR1=value1", "VAR2=value2"]);
-    });
-
-    test("should return undefined when environment variables are undefined", () => {
-        const result = provider.convertEnvironmentVariables(undefined);
-        expect(result).to.deep.equal(undefined);
-    });
-
-    test("should resolve debug configuration with converted environment variables", async () => {
-        const launchConfig: vscode.DebugConfiguration = {
-            type: "swift-lldb",
-            request: "launch",
-            name: "Test Launch",
-            env: {
+        test("should convert environment variables to string[] format", () => {
+            const env = {
                 VAR1: "value1",
                 VAR2: "value2",
-            },
-        };
+            };
 
-        const resolvedConfig = await provider.resolveDebugConfiguration(undefined, launchConfig);
+            const result = provider.convertEnvironmentVariables(env);
 
-        expect(resolvedConfig.env).to.deep.equal(["VAR1=value1", "VAR2=value2"]);
-    });
+            expect(result).to.deep.equal(["VAR1=value1", "VAR2=value2"]);
+        });
 
-    test("should handle one environment variable", () => {
-        const env = {
-            VAR1: "value1",
-        };
-        const result = provider.convertEnvironmentVariables(env);
+        test("should return undefined when environment variables are undefined", () => {
+            const result = provider.convertEnvironmentVariables(undefined);
+            expect(result).to.deep.equal(undefined);
+        });
 
-        expect(result).to.deep.equal(["VAR1=value1"]);
-    });
+        test("should resolve debug configuration with converted environment variables", async () => {
+            const launchConfig: vscode.DebugConfiguration = {
+                type: "swift-lldb",
+                request: "launch",
+                name: "Test Launch",
+                env: {
+                    VAR1: "value1",
+                    VAR2: "value2",
+                },
+            };
 
-    test("should handle empty environment variables", () => {
-        const env = {};
-        const result = provider.convertEnvironmentVariables(env);
+            const resolvedConfig = await provider.resolveDebugConfiguration(
+                undefined,
+                launchConfig
+            );
 
-        expect(result).to.deep.equal([]);
-    });
+            expect(resolvedConfig.env).to.deep.equal(["VAR1=value1", "VAR2=value2"]);
+        });
 
-    test("should handle a large number of environment variables", () => {
-        // Create 1000 environment variables
-        const env: { [key: string]: string } = {};
-        for (let i = 0; i < 1000; i++) {
-            env[`VAR${i}`] = `value${i}`;
-        }
+        test("should handle one environment variable", () => {
+            const env = {
+                VAR1: "value1",
+            };
+            const result = provider.convertEnvironmentVariables(env);
 
-        const result = provider.convertEnvironmentVariables(env);
+            expect(result).to.deep.equal(["VAR1=value1"]);
+        });
 
-        // Verify that all 1000 environment variables are properly converted
-        const expected = Array.from({ length: 1000 }, (_, i) => `VAR${i}=value${i}`);
-        expect(result).to.deep.equal(expected);
+        test("should handle empty environment variables", () => {
+            const env = {};
+            const result = provider.convertEnvironmentVariables(env);
+
+            expect(result).to.deep.equal([]);
+        });
+
+        test("should handle a large number of environment variables", () => {
+            // Create 1000 environment variables
+            const env: { [key: string]: string } = {};
+            for (let i = 0; i < 1000; i++) {
+                env[`VAR${i}`] = `value${i}`;
+            }
+
+            const result = provider.convertEnvironmentVariables(env);
+
+            // Verify that all 1000 environment variables are properly converted
+            const expected = Array.from({ length: 1000 }, (_, i) => `VAR${i}=value${i}`);
+            expect(result).to.deep.equal(expected);
+        });
     });
 });
