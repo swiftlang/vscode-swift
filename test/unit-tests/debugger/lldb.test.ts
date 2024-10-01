@@ -50,13 +50,14 @@ suite("debugger.lldb Tests", () => {
             expect(result.failure).to.have.property("message", "Failed to get LLDB");
         });
 
-        test("should return failure when execFile throws an error on windows, specific behaviour: return success and failure both undefined", async function () {
+        test("should return failure when execFile throws an error on windows", async function () {
             if (process.platform !== "win32") {
                 this.skip();
             } else {
                 mockToolchain.getLLDB.resolves("/path/to/lldb");
                 mockUtil.execFile.rejects(new Error("execFile failed"));
                 const result = await lldb.getLLDBLibPath(instance(mockToolchain));
+                // specific behaviour: return success and failure both undefined
                 expect(result.failure).to.equal(undefined);
                 expect(result.success).to.equal(undefined);
             }
