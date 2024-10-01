@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import { expect } from "chai";
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
+import { expect } from "chai";
 import { DebugAdapter } from "../../../src/debugger/debugAdapter";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
@@ -25,57 +25,78 @@ import {
     MockedObject,
     mockObject,
     instance,
-    mockFn,
     mockGlobalModule,
+    mockFn,
 } from "../../MockUtils";
+import configuration from "../../../src/configuration";
 
-suite("verifyDebugAdapterExists false return Tests", () => {
-    const mockedWindow = mockGlobalObject(vscode, "window");
-    const mockedFS = mockGlobalModule(fs);
+suite("DebugAdapter Tests", () => {
+    suite("customDebugAdapterPath take precedent", () => {
+        const mockDebugConfig = mockGlobalObject(configuration, "debugger");
 
-    let mockWorkspaceContext: MockedObject<WorkspaceContext>;
-    let mockToolchain: MockedObject<SwiftToolchain>;
-    let mockOutputChannel: MockedObject<SwiftOutputChannel>;
+        test("customDebugAdapterPath take precedent", async () => {
+            const mockToolchain = mockObject<SwiftToolchain>({});
+            const mockContext = mockObject<WorkspaceContext>({
+                toolchain: instance(mockToolchain),
+            });
+            const expectPath = "/something/cool-lldb";
+            mockDebugConfig.customDebugAdapterPath = expectPath;
 
-    setup(() => {
-        // Mock the file system
-        mockedFS.stat.throws(new Error("File does not exist"));
-        // Mock the WorkspaceContext and related dependencies
-        const swiftVersion = new Version(5, 3, 0); // Any version
-        mockToolchain = mockObject<SwiftToolchain>({
-            swiftVersion,
-            getLLDBDebugAdapter: mockFn(),
-            getToolchainExecutable: mockFn(),
+            const path = await DebugAdapter.debugAdapterPath(mockContext.toolchain);
+            expect(path).to.deep.equal(expectPath);
         });
-        mockOutputChannel = mockObject<SwiftOutputChannel>({
-            log: mockFn(),
-        });
-        mockWorkspaceContext = mockObject<WorkspaceContext>({
-            toolchain: instance(mockToolchain),
-            swiftVersion,
-            outputChannel: instance(mockOutputChannel),
-        });
+
+        // gap to be covered by integration test: lldb-dap darwin vs. non darwin
     });
 
-    test("should return false regardless of quiet setting", async () => {
-        // Test with quiet = true
-        await expect(
-            DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), true)
-        ).to.eventually.equal(false, "Should return false when quiet is true");
+    suite("verifyDebugAdapterExists false return Tests", () => {
+        const mockedWindow = mockGlobalObject(vscode, "window");
+        const mockedFS = mockGlobalModule(fs);
 
-        // Test with quiet = false
-        await expect(
-            DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), false)
-        ).to.eventually.equal(false, "Should return false when quiet is false");
-    });
+        let mockWorkspaceContext: MockedObject<WorkspaceContext>;
+        let mockToolchain: MockedObject<SwiftToolchain>;
+        let mockOutputChannel: MockedObject<SwiftOutputChannel>;
 
-    test("should call showErrorMessage when quiet is false", async () => {
-        await DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), false);
-        expect(mockedWindow.showErrorMessage).to.have.been.called;
-    });
+        setup(() => {
+            // Mock the file system
+            mockedFS.stat.throws(new Error("File does not exist"));
+            // Mock the WorkspaceContext and related dependencies
+            const swiftVersion = new Version(5, 3, 0); // Any version
+            mockToolchain = mockObject<SwiftToolchain>({
+                swiftVersion,
+                getLLDBDebugAdapter: mockFn(),
+                getToolchainExecutable: mockFn(),
+            });
+            mockOutputChannel = mockObject<SwiftOutputChannel>({
+                log: mockFn(),
+            });
+            mockWorkspaceContext = mockObject<WorkspaceContext>({
+                toolchain: instance(mockToolchain),
+                swiftVersion,
+                outputChannel: instance(mockOutputChannel),
+            });
+        });
 
-    test("should not call showErrorMessage when quiet is true", async () => {
-        await DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), true);
-        expect(mockedWindow.showErrorMessage).to.not.have.been.called;
+        test("should return false regardless of quiet setting", async () => {
+            await expect(
+                DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), true)
+            ).to.eventually.equal(false, "Should return false when quiet is true");
+
+            await expect(
+                DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), false)
+            ).to.eventually.equal(false, "Should return false when quiet is false");
+        });
+
+        test("should call showErrorMessage when quiet is false", async () => {
+            await DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), false);
+            expect(mockedWindow.showErrorMessage).to.have.been.called;
+        });
+
+        test("should not call showErrorMessage when quiet is true", async () => {
+            await DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), true);
+            expect(mockedWindow.showErrorMessage).to.not.have.been.called;
+        });
+
+        // gap to be covered by integration test: true return of verifyDebugAdapterExists
     });
 });
