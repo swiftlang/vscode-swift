@@ -139,7 +139,6 @@ suite("debugAdapterFactory Tests", () => {
     const mockAdapter = mockGlobalModule(DebugAdapter);
     let mockContext: MockedObject<WorkspaceContext>;
     let mockToolchain: MockedObject<SwiftToolchain>;
-    const mockSession = mockObject<vscode.DebugSession>({});
 
     setup(() => {
         mockToolchain = mockObject<SwiftToolchain>({});
@@ -155,7 +154,7 @@ suite("debugAdapterFactory Tests", () => {
         mockAdapter.verifyDebugAdapterExists.resolves(true);
 
         const factory = new LLDBDebugAdapterExecutableFactory(instance(mockContext));
-        const result = await factory.createDebugAdapterDescriptor(instance(mockSession), undefined);
+        const result = await factory.createDebugAdapterDescriptor();
 
         expect(result).to.be.instanceOf(vscode.DebugAdapterExecutable);
         expect((result as vscode.DebugAdapterExecutable).command).to.equal(toolchainPath);
@@ -171,9 +170,10 @@ suite("debugAdapterFactory Tests", () => {
 
         const factory = new LLDBDebugAdapterExecutableFactory(instance(mockContext));
 
-        await expect(
-            factory.createDebugAdapterDescriptor(instance(mockSession), undefined)
-        ).to.eventually.be.rejectedWith(Error, errorMessage);
+        await expect(factory.createDebugAdapterDescriptor()).to.eventually.be.rejectedWith(
+            Error,
+            errorMessage
+        );
 
         expect(mockAdapter.debugAdapterPath).to.have.been.calledOnce;
         expect(mockAdapter.verifyDebugAdapterExists).to.not.have.been.called;
@@ -188,9 +188,10 @@ suite("debugAdapterFactory Tests", () => {
 
         const factory = new LLDBDebugAdapterExecutableFactory(instance(mockContext));
 
-        await expect(
-            factory.createDebugAdapterDescriptor(instance(mockSession), undefined)
-        ).to.eventually.be.rejectedWith(Error, errorMessage);
+        await expect(factory.createDebugAdapterDescriptor()).to.eventually.be.rejectedWith(
+            Error,
+            errorMessage
+        );
 
         expect(mockAdapter.debugAdapterPath).to.have.been.calledOnce;
         expect(mockAdapter.verifyDebugAdapterExists).to.have.been.calledOnce;
