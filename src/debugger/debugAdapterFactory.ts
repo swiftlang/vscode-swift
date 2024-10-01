@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 //===----------------------------------------------------------------------===//
 //
 // This source file is part of the VS Code Swift open source project
@@ -12,6 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+/* eslint-disable @typescript-eslint/no-unused-vars */
 
 import * as vscode from "vscode";
 import * as path from "path";
