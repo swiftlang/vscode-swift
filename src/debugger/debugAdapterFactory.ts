@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 //===----------------------------------------------------------------------===//
 //
 // This source file is part of the VS Code Swift open source project
 //
-// Copyright (c) 2023 the VS Code Swift project authors
+// Copyright (c) 2024 the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -63,10 +62,7 @@ export class LLDBDebugAdapterExecutableFactory implements vscode.DebugAdapterDes
         this.workspaceContext = workspaceContext;
     }
 
-    createDebugAdapterDescriptor(
-        session: vscode.DebugSession,
-        executable: vscode.DebugAdapterExecutable | undefined
-    ): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
+    createDebugAdapterDescriptor(): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
         // Use the stored workspaceContext
         return DebugAdapter.debugAdapterPath(this.workspaceContext.toolchain)
             .then(path =>
@@ -92,9 +88,8 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
     ) {}
 
     async resolveDebugConfiguration(
-        folder: vscode.WorkspaceFolder | undefined,
-        launchConfig: vscode.DebugConfiguration,
-        cancellation?: vscode.CancellationToken
+        _folder: vscode.WorkspaceFolder | undefined,
+        launchConfig: vscode.DebugConfiguration
     ): Promise<vscode.DebugConfiguration> {
         launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
         // Fix the program path on Windows to include the ".exe" extension
