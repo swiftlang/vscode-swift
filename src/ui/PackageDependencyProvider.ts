@@ -69,7 +69,7 @@ export class PackageNode {
 /**
  * A file or directory in the Package Dependencies {@link vscode.TreeView TreeView}.
  */
-class FileNode {
+export class FileNode {
     constructor(
         public name: string,
         public path: string,
