@@ -257,7 +257,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
         const workspacePath = folderContext.folder.fsPath;
 
         const showingDependencies: Set<string> = new Set<string>();
-        const stack: Dependency[] = rootDependencies;
+        const stack: Dependency[] = rootDependencies.slice();
 
         while (stack.length > 0) {
             const top = stack.pop();
