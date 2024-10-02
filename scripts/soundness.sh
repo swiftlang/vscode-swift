@@ -103,8 +103,9 @@ EOF
             \( \! -path './docker/*' -a \
             \( \! -path './dist/*' -a \
             \( \! -path './assets/*' -a \
+            \( \! -path './coverage/*' -a \
             \( "${matching_files[@]}" \) \
-            \) \) \) \) \) \) \)
+            \) \) \) \) \) \) \) \)
 
         if [[ "$language" = bash ]]; then
             # add everything with a shell shebang too

@@ -1276,6 +1276,7 @@
     "lint": "eslint ./ --ext ts && tsc --noEmit",
     "format": "prettier --check *.json src test",
     "pretest": "npm run compile-tests",
+    "soundness": "docker compose -f docker/docker-compose.yaml -p swift-vscode-soundness-prb run --rm soundness",
     "test": "vscode-test",
     "test-ci": "docker/test-ci.sh ci",
     "test-nightly": "docker/test-ci.sh nightly",
