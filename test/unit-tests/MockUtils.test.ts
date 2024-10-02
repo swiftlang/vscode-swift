@@ -27,6 +27,8 @@ import {
     waitForReturnedPromises,
 } from "../MockUtils";
 import { Version } from "../../src/utilities/version";
+import contextKeys from "../../src/contextKeys";
+import configuration from "../../src/configuration";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function emptyFunction(..._: any): any {
@@ -205,12 +207,40 @@ suite("MockUtils Test Suite", () => {
 
     suite("mockGlobalModule()", () => {
         const mockedFS = mockGlobalModule(fs);
+        const mockedContextKeys = mockGlobalModule(contextKeys);
+        const mockedConfiguration = mockGlobalModule(configuration);
 
         test("can mock the fs/promises module", async () => {
             mockedFS.readFile.resolves("file contents");
 
             await expect(fs.readFile("some_file")).to.eventually.equal("file contents");
             expect(mockedFS.readFile).to.have.been.calledOnceWithExactly("some_file");
+        });
+
+        test("can mock the contextKeys module", () => {
+            // Initial value should be undefined
+            expect(contextKeys.isActivated).to.be.undefined;
+            // Make sure that you can set the value of contextKeys using the mock
+            mockedContextKeys.isActivated = true;
+            expect(contextKeys.isActivated).to.be.true;
+            // Make sure that setting isActivated via contextKeys is also possible
+            contextKeys.isActivated = false;
+            expect(contextKeys.isActivated).to.be.false;
+        });
+
+        test("can mock the configuration module", () => {
+            expect(configuration.sdk).to.equal("");
+            // Make sure you can set a value using the mock
+            mockedConfiguration.sdk = "macOS";
+            expect(configuration.sdk).to.equal("macOS");
+            // Make sure you can set a value using the real module
+            configuration.sdk = "watchOS";
+            expect(configuration.sdk).to.equal("watchOS");
+            // Mocking objects within the configuration requires separate MockedObjects
+            const mockedLspConfig = mockObject<(typeof configuration)["lsp"]>(configuration.lsp);
+            mockedConfiguration.lsp = mockedLspConfig;
+            mockedLspConfig.disable = true;
+            expect(configuration.lsp.disable).to.be.true;
         });
     });
 

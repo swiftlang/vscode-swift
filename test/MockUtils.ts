@@ -309,7 +309,7 @@ export function mockGlobalModule<T>(mod: T): MockedObject<T> {
             try {
                 Object.defineProperty(mod, property, {
                     value: (realMock as any)[property],
-                    configurable: true,
+                    writable: true,
                 });
             } catch {
                 // Some properties of a module just can't be mocked and that's fine
@@ -322,7 +322,6 @@ export function mockGlobalModule<T>(mod: T): MockedObject<T> {
             try {
                 Object.defineProperty(mod, property, {
                     value: (originalValue as any)[property],
-                    configurable: true,
                 });
             } catch {
                 // Some properties of a module just can't be mocked and that's fine
@@ -335,10 +334,10 @@ export function mockGlobalModule<T>(mod: T): MockedObject<T> {
             if (!realMock) {
                 throw Error("Mock proxy accessed before setup()");
             }
-            return (realMock as any)[property];
+            return (mod as any)[property];
         },
         set(target, property, value) {
-            (realMock as any)[property] = value;
+            (mod as any)[property] = value;
             return true;
         },
     });
