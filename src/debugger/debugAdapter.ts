@@ -19,31 +19,20 @@ import { fileExists } from "../utilities/filesystem";
 import { Version } from "../utilities/version";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { SwiftToolchain } from "../toolchain/toolchain";
-import { FolderContext } from "../FolderContext";
 
 /**
  * Class managing which debug adapter we are using. Will only setup lldb-vscode/lldb-dap if it is available.
  */
 export class DebugAdapter {
     /** Debug adapter name */
-    public static getAdapterName(
-        context: WorkspaceContext | FolderContext | Version
-    ): "swift-lldb" | "lldb" {
-        return DebugAdapter.getDebugAdapterType(context) === "lldb-dap" ? "swift-lldb" : "lldb";
+    public static getAdapterName(swiftVersion: Version): "swift-lldb" | "lldb" {
+        return DebugAdapter.getDebugAdapterType(swiftVersion) === "lldb-dap"
+            ? "swift-lldb"
+            : "lldb";
     }
 
     /** Return debug adapter for toolchain */
-    public static getDebugAdapterType(
-        context: WorkspaceContext | FolderContext | Version
-    ): "lldb" | "lldb-dap" {
-        let swiftVersion: Version;
-        if (context instanceof Version) {
-            swiftVersion = context;
-        } else if (context instanceof FolderContext) {
-            swiftVersion = context.workspaceContext.swiftVersion;
-        } else {
-            swiftVersion = context.swiftVersion;
-        }
+    public static getDebugAdapterType(swiftVersion: Version): "lldb" | "lldb-dap" {
         return swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
             configuration.debugger.useDebugAdapterFromToolchain
             ? "lldb-dap"
