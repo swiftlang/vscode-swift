@@ -59,6 +59,16 @@ export function swiftLibraryPathKey(): string {
     }
 }
 
+export class ExecFileError extends Error {
+    constructor(
+        public readonly causedBy: Error,
+        public readonly stdout: string,
+        public readonly stderr: string
+    ) {
+        super(causedBy.message);
+    }
+}
+
 /**
  * Asynchronous wrapper around {@link cp.execFile child_process.execFile}.
  *
@@ -88,7 +98,7 @@ export async function execFile(
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) =>
         cp.execFile(executable, args, options, (error, stdout, stderr) => {
             if (error) {
-                reject({ error, stdout, stderr, toString: () => error.message });
+                reject(new ExecFileError(error, stdout, stderr));
             }
             resolve({ stdout, stderr });
         })

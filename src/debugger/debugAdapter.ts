@@ -96,7 +96,9 @@ export class DebugAdapter {
                         : `Cannot find ${debugAdapterName} debug adapter in your Swift toolchain.`
                 );
             }
-            workspace.outputChannel.log(`Failed to find ${lldbDebugAdapterPath}`);
+            if (lldbDebugAdapterPath) {
+                workspace.outputChannel.log(`Failed to find ${lldbDebugAdapterPath}`);
+            }
             contextKeys.lldbVSCodeAvailable = false;
             return false;
         }
