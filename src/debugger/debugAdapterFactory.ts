@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-/* eslint-disable @typescript-eslint/no-unused-vars */
 
 import * as vscode from "vscode";
 import * as path from "path";
