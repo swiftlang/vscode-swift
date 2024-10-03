@@ -102,7 +102,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         }
 
         // Delegate to CodeLLDB if that's the debug adapter we have selected
-        if (DebugAdapter.getDebugAdapterType(this.swiftVersion) === "lldb") {
+        if (DebugAdapter.getLaunchConfigType(this.swiftVersion) === "lldb") {
             launchConfig.type = "lldb";
             launchConfig.sourceLanguages = ["swift"];
         }

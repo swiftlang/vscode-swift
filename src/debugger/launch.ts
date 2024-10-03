@@ -118,7 +118,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
     const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true, "posix");
     return executableProducts.flatMap(product => {
         const baseConfig = {
-            type: DebugAdapter.getAdapterName(ctx.workspaceContext.swiftVersion),
+            type: DebugAdapter.getLaunchConfigType(ctx.workspaceContext.swiftVersion),
             request: "launch",
             args: [],
             cwd: folder,
@@ -155,7 +155,7 @@ export function createSnippetConfiguration(
     const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
 
     return {
-        type: DebugAdapter.getAdapterName(ctx.workspaceContext.swiftVersion),
+        type: DebugAdapter.getLaunchConfigType(ctx.workspaceContext.swiftVersion),
         request: "launch",
         name: `Run ${snippetName}`,
         program: path.posix.join(buildDirectory, "debug", snippetName),

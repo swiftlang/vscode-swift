@@ -24,7 +24,7 @@ import {
     mockFn,
 } from "../../MockUtils";
 import configuration from "../../../src/configuration";
-import { DebugAdapter } from "../../../src/debugger/debugAdapter";
+import { DebugAdapter, LaunchConfigType } from "../../../src/debugger/debugAdapter";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
@@ -76,49 +76,32 @@ suite("DebugAdapter Unit Test Suite", () => {
         mockFS.restore();
     });
 
-    suite("getAdapterName()", () => {
-        test("returns swift-lldb when Swift version >=6.0.0 and swift.debugger.useDebugAdapterFromToolchain is true", () => {
+    suite("getLaunchConfigType()", () => {
+        test("returns SWIFT_EXTENSION when Swift version >=6.0.0 and swift.debugger.useDebugAdapterFromToolchain is true", () => {
             mockDebugConfig.useDebugAdapterFromToolchain = true;
-
-            expect(DebugAdapter.getAdapterName(new Version(6, 0, 1))).to.equal("swift-lldb");
+            expect(DebugAdapter.getLaunchConfigType(new Version(6, 0, 1))).to.equal(
+                LaunchConfigType.SWIFT_EXTENSION
+            );
         });
 
-        test("returns lldb when Swift version >=6.0.0 and swift.debugger.useDebugAdapterFromToolchain is false", () => {
+        test("returns CODE_LLDB when Swift version >=6.0.0 and swift.debugger.useDebugAdapterFromToolchain is false", () => {
             mockDebugConfig.useDebugAdapterFromToolchain = false;
-
-            expect(DebugAdapter.getAdapterName(new Version(6, 0, 1))).to.equal("lldb");
+            expect(DebugAdapter.getLaunchConfigType(new Version(6, 0, 1))).to.equal(
+                LaunchConfigType.CODE_LLDB
+            );
         });
 
-        test("returns lldb when Swift version is older than 6.0.0 regardless of setting", () => {
+        test("returns CODE_LLDB when Swift version is older than 6.0.0 regardless of setting", () => {
             // Try with the setting false
             mockDebugConfig.useDebugAdapterFromToolchain = false;
-            expect(DebugAdapter.getAdapterName(new Version(5, 10, 0))).to.equal("lldb");
+            expect(DebugAdapter.getLaunchConfigType(new Version(5, 10, 0))).to.equal(
+                LaunchConfigType.CODE_LLDB
+            );
             // Try with the setting true
             mockDebugConfig.useDebugAdapterFromToolchain = true;
-            expect(DebugAdapter.getAdapterName(new Version(5, 10, 0))).to.equal("lldb");
-        });
-    });
-
-    suite("getDebugAdapterType()", () => {
-        test("returns lldb-dap when Swift version >=6.0.0 and swift.debugger.useDebugAdapterFromToolchain is true", () => {
-            mockDebugConfig.useDebugAdapterFromToolchain = true;
-
-            expect(DebugAdapter.getDebugAdapterType(new Version(6, 0, 1))).to.equal("lldb-dap");
-        });
-
-        test("returns lldb when Swift version >=6.0.0 and swift.debugger.useDebugAdapterFromToolchain is false", () => {
-            mockDebugConfig.useDebugAdapterFromToolchain = false;
-
-            expect(DebugAdapter.getDebugAdapterType(new Version(6, 0, 1))).to.equal("lldb");
-        });
-
-        test("returns lldb when Swift version is older than 6.0.0 regardless of setting", () => {
-            // Try with the setting false
-            mockDebugConfig.useDebugAdapterFromToolchain = false;
-            expect(DebugAdapter.getDebugAdapterType(new Version(5, 10, 0))).to.equal("lldb");
-            // Try with the setting true
-            mockDebugConfig.useDebugAdapterFromToolchain = true;
-            expect(DebugAdapter.getDebugAdapterType(new Version(5, 10, 0))).to.equal("lldb");
+            expect(DebugAdapter.getLaunchConfigType(new Version(5, 10, 0))).to.equal(
+                LaunchConfigType.CODE_LLDB
+            );
         });
     });
 

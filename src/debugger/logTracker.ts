@@ -41,7 +41,7 @@ interface DebugMessage {
 
 export function registerLoggingDebugAdapterTracker(ctx: WorkspaceContext): vscode.Disposable {
     return vscode.debug.registerDebugAdapterTrackerFactory(
-        DebugAdapter.getAdapterName(ctx.swiftVersion),
+        DebugAdapter.getLaunchConfigType(ctx.swiftVersion),
         new LoggingDebugAdapterTrackerFactory()
     );
 }
