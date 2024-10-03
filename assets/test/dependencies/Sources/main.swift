@@ -1,3 +1,2 @@
-import SwiftSyntax
 
 print("dependencies")

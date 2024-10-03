@@ -25,8 +25,9 @@ import { Version } from "../../../src/utilities/version";
 
 suite("PackageDependencyProvider Test Suite", function () {
     let treeProvider: PackageDependenciesProvider;
+    this.timeout(2 * 60 * 1000); // Allow up to 2 minutes to build
+
     suiteSetup(async function () {
-        this.timeout(2 * 60 * 1000); // Allow up to 2 minutes to build
         const workspaceContext = await globalWorkspaceContextPromise;
         // workspace-state.json was not introduced until swift 5.7
         if (workspaceContext.toolchain.swiftVersion.isLessThan(new Version(5, 7, 0))) {

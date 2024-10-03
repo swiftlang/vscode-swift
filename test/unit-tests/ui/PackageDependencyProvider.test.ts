@@ -18,7 +18,7 @@ import { FileNode, PackageNode } from "../../../src/ui/PackageDependencyProvider
 
 suite("PackageDependencyProvider Unit Test Suite", function () {
     suite("FileNode", () => {
-        test("toTreeItem, file", () => {
+        test("can create a VSCode TreeItem that opens a file", () => {
             const node = new FileNode("Foo", "/path/to/Foo", false);
             const item = node.toTreeItem();
 
@@ -32,7 +32,7 @@ suite("PackageDependencyProvider Unit Test Suite", function () {
             });
         });
 
-        test("toTreeItem, Directory", () => {
+        test("can create a VSCode TreeItem that represents a directory", () => {
             const node = new FileNode("Foo", "/path/to/Foo", true);
             const item = node.toTreeItem();
 
@@ -44,7 +44,7 @@ suite("PackageDependencyProvider Unit Test Suite", function () {
     });
 
     suite("PackageNode", () => {
-        test("toTreeItem", () => {
+        test("can create a VSCode TreeItem that represents a Swift package", () => {
             const node = new PackageNode(
                 "SwiftMarkdown",
                 "/path/to/.build/swift-markdown",
