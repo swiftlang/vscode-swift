@@ -69,7 +69,7 @@ export class PackageNode {
 /**
  * A file or directory in the Package Dependencies {@link vscode.TreeView TreeView}.
  */
-class FileNode {
+export class FileNode {
     constructor(
         public name: string,
         public path: string,
@@ -257,7 +257,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
         const workspacePath = folderContext.folder.fsPath;
 
         const showingDependencies: Set<string> = new Set<string>();
-        const stack: Dependency[] = rootDependencies;
+        const stack: Dependency[] = rootDependencies.slice();
 
         while (stack.length > 0) {
             const top = stack.pop();
@@ -291,77 +291,6 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             stack.push(...childDependencyContents.dependencies);
         }
         return showingDependencies;
-    }
-
-    /**
-     * Returns a {@link PackageNode} for every local dependency
-     * declared in **Package.swift**.
-     */
-    private getLocalDependencies(workspaceState: WorkspaceState | undefined): PackageNode[] {
-        return (
-            workspaceState?.object.dependencies
-                .filter(item => {
-                    // need to check for both "local" and "fileSystem" as swift 5.5 and earlier
-                    // use "local" while 5.6 and later use "fileSystem"
-                    return (
-                        (item.packageRef.kind === "local" ||
-                            item.packageRef.kind === "fileSystem") &&
-                        item.packageRef.location
-                    );
-                })
-                .map(
-                    dependency =>
-                        new PackageNode(
-                            dependency.packageRef.identity,
-                            dependency.packageRef.location,
-                            dependency.packageRef.location,
-                            "local",
-                            "local"
-                        )
-                ) ?? []
-        );
-    }
-
-    /**
-     * Returns a {@link PackageNode} for every remote dependency.
-     */
-    private getRemoteDependencies(folderContext: FolderContext): PackageNode[] {
-        return (
-            folderContext.swiftPackage.resolved?.pins.map(
-                pin =>
-                    new PackageNode(
-                        pin.identity,
-                        pin.location,
-                        pin.location,
-                        pin.state.version ?? pin.state.branch ?? pin.state.revision.substring(0, 7),
-                        "remote"
-                    )
-            ) ?? []
-        );
-    }
-
-    /**
-     * Return list of package dependencies in edit mode
-     * @param folderContext Folder to get edited dependencies for
-     * @returns Array of packages
-     */
-    private getEditedDependencies(workspaceState: WorkspaceState | undefined): PackageNode[] {
-        return (
-            workspaceState?.object.dependencies
-                .filter(item => {
-                    return item.state.name === "edited" && item.state.path;
-                })
-                .map(
-                    item =>
-                        new PackageNode(
-                            item.packageRef.identity,
-                            item.state.path!,
-                            item.state.path!,
-                            "local",
-                            "editing"
-                        )
-                ) ?? []
-        );
     }
 
     /**
