@@ -118,7 +118,7 @@ You may have also noticed that we needed to cast the `"Reload Extensions"` strin
 
 Mocking file system access can be a challenging endeavor that is prone to fail when implementation details of the unit under test change. This is because there are many different ways of accessing and manipulating files, making it almost impossible to catch all possible failure paths. For example, you could check for file existence using `fs.stat()` or simply call `fs.readFile()` and catch errors with a single function call. Using the real file system is slow and requires extra setup code in test cases to configure.
 
-The [`mock-fs`](https://github.com/tschaub/mock-fs) module can be used to mitigate these issues by temporarily replacing Node's built-in `fs` module with an in-memory file system. This can be useful for testing logic that uses the `fs` module without actually reaching out to the file system. Just a single function call can be used to configure what the fake file system will contain:
+The [`mock-fs`](https://github.com/tschaub/mock-fs) module is a well-maintained library that can be used to mitigate these issues by temporarily replacing Node's built-in `fs` module with an in-memory file system. This can be useful for testing logic that uses the `fs` module without actually reaching out to the file system. Just a single function call can be used to configure what the fake file system will contain:
 
 ```typescript
 import * as chai from "chai";
