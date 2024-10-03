@@ -44,7 +44,7 @@ suite("PackageDependencyProvider Unit Test Suite", function () {
     });
 
     suite("PackageNode", () => {
-        test("toTreeItem, Directory", () => {
+        test("toTreeItem", () => {
             const node = new PackageNode(
                 "SwiftMarkdown",
                 "/path/to/.build/swift-markdown",
