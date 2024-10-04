@@ -113,7 +113,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
         context.subscriptions.push(workspaceContext);
 
         // setup swift version of LLDB. Don't await on this as it can run in the background
-        await DebugAdapter.verifyDebugAdapterExists(workspaceContext, true);
+        DebugAdapter.verifyDebugAdapterExists(workspaceContext, true).catch(error => {
+            outputChannel.log(error);
+        });
         workspaceContext.setLLDBVersion();
 
         // listen for workspace folder changes and active text editor changes
@@ -230,7 +232,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
         const lldbDebugAdapter = registerLLDBDebugAdapter(workspaceContext);
         context.subscriptions.push(lldbDebugAdapter);
 
-        const loggingDebugAdapter = registerLoggingDebugAdapterTracker();
+        const loggingDebugAdapter = registerLoggingDebugAdapterTracker(workspaceContext);
 
         // setup workspace context with initial workspace folders
         workspaceContext.addWorkspaceFolders();

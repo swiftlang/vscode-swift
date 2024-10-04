@@ -430,7 +430,7 @@ export class TestingConfigurationFactory {
         }).map(([key, value]) => `settings set target.env-vars ${key}="${value}"`);
 
         return {
-            type: DebugAdapter.adapterName,
+            type: DebugAdapter.getLaunchConfigType(this.ctx.workspaceContext.swiftVersion),
             request: "custom",
             name: `Test ${this.ctx.swiftPackage.name}`,
             targetCreateCommands: [`file -a ${arch} ${xctestPath}/xctest`],
@@ -638,7 +638,7 @@ export class TestingConfigurationFactory {
 function getBaseConfig(ctx: FolderContext, expandEnvVariables: boolean) {
     const { folder, nameSuffix } = getFolderAndNameSuffix(ctx, expandEnvVariables);
     return {
-        type: DebugAdapter.adapterName,
+        type: DebugAdapter.getLaunchConfigType(ctx.workspaceContext.swiftVersion),
         request: "launch",
         sourceLanguages: ["swift"],
         name: `Test ${ctx.swiftPackage.name}`,

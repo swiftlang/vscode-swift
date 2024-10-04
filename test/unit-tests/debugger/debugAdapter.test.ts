@@ -13,13 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
 import { expect } from "chai";
-import { DebugAdapter } from "../../../src/debugger/debugAdapter";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
-import { Version } from "../../../src/utilities/version";
+import * as mockFS from "mock-fs";
 import {
     mockGlobalObject,
     MockedObject,
@@ -29,74 +24,233 @@ import {
     mockFn,
 } from "../../MockUtils";
 import configuration from "../../../src/configuration";
+import { DebugAdapter, LaunchConfigType } from "../../../src/debugger/debugAdapter";
+import { SwiftToolchain } from "../../../src/toolchain/toolchain";
+import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
+import { Version } from "../../../src/utilities/version";
+import contextKeys from "../../../src/contextKeys";
 
-suite("DebugAdapter Tests", () => {
-    suite("customDebugAdapterPath take precedent", () => {
-        const mockDebugConfig = mockGlobalObject(configuration, "debugger");
+suite("DebugAdapter Unit Test Suite", () => {
+    const mockConfiguration = mockGlobalModule(configuration);
+    const mockedContextKeys = mockGlobalModule(contextKeys);
+    const mockedWindow = mockGlobalObject(vscode, "window");
 
-        test("customDebugAdapterPath take precedent", async () => {
-            const mockToolchain = mockObject<SwiftToolchain>({});
-            const mockContext = mockObject<WorkspaceContext>({
-                toolchain: instance(mockToolchain),
-            });
-            const expectPath = "/something/cool-lldb";
-            mockDebugConfig.customDebugAdapterPath = expectPath;
+    let mockDebugConfig: MockedObject<(typeof configuration)["debugger"]>;
+    let mockWorkspaceContext: MockedObject<WorkspaceContext>;
+    let mockToolchain: MockedObject<SwiftToolchain>;
+    let mockOutputChannel: MockedObject<SwiftOutputChannel>;
 
-            const path = await DebugAdapter.debugAdapterPath(mockContext.toolchain);
-            expect(path).to.deep.equal(expectPath);
+    setup(() => {
+        // Mock VS Code settings
+        mockDebugConfig = mockObject<(typeof configuration)["debugger"]>({
+            useDebugAdapterFromToolchain: false,
+            customDebugAdapterPath: "",
         });
-
-        // gap to be covered by integration test: lldb-dap darwin vs. non darwin
+        mockConfiguration.debugger = instance(mockDebugConfig);
+        // Mock the file system
+        mockFS({});
+        // Mock the WorkspaceContext and related dependencies
+        const toolchainPath = "/toolchains/swift";
+        mockToolchain = mockObject<SwiftToolchain>({
+            swiftVersion: new Version(6, 0, 0),
+            getLLDBDebugAdapter: mockFn(s => s.callsFake(() => toolchainPath + "/lldb-dap")),
+            getLLDB: mockFn(s => s.callsFake(() => toolchainPath + "/lldb")),
+        });
+        mockOutputChannel = mockObject<SwiftOutputChannel>({
+            log: mockFn(),
+        });
+        mockWorkspaceContext = mockObject<WorkspaceContext>({
+            toolchain: instance(mockToolchain),
+            outputChannel: instance(mockOutputChannel),
+            get swiftVersion() {
+                return mockToolchain.swiftVersion;
+            },
+            set swiftVersion(version) {
+                mockToolchain.swiftVersion = version;
+            },
+        });
     });
 
-    suite("verifyDebugAdapterExists false return Tests", () => {
-        const mockedWindow = mockGlobalObject(vscode, "window");
-        const mockedFS = mockGlobalModule(fs);
+    teardown(() => {
+        mockFS.restore();
+    });
 
-        let mockWorkspaceContext: MockedObject<WorkspaceContext>;
-        let mockToolchain: MockedObject<SwiftToolchain>;
-        let mockOutputChannel: MockedObject<SwiftOutputChannel>;
+    suite("getLaunchConfigType()", () => {
+        test("returns SWIFT_EXTENSION when Swift version >=6.0.0 and swift.debugger.useDebugAdapterFromToolchain is true", () => {
+            mockDebugConfig.useDebugAdapterFromToolchain = true;
+            expect(DebugAdapter.getLaunchConfigType(new Version(6, 0, 1))).to.equal(
+                LaunchConfigType.SWIFT_EXTENSION
+            );
+        });
 
-        setup(() => {
-            // Mock the file system
-            mockedFS.stat.throws(new Error("File does not exist"));
-            // Mock the WorkspaceContext and related dependencies
-            const swiftVersion = new Version(5, 3, 0); // Any version
-            mockToolchain = mockObject<SwiftToolchain>({
-                swiftVersion,
-                getLLDBDebugAdapter: mockFn(),
-                getToolchainExecutable: mockFn(),
+        test("returns CODE_LLDB when Swift version >=6.0.0 and swift.debugger.useDebugAdapterFromToolchain is false", () => {
+            mockDebugConfig.useDebugAdapterFromToolchain = false;
+            expect(DebugAdapter.getLaunchConfigType(new Version(6, 0, 1))).to.equal(
+                LaunchConfigType.CODE_LLDB
+            );
+        });
+
+        test("returns CODE_LLDB when Swift version is older than 6.0.0 regardless of setting", () => {
+            // Try with the setting false
+            mockDebugConfig.useDebugAdapterFromToolchain = false;
+            expect(DebugAdapter.getLaunchConfigType(new Version(5, 10, 0))).to.equal(
+                LaunchConfigType.CODE_LLDB
+            );
+            // Try with the setting true
+            mockDebugConfig.useDebugAdapterFromToolchain = true;
+            expect(DebugAdapter.getLaunchConfigType(new Version(5, 10, 0))).to.equal(
+                LaunchConfigType.CODE_LLDB
+            );
+        });
+    });
+
+    suite("verifyDebugAdapterExists()", () => {
+        suite("Using lldb-dap", () => {
+            setup(() => {
+                mockToolchain.swiftVersion = new Version(6, 0, 0);
+                mockDebugConfig.useDebugAdapterFromToolchain = true;
+                // Should be using lldb-dap in this case
+                mockFS({
+                    "/toolchains/swift/lldb-dap": mockFS.file({ content: "", mode: 0o770 }),
+                });
             });
-            mockOutputChannel = mockObject<SwiftOutputChannel>({
-                log: mockFn(),
+
+            createCommonTests();
+
+            test("returns false when the toolchain throws an error trying to find lldb-dap", async () => {
+                mockToolchain.getLLDBDebugAdapter.rejects(new Error("Uh oh!"));
+
+                await expect(
+                    DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), false)
+                ).to.eventually.be.false;
             });
-            mockWorkspaceContext = mockObject<WorkspaceContext>({
-                toolchain: instance(mockToolchain),
-                swiftVersion,
-                outputChannel: instance(mockOutputChannel),
+
+            test("shows an error message to the user when the toolchain throws an error trying to find lldb-dap", async () => {
+                mockToolchain.getLLDBDebugAdapter.rejects(new Error("Uh oh!"));
+
+                await DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), false);
+                expect(mockedWindow.showErrorMessage).to.have.been.calledOnce;
+            });
+
+            test("disables the swift.lldbVSCodeAvailable context key if the toolchain throws an error trying to find lldb-dap", async () => {
+                mockToolchain.getLLDBDebugAdapter.rejects(new Error("Uh oh!"));
+
+                await DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), false);
+                expect(mockedContextKeys.lldbVSCodeAvailable).to.be.false;
             });
         });
 
-        test("should return false regardless of quiet setting", async () => {
-            await expect(
-                DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), true)
-            ).to.eventually.equal(false, "Should return false when quiet is true");
+        suite("Using lldb-dap with custom debug adapter path", () => {
+            setup(() => {
+                mockToolchain.swiftVersion = new Version(6, 0, 0);
+                mockDebugConfig.useDebugAdapterFromToolchain = true;
+                mockDebugConfig.customDebugAdapterPath = "/path/to/custom/lldb-dap";
+                // Should be using a custom lldb-dap in this case
+                mockFS({
+                    "/path/to/custom/lldb-dap": mockFS.file({ content: "", mode: 0o770 }),
+                });
+            });
 
-            await expect(
-                DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), false)
-            ).to.eventually.equal(false, "Should return false when quiet is false");
+            createCommonTests();
         });
 
-        test("should call showErrorMessage when quiet is false", async () => {
-            await DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), false);
-            expect(mockedWindow.showErrorMessage).to.have.been.called;
+        suite("Using CodeLLDB", () => {
+            setup(() => {
+                mockToolchain.swiftVersion = new Version(6, 0, 0);
+                mockDebugConfig.useDebugAdapterFromToolchain = false;
+                // Should be using CodeLLDB in this case
+                mockFS({
+                    "/toolchains/swift/lldb": mockFS.file({ content: "", mode: 0o770 }),
+                });
+            });
+
+            createCommonTests();
+
+            test("returns false when the toolchain throws an error trying to find lldb", async () => {
+                mockToolchain.getLLDB.rejects(new Error("Uh oh!"));
+
+                await expect(
+                    DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), false)
+                ).to.eventually.be.false;
+            });
+
+            test("shows an error message to the user when the toolchain throws an error trying to find lldb", async () => {
+                mockToolchain.getLLDB.rejects(new Error("Uh oh!"));
+
+                await DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), false);
+                expect(mockedWindow.showErrorMessage).to.have.been.calledOnce;
+            });
+
+            test("disables the swift.lldbVSCodeAvailable context key if the toolchain throws an error trying to find lldb", async () => {
+                mockToolchain.getLLDB.rejects(new Error("Uh oh!"));
+
+                await DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), false);
+                expect(mockedContextKeys.lldbVSCodeAvailable).to.be.false;
+            });
         });
 
-        test("should not call showErrorMessage when quiet is true", async () => {
-            await DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), true);
-            expect(mockedWindow.showErrorMessage).to.not.have.been.called;
-        });
+        function createCommonTests() {
+            test("returns true when debug adapter exists regardless of quiet setting", async () => {
+                // Test with quiet = true
+                await expect(
+                    DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), true)
+                ).to.eventually.be.true;
 
-        // gap to be covered by integration test: true return of verifyDebugAdapterExists
+                // Test with quiet = false
+                await expect(
+                    DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), false)
+                ).to.eventually.be.true;
+            });
+
+            test("returns false when debug adapter doesn't exist regardless of quiet setting", async () => {
+                // Reset the file system to empty
+                mockFS({});
+
+                // Test with quiet = true
+                await expect(
+                    DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), true)
+                ).to.eventually.be.false;
+
+                // Test with quiet = false
+                await expect(
+                    DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), false)
+                ).to.eventually.be.false;
+            });
+
+            test("shows an error message to the user when the debug adapter doesn't exist and quiet is false", async () => {
+                // Reset the file system to empty
+                mockFS({});
+
+                await DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), false);
+                expect(mockedWindow.showErrorMessage).to.have.been.called;
+            });
+
+            test("doesn't show an error message to the user when the debug adapter doesn't exist and quiet is false", async () => {
+                // Reset the file system to empty
+                mockFS({});
+
+                await DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), true);
+                expect(mockedWindow.showErrorMessage).to.not.have.been.called;
+            });
+
+            test("doesn't show an error message to the user when the debug adapter exists", async () => {
+                await DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext), true);
+                expect(mockedWindow.showErrorMessage).to.not.have.been.called;
+            });
+
+            test("enables the swift.lldbVSCodeAvailable context key if the debugger exists", async () => {
+                await DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext));
+                expect(mockedContextKeys.lldbVSCodeAvailable).to.be.true;
+            });
+
+            test("disables the swift.lldbVSCodeAvailable context key if the debugger doesn't exist", async () => {
+                // Reset the file system to empty
+                mockFS({});
+
+                await DebugAdapter.verifyDebugAdapterExists(instance(mockWorkspaceContext));
+                expect(mockedContextKeys.lldbVSCodeAvailable).to.be.false;
+            });
+        }
     });
 });

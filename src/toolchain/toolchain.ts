@@ -397,17 +397,19 @@ export class SwiftToolchain {
      * search inside Xcode.
      */
     private async findToolchainOrXcodeExecutable(executable: string): Promise<string> {
-        const toolchainExecutablePath = path.join(
-            this.swiftFolderPath,
-            process.platform === "win32" ? `${executable}.exe` : executable
-        );
+        if (process.platform === "win32") {
+            executable += ".exe";
+        }
+        const toolchainExecutablePath = path.join(this.swiftFolderPath, executable);
 
         if (await pathExists(toolchainExecutablePath)) {
             return toolchainExecutablePath;
         }
 
         if (process.platform !== "darwin") {
-            throw new Error(`Failed to find ${executable} in swift toolchain`);
+            throw new Error(
+                `Failed to find ${executable} within Swift toolchain '${this.toolchainPath}'`
+            );
         }
         return this.findXcodeExecutable(executable);
     }
@@ -415,12 +417,22 @@ export class SwiftToolchain {
     private async findXcodeExecutable(executable: string): Promise<string> {
         const xcodeDirectory = SwiftToolchain.getXcodeDirectory(this.toolchainPath);
         if (!xcodeDirectory) {
-            throw new Error(`Failed to find ${executable} in Swift toolchain`);
+            throw new Error(
+                `Failed to find ${executable} within Swift toolchain '${this.toolchainPath}'`
+            );
         }
-        const { stdout } = await execFile("xcrun", ["-find", executable], {
-            env: { ...process.env, DEVELOPER_DIR: xcodeDirectory },
-        });
-        return stdout.trimEnd();
+        try {
+            const { stdout } = await execFile("xcrun", ["-find", executable], {
+                env: { ...process.env, DEVELOPER_DIR: xcodeDirectory },
+            });
+            return stdout.trimEnd();
+        } catch (error) {
+            let errorMessage = `Failed to find ${executable} within Xcode Swift toolchain '${xcodeDirectory}'`;
+            if (error instanceof Error) {
+                errorMessage += `:\n${error.message}`;
+            }
+            throw new Error(errorMessage);
+        }
     }
 
     private basePlatformDeveloperPath(): string | undefined {

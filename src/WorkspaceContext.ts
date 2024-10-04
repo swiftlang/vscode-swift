@@ -29,7 +29,7 @@ import configuration from "./configuration";
 import contextKeys from "./contextKeys";
 import { setSnippetContextKey } from "./SwiftSnippets";
 import { CommentCompletionProviders } from "./editor/CommentCompletion";
-import { DebugAdapter } from "./debugger/debugAdapter";
+import { DebugAdapter, LaunchConfigType } from "./debugger/debugAdapter";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { DiagnosticsManager } from "./DiagnosticsManager";
@@ -421,7 +421,7 @@ export class WorkspaceContext implements vscode.Disposable {
     /** find LLDB version and setup path in CodeLLDB */
     async setLLDBVersion() {
         // check we are using CodeLLDB
-        if (DebugAdapter.getDebugAdapterType(this.swiftVersion) !== "lldb-vscode") {
+        if (DebugAdapter.getLaunchConfigType(this.swiftVersion) !== LaunchConfigType.CODE_LLDB) {
             return;
         }
         const libPathResult = await getLLDBLibPath(this.toolchain);

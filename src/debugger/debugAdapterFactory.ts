@@ -15,16 +15,16 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import { WorkspaceContext } from "../WorkspaceContext";
-import { DebugAdapter } from "./debugAdapter";
+import { DebugAdapter, LaunchConfigType } from "./debugAdapter";
 import { Version } from "../utilities/version";
 
 export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
     const debugAdpaterFactory = vscode.debug.registerDebugAdapterDescriptorFactory(
-        "swift-lldb",
+        LaunchConfigType.SWIFT_EXTENSION,
         new LLDBDebugAdapterExecutableFactory(workspaceContext)
     );
     const debugConfigProvider = vscode.debug.registerDebugConfigurationProvider(
-        "swift-lldb",
+        LaunchConfigType.SWIFT_EXTENSION,
         new LLDBDebugConfigurationProvider(
             process.platform,
             workspaceContext.toolchain.swiftVersion
@@ -102,8 +102,8 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         }
 
         // Delegate to CodeLLDB if that's the debug adapter we have selected
-        if (DebugAdapter.getDebugAdapterType(this.swiftVersion) === "lldb-vscode") {
-            launchConfig.type = "lldb";
+        if (DebugAdapter.getLaunchConfigType(this.swiftVersion) === LaunchConfigType.CODE_LLDB) {
+            launchConfig.type = LaunchConfigType.CODE_LLDB;
             launchConfig.sourceLanguages = ["swift"];
         }
         return launchConfig;

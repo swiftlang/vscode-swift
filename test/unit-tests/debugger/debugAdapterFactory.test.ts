@@ -14,13 +14,10 @@
 
 import * as vscode from "vscode";
 import { expect } from "chai";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { DebugAdapter } from "../../../src/debugger/debugAdapter";
 import {
     LLDBDebugAdapterExecutableFactory,
     LLDBDebugConfigurationProvider,
 } from "../../../src/debugger/debugAdapterFactory";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { Version } from "../../../src/utilities/version";
 import {
     mockGlobalObject,
@@ -30,6 +27,9 @@ import {
     mockGlobalModule,
 } from "../../MockUtils";
 import configuration from "../../../src/configuration";
+import { DebugAdapter, LaunchConfigType } from "../../../src/debugger/debugAdapter";
+import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 
 suite("Debug Adapter Factory Test Suite", () => {
     const swift6 = new Version(6, 0, 0);
@@ -45,23 +45,23 @@ suite("Debug Adapter Factory Test Suite", () => {
             const configProvider = new LLDBDebugConfigurationProvider("darwin", swift6);
             const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
                 name: "Test Launch Config",
-                type: DebugAdapter.adapterName,
+                type: LaunchConfigType.SWIFT_EXTENSION,
                 request: "launch",
                 program: "${workspaceFolder}/.build/debug/executable",
             });
-            expect(launchConfig).to.containSubset({ type: DebugAdapter.adapterName });
+            expect(launchConfig).to.containSubset({ type: LaunchConfigType.SWIFT_EXTENSION });
         });
 
         test("delegates to CodeLLDB for swift versions <6.0.0", async () => {
             const configProvider = new LLDBDebugConfigurationProvider("darwin", swift510);
             const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
                 name: "Test Launch Config",
-                type: DebugAdapter.adapterName,
+                type: LaunchConfigType.SWIFT_EXTENSION,
                 request: "launch",
                 program: "${workspaceFolder}/.build/debug/executable",
             });
             expect(launchConfig).to.containSubset({
-                type: "lldb",
+                type: LaunchConfigType.CODE_LLDB,
                 sourceLanguages: ["swift"],
             });
         });
@@ -71,12 +71,12 @@ suite("Debug Adapter Factory Test Suite", () => {
             const configProvider = new LLDBDebugConfigurationProvider("darwin", swift6);
             const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
                 name: "Test Launch Config",
-                type: DebugAdapter.adapterName,
+                type: LaunchConfigType.SWIFT_EXTENSION,
                 request: "launch",
                 program: "${workspaceFolder}/.build/debug/executable",
             });
             expect(launchConfig).to.containSubset({
-                type: "lldb",
+                type: LaunchConfigType.CODE_LLDB,
                 sourceLanguages: ["swift"],
             });
         });
@@ -85,7 +85,7 @@ suite("Debug Adapter Factory Test Suite", () => {
             const configProvider = new LLDBDebugConfigurationProvider("win32", swift6);
             const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
                 name: "Test Launch Config",
-                type: DebugAdapter.adapterName,
+                type: LaunchConfigType.SWIFT_EXTENSION,
                 request: "launch",
                 program: "${workspaceFolder}/.build/debug/executable",
             });
@@ -98,7 +98,7 @@ suite("Debug Adapter Factory Test Suite", () => {
             const configProvider = new LLDBDebugConfigurationProvider("win32", swift6);
             const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
                 name: "Test Launch Config",
-                type: DebugAdapter.adapterName,
+                type: LaunchConfigType.SWIFT_EXTENSION,
                 request: "launch",
                 program: "${workspaceFolder}/.build/debug/executable.exe",
             });
@@ -111,7 +111,7 @@ suite("Debug Adapter Factory Test Suite", () => {
             const configProvider = new LLDBDebugConfigurationProvider("darwin", swift6);
             const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
                 name: "Test Launch Config",
-                type: DebugAdapter.adapterName,
+                type: LaunchConfigType.SWIFT_EXTENSION,
                 request: "launch",
                 program: "${workspaceFolder}/.build/debug/executable",
             });
@@ -124,7 +124,7 @@ suite("Debug Adapter Factory Test Suite", () => {
             const configProvider = new LLDBDebugConfigurationProvider("linux", swift6);
             const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
                 name: "Test Launch Config",
-                type: DebugAdapter.adapterName,
+                type: LaunchConfigType.SWIFT_EXTENSION,
                 request: "launch",
                 program: "${workspaceFolder}/.build/debug/executable",
             });
@@ -223,7 +223,7 @@ suite("debugAdapterFactory Tests", () => {
 
         test("should resolve debug configuration with converted environment variables", async () => {
             const launchConfig: vscode.DebugConfiguration = {
-                type: "swift-lldb",
+                type: LaunchConfigType.SWIFT_EXTENSION,
                 request: "launch",
                 name: "Test Launch",
                 env: {

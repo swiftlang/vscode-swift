@@ -12,6 +12,7 @@ A brief description of each framework can be found below:
 
 - [Organizing Tests](#organizing-tests)
 - [Writing Unit Tests](#writing-unit-tests)
+- [Mocking the File System](#mocking-the-file-system)
 - [Mocking Utilities](#mocking-utilities)
   - [Mocking interfaces, classes, and functions](#mocking-interfaces-classes-and-functions)
   - [Mocking VS Code events](#mocking-vs-code-events)
@@ -112,6 +113,44 @@ suite("ReloadExtension Unit Test Suite", () => {
 ```
 
 You may have also noticed that we needed to cast the `"Reload Extensions"` string to `any` when resolving `showWarningMessage()`. Unforunately, this may be necessary for methods that have incompatible overloaded signatures due to a TypeScript issue that remains unfixed.
+
+## Mocking the File System
+
+Mocking file system access can be a challenging endeavor that is prone to fail when implementation details of the unit under test change. This is because there are many different ways of accessing and manipulating files, making it almost impossible to catch all possible failure paths. For example, you could check for file existence using `fs.stat()` or simply call `fs.readFile()` and catch errors with a single function call. Using the real file system is slow and requires extra setup code in test cases to configure.
+
+The [`mock-fs`](https://github.com/tschaub/mock-fs) module is a well-maintained library that can be used to mitigate these issues by temporarily replacing Node's built-in `fs` module with an in-memory file system. This can be useful for testing logic that uses the `fs` module without actually reaching out to the file system. Just a single function call can be used to configure what the fake file system will contain:
+
+```typescript
+import * as chai from "chai";
+import * as mockFS from "mock-fs";
+import * as fs from "fs/promises";
+
+suite("mock-fs example", () => {
+    // This teardown step is also important to make sure your tests clean up the
+    // mocked file system when they complete!
+    teardown(() => {
+        mockFS.restore();
+    });
+
+    test("mock out a file on disk", async () => {
+        // A single function call can be used to configure the file system
+        mockFS({
+            "/path/to/some/file": "Some really cool file contents",
+        });
+        await expect(fs.readFile("/path/to/some/file", "utf-8"))
+            .to.eventually.equal("Some really cool file contents");
+    });
+});
+```
+
+In order to test failure paths, you can either create an empty file system or use `mockFS.file()` to set the mode to make a file that is not accessible to the current user:
+
+```typescript
+test("file is not readable by the current user", async () => {
+    mockFS({ "/path/to/file": mockFS.file({ mode: 0o000 }) });
+    await expect(fs.readFile("/path/to/file", "utf-8")).to.eventually.be.rejected;
+});
+```
 
 ## Mocking Utilities
 
