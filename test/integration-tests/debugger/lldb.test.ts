@@ -14,33 +14,31 @@
 
 import { expect } from "chai";
 import { getLLDBLibPath, getLldbProcess } from "../../../src/debugger/lldb";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
+import { globalWorkspaceContextPromise } from "../extension.test";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 
 suite("lldb contract test suite", () => {
+    let workspaceContext: WorkspaceContext;
+
+    suiteSetup(async () => {
+        workspaceContext = await globalWorkspaceContextPromise;
+    });
+
     test("getLldbProcess Contract Test, make sure the command returns", async () => {
-        const toolchain = await SwiftToolchain.create();
-        const workspaceContext = await WorkspaceContext.create(
-            new SwiftOutputChannel("Swift"),
-            toolchain
-        );
         const result = await getLldbProcess(workspaceContext);
+
         // Assumption: machine will always return some process
         expect(result).to.be.an("array");
 
-        if (result) {
-            // If result is an array, assert that each element has a pid and label
-            result.forEach(item => {
-                expect(item).to.have.property("pid").that.is.a("number");
-                expect(item).to.have.property("label").that.is.a("string");
-            });
-        }
+        // If result is an array, assert that each element has a pid and label
+        result?.forEach(item => {
+            expect(item).to.have.property("pid").that.is.a("number");
+            expect(item).to.have.property("label").that.is.a("string");
+        });
     });
 
     test("getLLDBLibPath Contract Test, make sure we can find lib LLDB", async () => {
-        const toolchain = await SwiftToolchain.create();
-        const libPath = await getLLDBLibPath(toolchain);
+        const libPath = await getLLDBLibPath(workspaceContext.toolchain);
 
         // Check the result for various platforms
         if (process.platform === "linux") {
