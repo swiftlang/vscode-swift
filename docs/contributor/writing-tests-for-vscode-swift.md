@@ -143,6 +143,15 @@ suite("mock-fs example", () => {
 });
 ```
 
+In order to test failure paths, you can either create an empty file system or use `mockFS.file()` to set the mode to make a file that is not accessible to the current user:
+
+```typescript
+test("file is not readable by the current user", async () => {
+    mockFS({ "/path/to/file": mockFS.file({ mode: 0o000 }) });
+    await expect(fs.readFile("/path/to/file", "utf-8")).to.eventually.be.rejected;
+});
+```
+
 ## Mocking Utilities
 
 This section outlines the various utilities that can be used to improve the readability of your tests. The [MockUtils](../../test/MockUtils.ts) module can be used to perform more advanced mocking than what Sinon provides out of the box. This module has its [own set of tests](../../test/unit-tests/MockUtils.test.ts) that you can use to get a feel for how it works.
