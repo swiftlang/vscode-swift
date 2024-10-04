@@ -61,7 +61,7 @@ suite("attachDebugger Unit Test Suite", () => {
         await attachDebugger(instance(mockContext));
 
         // Verify startDebugging was called with the right pid.
-        // Integration level check needed: actual config return a fulfilled promise.
+        // NB(separate itest): actual config return a fulfilled promise.
         expect(debugMock.startDebugging).to.have.been.calledOnce;
         expect(debugMock.startDebugging.args[0][1]).to.containSubset({ pid: 1234 });
     });
