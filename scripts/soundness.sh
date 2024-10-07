@@ -124,3 +124,7 @@ EOF
 done
 
 rm "$tmp"
+
+printf "=> Checking for broken links in documentation... "
+find . -name node_modules -prune -o -name \*.md -print0 | xargs -0 -n1 npx markdown-link-check
+printf "\033[0;32mokay.\033[0m\n"
