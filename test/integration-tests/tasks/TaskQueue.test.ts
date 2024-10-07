@@ -17,7 +17,7 @@ import * as assert from "assert";
 import { testAssetPath } from "../../fixtures";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftExecOperation, TaskOperation, TaskQueue } from "../../../src/tasks/TaskQueue";
-import { waitForNoRunningTasks } from "../../utilities";
+import { waitForNoRunningTasks } from "../../utilities/tasks";
 import { activateExtensionForSuite } from "../utilities/testutilities";
 
 suite("TaskQueue Test Suite", () => {
