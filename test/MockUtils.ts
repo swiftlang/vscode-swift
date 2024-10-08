@@ -127,6 +127,23 @@ function replaceWithMocks<T>(obj: Partial<T>): MockedObject<T> {
     return result;
 }
 
+function checkAndAcquireValueFromTarget(
+    target: any,
+    property: string | symbol,
+    method: "access" | "set"
+): any {
+    if (!Object.prototype.hasOwnProperty.call(target, property)) {
+        throw new Error(
+            `Attempted to ${method} property '${String(property)}', but it was not mocked.`
+        );
+    }
+    const value = target[property];
+    if (value && Object.prototype.hasOwnProperty.call(value, "_wasThrownByRealObject")) {
+        throw value;
+    }
+    return value;
+}
+
 /**
  * Creates a MockedObject from an interface or class. Converts any functions into SinonStubs.
  *
@@ -145,24 +162,12 @@ function replaceWithMocks<T>(obj: Partial<T>): MockedObject<T> {
  */
 export function mockObject<T>(overrides: Partial<T>): MockedObject<T> {
     const clonedObject = replaceWithMocks<T>(overrides);
-    function checkAndAcquireValueFromTarget(target: any, property: string | symbol): any {
-        if (!Object.prototype.hasOwnProperty.call(target, property)) {
-            throw new Error(
-                `Attempted to access property '${String(property)}', but it was not mocked.`
-            );
-        }
-        const value = target[property];
-        if (value && Object.prototype.hasOwnProperty.call(value, "_wasThrownByRealObject")) {
-            throw value;
-        }
-        return value;
-    }
     return new Proxy<any>(clonedObject, {
         get(target, property) {
-            return checkAndAcquireValueFromTarget(target, property);
+            return checkAndAcquireValueFromTarget(target, property, "access");
         },
         set(target, property, value) {
-            checkAndAcquireValueFromTarget(target, property);
+            checkAndAcquireValueFromTarget(target, property, "set");
             target[property] = value;
             return true;
         },
@@ -297,17 +302,18 @@ function shallowClone<T>(obj: T): T {
  *
  * **Note:** This **MUST** be called outside of the test() function or it will not work.
  *
- * @param mod The module that will be fully mocked
+ * @param module The module that will be fully mocked
+ * @param overrides Used to mock only certain properties within the module
  */
-export function mockGlobalModule<T>(mod: T): MockedObject<T> {
+export function mockGlobalModule<T>(module: T, overrides?: Partial<T>): MockedObject<T> {
     let realMock: MockedObject<T>;
-    const originalValue: T = shallowClone(mod);
+    const originalValue: T = shallowClone(module);
     // Create the mock at setup
     setup(() => {
-        realMock = mockObject(mod);
+        realMock = mockObject(overrides ?? module);
         for (const property of Object.getOwnPropertyNames(realMock)) {
             try {
-                Object.defineProperty(mod, property, {
+                Object.defineProperty(module, property, {
                     value: (realMock as any)[property],
                     writable: true,
                 });
@@ -320,7 +326,7 @@ export function mockGlobalModule<T>(mod: T): MockedObject<T> {
     teardown(() => {
         for (const property of Object.getOwnPropertyNames(originalValue)) {
             try {
-                Object.defineProperty(mod, property, {
+                Object.defineProperty(module, property, {
                     value: (originalValue as any)[property],
                 });
             } catch {
@@ -334,10 +340,15 @@ export function mockGlobalModule<T>(mod: T): MockedObject<T> {
             if (!realMock) {
                 throw Error("Mock proxy accessed before setup()");
             }
-            return (mod as any)[property];
+            checkAndAcquireValueFromTarget(realMock, property, "access");
+            return (module as any)[property];
         },
         set(target, property, value) {
-            (mod as any)[property] = value;
+            if (!realMock) {
+                throw Error("Mock proxy accessed before setup()");
+            }
+            checkAndAcquireValueFromTarget(realMock, property, "set");
+            (module as any)[property] = value;
             return true;
         },
     });
