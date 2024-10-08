@@ -144,7 +144,7 @@ async function getQuickPickItems(
 ): Promise<SelectToolchainItem[]> {
     // Find any Xcode installations on the system
     const xcodes = (await SwiftToolchain.getXcodeInstalls())
-        .reverse()
+        .sort((a, b) => path.basename(a, ".app").localeCompare(path.basename(b, ".app")))
         .map<SwiftToolchainItem>(xcodePath => {
             const toolchainPath = path.join(
                 xcodePath,
@@ -255,7 +255,7 @@ async function getQuickPickItems(
  *
  * @param activeToolchain the {@link WorkspaceContext}
  */
-export async function showToolchainSelectionQuickPick(activeToolchain: SwiftToolchain | undefined) {
+export async function showToolchainSelectionQuickPick(activeToolchain?: SwiftToolchain) {
     let xcodePaths: string[] = [];
     const selected = await vscode.window.showQuickPick<SelectToolchainItem>(
         getQuickPickItems(activeToolchain).then(result => {

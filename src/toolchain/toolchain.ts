@@ -255,7 +255,7 @@ export class SwiftToolchain {
                 .filter((toolchain): toolchain is string => typeof toolchain === "string")
                 .map(toolchain => path.join(swiftlyHomeDir, "toolchains", toolchain));
         } catch (error) {
-            throw new Error("Failed to retrieve Swiftly installations from disk.");
+            return [];
         }
     }
 
@@ -271,7 +271,7 @@ export class SwiftToolchain {
         return Promise.all([
             this.findToolchainsIn("/Library/Developer/Toolchains/"),
             this.findToolchainsIn(path.join(os.homedir(), "Library/Developer/Toolchains/")),
-        ]).then(results => results.flatMap(a => a));
+        ]).then(results => results.flat());
     }
 
     /**

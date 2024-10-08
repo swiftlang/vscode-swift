@@ -14,6 +14,7 @@
 
 import { expect } from "chai";
 import * as mockFS from "mock-fs";
+import * as os from "os";
 import * as utilities from "../../../src/utilities/utilities";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { Version } from "../../../src/utilities/version";
@@ -22,6 +23,8 @@ import { mockGlobalModule, mockGlobalValue } from "../../MockUtils";
 suite("SwiftToolchain Unit Test Suite", () => {
     const mockedUtilities = mockGlobalModule(utilities);
     const mockedPlatform = mockGlobalValue(process, "platform");
+    const mockedOS = mockGlobalModule(os, { homedir: () => "" });
+    const mockedEnvironment = mockGlobalValue(process, "env");
 
     setup(() => {
         mockFS({});
@@ -32,6 +35,230 @@ suite("SwiftToolchain Unit Test Suite", () => {
 
     teardown(() => {
         mockFS.restore();
+    });
+
+    suite("getXcodeDeveloperDir()", () => {
+        test("returns the path to the Xcode developer directory using xcrun", async () => {
+            mockedUtilities.execFile.resolves({
+                stderr: "",
+                stdout: "/path/to/Xcode/developer/dir\r\n\r\n",
+            });
+            await expect(SwiftToolchain.getXcodeDeveloperDir()).to.eventually.equal(
+                "/path/to/Xcode/developer/dir"
+            );
+        });
+    });
+
+    suite("getSDKPath()", () => {
+        test("returns the path to the given SDK using xcrun", async () => {
+            mockedUtilities.execFile.resolves({
+                stderr: "",
+                stdout: "/path/to/macOS/sdk/\r\n\r\n",
+            });
+            await expect(SwiftToolchain.getSDKPath("macOS")).to.eventually.equal(
+                "/path/to/macOS/sdk/"
+            );
+        });
+    });
+
+    suite("getXcodeInstalls()", () => {
+        test("returns an array of available Xcode installations on macOS", async () => {
+            mockedPlatform.setValue("darwin");
+            mockedUtilities.execFile.resolves({
+                stderr: "",
+                stdout: "/Applications/Xcode1.app\n/Applications/Xcode2.app\n/Applications/Xcode3.app\n\n\n\n\n",
+            });
+            await expect(SwiftToolchain.getXcodeInstalls()).to.eventually.deep.equal([
+                "/Applications/Xcode1.app",
+                "/Applications/Xcode2.app",
+                "/Applications/Xcode3.app",
+            ]);
+        });
+
+        test("does nothing on Linux", async () => {
+            mockedPlatform.setValue("linux");
+            await expect(SwiftToolchain.getXcodeInstalls()).to.eventually.be.empty;
+            expect(mockedUtilities.execFile).to.not.have.been.called;
+        });
+
+        test("does nothing on Windows", async () => {
+            mockedPlatform.setValue("win32");
+            await expect(SwiftToolchain.getXcodeInstalls()).to.eventually.be.empty;
+            expect(mockedUtilities.execFile).to.not.have.been.called;
+        });
+    });
+
+    suite("getSwiftlyToolchainInstalls()", () => {
+        test("returns an array of available Swiftly toolchains on Linux if Swiftly is installed", async () => {
+            mockedPlatform.setValue("linux");
+            mockedEnvironment.setValue({
+                SWIFTLY_HOME_DIR: "/path/to/swiftly/home",
+            });
+            mockFS({
+                "/path/to/swiftly/home/config.json": JSON.stringify({
+                    installedToolchains: ["swift-DEVELOPMENT-6.0.0", "swift-6.0.0", "swift-5.10.1"],
+                }),
+            });
+            await expect(SwiftToolchain.getSwiftlyToolchainInstalls()).to.eventually.deep.equal([
+                "/path/to/swiftly/home/toolchains/swift-DEVELOPMENT-6.0.0",
+                "/path/to/swiftly/home/toolchains/swift-6.0.0",
+                "/path/to/swiftly/home/toolchains/swift-5.10.1",
+            ]);
+        });
+
+        test("does nothing if Swiftly in not installed", async () => {
+            mockedPlatform.setValue("linux");
+            mockedEnvironment.setValue({});
+            mockFS({});
+            await expect(SwiftToolchain.getSwiftlyToolchainInstalls()).to.eventually.be.empty;
+        });
+
+        test("returns an empty array if no Swiftly configuration is present", async () => {
+            mockedPlatform.setValue("linux");
+            mockedEnvironment.setValue({
+                SWIFTLY_HOME_DIR: "/path/to/swiftly/home",
+            });
+            mockFS({});
+            await expect(SwiftToolchain.getSwiftlyToolchainInstalls()).to.eventually.be.empty;
+        });
+
+        test("returns an empty array if Swiftly configuration is in an unexpected format (installedToolchains is not an array)", async () => {
+            mockedPlatform.setValue("linux");
+            mockedEnvironment.setValue({
+                SWIFTLY_HOME_DIR: "/path/to/swiftly/home",
+            });
+            mockFS({
+                "/path/to/swiftly/home/config.json": JSON.stringify({
+                    installedToolchains: {
+                        "swift-DEVELOPMENT-6.0.0": "toolchains/swift-DEVELOPMENT-6.0.0",
+                        "swift-6.0.0": "toolchains/swift-6.0.0",
+                        "swift-5.10.1": "toolchains/swift-5.10.1",
+                    },
+                }),
+            });
+            await expect(SwiftToolchain.getSwiftlyToolchainInstalls()).to.eventually.be.empty;
+        });
+
+        test("returns an empty array if Swiftly configuration is in an unexpected format (elements of installedToolchains are not strings)", async () => {
+            mockedPlatform.setValue("linux");
+            mockedEnvironment.setValue({
+                SWIFTLY_HOME_DIR: "/path/to/swiftly/home",
+            });
+            mockFS({
+                "/path/to/swiftly/home/config.json": JSON.stringify({
+                    installedToolchains: [
+                        { "swift-DEVELOPMENT-6.0.0": "toolchains/swift-DEVELOPMENT-6.0.0" },
+                        { "swift-6.0.0": "toolchains/swift-6.0.0" },
+                        { "swift-5.10.1": "toolchains/swift-5.10.1" },
+                    ],
+                }),
+            });
+            await expect(SwiftToolchain.getSwiftlyToolchainInstalls()).to.eventually.be.empty;
+        });
+
+        test("returns an empty array if Swiftly configuration is in an unexpected format (installedToolchains does not exist)", async () => {
+            mockedPlatform.setValue("linux");
+            mockedEnvironment.setValue({
+                SWIFTLY_HOME_DIR: "/path/to/swiftly/home",
+            });
+            mockFS({
+                "/path/to/swiftly/home/config.json": JSON.stringify({
+                    toolchains: ["swift-DEVELOPMENT-6.0.0", "swift-6.0.0", "swift-5.10.1"],
+                }),
+            });
+            await expect(SwiftToolchain.getSwiftlyToolchainInstalls()).to.eventually.be.empty;
+        });
+
+        test("returns an empty array if Swiftly configuration is corrupt", async () => {
+            mockedPlatform.setValue("linux");
+            mockedEnvironment.setValue({
+                SWIFTLY_HOME_DIR: "/path/to/swiftly/home",
+            });
+            mockFS({
+                "/path/to/swiftly/home/config.json": "{",
+            });
+            await expect(SwiftToolchain.getSwiftlyToolchainInstalls()).to.eventually.be.empty;
+        });
+
+        test("does nothing on macOS", async () => {
+            mockedPlatform.setValue("darwin");
+            mockedEnvironment.setValue({
+                SWIFTLY_HOME_DIR: "/path/to/swiftly/home",
+            });
+            mockFS({});
+            await expect(SwiftToolchain.getSwiftlyToolchainInstalls()).to.eventually.be.empty;
+        });
+
+        test("does nothing on Windows", async () => {
+            mockedPlatform.setValue("win32");
+            mockedEnvironment.setValue({
+                SWIFTLY_HOME_DIR: "/path/to/swiftly/home",
+            });
+            mockFS({});
+            await expect(SwiftToolchain.getSwiftlyToolchainInstalls()).to.eventually.be.empty;
+        });
+    });
+
+    suite("getToolchainInstalls()", () => {
+        test("returns an array of available toolchains on macOS", async () => {
+            mockedPlatform.setValue("darwin");
+            mockedOS.homedir.returns("/Users/test/");
+            mockFS({
+                "/Library/Developer/Toolchains": {
+                    "swift-latest": mockFS.symlink({ path: "swift-6.0.0" }),
+                    "swift-6.0.0": {
+                        usr: { bin: { swift: "" } },
+                    },
+                    "swift-5.10.1": {
+                        usr: { bin: { swift: "" } },
+                    },
+                    "swift-no-toolchain": {},
+                    "swift-file": "",
+                },
+                "/Users/test/Library/Developer/Toolchains": {
+                    "swift-latest": mockFS.symlink({ path: "swift-6.0.0" }),
+                    "swift-6.0.0": {
+                        usr: { bin: { swift: "" } },
+                    },
+                    "swift-5.10.1": {
+                        usr: { bin: { swift: "" } },
+                    },
+                    "swift-no-toolchain": {},
+                    "swift-file": "",
+                },
+            });
+            const actualValue = (await SwiftToolchain.getToolchainInstalls()).sort();
+            const expectedValue = [
+                "/Library/Developer/Toolchains/swift-latest",
+                "/Library/Developer/Toolchains/swift-6.0.0",
+                "/Library/Developer/Toolchains/swift-5.10.1",
+                "/Users/test/Library/Developer/Toolchains/swift-latest",
+                "/Users/test/Library/Developer/Toolchains/swift-6.0.0",
+                "/Users/test/Library/Developer/Toolchains/swift-5.10.1",
+            ].sort();
+            expect(actualValue).to.deep.equal(expectedValue);
+        });
+
+        test("returns an empty array if no toolchains are present", async () => {
+            mockedPlatform.setValue("darwin");
+            mockedOS.homedir.returns("/Users/test/");
+            mockFS({});
+            await expect(SwiftToolchain.getToolchainInstalls()).to.eventually.be.empty;
+        });
+
+        test("does nothing on Linux", async () => {
+            mockedPlatform.setValue("linux");
+            mockedOS.homedir.returns("/Users/test/");
+            mockFS({});
+            await expect(SwiftToolchain.getToolchainInstalls()).to.eventually.be.empty;
+        });
+
+        test("does nothing on Windows", async () => {
+            mockedPlatform.setValue("win32");
+            mockedOS.homedir.returns("/Users/test/");
+            mockFS({});
+            await expect(SwiftToolchain.getToolchainInstalls()).to.eventually.be.empty;
+        });
     });
 
     suite("getLLDBDebugAdapter()", () => {
