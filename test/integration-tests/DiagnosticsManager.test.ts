@@ -216,7 +216,14 @@ suite("DiagnosticsManager Test Suite", async function () {
                 assertHasDiagnostic(funcUri, expectedFuncErrorDiagnostic);
             }).timeout(2 * 60 * 1000); // Allow 2 minutes to build
 
-            test("Parses C diagnostics", async () => {
+            test("Parses C diagnostics", async function () {
+                const swiftVersion = workspaceContext.toolchain.swiftVersion;
+                // SPM will sometimes improperly clear diagnostics from the terminal, leading
+                // to a flakey test.
+                if (swiftVersion.isLessThan(new Version(5, 7, 0))) {
+                    this.skip();
+                }
+
                 await swiftConfig.update("diagnosticsStyle", "llvm");
                 const task = createBuildAllTask(cFolderContext);
                 // Run actual task
@@ -243,7 +250,14 @@ suite("DiagnosticsManager Test Suite", async function () {
                 assertHasDiagnostic(cUri, expectedDiagnostic2);
             });
 
-            test("Parses C++ diagnostics", async () => {
+            test("Parses C++ diagnostics", async function () {
+                const swiftVersion = workspaceContext.toolchain.swiftVersion;
+                // SPM will sometimes improperly clear diagnostics from the terminal, leading
+                // to a flakey test.
+                if (swiftVersion.isLessThan(new Version(5, 7, 0))) {
+                    this.skip();
+                }
+
                 await swiftConfig.update("diagnosticsStyle", "llvm");
                 const task = createBuildAllTask(cppFolderContext);
                 // Run actual task
