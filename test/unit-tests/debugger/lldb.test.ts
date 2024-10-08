@@ -39,7 +39,6 @@ suite("debugger.lldb Tests", () => {
         const mockUtil = mockGlobalModule(util);
 
         setup(() => {
-            mockedPlatform.setValue("darwin");
             mockFindLibLLDB = sinon.stub();
             mockToolchain = mockObject<SwiftToolchain>({
                 getLLDB: mockFn(),
