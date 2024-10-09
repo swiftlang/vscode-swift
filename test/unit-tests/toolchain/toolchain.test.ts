@@ -13,18 +13,18 @@
 //===----------------------------------------------------------------------===//
 
 import { expect } from "chai";
-import * as mockFS from "mock-fs";
 import * as os from "os";
 import * as utilities from "../../../src/utilities/utilities";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { Version } from "../../../src/utilities/version";
-import { mockGlobalModule, mockGlobalValue } from "../../MockUtils";
+import { mockFileSystem, mockGlobalModule, mockGlobalValue } from "../../MockUtils";
 
 suite("SwiftToolchain Unit Test Suite", () => {
     const mockedUtilities = mockGlobalModule(utilities);
     const mockedPlatform = mockGlobalValue(process, "platform");
     const mockedOS = mockGlobalModule(os, { homedir: () => "" });
     const mockedEnvironment = mockGlobalValue(process, "env");
+    const mockFS = mockFileSystem();
 
     setup(() => {
         mockFS({});
@@ -293,10 +293,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
             test("returns the path to lldb-dap if it exists within a public toolchain", async () => {
                 mockFS({
                     "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/lldb-dap":
-                        mockFS.file({
-                            content: "",
-                            mode: 0o770,
-                        }),
+                        mockFS.file({ mode: 0o770 }),
                 });
                 const sut = createSwiftToolchain({
                     swiftFolderPath:
@@ -332,10 +329,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                         },
                         usr: {
                             bin: {
-                                "lldb-dap": mockFS.file({
-                                    content: "",
-                                    mode: 0o770,
-                                }),
+                                "lldb-dap": mockFS.file({ mode: 0o770 }),
                             },
                         },
                     },
@@ -389,10 +383,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
             test("returns the path to lldb-dap if it exists within the toolchain", async () => {
                 mockFS({
                     "/toolchains/swift-6.0.0/usr/bin": {
-                        "lldb-dap": mockFS.file({
-                            content: "",
-                            mode: 0o770,
-                        }),
+                        "lldb-dap": mockFS.file({ mode: 0o770 }),
                     },
                 });
                 const sut = createSwiftToolchain({
@@ -428,10 +419,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
             test("returns the path to lldb-dap.exe if it exists within the toolchain", async () => {
                 mockFS({
                     "/toolchains/swift-6.0.0/usr/bin": {
-                        "lldb-dap.exe": mockFS.file({
-                            content: "",
-                            mode: 0o770,
-                        }),
+                        "lldb-dap.exe": mockFS.file({ mode: 0o770 }),
                     },
                 });
                 const sut = createSwiftToolchain({

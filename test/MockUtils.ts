@@ -13,6 +13,8 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 import { stub, SinonStub } from "sinon";
+import * as mockFS from "mock-fs";
+import FileSystem = require("mock-fs/lib/filesystem");
 
 /**
  * Waits for all promises returned by a MockedFunction to resolve. Useful when
@@ -494,4 +496,17 @@ export class AsyncEventEmitter<T> {
             await listener(event);
         }
     }
+}
+
+/**
+ * Handles setup() and teardown() of the "mock-fs" module to temporarily mock out
+ * Node's "fs" module for the duration of a test.
+ *
+ * @param config the base configuration that will be set before each test
+ * @returns the "mock-fs" module for use in test cases
+ */
+export function mockFileSystem(config: FileSystem.DirectoryItems = {}): typeof mockFS {
+    setup(() => mockFS(config));
+    teardown(() => mockFS.restore());
+    return mockFS;
 }

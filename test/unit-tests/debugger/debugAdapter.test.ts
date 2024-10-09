@@ -14,8 +14,8 @@
 
 import * as vscode from "vscode";
 import { expect } from "chai";
-import * as mockFS from "mock-fs";
 import {
+    mockFileSystem,
     mockGlobalObject,
     MockedObject,
     mockObject,
@@ -32,6 +32,7 @@ import { Version } from "../../../src/utilities/version";
 import contextKeys from "../../../src/contextKeys";
 
 suite("DebugAdapter Unit Test Suite", () => {
+    const mockFS = mockFileSystem();
     const mockConfiguration = mockGlobalModule(configuration);
     const mockedContextKeys = mockGlobalModule(contextKeys);
     const mockedWindow = mockGlobalObject(vscode, "window");
@@ -48,8 +49,6 @@ suite("DebugAdapter Unit Test Suite", () => {
             customDebugAdapterPath: "",
         });
         mockConfiguration.debugger = instance(mockDebugConfig);
-        // Mock the file system
-        mockFS({});
         // Mock the WorkspaceContext and related dependencies
         const toolchainPath = "/toolchains/swift";
         mockToolchain = mockObject<SwiftToolchain>({
@@ -70,10 +69,6 @@ suite("DebugAdapter Unit Test Suite", () => {
                 mockToolchain.swiftVersion = version;
             },
         });
-    });
-
-    teardown(() => {
-        mockFS.restore();
     });
 
     suite("getLaunchConfigType()", () => {
