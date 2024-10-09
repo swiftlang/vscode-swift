@@ -12,6 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Use source-map-support to get better stack traces
+import "source-map-support/register";
+
 import * as vscode from "vscode";
 import * as commands from "./commands";
 import * as debug from "./debugger/launch";
