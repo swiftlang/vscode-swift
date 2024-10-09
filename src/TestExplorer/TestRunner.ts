@@ -148,7 +148,7 @@ export class TestRunProxy {
 
         // Forward any output captured before the testRun was created.
         for (const outputLine of this.queuedOutput) {
-            this.testRun.appendOutput(outputLine);
+            this.performAppendOutput(this.testRun, outputLine);
         }
         this.queuedOutput = [];
 
@@ -227,8 +227,7 @@ export class TestRunProxy {
     public appendOutput(output: string) {
         const tranformedOutput = this.prependIterationToOutput(output);
         if (this.testRun) {
-            this.testRun.appendOutput(tranformedOutput);
-            this.runState.output.push(tranformedOutput);
+            this.performAppendOutput(this.testRun, tranformedOutput);
         } else {
             this.queuedOutput.push(tranformedOutput);
         }
@@ -236,8 +235,21 @@ export class TestRunProxy {
 
     public appendOutputToTest(output: string, test: vscode.TestItem, location?: vscode.Location) {
         const tranformedOutput = this.prependIterationToOutput(output);
-        this.testRun?.appendOutput(tranformedOutput, location, test);
-        this.runState.output.push(tranformedOutput);
+        if (this.testRun) {
+            this.performAppendOutput(this.testRun, tranformedOutput, location, test);
+        } else {
+            this.queuedOutput.push(tranformedOutput);
+        }
+    }
+
+    private performAppendOutput(
+        testRun: vscode.TestRun,
+        output: string,
+        location?: vscode.Location,
+        test?: vscode.TestItem
+    ) {
+        testRun.appendOutput(output, location, test);
+        this.runState.output.push(output);
     }
 
     private prependIterationToOutput(output: string): string {
