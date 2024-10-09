@@ -28,7 +28,7 @@
     "workspaceContains:compile_commands.json",
     "onDebugResolve:swift-lldb"
   ],
-  "main": "./dist/extension.js",
+  "main": "./dist/src/extension.js",
   "contributes": {
     "icons": {
       "swift-icon": {
@@ -1267,11 +1267,9 @@
   ],
   "scripts": {
     "vscode:prepublish": "npm run esbuild-bundle",
-    "esbuild-base": "del-cli ./dist && esbuild \"./src/**/*.ts\" --outdir=dist --format=cjs --platform=node --target=node18",
-    "esbuild": "npm run esbuild-base",
-    "esbuild-watch": "npm run esbuild-base -- --watch",
-    "esbuild-bundle": "del-cli ./dist && esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18 --minify --sourcemap",
-    "compile": "tsc",
+    "esbuild": "del-cli ./dist && esbuild \"./src/**/*.ts\" --outdir=dist/src --format=cjs --platform=node --target=node18 --sourcemap",
+    "esbuild-bundle": "del-cli ./dist && esbuild ./src/extension.ts --bundle --outfile=dist/src/extension.js --external:vscode --format=cjs --platform=node --target=node18 --minify  --sourcemap",
+    "compile": "del-cli ./dist && tsc",
     "watch": "tsc --watch",
     "lint": "eslint ./ --ext ts && tsc --noEmit",
     "format": "prettier --check *.json src test",
@@ -1283,7 +1281,7 @@
     "integration-test": "npm test -- --label integrationTests",
     "unit-test": "npm test -- --label unitTests",
     "coverage": "npm test -- --coverage",
-    "compile-tests": "del-cli ./assets/test/**/.build && npm run compile && npm run esbuild",
+    "compile-tests": "del-cli ./assets/test/**/.build && npm run compile",
     "package": "vsce package",
     "dev-package": "vsce package --no-update-package-json 1.12.0-dev",
     "preview-package": "vsce package --pre-release",

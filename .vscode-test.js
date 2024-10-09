@@ -27,7 +27,7 @@ module.exports = defineConfig({
     tests: [
         {
             label: "integrationTests",
-            files: ["out/test/common.js", "out/test/integration-tests/**/*.test.js"],
+            files: ["dist/test/common.js", "dist/test/integration-tests/**/*.test.js"],
             version: process.env["VSCODE_VERSION"] ?? "stable",
             workspaceFolder: "./assets/test",
             launchArgs: [
@@ -50,7 +50,7 @@ module.exports = defineConfig({
         },
         {
             label: "unitTests",
-            files: ["out/test/common.js", "out/test/unit-tests/**/*.test.js"],
+            files: ["dist/test/common.js", "dist/test/unit-tests/**/*.test.js"],
             version: process.env["VSCODE_VERSION"] ?? "stable",
             launchArgs: [
                 "--disable-extensions",
