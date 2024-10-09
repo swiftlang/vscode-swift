@@ -23,19 +23,23 @@ suite("ToolchainSelection Unit Test Suite", () => {
     const mockStaticSwiftToolchain = mockGlobalModule(SwiftToolchain);
     const mockVSCodeWindow = mockGlobalObject(vscode, "window");
 
-    test("shows avalable Xcode toolchains on macOS", async () => {
+    test("shows avalable Xcode toolchains sorted by path on macOS", async () => {
         mockPlatform.setValue("darwin");
         mockStaticSwiftToolchain.getXcodeInstalls.resolves([
+            "/Applications/OlderXcode.app",
             "/Applications/Xcode.app",
             "/Applications/Xcode-beta.app",
         ]);
         mockStaticSwiftToolchain.getToolchainInstalls.resolves([]);
         mockStaticSwiftToolchain.getSwiftlyToolchainInstalls.resolves([]);
         mockVSCodeWindow.showQuickPick.callsFake(async items => {
-            expect(await items).to.containSubset([
+            const xcodeItems = (await items)
+                .filter(item => "category" in item && item.category === "xcode")
+                .map(item => ({ label: item.label, detail: item.detail }));
+            expect(xcodeItems).to.include.deep.ordered.members([
                 {
-                    label: "Xcode",
-                    kind: vscode.QuickPickItemKind.Separator,
+                    label: "OlderXcode",
+                    detail: "/Applications/OlderXcode.app",
                 },
                 {
                     label: "Xcode",
@@ -44,18 +48,6 @@ suite("ToolchainSelection Unit Test Suite", () => {
                 {
                     label: "Xcode-beta",
                     detail: "/Applications/Xcode-beta.app",
-                },
-                {
-                    label: "actions",
-                    kind: vscode.QuickPickItemKind.Separator,
-                },
-                {
-                    label: "$(cloud-download) Download from Swift.org...",
-                    detail: "Open https://swift.org/install to download and install a toolchain",
-                },
-                {
-                    label: "$(folder-opened) Select toolchain directory...",
-                    detail: "Select a folder on your machine where the Swift toolchain is installed",
                 },
             ]);
             return undefined;
