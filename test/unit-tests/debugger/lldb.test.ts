@@ -26,6 +26,7 @@ import {
     mockGlobalObject,
     mockObject,
     MockedFunction,
+    mockGlobalValue,
 } from "../../MockUtils";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
@@ -34,6 +35,7 @@ suite("debugger.lldb Tests", () => {
     suite("getLLDBLibPath Tests", () => {
         let mockToolchain: MockedObject<SwiftToolchain>;
         let mockFindLibLLDB: MockedFunction<(typeof lldb)["findLibLLDB"]>;
+        const mockedPlatform = mockGlobalValue(process, "platform");
         const mockUtil = mockGlobalModule(util);
 
         setup(() => {
@@ -50,17 +52,14 @@ suite("debugger.lldb Tests", () => {
             expect(result.failure).to.have.property("message", "Failed to get LLDB");
         });
 
-        test("should return failure when execFile throws an error on windows", async function () {
-            if (process.platform !== "win32") {
-                this.skip();
-            } else {
-                mockToolchain.getLLDB.resolves("/path/to/lldb");
-                mockUtil.execFile.rejects(new Error("execFile failed"));
-                const result = await lldb.getLLDBLibPath(instance(mockToolchain));
-                // specific behaviour: return success and failure both undefined
-                expect(result.failure).to.equal(undefined);
-                expect(result.success).to.equal(undefined);
-            }
+        test("should return failure when execFile throws an error on windows", async () => {
+            mockedPlatform.setValue("win32");
+            mockToolchain.getLLDB.resolves("/path/to/lldb");
+            mockUtil.execFile.rejects(new Error("execFile failed"));
+            const result = await lldb.getLLDBLibPath(instance(mockToolchain));
+            // specific behaviour: return success and failure both undefined
+            expect(result.failure).to.equal(undefined);
+            expect(result.success).to.equal(undefined);
         });
 
         test("should return failure if findLibLLDB returns falsy values", async () => {
