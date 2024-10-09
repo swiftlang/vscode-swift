@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 const { defineConfig } = require("@vscode/test-cli");
+const path = require("path");
 
 const isCIBuild = process.env["CI"] === "1";
 const isFastTestRun = process.env["FAST_TEST_RUN"] === "1";
@@ -44,6 +45,12 @@ module.exports = defineConfig({
                 grep: isFastTestRun ? "@slow" : undefined,
                 invert: isFastTestRun,
                 slow: 10000,
+                reporter: path.join(__dirname, ".mocha-reporter.js"),
+                reporterOptions: {
+                    jsonReporterOptions: {
+                        output: path.join(__dirname, "test-results", "integration-tests.json"),
+                    },
+                },
             },
             installExtensions: ["vadimcn.vscode-lldb"],
             reuseMachineInstall: !isCIBuild,
@@ -65,6 +72,12 @@ module.exports = defineConfig({
                 timeout,
                 forbidOnly: isCIBuild,
                 slow: 100,
+                reporter: path.join(__dirname, ".mocha-reporter.js"),
+                reporterOptions: {
+                    jsonReporterOptions: {
+                        output: path.join(__dirname, "test-results", "unit-tests.json"),
+                    },
+                },
             },
             reuseMachineInstall: !isCIBuild,
         },
