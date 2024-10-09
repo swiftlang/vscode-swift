@@ -11,6 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+
+// Use source-map-support to get better stack traces
+import "source-map-support/register";
+
 import * as chai from "chai";
 import * as sinonChai from "sinon-chai";
 import * as chaiAsPromised from "chai-as-promised";

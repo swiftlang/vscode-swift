@@ -12,6 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Use source-map-support to get better stack traces
+import "source-map-support/register";
+
 import * as vscode from "vscode";
 import * as commands from "./commands";
 import * as debug from "./debugger/launch";
@@ -260,7 +263,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
         // show this error message as the VS Code error message only shows when running
         // the extension through the debugger
         vscode.window.showErrorMessage(`Activating Swift extension failed: ${errorMessage}`);
-        throw Error(errorMessage);
+        throw error;
     }
 }
 

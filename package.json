@@ -1268,9 +1268,9 @@
   "scripts": {
     "vscode:prepublish": "npm run esbuild-bundle",
     "esbuild-base": "del-cli ./dist && esbuild \"./src/**/*.ts\" --outdir=dist --format=cjs --platform=node --target=node18",
-    "esbuild": "npm run esbuild-base -- --sourcemap",
-    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
-    "esbuild-bundle": "del-cli ./dist && esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18 --minify",
+    "esbuild": "npm run esbuild-base",
+    "esbuild-watch": "npm run esbuild-base -- --watch",
+    "esbuild-bundle": "del-cli ./dist && esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18 --minify --sourcemap",
     "compile": "tsc",
     "watch": "tsc --watch",
     "lint": "eslint ./ --ext ts && tsc --noEmit",
@@ -1322,6 +1322,7 @@
     "prettier": "3.3.2",
     "sinon": "^19.0.2",
     "sinon-chai": "^3.7.0",
+    "source-map-support": "^0.5.21",
     "strip-ansi": "^6.0.1",
     "typescript": "^5.5.3"
   },
