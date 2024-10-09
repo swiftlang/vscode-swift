@@ -21,7 +21,7 @@ const isFastTestRun = process.env["FAST_TEST_RUN"] === "1";
 const isDebugRun = !(process.env["_"] ?? "").endsWith("node_modules/.bin/vscode-test");
 
 // so tests don't timeout when a breakpoint is hit
-const timeout = isDebugRun ? Number.MAX_SAFE_INTEGER : 3000
+const timeout = isDebugRun ? Number.MAX_SAFE_INTEGER : 3000;
 
 module.exports = defineConfig({
     tests: [
@@ -34,7 +34,7 @@ module.exports = defineConfig({
                 "--disable-updates",
                 "--disable-crash-reporter",
                 "--disable-workspace-trust",
-                "--disable-telemetry"
+                "--disable-telemetry",
             ],
             mocha: {
                 ui: "tdd",
@@ -43,7 +43,7 @@ module.exports = defineConfig({
                 forbidOnly: isCIBuild,
                 grep: isFastTestRun ? "@slow" : undefined,
                 invert: isFastTestRun,
-                slow: 10000
+                slow: 10000,
             },
             installExtensions: ["vadimcn.vscode-lldb"],
             reuseMachineInstall: !isCIBuild,
@@ -57,14 +57,14 @@ module.exports = defineConfig({
                 "--disable-updates",
                 "--disable-crash-reporter",
                 "--disable-workspace-trust",
-                "--disable-telemetry"
+                "--disable-telemetry",
             ],
             mocha: {
                 ui: "tdd",
                 color: true,
                 timeout,
                 forbidOnly: isCIBuild,
-                slow: 100
+                slow: 100,
             },
             reuseMachineInstall: !isCIBuild,
         },

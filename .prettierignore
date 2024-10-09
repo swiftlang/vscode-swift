@@ -1,1 +1,12 @@
-.vscode-test
+# Only lint certain file types
+*.*
+!*.js
+!*.json
+!*.ts
+
+# Ignore specific directories
+.vscode-test/
+/assets/
+/coverage/
+/dist/
+/snippets/
