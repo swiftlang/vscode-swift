@@ -23,6 +23,7 @@ import {
     waitForDebugAdapterExit,
     waitUntilDebugSessionTerminates,
 } from "../utilities/debug";
+import { Version } from "../../src/utilities/version";
 
 suite("SwiftSnippet Test Suite", () => {
     const uri = testAssetUri("defaultPackage/Snippets/hello.swift");
@@ -30,8 +31,11 @@ suite("SwiftSnippet Test Suite", () => {
         new vscode.SourceBreakpoint(new vscode.Location(uri, new vscode.Position(2, 0))),
     ];
 
-    suiteSetup(async () => {
-        await folderContextPromise("defaultPackage");
+    suiteSetup(async function () {
+        const folder = await folderContextPromise("defaultPackage");
+        if (folder.workspaceContext.toolchain.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+            this.skip();
+        }
         await waitForNoRunningTasks();
 
         // File needs to be open for command to be enabled
