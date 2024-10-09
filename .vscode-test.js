@@ -30,6 +30,12 @@ module.exports = defineConfig({
             files: ["out/test/common.js", "out/test/integration-tests/**/*.test.js"],
             version: process.env["VSCODE_VERSION"] ?? "stable",
             workspaceFolder: "./assets/test",
+            launchArgs: [
+                "--disable-updates",
+                "--disable-crash-reporter",
+                "--disable-workspace-trust",
+                "--disable-telemetry"
+            ],
             mocha: {
                 ui: "tdd",
                 color: true,
@@ -46,6 +52,13 @@ module.exports = defineConfig({
             label: "unitTests",
             files: ["out/test/common.js", "out/test/unit-tests/**/*.test.js"],
             version: process.env["VSCODE_VERSION"] ?? "stable",
+            launchArgs: [
+                "--disable-extensions",
+                "--disable-updates",
+                "--disable-crash-reporter",
+                "--disable-workspace-trust",
+                "--disable-telemetry"
+            ],
             mocha: {
                 ui: "tdd",
                 color: true,
