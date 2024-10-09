@@ -1,6 +1,6 @@
 # Swift for Visual Studio Code test strategy
 
-This document covers the structure of tests as well as plans for the future. For a more in depth explanation of how to write and structure tests for your contributions, please see the [Writing Effective Tests](./writing-effective-tests.md) document in this repository
+This document covers the structure of tests as well as plans for the future. For a more in depth explanation of how to write and structure tests for your contributions, please see the [Writing Tests for VS Code Swift](./writing-tests-for-vscode-swift.md) document in this repository.
 
 The recommended way for [testing extensions](https://code.visualstudio.com/api/working-with-extensions/testing-extension) involves using either the new [vscode-test-cli](https://github.com/microsoft/vscode-test-cli) or creating your [own mocha test runner](https://code.visualstudio.com/api/working-with-extensions/testing-extension#advanced-setup-your-own-runner). Either approach results in Visual Studio Code getting downloaded, and a window spawned. This is necessary to have access the the APIs of the `vscode` namespace, to stimulate behaviour (ex. `vscode.tasks.executeTasks`) and obtain state (ex. `vscode.languages.getDiagnostics`).
 
