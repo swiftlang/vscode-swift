@@ -4,8 +4,13 @@
 !*.json
 !*.ts
 
-# Ignore specific directories
+# NodeJS
+node_modules/
+
+# vscode-test
 .vscode-test/
+
+# Extension directories that don't need formatting
 /assets/
 /coverage/
 /dist/
