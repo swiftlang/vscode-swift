@@ -8,6 +8,11 @@ let package = Package(
     platforms: [
         .macOS(.v13)
     ],
+    products: [
+        .library(
+            name: "PackageLib",
+            targets: ["PackageLib"]),
+    ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-testing.git", branch: "main")
     ],

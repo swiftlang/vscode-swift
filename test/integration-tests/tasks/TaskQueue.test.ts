@@ -18,7 +18,7 @@ import { testAssetPath } from "../../fixtures";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftExecOperation, TaskOperation, TaskQueue } from "../../../src/tasks/TaskQueue";
 import { globalWorkspaceContextPromise } from "../extension.test";
-import { waitForNoRunningTasks } from "../../utilities";
+import { waitForNoRunningTasks } from "../../utilities/tasks";
 
 suite("TaskQueue Test Suite", () => {
     let workspaceContext: WorkspaceContext;

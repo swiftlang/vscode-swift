@@ -15,7 +15,7 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
 import { SwiftToolchain } from "../../src/toolchain/toolchain";
-import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../utilities";
+import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../utilities/tasks";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { testAssetWorkspaceFolder, testSwiftTask } from "../fixtures";
 import { createBuildAllTask } from "../../src/tasks/SwiftTaskProvider";

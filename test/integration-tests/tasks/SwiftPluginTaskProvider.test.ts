@@ -18,7 +18,8 @@ import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { folderContextPromise, globalWorkspaceContextPromise } from "../extension.test";
 import { SwiftPluginTaskProvider } from "../../../src/tasks/SwiftPluginTaskProvider";
 import { FolderContext } from "../../../src/FolderContext";
-import { executeTaskAndWaitForResult, mutable, waitForEndTaskProcess } from "../../utilities";
+import { executeTaskAndWaitForResult, waitForEndTaskProcess } from "../../utilities/tasks";
+import { mutable } from "../../utilities/types";
 
 suite("SwiftPluginTaskProvider Test Suite", () => {
     let workspaceContext: WorkspaceContext;
