@@ -28,7 +28,7 @@ nvm install
 npm install
 ```
 
-When you first open the project in VS Code you will be recommended to also install [`ESLint`](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint), [`Prettier - Code formatter`](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) and [`esbuild Problem Matchers`](https://marketplace.visualstudio.com/items?itemName=connor4312.esbuild-problem-matchers). Please do so. `ESLint`, `Prettier - Code formatter` is used to ensure a consistent style and we expect everyone who contributes to follow this style as well. `esbuild Problem Matchers` provides proper error output from building the project.
+When you first open the project in VS Code you will be recommended to also install [`ESLint`](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) and [`Prettier - Code formatter`](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode). Please do so. `ESLint`, `Prettier - Code formatter` is used to ensure a consistent style and we expect everyone who contributes to follow this style as well.
 
 To run your version of the Swift extension while in VS Code, press `F5`. This will open up another instance of VS Code with it running. You can use the original version of VS Code to debug it.
 

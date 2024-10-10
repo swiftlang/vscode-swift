@@ -2,7 +2,7 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "ES2020",
-    "outDir": "out",
+    "outDir": "dist",
     "lib": ["ES2020"],
     "sourceMap": true,
     "strict": true /* enable all strict type-checking options */
@@ -11,5 +11,5 @@
     // "noFallthroughCasesInSwitch": true, /* Report errors for fallthrough cases in switch statement. */
     // "noUnusedParameters": true,  /* Report errors on unused parameters. */
   },
-  "exclude": ["node_modules", ".vscode-test"]
+  "include": ["src/**/*.ts", "test/**/*.ts"]
 }

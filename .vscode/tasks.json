@@ -6,12 +6,12 @@
 		{
 			"label": "build",
 			"type": "npm",
-			"script": "esbuild-watch",
-			"problemMatcher": "$esbuild-watch",
-			"isBackground": true,
+			"script": "watch",
+			"problemMatcher": "$tsc-watch",
 			"presentation": {
 				"reveal": "never"
 			},
+			"isBackground": true,
 			"group": {
 				"kind": "build",
 				"isDefault": true
