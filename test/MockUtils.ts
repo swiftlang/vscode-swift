@@ -326,7 +326,7 @@ export function mockGlobalModule<T>(module: T, overrides?: Partial<T>): MockedOb
     });
     // Restore original value at teardown
     teardown(() => {
-        for (const property of Object.getOwnPropertyNames(originalValue)) {
+        for (const property of Object.getOwnPropertyNames(realMock)) {
             try {
                 Object.defineProperty(module, property, {
                     value: (originalValue as any)[property],
