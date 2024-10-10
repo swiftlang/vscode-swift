@@ -501,7 +501,7 @@ export class TestRunner {
                     await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
                 }
 
-                const testBuildConfig = await TestingConfigurationFactory.swiftTestingConfig(
+                const testBuildConfig = TestingConfigurationFactory.swiftTestingConfig(
                     this.folderContext,
                     fifoPipePath,
                     this.testKind,
@@ -535,7 +535,7 @@ export class TestRunner {
         }
 
         if (this.testArgs.hasXCTests) {
-            const testBuildConfig = await TestingConfigurationFactory.xcTestConfig(
+            const testBuildConfig = TestingConfigurationFactory.xcTestConfig(
                 this.folderContext,
                 this.testKind,
                 this.testArgs.xcTestArgs,
@@ -780,7 +780,7 @@ export class TestRunner {
                     await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
                 }
 
-                const swiftTestBuildConfig = await TestingConfigurationFactory.swiftTestingConfig(
+                const swiftTestBuildConfig = TestingConfigurationFactory.swiftTestingConfig(
                     this.folderContext,
                     fifoPipePath,
                     this.testKind,
@@ -814,7 +814,7 @@ export class TestRunner {
 
             // create launch config for testing
             if (this.testArgs.hasXCTests) {
-                const xcTestBuildConfig = await TestingConfigurationFactory.xcTestConfig(
+                const xcTestBuildConfig = TestingConfigurationFactory.xcTestConfig(
                     this.folderContext,
                     this.testKind,
                     this.testArgs.xcTestArgs,
