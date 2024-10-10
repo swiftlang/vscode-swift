@@ -111,4 +111,14 @@ suite("Version Suite", () => {
         expect(new Version(5, 10, 1).isGreaterThanOrEqual(new Version(5, 10, 0))).to.be.true;
         expect(new Version(6, 0, 0).isGreaterThanOrEqual(new Version(5, 10, 1))).to.be.true;
     });
+
+    test("compare", () => {
+        expect(new Version(5, 10, 1).compare(new Version(6, 0, 0))).to.equal(-1);
+        expect(new Version(5, 9, 0).compare(new Version(5, 10, 0))).to.equal(-1);
+        expect(new Version(5, 10, 0).compare(new Version(5, 10, 1))).to.equal(-1);
+        expect(new Version(5, 10, 1).compare(new Version(5, 10, 1))).to.equal(0);
+        expect(new Version(5, 10, 0).compare(new Version(5, 9, 0))).to.equal(1);
+        expect(new Version(5, 10, 1).compare(new Version(5, 10, 0))).to.equal(1);
+        expect(new Version(6, 0, 0).compare(new Version(5, 10, 1))).to.equal(1);
+    });
 });

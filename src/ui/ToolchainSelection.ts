@@ -17,6 +17,7 @@ import * as path from "path";
 import { showReloadExtensionNotification } from "./ReloadExtension";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import configuration from "../configuration";
+import { Version } from "../utilities/version";
 
 /**
  * Open the installation page on Swift.org
@@ -133,6 +134,18 @@ class SeparatorItem implements vscode.QuickPickItem {
 /** The possible types of {@link vscode.QuickPickItem} in the toolchain selection dialog */
 type SelectToolchainItem = SwiftToolchainItem | ActionItem | SeparatorItem;
 
+function compareToolchainPaths(first: string, second: string): number {
+    first = path.basename(first, ".xctoolchain");
+    const firstVersion = Version.fromString(first) ?? new Version(9999, 9999, 9999);
+    second = path.basename(second, ".xctoolchain");
+    const secondVersion = Version.fromString(second) ?? new Version(9999, 9999, 9999);
+    const versionComparison = firstVersion.compare(secondVersion);
+    if (versionComparison === 0) {
+        return first.localeCompare(second);
+    }
+    return versionComparison;
+}
+
 /**
  * Retrieves all {@link SelectToolchainItem} that are available on the system.
  *
@@ -166,6 +179,7 @@ async function getQuickPickItems(
         });
     // Find any public Swift toolchains on the system
     const toolchains = (await SwiftToolchain.getToolchainInstalls())
+        .sort(compareToolchainPaths)
         .reverse()
         .map<SwiftToolchainItem>(toolchainPath => {
             const result: SwiftToolchainItem = {
@@ -188,6 +202,7 @@ async function getQuickPickItems(
         });
     // Find any Swift toolchains installed via Swiftly
     const swiftlyToolchains = (await SwiftToolchain.getSwiftlyToolchainInstalls())
+        .sort(compareToolchainPaths)
         .reverse()
         .map<SwiftToolchainItem>(toolchainPath => ({
             type: "toolchain",

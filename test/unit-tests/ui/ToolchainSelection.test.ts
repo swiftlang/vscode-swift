@@ -32,27 +32,103 @@ suite("ToolchainSelection Unit Test Suite", () => {
         ]);
         mockStaticSwiftToolchain.getToolchainInstalls.resolves([]);
         mockStaticSwiftToolchain.getSwiftlyToolchainInstalls.resolves([]);
-        mockVSCodeWindow.showQuickPick.callsFake(async items => {
-            const xcodeItems = (await items)
-                .filter(item => "category" in item && item.category === "xcode")
-                .map(item => ({ label: item.label, detail: item.detail }));
-            expect(xcodeItems).to.include.deep.ordered.members([
-                {
-                    label: "OlderXcode",
-                    detail: "/Applications/OlderXcode.app",
-                },
-                {
-                    label: "Xcode",
-                    detail: "/Applications/Xcode.app",
-                },
-                {
-                    label: "Xcode-beta",
-                    detail: "/Applications/Xcode-beta.app",
-                },
-            ]);
-            return undefined;
-        });
+        mockVSCodeWindow.showQuickPick.resolves(undefined);
 
         await showToolchainSelectionQuickPick();
+
+        expect(mockVSCodeWindow.showQuickPick).to.have.been.calledOnce;
+        const xcodeItems = (await mockVSCodeWindow.showQuickPick.args[0][0])
+            .filter(item => "category" in item && item.category === "xcode")
+            .map(item => ({ label: item.label, detail: item.detail }));
+        expect(xcodeItems).to.include.deep.ordered.members([
+            {
+                label: "OlderXcode",
+                detail: "/Applications/OlderXcode.app",
+            },
+            {
+                label: "Xcode",
+                detail: "/Applications/Xcode.app",
+            },
+            {
+                label: "Xcode-beta",
+                detail: "/Applications/Xcode-beta.app",
+            },
+        ]);
+    });
+
+    test("shows avalable public toolchains sorted in reverse by Swift version on macOS", async () => {
+        mockPlatform.setValue("darwin");
+        mockStaticSwiftToolchain.getXcodeInstalls.resolves([]);
+        mockStaticSwiftToolchain.getToolchainInstalls.resolves([
+            "/Library/Developer/Toolchains/swift-6.0.1-DEVELOPMENT.xctoolchain",
+            "/Library/Developer/Toolchains/swift-5.10.1-RELEASE.xctoolchain",
+            "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain",
+            "/Library/Developer/Toolchains/swift-5.9.2-RELEASE.xctoolchain",
+            "/Library/Developer/swift-latest.xctoolchain",
+        ]);
+        mockStaticSwiftToolchain.getSwiftlyToolchainInstalls.resolves([]);
+        mockVSCodeWindow.showQuickPick.resolves(undefined);
+
+        await showToolchainSelectionQuickPick();
+
+        expect(mockVSCodeWindow.showQuickPick).to.have.been.calledOnce;
+        const toolchainItems = (await mockVSCodeWindow.showQuickPick.args[0][0])
+            .filter(item => "category" in item && item.category === "public")
+            .map(item => ({ label: item.label, detail: item.detail }));
+        expect(toolchainItems).to.include.deep.ordered.members([
+            {
+                label: "Latest Installed Toolchain",
+                detail: "/Library/Developer/swift-latest.xctoolchain",
+            },
+            {
+                label: "swift-6.0.1-RELEASE",
+                detail: "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain",
+            },
+            {
+                label: "swift-6.0.1-DEVELOPMENT",
+                detail: "/Library/Developer/Toolchains/swift-6.0.1-DEVELOPMENT.xctoolchain",
+            },
+            {
+                label: "swift-5.10.1-RELEASE",
+                detail: "/Library/Developer/Toolchains/swift-5.10.1-RELEASE.xctoolchain",
+            },
+            {
+                label: "swift-5.9.2-RELEASE",
+                detail: "/Library/Developer/Toolchains/swift-5.9.2-RELEASE.xctoolchain",
+            },
+        ]);
+    });
+
+    test("shows avalable Swiftly toolchains sorted in reverse by Swift version on Linux", async () => {
+        mockPlatform.setValue("linux");
+        mockStaticSwiftToolchain.getXcodeInstalls.resolves([]);
+        mockStaticSwiftToolchain.getToolchainInstalls.resolves([]);
+        mockStaticSwiftToolchain.getSwiftlyToolchainInstalls.resolves([
+            "/home/user/.swiftly/toolchains/5.10.1",
+            "/home/user/.swiftly/toolchains/6.0.1",
+            "/home/user/.swiftly/toolchains/5.9.2",
+        ]);
+        mockVSCodeWindow.showQuickPick.resolves(undefined);
+
+        await showToolchainSelectionQuickPick();
+
+        expect(mockVSCodeWindow.showQuickPick).to.have.been.calledOnce;
+        const toolchainItems = (await mockVSCodeWindow.showQuickPick.args[0][0])
+            .filter(item => "category" in item && item.category === "swiftly")
+            .map(item => ({ label: item.label, detail: item.detail }));
+        expect(toolchainItems).to.include.deep.ordered.members([
+            {
+                label: "6.0.1",
+                detail: "/home/user/.swiftly/toolchains/6.0.1",
+            },
+            {
+                label: "5.10.1",
+                detail: "/home/user/.swiftly/toolchains/5.10.1",
+            },
+            {
+                label: "5.9.2",
+                detail: "/home/user/.swiftly/toolchains/5.9.2",
+            },
+        ]);
     });
 });
