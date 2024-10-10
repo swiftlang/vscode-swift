@@ -19,6 +19,34 @@ import { TestRunProxy } from "../../../src/TestExplorer/TestRunner";
 import { TestExplorer } from "../../../src/TestExplorer/TestExplorer";
 import { TestKind } from "../../../src/TestExplorer/TestKind";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import { globalWorkspaceContextPromise } from "../extension.test";
+import { testAssetUri } from "../../fixtures";
+
+/**
+ * Sets up a test that leverages the TestExplorer, returning the TestExplorer,
+ * WorkspaceContext and a callback to revert the settings back to their original values.
+ * @param settings Optional extension settings to set before the test starts.
+ * @returns Object containing the TestExplorer, WorkspaceContext and a callback to revert
+ * the settings back to their original values.
+ */
+export async function setupTestExplorerTest(settings: SettingsMap = {}) {
+    const settingsTeardown = await updateSettings(settings);
+
+    const testProject = testAssetUri("defaultPackage");
+
+    const workspaceContext = await globalWorkspaceContextPromise;
+    const testExplorer = testExplorerFor(workspaceContext, testProject);
+
+    // Set up the listener before bringing the text explorer in to focus,
+    // which starts searching the workspace for tests.
+    await waitForTestExplorerReady(testExplorer);
+
+    return {
+        settingsTeardown,
+        workspaceContext,
+        testExplorer,
+    };
+}
 
 /**
  * Returns the TestExplorer for the given workspace and package folder.
@@ -27,7 +55,7 @@ import { WorkspaceContext } from "../../../src/WorkspaceContext";
  * @param packageFolder The package folder within the workspace
  * @returns The TestExplorer for the package
  */
-export function testExplorerFor(
+function testExplorerFor(
     workspaceContext: WorkspaceContext,
     packageFolder: vscode.Uri
 ): TestExplorer {

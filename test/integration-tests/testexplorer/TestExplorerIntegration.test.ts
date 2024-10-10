@@ -23,9 +23,7 @@ import {
     eventPromise,
     gatherTests,
     runTest,
-    SettingsMap,
-    testExplorerFor,
-    updateSettings,
+    setupTestExplorerTest,
     waitForTestExplorerReady,
 } from "./utilities";
 import { globalWorkspaceContextPromise } from "../extension.test";
@@ -49,19 +47,6 @@ suite("Test Explorer Suite", function () {
     suite("Debugging", function () {
         let settingsTeardown: () => void;
 
-        async function setup(settings: SettingsMap) {
-            settingsTeardown = await updateSettings(settings);
-
-            const testProject = testAssetUri("defaultPackage");
-
-            workspaceContext = await globalWorkspaceContextPromise;
-            testExplorer = testExplorerFor(workspaceContext, testProject);
-
-            // Set up the listener before bringing the text explorer in to focus,
-            // which starts searching the workspace for tests.
-            await waitForTestExplorerReady(testExplorer);
-        }
-
         async function runXCTest() {
             const suiteId = "PackageTests.PassingXCTestSuite";
             const testId = `${suiteId}/testPassing`;
@@ -83,9 +68,13 @@ suite("Test Explorer Suite", function () {
 
         suite("lldb-dap", () => {
             beforeEach(async function () {
-                await setup({
+                const testContext = await setupTestExplorerTest({
                     "swift.debugger.useDebugAdapterFromToolchain": true,
                 });
+
+                workspaceContext = testContext.workspaceContext;
+                testExplorer = testContext.testExplorer;
+                settingsTeardown = testContext.settingsTeardown;
 
                 // lldb-dap is only present in the toolchain in 6.0 and up.
                 if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
@@ -99,10 +88,14 @@ suite("Test Explorer Suite", function () {
 
         suite("CodeLLDB", () => {
             beforeEach(async function () {
-                await setup({
+                const testContext = await setupTestExplorerTest({
                     "swift.debugger.useDebugAdapterFromToolchain": false,
                     ...(process.env["CI"] === "1" ? { "lldb.library": "/usr/lib/liblldb.so" } : {}),
                 });
+
+                workspaceContext = testContext.workspaceContext;
+                testExplorer = testContext.testExplorer;
+                settingsTeardown = testContext.settingsTeardown;
             });
 
             test("Debugs specified XCTest test", async function () {
@@ -123,7 +116,7 @@ suite("Test Explorer Suite", function () {
         afterEach(() => settingsTeardown());
     });
 
-    suite("", () => {
+    suite("Standard", () => {
         suiteSetup(async () => {
             workspaceContext = await globalWorkspaceContextPromise;
         });
