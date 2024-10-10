@@ -1274,7 +1274,7 @@
     "compile": "tsc",
     "watch": "tsc --watch",
     "lint": "eslint ./ --ext ts && tsc --noEmit",
-    "format": "prettier --check *.json src test",
+    "format": "prettier --check .",
     "pretest": "npm run compile-tests",
     "soundness": "docker compose -f docker/docker-compose.yaml -p swift-vscode-soundness-prb run --rm soundness",
     "test": "vscode-test",

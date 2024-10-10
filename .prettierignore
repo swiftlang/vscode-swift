@@ -1,1 +1,17 @@
-.vscode-test
+# Only lint certain file types
+*.*
+!*.js
+!*.json
+!*.ts
+
+# NodeJS
+node_modules/
+
+# vscode-test
+.vscode-test/
+
+# Extension directories that don't need formatting
+/assets/
+/coverage/
+/dist/
+/snippets/

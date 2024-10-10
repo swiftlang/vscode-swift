@@ -10,11 +10,6 @@
     "typescript.tsc.autoDetect": "off",
 
     // Configure Prettier
+    "editor.formatOnSave": true,
     "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "[json]": {
-        "editor.formatOnSave": true
-    },
-    "[typescript]": {
-        "editor.formatOnSave": true
-    }
 }
