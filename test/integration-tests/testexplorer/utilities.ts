@@ -204,8 +204,18 @@ export async function updateSettings(settings: SettingsMap): Promise<() => Promi
 
         // There is actually a delay between when the config.update promise resolves and when
         // the setting is actually written. If we exit this function right away the test might
-        // start before the settings are actually written.
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // start before the settings are actually written. Verify that all the settings are set
+        // to their new value before continuing.
+        for (const setting of Object.keys(settings)) {
+            const { section, name } = decomposeSettingName(setting);
+            while (
+                vscode.workspace.getConfiguration(section, { languageId: "swift" }).get(name) !==
+                settings[setting]
+            ) {
+                // Not yet, wait a bit and try again.
+                await new Promise(resolve => setTimeout(resolve, 30));
+            }
+        }
 
         return savedOriginalSettings;
     };
