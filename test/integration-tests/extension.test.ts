@@ -72,7 +72,7 @@ suite("Extension Test Suite", () => {
 
     suite("Workspace", () => {
         /** Verify tasks.json is being loaded */
-        test("Tasks.json @slow", async () => {
+        test("Tasks.json", async () => {
             const folder = workspaceContext.folders.find(f => f.name === "test/defaultPackage");
             assert(folder);
             const buildAllTask = await getBuildAllTask(folder);
@@ -82,6 +82,6 @@ suite("Extension Test Suite", () => {
             for (const arg of ["build", "--build-tests", "--verbose"]) {
                 assert(execution?.args.find(item => item === arg));
             }
-        }).timeout(10000);
+        });
     });
 }).timeout(15000);
