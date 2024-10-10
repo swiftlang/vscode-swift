@@ -23,9 +23,7 @@ import { FolderContext } from "../../src/FolderContext";
 
 function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);
-    if (!result) {
-        throw new Error("No workspace folders are present");
-    }
+    assert(result, "No workspace folders were opened for the tests to use");
     return result;
 }
 
