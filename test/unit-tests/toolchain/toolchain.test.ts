@@ -15,26 +15,23 @@
 import { expect } from "chai";
 import * as os from "os";
 import * as utilities from "../../../src/utilities/utilities";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
+import { SwiftProjectTemplate, SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { Version } from "../../../src/utilities/version";
-import { mockFileSystem, mockGlobalModule, mockGlobalValue } from "../../MockUtils";
+import { mockFileSystem, mockGlobalModule } from "../../MockUtils";
 
 suite("SwiftToolchain Unit Test Suite", () => {
     const mockedUtilities = mockGlobalModule(utilities);
-    const mockedPlatform = mockGlobalValue(process, "platform");
+    const mockedProcess = mockGlobalModule(process, {
+        platform: process.platform,
+        env: process.env,
+    });
     const mockedOS = mockGlobalModule(os, { homedir: () => "" });
-    const mockedEnvironment = mockGlobalValue(process, "env");
     const mockFS = mockFileSystem();
 
     setup(() => {
-        mockFS({});
         mockedUtilities.execFile.rejects(
             new Error("execFile was not properly mocked for the test")
         );
-    });
-
-    teardown(() => {
-        mockFS.restore();
     });
 
     suite("getXcodeDeveloperDir()", () => {
@@ -63,7 +60,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
 
     suite("getXcodeInstalls()", () => {
         test("returns an array of available Xcode installations on macOS", async () => {
-            mockedPlatform.setValue("darwin");
+            mockedProcess.platform = "darwin";
             mockedUtilities.execFile.resolves({
                 stderr: "",
                 stdout: "/Applications/Xcode1.app\n/Applications/Xcode2.app\n/Applications/Xcode3.app\n\n\n\n\n",
@@ -76,13 +73,13 @@ suite("SwiftToolchain Unit Test Suite", () => {
         });
 
         test("does nothing on Linux", async () => {
-            mockedPlatform.setValue("linux");
+            mockedProcess.platform = "linux";
             await expect(SwiftToolchain.getXcodeInstalls()).to.eventually.be.empty;
             expect(mockedUtilities.execFile).to.not.have.been.called;
         });
 
         test("does nothing on Windows", async () => {
-            mockedPlatform.setValue("win32");
+            mockedProcess.platform = "win32";
             await expect(SwiftToolchain.getXcodeInstalls()).to.eventually.be.empty;
             expect(mockedUtilities.execFile).to.not.have.been.called;
         });
@@ -90,10 +87,10 @@ suite("SwiftToolchain Unit Test Suite", () => {
 
     suite("getSwiftlyToolchainInstalls()", () => {
         test("returns an array of available Swiftly toolchains on Linux if Swiftly is installed", async () => {
-            mockedPlatform.setValue("linux");
-            mockedEnvironment.setValue({
+            mockedProcess.platform = "linux";
+            mockedProcess.env = {
                 SWIFTLY_HOME_DIR: "/path/to/swiftly/home",
-            });
+            };
             mockFS({
                 "/path/to/swiftly/home/config.json": JSON.stringify({
                     installedToolchains: ["swift-DEVELOPMENT-6.0.0", "swift-6.0.0", "swift-5.10.1"],
@@ -107,26 +104,26 @@ suite("SwiftToolchain Unit Test Suite", () => {
         });
 
         test("does nothing if Swiftly in not installed", async () => {
-            mockedPlatform.setValue("linux");
-            mockedEnvironment.setValue({});
+            mockedProcess.platform = "linux";
+            mockedProcess.env = {};
             mockFS({});
             await expect(SwiftToolchain.getSwiftlyToolchainInstalls()).to.eventually.be.empty;
         });
 
         test("returns an empty array if no Swiftly configuration is present", async () => {
-            mockedPlatform.setValue("linux");
-            mockedEnvironment.setValue({
+            mockedProcess.platform = "linux";
+            mockedProcess.env = {
                 SWIFTLY_HOME_DIR: "/path/to/swiftly/home",
-            });
+            };
             mockFS({});
             await expect(SwiftToolchain.getSwiftlyToolchainInstalls()).to.eventually.be.empty;
         });
 
         test("returns an empty array if Swiftly configuration is in an unexpected format (installedToolchains is not an array)", async () => {
-            mockedPlatform.setValue("linux");
-            mockedEnvironment.setValue({
+            mockedProcess.platform = "linux";
+            mockedProcess.env = {
                 SWIFTLY_HOME_DIR: "/path/to/swiftly/home",
-            });
+            };
             mockFS({
                 "/path/to/swiftly/home/config.json": JSON.stringify({
                     installedToolchains: {
@@ -140,10 +137,10 @@ suite("SwiftToolchain Unit Test Suite", () => {
         });
 
         test("returns an empty array if Swiftly configuration is in an unexpected format (elements of installedToolchains are not strings)", async () => {
-            mockedPlatform.setValue("linux");
-            mockedEnvironment.setValue({
+            mockedProcess.platform = "linux";
+            mockedProcess.env = {
                 SWIFTLY_HOME_DIR: "/path/to/swiftly/home",
-            });
+            };
             mockFS({
                 "/path/to/swiftly/home/config.json": JSON.stringify({
                     installedToolchains: [
@@ -157,10 +154,10 @@ suite("SwiftToolchain Unit Test Suite", () => {
         });
 
         test("returns an empty array if Swiftly configuration is in an unexpected format (installedToolchains does not exist)", async () => {
-            mockedPlatform.setValue("linux");
-            mockedEnvironment.setValue({
+            mockedProcess.platform = "linux";
+            mockedProcess.env = {
                 SWIFTLY_HOME_DIR: "/path/to/swiftly/home",
-            });
+            };
             mockFS({
                 "/path/to/swiftly/home/config.json": JSON.stringify({
                     toolchains: ["swift-DEVELOPMENT-6.0.0", "swift-6.0.0", "swift-5.10.1"],
@@ -170,10 +167,10 @@ suite("SwiftToolchain Unit Test Suite", () => {
         });
 
         test("returns an empty array if Swiftly configuration is corrupt", async () => {
-            mockedPlatform.setValue("linux");
-            mockedEnvironment.setValue({
+            mockedProcess.platform = "linux";
+            mockedProcess.env = {
                 SWIFTLY_HOME_DIR: "/path/to/swiftly/home",
-            });
+            };
             mockFS({
                 "/path/to/swiftly/home/config.json": "{",
             });
@@ -181,19 +178,19 @@ suite("SwiftToolchain Unit Test Suite", () => {
         });
 
         test("does nothing on macOS", async () => {
-            mockedPlatform.setValue("darwin");
-            mockedEnvironment.setValue({
+            mockedProcess.platform = "darwin";
+            mockedProcess.env = {
                 SWIFTLY_HOME_DIR: "/path/to/swiftly/home",
-            });
+            };
             mockFS({});
             await expect(SwiftToolchain.getSwiftlyToolchainInstalls()).to.eventually.be.empty;
         });
 
         test("does nothing on Windows", async () => {
-            mockedPlatform.setValue("win32");
-            mockedEnvironment.setValue({
+            mockedProcess.platform = "win32";
+            mockedProcess.env = {
                 SWIFTLY_HOME_DIR: "/path/to/swiftly/home",
-            });
+            };
             mockFS({});
             await expect(SwiftToolchain.getSwiftlyToolchainInstalls()).to.eventually.be.empty;
         });
@@ -201,7 +198,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
 
     suite("getToolchainInstalls()", () => {
         test("returns an array of available toolchains on macOS", async () => {
-            mockedPlatform.setValue("darwin");
+            mockedProcess.platform = "darwin";
             mockedOS.homedir.returns("/Users/test/");
             mockFS({
                 "/Library/Developer/Toolchains": {
@@ -240,21 +237,21 @@ suite("SwiftToolchain Unit Test Suite", () => {
         });
 
         test("returns an empty array if no toolchains are present", async () => {
-            mockedPlatform.setValue("darwin");
+            mockedProcess.platform = "darwin";
             mockedOS.homedir.returns("/Users/test/");
             mockFS({});
             await expect(SwiftToolchain.getToolchainInstalls()).to.eventually.be.empty;
         });
 
         test("does nothing on Linux", async () => {
-            mockedPlatform.setValue("linux");
+            mockedProcess.platform = "linux";
             mockedOS.homedir.returns("/Users/test/");
             mockFS({});
             await expect(SwiftToolchain.getToolchainInstalls()).to.eventually.be.empty;
         });
 
         test("does nothing on Windows", async () => {
-            mockedPlatform.setValue("win32");
+            mockedProcess.platform = "win32";
             mockedOS.homedir.returns("/Users/test/");
             mockFS({});
             await expect(SwiftToolchain.getToolchainInstalls()).to.eventually.be.empty;
@@ -287,7 +284,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
 
         suite("macOS", () => {
             setup(() => {
-                mockedPlatform.setValue("darwin");
+                mockedProcess.platform = "darwin";
             });
 
             test("returns the path to lldb-dap if it exists within a public toolchain", async () => {
@@ -377,7 +374,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
 
         suite("Linux", () => {
             setup(() => {
-                mockedPlatform.setValue("linux");
+                mockedProcess.platform = "linux";
             });
 
             test("returns the path to lldb-dap if it exists within the toolchain", async () => {
@@ -413,7 +410,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
 
         suite("Windows", () => {
             setup(() => {
-                mockedPlatform.setValue("win32");
+                mockedProcess.platform = "win32";
             });
 
             test("returns the path to lldb-dap.exe if it exists within the toolchain", async () => {
@@ -445,6 +442,97 @@ suite("SwiftToolchain Unit Test Suite", () => {
                     "Failed to find lldb-dap.exe within Swift toolchain '/toolchains/swift-6.0.0'"
                 );
             });
+        });
+    });
+
+    suite("getProjectTemplates()", () => {
+        function createSwiftToolchain(swiftVersion: Version): SwiftToolchain {
+            return new SwiftToolchain(
+                /* swiftFolderPath */ "/usr/bin",
+                /* toolchainPath */ "/usr/bin",
+                /* targetInfo */ {
+                    compilerVersion: swiftVersion.toString(),
+                    paths: {
+                        runtimeLibraryPaths: [],
+                    },
+                },
+                swiftVersion,
+                /* runtimePath */ undefined,
+                /* defaultSDK */ undefined,
+                /* customSDK */ undefined,
+                /* xcTestPath */ undefined,
+                /* swiftTestingPath */ undefined,
+                /* swiftPMTestingHelperPath */ undefined
+            );
+        }
+
+        test("parses Swift PM output from v6.0.0", async () => {
+            mockedUtilities.execSwift.resolves({
+                stdout: `OVERVIEW: Initialize a new package
+
+USAGE: swift package init [--type <type>] [--enable-xctest] [--disable-xctest] [--enable-swift-testing] [--disable-swift-testing] [--name <name>]
+
+OPTIONS:
+  --type <type>           Package type: (default: library)
+        library           - A package with a library.
+        executable        - A package with an executable.
+        tool              - A package with an executable that uses
+                            Swift Argument Parser. Use this template if you
+                            plan to have a rich set of command-line arguments.
+        build-tool-plugin - A package that vends a build tool plugin.
+        command-plugin    - A package that vends a command plugin.
+        macro             - A package that vends a macro.
+        empty             - An empty package with a Package.swift manifest.
+  --enable-xctest/--disable-xctest
+                          Enable support for XCTest
+  --enable-swift-testing/--disable-swift-testing
+                          Enable support for Swift Testing
+  --name <name>           Provide custom package name
+  --version               Show the version.
+  -h, -help, --help       Show help information.
+
+`,
+                stderr: "",
+            });
+            const sut = createSwiftToolchain(new Version(6, 0, 0));
+
+            await expect(sut.getProjectTemplates()).to.eventually.include.deep.ordered.members([
+                { id: "library", name: "Library", description: "A package with a library." },
+                {
+                    id: "executable",
+                    name: "Executable",
+                    description: "A package with an executable.",
+                },
+                {
+                    id: "tool",
+                    name: "Tool",
+                    description:
+                        "A package with an executable that uses Swift Argument Parser. Use this template if you plan to have a rich set of command-line arguments.",
+                },
+                {
+                    id: "build-tool-plugin",
+                    name: "Build Tool Plugin",
+                    description: "A package that vends a build tool plugin.",
+                },
+                {
+                    id: "command-plugin",
+                    name: "Command Plugin",
+                    description: "A package that vends a command plugin.",
+                },
+                { id: "macro", name: "Macro", description: "A package that vends a macro." },
+                {
+                    id: "empty",
+                    name: "Empty",
+                    description: "An empty package with a Package.swift manifest.",
+                },
+            ] satisfies SwiftProjectTemplate[]);
+        });
+
+        test("returns an empty array on Swift versions prior to 5.8.0", async () => {
+            mockedUtilities.execSwift.rejects("unknown package command 'init'");
+            const sut = createSwiftToolchain(new Version(5, 7, 9));
+
+            await expect(sut.getProjectTemplates()).to.eventually.be.an("array").that.is.empty;
         });
     });
 });
