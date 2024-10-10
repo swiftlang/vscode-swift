@@ -12,22 +12,22 @@
 //
 //===----------------------------------------------------------------------===//
 
-const BaseReporter = require('mocha/lib/reporters/base');
-const SpecReporter = require('mocha/lib/reporters/spec');
-const JsonReporter = require('mocha/lib/reporters/json');
+const BaseReporter = require("mocha/lib/reporters/base");
+const SpecReporter = require("mocha/lib/reporters/spec");
+const JsonReporter = require("mocha/lib/reporters/json");
 
 // Taking inspiration from https://github.com/stanleyhlng/mocha-multi-reporters/issues/108#issuecomment-2028773686
 // since mocha-multi-reporters seems to have bugs with newer mocha versions
 module.exports = class MultiReporter extends BaseReporter {
-  constructor(runner, options) {
-    super(runner, options);
-    this.reporters = [
-      new SpecReporter(runner, {
-        reporterOption: options.reporterOption.specReporterOptions,
-      }),
-      new JsonReporter(runner, {
-        reporterOption: options.reporterOption.jsonReporterOptions,
-      }),
-    ];
-  }
+    constructor(runner, options) {
+        super(runner, options);
+        this.reporters = [
+            new SpecReporter(runner, {
+                reporterOption: options.reporterOption.specReporterOptions,
+            }),
+            new JsonReporter(runner, {
+                reporterOption: options.reporterOption.jsonReporterOptions,
+            }),
+        ];
+    }
 };
