@@ -1266,11 +1266,10 @@
     "vadimcn.vscode-lldb"
   ],
   "scripts": {
-    "vscode:prepublish": "npm run esbuild-bundle",
-    "esbuild": "del-cli ./dist && esbuild \"./src/**/*.ts\" --outdir=dist/src --format=cjs --platform=node --target=node18 --sourcemap",
-    "esbuild-bundle": "del-cli ./dist && esbuild ./src/extension.ts --bundle --outfile=dist/src/extension.js --external:vscode --format=cjs --platform=node --target=node18 --minify  --sourcemap",
+    "vscode:prepublish": "npm run bundle",
+    "bundle": "del-cli ./dist && esbuild ./src/extension.ts --bundle --outfile=dist/src/extension.js --external:vscode --format=cjs --platform=node --target=node18 --minify --sourcemap",
     "compile": "del-cli ./dist && tsc",
-    "watch": "tsc --watch",
+    "watch": "del-cli ./dist && tsc --watch",
     "lint": "eslint ./ --ext ts && tsc --noEmit",
     "format": "prettier --check *.json src test",
     "pretest": "npm run compile-tests",
