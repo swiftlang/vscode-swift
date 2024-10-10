@@ -5,5 +5,7 @@
     "swift.additionalTestArguments": [
         "-Xswiftc",
         "-DTEST_ARGUMENT_SET_VIA_TEST_BUILD_ARGUMENTS_SETTING"
-    ]
+    ],
+    "lldb.verboseLogging": true
+
 }

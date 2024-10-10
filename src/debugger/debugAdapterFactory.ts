@@ -17,19 +17,76 @@ import * as path from "path";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { DebugAdapter, LaunchConfigType } from "./debugAdapter";
 import { Version } from "../utilities/version";
+import { registerLoggingDebugAdapterTracker } from "./logTracker";
+import { SwiftToolchain } from "../toolchain/toolchain";
+import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 
-export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
+/**
+ * Registers the active debugger with the extension, and reregisters it
+ * when the debugger settings change.
+ * @param workspaceContext  The workspace context
+ * @returns A disposable to be disposed when the extension is deactivated
+ */
+export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Disposable {
+    let subscriptions: vscode.Disposable[] = [];
+    const register = async () => {
+        subscriptions.map(sub => sub.dispose());
+        subscriptions = [
+            registerLoggingDebugAdapterTracker(workspaceContext.toolchain.swiftVersion),
+            registerLLDBDebugAdapter(workspaceContext.toolchain, workspaceContext.outputChannel),
+        ];
+
+        await workspaceContext.setLLDBVersion();
+
+        // Verify that the adapter exists, but only after registration. This async method
+        // is basically an unstructured task so we don't want to run it before the adapter
+        // registration above as it could cause code executing immediately after register()
+        // to use the incorrect adapter.
+        DebugAdapter.verifyDebugAdapterExists(
+            workspaceContext.toolchain,
+            workspaceContext.outputChannel,
+            true
+        ).catch(error => {
+            workspaceContext.outputChannel.log(error);
+        });
+    };
+
+    const changeMonitor = vscode.workspace.onDidChangeConfiguration(event => {
+        if (event.affectsConfiguration("swift.debugger.useDebugAdapterFromToolchain")) {
+            register();
+        }
+    });
+
+    // Perform the initial registration, then reregister every time the settings change.
+    register();
+
+    return {
+        dispose: () => {
+            changeMonitor.dispose();
+            subscriptions.map(sub => sub.dispose());
+        },
+    };
+}
+
+/**
+ * Registers the LLDB debug adapter with the VS Code debug adapter descriptor factory.
+ * @param workspaceContext The workspace context
+ * @returns A disposable to be disposed when the extension is deactivated
+ */
+function registerLLDBDebugAdapter(
+    toolchain: SwiftToolchain,
+    outputChannel: SwiftOutputChannel
+): vscode.Disposable {
     const debugAdpaterFactory = vscode.debug.registerDebugAdapterDescriptorFactory(
         LaunchConfigType.SWIFT_EXTENSION,
-        new LLDBDebugAdapterExecutableFactory(workspaceContext)
+        new LLDBDebugAdapterExecutableFactory(toolchain, outputChannel)
     );
+
     const debugConfigProvider = vscode.debug.registerDebugConfigurationProvider(
         LaunchConfigType.SWIFT_EXTENSION,
-        new LLDBDebugConfigurationProvider(
-            process.platform,
-            workspaceContext.toolchain.swiftVersion
-        )
+        new LLDBDebugConfigurationProvider(process.platform, toolchain.swiftVersion)
     );
+
     return {
         dispose: () => {
             debugConfigProvider.dispose();
@@ -56,19 +113,18 @@ export function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vs
  * @implements {vscode.DebugAdapterDescriptorFactory}
  */
 export class LLDBDebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFactory {
-    private workspaceContext: WorkspaceContext;
+    private toolchain: SwiftToolchain;
+    private outputChannel: SwiftOutputChannel;
 
-    constructor(workspaceContext: WorkspaceContext) {
-        this.workspaceContext = workspaceContext;
+    constructor(toolchain: SwiftToolchain, outputChannel: SwiftOutputChannel) {
+        this.toolchain = toolchain;
+        this.outputChannel = outputChannel;
     }
 
-    createDebugAdapterDescriptor(): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
-        // Use the stored workspaceContext
-        return DebugAdapter.debugAdapterPath(this.workspaceContext.toolchain)
-            .then(path =>
-                DebugAdapter.verifyDebugAdapterExists(this.workspaceContext).then(() => path)
-            )
-            .then(path => new vscode.DebugAdapterExecutable(path, [], {}));
+    async createDebugAdapterDescriptor(): Promise<vscode.DebugAdapterDescriptor> {
+        const path = await DebugAdapter.debugAdapterPath(this.toolchain);
+        await DebugAdapter.verifyDebugAdapterExists(this.toolchain, this.outputChannel);
+        return new vscode.DebugAdapterExecutable(path, [], {});
     }
 }
 

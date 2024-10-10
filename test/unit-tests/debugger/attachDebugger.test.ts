@@ -25,7 +25,7 @@ import {
 } from "../../MockUtils";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { registerLLDBDebugAdapter } from "../../../src/debugger/debugAdapterFactory";
+import { registerDebugger } from "../../../src/debugger/debugAdapterFactory";
 import { Version } from "../../../src/utilities/version";
 
 suite("attachDebugger Unit Test Suite", () => {
@@ -47,7 +47,7 @@ suite("attachDebugger Unit Test Suite", () => {
 
     test("should call startDebugging with correct debugConfig", async () => {
         // Setup fake debug adapter
-        registerLLDBDebugAdapter(instance(mockContext));
+        registerDebugger(instance(mockContext));
 
         // Mock the list of processes returned by getLldbProcess
         const processPickItems = [
