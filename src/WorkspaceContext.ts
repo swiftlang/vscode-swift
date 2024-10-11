@@ -372,7 +372,7 @@ export class WorkspaceContext implements vscode.Disposable {
         // find context with root folder
         const index = this.folders.findIndex(context => context.folder.fsPath === folder.fsPath);
         if (index !== -1) {
-            console.error(`Adding package folder ${folder} twice`);
+            this.outputChannel.log(`Adding package folder ${folder} twice`, "WARN");
             return this.folders[index];
         }
         const folderContext = await FolderContext.create(folder, workspaceFolder, this);

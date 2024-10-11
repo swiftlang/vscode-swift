@@ -45,7 +45,6 @@ module.exports = defineConfig({
                 invert: isFastTestRun,
                 slow: 10000,
             },
-            installExtensions: ["vadimcn.vscode-lldb"],
             reuseMachineInstall: !isCIBuild,
         },
         {

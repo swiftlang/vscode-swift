@@ -25,11 +25,12 @@ import {
     mockObject,
     instance,
     mockGlobalModule,
+    mockFn,
 } from "../../MockUtils";
 import configuration from "../../../src/configuration";
 import { DebugAdapter, LaunchConfigType } from "../../../src/debugger/debugAdapter";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
+import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 
 suite("Debug Adapter Factory Test Suite", () => {
     const swift6 = new Version(6, 0, 0);
@@ -137,13 +138,13 @@ suite("Debug Adapter Factory Test Suite", () => {
 
 suite("debugAdapterFactory Tests", () => {
     const mockAdapter = mockGlobalModule(DebugAdapter);
-    let mockContext: MockedObject<WorkspaceContext>;
     let mockToolchain: MockedObject<SwiftToolchain>;
+    let mockOutputChannel: MockedObject<SwiftOutputChannel>;
 
     setup(() => {
         mockToolchain = mockObject<SwiftToolchain>({});
-        mockContext = mockObject<WorkspaceContext>({
-            toolchain: instance(mockToolchain),
+        mockOutputChannel = mockObject<SwiftOutputChannel>({
+            log: mockFn(),
         });
     });
 
@@ -153,7 +154,10 @@ suite("debugAdapterFactory Tests", () => {
         mockAdapter.debugAdapterPath.resolves(toolchainPath);
         mockAdapter.verifyDebugAdapterExists.resolves(true);
 
-        const factory = new LLDBDebugAdapterExecutableFactory(instance(mockContext));
+        const factory = new LLDBDebugAdapterExecutableFactory(
+            instance(mockToolchain),
+            instance(mockOutputChannel)
+        );
         const result = await factory.createDebugAdapterDescriptor();
 
         expect(result).to.be.instanceOf(vscode.DebugAdapterExecutable);
@@ -168,7 +172,10 @@ suite("debugAdapterFactory Tests", () => {
 
         mockAdapter.debugAdapterPath.rejects(new Error(errorMessage));
 
-        const factory = new LLDBDebugAdapterExecutableFactory(instance(mockContext));
+        const factory = new LLDBDebugAdapterExecutableFactory(
+            instance(mockToolchain),
+            instance(mockOutputChannel)
+        );
 
         await expect(factory.createDebugAdapterDescriptor()).to.eventually.be.rejectedWith(
             Error,
@@ -186,7 +193,10 @@ suite("debugAdapterFactory Tests", () => {
         mockAdapter.debugAdapterPath.resolves(toolchainPath);
         mockAdapter.verifyDebugAdapterExists.rejects(new Error(errorMessage));
 
-        const factory = new LLDBDebugAdapterExecutableFactory(instance(mockContext));
+        const factory = new LLDBDebugAdapterExecutableFactory(
+            instance(mockToolchain),
+            instance(mockOutputChannel)
+        );
 
         await expect(factory.createDebugAdapterDescriptor()).to.eventually.be.rejectedWith(
             Error,
