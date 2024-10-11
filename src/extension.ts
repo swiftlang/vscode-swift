@@ -82,16 +82,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
 
         context.subscriptions.push(...commands.registerToolchainCommands(toolchain));
 
-        if (!toolchain) {
-            showToolchainError();
-            return;
-        }
-
-        const workspaceContext = await WorkspaceContext.create(outputChannel, toolchain);
-        context.subscriptions.push(...commands.register(workspaceContext));
-        context.subscriptions.push(workspaceContext);
-        context.subscriptions.push(registerDebugger(workspaceContext));
-
         context.subscriptions.push(
             vscode.workspace.onDidChangeConfiguration(event => {
                 // on toolchain config change, reload window
@@ -113,6 +103,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
                 }
             })
         );
+
+        if (!toolchain) {
+            showToolchainError();
+            return;
+        }
+
+        const workspaceContext = await WorkspaceContext.create(outputChannel, toolchain);
+        context.subscriptions.push(...commands.register(workspaceContext));
+        context.subscriptions.push(workspaceContext);
+        context.subscriptions.push(registerDebugger(workspaceContext));
 
         // listen for workspace folder changes and active text editor changes
         workspaceContext.setupEventListeners();
