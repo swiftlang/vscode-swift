@@ -30,7 +30,6 @@
 				"--profile=testing-debug"
 			],
 			"outFiles": [
-				"${workspaceFolder}/out/**/*.js",
 				"${workspaceFolder}/dist/**/*.js"
 			],
 			"env": {
@@ -45,7 +44,7 @@
 			"testConfiguration": "${workspaceFolder}/.vscode-test.js",
 			"testConfigurationLabel": "unitTests",
 			"outFiles": [
-				"${workspaceFolder}/out/**/*.js"
+				"${workspaceFolder}/dist/**/*.js"
 			],
 			"preLaunchTask": "compile-tests"
 		}
