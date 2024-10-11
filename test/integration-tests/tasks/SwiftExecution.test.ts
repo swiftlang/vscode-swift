@@ -17,7 +17,7 @@ import * as assert from "assert";
 import { testSwiftTask } from "../../fixtures";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { globalWorkspaceContextPromise } from "../extension.test";
-import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities";
+import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 
 suite("SwiftExecution Tests Suite", () => {

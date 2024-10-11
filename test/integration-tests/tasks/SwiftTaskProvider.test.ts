@@ -27,7 +27,7 @@ import {
     executeTaskAndWaitForResult,
     waitForEndTaskProcess,
     waitForNoRunningTasks,
-} from "../../utilities";
+} from "../../utilities/tasks";
 import { Version } from "../../../src/utilities/version";
 import { FolderContext } from "../../../src/FolderContext";
 import { mockGlobalObject } from "../../MockUtils";

@@ -13,16 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { SwiftTaskFixture } from "./fixtures";
-import { SwiftTask } from "../src/tasks/SwiftTaskProvider";
-
-export type Mutable<T> = {
-    -readonly [K in keyof T]: T[K];
-};
-
-export function mutable<T>(target: T): Mutable<T> {
-    return target;
-}
+import { SwiftTaskFixture } from "../fixtures";
+import { SwiftTask } from "../../src/tasks/SwiftTaskProvider";
 
 /**
  * Executes a {@link SwiftTask}, accumulates output, and
