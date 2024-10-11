@@ -12,17 +12,19 @@ This extension adds language support for Swift to Visual Studio Code. It support
 
 Swift support uses [SourceKit LSP](https://github.com/apple/sourcekit-lsp) for the [language server](https://microsoft.github.io/language-server-protocol/overviews/lsp/overview/) to power code completion and [LLDB](https://github.com/vadimcn/vscode-lldb) to enable debugging.
 
-The extension is developed by members of the Swift Community and maintained by the [SSWG](https://www.swift.org/sswg/). The aim is to provide a first-class, feature complete extension to make developing Swift applications on all platforms a seamless experience.
+The aim is to provide a first-class, feature complete extension to make developing Swift applications on all platforms a seamless experience.
 
 If you experience any issues or want to propose new features please [create an issue](https://github.com/swiftlang/vscode-swift/issues/new) or post on the [swift.org forums](https://forums.swift.org) in the [VS Code Swift Extension category](https://forums.swift.org/c/related-projects/vscode-swift-extension/).
 
 ## Contributing
 
-The Swift for Visual Studio Code extension is a community driven project, developed by the amazing Swift community. Any kind of contribution is appreciated, including code, tests and documentation. For more details see [CONTRIBUTING.md](CONTRIBUTING.md).
+The Swift for Visual Studio Code extension is a community driven project originally created by the [Swift Server Working Group](https://www.swift.org/sswg/) and now maintained as part of the [swiftlang organization](https://github.com/swiftlang/). Contributions are appreciated, including code, tests and documentation. For more details see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+To give clarity of what is expected of our members, Swift has adopted the code of conduct defined by the Contributor Covenant. This document is used across many open source communities, and we think it articulates our values well. For more, see the [Code of Conduct](https://swift.org/code-of-conduct/).
 
 ## Installation
 
-For the extension to work, you must have Swift installed on your system. Please see the [Getting Started Guide on Swift.org](https://www.swift.org/getting-started/) for details on how to install Swift on your system. Install the extension from [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=sswg.swift-lang) and open a Swift package! You'll be prompted to install and configure the CodeLLDB extension, which you should do so.
+For the extension to work, you must have Swift installed on your system. Please see the [Getting Started Guide on Swift.org](https://www.swift.org/getting-started/) for details on how to install Swift on your system. Install the extension from [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=swiftlang.vscode-swift) and open a Swift package! You'll be prompted to install and configure the CodeLLDB extension, which you should do so.
 
 ## Features
 
