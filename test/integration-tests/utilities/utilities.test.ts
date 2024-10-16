@@ -50,34 +50,34 @@ suite("Utilities Test Suite", () => {
     suite("getRepositoryName", () => {
         test("regular url", () => {
             assert.strictEqual(
-                getRepositoryName("https://github.com/swift-server/vscode-swift.git"),
+                getRepositoryName("https://github.com/swiftlang/vscode-swift.git"),
                 "vscode-swift"
             );
         });
 
         test("url does not end in .git", () => {
             assert.strictEqual(
-                getRepositoryName("https://github.com/swift-server/vscode-swift"),
+                getRepositoryName("https://github.com/swiftlang/vscode-swift"),
                 "vscode-swift"
             );
         });
 
         test("URL contains a trailing slash", () => {
             assert.strictEqual(
-                getRepositoryName("https://github.com/swift-server/vscode-swift.git/"),
+                getRepositoryName("https://github.com/swiftlang/vscode-swift.git/"),
                 "vscode-swift"
             );
         });
         test("Name contains a dot", () => {
             assert.strictEqual(
-                getRepositoryName("https://github.com/swift-server/vscode.swift.git"),
+                getRepositoryName("https://github.com/swiftlang/vscode.swift.git"),
                 "vscode.swift"
             );
         });
 
         test("Name contains .git", () => {
             assert.strictEqual(
-                getRepositoryName("https://github.com/swift-server/vscode.git.git"),
+                getRepositoryName("https://github.com/swiftlang/vscode.git.git"),
                 "vscode.git"
             );
         });
