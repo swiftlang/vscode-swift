@@ -19,7 +19,7 @@ More details on nvm installation can be found in the [README](https://github.com
 Once you have installed nvm, you can clone and configure the repository.
 
 ```sh
-git clone https://github.com/swift-server/vscode-swift.git && cd vscode-swift
+git clone https://github.com/swiftlang/vscode-swift.git && cd vscode-swift
 
 # Install the correct version of Node.JS for developing the extension
 nvm install
