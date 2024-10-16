@@ -16,6 +16,7 @@ import { expect } from "chai";
 import { stub } from "sinon";
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
+import * as os from "os";
 import {
     AsyncEventEmitter,
     mockFn,
@@ -207,40 +208,50 @@ suite("MockUtils Test Suite", () => {
 
     suite("mockGlobalModule()", () => {
         const mockedFS = mockGlobalModule(fs);
+        const mockedOS = mockGlobalModule(os, { homedir: () => "" });
         const mockedContextKeys = mockGlobalModule(contextKeys);
         const mockedConfiguration = mockGlobalModule(configuration);
 
-        test("can mock the fs/promises module", async () => {
+        test("replaces functions within the module with Sinon stubs", async () => {
             mockedFS.readFile.resolves("file contents");
 
             await expect(fs.readFile("some_file")).to.eventually.equal("file contents");
             expect(mockedFS.readFile).to.have.been.calledOnceWithExactly("some_file");
         });
 
-        test("can mock the contextKeys module", () => {
+        test("replaces properties within the module with writable values", () => {
             // Initial value should be undefined
             expect(contextKeys.isActivated).to.be.undefined;
+            expect(mockedContextKeys.isActivated).to.be.undefined;
             // Make sure that you can set the value of contextKeys using the mock
             mockedContextKeys.isActivated = true;
             expect(contextKeys.isActivated).to.be.true;
+            expect(mockedContextKeys.isActivated).to.be.true;
             // Make sure that setting isActivated via contextKeys is also possible
             contextKeys.isActivated = false;
             expect(contextKeys.isActivated).to.be.false;
+            expect(mockedContextKeys.isActivated).to.be.false;
         });
 
-        test("can mock the configuration module", () => {
-            expect(configuration.sdk).to.equal("");
-            // Make sure you can set a value using the mock
-            mockedConfiguration.sdk = "macOS";
-            expect(configuration.sdk).to.equal("macOS");
-            // Make sure you can set a value using the real module
-            configuration.sdk = "watchOS";
-            expect(configuration.sdk).to.equal("watchOS");
+        test("allows deeply nested mocks for the configuration module", () => {
             // Mocking objects within the configuration requires separate MockedObjects
             const mockedLspConfig = mockObject<(typeof configuration)["lsp"]>(configuration.lsp);
             mockedConfiguration.lsp = mockedLspConfig;
             mockedLspConfig.disable = true;
             expect(configuration.lsp.disable).to.be.true;
+        });
+
+        test("can be used to mock only certain properties within a global module", () => {
+            mockedOS.homedir.returns("/path/to/my/custom/homedir");
+            expect(os.homedir()).to.equal("/path/to/my/custom/homedir");
+            // Make sure that accessing non-mocked properties of the mocked module fails
+            expect(() => mockedOS.arch.returns("arm64")).to.throw(
+                "Attempted to access property 'arch', but it was not mocked"
+            );
+            // Make sure that setting non-mocked properties on the mocked module fails
+            expect(() => (mockedOS.EOL = "\n")).to.throw(
+                "Attempted to set property 'EOL', but it was not mocked"
+            );
         });
     });
 
