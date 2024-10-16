@@ -14,7 +14,7 @@ Swift support uses [SourceKit LSP](https://github.com/apple/sourcekit-lsp) for t
 
 The extension is developed by members of the Swift Community and maintained by the [SSWG](https://www.swift.org/sswg/). The aim is to provide a first-class, feature complete extension to make developing Swift applications on all platforms a seamless experience.
 
-If you experience any issues or want to propose new features please [create an issue](https://github.com/swiftlang/vscode-swift/issues/new) or post on the `#vscode-swift` channel on [Slack](https://swift-server.slack.com).
+If you experience any issues or want to propose new features please [create an issue](https://github.com/swiftlang/vscode-swift/issues/new) or post on the [swift.org forums](https://forums.swift.org) in the [VS Code Swift Extension category](https://forums.swift.org/c/related-projects/vscode-swift-extension/).
 
 ## Contributing
 
