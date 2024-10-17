@@ -1,9 +1,9 @@
 {
-  "name": "swift-lang",
+  "name": "vscode-swift",
   "displayName": "Swift",
   "description": "Swift Language Support for Visual Studio Code.",
   "version": "1.11.3",
-  "publisher": "sswg",
+  "publisher": "swiftlang",
   "icon": "icon.png",
   "repository": {
     "type": "git",
@@ -20,6 +20,7 @@
   ],
   "keywords": [
     "swift",
+    "swiftlang",
     "sswg"
   ],
   "activationEvents": [
