@@ -68,7 +68,10 @@ export async function folderCleanBuild(folderContext: FolderContext) {
 /**
  * Executes a {@link vscode.Task task} to debug swift target.
  */
-async function debugBuildWithOptions(ctx: WorkspaceContext, options: vscode.DebugSessionOptions) {
+export async function debugBuildWithOptions(
+    ctx: WorkspaceContext,
+    options: vscode.DebugSessionOptions
+) {
     const current = ctx.currentFolder;
     if (!current) {
         return;
