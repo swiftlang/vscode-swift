@@ -206,6 +206,26 @@ export function wait(milliseconds: number): Promise<void> {
 }
 
 /**
+ * Returns an array containing the non-null and non-undefined results of calling
+ * the given transformation with each element of this sequence.
+ *
+ * @param arr An array to map
+ * @param transform A transformation function to apply to each element
+ * @returns An array containing the non-null and non-undefined results of calling transform on each element
+ */
+export function compactMap<T, U>(
+    arr: readonly T[],
+    transform: (value: T) => U | null | undefined
+): U[] {
+    return arr.reduce<U[]>((acc, item) => {
+        const result = transform(item);
+        if (result !== null && result !== undefined) {
+            acc.push(result);
+        }
+        return acc;
+    }, []);
+}
+/**
  * Get path to swift executable, or executable in swift bin folder
  *
  * @param exe name of executable to return

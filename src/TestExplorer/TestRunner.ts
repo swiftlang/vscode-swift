@@ -18,7 +18,7 @@ import * as stream from "stream";
 import * as os from "os";
 import * as asyncfs from "fs/promises";
 import { FolderContext } from "../FolderContext";
-import { execFile, getErrorDescription } from "../utilities/utilities";
+import { compactMap, execFile, getErrorDescription } from "../utilities/utilities";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
@@ -127,7 +127,12 @@ export class TestRunProxy {
                 testClass.location = undefined;
 
                 // Results should inherit any tags from the parent.
-                testClass.tags = parent.tags.map(t => new vscode.TestTag(t.id));
+                // Until we can rerun a swift-testing test with an individual argument, mark
+                // the argument test items as not runnable. This should be revisited when
+                // https://github.com/swiftlang/swift-testing/issues/671 is resolved.
+                testClass.tags = compactMap(parent.tags, t =>
+                    t.id === runnableTag.id ? null : new vscode.TestTag(t.id)
+                );
 
                 const added = upsertTestItem(this.controller, testClass, parent);
 
