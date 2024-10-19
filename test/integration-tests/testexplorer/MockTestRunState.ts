@@ -67,6 +67,7 @@ export class TestRunState implements ITestRunState {
         lineNumber: number;
         complete: boolean;
     };
+    allOutput: string[] = [];
 
     public testItemFinder: ITestItemFinder;
 
@@ -123,6 +124,7 @@ export class TestRunState implements ITestRunState {
         if (index !== undefined) {
             this.testItemFinder.tests[index].output.push(output);
         }
+        this.allOutput.push(output);
     }
 
     // started suite

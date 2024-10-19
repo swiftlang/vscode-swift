@@ -20,6 +20,14 @@ import * as vscode from "vscode";
 export interface ITestRunState {
     // excess data from previous parse that was not processed
     excess?: string;
+
+    // the currently running suite, with the test target included, i.e: TestTarget.Suite
+    // note that TestTarget is only present on Darwin.
+    activeSuite?: string;
+
+    // output captured before a test has run in a suite
+    pendingSuiteOutput?: string[];
+
     // failed test state
     failedTest?: {
         testIndex: number;

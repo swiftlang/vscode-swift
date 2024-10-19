@@ -264,7 +264,10 @@ Test Case '-[MyTests.MyTests`;
         });
 
         test("Suite", () => {
-            const testRunState = new TestRunState(["MyTests", "MyTests.MyTests/testPass"], true);
+            const testRunState = new TestRunState(
+                ["MyTests.MyTests", "MyTests.MyTests/testPass"],
+                true
+            );
             const input = `Test Suite 'MyTests' started at 2024-08-26 13:19:25.325.
 Test Case '-[MyTests.MyTests testPass]' started.
 Test Case '-[MyTests.MyTests testPass]' passed (0.001 seconds).
@@ -273,19 +276,171 @@ Test Suite 'MyTests' passed at 2024-08-26 13:19:25.328.
 `;
             outputParser.parseResult(input, testRunState);
 
+            const testOutput = inputToTestOutput(input);
             assert.deepEqual(testRunState.tests, [
                 {
-                    name: "MyTests",
-                    output: [],
+                    name: "MyTests.MyTests",
+                    output: [testOutput[0], testOutput[3]],
                     status: TestStatus.passed,
                 },
                 {
                     name: "MyTests.MyTests/testPass",
                     status: TestStatus.passed,
                     timing: { duration: 0.001 },
-                    output: inputToTestOutput(input).slice(1, -2), // trim the suite text
+                    output: [testOutput[1], testOutput[2]],
                 },
             ]);
+            assert.deepEqual(inputToTestOutput(input), testRunState.allOutput);
+        });
+
+        test("Empty Suite", () => {
+            const testRunState = new TestRunState([], true);
+            const input = `Test Suite 'Selected tests' started at 2024-10-19 15:23:29.594.
+Test Suite 'EmptyAppPackageTests.xctest' started at 2024-10-19 15:23:29.595.
+Test Suite 'EmptyAppPackageTests.xctest' passed at 2024-10-19 15:23:29.595.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2024-10-19 15:23:29.596.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+warning: No matching test cases were run`;
+
+            outputParser.parseResult(input, testRunState);
+
+            assert.deepEqual(testRunState.tests, []);
+            assert.deepEqual(inputToTestOutput(input), testRunState.allOutput);
+        });
+
+        test("Multiple Suites", () => {
+            const testRunState = new TestRunState(
+                [
+                    "MyTests.TestSuite1",
+                    "MyTests.TestSuite1/testFirst",
+                    "MyTests.TestSuite2",
+                    "MyTests.TestSuite2/testSecond",
+                ],
+                true
+            );
+            const input = `Test Suite 'All tests' started at 2024-10-20 21:54:32.568.
+Test Suite 'EmptyAppPackageTests.xctest' started at 2024-10-20 21:54:32.570.
+Test Suite 'TestSuite1' started at 2024-10-20 21:54:32.570.
+Test Case '-[MyTests.TestSuite1 testFirst]' started.
+Test Case '-[MyTests.TestSuite1 testFirst]' passed (0.000 seconds).
+Test Suite 'TestSuite1' passed at 2024-10-20 21:54:32.570.
+         Executed 1 test, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+Test Suite 'TestSuite2' started at 2024-10-20 21:54:32.570.
+Test Case '-[MyTests.TestSuite2 testSecond]' started.
+Test Case '-[MyTests.TestSuite2 testSecond]' passed (0.000 seconds).
+Test Suite 'TestSuite2' passed at 2024-10-20 21:54:32.571.
+         Executed 1 test, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'EmptyAppPackageTests.xctest' passed at 2024-10-20 21:54:32.571.
+         Executed 2 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'All tests' passed at 2024-10-20 21:54:32.571.
+         Executed 2 tests, with 0 failures (0 unexpected) in 0.001 (0.002) seconds`;
+
+            outputParser.parseResult(input, testRunState);
+
+            const testOutput = inputToTestOutput(input);
+            assert.deepEqual(testRunState.tests, [
+                {
+                    name: "MyTests.TestSuite1",
+                    output: [testOutput[2], testOutput[5]],
+                    status: "passed",
+                },
+                {
+                    name: "MyTests.TestSuite1/testFirst",
+                    output: [testOutput[3], testOutput[4]],
+                    status: "passed",
+                    timing: {
+                        duration: 0,
+                    },
+                },
+                {
+                    name: "MyTests.TestSuite2",
+                    output: [testOutput[7], testOutput[10]],
+                    status: "passed",
+                },
+                {
+                    name: "MyTests.TestSuite2/testSecond",
+                    output: [testOutput[8], testOutput[9]],
+                    status: "passed",
+                    timing: {
+                        duration: 0,
+                    },
+                },
+            ]);
+            assert.deepEqual(inputToTestOutput(input), testRunState.allOutput);
+        });
+
+        test("Multiple Suites with Failed Test", () => {
+            const testRunState = new TestRunState(
+                [
+                    "MyTests.TestSuite1",
+                    "MyTests.TestSuite1/testFirst",
+                    "MyTests.TestSuite2",
+                    "MyTests.TestSuite2/testSecond",
+                ],
+                true
+            );
+            const input = `Test Suite 'Selected tests' started at 2024-10-20 22:01:46.206.
+Test Suite 'EmptyAppPackageTests.xctest' started at 2024-10-20 22:01:46.207.
+Test Suite 'TestSuite1' started at 2024-10-20 22:01:46.207.
+Test Case '-[MyTests.TestSuite1 testFirst]' started.
+Test Case '-[MyTests.TestSuite1 testFirst]' passed (0.000 seconds).
+Test Suite 'TestSuite1' passed at 2024-10-20 22:01:46.208.
+         Executed 1 test, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'TestSuite2' started at 2024-10-20 22:01:46.208.
+Test Case '-[MyTests.TestSuite2 testSecond]' started.
+/Users/user/Developer/MyTests/MyTests.swift:13: error: -[MyTests.TestSuite2 testSecond] : failed
+Test Case '-[MyTests.TestSuite2 testSecond]' failed (0.000 seconds).
+Test Suite 'TestSuite2' failed at 2024-10-20 22:01:46.306.
+         Executed 1 test, with 1 failure (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'EmptyAppPackageTests.xctest' failed at 2024-10-20 22:01:46.306.
+         Executed 2 tests, with 1 failure (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'Selected tests' failed at 2024-10-20 22:01:46.306.
+         Executed 2 tests, with 1 failure (0 unexpected) in 0.002 (0.002) seconds`;
+            outputParser.parseResult(input, testRunState);
+
+            const testOutput = inputToTestOutput(input);
+            assert.deepEqual(testRunState.tests, [
+                {
+                    name: "MyTests.TestSuite1",
+                    output: [testOutput[2], testOutput[5]],
+                    status: "passed",
+                },
+                {
+                    name: "MyTests.TestSuite1/testFirst",
+                    output: [testOutput[3], testOutput[4]],
+                    status: "passed",
+                    timing: {
+                        duration: 0,
+                    },
+                },
+                {
+                    name: "MyTests.TestSuite2",
+                    output: [testOutput[7], testOutput[11]],
+                    status: "failed",
+                },
+                {
+                    name: "MyTests.TestSuite2/testSecond",
+                    output: [testOutput[8], testOutput[9], testOutput[10]],
+                    status: "failed",
+                    timing: {
+                        duration: 0,
+                    },
+                    issues: [
+                        {
+                            message: "failed",
+                            location: sourceLocationToVSCodeLocation(
+                                "/Users/user/Developer/MyTests/MyTests.swift",
+                                13,
+                                0
+                            ),
+                            isKnown: false,
+                            diff: undefined,
+                        },
+                    ],
+                },
+            ]);
+            assert.deepEqual(inputToTestOutput(input), testRunState.allOutput);
         });
 
         suite("Diffs", () => {
