@@ -12,6 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+/**
+ * Represents an event that can be sent between the webview and vscode-swift
+ */
 export type WebviewEvent = ReadyEvent | InitializeEvent | RenderEvent | UpdateContentEvent;
 
 /**
@@ -56,4 +59,5 @@ export interface RenderEvent {
 export interface UpdateContentEvent {
     type: "update-content";
     data: unknown;
+    scrollTo?: { x: number; y: number };
 }

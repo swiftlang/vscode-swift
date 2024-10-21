@@ -13,46 +13,18 @@
 //===----------------------------------------------------------------------===//
 
 import debounce from "lodash.debounce";
-import { WebviewState } from "./state";
+import { Ready, WebviewState } from "./state";
 import { WebviewEvent } from "./events";
-import { acquireCommunicationBridge, CommunicationBridge } from "./CommunicationBridge";
+import { createCommunicationBridge, CommunicationBridge } from "./CommunicationBridge";
 import { Disposable } from "./disposable";
 
-async function restoreState(bridge: CommunicationBridge, state: WebviewState): Promise<void> {
-    if (state.location === undefined) {
-        return;
-    }
-
-    const subcriptions: Disposable[] = [];
-    try {
-        await new Promise<void>(resolve => {
-            subcriptions.push(
-                bridge.onDidReceiveEvent(event => {
-                    switch (event.type) {
-                        case "rendered":
-                            resolve();
-                            break;
-                    }
-                })
-            );
-            bridge.send({ type: "navigation", data: state.location! });
-        });
-        window.scrollTo({ left: state.scrollPosition.x, top: state.scrollPosition.y });
-    } finally {
-        subcriptions.forEach(subscription => subscription.dispose());
-    }
-}
-
-acquireCommunicationBridge().then(async bridge => {
+createCommunicationBridge().then(async bridge => {
     const vscode = acquireVsCodeApi();
-    const previousState = vscode.getState();
-    const state: WebviewState = previousState ?? {
-        scrollPosition: { x: 0, y: 0 },
-    };
+    let state: WebviewState = vscode.getState() ?? { type: "waiting-for-vscode" };
 
-    // Restore the previous state before we do anything
-    if (previousState) {
-        await restoreState(bridge, previousState);
+    // Restore the previous state (if any) before we do anything
+    if (state.type === "ready") {
+        await restoreState(bridge, state);
     }
 
     // Handle events coming from swift-docc-render
@@ -73,19 +45,42 @@ acquireCommunicationBridge().then(async bridge => {
         const event = message.data as WebviewEvent;
         switch (event.type) {
             case "initialize":
+                // the "navigation" event only works once in VS Code
+                if (state.type !== "waiting-for-vscode") {
+                    break;
+                }
+
+                state = {
+                    type: "ready",
+                    initialRoute: event.route,
+                    scrollPosition: { x: 0, y: 0 },
+                };
                 bridge.send({ type: "navigation", data: event.route });
-                state.location = event.route;
-                vscode.setState(state);
                 break;
             case "update-content":
+                if (state.type !== "ready") {
+                    break;
+                }
+
+                state.pageContent = event.data;
+                if (event.scrollTo) {
+                    state.scrollPosition = event.scrollTo;
+                    window.scrollTo({ left: event.scrollTo.x, top: event.scrollTo.y });
+                }
+                vscode.setState(state);
                 bridge.send({ type: "contentUpdate", data: event.data });
+                break;
         }
     });
 
-    // Store the current scroll state so that we can restore it later
+    // Store the current scroll state so that we can restore it if we lose focus
     window.addEventListener(
         "scroll",
         debounce(() => {
+            if (state.type !== "ready") {
+                return;
+            }
+
             state.scrollPosition = {
                 x: window.scrollX,
                 y: window.scrollY,
@@ -94,11 +89,43 @@ acquireCommunicationBridge().then(async bridge => {
         }, 200)
     );
 
-    if (state.location !== undefined) {
-        // Restore the page to it's original state
-        bridge.send({ type: "navigation", data: state.location });
-    } else {
-        // Notify vscode-swift that we're ready to receive events
+    // Notify vscode-swift that we're ready to receive events only once. Losses of focus
+    // and their resulting state restorations should not send a "ready" event.
+    if (state.type === "waiting-for-vscode") {
         vscode.postMessage({ type: "ready" });
     }
 });
+
+async function restoreState(bridge: CommunicationBridge, state: Ready): Promise<void> {
+    const subcriptions: Disposable[] = [];
+    try {
+        bridge.send({ type: "navigation", data: state.initialRoute });
+        await waitForNextRender(bridge);
+        if (state.pageContent !== undefined) {
+            bridge.send({ type: "contentUpdate", data: state.pageContent });
+            await waitForNextRender(bridge);
+        }
+        window.scrollTo({ left: state.scrollPosition.x, top: state.scrollPosition.y });
+    } finally {
+        subcriptions.forEach(subscription => subscription.dispose());
+    }
+}
+
+async function waitForNextRender(bridge: CommunicationBridge): Promise<void> {
+    const subcriptions: Disposable[] = [];
+    try {
+        await new Promise<void>(resolve => {
+            subcriptions.push(
+                bridge.onDidReceiveEvent(event => {
+                    switch (event.type) {
+                        case "rendered":
+                            resolve();
+                            break;
+                    }
+                })
+            );
+        });
+    } finally {
+        subcriptions.forEach(subscription => subscription.dispose());
+    }
+}

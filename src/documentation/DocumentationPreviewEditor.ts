@@ -126,7 +126,11 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                 path.join(this.editorState.archivePath, "data", newPath + ".json"),
                 "utf-8"
             ).then(contents => {
-                this.postMessage({ type: "update-content", data: JSON.parse(contents) });
+                this.postMessage({
+                    type: "update-content",
+                    data: JSON.parse(contents),
+                    scrollTo: { x: 0, y: 0 },
+                });
             });
         }
     }
