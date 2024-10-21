@@ -329,6 +329,39 @@ suite("Test Explorer Suite", function () {
                 });
             });
 
+            test("Cancellation", async function () {
+                const targetProfile = testExplorer.testRunProfiles.find(
+                    profile => profile.label === TestKind.standard
+                );
+                if (!targetProfile) {
+                    throw new Error(`Unable to find run profile named ${TestKind.standard}`);
+                }
+                const testItems = await gatherTests(
+                    testExplorer.controller,
+                    "PackageTests.DuplicateSuffixTests/testPassing"
+                );
+                const request = new vscode.TestRunRequest(testItems);
+                const tokenSource = new vscode.CancellationTokenSource();
+
+                const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
+
+                // Deliberately don't await this so we can cancel it.
+                targetProfile.runHandler(request, tokenSource.token);
+
+                const testRun = await testRunPromise;
+
+                // Wait for the next tick to cancel the test run so that
+                // handlers have time to set up.
+                await new Promise<void>(resolve => {
+                    setImmediate(() => {
+                        tokenSource.cancel();
+                        resolve();
+                    });
+                });
+
+                assertContains(testRun.runState.output, "\r\nTest run cancelled.");
+            });
+
             test("tests run in debug mode @slow", async function () {
                 const testRun = await runTest(
                     testExplorer,

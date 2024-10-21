@@ -39,20 +39,20 @@ export async function runTestMultipleTimes(
     if (!str || !currentFolder.testExplorer) {
         return;
     }
-
+    const token = new vscode.CancellationTokenSource();
     const numExecutions = parseInt(str);
     const testExplorer = currentFolder.testExplorer;
     const runner = new TestRunner(
         TestKind.standard,
         new vscode.TestRunRequest([test]),
         currentFolder,
-        testExplorer.controller
+        testExplorer.controller,
+        token.token
     );
 
     testExplorer.onDidCreateTestRunEmitter.fire(runner.testRun);
 
     const testRunState = new TestRunnerTestRunState(runner.testRun);
-    const token = new vscode.CancellationTokenSource();
 
     vscode.commands.executeCommand("workbench.panel.testResults.view.focus");
 
@@ -63,7 +63,7 @@ export async function runTestMultipleTimes(
 
         const runState = await (testRunner !== undefined
             ? testRunner()
-            : runner.runSession(token.token, testRunState));
+            : runner.runSession(testRunState));
 
         runStates.push(runState);
 
