@@ -3,5 +3,7 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["**/*"]
+  "include": ["**/*"],
+  "exclude": ["documentation/webview/**/*"],
+  "references": [{ "path": "./documentation/webview" }]
 }

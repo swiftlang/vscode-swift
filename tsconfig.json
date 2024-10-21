@@ -1,4 +1,8 @@
 {
   "files": [],
-  "references": [{ "path": "./src" }, { "path": "./test" }]
+  "references": [
+    { "path": "./src" },
+    { "path": "./src/documentation/webview" },
+    { "path": "./test" }
+  ]
 }

@@ -122,7 +122,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         }
 
         const workspaceContext = await WorkspaceContext.create(outputChannel, toolchain);
-        context.subscriptions.push(...commands.register(workspaceContext));
+        context.subscriptions.push(...commands.register(workspaceContext, context));
         context.subscriptions.push(workspaceContext);
         context.subscriptions.push(registerDebugger(workspaceContext));
 

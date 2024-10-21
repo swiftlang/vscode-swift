@@ -26,5 +26,5 @@
     ]
   },
   "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended", "prettier"],
-  "ignorePatterns": ["out", "dist", "**/*.d.ts"]
+  "ignorePatterns": ["assets", "out", "dist", "**/*.d.ts"]
 }

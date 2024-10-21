@@ -7,5 +7,6 @@ default.profraw
 *.vsix
 .vscode-test
 .build
+assets/documentation-webview
 assets/test/**/Package.resolved
 assets/swift-docc-render
