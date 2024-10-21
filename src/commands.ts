@@ -79,12 +79,12 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand("swift.cleanBuild", () => cleanBuild(ctx)),
         vscode.commands.registerCommand("swift.runTestsMultipleTimes", item => {
             if (ctx.currentFolder) {
-                runTestMultipleTimes(ctx.currentFolder, item, false);
+                return runTestMultipleTimes(ctx.currentFolder, item, false);
             }
         }),
         vscode.commands.registerCommand("swift.runTestsUntilFailure", item => {
             if (ctx.currentFolder) {
-                runTestMultipleTimes(ctx.currentFolder, item, true);
+                return runTestMultipleTimes(ctx.currentFolder, item, true);
             }
         }),
         // Note: This is only available on macOS (gated in `package.json`) because its the only OS that has the iOS SDK available.
@@ -93,7 +93,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand("swift.runScript", () => runSwiftScript(ctx)),
         vscode.commands.registerCommand("swift.openPackage", () => {
             if (ctx.currentFolder) {
-                openPackage(ctx.toolchain.swiftVersion, ctx.currentFolder.folder);
+                return openPackage(ctx.toolchain.swiftVersion, ctx.currentFolder.folder);
             }
         }),
         vscode.commands.registerCommand("swift.runSnippet", () => runSnippet(ctx)),
@@ -108,27 +108,27 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         ),
         vscode.commands.registerCommand("swift.useLocalDependency", item => {
             if (item instanceof PackageNode) {
-                useLocalDependency(item.name, ctx);
+                return useLocalDependency(item.name, ctx);
             }
         }),
         vscode.commands.registerCommand("swift.editDependency", item => {
             if (item instanceof PackageNode) {
-                editDependency(item.name, ctx);
+                return editDependency(item.name, ctx);
             }
         }),
         vscode.commands.registerCommand("swift.uneditDependency", item => {
             if (item instanceof PackageNode) {
-                uneditDependency(item.name, ctx);
+                return uneditDependency(item.name, ctx);
             }
         }),
         vscode.commands.registerCommand("swift.openInWorkspace", item => {
             if (item instanceof PackageNode) {
-                openInWorkspace(item);
+                return openInWorkspace(item);
             }
         }),
         vscode.commands.registerCommand("swift.openExternal", item => {
             if (item instanceof PackageNode) {
-                openInExternalEditor(item);
+                return openInExternalEditor(item);
             }
         }),
         vscode.commands.registerCommand("swift.attachDebugger", () => attachDebugger(ctx)),
