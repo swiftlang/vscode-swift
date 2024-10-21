@@ -31,7 +31,7 @@ export async function executeTaskWithUI(
     task: vscode.Task,
     description: string,
     folderContext: FolderContext,
-    showErrors = false,
+    showErrors = true,
     checkAlreadyRunning: boolean = false
 ): Promise<boolean> {
     try {

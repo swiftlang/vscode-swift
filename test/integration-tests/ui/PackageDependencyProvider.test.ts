@@ -25,14 +25,8 @@ import { testAssetPath, testAssetUri } from "../../fixtures";
 import { Version } from "../../../src/utilities/version";
 import { FolderContext } from "../../../src/FolderContext";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { resolveDependencies } from "../../../src/commands/dependencies/resolve";
-import { updateDependencies } from "../../../src/commands/dependencies/update";
-import { useLocalDependency } from "../../../src/commands/dependencies/useLocal";
-import { uneditFolderDependency } from "../../../src/commands/dependencies/unedit";
-import { resetPackage } from "../../../src/commands/resetPackage";
-import * as utilities from "../../../src/commands/utilities";
 import * as sinon from "sinon";
-import { mockGlobalObject } from "../../MockUtils";
+import { COMMANDS } from "../../../src/commands";
 
 suite("PackageDependencyProvider Test Suite", function () {
     // Allow up to 2 minutes to build,
@@ -135,10 +129,9 @@ suite("PackageDependencyProvider Test Suite", function () {
         });
     });
 
-    suite("Full work flow tests", function () {
+    suite("spm Resolve Update Contract Tests", function () {
         let folderContext: FolderContext;
         let workspaceContext: WorkspaceContext;
-        const windowMock = mockGlobalObject(vscode, "window");
 
         suiteSetup(async function () {
             workspaceContext = await globalWorkspaceContextPromise;
@@ -147,50 +140,86 @@ suite("PackageDependencyProvider Test Suite", function () {
             await workspaceContext.focusFolder(folderContext);
         });
 
-        test("Use local dependency", async () => {
+        test("Contract: spm resolve", async () => {
+            const result = await vscode.commands.executeCommand(COMMANDS.ResolveDependencies);
+            expect(result).to.be.true;
+        });
+
+        test("Contract: spm update", async () => {
+            const result = await vscode.commands.executeCommand(COMMANDS.UpdateDependencies);
+            expect(result).to.be.true;
+        });
+    });
+
+    suite("Full Work Flow Test Suite", function () {
+        let folderContext: FolderContext;
+        let workspaceContext: WorkspaceContext;
+        let tasks: SwiftTask;
+        let treeProvider: PackageDependenciesProvider;
+        let item: PackageNode;
+
+        suiteSetup(async function () {
+            workspaceContext = await globalWorkspaceContextPromise;
+            await waitForNoRunningTasks();
+            folderContext = await folderContextPromise("dependencies");
+            await workspaceContext.focusFolder(folderContext);
+            treeProvider = new PackageDependenciesProvider(workspaceContext);
+
+            const items = await treeProvider.getChildren();
+            item = items.find(n => n.name === "swift-markdown") as PackageNode;
+        });
+
+        suiteTeardown(() => {
+            treeProvider?.dispose();
+        });
+
+        setup(async function () {
+            // Check before each test case start:
             // Expect to fail without setting up local version
-            const tasks = (await getBuildAllTask(folderContext)) as SwiftTask;
-            let { exitCode, output } = await executeTaskAndWaitForResult(tasks);
+            tasks = (await getBuildAllTask(folderContext)) as SwiftTask;
+            const { exitCode, output } = await executeTaskAndWaitForResult(tasks);
             expect(exitCode).to.not.equal(0);
             expect(output).to.include("PackageLib");
             expect(output).to.include("required");
+        });
 
-            // Contract: spm reset, resolve, update should work
-            const executeTaskSpy = sinon.spy(utilities, "executeTaskWithUI");
-            await resolveDependencies(workspaceContext);
-            await expect(executeTaskSpy.returnValues[0]).to.eventually.be.true;
+        teardown(async function () {
+            // Expect to fail again now dependency is missing
+            const { exitCode, output } = await executeTaskAndWaitForResult(tasks);
+            expect(exitCode).to.not.equal(0);
+            expect(output).to.include("PackageLib");
+            expect(output).to.include("required");
+        });
 
-            await updateDependencies(workspaceContext);
-            await expect(executeTaskSpy.returnValues[1]).to.eventually.be.true;
-
-            await resetPackage(workspaceContext);
-            await expect(executeTaskSpy.returnValues[2]).to.eventually.be.true;
-            await expect(executeTaskSpy.returnValues[3]).to.eventually.be.true;
-
+        const useLocalDependencyTest = async () => {
             // Contract: spm edit with user supplied local version of dependency
-            windowMock.showOpenDialog.resolves([testAssetUri("Swift-Markdown")]);
-            const id = "swift-markdown";
-            await useLocalDependency(id, workspaceContext);
-            await expect(executeTaskSpy.returnValues[4]).to.eventually.be.true;
+            const windowMock = sinon.stub(vscode.window, "showOpenDialog");
+            windowMock.resolves([testAssetUri("Swift-Markdown")]);
+            const result = await vscode.commands.executeCommand(COMMANDS.UseLocalDependency, item);
+            expect(result).to.be.true;
+            windowMock.restore();
 
             // This will now pass as we have the required library
-            ({ exitCode, output } = await executeTaskAndWaitForResult(tasks));
+            const { exitCode, output } = await executeTaskAndWaitForResult(tasks);
             expect(exitCode).to.equal(0);
             expect(output).to.include("defaultpackage");
             expect(output).to.include("not used by any target");
+        };
+
+        test("Use local dependency - Reset", async () => {
+            await useLocalDependencyTest();
+
+            // Contract: spm reset
+            const result = await vscode.commands.executeCommand(COMMANDS.ResetPackage);
+            expect(result).to.be.true;
+        });
+
+        test("Use local dependency - Add to workspace - Unedit", async () => {
+            await useLocalDependencyTest();
 
             // Contract: spm unedit
-            const updateWorkspaceSpy = sinon.spy(vscode.workspace, "updateWorkspaceFolders");
-            // We would love to call uneditDependency for coverage but there's no clean way to get
-            // a synchronize point for deterministic task completion so just call this function direct
-            await uneditFolderDependency(workspaceContext.currentFolder!, id, workspaceContext);
-            expect(updateWorkspaceSpy.calledOnce).to.be.true;
-
-            // Expect to fail again now dependency is missing
-            ({ exitCode, output } = await executeTaskAndWaitForResult(tasks));
-            expect(exitCode).to.not.equal(0);
-            expect(output).to.include("PackageLib");
-            expect(output).to.include("required");
+            const result = await vscode.commands.executeCommand(COMMANDS.UneditDependency, item);
+            expect(result).to.be.true;
         });
     });
 });

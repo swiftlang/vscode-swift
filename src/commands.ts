@@ -70,37 +70,50 @@ export enum Commands {
     CLEAN_BUILD = "swift.cleanBuild",
 }
 
+export enum COMMANDS {
+    ResolveDependencies = "swift.resolveDependencies",
+    UpdateDependencies = "swift.updateDependencies",
+    RunTestsMultipleTimes = "swift.runTestsMultipleTimes",
+    ResetPackage = "swift.resetPackage",
+    UseLocalDependency = "swift.useLocalDependency",
+    UneditDependency = "swift.uneditDependency",
+    runTestsMultipleTimes = "runTestsMultipleTimes",
+}
+
 /**
  * Registers this extension's commands in the given {@link vscode.ExtensionContext context}.
  */
 export function register(ctx: WorkspaceContext): vscode.Disposable[] {
     return [
         vscode.commands.registerCommand("swift.newFile", uri => newSwiftFile(uri)),
-        vscode.commands.registerCommand("swift.resolveDependencies", () =>
+        vscode.commands.registerCommand(COMMANDS.ResolveDependencies, () =>
             resolveDependencies(ctx)
         ),
-        vscode.commands.registerCommand("swift.updateDependencies", () => updateDependencies(ctx)),
         vscode.commands.registerCommand(Commands.RUN, () => runBuild(ctx)),
         vscode.commands.registerCommand(Commands.DEBUG, () => debugBuild(ctx)),
         vscode.commands.registerCommand(Commands.CLEAN_BUILD, () => cleanBuild(ctx)),
-        vscode.commands.registerCommand("swift.runTestsMultipleTimes", item => {
+        vscode.commands.registerCommand(COMMANDS.UpdateDependencies, () => updateDependencies(ctx)),
+        vscode.commands.registerCommand(COMMANDS.RunTestsMultipleTimes, item => {
             if (ctx.currentFolder) {
                 return runTestMultipleTimes(ctx.currentFolder, item, false);
             }
+            return false;
         }),
         vscode.commands.registerCommand("swift.runTestsUntilFailure", item => {
             if (ctx.currentFolder) {
                 return runTestMultipleTimes(ctx.currentFolder, item, true);
             }
+            return false;
         }),
         // Note: This is only available on macOS (gated in `package.json`) because its the only OS that has the iOS SDK available.
         vscode.commands.registerCommand("swift.switchPlatform", () => switchPlatform()),
-        vscode.commands.registerCommand("swift.resetPackage", () => resetPackage(ctx)),
+        vscode.commands.registerCommand(COMMANDS.ResetPackage, () => resetPackage(ctx)),
         vscode.commands.registerCommand("swift.runScript", () => runSwiftScript(ctx)),
         vscode.commands.registerCommand("swift.openPackage", () => {
             if (ctx.currentFolder) {
                 return openPackage(ctx.toolchain.swiftVersion, ctx.currentFolder.folder);
             }
+            return false;
         }),
         vscode.commands.registerCommand("swift.runSnippet", () => runSnippet(ctx)),
         vscode.commands.registerCommand("swift.debugSnippet", () => debugSnippet(ctx)),
@@ -112,30 +125,35 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand("swift.insertFunctionComment", () =>
             insertFunctionComment(ctx)
         ),
-        vscode.commands.registerCommand("swift.useLocalDependency", item => {
+        vscode.commands.registerCommand(COMMANDS.UseLocalDependency, item => {
             if (item instanceof PackageNode) {
                 return useLocalDependency(item.name, ctx);
             }
+            return false;
         }),
         vscode.commands.registerCommand("swift.editDependency", item => {
             if (item instanceof PackageNode) {
                 return editDependency(item.name, ctx);
             }
+            return false;
         }),
-        vscode.commands.registerCommand("swift.uneditDependency", item => {
+        vscode.commands.registerCommand(COMMANDS.UneditDependency, item => {
             if (item instanceof PackageNode) {
                 return uneditDependency(item.name, ctx);
             }
+            return false;
         }),
         vscode.commands.registerCommand("swift.openInWorkspace", item => {
             if (item instanceof PackageNode) {
                 return openInWorkspace(item);
             }
+            return false;
         }),
         vscode.commands.registerCommand("swift.openExternal", item => {
             if (item instanceof PackageNode) {
                 return openInExternalEditor(item);
             }
+            return false;
         }),
         vscode.commands.registerCommand("swift.attachDebugger", () => attachDebugger(ctx)),
         vscode.commands.registerCommand("swift.clearDiagnosticsCollection", () =>
@@ -148,3 +166,5 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         ),
     ];
 }
+
+// Note: This is only available on macOS (gated in `package.json`) because its the only OS that has the iOS SDK available.

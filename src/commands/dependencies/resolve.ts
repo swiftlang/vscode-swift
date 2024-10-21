@@ -26,7 +26,7 @@ export async function resolveDependencies(ctx: WorkspaceContext) {
     if (!current) {
         return;
     }
-    await resolveFolderDependencies(current);
+    return await resolveFolderDependencies(current);
 }
 
 /**
@@ -57,4 +57,5 @@ export async function resolveFolderDependencies(
         checkAlreadyRunning
     );
     updateAfterError(success, folderContext);
+    return success;
 }

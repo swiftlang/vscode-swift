@@ -42,6 +42,7 @@ import {
     reduceTestItemChildren,
 } from "../../../src/TestExplorer/TestUtils";
 import { runnableTag } from "../../../src/TestExplorer/TestDiscovery";
+import { COMMANDS } from "../../../src/commands";
 
 suite("Test Explorer Suite", function () {
     const MAX_TEST_RUN_TIME_MINUTES = 5;
@@ -304,7 +305,7 @@ suite("Test Explorer Suite", function () {
                     // Stub the showInputBox method to return the input text
                     windowMock.showInputBox.resolves(`${numIterations}`);
 
-                    vscode.commands.executeCommand("swift.runTestsMultipleTimes", testItems[0]);
+                    vscode.commands.executeCommand(COMMANDS.runTestsMultipleTimes, testItems[0]);
 
                     const testRun = await eventPromise(testExplorer.onCreateTestRun);
 
@@ -419,7 +420,7 @@ suite("Test Explorer Suite", function () {
                     // Stub the showInputBox method to return the input text
                     windowMock.showInputBox.resolves(`${numIterations}`);
 
-                    vscode.commands.executeCommand("swift.runTestsMultipleTimes", testItems[0]);
+                    vscode.commands.executeCommand(COMMANDS.runTestsMultipleTimes, testItems[0]);
 
                     const testRun = await eventPromise(testExplorer.onCreateTestRun);
 
