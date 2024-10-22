@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import { WebviewEvent } from "./WebviewEvent";
+import { WebviewMessage } from "./WebviewMessage";
 
 declare global {
     /**
@@ -41,9 +41,9 @@ declare global {
         /**
          * Send an event to the extension that created this WebView.
          *
-         * @param event the {@link WebviewEvent} that will be sent
+         * @param event the {@link WebviewMessage} that will be sent
          */
-        postMessage(event: WebviewEvent): void;
+        postMessage(event: WebviewMessage): void;
     }
 
     /**

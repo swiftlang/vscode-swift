@@ -14,46 +14,46 @@
 
 import debounce from "lodash.debounce";
 import { WebviewState } from "./WebviewState";
-import { WebviewEvent } from "./WebviewEvent";
+import { WebviewMessage } from "./WebviewMessage";
 import { createCommunicationBridge } from "./CommunicationBridge";
 
 createCommunicationBridge().then(async bridge => {
     const vscode = acquireVsCodeApi();
     const state: WebviewState = vscode.getState() ?? {};
 
-    // Handle events coming from swift-docc-render
-    bridge.onDidReceiveEvent(event => {
-        switch (event.type) {
+    // Handle messages coming from swift-docc-render
+    bridge.onDidReceiveMessage(message => {
+        switch (message.type) {
             case "rendered":
-                if (state.scrollPosition?.route === event.data.route) {
+                if (state.scrollPosition?.route === message.data.route) {
                     window.scrollTo({ left: state.scrollPosition.x, top: state.scrollPosition.y });
                 } else {
                     window.scrollTo({ left: 0, top: 0 });
                     state.scrollPosition = {
-                        route: event.data.route,
+                        route: message.data.route,
                         x: 0,
                         y: 0,
                     };
                     vscode.setState(state);
                 }
-                vscode.postMessage({ type: "rendered", route: event.data.route });
+                vscode.postMessage({ type: "rendered", route: message.data.route });
                 break;
         }
     });
 
-    // Handle events coming from vscode-swift
-    window.addEventListener("message", message => {
-        if (typeof message.data !== "object" || !("type" in message.data)) {
+    // Handle messages coming from vscode-swift
+    window.addEventListener("message", event => {
+        if (typeof event.data !== "object" || !("type" in event.data)) {
             return;
         }
 
-        const event = message.data as WebviewEvent;
-        switch (event.type) {
+        const message = event.data as WebviewMessage;
+        switch (message.type) {
             case "navigate":
-                bridge.send({ type: "navigation", data: event.route });
+                bridge.send({ type: "navigation", data: message.route });
                 break;
             case "update-content":
-                bridge.send({ type: "contentUpdate", data: event.data });
+                bridge.send({ type: "contentUpdate", data: message.data });
                 break;
         }
     });
@@ -72,6 +72,6 @@ createCommunicationBridge().then(async bridge => {
         }, 200)
     );
 
-    // Notify vscode-swift that we're ready to receive events
+    // Notify vscode-swift that we're ready to receive messages
     vscode.postMessage({ type: "ready" });
 });

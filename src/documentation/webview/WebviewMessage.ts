@@ -13,23 +13,23 @@
 //===----------------------------------------------------------------------===//
 
 /**
- * Represents an event that can be sent between the webview and vscode-swift
+ * Represents a message that can be sent between the webview and vscode-swift
  */
-export type WebviewEvent = ReadyEvent | NavigateEvent | RenderEvent | UpdateContentEvent;
+export type WebviewMessage = ReadyMessage | NavigateMessage | RenderMessage | UpdateContentMessage;
 
 /**
  * Sent from the webview to the extension to indicate that the webview is
- * ready to receive events.
+ * ready to receive messages.
  */
-export interface ReadyEvent {
+export interface ReadyMessage {
     type: "ready";
 }
 
 /**
- * Sent from the extension to the webview after the "ready" event is
+ * Sent from the extension to the webview after the "ready" message is
  * received in order to navigate to a particular documentation page.
  */
-export interface NavigateEvent {
+export interface NavigateMessage {
     type: "navigate";
     route: string;
 }
@@ -38,7 +38,7 @@ export interface NavigateEvent {
  * Sent from the webview to the extension to indicate that content has been
  * rendered to the screen.
  */
-export interface RenderEvent {
+export interface RenderMessage {
     type: "rendered";
     route: string;
 }
@@ -49,7 +49,7 @@ export interface RenderEvent {
  *
  * This must be sent AFTER the webview has done at least one render.
  */
-export interface UpdateContentEvent {
+export interface UpdateContentMessage {
     type: "update-content";
     data: unknown;
 }

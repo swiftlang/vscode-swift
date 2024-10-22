@@ -15,15 +15,15 @@
 import { Disposable } from "./Disposable";
 
 /**
- * Sends and receives events from swift-docc-render
+ * Sends and receives messages from swift-docc-render
  */
 export interface CommunicationBridge {
-    send(event: VueAppEvent): void;
-    onDidReceiveEvent(handler: (event: VueAppEvent) => void): Disposable;
+    send(message: VueAppMessage): void;
+    onDidReceiveMessage(handler: (message: VueAppMessage) => void): Disposable;
 }
 
 /**
- * Creates a {@link CommunicationBridge} that can send and receive events from
+ * Creates a {@link CommunicationBridge} that can send and receive messages from
  * swift-docc-render.
  *
  * Waits for swift-docc-render to be initialized before resolving.
@@ -37,14 +37,14 @@ export function createCommunicationBridge(): Promise<CommunicationBridge> {
 
     return new Promise<CommunicationBridge>((resolve, reject) => {
         try {
-            // Define the window.webkit property in order to receive events
-            const messageHandlers: Set<(event: VueAppEvent) => void> = new Set();
+            // Define the window.webkit property in order to receive messages
+            const messageHandlers: Set<(message: VueAppMessage) => void> = new Set();
             Object.defineProperty(window, "webkit", {
                 value: {
                     messageHandlers: {
                         bridge: {
-                            postMessage(event: VueAppEvent) {
-                                messageHandlers.forEach(handler => handler(event));
+                            postMessage(message: VueAppMessage) {
+                                messageHandlers.forEach(handler => handler(message));
                             },
                         },
                     },
@@ -52,7 +52,7 @@ export function createCommunicationBridge(): Promise<CommunicationBridge> {
                 writable: false,
             });
 
-            // Wait for the window.bridge property to be set in order to send events
+            // Wait for the window.bridge property to be set in order to send messages
             let windowBridge: unknown;
             Object.defineProperty(window, "bridge", {
                 get() {
@@ -61,10 +61,10 @@ export function createCommunicationBridge(): Promise<CommunicationBridge> {
                 set(value) {
                     windowBridge = value;
                     resolve({
-                        send(event) {
-                            value.receive(event);
+                        send(message) {
+                            value.receive(message);
                         },
-                        onDidReceiveEvent(handler): Disposable {
+                        onDidReceiveMessage(handler): Disposable {
                             messageHandlers.add(handler);
                             return {
                                 dispose() {
@@ -82,15 +82,15 @@ export function createCommunicationBridge(): Promise<CommunicationBridge> {
 }
 
 /**
- * Represents an event that can be sent between the webview and swift-docc-render
+ * Represents a message that can be sent between the webview and swift-docc-render
  */
-export type VueAppEvent = RenderedEvent | NavigationEvent | UpdateContentEvent;
+export type VueAppMessage = RenderedMessage | NavigationMessage | UpdateContentMessage;
 
 /**
  * Sent from swift-docc-render to the webview when content as been rendered
  * to the screen.
  */
-export interface RenderedEvent {
+export interface RenderedMessage {
     type: "rendered";
     data: {
         time?: number;
@@ -102,10 +102,10 @@ export interface RenderedEvent {
  * Sent from the webview to swift-docc-render to navigate to a given page.
  *
  * This will only work once due to limitations in VS Code WebViews. You will
- * need to send an {@link UpdateContentEvent} after the first render to
+ * need to send an {@link UpdateContentMessage} after the first render to
  * switch pages.
  */
-export interface NavigationEvent {
+export interface NavigationMessage {
     type: "navigation";
     data: string;
 }
@@ -118,7 +118,7 @@ export interface NavigationEvent {
  * JavaScript object before sending. Raw strings will not be parsed
  * automatically.
  */
-export interface UpdateContentEvent {
+export interface UpdateContentMessage {
     type: "contentUpdate";
     data: unknown;
 }

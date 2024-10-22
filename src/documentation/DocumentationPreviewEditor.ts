@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { WebviewEvent } from "./webview/WebviewEvent";
+import { WebviewMessage } from "./webview/WebviewMessage";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { Target } from "../SwiftPackage";
 
@@ -84,7 +84,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         this.editorState = undefined;
     }
 
-    private postMessage(message: WebviewEvent): void {
+    private postMessage(message: WebviewMessage): void {
         if (!this.editorState) {
             return;
         }
@@ -96,17 +96,17 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         webviewPanel.webview.postMessage(message);
     }
 
-    private receiveMessage(event: WebviewEvent) {
+    private receiveMessage(message: WebviewMessage) {
         if (!this.editorState) {
             return;
         }
 
-        switch (event.type) {
+        switch (message.type) {
             case "ready":
                 this.postMessage({ type: "navigate", route: this.editorState.currentRoute });
                 break;
             case "rendered":
-                this.editorState.currentRoute = event.route;
+                this.editorState.currentRoute = message.route;
                 break;
         }
     }
