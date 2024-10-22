@@ -58,9 +58,22 @@ export function isPathInsidePath(subpath: string, parent: string): boolean {
  * @param filepath File path
  * @returns full path
  */
-export function expandFilePathTilda(filepath: string): string {
-    if (process.platform !== "win32" && filepath[0] === "~" && process.env.HOME) {
-        return path.join(process.env.HOME, filepath.slice(1));
+export function expandFilePathTilda(
+    filepath: string,
+    directory: string | null = process.env.HOME ?? null,
+    platform: NodeJS.Platform = process.platform
+): string {
+    // Guard no expanding on windows
+    if (platform === "win32") {
+        return filepath;
     }
-    return filepath;
+    // Guard tilda is present
+    if (filepath[0] !== "~") {
+        return filepath;
+    }
+    // Guard we know home directory
+    if (!directory) {
+        return filepath;
+    }
+    return path.join(directory, filepath.slice(1));
 }
