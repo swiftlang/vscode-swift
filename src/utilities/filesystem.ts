@@ -58,7 +58,7 @@ export function isPathInsidePath(subpath: string, parent: string): boolean {
  * @param filepath File path
  * @returns full path
  */
-export function expandFilePathTilda(
+export function expandFilePathTilde(
     filepath: string,
     directory: string | null = process.env.HOME ?? null,
     platform: NodeJS.Platform = process.platform
@@ -67,7 +67,7 @@ export function expandFilePathTilda(
     if (platform === "win32") {
         return filepath;
     }
-    // Guard tilda is present
+    // Guard tilde is present
     if (filepath[0] !== "~") {
         return filepath;
     }

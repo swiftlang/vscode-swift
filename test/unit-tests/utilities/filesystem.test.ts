@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import { isPathInsidePath, expandFilePathTilda } from "../../../src/utilities/filesystem";
+import { isPathInsidePath, expandFilePathTilde } from "../../../src/utilities/filesystem";
 import { expect } from "chai";
 
 suite("File System Utilities Unit Test Suite", () => {
@@ -27,31 +27,31 @@ suite("File System Utilities Unit Test Suite", () => {
         expect(isPathInsidePath("/home/user/package/", "/home/user/package/.build")).to.be.false;
     });
 
-    suite("expandFilePathTilda", () => {
-        test("expands tilda", () => {
-            expect(expandFilePathTilda("~/Test", "/Users/John", "darwin")).to.equal(
+    suite("expandFilePathTilde", () => {
+        test("expands tilde", () => {
+            expect(expandFilePathTilde("~/Test", "/Users/John", "darwin")).to.equal(
                 "/Users/John/Test"
             );
         });
 
-        test("no tilda present", () => {
-            expect(expandFilePathTilda("/Users/John/Test", "/Users/John2", "darwin")).to.equal(
+        test("no tilde present", () => {
+            expect(expandFilePathTilde("/Users/John/Test", "/Users/John2", "darwin")).to.equal(
                 "/Users/John/Test"
             );
         });
 
-        test("tilda not first character", () => {
-            expect(expandFilePathTilda("/Users/~/Test", "/Users/John", "darwin")).to.equal(
+        test("tilde not first character", () => {
+            expect(expandFilePathTilde("/Users/~/Test", "/Users/John", "darwin")).to.equal(
                 "/Users/~/Test"
             );
         });
 
         test("don't know the home directory", () => {
-            expect(expandFilePathTilda("~/Test", null, "darwin")).to.equal("~/Test");
+            expect(expandFilePathTilde("~/Test", null, "darwin")).to.equal("~/Test");
         });
 
-        test("don't resolve tilda on Windows", () => {
-            expect(expandFilePathTilda("~/Test", "C:\\Users\\John", "win32")).to.equal("~/Test");
+        test("don't resolve tilde on Windows", () => {
+            expect(expandFilePathTilde("~/Test", "C:\\Users\\John", "win32")).to.equal("~/Test");
         });
     });
 });
