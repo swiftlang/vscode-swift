@@ -13,10 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import debounce from "lodash.debounce";
-import { Ready, WebviewState } from "./state";
-import { WebviewEvent } from "./events";
+import { Ready, WebviewState } from "./WebviewState";
+import { WebviewEvent } from "./WebviewEvent";
 import { createCommunicationBridge, CommunicationBridge } from "./CommunicationBridge";
-import { Disposable } from "./disposable";
+import { Disposable } from "./Disposable";
 
 createCommunicationBridge().then(async bridge => {
     const vscode = acquireVsCodeApi();

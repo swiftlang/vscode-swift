@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import { WebviewEvent } from "./events";
+import { WebviewEvent } from "./WebviewEvent";
 
 declare global {
     /**

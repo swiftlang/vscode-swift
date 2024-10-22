@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { WebviewEvent } from "./webview/events";
+import { WebviewEvent } from "./webview/WebviewEvent";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { Target } from "../SwiftPackage";
 

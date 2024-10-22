@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import { Disposable } from "./disposable";
+import { Disposable } from "./Disposable";
 
 /**
  * Sends and receives events from swift-docc-render
