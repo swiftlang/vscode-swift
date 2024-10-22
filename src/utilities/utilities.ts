@@ -30,26 +30,40 @@ export function swiftRuntimeEnv(
     base: NodeJS.ProcessEnv | boolean = process.env,
     runtimePath: string = configuration.runtimePath
 ): { [key: string]: string } | undefined {
-    if (runtimePath === "") {
-        return undefined;
-    }
     const key = swiftLibraryPathKey();
     const separator = process.platform === "win32" ? ";" : ":";
     switch (base) {
         case false:
-            return { [key]: runtimePath };
+            base = {};
+            break;
         case true:
-            return { [key]: `${runtimePath}${separator}\${env:${key}}` };
+            base = { [key]: `\${env:${key}}` };
+            break;
         default:
-            return base[key]
-                ? { [key]: `${runtimePath}${separator}${base[key]}` }
-                : { [key]: runtimePath };
+            break;
     }
+    return runtimeEnv(base, key, runtimePath, separator);
+}
+
+export function runtimeEnv(
+    base: NodeJS.ProcessEnv,
+    key: string,
+    value: string,
+    separator: string
+): { [key: string]: string } | undefined {
+    if (value === "") {
+        return undefined;
+    }
+    return base[key] ? { [key]: `${value}${separator}${base[key]}` } : { [key]: value };
 }
 
 /** Return environment variable to update for runtime library search path */
 export function swiftLibraryPathKey(): string {
-    switch (process.platform) {
+    return swiftPlatformLibraryPathKey(process.platform);
+}
+
+export function swiftPlatformLibraryPathKey(platform: NodeJS.Platform): string {
+    switch (platform) {
         case "win32":
             return "Path";
         case "darwin":
