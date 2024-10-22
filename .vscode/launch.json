@@ -45,6 +45,24 @@
       "request": "launch",
       "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
       "runtimeArgs": ["${workspaceFolder}/scripts/update_swift_docc_render.ts"]
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:vscode-swift}/assets/test/defaultPackage",
+      "name": "Debug PackageExe (assets/test/defaultPackage)",
+      "program": "${workspaceFolder:vscode-swift}/assets/test/defaultPackage/.build/debug/PackageExe",
+      "preLaunchTask": "swift: Build Debug PackageExe (assets/test/defaultPackage)"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:vscode-swift}/assets/test/defaultPackage",
+      "name": "Release PackageExe (assets/test/defaultPackage)",
+      "program": "${workspaceFolder:vscode-swift}/assets/test/defaultPackage/.build/release/PackageExe",
+      "preLaunchTask": "swift: Build Release PackageExe (assets/test/defaultPackage)"
     }
   ]
 }

@@ -45,6 +45,7 @@ suite("SwiftTestingOutputParser Suite", () => {
     beforeEach(() => {
         outputParser = new SwiftTestingOutputParser(
             () => {},
+            () => {},
             () => {}
         );
     });
@@ -241,7 +242,8 @@ suite("SwiftTestingOutputParser Suite", () => {
                     status: TestStatus.enqueued,
                     output: [],
                 });
-            }
+            },
+            () => {}
         );
         await outputParser.watch("file:///mock/named/pipe", testRunState, events);
 

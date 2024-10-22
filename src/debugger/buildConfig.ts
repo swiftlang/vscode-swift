@@ -99,6 +99,26 @@ export class BuildConfigurationFactory {
     }
 }
 
+interface SwiftTestingConfigFile {
+    experimentalAttachmentPath: string | undefined;
+}
+
+export class SwiftTestingBuildAguments {
+    private constructor(
+        public fifoPipePath: string,
+        public configFilePath: string
+    ) {}
+
+    public static async build(
+        fifoPipePath: string,
+        swiftTestingConfigFile: string,
+        configuration: SwiftTestingConfigFile
+    ): Promise<SwiftTestingBuildAguments> {
+        await fs.writeFile(swiftTestingConfigFile, JSON.stringify(configuration));
+        return new SwiftTestingBuildAguments(fifoPipePath, swiftTestingConfigFile);
+    }
+}
+
 /**
  * Creates `vscode.DebugConfiguration`s for different combinations of
  * testing library, test kind and platform. Use the static `swiftTestingConfig`
@@ -107,17 +127,17 @@ export class BuildConfigurationFactory {
 export class TestingConfigurationFactory {
     public static async swiftTestingConfig(
         ctx: FolderContext,
-        fifoPipePath: string,
+        buildArguments: SwiftTestingBuildAguments,
         testKind: TestKind,
         testList: string[],
         expandEnvVariables = false
     ): Promise<vscode.DebugConfiguration | null> {
         return new TestingConfigurationFactory(
             ctx,
-            fifoPipePath,
             testKind,
             TestLibrary.swiftTesting,
             testList,
+            buildArguments,
             expandEnvVariables
         ).build();
     }
@@ -130,10 +150,10 @@ export class TestingConfigurationFactory {
     ): Promise<vscode.DebugConfiguration | null> {
         return new TestingConfigurationFactory(
             ctx,
-            "",
             testKind,
             TestLibrary.xctest,
             testList,
+            undefined,
             expandEnvVariables
         ).build();
     }
@@ -145,20 +165,20 @@ export class TestingConfigurationFactory {
     ): Promise<string> {
         return new TestingConfigurationFactory(
             ctx,
-            "",
             testKind,
             testLibrary,
             [],
+            undefined,
             true
         ).testExecutableOutputPath();
     }
 
     private constructor(
         private ctx: FolderContext,
-        private fifoPipePath: string,
         private testKind: TestKind,
         private testLibrary: TestLibrary,
         private testList: string[],
+        private swiftTestingArguments?: SwiftTestingBuildAguments,
         private expandEnvVariables = false
     ) {}
 
@@ -447,13 +467,21 @@ export class TestingConfigurationFactory {
     }
 
     private addSwiftTestingFlagsArgs(args: string[]): string[] {
+        if (!this.swiftTestingArguments) {
+            throw new Error(
+                "Attempted to create swift testing flags without any swift testing arguments. This is an internal error, please report an issue at https://github.com/swiftlang/vscode-swift/issues/new"
+            );
+        }
+
         return [
             ...args,
             "--enable-swift-testing",
             "--event-stream-version",
             "0",
             "--event-stream-output-path",
-            this.fifoPipePath,
+            this.swiftTestingArguments.fifoPipePath,
+            "--configuration-path",
+            this.swiftTestingArguments.configFilePath,
         ];
     }
 

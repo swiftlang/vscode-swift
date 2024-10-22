@@ -83,12 +83,31 @@ export class TemporaryFolder {
         path: string,
         process: () => Promise<Return>
     ): Promise<Return> {
+        return this.withNamedTemporaryFiles([path], process);
+    }
+
+    /**
+     * Run a process and delete the supplied files once that
+     * process has finished.
+     *
+     * @param paths File paths to temporary files
+     * @param process Process to run
+     * @returns return value of process
+     */
+    static async withNamedTemporaryFiles<Return>(
+        paths: string[],
+        process: () => Promise<Return>
+    ): Promise<Return> {
         try {
             const rt = await process();
-            await fs.rm(path, { force: true });
+            for (const path of paths) {
+                await fs.rm(path, { force: true });
+            }
             return rt;
         } catch (error) {
-            await fs.rm(path, { force: true });
+            for (const path of paths) {
+                await fs.rm(path, { force: true });
+            }
             throw error;
         }
     }
