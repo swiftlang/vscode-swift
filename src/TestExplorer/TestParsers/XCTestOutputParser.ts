@@ -43,11 +43,11 @@ export const darwinTestRegex = {
     error: /^(.+):(\d+):\serror:\s-\[(\S+)\s(.*)\] : (.*)$/,
     // Regex "<path/to/test>:<line number>: -[<test target> <class.function>] : Test skipped"
     skipped: /^(.+):(\d+):\s-\[(\S+)\s(.*)\] : Test skipped/,
-    // Regex "Test Suite '-[<test target> <class.function>]' started"
+    // Regex "Test Suite '<class>' started"
     startedSuite: /^Test Suite '(.*)' started/,
-    // Regex "Test Suite '-[<test target> <class.function>]' passed"
+    // Regex "Test Suite '<class>' passed"
     passedSuite: /^Test Suite '(.*)' passed/,
-    // Regex "Test Suite '-[<test target> <class.function>]' failed"
+    // Regex "Test Suite '<class>' failed"
     failedSuite: /^Test Suite '(.*)' failed/,
 };
 
@@ -61,11 +61,11 @@ export const nonDarwinTestRegex = {
     error: /^(.+):(\d+):\serror:\s*(.*)\.(.*) : (.*)/,
     // Regex "<path/to/test>:<line number>: <class>.<function> : Test skipped"
     skipped: /^(.+):(\d+):\s*(.*)\.(.*) : Test skipped/,
-    // Regex "Test Suite '-[<test target> <class.function>]' started"
+    // Regex "Test Suite '<class>' started"
     startedSuite: /^Test Suite '(.*)' started/,
-    // Regex "Test Suite '-[<test target> <class.function>]' passed"
+    // Regex "Test Suite '<class>' passed"
     passedSuite: /^Test Suite '(.*)' passed/,
-    // Regex "Test Suite '-[<test target> <class.function>]' failed"
+    // Regex "Test Suite '<class>' failed"
     failedSuite: /^Test Suite '(.*)' failed/,
 };
 
@@ -178,6 +178,12 @@ export class XCTestOutputParser implements IXCTestOutputParser {
             const startedMatch = this.regex.started.exec(line);
             if (startedMatch) {
                 const testName = `${startedMatch[1]}/${startedMatch[2]}`;
+
+                // Save the active TestTarget.SuiteClass.
+                // Note that TestTarget is only present on Darwin.
+                runState.activeSuite = startedMatch[1];
+                this.processPendingSuiteOutput(runState, startedMatch[1]);
+
                 const startedTestIndex = runState.getTestItemIndex(testName, undefined);
                 this.startTest(startedTestIndex, runState);
                 this.appendTestOutput(startedTestIndex, line, runState);
@@ -232,22 +238,19 @@ export class XCTestOutputParser implements IXCTestOutputParser {
             // Regex "Test Suite '-[<test target> <class.function>]' started"
             const startedSuiteMatch = this.regex.startedSuite.exec(line);
             if (startedSuiteMatch) {
-                this.startTestSuite(startedSuiteMatch[1], runState);
-                this.appendTestOutput(undefined, line, runState);
+                this.startTestSuite(startedSuiteMatch[1], line, runState);
                 continue;
             }
             // Regex "Test Suite '-[<test target> <class.function>]' passed"
             const passedSuiteMatch = this.regex.passedSuite.exec(line);
             if (passedSuiteMatch) {
-                this.passTestSuite(passedSuiteMatch[1], runState);
-                this.appendTestOutput(undefined, line, runState);
+                this.completeSuite(runState, line, this.passTestSuite);
                 continue;
             }
             // Regex "Test Suite '-[<test target> <class.function>]' failed"
             const failedSuiteMatch = this.regex.failedSuite.exec(line);
             if (failedSuiteMatch) {
-                this.failTestSuite(failedSuiteMatch[1], runState);
-                this.appendTestOutput(undefined, line, runState);
+                this.completeSuite(runState, line, this.failTestSuite);
                 continue;
             }
             // unrecognised output could be the continuation of a previous error message
@@ -255,17 +258,66 @@ export class XCTestOutputParser implements IXCTestOutputParser {
         }
     }
 
-    /** Get Test parsing regex for current platform */
-    private get platformTestRegex(): TestRegex {
-        if (process.platform === "darwin") {
-            return darwinTestRegex;
-        } else {
-            return nonDarwinTestRegex;
+    /**
+     * Process the buffered lines captured before a test case has started.
+     */
+    private processPendingSuiteOutput(runState: ITestRunState, suite?: string) {
+        // If we have a qualified suite name captured from a runninng test
+        // process the lines captured before the test started, associating the
+        // line line with the suite.
+        if (runState.pendingSuiteOutput) {
+            const startedSuiteIndex = suite ? runState.getTestItemIndex(suite, undefined) : -1;
+            const totalLines = runState.pendingSuiteOutput.length - 1;
+            for (let i = 0; i <= totalLines; i++) {
+                const line = runState.pendingSuiteOutput[i];
+
+                // Only the last line of the captured output should be associated with the suite
+                const associateLineWithSuite = i === totalLines && startedSuiteIndex !== -1;
+
+                this.appendTestOutput(
+                    associateLineWithSuite ? startedSuiteIndex : undefined,
+                    line,
+                    runState
+                );
+            }
+            runState.pendingSuiteOutput = [];
         }
     }
 
+    /** Mark a suite as complete */
+    private completeSuite(
+        runState: ITestRunState,
+        line: string,
+        resultMethod: (name: string, runState: ITestRunState) => void
+    ) {
+        let suiteIndex: number | undefined;
+        if (runState.activeSuite) {
+            resultMethod(runState.activeSuite, runState);
+            suiteIndex = runState.getTestItemIndex(runState.activeSuite, undefined);
+        }
+
+        // If no tests have run we may have output still in the buffer.
+        // If activeSuite is undefined we finished an empty suite
+        // and we still want to flush the buffer.
+        this.processPendingSuiteOutput(runState, runState.activeSuite);
+
+        runState.activeSuite = undefined;
+        this.appendTestOutput(suiteIndex, line, runState);
+    }
+
+    /** Get Test parsing regex for current platform */
+    private get platformTestRegex(): TestRegex {
+        return process.platform === "darwin" ? darwinTestRegex : nonDarwinTestRegex;
+    }
+
     /** Flag a test suite has started */
-    private startTestSuite(name: string, runState: ITestRunState) {
+    private startTestSuite(name: string, line: string, runState: ITestRunState) {
+        // Buffer the output to this point until the first test
+        // starts, at which point we can determine the target.
+        runState.pendingSuiteOutput = runState.pendingSuiteOutput
+            ? [...runState.pendingSuiteOutput, line]
+            : [line];
+
         runState.startedSuite(name);
     }
 

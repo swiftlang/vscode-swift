@@ -323,7 +323,7 @@ export class TestRunner {
 
     /**
      * If the request has no test items to include in the run,
-     * default to usig all the items in the `TestController`.
+     * default to using all the items in the `TestController`.
      */
     private ensureRequestIncludesTests(request: vscode.TestRunRequest): vscode.TestRunRequest {
         if ((request.include?.length ?? 0) > 0) {
@@ -1261,13 +1261,9 @@ export class TestRunnerTestRunState implements ITestRunState {
             return;
         }
 
-        const uri = this.testRun.testItems[index].uri;
-        const range = this.testRun.testItems[index].range;
-        let location: vscode.Location | undefined;
-        if (uri && range) {
-            location = new vscode.Location(uri, range);
-        }
-
-        this.testRun.appendOutputToTest(output, this.testRun.testItems[index], location);
+        const testItem = this.testRun.testItems[index];
+        const { uri, range } = testItem;
+        const location = uri && range ? new vscode.Location(uri, range) : undefined;
+        this.testRun.appendOutputToTest(output, testItem, location);
     }
 }
