@@ -231,8 +231,13 @@ export function upsertTestItem(
     // parent tags down the tree as children are upserted.
     testItem = applyTagsToChildren(testItem);
 
-    // Manually add the test style as a tag so we can filter by test type.
-    newItem.tags = [{ id: testItem.style }, ...testItem.tags];
+    const hasTestStyleTag = testItem.tags.find(tag => tag.id === testItem.style);
+
+    // Manually add the test style as a tag if it isn't already in the tags list.
+    // This lets the user filter by test type.
+    newItem.tags = hasTestStyleTag
+        ? [...testItem.tags]
+        : [{ id: testItem.style }, ...testItem.tags];
 
     if (testItem.disabled === false) {
         newItem.tags = [...newItem.tags, runnableTag];
