@@ -58,16 +58,13 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                 .replace("</body>", `<script src="${scriptURI.toString()}"></script></body>`);
             webviewPanel.webview.html = documentationHTML;
             // Initialize the editor state
-            const initialPath =
+            const initialRoute =
                 extractPathFromTextDocument(vscode.window.activeTextEditor, this.context) ??
                 getDefaultDocumentationPath(this.context);
             this.editorState = {
                 archivePath,
                 webviewPanel,
-                webviewState: {
-                    type: "initializing",
-                    messageQueue: [{ type: "initialize", route: initialPath }],
-                },
+                currentRoute: initialRoute,
             };
             this.subscriptions.push(
                 webviewPanel.webview.onDidReceiveMessage(this.receiveMessage.bind(this)),
@@ -92,12 +89,11 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
             return;
         }
 
-        const { webviewPanel, webviewState } = this.editorState;
-        if (webviewState.type === "initializing") {
-            webviewState.messageQueue.push(message);
-        } else {
-            webviewPanel.webview.postMessage(message);
+        const { webviewPanel } = this.editorState;
+        if (message.type === "navigate") {
+            this.editorState.currentRoute = message.route;
         }
+        webviewPanel.webview.postMessage(message);
     }
 
     private receiveMessage(event: WebviewEvent) {
@@ -105,34 +101,23 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
             return;
         }
 
-        const { webviewPanel, webviewState } = this.editorState;
-        if (event.type === "ready" && webviewState.type === "initializing") {
-            for (const message of webviewState.messageQueue) {
-                webviewPanel.webview.postMessage(message);
-            }
-            webviewState.type = "ready";
-            webviewState.messageQueue = [];
+        switch (event.type) {
+            case "ready":
+                this.postMessage({ type: "navigate", route: this.editorState.currentRoute });
+                break;
+            case "rendered":
+                this.editorState.currentRoute = event.route;
+                break;
         }
     }
 
     private activeTextEditorChanged(editor: vscode.TextEditor | undefined) {
-        if (!this.editorState) {
+        const navigateToPath = extractPathFromTextDocument(editor, this.context);
+        if (!navigateToPath) {
             return;
         }
 
-        const newPath = extractPathFromTextDocument(editor, this.context);
-        if (newPath) {
-            fs.readFile(
-                path.join(this.editorState.archivePath, "data", newPath + ".json"),
-                "utf-8"
-            ).then(contents => {
-                this.postMessage({
-                    type: "update-content",
-                    data: JSON.parse(contents),
-                    scrollTo: { x: 0, y: 0 },
-                });
-            });
-        }
+        this.postMessage({ type: "navigate", route: navigateToPath });
     }
 }
 
@@ -178,10 +163,5 @@ function getDefaultDocumentationPath(ctx: WorkspaceContext): string {
 interface EditorState {
     archivePath: string;
     webviewPanel: vscode.WebviewPanel;
-    webviewState: WebviewState;
+    currentRoute: string;
 }
-
-type WebviewState = {
-    type: "initializing" | "ready";
-    messageQueue: WebviewEvent[];
-};

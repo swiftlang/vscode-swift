@@ -15,15 +15,11 @@
 /**
  * Represents an event that can be sent between the webview and vscode-swift
  */
-export type WebviewEvent = ReadyEvent | InitializeEvent | RenderEvent | UpdateContentEvent;
+export type WebviewEvent = ReadyEvent | NavigateEvent | RenderEvent | UpdateContentEvent;
 
 /**
  * Sent from the webview to the extension to indicate that the webview is
  * ready to receive events.
- *
- * This will only be sent the first time that the webview is opened. If
- * VS Code already has state for the webview then this will NOT be sent
- * as it implies that the webview has already initialized.
  */
 export interface ReadyEvent {
     type: "ready";
@@ -31,14 +27,10 @@ export interface ReadyEvent {
 
 /**
  * Sent from the extension to the webview after the "ready" event is
- * received in order to set the initial documentation route.
- *
- * This event must only be sent once: subsequent events will be
- * ignored. Use {@link UpdateContentEvent} to render different pages
- * after initialization.
+ * received in order to navigate to a particular documentation page.
  */
-export interface InitializeEvent {
-    type: "initialize";
+export interface NavigateEvent {
+    type: "navigate";
     route: string;
 }
 
@@ -48,6 +40,7 @@ export interface InitializeEvent {
  */
 export interface RenderEvent {
     type: "rendered";
+    route: string;
 }
 
 /**
@@ -59,5 +52,4 @@ export interface RenderEvent {
 export interface UpdateContentEvent {
     type: "update-content";
     data: unknown;
-    scrollTo?: { x: number; y: number };
 }

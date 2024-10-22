@@ -55,17 +55,9 @@ declare global {
 /**
  * Represents the current state of the WebView.
  */
-export type WebviewState = WaitingForVSCode | Ready;
-
-export interface WaitingForVSCode {
-    type: "waiting-for-vscode";
-}
-
-export interface Ready {
-    type: "ready";
-    initialRoute: string;
-    pageContent?: unknown;
-    scrollPosition: {
+export interface WebviewState {
+    scrollPosition?: {
+        route: string;
         x: number;
         y: number;
     };

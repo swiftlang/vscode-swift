@@ -92,6 +92,10 @@ export type VueAppEvent = RenderedEvent | NavigationEvent | UpdateContentEvent;
  */
 export interface RenderedEvent {
     type: "rendered";
+    data: {
+        time?: number;
+        route: string;
+    };
 }
 
 /**
