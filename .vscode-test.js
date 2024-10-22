@@ -71,7 +71,7 @@ module.exports = defineConfig({
     ],
     coverage: {
         includeAll: true,
-        exclude: ["**/test/unit-tests/**", "**/test/integration-tests/**"],
+        exclude: ["**/test/**"],
         reporter: ["text", "lcov"], // "lcov" also generates HTML
     },
 });
