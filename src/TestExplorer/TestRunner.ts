@@ -39,6 +39,7 @@ import { TestCoverage } from "../coverage/LcovResults";
 import { BuildConfigurationFactory, TestingConfigurationFactory } from "../debugger/buildConfig";
 import { TestKind, isDebugging, isRelease } from "./TestKind";
 import { reduceTestItemChildren } from "./TestUtils";
+import { CompositeCancellationToken } from "../utilities/cancellation";
 
 export enum TestLibrary {
     xctest = "XCTest",
@@ -65,6 +66,7 @@ export class TestRunProxy {
     private _testItems: vscode.TestItem[];
     private iteration: number | undefined;
     public coverage: TestCoverage;
+    public token: CompositeCancellationToken;
 
     public testRunCompleteEmitter = new vscode.EventEmitter<void>();
     public onTestRunComplete: vscode.Event<void>;
@@ -87,14 +89,20 @@ export class TestRunProxy {
         return this._testItems;
     }
 
+    public get isCancellationRequested(): boolean {
+        return this.token.isCancellationRequested;
+    }
+
     constructor(
         private testRunRequest: vscode.TestRunRequest,
         private controller: vscode.TestController,
         private args: TestRunArguments,
-        private folderContext: FolderContext
+        private folderContext: FolderContext,
+        testProfileCancellationToken: vscode.CancellationToken
     ) {
         this._testItems = args.testItems;
         this.coverage = new TestCoverage(folderContext);
+        this.token = new CompositeCancellationToken(testProfileCancellationToken);
         this.onTestRunComplete = this.testRunCompleteEmitter.event;
     }
 
@@ -144,6 +152,7 @@ export class TestRunProxy {
             });
 
         this.testRun = this.controller.createTestRun(this.testRunRequest);
+        this.token.add(this.testRun.token);
         this._testItems = [...this.testItems, ...addedTestItems];
 
         // Forward any output captured before the testRun was created.
@@ -217,6 +226,7 @@ export class TestRunProxy {
         }
         this.testRun?.end();
         this.testRunCompleteEmitter.fire();
+        this.token.dispose();
     }
 
     public setIteration(iteration: number) {
@@ -288,13 +298,14 @@ export class TestRunner {
         private testKind: TestKind,
         private request: vscode.TestRunRequest,
         private folderContext: FolderContext,
-        private controller: vscode.TestController
+        private controller: vscode.TestController,
+        token: vscode.CancellationToken
     ) {
         this.testArgs = new TestRunArguments(
             this.ensureRequestIncludesTests(this.request),
             isDebugging(testKind)
         );
-        this.testRun = new TestRunProxy(request, controller, this.testArgs, folderContext);
+        this.testRun = new TestRunProxy(request, controller, this.testArgs, folderContext, token);
         this.xcTestOutputParser =
             testKind === TestKind.parallel
                 ? new ParallelXCTestOutputParser(
@@ -358,10 +369,11 @@ export class TestRunner {
                         TestKind.standard,
                         request,
                         folderContext,
-                        controller
+                        controller,
+                        token
                     );
                     onCreateTestRun.fire(runner.testRun);
-                    await runner.runHandler(token);
+                    await runner.runHandler();
                 },
                 true,
                 runnableTag
@@ -374,10 +386,11 @@ export class TestRunner {
                         TestKind.parallel,
                         request,
                         folderContext,
-                        controller
+                        controller,
+                        token
                     );
                     onCreateTestRun.fire(runner.testRun);
-                    await runner.runHandler(token);
+                    await runner.runHandler();
                 },
                 false,
                 runnableTag
@@ -390,10 +403,11 @@ export class TestRunner {
                         TestKind.release,
                         request,
                         folderContext,
-                        controller
+                        controller,
+                        token
                     );
                     onCreateTestRun.fire(runner.testRun);
-                    await runner.runHandler(token);
+                    await runner.runHandler();
                 },
                 false,
                 runnableTag
@@ -407,7 +421,8 @@ export class TestRunner {
                         TestKind.coverage,
                         request,
                         folderContext,
-                        controller
+                        controller,
+                        token
                     );
                     onCreateTestRun.fire(runner.testRun);
                     if (request.profile) {
@@ -415,7 +430,7 @@ export class TestRunner {
                             return runner.testRun.coverage.loadDetailedCoverage(fileCoverage.uri);
                         };
                     }
-                    await runner.runHandler(token);
+                    await runner.runHandler();
                     await vscode.commands.executeCommand("testing.openCoverage");
                 },
                 false,
@@ -430,10 +445,11 @@ export class TestRunner {
                         TestKind.debug,
                         request,
                         folderContext,
-                        controller
+                        controller,
+                        token
                     );
                     onCreateTestRun.fire(runner.testRun);
-                    await runner.runHandler(token);
+                    await runner.runHandler();
                 },
                 false,
                 runnableTag
@@ -446,10 +462,11 @@ export class TestRunner {
                         TestKind.debugRelease,
                         request,
                         folderContext,
-                        controller
+                        controller,
+                        token
                     );
                     onCreateTestRun.fire(runner.testRun);
-                    await runner.runHandler(token);
+                    await runner.runHandler();
                 },
                 false,
                 runnableTag
@@ -463,13 +480,18 @@ export class TestRunner {
      * @param token Cancellation token
      * @returns When complete
      */
-    async runHandler(token: vscode.CancellationToken) {
+    async runHandler() {
         const runState = new TestRunnerTestRunState(this.testRun);
+
+        const cancellationDisposable = this.testRun.token.onCancellationRequested(() => {
+            this.testRun.appendOutput("\r\nTest run cancelled.");
+        });
+
         try {
             if (isDebugging(this.testKind)) {
-                await this.debugSession(token, runState);
+                await this.debugSession(runState);
             } else {
-                await this.runSession(token, runState);
+                await this.runSession(runState);
             }
         } catch (error) {
             this.workspaceContext.outputChannel.log(`Error: ${getErrorDescription(error)}`);
@@ -481,14 +503,12 @@ export class TestRunner {
             await this.testRun.computeCoverage();
         }
 
+        cancellationDisposable.dispose();
         await this.testRun.end();
     }
 
     /** Run test session without attaching to a debugger */
-    async runSession(
-        token: vscode.CancellationToken,
-        runState: TestRunnerTestRunState
-    ): Promise<TestRunState> {
+    async runSession(runState: TestRunnerTestRunState): Promise<TestRunState> {
         // Run swift-testing first, then XCTest.
         // swift-testing being parallel by default should help these run faster.
         if (this.testArgs.hasSwiftTestingTests) {
@@ -509,13 +529,7 @@ export class TestRunner {
                     true
                 );
 
-                if (testBuildConfig === null) {
-                    return this.testRun.runState;
-                }
-
-                const outputStream = this.testOutputWritable(TestLibrary.swiftTesting, runState);
-                if (token.isCancellationRequested) {
-                    outputStream.end();
+                if (testBuildConfig === null || this.testRun.isCancellationRequested) {
                     return this.testRun.runState;
                 }
 
@@ -526,8 +540,7 @@ export class TestRunner {
                 await this.launchTests(
                     runState,
                     this.testKind === TestKind.parallel ? TestKind.standard : this.testKind,
-                    token,
-                    outputStream,
+                    this.testOutputWritable(TestLibrary.swiftTesting, runState),
                     testBuildConfig,
                     TestLibrary.swiftTesting
                 );
@@ -541,13 +554,8 @@ export class TestRunner {
                 this.testArgs.xcTestArgs,
                 true
             );
-            if (testBuildConfig === null) {
-                return this.testRun.runState;
-            }
 
-            const parsedOutputStream = this.testOutputWritable(TestLibrary.xctest, runState);
-            if (token.isCancellationRequested) {
-                parsedOutputStream.end();
+            if (testBuildConfig === null || this.testRun.isCancellationRequested) {
                 return this.testRun.runState;
             }
 
@@ -557,8 +565,7 @@ export class TestRunner {
             await this.launchTests(
                 runState,
                 this.testKind,
-                token,
-                parsedOutputStream,
+                this.testOutputWritable(TestLibrary.xctest, runState),
                 testBuildConfig,
                 TestLibrary.xctest
             );
@@ -570,7 +577,6 @@ export class TestRunner {
     private async launchTests(
         runState: TestRunnerTestRunState,
         testKind: TestKind,
-        token: vscode.CancellationToken,
         outputStream: stream.Writable,
         testBuildConfig: vscode.DebugConfiguration,
         testLibrary: TestLibrary
@@ -578,18 +584,13 @@ export class TestRunner {
         try {
             switch (testKind) {
                 case TestKind.coverage:
-                    await this.runCoverageSession(
-                        token,
-                        outputStream,
-                        testBuildConfig,
-                        testLibrary
-                    );
+                    await this.runCoverageSession(outputStream, testBuildConfig, testLibrary);
                     break;
                 case TestKind.parallel:
-                    await this.runParallelSession(token, outputStream, testBuildConfig, runState);
+                    await this.runParallelSession(outputStream, testBuildConfig, runState);
                     break;
                 default:
-                    await this.runStandardSession(token, outputStream, testBuildConfig, testKind);
+                    await this.runStandardSession(outputStream, testBuildConfig, testKind);
                     break;
             }
         } catch (error) {
@@ -613,7 +614,6 @@ export class TestRunner {
 
     /** Run tests outside of debugger */
     async runStandardSession(
-        token: vscode.CancellationToken,
         outputStream: stream.Writable,
         testBuildConfig: vscode.DebugConfiguration,
         testKind: TestKind
@@ -679,19 +679,21 @@ export class TestRunner {
                 }
             });
 
-            this.folderContext.taskQueue.queueOperation(new TaskOperation(task), token);
+            this.folderContext.taskQueue.queueOperation(
+                new TaskOperation(task),
+                this.testRun.token
+            );
         });
     }
 
     /** Run tests with code coverage, and parse coverage results */
     async runCoverageSession(
-        token: vscode.CancellationToken,
         outputStream: stream.Writable,
         testBuildConfig: vscode.DebugConfiguration,
         testLibrary: TestLibrary
     ) {
         try {
-            await this.runStandardSession(token, outputStream, testBuildConfig, TestKind.coverage);
+            await this.runStandardSession(outputStream, testBuildConfig, TestKind.coverage);
         } catch (error) {
             // If this isn't a standard test failure, forward the error and skip generating coverage.
             if (error !== 1) {
@@ -704,7 +706,6 @@ export class TestRunner {
 
     /** Run tests in parallel outside of debugger */
     async runParallelSession(
-        token: vscode.CancellationToken,
         outputStream: stream.Writable,
         testBuildConfig: vscode.DebugConfiguration,
         runState: TestRunnerTestRunState
@@ -714,7 +715,6 @@ export class TestRunner {
 
             try {
                 testBuildConfig.args = await this.runStandardSession(
-                    token,
                     outputStream,
                     {
                         ...testBuildConfig,
@@ -743,13 +743,13 @@ export class TestRunner {
     }
 
     /** Run test session inside debugger */
-    async debugSession(token: vscode.CancellationToken, runState: TestRunnerTestRunState) {
+    async debugSession(runState: TestRunnerTestRunState) {
         // Perform a build all first to produce the binaries we'll run later.
         let buildOutput = "";
         try {
             await this.runStandardSession(
-                token,
-                // discard the output as we dont want to associate it with the test run.
+                // Capture the output to print it in case of a build error.
+                // We dont want to associate it with the test run.
                 new stream.Writable({
                     write: (chunk, encoding, next) => {
                         buildOutput += chunk.toString();
@@ -846,6 +846,11 @@ export class TestRunner {
             const debugRuns = validBuildConfigs.map(config => {
                 return () =>
                     new Promise<void>((resolve, reject) => {
+                        if (this.testRun.isCancellationRequested) {
+                            resolve();
+                            return;
+                        }
+
                         // add cancelation
                         const startSession = vscode.debug.onDidStartDebugSession(session => {
                             if (config.testType === TestLibrary.xctest) {
@@ -862,12 +867,13 @@ export class TestRunner {
                                 outputHandler(output);
                             });
 
-                            const cancellation = token.onCancellationRequested(() => {
+                            const cancellation = this.testRun.token.onCancellationRequested(() => {
                                 this.workspaceContext.outputChannel.logDiagnostic(
                                     "Test Debugging Cancelled",
                                     this.folderContext.name
                                 );
                                 vscode.debug.stopDebugging(session);
+                                resolve();
                             });
                             subscriptions.push(cancellation);
                         });
