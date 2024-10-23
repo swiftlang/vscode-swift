@@ -29,9 +29,9 @@ function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
 
 export const globalWorkspaceContextPromise: Promise<WorkspaceContext> = (async () => {
     const workspaceFolder = getRootWorkspaceFolder();
-    const ext = vscode.extensions.getExtension<Api>("sswg.swift-lang");
+    const ext = vscode.extensions.getExtension<Api>("swiftlang.vscode-swift");
     if (!ext) {
-        throw new Error(`Unable to find extension "sswg.swift-lang"`);
+        throw new Error(`Unable to find extension "swiftlang.vscode-swift"`);
     }
     const api = await ext.activate();
     const packageFolder = testAssetUri("defaultPackage");
