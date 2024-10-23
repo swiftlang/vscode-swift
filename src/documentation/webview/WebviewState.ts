@@ -23,7 +23,7 @@ declare global {
         /**
          * Get the current state of this WebView.
          *
-         * Used in combination with {@link setState} to retain state even if this WebView loses focus.
+         * Used in combination with {@link setState} to retain state even if this WebView is hidden.
          *
          * @returns the current value of the {@link WebviewState}
          */
@@ -32,7 +32,7 @@ declare global {
         /**
          * Set the current state of this Webview.
          *
-         * Used in combination with {@link getState} to retain state even if this WebView loses focus.
+         * Used in combination with {@link getState} to retain state even if this WebView is hidden.
          *
          * @param value the current value of the {@link WebviewState}
          */
@@ -53,7 +53,7 @@ declare global {
 }
 
 /**
- * Represents the current state of the WebView.
+ * Represents the current state of the WebView that is saved  and restored when the Webview is hidden.
  */
 export interface WebviewState {
     scrollPosition?: {

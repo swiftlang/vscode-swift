@@ -39,7 +39,6 @@ import { runPluginTask } from "./commands/runPluginTask";
 import { runTestMultipleTimes } from "./commands/testMultipleTimes";
 import { newSwiftFile } from "./commands/newFile";
 import { runAllTestsParallel } from "./commands/runParallelTests";
-import { previewDocumentation } from "./commands/previewDocumentation";
 
 /**
  * References:
@@ -81,10 +80,7 @@ export enum Commands {
 /**
  * Registers this extension's commands in the given {@link vscode.ExtensionContext context}.
  */
-export function register(
-    ctx: WorkspaceContext,
-    extension: vscode.ExtensionContext
-): vscode.Disposable[] {
+export function register(ctx: WorkspaceContext): vscode.Disposable[] {
     return [
         vscode.commands.registerCommand("swift.newFile", uri => newSwiftFile(uri)),
         vscode.commands.registerCommand(Commands.RESOLVE_DEPENDENCIES, () =>
@@ -161,7 +157,7 @@ export function register(
         ),
         vscode.commands.registerCommand(
             "swift.previewDocumentation",
-            async () => await previewDocumentation(extension, ctx)
+            async () => await ctx.documentation.launchDocumentationPreview()
         ),
     ];
 }

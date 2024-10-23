@@ -58,7 +58,7 @@ createCommunicationBridge().then(async bridge => {
         }
     });
 
-    // Store the current scroll state so that we can restore it if we lose focus
+    // Store the current scroll state so that we can restore it if we are hidden
     window.addEventListener(
         "scroll",
         debounce(() => {

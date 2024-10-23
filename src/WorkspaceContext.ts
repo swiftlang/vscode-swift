@@ -33,6 +33,7 @@ import { DebugAdapter, LaunchConfigType } from "./debugger/debugAdapter";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { DiagnosticsManager } from "./DiagnosticsManager";
+import { DocumentationManager } from "./documentation/DocumentationManager";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -49,10 +50,12 @@ export class WorkspaceContext implements vscode.Disposable {
     public diagnostics: DiagnosticsManager;
     public subscriptions: vscode.Disposable[];
     public commentCompletionProvider: CommentCompletionProviders;
+    public documentation: DocumentationManager;
     private lastFocusUri: vscode.Uri | undefined;
     private initialisationFinished = false;
 
     private constructor(
+        extensionContext: vscode.ExtensionContext,
         public tempFolder: TemporaryFolder,
         public outputChannel: SwiftOutputChannel,
         public toolchain: SwiftToolchain
@@ -62,6 +65,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.languageClientManager = new LanguageClientManager(this);
         this.tasks = new TaskManager(this);
         this.diagnostics = new DiagnosticsManager(this);
+        this.documentation = new DocumentationManager(extensionContext, this);
         this.currentDocument = null;
         this.commentCompletionProvider = new CommentCompletionProviders();
 
@@ -192,11 +196,12 @@ export class WorkspaceContext implements vscode.Disposable {
 
     /** Get swift version and create WorkspaceContext */
     static async create(
+        extensionContext: vscode.ExtensionContext,
         outputChannel: SwiftOutputChannel,
         toolchain: SwiftToolchain
     ): Promise<WorkspaceContext> {
         const tempFolder = await TemporaryFolder.create();
-        return new WorkspaceContext(tempFolder, outputChannel, toolchain);
+        return new WorkspaceContext(extensionContext, tempFolder, outputChannel, toolchain);
     }
 
     /**
