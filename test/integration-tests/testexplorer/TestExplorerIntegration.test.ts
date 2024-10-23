@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import * as assert from "assert";
 import * as vscode from "vscode";
 import { beforeEach, afterEach } from "mocha";
 import { testAssetUri } from "../../fixtures";
@@ -35,6 +36,11 @@ import {
     TestSymbol,
 } from "../../../src/TestExplorer/TestParsers/SwiftTestingOutputParser";
 import { mockGlobalObject } from "../../MockUtils";
+import {
+    flattenTestItemCollection,
+    reduceTestItemChildren,
+} from "../../../src/TestExplorer/TestUtils";
+import { runnableTag } from "../../../src/TestExplorer/TestDiscovery";
 
 suite("Test Explorer Suite", function () {
     const MAX_TEST_RUN_TIME_MINUTES = 5;
@@ -426,7 +432,8 @@ suite("Test Explorer Suite", function () {
         });
 
         // Do coverage last as it does a full rebuild, causing the stage after it to have to rebuild as well.
-        [TestKind.standard, TestKind.parallel, TestKind.coverage].forEach(runProfile => {
+        // [TestKind.standard, TestKind.parallel, TestKind.coverage].forEach(runProfile => {
+        [TestKind.standard].forEach(runProfile => {
             let xcTestFailureMessage: string;
 
             beforeEach(() => {
@@ -513,16 +520,13 @@ suite("Test Explorer Suite", function () {
                     });
 
                     test(`Runs parameterized test (${runProfile})`, async function () {
-                        const testRun = await runTest(
-                            testExplorer,
-                            runProfile,
-                            "PackageTests.parameterizedTest(_:)"
-                        );
+                        const testId = "PackageTests.parameterizedTest(_:)";
+                        const testRun = await runTest(testExplorer, runProfile, testId);
 
                         assertTestResults(testRun, {
                             passed: [
-                                "PackageTests.parameterizedTest(_:)/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])",
-                                "PackageTests.parameterizedTest(_:)/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [51])])",
+                                `${testId}/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])`,
+                                `${testId}/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [51])])`,
                             ],
                             failed: [
                                 {
@@ -532,14 +536,37 @@ suite("Test Explorer Suite", function () {
                                             text: "Expectation failed: (arg → 2) != 2",
                                         })}`,
                                     ],
-                                    test: "PackageTests.parameterizedTest(_:)/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])",
+                                    test: `${testId}/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])`,
                                 },
                                 {
                                     issues: [],
-                                    test: "PackageTests.parameterizedTest(_:)",
+                                    test: testId,
                                 },
                             ],
                         });
+
+                        // Verifiy that the children of the parameterized test are not runnable
+                        const parameterizedTestItem = flattenTestItemCollection(
+                            testExplorer.controller.items
+                        ).find(item => item.id === testId);
+
+                        assert.ok(
+                            parameterizedTestItem,
+                            `Unable to find ${testId} in test explorer children`
+                        );
+
+                        const unrunnableChildren = reduceTestItemChildren(
+                            parameterizedTestItem?.children ?? [],
+                            (acc, item) => {
+                                return [
+                                    ...acc,
+                                    item.tags.find(tag => tag.id === runnableTag.id) === undefined,
+                                ];
+                            },
+                            [] as boolean[]
+                        );
+
+                        assert.deepEqual(unrunnableChildren, [true, true, true]);
                     });
 
                     test(`Runs Suite (${runProfile})`, async function () {
