@@ -18,6 +18,7 @@ import * as path from "path";
 import { WebviewMessage } from "./webview/WebviewMessage";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { Target } from "../SwiftPackage";
+import { fileExists } from "../utilities/filesystem";
 
 export class DocumentationPreviewEditor implements vscode.Disposable {
     private readonly webviewPanel: vscode.WebviewPanel;
@@ -49,10 +50,14 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         const scriptURI = this.webviewPanel.webview.asWebviewUri(
             vscode.Uri.file(this.extension.asAbsolutePath("assets/documentation-webview/index.js"))
         );
-        this.currentRoute =
-            this.extractPathFromTextDocument(vscode.window.activeTextEditor) ??
-            getDefaultDocumentationPath(this.context);
-        fs.readFile(path.join(archivePath, "index.html"), "utf-8").then(documentationHTML => {
+        this.currentRoute = getDefaultDocumentationPath(this.context);
+        Promise.all([
+            this.findRouteFromTextDocument(vscode.window.activeTextEditor),
+            fs.readFile(path.join(archivePath, "index.html"), "utf-8"),
+        ]).then(([activeTextEditorRoute, documentationHTML]) => {
+            if (activeTextEditorRoute) {
+                this.currentRoute = activeTextEditorRoute;
+            }
             documentationHTML = documentationHTML
                 .replaceAll("{{BASE_PATH}}", webviewBaseURI.toString())
                 .replace("</body>", `<script src="${scriptURI.toString()}"></script></body>`);
@@ -60,12 +65,18 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
             this.subscriptions.push(
                 this.webviewPanel.webview.onDidReceiveMessage(this.receiveMessage.bind(this)),
                 vscode.window.onDidChangeActiveTextEditor(this.activeTextEditorChanged.bind(this)),
+                vscode.window.onDidChangeTextEditorSelection(
+                    this.textEditorSelectionChanged.bind(this)
+                ),
                 this.webviewPanel.onDidDispose(this.dispose.bind(this))
             );
-
             // Reveal the editor, but don't change the focus of the active text editor
             this.webviewPanel.reveal(undefined, true);
         });
+    }
+
+    reveal() {
+        this.webviewPanel.reveal();
     }
 
     dispose() {
@@ -94,15 +105,28 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
     }
 
     private activeTextEditorChanged(editor: vscode.TextEditor | undefined) {
-        const navigateToPath = this.extractPathFromTextDocument(editor);
-        if (!navigateToPath) {
-            return;
-        }
+        this.findRouteFromTextDocument(editor).then(navigateToPath => {
+            if (!navigateToPath) {
+                return;
+            }
 
-        this.postMessage({ type: "navigate", route: navigateToPath });
+            this.postMessage({ type: "navigate", route: navigateToPath });
+        });
     }
 
-    private extractPathFromTextDocument(editor: vscode.TextEditor | undefined): string | undefined {
+    private textEditorSelectionChanged(event: vscode.TextEditorSelectionChangeEvent) {
+        this.findRouteFromTextDocument(event.textEditor).then(navigateToPath => {
+            if (!navigateToPath) {
+                return;
+            }
+
+            this.postMessage({ type: "navigate", route: navigateToPath });
+        });
+    }
+
+    private async findRouteFromTextDocument(
+        editor: vscode.TextEditor | undefined
+    ): Promise<string | undefined> {
         const document = editor?.document;
         if (!document || document.uri.scheme !== "file") {
             return undefined;
@@ -113,8 +137,70 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
             return;
         }
 
-        const targetRoute = `/documentation/${target.name.toLocaleLowerCase()}`;
+        const targetRoute = `/documentation/${target.name}`;
+        if (
+            document.uri.fsPath.endsWith(".md") &&
+            (await fileExists(
+                this.archivePath,
+                "data",
+                "documentation",
+                target.name.toLocaleLowerCase(),
+                path.basename(document.uri.fsPath, ".md") + ".json"
+            ))
+        ) {
+            return targetRoute + "/" + path.basename(document.uri.fsPath, ".md");
+        } else if (document.uri.fsPath.endsWith(".tutorial")) {
+            return `/tutorials/${target.name}/${path.basename(document.uri.fsPath, ".tutorial").replaceAll(" ", "-")}`;
+        } else if (document.languageId === "swift") {
+            const symbolRoute = await this.findSymbolInDocument(document, editor.selection);
+            if (symbolRoute) {
+                return targetRoute + "/" + symbolRoute;
+            }
+        }
         return targetRoute;
+    }
+
+    private async findSymbolInDocument(
+        document: vscode.TextDocument,
+        range: vscode.Range
+    ): Promise<string | undefined> {
+        const symbols: (vscode.SymbolInformation | vscode.DocumentSymbol)[] =
+            await vscode.commands.executeCommand(
+                "vscode.executeDocumentSymbolProvider",
+                document.uri
+            );
+        for (const symbol of symbols) {
+            if (!("children" in symbol)) {
+                continue;
+            }
+            const symbolRoute = this.searchSymbol(symbol, range);
+            if (symbolRoute) {
+                return symbolRoute;
+            }
+        }
+        return undefined;
+    }
+
+    private searchSymbol(
+        symbol: vscode.DocumentSymbol,
+        range: vscode.Range,
+        context?: string
+    ): string | undefined {
+        if (!symbol.range.contains(range)) {
+            return;
+        }
+        if (!context) {
+            context = symbol.name;
+        } else {
+            context += "/" + symbol.name;
+        }
+        for (const child of symbol.children) {
+            const childResult = this.searchSymbol(child, range, context);
+            if (childResult) {
+                return childResult;
+            }
+        }
+        return context;
     }
 }
 

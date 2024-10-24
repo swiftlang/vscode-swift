@@ -52,10 +52,12 @@ export class DocumentationManager {
                     this.previewEditor = undefined;
                 }),
             ];
+        } else {
+            this.previewEditor.reveal();
         }
     }
 
-    async buildDocumentation(folderContext: FolderContext): Promise<string | undefined> {
+    private async buildDocumentation(folderContext: FolderContext): Promise<string | undefined> {
         const buildPath = path.join(folderContext.folder.fsPath, ".build", "vscode-swift");
         const outputPath = path.join(buildPath, "documentation-preview");
         await fs.rm(outputPath, { recursive: true, force: true });
