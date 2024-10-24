@@ -26,7 +26,7 @@ export async function updateDependencies(ctx: WorkspaceContext) {
     if (!current) {
         return;
     }
-    await updateFolderDependencies(current);
+    return await updateFolderDependencies(current);
 }
 
 /**
@@ -46,7 +46,7 @@ export async function updateFolderDependencies(folderContext: FolderContext) {
         folderContext.workspaceContext.toolchain
     );
 
-    await executeTaskWithUI(task, "Updating Dependencies", folderContext).then(result => {
-        updateAfterError(result, folderContext);
-    });
+    const result = await executeTaskWithUI(task, "Updating Dependencies", folderContext);
+    updateAfterError(result, folderContext);
+    return result;
 }

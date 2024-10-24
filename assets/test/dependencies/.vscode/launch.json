@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "type": "swift-lldb",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:dependencies}",
+            "name": "Debug dependencies",
+            "program": "${workspaceFolder:dependencies}/.build/debug/dependencies",
+            "preLaunchTask": "swift: Build Debug dependencies"
+        },
+        {
+            "type": "swift-lldb",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:dependencies}",
+            "name": "Release dependencies",
+            "program": "${workspaceFolder:dependencies}/.build/release/dependencies",
+            "preLaunchTask": "swift: Build Release dependencies"
+        }
+    ]
+}

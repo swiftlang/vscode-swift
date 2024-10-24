@@ -30,12 +30,12 @@ export async function uneditDependency(identifier: string, ctx: WorkspaceContext
     }
     ctx.outputChannel.log(`unedit dependency ${identifier}`, currentFolder.name);
     const status = `Reverting edited dependency ${identifier} (${currentFolder.name})`;
-    ctx.statusItem.showStatusWhileRunning(status, async () => {
-        await uneditFolderDependency(currentFolder, identifier, ctx);
+    return await ctx.statusItem.showStatusWhileRunning(status, async () => {
+        return await uneditFolderDependency(currentFolder, identifier, ctx);
     });
 }
 
-async function uneditFolderDependency(
+export async function uneditFolderDependency(
     folder: FolderContext,
     identifier: string,
     ctx: WorkspaceContext,
@@ -67,6 +67,7 @@ async function uneditFolderDependency(
                 vscode.workspace.updateWorkspaceFolders(folderIndex, 1);
             }
         }
+        return true;
     } catch (error) {
         const execError = error as { stderr: string };
         // if error contains "has uncommited changes" then ask if user wants to force the unedit
