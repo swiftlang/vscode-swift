@@ -17,7 +17,7 @@ tag=$1
 
 if [[ -z $tag ]]; then
     echo "tag_release.sh requires a tag"
-    exit -1
+    exit 1
 fi
 
 echo "Tagging v$tag"
