@@ -249,7 +249,7 @@ export class TestExplorer {
                 // get build options before build is run so we can be sure they aren't changed
                 // mid-build
                 const testBuildOptions = buildOptions(toolchain);
-                // normally we wouldn't run the build here, but you can hang swiftPM on macOS
+                // normally we wouldn't run the build here, but you can suspend swiftPM on macOS
                 // if you try and list tests while skipping the build if you are using a different
                 // sanitizer settings
                 if (process.platform === "darwin" && configuration.sanitizer !== "off") {

@@ -327,7 +327,7 @@ Merge debug adapter changes from v1.6.x prerelease builds into main release.
 ### Fixed
 
 - Ensure we catch errors when decoding `Info.plist` on Windows.
-- Killing of `xctest` process if testing is cancelled.
+- Halt `xctest` process if testing is cancelled.
 
 ## 1.2.0 - 2023-03-22
 
@@ -587,14 +587,14 @@ Version 0.5.0 of vscode-swift now requires v1.65.0 of Visual Studio Code
 ### Added
 
 - Store XCTest class locations in related TestItem. This will augment source code with an icon to run all the tests in a class.
-- Cancellation support for tests. When you cancel a test the underlying process is killed (previously it was left running).
+- Cancellation support for tests. When you cancel a test the underlying process is halted (previously it was left running).
 - Show Test Explorer output view as soon as testing starts.
 - Option to enable/disable the auto-generation of launch.json configurations (default: on).
 - Option to add compile errors to the problems view (default: on).
 
 ### Changed
 
-- Run non-debug test sessions outside of debugger. Now a crash test will not hang inside the debugger. Also we can stream test output to the test explorer view.
+- Run non-debug test sessions outside of debugger. Now a crash test will not suspend inside the debugger. Also we can stream test output to the test explorer view.
 - Show skipped tests as skipped, instead of passed.
 
 ## 0.4.0 - 2022-03-22

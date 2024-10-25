@@ -118,7 +118,7 @@ function replaceWithMocks<T>(obj: Partial<T>): MockedObject<T> {
             }
         } catch (error) {
             // Certain VSCode internals are locked behind API flags that will
-            // throw an error if not set. Hang onto the error and throw it later
+            // throw an error if not set. Hold onto the error and throw it later
             // if this property is actually accessed by the test.
             (error as any)._wasThrownByRealObject = true;
             result[property] = error;

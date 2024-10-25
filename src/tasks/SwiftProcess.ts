@@ -61,9 +61,9 @@ export interface SwiftProcess {
      */
     handleInput(s: string): void;
     /**
-     * Forcefully kill the pty process. Optionally can provide a signal.
+     * Forcefully terminate the pty process. Optionally can provide a signal.
      */
-    kill(signal?: NodeJS.Signals): void;
+    terminate(signal?: NodeJS.Signals): void;
     /**
      * Resize the pty to match the new {@link vscode.Pseudoterminal} dimensions
      *
@@ -129,7 +129,7 @@ export class SwiftPtyProcess implements SwiftProcess {
         this.spawnedProcess?.write(s);
     }
 
-    kill(signal?: NodeJS.Signals): void {
+    terminate(signal?: NodeJS.Signals): void {
         if (!this.spawnedProcess) {
             return;
         }
