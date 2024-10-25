@@ -72,7 +72,7 @@ export class TestSwiftProcess implements SwiftProcess {
         this.closeEmitter.fire(exitCode);
     }
 
-    kill(): void {
+    terminate(): void {
         this.close(8);
     }
 

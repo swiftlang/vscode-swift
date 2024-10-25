@@ -81,16 +81,16 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Dispos
     /**
      * Called by vscode when the user interacts with the
      * terminal. Here we will handle any special sequences,
-     * ex. ctrl+c to kill, and otherwise pass the input along
+     * ex. ctrl+c to terminate, and otherwise pass the input along
      * to {@link SwiftProcess.handleInput}
      *
      * @param data VT sequence as a string
      */
     handleInput(data: string): void {
         const buf: Buffer = Buffer.from(data);
-        // Kill on ctrl+c
+        // Terminate process on ctrl+c
         if (buf.length === 1 && buf[0] === 3) {
-            this.swiftProcess.kill();
+            this.swiftProcess.terminate();
         } else {
             this.swiftProcess.handleInput(data);
         }
@@ -105,6 +105,6 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Dispos
     onDidClose: vscode.Event<number | void> = this.closeEmitter.event;
 
     close(): void {
-        this.swiftProcess.kill();
+        this.swiftProcess.terminate();
     }
 }

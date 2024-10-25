@@ -14,7 +14,7 @@ To begin development on the VS Code extension for Swift you will need to install
 ```
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 ```
-More details on nvm installation can be found in the [README](https://github.com/nvm-sh/nvm/blob/master/README.md) from its GitHub repository.
+More details on nvm installation can be found in the [README](https://github.com/nvm-sh/nvm/?tab=readme-ov-file) from its GitHub repository.
 
 Once you have installed nvm, you can clone and configure the repository.
 

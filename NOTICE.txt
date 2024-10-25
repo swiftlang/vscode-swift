@@ -34,6 +34,6 @@ This product contains source code from Apple's SourceKit LSP project
 This product contains source code from CodeLLDB vscode LLDB extension
 
   * LICENSE (MIT):
-    * https://github.com/vadimcn/vscode-lldb/blob/master/LICENSE
+    * https://github.com/vadimcn/codelldb/tree/HEAD/LICENSE
   * HOMEPAGE:
     * https://github.com/vadimcn/vscode-lldb
