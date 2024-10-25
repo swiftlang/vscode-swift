@@ -61,17 +61,9 @@ export async function useLocalDependency(
         `Use local version of ${identifier}`,
         currentFolder,
         true
-    ).then(
-        success => {
-            if (success) {
-                ctx.fireEvent(currentFolder, FolderOperation.resolvedUpdated);
-            }
-            return success;
-        },
-        reason => {
-            console.log(`reason:${reason}`);
-            return false;
-        }
     );
+    if (success) {
+        ctx.fireEvent(currentFolder, FolderOperation.resolvedUpdated);
+    }
     return success;
 }

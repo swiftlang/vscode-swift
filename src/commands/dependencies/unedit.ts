@@ -35,7 +35,7 @@ export async function uneditDependency(identifier: string, ctx: WorkspaceContext
     });
 }
 
-export async function uneditFolderDependency(
+async function uneditFolderDependency(
     folder: FolderContext,
     identifier: string,
     ctx: WorkspaceContext,
