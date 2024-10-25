@@ -1,5 +1,6 @@
-#!/usr/bin/env node
+#!/bin/bash
 
+node << 'EOF'
 const { execSync } = require('child_process');
 
 // Default to 'ci' if no argument is provided
@@ -9,7 +10,8 @@ const job = (process.argv[2] || 'ci')
 const swiftVersion = (process.argv[3] || 'main').replace(/\./g, '');
 
 const baseConfigFile = job === 'ci' ? 'docker-compose.yaml' : 'docker-compose-nightly.yaml'
-const command = `docker compose -f docker/${baseConfigFile} -f docker/docker-compose.*.${swiftVersion}.yaml -p swift-vscode-${swiftVersion}-prb run --rm test`;
+const command = `docker compose -f docker/${baseConfigFile} -f docker/docker-compose.*.${swiftVersion}.yaml -p swift-vscode-${swiftVersion}-prb run --rm -T test`;
 
 console.log(`Running: ${command}`);
 execSync(command, { stdio: 'inherit' });
+EOF
