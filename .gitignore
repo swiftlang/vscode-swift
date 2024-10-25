@@ -2,6 +2,7 @@ out
 dist
 coverage
 node_modules
+test-results
 default.profraw
 *.vsix
 .vscode-test
