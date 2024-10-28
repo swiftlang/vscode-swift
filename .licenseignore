@@ -1,0 +1,12 @@
+.devcontainer
+*.md
+*.woff
+*.json
+*.txt
+*.png
+*.jpg
+*.code-snippets
+\.**
+LICENSE
+assets/test/*
+docker
