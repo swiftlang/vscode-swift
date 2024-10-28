@@ -18,6 +18,8 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "*chai*"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "@vscode/vsce"
+        update-types: ["version-update:semver-major"]
       - dependency-name: "@types/vscode"
     groups:
       all-dependencies:
