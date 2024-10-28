@@ -15,10 +15,8 @@ jobs:
       api_breakage_check_enabled: false
       docs_check_enabled: false
       format_check_enabled: false
-      # https://github.com/swiftlang/vscode-swift/issues/1162
-      shell_check_enabled: false
-      # https://github.com/swiftlang/vscode-swift/issues/1161
-      unacceptable_language_check_enabled: false
+      shell_check_enabled: true
+      unacceptable_language_check_enabled: true
 
   tests:
     name: Test
