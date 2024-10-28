@@ -23,6 +23,6 @@ xvfb-run -a npm run coverage 2>&1 | grep -Ev "Failed to connect to the bus|GPU s
 exit_code=${PIPESTATUS[0]}
 
 rm -rf "${current_directory}/coverage"
-cp -R ./coverage $current_directory || true
+cp -R ./coverage "${current_directory}" || true
 
 exit "${exit_code}"
