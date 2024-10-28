@@ -649,6 +649,13 @@ function getBaseConfig(ctx: FolderContext, expandEnvVariables: boolean) {
         args: [],
         preLaunchTask: `swift: Build All${nameSuffix}`,
         terminal: "console",
+        // DisableASLR when running in Docker CI https://stackoverflow.com/a/78471987
+        ...(process.env["CI"]
+            ? {
+                  disableASLR: false,
+                  initCommands: ["settings set target.disable-aslr false"],
+              }
+            : {}),
     };
 }
 
