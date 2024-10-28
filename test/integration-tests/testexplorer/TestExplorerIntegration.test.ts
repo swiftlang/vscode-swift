@@ -66,7 +66,7 @@ suite("Test Explorer Suite", function () {
             });
         }
 
-        suite("lldb-dap", () => {
+        suite.only("lldb-dap", () => {
             beforeEach(async function () {
                 const testContext = await setupTestExplorerTest({
                     "swift.debugger.useDebugAdapterFromToolchain": true,

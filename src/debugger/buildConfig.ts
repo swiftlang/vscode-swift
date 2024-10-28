@@ -649,6 +649,12 @@ function getBaseConfig(ctx: FolderContext, expandEnvVariables: boolean) {
         args: [],
         preLaunchTask: `swift: Build All${nameSuffix}`,
         terminal: "console",
+        ...(process.env["CI"] === "1"
+            ? {
+                  disableASLR: false,
+                  initCommands: ["settings set target.disable-aslr false"],
+              }
+            : {}),
     };
 }
 

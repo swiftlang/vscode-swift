@@ -849,6 +849,7 @@ export class TestRunner {
             ) as vscode.DebugConfiguration[];
 
             const debugRuns = validBuildConfigs.map(config => {
+                console.log("Debugging with profile", JSON.stringify(config));
                 return () =>
                     new Promise<void>((resolve, reject) => {
                         if (this.testRun.isCancellationRequested) {
@@ -858,6 +859,7 @@ export class TestRunner {
 
                         // add cancelation
                         const startSession = vscode.debug.onDidStartDebugSession(session => {
+                            console.log(">>> Debugging session started", JSON.stringify(session));
                             if (config.testType === TestLibrary.xctest) {
                                 this.testRun.testRunStarted();
                             }
@@ -884,10 +886,12 @@ export class TestRunner {
                         });
                         subscriptions.push(startSession);
 
+                        console.log(">>> Start debugging...");
                         vscode.debug
                             .startDebugging(this.folderContext.workspaceFolder, config)
                             .then(
                                 async started => {
+                                    console.log(">>> Did start?", started);
                                     if (started) {
                                         if (config.testType === TestLibrary.swiftTesting) {
                                             // Watch the pipe for JSONL output and parse the events into test explorer updates.
@@ -925,6 +929,7 @@ export class TestRunner {
                                     }
                                 },
                                 reason => {
+                                    console.log(">>> Failed to start", reason);
                                     subscriptions.forEach(sub => sub.dispose());
                                     reject(reason);
                                 }
@@ -935,6 +940,7 @@ export class TestRunner {
             // Run each debugging session sequentially
             await debugRuns.reduce((p, fn) => p.then(() => fn()), Promise.resolve());
         });
+        console.log(">>> All done!");
     }
 
     /** Returns a callback that handles a chunk of stdout output from a test run. */
