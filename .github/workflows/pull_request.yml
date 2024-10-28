@@ -9,8 +9,7 @@ jobs:
     name: Soundness
     uses: swiftlang/github-workflows/.github/workflows/soundness.yml@main
     with:
-      # https://github.com/swiftlang/github-workflows/issues/48
-      license_header_check_enabled: false
+      license_header_check_enabled: true
       license_header_check_project_name: "VS Code Swift"
       api_breakage_check_enabled: false
       docs_check_enabled: false
