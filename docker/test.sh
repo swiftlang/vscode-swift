@@ -1,6 +1,21 @@
 #!/bin/bash
 set -ex
 
+case $(uname | tr '[:upper:]' '[:lower:]') in
+  linux*)
+    export OS_NAME=linux
+    ;;
+  darwin*)
+    export OS_NAME=osx
+    ;;
+  msys*)
+    export OS_NAME=windows
+    ;;
+  *)
+    export OS_NAME=notset
+    ;;
+esac
+
 current_directory=$(pwd)
 
 mkdir /tmp/code
@@ -19,8 +34,13 @@ npm run lint
 npm run format
 npm run package
 
-xvfb-run -a npm run coverage 2>&1 | grep -Ev "Failed to connect to the bus|GPU stall due to ReadPixels"
-exit_code=${PIPESTATUS[0]}
+if [ "$OS_NAME" = "linux" ]; then
+    xvfb-run -a npm run coverage 2>&1 | grep -Ev "Failed to connect to the bus|GPU stall due to ReadPixels"
+    exit_code=${PIPESTATUS[0]}
+else
+    npm run coverage 2>&1 | grep -Ev "Failed to connect to the bus|GPU stall due to ReadPixels"
+    exit_code=${PIPESTATUS[0]}
+fi
 
 rm -rf "${current_directory}/coverage"
 cp -R ./coverage "${current_directory}" || true
