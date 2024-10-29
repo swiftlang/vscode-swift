@@ -43,12 +43,12 @@ suite("Dependency Commmands Test Suite", function () {
         });
 
         test("Contract: spm resolve", async () => {
-            const result = await vscode.commands.executeCommand(Commands.ResolveDependencies);
+            const result = await vscode.commands.executeCommand(Commands.RESOLVE_DEPENDENCIES);
             expect(result).to.be.true;
         });
 
         test("Contract: spm update", async () => {
-            const result = await vscode.commands.executeCommand(Commands.UpdateDependencies);
+            const result = await vscode.commands.executeCommand(Commands.UPDATE_DEPENDENCIES);
             expect(result).to.be.true;
         });
     });
@@ -97,7 +97,10 @@ suite("Dependency Commmands Test Suite", function () {
             // Contract: spm edit with user supplied local version of dependency
             const windowMock = sinon.stub(vscode.window, "showOpenDialog");
             windowMock.resolves([testAssetUri("Swift-Markdown")]);
-            const result = await vscode.commands.executeCommand(Commands.UseLocalDependency, item);
+            const result = await vscode.commands.executeCommand(
+                Commands.USE_LOCAL_DEPENDENCY,
+                item
+            );
             expect(result).to.be.true;
             windowMock.restore();
 
@@ -112,7 +115,7 @@ suite("Dependency Commmands Test Suite", function () {
             await useLocalDependencyTest();
 
             // Contract: spm reset
-            const result = await vscode.commands.executeCommand(Commands.ResetPackage);
+            const result = await vscode.commands.executeCommand(Commands.RESET_PACKAGE);
             expect(result).to.be.true;
         });
 
@@ -120,7 +123,7 @@ suite("Dependency Commmands Test Suite", function () {
             await useLocalDependencyTest();
 
             // Contract: spm unedit
-            const result = await vscode.commands.executeCommand(Commands.UneditDependency, item);
+            const result = await vscode.commands.executeCommand(Commands.UNEDIT_DEPENDENCY, item);
             expect(result).to.be.true;
         });
     });
