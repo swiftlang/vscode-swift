@@ -23,14 +23,14 @@ import { FolderContext } from "../FolderContext";
  * Executes a {@link vscode.Task task} to run swift target.
  */
 export async function runBuild(ctx: WorkspaceContext) {
-    await debugBuildWithOptions(ctx, { noDebug: true });
+    return await debugBuildWithOptions(ctx, { noDebug: true });
 }
 
 /**
  * Executes a {@link vscode.Task task} to debug swift target.
  */
 export async function debugBuild(ctx: WorkspaceContext) {
-    await debugBuildWithOptions(ctx, {});
+    return await debugBuildWithOptions(ctx, {});
 }
 
 /**
@@ -41,7 +41,7 @@ export async function cleanBuild(ctx: WorkspaceContext) {
     if (!current) {
         return;
     }
-    await folderCleanBuild(current);
+    return await folderCleanBuild(current);
 }
 
 /**
@@ -62,7 +62,7 @@ export async function folderCleanBuild(folderContext: FolderContext) {
         folderContext.workspaceContext.toolchain
     );
 
-    await executeTaskWithUI(task, "Clean Build", folderContext);
+    return await executeTaskWithUI(task, "Clean Build", folderContext);
 }
 
 /**

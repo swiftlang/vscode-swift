@@ -178,15 +178,17 @@ export async function debugLaunchConfig(
     config: vscode.DebugConfiguration,
     options: vscode.DebugSessionOptions = {}
 ) {
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<boolean>((resolve, reject) => {
         vscode.debug.startDebugging(workspaceFolder, config, options).then(
             started => {
                 if (started) {
                     const terminateSession = vscode.debug.onDidTerminateDebugSession(async () => {
                         // dispose terminate debug handler
                         terminateSession.dispose();
-                        resolve();
+                        resolve(true);
                     });
+                } else {
+                    resolve(false);
                 }
             },
             reason => {
