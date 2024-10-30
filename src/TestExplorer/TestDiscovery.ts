@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import { SwiftPackage, TargetType } from "../SwiftPackage";
-import { LSPTestItem } from "../sourcekit-lsp/lspExtensions";
+import { LSPTestItem } from "../sourcekit-lsp/extensions";
 import { reduceTestItemChildren } from "./TestUtils";
 
 /** Test class definition */
