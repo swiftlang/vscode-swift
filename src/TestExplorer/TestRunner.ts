@@ -1130,7 +1130,7 @@ export class TestRunnerTestRunState implements ITestRunState {
         }
 
         const isSuite = test.children.size > 0;
-        const issues = isSuite ? this.childrensIssues(test) : this.issues.get(index) ?? [];
+        const issues = isSuite ? this.childrensIssues(test) : (this.issues.get(index) ?? []);
         if (issues.length > 0) {
             const allUnknownIssues = issues.filter(({ isKnown }) => !isKnown);
             if (allUnknownIssues.length === 0) {
