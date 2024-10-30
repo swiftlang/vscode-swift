@@ -10,9 +10,19 @@
     "curly": "error",
     "eqeqeq": "warn",
     "no-throw-literal": "warn",
-    "semi": "off",
+    // TODO "@typescript-eslint/semi" rule moved to https://eslint.style
+    "semi": "error",
+    // Mostly fails tests, ex. expect(...).to.be.true returns a Chai.Assertion
+    "@typescript-eslint/no-unused-expressions": "off",
     "@typescript-eslint/no-non-null-assertion": "off",
-    "@typescript-eslint/semi": "error"
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "args": "all",
+        "argsIgnorePattern": "^_",
+        "caughtErrors": "none"
+      }
+    ]
   },
   "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended", "prettier"],
   "ignorePatterns": ["out", "dist", "**/*.d.ts"]

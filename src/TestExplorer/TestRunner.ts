@@ -431,7 +431,7 @@ export class TestRunner {
                     );
                     onCreateTestRun.fire(runner.testRun);
                     if (request.profile) {
-                        request.profile.loadDetailedCoverage = async (testRun, fileCoverage) => {
+                        request.profile.loadDetailedCoverage = async (_testRun, fileCoverage) => {
                             return runner.testRun.coverage.loadDetailedCoverage(fileCoverage.uri);
                         };
                     }
@@ -756,7 +756,7 @@ export class TestRunner {
                 // Capture the output to print it in case of a build error.
                 // We dont want to associate it with the test run.
                 new stream.Writable({
-                    write: (chunk, encoding, next) => {
+                    write: (chunk, _encoding, next) => {
                         buildOutput += chunk.toString();
                         next();
                     },
@@ -972,7 +972,7 @@ export class TestRunner {
     ): stream.Writable {
         const handler = this.testOutputHandler(testLibrary, runState);
         return new stream.Writable({
-            write: (chunk, encoding, next) => {
+            write: (chunk, _encoding, next) => {
                 handler(chunk);
                 next();
             },

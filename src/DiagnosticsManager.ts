@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
 import configuration from "./configuration";
 import { SwiftExecution } from "./tasks/SwiftExecution";

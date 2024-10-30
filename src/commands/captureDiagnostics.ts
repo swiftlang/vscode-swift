@@ -220,7 +220,7 @@ async function sourcekitDiagnose(ctx: WorkspaceContext, dir: string) {
 
 function progressUpdatingWritable(updateProgress: (str: string) => void): Writable {
     return new Writable({
-        write(chunk, encoding, callback) {
+        write(chunk, _encoding, callback) {
             const str = (chunk as Buffer).toString("utf8").trim();
             const percent = /^([0-9])+%/.exec(str);
             if (percent && percent[1]) {

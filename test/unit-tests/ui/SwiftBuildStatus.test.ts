@@ -54,13 +54,13 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
         >({
             report: mockFn(),
         });
-        windowMock.withProgress.callsFake(async (options, task) => {
+        windowMock.withProgress.callsFake(async (_options, task) => {
             const cts = new vscode.CancellationTokenSource();
             await task(mockedProgress, cts.token);
         });
         mockedStatusItem = mockObject<StatusItem>({
             showStatusWhileRunning: mockFn(s =>
-                s.callsFake(async (task, process) => {
+                s.callsFake(async (_task, process) => {
                     await process();
                 })
             ),
