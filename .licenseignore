@@ -1,7 +1,6 @@
 .devcontainer
 *.md
 *.woff
-*.json
 *.txt
 *.png
 *.jpg
