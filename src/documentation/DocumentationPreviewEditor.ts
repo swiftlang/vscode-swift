@@ -19,6 +19,11 @@ import { WebviewMessage } from "./webview/WebviewMessage";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { Target } from "../SwiftPackage";
 import { fileExists } from "../utilities/filesystem";
+import {
+    findDocumentableSymbolAtPosition,
+    convertSymbolToDocumentationRoute,
+} from "./symbolSearch";
+import { SymbolInfoRequest } from "../sourcekit-lsp/extensions";
 
 export class DocumentationPreviewEditor implements vscode.Disposable {
     private readonly webviewPanel: vscode.WebviewPanel;
@@ -157,50 +162,41 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                 return targetRoute + "/" + symbolRoute;
             }
         }
-        return targetRoute;
+        return undefined;
     }
 
     private async findSymbolInDocument(
         document: vscode.TextDocument,
         range: vscode.Range
     ): Promise<string | undefined> {
-        const symbols: (vscode.SymbolInformation | vscode.DocumentSymbol)[] =
-            await vscode.commands.executeCommand(
-                "vscode.executeDocumentSymbolProvider",
-                document.uri
-            );
-        for (const symbol of symbols) {
-            if (!("children" in symbol)) {
-                continue;
-            }
-            const symbolRoute = this.searchSymbol(symbol, range);
-            if (symbolRoute) {
-                return symbolRoute;
-            }
-        }
-        return undefined;
-    }
+        const symbols: vscode.DocumentSymbol[] = (
+            await vscode.commands.executeCommand<
+                (vscode.SymbolInformation | vscode.DocumentSymbol)[]
+            >("vscode.executeDocumentSymbolProvider", document.uri)
+        ).filter((sym): sym is vscode.DocumentSymbol => "children" in sym);
 
-    private searchSymbol(
-        symbol: vscode.DocumentSymbol,
-        range: vscode.Range,
-        context?: string
-    ): string | undefined {
-        if (!symbol.range.contains(range)) {
-            return;
+        const symbol = findDocumentableSymbolAtPosition(symbols, range.start);
+        if (!symbol) {
+            return undefined;
         }
-        if (!context) {
-            context = symbol.name;
-        } else {
-            context += "/" + symbol.name;
-        }
-        for (const child of symbol.children) {
-            const childResult = this.searchSymbol(child, range, context);
-            if (childResult) {
-                return childResult;
+        const symbolRoute = convertSymbolToDocumentationRoute(symbol, symbols);
+        // Older versions of SourceKit-LSP don't include parameter information for constructors
+        // in the document symbol name. Use a SymbolInfoRequest to grab this information.
+        const response = await this.context.languageClientManager.useLanguageClient(
+            async client => {
+                return await client.sendRequest(SymbolInfoRequest.type, {
+                    textDocument: {
+                        uri: document.uri.toString(),
+                    },
+                    position: symbol.selectionRange.start,
+                });
             }
+        );
+        const symbolDetails = response.at(0);
+        if (!symbolDetails || !symbolDetails.name) {
+            return symbolRoute;
         }
-        return context;
+        return path.join(symbolRoute, "..", symbolDetails.name);
     }
 }
 
