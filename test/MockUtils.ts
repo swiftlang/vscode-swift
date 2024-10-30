@@ -254,13 +254,13 @@ export function mockGlobalObject<T, K extends MockableObjectsOf<T>>(
     });
     // Return the proxy to the real mock
     return new Proxy<any>(originalValue, {
-        get(target, property) {
+        get(_target, property) {
             if (!realMock) {
                 throw Error("Mock proxy accessed before setup()");
             }
             return (realMock as any)[property];
         },
-        set(target, property, value) {
+        set(_target, property, value) {
             (realMock as any)[property] = value;
             return true;
         },
@@ -330,13 +330,13 @@ export function mockGlobalModule<T>(mod: T): MockedObject<T> {
     });
     // Return the proxy to the real mock
     return new Proxy<any>(originalValue, {
-        get(target, property) {
+        get(_target, property) {
             if (!realMock) {
                 throw Error("Mock proxy accessed before setup()");
             }
             return (mod as any)[property];
         },
-        set(target, property, value) {
+        set(_target, property, value) {
             (mod as any)[property] = value;
             return true;
         },
@@ -453,13 +453,13 @@ export function mockGlobalEvent<T, K extends EventsOf<T>>(
     });
     // Return the proxy to the EventEmitter
     return new Proxy(new AsyncEventEmitter(), {
-        get(target, property) {
+        get(_target, property) {
             if (!eventEmitter) {
                 throw Error("Mock proxy accessed before setup()");
             }
             return (eventEmitter as any)[property];
         },
-        set(target, property, value) {
+        set(_target, property, value) {
             (eventEmitter as any)[property] = value;
             return true;
         },

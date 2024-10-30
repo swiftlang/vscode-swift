@@ -61,7 +61,7 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
         this.channel.clear();
     }
 
-    show(column?: unknown, preserveFocus?: boolean | undefined): void {
+    show(_column?: unknown, preserveFocus?: boolean | undefined): void {
         this.channel.show(preserveFocus);
     }
 

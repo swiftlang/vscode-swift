@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 //===----------------------------------------------------------------------===//
 //
 // This source file is part of the VS Code Swift open source project

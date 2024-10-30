@@ -14,8 +14,6 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "strip-ansi"
         update-types: ["version-update:semver-major"]
-      - dependency-name: "@typescript-eslint/*"
-        update-types: ["version-update:semver-major"]
       - dependency-name: "*chai*"
         update-types: ["version-update:semver-major"]
       - dependency-name: "@vscode/vsce"

@@ -26,7 +26,7 @@ suite("Utilities Test Suite", () => {
         let result = "";
         // Use WriteStream to log results
         const writeStream = new Stream.Writable();
-        writeStream._write = (chunk, encoding, next) => {
+        writeStream._write = (chunk, _encoding, next) => {
             const text = chunk.toString("utf8");
             result += text;
             next();

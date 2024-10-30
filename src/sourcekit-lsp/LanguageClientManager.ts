@@ -726,14 +726,14 @@ export class SourceKitLSPErrorHandler implements langclient.ErrorHandler {
     /**
      * An error has occurred while writing or reading from the connection.
      *
-     * @param error - the error received
-     * @param message - the message to be delivered to the server if know.
+     * @param _error - the error received
+     * @param _message - the message to be delivered to the server if know.
      * @param count - a count indicating how often an error is received. Will
      *  be reset if a message got successfully send or received.
      */
     error(
-        error: Error,
-        message: langclient.Message | undefined,
+        _error: Error,
+        _message: langclient.Message | undefined,
         count: number | undefined
     ): langclient.ErrorHandlerResult | Promise<langclient.ErrorHandlerResult> {
         if (count && count <= 3) {

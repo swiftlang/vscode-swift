@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
 import * as vscode from "vscode";
 import configuration, { ShowBuildStatusOptions } from "../configuration";

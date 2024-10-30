@@ -166,7 +166,7 @@ export class TestCoverage {
 
         let buffer = Buffer.alloc(0);
         const writableStream = new Writable({
-            write(chunk, encoding, callback) {
+            write(chunk, _encoding, callback) {
                 buffer = Buffer.concat([buffer, chunk]);
                 callback();
             },
