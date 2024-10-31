@@ -11,7 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-//
+
 export enum Workbench {
     ACTION_DEBUG_CONTINUE = "workbench.action.debug.continue",
     ACTION_CLOSEALLEDITORS = "workbench.action.closeAllEditors",

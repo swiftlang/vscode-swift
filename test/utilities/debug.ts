@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
-import { Workbench } from "../../src/utilities/command";
+import { Workbench } from "../../src/utilities/commands";
 import { DebugAdapter } from "../../src/debugger/debugAdapter";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 

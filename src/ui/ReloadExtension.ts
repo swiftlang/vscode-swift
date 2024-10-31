@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { Workbench } from "../utilities/command";
+import { Workbench } from "../utilities/commands";
 
 /**
  * Prompts the user to reload the extension in cases where we are unable to do

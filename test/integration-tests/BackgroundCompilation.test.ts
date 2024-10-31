@@ -18,7 +18,7 @@ import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { globalWorkspaceContextPromise } from "./extension.test";
 import { testAssetUri } from "../fixtures";
 import { waitForNoRunningTasks } from "../utilities";
-import { Workbench } from "../../src/utilities/command";
+import { Workbench } from "../../src/utilities/commands";
 
 suite("BackgroundCompilation Test Suite", () => {
     let workspaceContext: WorkspaceContext;

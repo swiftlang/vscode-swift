@@ -15,7 +15,7 @@ import { expect } from "chai";
 import { mockGlobalObject } from "../../MockUtils";
 import * as vscode from "vscode";
 import { showReloadExtensionNotification } from "../../../src/ui/ReloadExtension";
-import { Workbench } from "../../../src/utilities/command";
+import { Workbench } from "../../../src/utilities/commands";
 
 suite("showReloadExtensionNotification()", async function () {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");

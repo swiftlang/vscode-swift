@@ -23,7 +23,7 @@ import { DiagnosticsManager } from "../../src/DiagnosticsManager";
 import { FolderContext } from "../../src/FolderContext";
 import { Version } from "../../src/utilities/version";
 import { folderContextPromise, globalWorkspaceContextPromise } from "./extension.test";
-import { Workbench } from "../../src/utilities/command";
+import { Workbench } from "../../src/utilities/commands";
 
 const waitForDiagnostics = (uris: vscode.Uri[], allowEmpty: boolean = true) =>
     new Promise<void>(res =>
