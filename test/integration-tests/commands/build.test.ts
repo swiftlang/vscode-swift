@@ -23,6 +23,8 @@ import { FolderContext } from "../../../src/FolderContext";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Commands } from "../../../src/commands";
 import { makeDebugConfigurations } from "../../../src/debugger/launch";
+import { Workbench } from "../../../src/utilities/command";
+import { continueSession, waitForDebugAdapterCommand } from "../../utilities/debug";
 
 suite("Build Commands", function () {
     let folderContext: FolderContext;
@@ -42,7 +44,7 @@ suite("Build Commands", function () {
     });
 
     suiteTeardown(async () => {
-        await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+        await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
     });
 
     test("Swift: Run Build", async () => {
@@ -63,16 +65,27 @@ suite("Build Commands", function () {
         expect(result).to.be.true;
 
         const afterItemCount = fs.readdirSync(buildPath).length;
+        // This test will run in order after the Swift: Run Build test,
+        // where .build folder is going to be filled with built artifacts.
+        // After executing the clean command the build directory is guranteed to have less entry.
         expect(afterItemCount).to.be.lessThan(beforeItemCount);
     });
 
-    test("Swift: Debug Build", async () => {
+    test("Swift: Debug Build @slow", async () => {
         vscode.debug.addBreakpoints(breakpoints);
+        // Promise used to indicate we hit the break point.
+        // NB: "stopped" is the exact command when debuggee has stopped due to break point,
+        // but "stackTrace" is the deterministic sync point we will use to make sure we can execute continue
+        const bpPromise = waitForDebugAdapterCommand(
+            "Debug PackageExe (defaultPackage)",
+            "stackTrace",
+            workspaceContext
+        );
 
         const result = vscode.commands.executeCommand(Commands.DEBUG);
         expect(result).to.eventually.be.true;
 
-        await vscode.commands.executeCommand("workbench.action.debug.continue");
+        await bpPromise.then(() => continueSession());
         vscode.debug.removeBreakpoints(breakpoints);
     });
 });

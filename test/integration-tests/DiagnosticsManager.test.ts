@@ -23,6 +23,7 @@ import { DiagnosticsManager } from "../../src/DiagnosticsManager";
 import { FolderContext } from "../../src/FolderContext";
 import { Version } from "../../src/utilities/version";
 import { folderContextPromise, globalWorkspaceContextPromise } from "./extension.test";
+import { Workbench } from "../../src/utilities/command";
 
 const waitForDiagnostics = (uris: vscode.Uri[], allowEmpty: boolean = true) =>
     new Promise<void>(res =>
@@ -907,7 +908,7 @@ suite("DiagnosticsManager Test Suite", async function () {
         });
 
         teardown(async () => {
-            await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+            await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
         });
 
         test("Provides swift diagnostics", async () => {

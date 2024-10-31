@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import { Workbench } from "../utilities/command";
 
 /**
  * Prompts the user to reload the extension in cases where we are unable to do
@@ -29,7 +30,7 @@ export async function showReloadExtensionNotification<T extends string>(
     const buttons: ("Reload Extensions" | T)[] = ["Reload Extensions", ...items];
     const selected = await vscode.window.showWarningMessage(message, ...buttons);
     if (selected === "Reload Extensions") {
-        await vscode.commands.executeCommand("workbench.action.reloadWindow");
+        await vscode.commands.executeCommand(Workbench.ACTION_RELOADWINDOW);
     }
     return selected;
 }
