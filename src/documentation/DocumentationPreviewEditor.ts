@@ -180,6 +180,9 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
             return undefined;
         }
         const symbolRoute = convertSymbolToDocumentationRoute(symbol, symbols);
+        if (!symbolRoute) {
+            return undefined;
+        }
         // Older versions of SourceKit-LSP don't include parameter information for constructors
         // in the document symbol name. Use a SymbolInfoRequest to grab this information.
         const response = await this.context.languageClientManager.useLanguageClient(

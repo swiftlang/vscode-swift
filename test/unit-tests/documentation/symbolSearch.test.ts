@@ -102,7 +102,7 @@ suite("Documentation Symbol Search Unit Tests", () => {
         ];
     });
 
-    test("finds a symbol when the selection range is directly within the symbol identifier", () => {
+    test("finds a symbol when the cursor is directly within the symbol identifier", () => {
         expect(findDocumentableSymbolAtPosition(documentSymbols, new Position(10, 17)))
             .to.have.property("name")
             .that.equals("CareSchedule");
@@ -132,7 +132,7 @@ suite("Documentation Symbol Search Unit Tests", () => {
             .that.equals("init(events:)");
     });
 
-    test("finds a symbol when the selection range is within the comment above the symbol", () => {
+    test("finds a symbol when the cursor is within the comment above the symbol", () => {
         expect(findDocumentableSymbolAtPosition(documentSymbols, new Position(9, 0)))
             .to.have.property("name")
             .that.equals("CareSchedule");
@@ -160,6 +160,57 @@ suite("Documentation Symbol Search Unit Tests", () => {
         expect(findDocumentableSymbolAtPosition(documentSymbols, new Position(29, 0)))
             .to.have.property("name")
             .that.equals("init(events:)");
+    });
+
+    test("finds the constructor symbol when the cursor is within the constructor body", () => {
+        expect(findDocumentableSymbolAtPosition(documentSymbols, new Position(31, 17)))
+            .to.have.property("name")
+            .that.equals("init(events:)");
+    });
+
+    test("finds a symbol when the cursor is within the symbol's comment and its siblings are not ordered by position", () => {
+        const documentSymbols: DocumentSymbol[] = [
+            {
+                name: "MyStruct",
+                kind: SymbolKind.Struct,
+                detail: "",
+                range: new Range(0, 0, 7, 1),
+                selectionRange: new Range(0, 14, 0, 22),
+                children: [
+                    // A comment would exist above this symbol on line 1
+                    {
+                        name: "property",
+                        kind: SymbolKind.Property,
+                        detail: "",
+                        range: new Range(2, 4, 2, 16),
+                        selectionRange: new Range(2, 8, 2, 16),
+                        children: [],
+                    },
+                    // A comment would exist above this symbol on line 5
+                    {
+                        name: "init()",
+                        kind: SymbolKind.Constructor,
+                        detail: "",
+                        range: new Range(6, 2, 8, 1),
+                        selectionRange: new Range(6, 2, 6, 6),
+                        children: [],
+                    },
+                    // A comment would exist above this symbol on line 3
+                    {
+                        name: "Enumeration",
+                        kind: SymbolKind.Enum,
+                        detail: "",
+                        range: new Range(4, 4, 4, 25),
+                        selectionRange: new Range(4, 9, 4, 20),
+                        children: [],
+                    },
+                ],
+            },
+        ];
+        // Try to find the comment above the "Enumeration" symbol
+        expect(findDocumentableSymbolAtPosition(documentSymbols, new Position(3, 13)))
+            .to.have.property("name")
+            .that.equals("Enumeration");
     });
 
     test("converts a symbol into its documentation route", () => {
