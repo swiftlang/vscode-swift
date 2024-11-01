@@ -25,6 +25,10 @@ if [[ "$1" != "--force-run" ]]; then
 fi
 
 set -eu
+
+original_dir=$(pwd)
+cd "$(dirname "$0")/.."
+
 here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 function replace_acceptable_years() {
@@ -81,8 +85,8 @@ EOF
       ;;
   esac
 
-  expected_lines=$(cat "$tmp" | wc -l)
-  expected_sha=$(cat "$tmp" | shasum)
+  expected_lines=$(wc -l < "$tmp")
+  expected_sha=$(shasum < "$tmp")
 
   (
     cd "$here/.."
@@ -98,16 +102,10 @@ EOF
             \( \! -path './coverage/*' -a \
             \( "${matching_files[@]}" \) \
             \) \) \) \) \) \) \) \)
-
-        if [[ "$language" = bash ]]; then
-            # add everything with a shell shebang too
-            git grep --full-name -l '#!/bin/bash'
-            git grep --full-name -l '#!/bin/sh'
-        fi
-    } | while read line; do
-      if [[ "$(cat "$line" | replace_acceptable_years | head -n $expected_lines | shasum)" != "$expected_sha" ]]; then
-        printf "\033[0;31mmissing headers in file '$line'!\033[0m\n"
-        diff -u <(cat "$line" | replace_acceptable_years | head -n $expected_lines) "$tmp"
+    } | while read -r line; do
+      if [[ "$(replace_acceptable_years < "$line" | head -n "$expected_lines" | shasum)" != "$expected_sha" ]]; then
+        printf "\033[0;31mmissing headers in file '%s'!\033[0m\n" "$line"
+        diff -u <(replace_acceptable_years < "$line" | head -n "$expected_lines") "$tmp"
         exit 1
       fi
     done
@@ -116,6 +114,7 @@ EOF
 done
 
 rm "$tmp"
+cd "$original_dir"
 
 # printf "=> Checking for broken links in documentation... "
 # find . -name node_modules -prune -o -name \*.md -print0 | xargs -0 -n1 npx markdown-link-check
