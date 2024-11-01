@@ -1274,6 +1274,7 @@
     "format": "prettier --check .",
     "pretest": "npm run compile-tests",
     "soundness": "docker compose -f docker/docker-compose.yaml -p swift-vscode-soundness-prb run --rm soundness",
+    "test-soundness": "scripts/soundness.sh",
     "test": "vscode-test",
     "test-ci": "docker/test-ci.sh ci",
     "test-nightly": "docker/test-ci.sh nightly",

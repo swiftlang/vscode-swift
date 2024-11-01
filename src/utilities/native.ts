@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 //===----------------------------------------------------------------------===//
 //
 // This source file is part of the VS Code Swift open source project
@@ -12,7 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
+/* eslint-disable @typescript-eslint/no-require-imports */
 import * as vscode from "vscode";
 
 // To not electron-rebuild for every platform and arch, we want to

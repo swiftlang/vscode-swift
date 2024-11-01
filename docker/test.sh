@@ -18,6 +18,7 @@ npm ci
 npm run lint
 npm run format
 npm run package
+npm run test-soundness -- --force-run
 
 (xvfb-run -a npm run coverage; echo $? > exitcode) | grep -Ev "Failed to connect to the bus|GPU stall due to ReadPixels" && rm -rf "${current_directory}/coverage" && (cp -R ./coverage "${current_directory}" || true)
 exit "$(<exitcode)"
