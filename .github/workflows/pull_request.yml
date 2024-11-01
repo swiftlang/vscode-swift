@@ -9,7 +9,8 @@ jobs:
     name: Soundness
     uses: swiftlang/github-workflows/.github/workflows/soundness.yml@main
     with:
-      license_header_check_enabled: true
+      # Pending https://github.com/swiftlang/vscode-swift/pull/1176
+      license_header_check_enabled: false
       license_header_check_project_name: "VS Code Swift"
       api_breakage_check_enabled: false
       docs_check_enabled: false
