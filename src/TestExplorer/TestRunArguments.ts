@@ -17,8 +17,8 @@ import { reduceTestItemChildren } from "./TestUtils";
 
 type ProcessResult = {
     testItems: vscode.TestItem[];
-    xcTestArgs: string[];
-    swiftTestArgs: string[];
+    xcTestArgs: vscode.TestItem[];
+    swiftTestArgs: vscode.TestItem[];
 };
 
 /**
@@ -30,14 +30,11 @@ export class TestRunArguments {
     public xcTestArgs: string[];
     public swiftTestArgs: string[];
 
-    constructor(
-        request: vscode.TestRunRequest,
-        private isDebug: boolean
-    ) {
-        const { testItems, xcTestArgs, swiftTestArgs } = this.createTestLists(request);
+    constructor(request: vscode.TestRunRequest, isDebug: boolean) {
+        const { testItems, xcTestArgs, swiftTestArgs } = this.createTestLists(request, isDebug);
         this.testItems = testItems;
-        this.xcTestArgs = xcTestArgs;
-        this.swiftTestArgs = swiftTestArgs;
+        this.xcTestArgs = this.annotateTestArgs(xcTestArgs, isDebug);
+        this.swiftTestArgs = this.annotateTestArgs(swiftTestArgs, isDebug);
     }
 
     public get hasXCTests(): boolean {
@@ -52,9 +49,10 @@ export class TestRunArguments {
      * Construct test item list from TestRequest
      * @returns list of test items to run and list of test for XCTest arguments
      */
-    private createTestLists(request: vscode.TestRunRequest): ProcessResult {
+    private createTestLists(request: vscode.TestRunRequest, isDebug: boolean): ProcessResult {
         const includes = request.include ?? [];
-        return includes.reduce(this.createTestItemReducer(request.include, request.exclude), {
+        const excludes = request.exclude ?? [];
+        return includes.reduce(this.createTestItemReducer(includes, excludes, isDebug), {
             testItems: this.createIncludeParentList(includes),
             xcTestArgs: [],
             swiftTestArgs: [],
@@ -78,15 +76,42 @@ export class TestRunArguments {
         return Array.from(parents.values());
     }
 
+    /**
+     * Converts a list of TestItems to a regex test item ID. Depending on the TestItem's
+     * tags and whether it is a debug run the ID is converted to a regex pattern that will
+     * match the correct tests when passed to the `--filter` argument of `swift test`.
+     */
+    private annotateTestArgs(testArgs: vscode.TestItem[], isDebug: boolean): string[] {
+        return testArgs.map(arg => {
+            const isTestTarget = !!arg.tags.find(tag => tag.id === "test-target");
+            if (isTestTarget) {
+                return `${arg.id}.*`;
+            }
+            const isXCTest = !!arg.tags.find(tag => tag.id === "XCTest");
+            const hasChildren = arg.children.size > 0;
+            if (isXCTest) {
+                const terminator = hasChildren ? "/" : "$";
+                // Debugging XCTests requires exact matches, so we don't need a trailing terminator.
+                return isDebug ? arg.id : `${arg.id}${terminator}`;
+            } else {
+                // Append a trailing slash to match a suite name exactly.
+                // This prevents TestTarget.MySuite matching TestTarget.MySuite2.
+                return `${arg.id}/`;
+            }
+        });
+    }
+
     private createTestItemReducer(
-        include: readonly vscode.TestItem[] | undefined,
-        exclude: readonly vscode.TestItem[] | undefined
+        include: readonly vscode.TestItem[],
+        exclude: readonly vscode.TestItem[],
+        isDebug: boolean
     ): (previousValue: ProcessResult, testItem: vscode.TestItem) => ProcessResult {
         return (previousValue, testItem) => {
             const { testItems, swiftTestArgs, xcTestArgs } = this.processTestItem(
                 testItem,
                 include,
-                exclude
+                exclude,
+                isDebug
             );
 
             // If no children were added we can skip adding this parent.
@@ -119,63 +144,53 @@ export class TestRunArguments {
 
     private itemContainsAllArgs(
         testItem: vscode.TestItem,
-        xcTestArgs: string[],
-        swiftTestArgs: string[]
+        xcTestArgs: vscode.TestItem[],
+        swiftTestArgs: vscode.TestItem[]
     ): boolean {
-        return xcTestArgs.length + swiftTestArgs.length === testItem.children.size;
+        return (
+            testItem.children.size > 0 &&
+            xcTestArgs.length + swiftTestArgs.length === testItem.children.size
+        );
     }
 
     private simplifyTestArgs(
         testItem: vscode.TestItem,
-        xcTestArgs: string[],
-        swiftTestArgs: string[]
-    ): { xcTestResult: string[]; swiftTestResult: string[] } {
-        if (
-            testItem.parent &&
-            this.itemContainsAllArgs(testItem.parent, xcTestArgs, swiftTestArgs)
-        ) {
-            return this.simplifyTestArgs(testItem.parent, xcTestArgs, swiftTestArgs);
-        } else {
-            // If we've worked all the way up to a test target, it may have both swift-testing
-            // and XCTests.
-            const isTestTarget = !!testItem.tags.find(tag => tag.id === "test-target");
-            if (isTestTarget) {
-                return {
-                    // Add a trailing .* to match a test target name exactly.
-                    // This prevents TestTarget matching TestTarget2.
-                    xcTestResult: xcTestArgs.length > 0 ? [`${testItem.id}.*`] : [],
-                    swiftTestResult: swiftTestArgs.length > 0 ? [`${testItem.id}.*`] : [],
-                };
-            }
-
-            // If we've added all the children to the list of arguments, just add
-            // the parent instead of each individual child. This crafts a minimal set
-            // of test/suites that run all the test cases requested with the smallest list
-            // of arguments. The testItem has to have a parent to perform this optimization.
-            // If it does not we break the ability to run both swift testing tests and XCTests
-            // in the same run, since test targets can have both types of tests in them.
-            const isXCTest = !!testItem.tags.find(tag => tag.id === "XCTest");
+        xcTestArgs: vscode.TestItem[],
+        swiftTestArgs: vscode.TestItem[]
+    ): { xcTestResult: vscode.TestItem[]; swiftTestResult: vscode.TestItem[] } {
+        // If we've worked all the way up to a test target, it may have both swift-testing
+        // and XCTests.
+        const isTestTarget = !!testItem.tags.find(tag => tag.id === "test-target");
+        if (isTestTarget) {
             return {
-                swiftTestResult: [
-                    // Append a trailing slash to match a suite name exactly.
-                    // This prevents TestTarget.MySuite matching TestTarget.MySuite2.
-                    ...(!isXCTest ? [`${testItem.id}/`] : []),
-                ],
-                xcTestResult: [
-                    // Debugging XCTests require exact matches, so we don't ned a trailing slash.
-                    ...(isXCTest ? [this.isDebug ? testItem.id : `${testItem.id}/`] : []),
-                ],
+                // Add a trailing .* to match a test target name exactly.
+                // This prevents TestTarget matching TestTarget2.
+                xcTestResult: xcTestArgs.length > 0 ? [testItem] : [],
+                swiftTestResult: swiftTestArgs.length > 0 ? [testItem] : [],
             };
         }
+
+        // If we've added all the children to the list of arguments, just add
+        // the parent instead of each individual child. This crafts a minimal set
+        // of test/suites that run all the test cases requested with the smallest list
+        // of arguments. The testItem has to have a parent to perform this optimization.
+        // If it does not we break the ability to run both swift testing tests and XCTests
+        // in the same run, since test targets can have both types of tests in them.
+        const isXCTest = !!testItem.tags.find(tag => tag.id === "XCTest");
+        return {
+            xcTestResult: isXCTest ? [testItem] : [],
+            swiftTestResult: !isXCTest ? [testItem] : [],
+        };
     }
 
     private processTestItem(
         testItem: vscode.TestItem,
-        include?: readonly vscode.TestItem[],
-        exclude?: readonly vscode.TestItem[]
+        include: readonly vscode.TestItem[],
+        exclude: readonly vscode.TestItem[],
+        isDebug: boolean
     ): ProcessResult {
         // Skip tests the user asked to exclude
-        if (exclude?.includes(testItem)) {
+        if (exclude.includes(testItem)) {
             return {
                 testItems: [],
                 xcTestArgs: [],
@@ -184,12 +199,13 @@ export class TestRunArguments {
         }
 
         const testItems: vscode.TestItem[] = [];
-        const xcTestArgs: string[] = [];
-        const swiftTestArgs: string[] = [];
+        const xcTestArgs: vscode.TestItem[] = [];
+        const swiftTestArgs: vscode.TestItem[] = [];
 
         // If this test item is included or we are including everything
-        if (include?.includes(testItem) || !include) {
+        if (include.includes(testItem) || include.length === 0) {
             const isXCTest = testItem.tags.find(tag => tag.id === "XCTest");
+            const isSwiftTestingTest = testItem.tags.find(tag => tag.id === "swift-testing");
 
             // Collect up a list of all the test items involved in the run
             // from the TestExplorer tree and store them in `testItems`. Exclude
@@ -200,12 +216,9 @@ export class TestRunArguments {
                 // Only add leaf items to the list of arguments to pass to the test runner.
                 if (this.isLeafTestItem(testItem, !!isXCTest)) {
                     if (isXCTest) {
-                        // Tests in debug are specified exactly, otherwise
-                        // add the regex line ending character to avoid capturing
-                        // unwanted tests.
-                        xcTestArgs.push(this.isDebug ? testItem.id : `${testItem.id}$`);
-                    } else {
-                        swiftTestArgs.push(testItem.id);
+                        xcTestArgs.push(testItem);
+                    } else if (isSwiftTestingTest) {
+                        swiftTestArgs.push(testItem);
                     }
                 }
             }
@@ -213,7 +226,7 @@ export class TestRunArguments {
 
         return reduceTestItemChildren(
             testItem.children,
-            this.createTestItemReducer(undefined, exclude),
+            this.createTestItemReducer([], exclude, isDebug),
             {
                 testItems,
                 xcTestArgs,

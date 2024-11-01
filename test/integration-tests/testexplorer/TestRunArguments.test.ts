@@ -16,152 +16,301 @@ import * as vscode from "vscode";
 import * as assert from "assert";
 import { beforeEach } from "mocha";
 import { TestRunArguments } from "../../../src/TestExplorer/TestRunArguments";
+import { flattenTestItemCollection } from "../../../src/TestExplorer/TestUtils";
 
 suite("TestRunArguments Suite", () => {
+    // Helper function to create a test item tree from a DSL string.
+    // Tabs are used to denote a hierarchy of test items.
+    function createTestItemTree(controller: vscode.TestController, dsl: string) {
+        const lines = dsl.trim().split("\n");
+        const stack: { item: vscode.TestItem; indent: number }[] = [];
+        let root: vscode.TestItem | undefined;
+
+        lines.forEach(line => {
+            const indent = line.search(/\S/);
+            const trimmedLine = line.trim();
+            const name = trimmedLine.replace(/^(tt:|xc:|st:)/, "");
+            const tags = [];
+            if (trimmedLine.startsWith("tt:")) {
+                tags.push({ id: "test-target" });
+            } else if (trimmedLine.startsWith("xc:")) {
+                tags.push({ id: "XCTest" });
+            } else if (trimmedLine.startsWith("st:")) {
+                tags.push({ id: "swift-testing" });
+            }
+            const item = controller.createTestItem(name, name, vscode.Uri.file("/path/to/file"));
+            item.tags = tags;
+
+            while (stack.length && stack[stack.length - 1].indent >= indent) {
+                stack.pop();
+            }
+
+            if (stack.length) {
+                stack[stack.length - 1].item.children.add(item);
+            } else {
+                root = item;
+            }
+
+            stack.push({ item, indent });
+        });
+
+        controller.items.add(root!);
+    }
+
+    function runRequestByIds(include: string[], exclude: string[] = []) {
+        const allTests = flattenTestItemCollection(controller.items);
+        const includeItems = include.map(id => allTests.find(item => item.id === id));
+        const excludeItems = exclude.map(id => allTests.find(item => item.id === id));
+        if (includeItems.some(item => !item)) {
+            throw new Error("Could not find test item in include list: " + include);
+        }
+        if (excludeItems.some(item => !item)) {
+            throw new Error("Could not find test item in exclude list: " + include);
+        }
+        return new vscode.TestRunRequest(
+            includeItems as vscode.TestItem[],
+            excludeItems as vscode.TestItem[],
+            undefined
+        );
+    }
+
+    function assertRunArguments(
+        args: TestRunArguments,
+        expected: Omit<
+            Omit<Omit<TestRunArguments, "testItems">, "hasXCTests">,
+            "hasSwiftTestingTests"
+        > & { testItems: string[] }
+    ) {
+        // Order of testItems doesn't matter, that they contain the same elements.
+        assert.deepStrictEqual(
+            { ...args, testItems: args.testItems.map(item => item.id).sort() },
+            { ...expected, testItems: expected.testItems.sort() }
+        );
+    }
+
     let controller: vscode.TestController;
-    let testTarget: vscode.TestItem;
-    let xcSuite: vscode.TestItem;
-    let xcTest: vscode.TestItem;
-    let swiftTestSuite: vscode.TestItem;
-    let swiftTest: vscode.TestItem;
+    const testTargetId: string = "TestTarget";
+    const xcSuiteId: string = "XCTest Suite";
+    const xcTestId: string = "XCTest Item";
+    const swiftTestSuiteId: string = "Swift Test Suite";
+    const swiftTestId: string = "Swift Test Item";
 
     beforeEach(function () {
         controller = vscode.tests.createTestController(
             this.currentTest?.id ?? "TestRunArgumentsTests",
             ""
         );
-
-        testTarget = controller.createTestItem("TestTarget", "TestTarget");
-        testTarget.tags = [{ id: "test-target" }];
-
-        controller.items.add(testTarget);
-
-        xcSuite = controller.createTestItem(
-            "XCTest Suite",
-            "XCTest Suite",
-            vscode.Uri.file("/path/to/file")
-        );
-        xcSuite.tags = [{ id: "XCTest" }];
-
-        testTarget.children.add(xcSuite);
-
-        xcTest = controller.createTestItem(
-            "XCTest Item",
-            "XCTest Item",
-            vscode.Uri.file("/path/to/file")
-        );
-        xcTest.tags = [{ id: "XCTest" }];
-
-        xcSuite.children.add(xcTest);
-
-        swiftTestSuite = controller.createTestItem(
-            "Swift Test Suite",
-            "Swift Test Suite",
-            vscode.Uri.file("/path/to/file")
-        );
-        swiftTestSuite.tags = [{ id: "swift-testing" }];
-
-        testTarget.children.add(swiftTestSuite);
-
-        swiftTest = controller.createTestItem(
-            "Swift Test Item",
-            "Swift Test Item",
-            vscode.Uri.file("/path/to/file")
-        );
-        swiftTest.tags = [{ id: "swift-testing" }];
-
-        swiftTestSuite.children.add(swiftTest);
     });
 
-    test("Empty Request", () => {
-        const testArgs = new TestRunArguments(
-            new vscode.TestRunRequest([], undefined, undefined),
-            false
-        );
-        assert.equal(testArgs.hasXCTests, false);
-        assert.equal(testArgs.hasSwiftTestingTests, false);
+    suite("Basic Tests", () => {
+        beforeEach(() => {
+            const dsl = `
+                tt:${testTargetId}
+                    xc:${xcSuiteId}
+                        xc:${xcTestId}
+                    st:${swiftTestSuiteId}
+                        st:${swiftTestId}
+            `;
+
+            createTestItemTree(controller, dsl);
+        });
+
+        test("Empty Request", () => {
+            const testArgs = new TestRunArguments(runRequestByIds([]), false);
+            assertRunArguments(testArgs, {
+                xcTestArgs: [],
+                swiftTestArgs: [],
+                testItems: [],
+            });
+        });
+
+        test("Test hasTestType methods", () => {
+            const xcTest = new TestRunArguments(runRequestByIds([xcTestId]), false);
+            const swiftTestingTest = new TestRunArguments(runRequestByIds([swiftTestId]), false);
+            const bothTests = new TestRunArguments(runRequestByIds([xcTestId, swiftTestId]), false);
+            assert.strictEqual(xcTest.hasXCTests, true);
+            assert.strictEqual(xcTest.hasSwiftTestingTests, false);
+            assert.strictEqual(swiftTestingTest.hasXCTests, false);
+            assert.strictEqual(swiftTestingTest.hasSwiftTestingTests, true);
+            assert.strictEqual(bothTests.hasXCTests, true);
+            assert.strictEqual(bothTests.hasSwiftTestingTests, true);
+        });
+
+        test("Single XCTest", () => {
+            const testArgs = new TestRunArguments(runRequestByIds([xcTestId]), false);
+            assertRunArguments(testArgs, {
+                xcTestArgs: [`${xcTestId}$`],
+                swiftTestArgs: [],
+                testItems: [xcSuiteId, testTargetId, xcTestId],
+            });
+        });
+
+        test("Single XCTest (debug mode)", () => {
+            const testArgs = new TestRunArguments(runRequestByIds([xcTestId]), true);
+            assertRunArguments(testArgs, {
+                xcTestArgs: [xcTestId],
+                swiftTestArgs: [],
+                testItems: [xcSuiteId, testTargetId, xcTestId],
+            });
+        });
+
+        test("Both Suites Included", () => {
+            const testArgs = new TestRunArguments(
+                runRequestByIds([xcSuiteId, swiftTestSuiteId]),
+                false
+            );
+            assertRunArguments(testArgs, {
+                xcTestArgs: [`${xcSuiteId}/`],
+                swiftTestArgs: [`${swiftTestSuiteId}/`],
+                testItems: [testTargetId, xcSuiteId, xcTestId, swiftTestSuiteId, swiftTestId],
+            });
+        });
+
+        test("Exclude Suite", () => {
+            const testArgs = new TestRunArguments(
+                runRequestByIds([xcSuiteId, swiftTestSuiteId], [xcSuiteId]),
+                false
+            );
+            assertRunArguments(testArgs, {
+                xcTestArgs: [],
+                swiftTestArgs: [`${swiftTestSuiteId}/`],
+                testItems: [testTargetId, swiftTestSuiteId, swiftTestId],
+            });
+        });
+
+        test("Exclude Test", () => {
+            const testArgs = new TestRunArguments(
+                runRequestByIds([xcSuiteId, swiftTestSuiteId], [xcTestId]),
+                false
+            );
+            assertRunArguments(testArgs, {
+                xcTestArgs: [],
+                swiftTestArgs: [`${swiftTestSuiteId}/`],
+                testItems: [testTargetId, swiftTestSuiteId, swiftTestId],
+            });
+        });
+
+        test("Entire test target", () => {
+            const testArgs = new TestRunArguments(runRequestByIds([testTargetId], []), false);
+            assertRunArguments(testArgs, {
+                xcTestArgs: [`${testTargetId}.*`],
+                swiftTestArgs: [`${testTargetId}.*`],
+                testItems: [testTargetId, xcSuiteId, xcTestId, swiftTestSuiteId, swiftTestId],
+            });
+        });
     });
 
-    test("Both Suites Included", () => {
-        const testArgs = new TestRunArguments(
-            new vscode.TestRunRequest([xcSuite, swiftTestSuite], undefined, undefined),
-            false
-        );
-        assert.equal(testArgs.hasXCTests, true);
-        assert.equal(testArgs.hasSwiftTestingTests, true);
-        assert.deepEqual(testArgs.xcTestArgs, [`${xcSuite.id}/`]);
-        assert.deepEqual(testArgs.swiftTestArgs, [`${swiftTestSuite.id}/`]);
-        assert.deepEqual(
-            testArgs.testItems.map(item => item.id),
-            [testTarget.id, xcSuite.id, xcTest.id, swiftTestSuite.id, swiftTest.id]
-        );
+    test("Test empty test target", () => {
+        createTestItemTree(controller, `tt:${testTargetId}`);
+        const testArgs = new TestRunArguments(runRequestByIds([testTargetId], []), false);
+        assertRunArguments(testArgs, {
+            xcTestArgs: [],
+            swiftTestArgs: [],
+            testItems: [],
+        });
     });
 
-    test("Exclude Suite", () => {
-        const testArgs = new TestRunArguments(
-            new vscode.TestRunRequest([xcSuite, swiftTestSuite], [xcSuite], undefined),
-            false
-        );
-        assert.equal(testArgs.hasXCTests, false);
-        assert.equal(testArgs.hasSwiftTestingTests, true);
-        assert.deepEqual(testArgs.xcTestArgs, []);
-        assert.deepEqual(testArgs.swiftTestArgs, [`${swiftTestSuite.id}/`]);
-        assert.deepEqual(
-            testArgs.testItems.map(item => item.id),
-            [testTarget.id, swiftTestSuite.id, swiftTest.id]
-        );
-    });
-
-    test("Exclude Test", () => {
-        const testArgs = new TestRunArguments(
-            new vscode.TestRunRequest([xcSuite, swiftTestSuite], [xcTest], undefined),
-            false
-        );
-        assert.equal(testArgs.hasXCTests, false);
-        assert.equal(testArgs.hasSwiftTestingTests, true);
-        assert.deepEqual(testArgs.xcTestArgs, []);
-        assert.deepEqual(testArgs.swiftTestArgs, [`${swiftTestSuite.id}/`]);
-        assert.deepEqual(
-            testArgs.testItems.map(item => item.id),
-            [testTarget.id, swiftTestSuite.id, swiftTest.id]
-        );
+    test("Test undefined include/exclude", () => {
+        createTestItemTree(controller, `tt:${testTargetId}`);
+        const testArgs = new TestRunArguments(new vscode.TestRunRequest(), false);
+        assertRunArguments(testArgs, {
+            xcTestArgs: [],
+            swiftTestArgs: [],
+            testItems: [],
+        });
     });
 
     test("Single Test in Suite With Multiple", () => {
-        const anotherSwiftTest = controller.createTestItem(
-            "Another Swift Test Item",
-            "Another Swift Test Item",
-            vscode.Uri.file("/path/to/file")
-        );
-        anotherSwiftTest.tags = [{ id: "swift-testing" }];
-        swiftTestSuite.children.add(anotherSwiftTest);
+        const anotherSwiftTestId = "Another Swift Test Item";
+        const dsl = `
+        tt:${testTargetId}
+            xc:${xcSuiteId}
+                xc:${xcTestId}
+            st:${swiftTestSuiteId}
+                st:${swiftTestId}
+                st:${anotherSwiftTestId}
+        `;
 
-        const testArgs = new TestRunArguments(
-            new vscode.TestRunRequest([anotherSwiftTest], [], undefined),
-            false
-        );
-        assert.equal(testArgs.hasXCTests, false);
-        assert.equal(testArgs.hasSwiftTestingTests, true);
-        assert.deepEqual(testArgs.xcTestArgs, []);
-        assert.deepEqual(testArgs.swiftTestArgs, [anotherSwiftTest.id]);
-        assert.deepEqual(
-            testArgs.testItems.map(item => item.id),
-            [swiftTestSuite.id, testTarget.id, anotherSwiftTest.id]
-        );
+        createTestItemTree(controller, dsl);
+
+        const testArgs = new TestRunArguments(runRequestByIds([anotherSwiftTestId]), false);
+        assertRunArguments(testArgs, {
+            xcTestArgs: [],
+            swiftTestArgs: [`${anotherSwiftTestId}/`],
+            testItems: [swiftTestSuiteId, testTargetId, anotherSwiftTestId],
+        });
     });
 
-    test("Entire test target", () => {
+    test("Test suite with multiple suites of different sizes", () => {
+        const anotherXcSuiteId = "Another XCTest Suite";
+        const anotherXcTestId1 = "Another XCTest Item 1";
+        const anotherXcTestId2 = "Another XCTest Item 2";
+        const dsl = `
+        tt:${testTargetId}
+            xc:${xcSuiteId}
+                xc:${xcTestId}
+            xc:${anotherXcSuiteId}
+                xc:${anotherXcTestId1}
+                xc:${anotherXcTestId2}
+        `;
+        createTestItemTree(controller, dsl);
+
+        const testArgs = new TestRunArguments(runRequestByIds([xcSuiteId], []), false);
+        assertRunArguments(testArgs, {
+            xcTestArgs: [`${xcSuiteId}/`],
+            swiftTestArgs: [],
+            testItems: [testTargetId, xcSuiteId, xcTestId],
+        });
+    });
+
+    test("Test suite with multiple suites of the same size", () => {
+        const xcTestId2 = "XCTest Item 2";
+        const anotherXcSuiteId = "Another XCTest Suite";
+        const anotherXcTestId1 = "Another XCTest Item 1";
+        const anotherXcTestId2 = "Another XCTest Item 2";
+        const dsl = `
+        tt:${testTargetId}
+            xc:${xcSuiteId}
+                xc:${xcTestId}
+                xc:${xcTestId2}
+            xc:${anotherXcSuiteId}
+                xc:${anotherXcTestId1}
+                xc:${anotherXcTestId2}
+        `;
+        createTestItemTree(controller, dsl);
+
+        const testArgs = new TestRunArguments(runRequestByIds([xcSuiteId], []), false);
+        assertRunArguments(testArgs, {
+            xcTestArgs: [`${xcSuiteId}/`],
+            swiftTestArgs: [],
+            testItems: [testTargetId, xcSuiteId, xcTestId, xcTestId2],
+        });
+    });
+
+    test("Test multiple tests across suites", () => {
+        const xcTestId2 = "XCTest Item 2";
+        const anotherXcSuiteId = "Another XCTest Suite";
+        const anotherXcTestId1 = "Another XCTest Item 1";
+        const anotherXcTestId2 = "Another XCTest Item 2";
+        const dsl = `
+        tt:${testTargetId}
+            xc:${xcSuiteId}
+                xc:${xcTestId}
+                xc:${xcTestId2}
+            xc:${anotherXcSuiteId}
+                xc:${anotherXcTestId1}
+                xc:${anotherXcTestId2}
+        `;
+        createTestItemTree(controller, dsl);
+
         const testArgs = new TestRunArguments(
-            new vscode.TestRunRequest([testTarget], [], undefined),
+            runRequestByIds([xcTestId, anotherXcTestId1], []),
             false
         );
-        assert.equal(testArgs.hasXCTests, true);
-        assert.equal(testArgs.hasSwiftTestingTests, true);
-        assert.deepEqual(testArgs.xcTestArgs, [`${testTarget.id}.*`]);
-        assert.deepEqual(testArgs.swiftTestArgs, [`${testTarget.id}.*`]);
-        assert.deepEqual(
-            testArgs.testItems.map(item => item.id),
-            [xcSuite.id, xcTest.id, swiftTestSuite.id, swiftTest.id]
-        );
+        assertRunArguments(testArgs, {
+            xcTestArgs: [`${xcTestId}$`, `${anotherXcTestId1}$`],
+            swiftTestArgs: [],
+            testItems: [testTargetId, xcSuiteId, xcTestId, anotherXcSuiteId, anotherXcTestId1],
+        });
     });
 });
