@@ -17,17 +17,21 @@ import * as assert from "assert";
 import { testAssetPath } from "../../fixtures";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftExecOperation, TaskOperation, TaskQueue } from "../../../src/tasks/TaskQueue";
-import { globalWorkspaceContextPromise } from "../extension.test";
 import { waitForNoRunningTasks } from "../../utilities";
+import { activateExtension, deactivateExtension } from "../utilities/testutilities";
 
 suite("TaskQueue Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     let taskQueue: TaskQueue;
 
     suiteSetup(async () => {
-        workspaceContext = await globalWorkspaceContextPromise;
+        workspaceContext = await activateExtension();
         assert.notEqual(workspaceContext.folders.length, 0);
         taskQueue = workspaceContext.folders[0].taskQueue;
+    });
+
+    suiteTeardown(async () => {
+        await deactivateExtension();
     });
 
     setup(async () => {

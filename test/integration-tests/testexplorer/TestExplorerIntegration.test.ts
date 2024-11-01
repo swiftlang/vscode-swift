@@ -24,11 +24,9 @@ import {
     eventPromise,
     gatherTests,
     runTest,
-    SettingsMap,
     setupTestExplorerTest,
     waitForTestExplorerReady,
 } from "./utilities";
-import { globalWorkspaceContextPromise } from "../extension.test";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Version } from "../../../src/utilities/version";
 import { TestKind } from "../../../src/TestExplorer/TestKind";
@@ -42,6 +40,7 @@ import {
     reduceTestItemChildren,
 } from "../../../src/TestExplorer/TestUtils";
 import { runnableTag } from "../../../src/TestExplorer/TestDiscovery";
+import { activateExtension, deactivateExtension } from "../utilities/testutilities";
 
 suite("Test Explorer Suite", function () {
     const MAX_TEST_RUN_TIME_MINUTES = 5;
@@ -52,7 +51,7 @@ suite("Test Explorer Suite", function () {
     let testExplorer: TestExplorer;
 
     suite("Debugging", function () {
-        let settingsTeardown: () => Promise<SettingsMap>;
+        let settingsTeardown: () => Promise<void>;
 
         async function runXCTest() {
             const suiteId = "PackageTests.PassingXCTestSuite";
@@ -120,12 +119,16 @@ suite("Test Explorer Suite", function () {
             });
         });
 
-        afterEach(() => settingsTeardown());
+        afterEach(async () => await settingsTeardown());
     });
 
     suite("Standard", () => {
         suiteSetup(async () => {
-            workspaceContext = await globalWorkspaceContextPromise;
+            workspaceContext = await activateExtension();
+        });
+
+        suiteTeardown(async () => {
+            await deactivateExtension();
         });
 
         beforeEach(async () => {

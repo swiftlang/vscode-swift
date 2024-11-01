@@ -173,7 +173,9 @@ export class WorkspaceContext implements vscode.Disposable {
 
     dispose() {
         this.folders.forEach(f => f.dispose());
+        this.folders.length = 0;
         this.subscriptions.forEach(item => item.dispose());
+        this.subscriptions.length = 0;
     }
 
     get swiftVersion() {
@@ -388,7 +390,7 @@ export class WorkspaceContext implements vscode.Disposable {
      * @param folder folder being removed
      */
     async removeWorkspaceFolder(workspaceFolder: vscode.WorkspaceFolder) {
-        this.folders.forEach(async folder => {
+        for (const folder of this.folders) {
             if (folder.workspaceFolder !== workspaceFolder) {
                 return;
             }
@@ -404,13 +406,17 @@ export class WorkspaceContext implements vscode.Disposable {
                 await observer({ folder, operation: FolderOperation.remove, workspace: this });
             }
             folder.dispose();
-        });
+        }
         this.folders = this.folders.filter(folder => folder.workspaceFolder !== workspaceFolder);
     }
 
     onDidChangeFolders(listener: (event: FolderEvent) => unknown): vscode.Disposable {
         this.observers.add(listener);
-        return { dispose: () => this.observers.delete(listener) };
+        return {
+            dispose: () => {
+                this.observers.delete(listener);
+            },
+        };
     }
 
     onDidChangeSwiftFiles(listener: (event: SwiftFileEvent) => unknown): vscode.Disposable {

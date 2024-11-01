@@ -17,16 +17,20 @@ import * as assert from "assert";
 import { testAssetUri } from "../fixtures";
 import { FolderOperation, WorkspaceContext } from "../../src/WorkspaceContext";
 import { createBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
-import { globalWorkspaceContextPromise } from "./extension.test";
 import { Version } from "../../src/utilities/version";
 import { SwiftExecution } from "../../src/tasks/SwiftExecution";
+import { activateExtension, deactivateExtension } from "./utilities/testutilities";
 
 suite("WorkspaceContext Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     const packageFolder: vscode.Uri = testAssetUri("defaultPackage");
 
-    suiteSetup(async () => {
-        workspaceContext = await globalWorkspaceContextPromise;
+    suiteSetup(async function () {
+        workspaceContext = await activateExtension();
+    });
+
+    suiteTeardown(async () => {
+        await deactivateExtension();
     });
 
     suite("Folder Events", () => {

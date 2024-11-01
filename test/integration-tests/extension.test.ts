@@ -12,48 +12,22 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as vscode from "vscode";
 import * as assert from "assert";
-import { Api } from "../../src/extension";
+import { beforeEach, afterEach } from "mocha";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { getBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { SwiftExecution } from "../../src/tasks/SwiftExecution";
-import { testAssetUri } from "../fixtures";
-import { FolderContext } from "../../src/FolderContext";
-
-function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
-    const result = vscode.workspace.workspaceFolders?.at(0);
-    assert(result, "No workspace folders were opened for the tests to use");
-    return result;
-}
-
-export const globalWorkspaceContextPromise: Promise<WorkspaceContext> = (async () => {
-    const workspaceFolder = getRootWorkspaceFolder();
-    const ext = vscode.extensions.getExtension<Api>("sswg.swift-lang");
-    if (!ext) {
-        throw new Error(`Unable to find extension "sswg.swift-lang"`);
-    }
-    const api = await ext.activate();
-    const packageFolder = testAssetUri("defaultPackage");
-    await api.workspaceContext.addPackageFolder(packageFolder, workspaceFolder);
-    return api.workspaceContext;
-})();
-
-export const folderContextPromise = async (name: string): Promise<FolderContext> => {
-    const workspaceFolder = getRootWorkspaceFolder();
-    const workspaceContext = await globalWorkspaceContextPromise;
-    let folder = workspaceContext.folders.find(f => f.workspaceFolder.name === `test/${name}`);
-    if (!folder) {
-        folder = await workspaceContext.addPackageFolder(testAssetUri(name), workspaceFolder);
-    }
-    return folder;
-};
+import { activateExtension, deactivateExtension } from "./utilities/testutilities";
 
 suite("Extension Test Suite", () => {
     let workspaceContext: WorkspaceContext;
 
-    suiteSetup(async () => {
-        workspaceContext = await globalWorkspaceContextPromise;
+    beforeEach(async function () {
+        workspaceContext = await activateExtension(this.currentTest);
+    });
+
+    afterEach(async () => {
+        await deactivateExtension();
     });
 
     suite("Temporary Folder Test Suite", () => {
