@@ -613,6 +613,14 @@ export class LanguageClientManager {
                 backgroundPreparationMode: "enabled",
             };
         }
+
+        if (configuration.swiftSDK !== "") {
+            options = {
+                ...options,
+                swiftPM: { swiftSDK: configuration.swiftSDK },
+            };
+        }
+
         return options;
     }
     /* eslint-enable @typescript-eslint/no-explicit-any */

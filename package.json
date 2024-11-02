@@ -165,7 +165,7 @@
       },
       {
         "command": "swift.switchPlatform",
-        "title": "Select Target Platform...",
+        "title": "Select Swift SDK...",
         "category": "Swift"
       },
       {
@@ -593,7 +593,14 @@
             "type": "string",
             "default": "",
             "markdownDescription": "The path of the SDK to compile against (`--sdk` parameter). This is of use when supporting non-standard SDK layouts on Windows and using custom SDKs. The default SDK is determined by the environment on macOS and Windows.",
+            "deprecationMessage": "Please use `swift.swiftSDK` with a triple (such as `arm64-apple-ios`) or Swift SDK name instead.",
             "order": 3
+          },
+          "swift.swiftSDK": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "The [Swift SDK](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0387-cross-compilation-destinations.md) to compile against (`--swift-sdk` parameter).",
+            "order": 4
           },
           "swift.diagnostics": {
             "type": "boolean",

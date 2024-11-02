@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { DarwinCompatibleTarget, SwiftToolchain } from "../toolchain/toolchain";
+import { DarwinCompatibleTarget, getDarwinTargetTriple } from "../toolchain/toolchain";
 import configuration from "../configuration";
 
 /**
@@ -22,35 +22,27 @@ import configuration from "../configuration";
 export async function switchPlatform() {
     const picked = await vscode.window.showQuickPick(
         [
-            { value: undefined, label: "macOS" },
-            { value: DarwinCompatibleTarget.iOS, label: "iOS" },
-            { value: DarwinCompatibleTarget.tvOS, label: "tvOS" },
-            { value: DarwinCompatibleTarget.watchOS, label: "watchOS" },
-            { value: DarwinCompatibleTarget.visionOS, label: "visionOS" },
+            {
+                value: undefined,
+                label: "macOS",
+                description: "default",
+            },
+            ...[
+                { value: DarwinCompatibleTarget.iOS, label: "iOS" },
+                { value: DarwinCompatibleTarget.tvOS, label: "tvOS" },
+                { value: DarwinCompatibleTarget.watchOS, label: "watchOS" },
+                { value: DarwinCompatibleTarget.visionOS, label: "visionOS" },
+            ].map(item => ({
+                value: getDarwinTargetTriple(item.value),
+                description: getDarwinTargetTriple(item.value),
+                label: item.label,
+            })),
         ],
         {
-            placeHolder: "Select a new target",
+            placeHolder: "Select a Swift SDK platform",
         }
     );
     if (picked) {
-        try {
-            const sdkForTarget = picked.value
-                ? await SwiftToolchain.getSDKForTarget(picked.value)
-                : "";
-            if (sdkForTarget !== undefined) {
-                if (sdkForTarget !== "") {
-                    configuration.sdk = sdkForTarget;
-                    vscode.window.showWarningMessage(
-                        `Selecting the ${picked.label} SDK will provide code editing support, but compiling with this SDK will have undefined results.`
-                    );
-                } else {
-                    configuration.sdk = undefined;
-                }
-            } else {
-                vscode.window.showErrorMessage("Unable to obtain requested SDK path");
-            }
-        } catch {
-            vscode.window.showErrorMessage("Unable to obtain requested SDK path");
-        }
+        configuration.swiftSDK = picked.value;
     }
 }
