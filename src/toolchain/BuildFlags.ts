@@ -75,7 +75,7 @@ export class BuildFlags {
     swiftpmSDKFlags(): string[] {
         const flags: string[] = [];
         if (configuration.sdk !== "") {
-            flags.push("--sdk", configuration.sdk);
+            flags.push("--sdk", configuration.sdk, ...this.swiftDriverTargetFlags(true));
         }
         if (configuration.swiftSDK !== "") {
             flags.push("--swift-sdk", configuration.swiftSDK);
