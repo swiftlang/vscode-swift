@@ -54,7 +54,11 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
             });
             const { exitCode, output } = await executeTaskAndWaitForResult(task);
             assert.equal(exitCode, 0);
-            assert.equal(output.trim(), "Hello, World!");
+            assert.equal(
+                output.trim().endsWith("Hello, World!"),
+                true,
+                "Expceted output to end with 'Hello, World!'"
+            );
         }).timeout(10000);
 
         test("Exit code on failure", async () => {

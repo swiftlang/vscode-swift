@@ -45,6 +45,7 @@ import { resolveFolderDependencies } from "./commands/dependencies/resolve";
  */
 export interface Api {
     workspaceContext?: WorkspaceContext;
+    outputChannel: SwiftOutputChannel;
     activate(): Promise<Api>;
     deactivate(): void;
 }
@@ -54,11 +55,12 @@ export interface Api {
  */
 export async function activate(context: vscode.ExtensionContext): Promise<Api> {
     try {
-        console.debug("Activating Swift for Visual Studio Code...");
-        const outputChannel = new SwiftOutputChannel("Swift");
+        const outputChannel = new SwiftOutputChannel("Swift", !process.env["VSCODE_TEST"]);
+        outputChannel.log("Activating Swift for Visual Studio Code...");
 
         checkAndWarnAboutWindowsSymlinks(outputChannel);
 
+        context.subscriptions.push(outputChannel);
         context.subscriptions.push(new SwiftEnvironmentVariablesManager(context));
         context.subscriptions.push(
             vscode.window.registerTerminalProfileProvider(
@@ -110,6 +112,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             showToolchainError();
             return {
                 workspaceContext: undefined,
+                outputChannel,
                 activate: () => activate(context),
                 deactivate: () => deactivate(context),
             };
@@ -252,6 +255,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
 
         return {
             workspaceContext,
+            outputChannel,
             activate: () => activate(context),
             deactivate: () => deactivate(context),
         };

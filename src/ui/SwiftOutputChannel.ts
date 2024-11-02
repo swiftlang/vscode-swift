@@ -71,6 +71,7 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
 
     dispose() {
         this.channel.dispose();
+        this.logStore.dispose();
     }
 
     log(message: string, label?: string) {
@@ -110,12 +111,11 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
     }
 }
 
-class RollingLog {
+class RollingLog implements vscode.Disposable {
     private _logs: (string | null)[];
     private startIndex: number = 0;
     private endIndex: number = 0;
     private logCount: number = 0;
-    private appending: boolean = false;
 
     constructor(private maxLogs: number) {
         this._logs = new Array(maxLogs).fill(null);
@@ -131,6 +131,10 @@ class RollingLog {
 
     private incrementIndex(index: number): number {
         return (index + 1) % this.maxLogs;
+    }
+
+    dispose() {
+        this._logs.length = 0;
     }
 
     appendLine(log: string) {
@@ -155,7 +159,6 @@ class RollingLog {
         }
         const newLogLine = (this._logs[this.endIndex] ?? "") + log;
         this._logs[this.endIndex] = newLogLine;
-        this.appending = true;
     }
 
     replace(log: string) {

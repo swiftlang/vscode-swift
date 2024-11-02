@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import * as assert from "assert";
+import * as mocha from "mocha";
 import { Api } from "../../../src/extension";
 import { testAssetUri } from "../../fixtures";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
@@ -15,6 +16,26 @@ const extensionBootstrapper = (() => {
     let activator: (() => Promise<Api>) | undefined = undefined;
     let activatedAPI: Api | undefined = undefined;
     let lastTestName: string | undefined = undefined;
+    let lastTestLogs: string[] = [];
+    const testTitle = (currentTest: Mocha.Test) => currentTest.titlePath().join(" → ");
+
+    mocha.afterEach(function () {
+        if (this.currentTest && this.currentTest.isFailed()) {
+            console.log(`Captured logs during ${testTitle(this.currentTest)}:`);
+            if (lastTestLogs.length === 0) {
+                console.log("No logs captured.");
+            }
+            for (const log of lastTestLogs) {
+                console.log(log);
+            }
+        }
+    });
+
+    mocha.beforeEach(function () {
+        if (this.currentTest && activatedAPI && process.env["VSCODE_TEST"]) {
+            activatedAPI.outputChannel.appendLine(`Starting test: ${testTitle(this.currentTest)}`);
+        }
+    });
 
     return {
         // Activates the extension and adds the defaultPackage to the workspace.
@@ -68,6 +89,7 @@ const extensionBootstrapper = (() => {
             if (!activatedAPI) {
                 throw new Error("Extension is not activated. Call activateExtension() first.");
             }
+            lastTestLogs = activatedAPI.outputChannel.logs;
             await activatedAPI.workspaceContext?.removeWorkspaceFolder(getRootWorkspaceFolder());
             activatedAPI.deactivate();
             activatedAPI = undefined;
