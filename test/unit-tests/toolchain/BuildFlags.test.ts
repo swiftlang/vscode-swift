@@ -78,9 +78,11 @@ suite("BuildFlags Test Suite", () => {
 
     suite("swiftpmSDKFlags", () => {
         const sdkConfig = mockGlobalValue(configuration, "sdk");
+        const swiftSDKConfig = mockGlobalValue(configuration, "swiftSDK");
 
         test("no configuration provided", async () => {
             sdkConfig.setValue("");
+            swiftSDKConfig.setValue("");
             expect(buildFlags.swiftpmSDKFlags()).to.be.an("array").that.is.empty;
         });
 
@@ -89,6 +91,22 @@ suite("BuildFlags Test Suite", () => {
             expect(buildFlags.swiftpmSDKFlags()).to.deep.equal([
                 "--sdk",
                 "/some/other/full/test/path",
+            ]);
+        });
+
+        test("configuration provided for swiftSDK", () => {
+            swiftSDKConfig.setValue("arm64-apple-ios");
+            expect(buildFlags.swiftpmSDKFlags()).to.deep.equal(["--swift-sdk", "arm64-apple-ios"]);
+        });
+
+        test("configuration provided for swiftSDK and sdk", () => {
+            sdkConfig.setValue("/some/other/full/test/path");
+            swiftSDKConfig.setValue("arm64-apple-ios");
+            expect(buildFlags.swiftpmSDKFlags()).to.deep.equal([
+                "--sdk",
+                "/some/other/full/test/path",
+                "--swift-sdk",
+                "arm64-apple-ios",
             ]);
         });
 

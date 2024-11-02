@@ -177,6 +177,25 @@ suite("LanguageClientManager Suite", () => {
         expect(languageClientMock.start).to.have.been.calledOnce;
     });
 
+    test("launches SourceKit-LSP on startup with swiftSDK", async () => {
+        mockedConfig.swiftSDK = "arm64-apple-ios";
+
+        const sut = new LanguageClientManager(instance(mockedWorkspace));
+        await waitForReturnedPromises(languageClientMock.start);
+
+        expect(sut.state).to.equal(State.Running);
+        expect(mockedLangClientModule.LanguageClient).to.have.been.calledOnceWith(
+            /* id */ match.string,
+            /* name */ match.string,
+            /* serverOptions */ match.has("command", "/path/to/toolchain/bin/sourcekit-lsp"),
+            /* clientOptions */ match.hasNested(
+                "initializationOptions.swiftPM.swiftSDK",
+                "arm64-apple-ios"
+            )
+        );
+        expect(languageClientMock.start).to.have.been.calledOnce;
+    });
+
     test("notifies SourceKit-LSP of WorkspaceFolder changes", async () => {
         const folder1 = mockObject<FolderContext>({
             isRootFolder: false,
