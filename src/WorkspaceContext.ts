@@ -412,11 +412,7 @@ export class WorkspaceContext implements vscode.Disposable {
 
     onDidChangeFolders(listener: (event: FolderEvent) => unknown): vscode.Disposable {
         this.observers.add(listener);
-        return {
-            dispose: () => {
-                this.observers.delete(listener);
-            },
-        };
+        return { dispose: () => this.observers.delete(listener) };
     }
 
     onDidChangeSwiftFiles(listener: (event: SwiftFileEvent) => unknown): vscode.Disposable {

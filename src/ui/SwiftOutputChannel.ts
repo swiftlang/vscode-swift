@@ -59,6 +59,7 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
 
     clear(): void {
         this.channel.clear();
+        this.logStore.clear();
     }
 
     show(_column?: unknown, preserveFocus?: boolean | undefined): void {
@@ -134,6 +135,10 @@ class RollingLog implements vscode.Disposable {
     }
 
     dispose() {
+        this.clear();
+    }
+
+    clear() {
         this._logs.length = 0;
     }
 
