@@ -5,6 +5,7 @@ import { Api } from "../../../src/extension";
 import { testAssetUri } from "../../fixtures";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { FolderContext } from "../../../src/FolderContext";
+import { waitForNoRunningTasks } from "../../utilities";
 
 function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);
@@ -90,6 +91,14 @@ const extensionBootstrapper = (() => {
                 throw new Error("Extension is not activated. Call activateExtension() first.");
             }
             lastTestLogs = activatedAPI.outputChannel.logs;
+
+            // Wait for up to 10 seconds for all tasks to complete before deactivating.
+            // Long running tasks should be avoided in tests, but this is a safety net.
+            await waitForNoRunningTasks({ timeout: 10000 });
+
+            // Close all editors before deactivating the extension.
+            await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+
             await activatedAPI.workspaceContext?.removeWorkspaceFolder(getRootWorkspaceFolder());
             activatedAPI.deactivate();
             activatedAPI = undefined;
