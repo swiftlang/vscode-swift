@@ -96,6 +96,7 @@ export async function execFile(
     executable: string,
     args: string[],
     options: cp.ExecFileOptions = {},
+    input?: string,
     folderContext?: FolderContext,
     customSwiftRuntime = true
 ): Promise<{ stdout: string; stderr: string }> {
@@ -109,14 +110,19 @@ export async function execFile(
             options.env = { ...(options.env ?? process.env), ...runtimeEnv };
         }
     }
-    return new Promise<{ stdout: string; stderr: string }>((resolve, reject) =>
-        cp.execFile(executable, args, options, (error, stdout, stderr) => {
+    return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+        const proc = cp.execFile(executable, args, options, (error, stdout, stderr) => {
             if (error) {
                 reject(new ExecFileError(error, stdout, stderr));
             }
             resolve({ stdout, stderr });
-        })
-    );
+        });
+
+        if (input && proc.stdin) {
+            proc.stdin.write(input);
+            proc.stdin.end();
+        }
+    });
 }
 
 export async function execFileStreamOutput(
@@ -178,7 +184,8 @@ export async function execSwift(
     args: string[],
     toolchain: SwiftToolchain | "default",
     options: cp.ExecFileOptions = {},
-    folderContext?: FolderContext
+    folderContext?: FolderContext,
+    input?: string
 ): Promise<{ stdout: string; stderr: string }> {
     let swift: string;
     if (toolchain === "default") {
@@ -197,7 +204,7 @@ export async function execSwift(
             ...configuration.swiftEnvironmentVariables,
         };
     }
-    return await execFile(swift, args, options, folderContext);
+    return await execFile(swift, args, options, input, folderContext);
 }
 
 /**

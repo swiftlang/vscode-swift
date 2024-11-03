@@ -33,6 +33,7 @@ import { DebugAdapter, LaunchConfigType } from "./debugger/debugAdapter";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { DiagnosticsManager } from "./DiagnosticsManager";
+import { FormattingProvider } from "./editor/Formatting";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -49,6 +50,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public diagnostics: DiagnosticsManager;
     public subscriptions: vscode.Disposable[];
     public commentCompletionProvider: CommentCompletionProviders;
+    public formattingProvider: FormattingProvider;
     private lastFocusUri: vscode.Uri | undefined;
     private initialisationFinished = false;
 
@@ -64,6 +66,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.diagnostics = new DiagnosticsManager(this);
         this.currentDocument = null;
         this.commentCompletionProvider = new CommentCompletionProviders();
+        this.formattingProvider = new FormattingProvider();
 
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(async event => {
             // on runtime path config change, regenerate launch.json
