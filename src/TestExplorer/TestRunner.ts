@@ -925,6 +925,9 @@ export class TestRunner {
                                     }
                                 },
                                 reason => {
+                                    this.workspaceContext.outputChannel.logDiagnostic(
+                                        `Failed to debug test: ${reason}`
+                                    );
                                     subscriptions.forEach(sub => sub.dispose());
                                     reject(reason);
                                 }
