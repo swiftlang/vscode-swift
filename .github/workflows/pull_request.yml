@@ -35,6 +35,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Install winget
+        uses: Cyberboss/install-winget@main
       - name: Create test script
         run: |
           mkdir $env:TEMP\test-script
