@@ -1,3 +1,17 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the VS Code Swift open source project
+//
+// Copyright (c) 2024 the VS Code Swift project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.txt for the list of VS Code Swift project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
 import * as vscode from "vscode";
 import * as assert from "assert";
 import * as mocha from "mocha";
@@ -34,6 +48,7 @@ const extensionBootstrapper = (() => {
 
     mocha.beforeEach(function () {
         if (this.currentTest && activatedAPI && process.env["VSCODE_TEST"]) {
+            activatedAPI.outputChannel.clear();
             activatedAPI.outputChannel.appendLine(`Starting test: ${testTitle(this.currentTest)}`);
         }
     });
