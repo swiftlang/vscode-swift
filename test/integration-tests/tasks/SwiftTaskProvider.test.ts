@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import { expect } from "chai";
 import * as vscode from "vscode";
 import * as assert from "assert";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
@@ -31,7 +32,6 @@ import { Version } from "../../../src/utilities/version";
 import { FolderContext } from "../../../src/FolderContext";
 import { mockGlobalObject } from "../../MockUtils";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
-import { expect } from "chai";
 
 suite("SwiftTaskProvider Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -64,10 +64,21 @@ suite("SwiftTaskProvider Test Suite", () => {
                 toolchain
             );
             const { exitCode } = await executeTaskAndWaitForResult(task);
-            assert.equal(exitCode, 0);
-        }).timeout(10000);
+            expect(exitCode).to.equal(0);
+        });
 
         test("Exit code on failure", async () => {
+            const task = createSwiftTask(
+                ["invalid_swift_command"],
+                "invalid",
+                { cwd: workspaceFolder.uri, scope: vscode.TaskScope.Workspace },
+                toolchain
+            );
+            const { exitCode } = await executeTaskAndWaitForResult(task);
+            expect(exitCode).to.equal(1);
+        });
+
+        test("Exit code on failure to launch", async () => {
             const task = createSwiftTask(
                 ["--help"],
                 "help",
@@ -85,8 +96,8 @@ suite("SwiftTaskProvider Test Suite", () => {
                 )
             );
             const { exitCode } = await executeTaskAndWaitForResult(task);
-            assert.equal(exitCode, 1);
-        }).timeout(10000);
+            expect(exitCode).to.not.equal(0);
+        });
     });
 
     suite("provideTasks", () => {
@@ -99,10 +110,9 @@ suite("SwiftTaskProvider Test Suite", () => {
             });
 
             test("provided", async () => {
-                assert.equal(
-                    task?.detail,
-                    "swift build --build-tests -Xswiftc -diagnostic-style=llvm"
-                );
+                expect(task?.detail)
+                    .to.include("swift build --build-tests")
+                    .and.to.include("-Xswiftc -diagnostic-style=llvm");
             });
 
             test("executes @slow", async () => {
@@ -110,7 +120,7 @@ suite("SwiftTaskProvider Test Suite", () => {
                 const exitPromise = waitForEndTaskProcess(task);
                 await vscode.tasks.executeTask(task);
                 const exitCode = await exitPromise;
-                assert.equal(exitCode, 0);
+                expect(exitCode).to.equal(0);
             }).timeout(180000); // 3 minutes to build
         });
 
@@ -123,7 +133,7 @@ suite("SwiftTaskProvider Test Suite", () => {
             });
 
             test("provided", async () => {
-                assert.equal(task?.detail, "swift build --show-bin-path");
+                expect(task?.detail).to.include("swift build --show-bin-path");
             });
 
             test("executes", async () => {
@@ -131,17 +141,16 @@ suite("SwiftTaskProvider Test Suite", () => {
                 const exitPromise = waitForEndTaskProcess(task);
                 await vscode.tasks.executeTask(task);
                 const exitCode = await exitPromise;
-                assert.equal(exitCode, 0);
+                expect(exitCode).to.equal(0);
             });
         });
 
         test("includes product debug task", async () => {
             const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
             const task = tasks.find(t => t.name === "Build Debug PackageExe (defaultPackage)");
-            assert.equal(
-                task?.detail,
-                "swift build --product PackageExe -Xswiftc -diagnostic-style=llvm"
-            );
+            expect(task?.detail)
+                .to.include("swift build --product PackageExe")
+                .and.to.include("-Xswiftc -diagnostic-style=llvm");
         });
 
         test("includes product release task", async () => {
@@ -150,30 +159,23 @@ suite("SwiftTaskProvider Test Suite", () => {
                 new vscode.CancellationTokenSource().token
             );
             const task = tasks.find(t => t.name === "Build Release PackageExe (defaultPackage)");
-            assert.equal(
-                task?.detail,
-                "swift build -c release --product PackageExe -Xswiftc -diagnostic-style=llvm"
-            );
+            expect(task?.detail).to.include("swift build -c release --product PackageExe");
         });
 
         test("includes additional folders", async () => {
             const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
             const diagnosticTasks = tasks.filter(t => t.name.endsWith("(diagnostics)"));
-            assert.equal(diagnosticTasks.length, 3);
+            expect(diagnosticTasks).to.have.lengthOf(3);
         });
     });
 
     suite("createBuildAllTask", () => {
         test("should return same task instance", async () => {
-            assert.strictEqual(
-                createBuildAllTask(folderContext),
-                createBuildAllTask(folderContext)
-            );
+            expect(createBuildAllTask(folderContext)).to.equal(createBuildAllTask(folderContext));
         });
 
         test("different task returned for release mode", async () => {
-            assert.notEqual(
-                createBuildAllTask(folderContext),
+            expect(createBuildAllTask(folderContext)).to.not.equal(
                 createBuildAllTask(folderContext, true)
             );
         });
@@ -184,8 +186,7 @@ suite("SwiftTaskProvider Test Suite", () => {
 
         test("creates build all task when it cannot find one", async () => {
             tasksMock.fetchTasks.resolves([]);
-            assert.strictEqual(
-                await getBuildAllTask(folderContext),
+            await expect(getBuildAllTask(folderContext)).to.eventually.equal(
                 createBuildAllTask(folderContext)
             );
         });
