@@ -42,12 +42,12 @@ jobs:
           mkdir $env:TEMP\test-script
           echo 'Set-PSDebug -Trace 1' >> $env:TEMP\test-script\run.ps1
           echo '$ErrorActionPreference = "Stop"' >> $env:TEMP\test-script\run.ps1
-          echo 'winget install --id Microsoft.VisualStudio.2022.Community --exact --force --custom "--add Microsoft.VisualStudio.Component.Windows11SDK.22000 --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"' >> $env:TEMP\test-script\run.ps1
-          echo 'winget install --id Swift.Toolchain -e' >> $env:TEMP\test-script\run.ps1
-          echo 'winget install --id Schniz.fnm -e' >> $env:TEMP\test-script\run.ps1
+          echo 'winget install --id Microsoft.VisualStudio.2022.Community --exact --force --custom "--add Microsoft.VisualStudio.Component.Windows11SDK.22000 --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"  --disable-interactivity --accept-source-agreements' >> $env:TEMP\test-script\run.ps1
+          echo 'winget install --id Swift.Toolchain -e  --disable-interactivity --accept-source-agreements' >> $env:TEMP\test-script\run.ps1
+          echo 'winget install --id Schniz.fnm -e --disable-interactivity --accept-source-agreements' >> $env:TEMP\test-script\run.ps1
+          echo 'refreshenv' >> $env:TEMP\test-script\run.ps1
           echo 'fnm env --use-on-cd | Out-String | Invoke-Expression' >> $env:TEMP\test-script\run.ps1
           echo 'fnm use --install-if-missing 18.19.0' >> $env:TEMP\test-script\run.ps1
-          echo 'refreshenv' >> $env:TEMP\test-script\run.ps1
           echo 'swift --version' >> $env:TEMP\test-script\run.ps1
           echo 'node --version' >> $env:TEMP\test-script\run.ps1
           echo 'cd $env:GITHUB_WORKSPACE' >> $env:TEMP\test-script\run.ps1
