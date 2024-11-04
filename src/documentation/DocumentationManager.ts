@@ -20,6 +20,7 @@ import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderContext } from "../FolderContext";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import { executeTaskWithUI, updateAfterError } from "../commands/utilities";
+import { NavigateMessage, WebviewMessage } from "./webview/WebviewMessage";
 
 export class DocumentationManager {
     private previewEditor?: DocumentationPreviewEditor;
@@ -29,16 +30,20 @@ export class DocumentationManager {
         private readonly context: WorkspaceContext
     ) {}
 
-    async launchDocumentationPreview(): Promise<void> {
+    getEditorOnNavigateEvent(): vscode.EventEmitter<NavigateMessage> | undefined {
+        return this.previewEditor?.onNavigateEvent;
+    }
+
+    async launchDocumentationPreview(): Promise<boolean> {
         if (!this.previewEditor) {
-            const folderContext = this.context.folders.at(0);
+            const folderContext = this.context.currentFolder;
             if (!folderContext) {
-                return;
+                return false;
             }
 
             const archive = await this.buildDocumentation(folderContext);
             if (!archive) {
-                return;
+                return false;
             }
 
             this.previewEditor = new DocumentationPreviewEditor(
@@ -55,6 +60,7 @@ export class DocumentationManager {
         } else {
             this.previewEditor.reveal();
         }
+        return true;
     }
 
     private async buildDocumentation(folderContext: FolderContext): Promise<string | undefined> {

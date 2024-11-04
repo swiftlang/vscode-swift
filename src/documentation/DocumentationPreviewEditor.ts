@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { WebviewMessage } from "./webview/WebviewMessage";
+import { NavigateMessage, WebviewMessage } from "./webview/WebviewMessage";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { Target } from "../SwiftPackage";
 import { fileExists } from "../utilities/filesystem";
@@ -32,6 +32,10 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
 
     private disposeEmitter = new vscode.EventEmitter<void>();
     onDidDispose = this.disposeEmitter.event;
+
+    // New emitter for navigation, used for integration testing
+    private navigateEmitter = new vscode.EventEmitter<NavigateMessage>();
+    onNavigateEvent = this.navigateEmitter;
 
     constructor(
         private readonly archivePath: string,
@@ -89,11 +93,17 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         this.subscriptions = [];
         this.webviewPanel.dispose();
         this.disposeEmitter.fire();
+        this.navigateEmitter.dispose();
+    }
+
+    private onNavigate(message: NavigateMessage): void {
+        this.navigateEmitter.fire(message);
     }
 
     private postMessage(message: WebviewMessage): void {
         if (message.type === "navigate") {
             this.currentRoute = message.route;
+            this.onNavigate(message);
         }
         this.webviewPanel.webview.postMessage(message);
     }
