@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import * as assert from "assert";
-import { beforeEach } from "mocha";
+import { beforeEach, afterEach } from "mocha";
 import { TestRunArguments } from "../../../src/TestExplorer/TestRunArguments";
 import { flattenTestItemCollection } from "../../../src/TestExplorer/TestUtils";
 
@@ -100,6 +100,10 @@ suite("TestRunArguments Suite", () => {
             this.currentTest?.id ?? "TestRunArgumentsTests",
             ""
         );
+    });
+
+    afterEach(() => {
+        controller.dispose();
     });
 
     suite("Basic Tests", () => {
