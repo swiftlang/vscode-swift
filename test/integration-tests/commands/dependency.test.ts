@@ -46,11 +46,6 @@ suite("Dependency Commmands Test Suite", function () {
             const result = await vscode.commands.executeCommand(Commands.RESOLVE_DEPENDENCIES);
             expect(result).to.be.true;
         });
-
-        test("Contract: spm update", async () => {
-            const result = await vscode.commands.executeCommand(Commands.UPDATE_DEPENDENCIES);
-            expect(result).to.be.true;
-        });
     });
 
     suite("Full Work Flow Test Suite", function () {
@@ -124,6 +119,18 @@ suite("Dependency Commmands Test Suite", function () {
 
             // Contract: spm unedit
             const result = await vscode.commands.executeCommand(Commands.UNEDIT_DEPENDENCY, item);
+            expect(result).to.be.true;
+        });
+
+        test("Contract: spm update", async () => {
+            await useLocalDependencyTest();
+
+            // Contract: spm update
+            let result = await vscode.commands.executeCommand(Commands.UPDATE_DEPENDENCIES);
+            expect(result).to.be.true;
+
+            // Clean up
+            result = await vscode.commands.executeCommand(Commands.UNEDIT_DEPENDENCY, item);
             expect(result).to.be.true;
         });
     });
