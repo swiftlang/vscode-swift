@@ -139,7 +139,10 @@ class RollingLog implements vscode.Disposable {
     }
 
     clear() {
-        this._logs.length = 0;
+        this._logs = new Array(this.maxLogs).fill(null);
+        this.startIndex = 0;
+        this.endIndex = 0;
+        this.logCount = 0;
     }
 
     appendLine(log: string) {
