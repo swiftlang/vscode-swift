@@ -25,10 +25,12 @@ import { Commands } from "../../../src/commands";
 import { makeDebugConfigurations } from "../../../src/debugger/launch";
 import { Workbench } from "../../../src/utilities/commands";
 import { continueSession, waitForDebugAdapterCommand } from "../../utilities/debug";
+import { SettingsMap, updateSettings } from "../testexplorer/utilities";
 
 suite("Build Commands", function () {
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
+    let settingsTeardown: () => Promise<SettingsMap>;
     const uri = testAssetUri("defaultPackage/Sources/PackageExe/main.swift");
     const breakpoints = [
         new vscode.SourceBreakpoint(new vscode.Location(uri, new vscode.Position(2, 0))),
@@ -40,10 +42,14 @@ suite("Build Commands", function () {
         folderContext = await folderContextPromise("defaultPackage");
         await workspaceContext.focusFolder(folderContext);
         await vscode.window.showTextDocument(uri);
-        makeDebugConfigurations(folderContext, undefined, true);
+        settingsTeardown = await updateSettings({
+            "swift.autoGenerateLaunchConfigurations": true,
+        });
+        await makeDebugConfigurations(folderContext, undefined, true);
     });
 
     suiteTeardown(async () => {
+        await settingsTeardown();
         await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
     });
 

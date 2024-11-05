@@ -24,6 +24,7 @@ import {
     eventPromise,
     gatherTests,
     runTest,
+    SettingsMap,
     setupTestExplorerTest,
     waitForTestExplorerReady,
 } from "./utilities";
@@ -51,7 +52,7 @@ suite("Test Explorer Suite", function () {
     let testExplorer: TestExplorer;
 
     suite("Debugging", function () {
-        let settingsTeardown: () => void;
+        let settingsTeardown: () => Promise<SettingsMap>;
 
         async function runXCTest() {
             const suiteId = "PackageTests.PassingXCTestSuite";
