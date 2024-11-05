@@ -23,6 +23,15 @@ import { execFile, getErrorDescription } from "../utilities/utilities";
 import { Result } from "../utilities/result";
 import { SwiftToolchain } from "../toolchain/toolchain";
 
+export const CI_DISABLE_ASLR =
+    // DisableASLR when running in Docker CI https://stackoverflow.com/a/78471987
+    process.env["CI"]
+        ? {
+              disableASLR: false,
+              initCommands: ["settings set target.disable-aslr false"],
+          }
+        : {};
+
 /**
  * Get LLDB library for given LLDB executable
  * @param executable LLDB executable

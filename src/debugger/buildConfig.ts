@@ -26,6 +26,7 @@ import { Version } from "../utilities/version";
 import { TestLibrary } from "../TestExplorer/TestRunner";
 import { TestKind, isDebugging, isRelease } from "../TestExplorer/TestKind";
 import { buildOptions } from "../tasks/SwiftTaskProvider";
+import { CI_DISABLE_ASLR } from "./lldb";
 
 export class BuildConfigurationFactory {
     public static buildAll(
@@ -649,13 +650,7 @@ function getBaseConfig(ctx: FolderContext, expandEnvVariables: boolean) {
         args: [],
         preLaunchTask: `swift: Build All${nameSuffix}`,
         terminal: "console",
-        // DisableASLR when running in Docker CI https://stackoverflow.com/a/78471987
-        ...(process.env["CI"]
-            ? {
-                  disableASLR: false,
-                  initCommands: ["settings set target.disable-aslr false"],
-              }
-            : {}),
+        ...CI_DISABLE_ASLR,
     };
 }
 

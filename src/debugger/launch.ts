@@ -20,6 +20,7 @@ import { stringArrayInEnglish, swiftLibraryPathKey, swiftRuntimeEnv } from "../u
 import { DebugAdapter } from "./debugAdapter";
 import { getFolderAndNameSuffix } from "./buildConfig";
 import configuration from "../configuration";
+import { CI_DISABLE_ASLR } from "./lldb";
 
 /**
  * Edit launch.json based on contents of Swift Package.
@@ -123,6 +124,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
             args: [],
             cwd: folder,
             env: swiftRuntimeEnv(true),
+            ...CI_DISABLE_ASLR,
         };
         return [
             {
@@ -162,6 +164,7 @@ export function createSnippetConfiguration(
         args: [],
         cwd: folder,
         env: swiftRuntimeEnv(true),
+        ...CI_DISABLE_ASLR,
     };
 }
 
