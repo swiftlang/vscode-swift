@@ -30,7 +30,7 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
     ) {
         this.name = name;
         this.logToConsole = process.env["CI"] !== "1" && logToConsole;
-        this.channel = vscode.window.createOutputChannel(name);
+        this.channel = vscode.window.createOutputChannel(name, "Swift");
         this.logStore = new RollingLog(logStoreLinesSize);
     }
 

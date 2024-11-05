@@ -20,7 +20,6 @@ import {
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities";
 import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
 import { testAssetPath } from "../../fixtures";
-import { Version } from "../../../src/utilities/version";
 import {
     activateExtension,
     deactivateExtension,
@@ -33,10 +32,6 @@ suite("PackageDependencyProvider Test Suite", function () {
 
     suiteSetup(async function () {
         const workspaceContext = await activateExtension();
-        // workspace-state.json was not introduced until swift 5.7
-        if (workspaceContext.toolchain.swiftVersion.isLessThan(new Version(5, 7, 0))) {
-            this.skip();
-        }
         await waitForNoRunningTasks();
         const folderContext = await folderInRootWorkspace("dependencies", workspaceContext);
         await executeTaskAndWaitForResult((await getBuildAllTask(folderContext)) as SwiftTask);
@@ -45,7 +40,7 @@ suite("PackageDependencyProvider Test Suite", function () {
     });
 
     suiteTeardown(async () => {
-        treeProvider?.dispose();
+        treeProvider.dispose();
         await deactivateExtension();
     });
 
