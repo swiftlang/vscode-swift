@@ -29,7 +29,7 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
         logStoreLinesSize: number = 250_000 // default to capturing 250k log lines
     ) {
         this.name = name;
-        //        this.logToConsole = process.env["CI"] !== "1" && logToConsole;
+        this.logToConsole = process.env["CI"] !== "1" && logToConsole;
         this.channel = vscode.window.createOutputChannel(name);
         this.logStore = new RollingLog(logStoreLinesSize);
     }
