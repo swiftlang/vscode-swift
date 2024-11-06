@@ -17,12 +17,24 @@ import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 
 suite("SwiftOutputChannel", function () {
     let channel: SwiftOutputChannel;
-    setup(() => {
-        channel = new SwiftOutputChannel("SwiftOutputChannel Tests", false, 3);
+    const channels: SwiftOutputChannel[] = [];
+    setup(function () {
+        const channelName = `SwiftOutputChannel Tests ${this.currentTest?.id ?? "<unknown test>"}`;
+        channel = new SwiftOutputChannel(channelName, false, 3);
+        channels.push(channel);
     });
 
-    teardown(() => {
-        channel.dispose();
+    suiteTeardown(async function () {
+        // Output channels are added to their disposable store asynchronously, which leads
+        // to warnings in the console if we dispose of them immediately after the test.
+        // https://github.com/microsoft/vscode/blob/1f8fd7adeff6c113f9226787bdf4f417e6bdfb11/src/vs/workbench/api/common/extHostOutput.ts#L150
+        // As a workaround, we wait for a short period of time before disposing of the channels
+        await new Promise(resolve =>
+            setTimeout(() => {
+                channels.forEach(channel => channel.dispose());
+                resolve(void 0);
+            }, 50)
+        );
     });
 
     test("Appends logs", () => {
