@@ -24,7 +24,8 @@ import { executeTaskWithUI, updateAfterError } from "./../utilities";
 export async function updateDependencies(ctx: WorkspaceContext) {
     const current = ctx.currentFolder;
     if (!current) {
-        return;
+        ctx.outputChannel.log("currentFolder is not set.");
+        return false;
     }
     return await updateFolderDependencies(current);
 }

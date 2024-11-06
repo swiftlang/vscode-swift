@@ -26,7 +26,8 @@ import { FolderContext } from "../../FolderContext";
 export async function uneditDependency(identifier: string, ctx: WorkspaceContext) {
     const currentFolder = ctx.currentFolder;
     if (!currentFolder) {
-        return;
+        ctx.outputChannel.log("currentFolder is not set.");
+        return false;
     }
     ctx.outputChannel.log(`unedit dependency ${identifier}`, currentFolder.name);
     const status = `Reverting edited dependency ${identifier} (${currentFolder.name})`;
@@ -80,12 +81,13 @@ async function uneditFolderDependency(
 
             if (result === "No") {
                 ctx.outputChannel.log(execError.stderr, folder.name);
-                return;
+                return false;
             }
             await uneditFolderDependency(folder, identifier, ctx, ["--force"]);
         } else {
             ctx.outputChannel.log(execError.stderr, folder.name);
             vscode.window.showErrorMessage(`${execError.stderr}`);
         }
+        return false;
     }
 }

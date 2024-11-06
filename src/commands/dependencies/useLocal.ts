@@ -30,6 +30,7 @@ export async function useLocalDependency(
 ): Promise<boolean> {
     const currentFolder = ctx.currentFolder;
     if (!currentFolder) {
+        ctx.outputChannel.log("currentFolder is not set.");
         return false;
     }
     const folders = await vscode.window.showOpenDialog({
