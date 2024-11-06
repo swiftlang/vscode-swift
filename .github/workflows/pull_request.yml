@@ -7,8 +7,9 @@ on:
 jobs:
   tests:
     name: Test
-    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@main
+    uses: ./.github/workflows/swift_package_test.yml
     with:
+      # Linux
       linux_exclude_swift_versions: '[{"swift_version": "nightly-main"}]'
       linux_env_vars: |
         NODE_VERSION=v18.19.0
@@ -23,9 +24,21 @@ jobs:
         /bin/bash -c "source $NVM_DIR/nvm.sh && nvm install $NODE_VERSION"
         echo "$NODE_PATH" >> $GITHUB_PATH
       linux_build_command: ./docker/test.sh
-      enable_windows_checks: false
+      enable_linux_checks: false
+      # Windows
+      enable_windows_checks: true
+      enable_windows_docker: false
+      windows_exclude_swift_versions: '[{"swift_version": "nightly-main"}]'
+      windows_env_vars: |
+        CI=1
+        FAST_TEST_RUN=1
+      windows_pre_build_command: .github\workflows\scripts\windows\install-nodejs.ps1
+      windows_build_command: docker\test-windows.ps1
 
   tests-windows:
+    defaults:
+        run:
+          shell: powershell
     name: Windows (${{ matrix.swift_version }})
     runs-on: ${{ contains(matrix.swift_version, 'nightly') && 'windows-2019' || 'windows-2022' }}
     strategy:
@@ -37,21 +50,19 @@ jobs:
         uses: actions/checkout@v4
       - name: Install node.js
         if: ${{ !vars.skip_nodejs_install }}
-        run: powershell.exe -NoLogo -File $env:GITHUB_WORKSPACE\.github\workflows\scripts\windows\install-nodejs.ps1
+        run: . .github\workflows\scripts\windows\install-nodejs.ps1
       - name: Install Visual Studio Build Tools
         if: ${{ !vars.skip_vsb_install }}
-        run: powershell.exe -NoLogo -File $env:GITHUB_WORKSPACE\.github\workflows\scripts\windows\install-vsb.ps1
+        run: . .github\workflows\scripts\windows\install-vsb.ps1
       - name: Install Swift
         if: ${{ !vars.skip_swift_install }}
-        run: powershell.exe -NoLogo -File $env:GITHUB_WORKSPACE\.github\workflows\scripts\windows\swift\install-swift-${{ matrix.swift_version }}.ps1
-      - name: Check dependencies
-        run: |
-          swift --version
-          node --version
-      - name: Create test script
+        run: . .github\workflows\scripts\windows\swift\install-swift-${{ matrix.swift_version }}.ps1
+      - name: Build / Test
         run: |
           cd $env:GITHUB_WORKSPACE
-          powershell.exe -NoLogo -File docker\test-windows.ps1
+          Import-Module $env:ChocolateyInstall\helpers\chocolateyProfile.psm1
+          refreshenv
+          docker\test-windows.ps1
 
   soundness:
     name: Soundness
@@ -65,3 +76,4 @@ jobs:
       format_check_enabled: false
       shell_check_enabled: true
       unacceptable_language_check_enabled: true
+

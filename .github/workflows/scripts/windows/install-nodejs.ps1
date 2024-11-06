@@ -1,5 +1,7 @@
 $NODEJS='https://nodejs.org/dist/v18.20.4/node-v18.20.4-x64.msi'
 $NODEJS_SHA256='c2654d3557abd59de08474c6dd009b1d358f420b8e4010e4debbf130b1dfb90a'
+Set-Variable ErrorActionPreference Stop
+Set-Variable ProgressPreference SilentlyContinue
 Write-Host -NoNewLine ('Downloading {0} ... ' -f ${NODEJS})
 Invoke-WebRequest -Uri ${NODEJS} -OutFile  $env:TEMP\node.msi
 Write-Host 'SUCCESS'

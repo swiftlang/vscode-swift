@@ -1,5 +1,7 @@
 $VSB='https://aka.ms/vs/17/release/vs_buildtools.exe'
 $VSB_SHA256='99C7677154366062A43082921F40F3CE00EF2614DBF94DB23B244DD13DC9443D'
+Set-Variable ErrorActionPreference Stop
+Set-Variable ProgressPreference SilentlyContinue
 Write-Host -NoNewLine ('Downloading {0} ... ' -f ${VSB})
 Invoke-WebRequest -Uri $VSB -OutFile $env:TEMP\vs_buildtools.exe
 Write-Host 'SUCCESS'
