@@ -28,8 +28,9 @@ import * as sinon from "sinon";
 import { Commands } from "../../../src/commands";
 
 suite("Dependency Commmands Test Suite", function () {
-    // full workflow's interaction with spm is also longer than the default timeout
-    this.timeout(2 * 60 * 1000);
+    // full workflow's interaction with spm is longer than the default timeout
+    // 15 seconds for each test should be more than enough
+    this.timeout(15 * 1000);
 
     suite("spm Resolve Update Contract Tests", function () {
         let folderContext: FolderContext;
