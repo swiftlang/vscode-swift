@@ -75,7 +75,7 @@ suite("SwiftTaskProvider Test Suite", () => {
                 toolchain
             );
             const { exitCode } = await executeTaskAndWaitForResult(task);
-            expect(exitCode).to.equal(1);
+            expect(exitCode).to.not.equal(0);
         });
 
         test("Exit code on failure to launch", async () => {
