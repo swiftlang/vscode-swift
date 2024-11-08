@@ -15,6 +15,7 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
 import { CommentCompletionProviders } from "../../../src/editor/CommentCompletion";
+import { Workbench } from "../../../src/utilities/commands";
 
 suite("CommentCompletion Test Suite", () => {
     let document: vscode.TextDocument | undefined;
@@ -31,7 +32,7 @@ suite("CommentCompletion Test Suite", () => {
 
         if (editor && document) {
             await vscode.window.showTextDocument(document, editor.viewColumn);
-            await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+            await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
         }
 
         provider.dispose();

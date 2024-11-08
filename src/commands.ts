@@ -64,6 +64,12 @@ export function registerToolchainCommands(
     ];
 }
 
+export enum Commands {
+    RUN = "swift.run",
+    DEBUG = "swift.debug",
+    CLEAN_BUILD = "swift.cleanBuild",
+}
+
 /**
  * Registers this extension's commands in the given {@link vscode.ExtensionContext context}.
  */
@@ -74,9 +80,9 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             resolveDependencies(ctx)
         ),
         vscode.commands.registerCommand("swift.updateDependencies", () => updateDependencies(ctx)),
-        vscode.commands.registerCommand("swift.run", () => runBuild(ctx)),
-        vscode.commands.registerCommand("swift.debug", () => debugBuild(ctx)),
-        vscode.commands.registerCommand("swift.cleanBuild", () => cleanBuild(ctx)),
+        vscode.commands.registerCommand(Commands.RUN, () => runBuild(ctx)),
+        vscode.commands.registerCommand(Commands.DEBUG, () => debugBuild(ctx)),
+        vscode.commands.registerCommand(Commands.CLEAN_BUILD, () => cleanBuild(ctx)),
         vscode.commands.registerCommand("swift.runTestsMultipleTimes", item => {
             if (ctx.currentFolder) {
                 return runTestMultipleTimes(ctx.currentFolder, item, false);
