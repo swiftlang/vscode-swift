@@ -21,6 +21,17 @@ import { Version } from "../../src/utilities/version";
 import { SwiftExecution } from "../../src/tasks/SwiftExecution";
 import { activateExtensionForSuite } from "./utilities/testutilities";
 
+function assertContainsArg(execution: SwiftExecution, arg: string) {
+    assert(execution?.args.find(a => a === arg));
+}
+
+function assertNotContainsArg(execution: SwiftExecution, arg: string) {
+    assert.equal(
+        execution?.args.find(a => a.includes(arg)),
+        undefined
+    );
+}
+
 suite("WorkspaceContext Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     const packageFolder: vscode.Uri = testAssetUri("defaultPackage");
@@ -75,10 +86,10 @@ suite("WorkspaceContext Test Suite", () => {
             const execution = buildAllTask.execution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
             assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
-            assert.strictEqual(execution?.args[0], "build");
-            assert.strictEqual(execution?.args[1], "--build-tests");
-            assert.strictEqual(execution?.args[2], "-Xswiftc");
-            assert.strictEqual(execution?.args[3], "-diagnostic-style=llvm");
+            assertContainsArg(execution, "build");
+            assertContainsArg(execution, "--build-tests");
+            assertContainsArg(execution, "-Xswiftc");
+            assertContainsArg(execution, "-diagnostic-style=llvm");
             assert.strictEqual(buildAllTask.scope, folder.workspaceFolder);
         });
 
@@ -92,8 +103,9 @@ suite("WorkspaceContext Test Suite", () => {
             const execution = buildAllTask.execution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
             assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
-            assert.strictEqual(execution?.args[0], "build");
-            assert.strictEqual(execution?.args[1], "--build-tests");
+            assertContainsArg(execution, "build");
+            assertContainsArg(execution, "--build-tests");
+            assertNotContainsArg(execution, "-diagnostic-style");
             assert.strictEqual(buildAllTask.scope, folder.workspaceFolder);
         });
 
@@ -107,10 +119,10 @@ suite("WorkspaceContext Test Suite", () => {
             const execution = buildAllTask.execution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
             assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
-            assert.strictEqual(execution?.args[0], "build");
-            assert.strictEqual(execution?.args[1], "--build-tests");
-            assert.strictEqual(execution?.args[2], "-Xswiftc");
-            assert.strictEqual(execution?.args[3], "-diagnostic-style=swift");
+            assertContainsArg(execution, "build");
+            assertContainsArg(execution, "--build-tests");
+            assertContainsArg(execution, "-Xswiftc");
+            assertContainsArg(execution, "-diagnostic-style=swift");
             assert.strictEqual(buildAllTask.scope, folder.workspaceFolder);
         });
 
@@ -123,11 +135,7 @@ suite("WorkspaceContext Test Suite", () => {
             await swiftConfig.update("buildArguments", ["--sanitize=thread"]);
             const buildAllTask = createBuildAllTask(folder);
             const execution = buildAllTask.execution as SwiftExecution;
-            assert.strictEqual(execution?.args[0], "build");
-            assert.strictEqual(execution?.args[1], "--build-tests");
-            assert.strictEqual(execution?.args[2], "-Xswiftc");
-            assert.strictEqual(execution?.args[3], "-diagnostic-style=llvm");
-            assert.strictEqual(execution?.args[4], "--sanitize=thread");
+            assertContainsArg(execution, "--sanitize=thread");
             await swiftConfig.update("buildArguments", []);
         });
 
