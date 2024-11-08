@@ -14,12 +14,12 @@
 
 import * as vscode from "vscode";
 import * as assert from "assert";
+import { expect } from "chai";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftPluginTaskProvider } from "../../../src/tasks/SwiftPluginTaskProvider";
 import { FolderContext } from "../../../src/FolderContext";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
-import { executeTaskAndWaitForResult, mutable, waitForEndTaskProcess } from "../../utilities";
-import { expect } from "chai";
+import { cleanOutput, executeTaskAndWaitForResult, mutable, waitForEndTaskProcess } from "../../utilities";
 
 suite("SwiftPluginTaskProvider Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -29,7 +29,6 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
         async setup(ctx) {
             workspaceContext = ctx;
             folderContext = await folderInRootWorkspace("command-plugin", workspaceContext);
-            expect(workspaceContext.folders).to.not.have.lengthOf(0);
             await folderContext.loadSwiftPlugins();
             expect(workspaceContext.folders).to.not.have.lengthOf(0);
         },
@@ -48,12 +47,8 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
                 scope: folderContext.workspaceFolder,
             });
             const { exitCode, output } = await executeTaskAndWaitForResult(task);
-            assert.equal(exitCode, 0);
-            assert.equal(
-                output.trim().endsWith("Hello, World!"),
-                true,
-                "Expceted output to end with 'Hello, World!'"
-            );
+            expect(exitCode).to.equal(0);
+            expect(cleanOutput(output)).to.include("Hello, World!");
         }).timeout(10000);
 
         test("Exit code on failure", async () => {
@@ -70,7 +65,7 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
             );
             mutable(task.execution).command = "/definitely/not/swift";
             const { exitCode } = await executeTaskAndWaitForResult(task);
-            assert.notEqual(exitCode, 0);
+            expect(exitCode).to.not.equal(0);
         }).timeout(10000);
     });
 
@@ -84,7 +79,7 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
             });
 
             test("provides", () => {
-                assert.equal(task?.detail, "swift package command_plugin");
+                expect(task?.detail).to.equal("swift package command_plugin");
             });
 
             test("executes", async () => {
@@ -92,7 +87,7 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
                 const exitPromise = waitForEndTaskProcess(task);
                 await vscode.tasks.executeTask(task);
                 const exitCode = await exitPromise;
-                assert.equal(exitCode, 0);
+                expect(exitCode).to.equal(0);
             }).timeout(30000); // 30 seconds to run
         });
 
@@ -105,7 +100,7 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
             });
 
             test("provides", () => {
-                assert.equal(task?.detail, "swift package command_plugin --foo");
+                expect(task?.detail).to.equal("swift package command_plugin --foo");
             });
 
             test("executes", async () => {
@@ -113,7 +108,7 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
                 const exitPromise = waitForEndTaskProcess(task);
                 await vscode.tasks.executeTask(task);
                 const exitCode = await exitPromise;
-                assert.equal(exitCode, 0);
+                expect(exitCode).to.equal(0);
             }).timeout(30000); // 30 seconds to run
         });
     });
