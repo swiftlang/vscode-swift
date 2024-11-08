@@ -85,12 +85,12 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand(Commands.RESOLVE_DEPENDENCIES, () =>
             resolveDependencies(ctx)
         ),
-        vscode.commands.registerCommand(Commands.RUN, () => runBuild(ctx)),
-        vscode.commands.registerCommand(Commands.DEBUG, () => debugBuild(ctx)),
-        vscode.commands.registerCommand(Commands.CLEAN_BUILD, () => cleanBuild(ctx)),
         vscode.commands.registerCommand(Commands.UPDATE_DEPENDENCIES, () =>
             updateDependencies(ctx)
         ),
+        vscode.commands.registerCommand(Commands.RUN, () => runBuild(ctx)),
+        vscode.commands.registerCommand(Commands.DEBUG, () => debugBuild(ctx)),
+        vscode.commands.registerCommand(Commands.CLEAN_BUILD, () => cleanBuild(ctx)),
         vscode.commands.registerCommand(Commands.RUN_TESTS_MULTIPLE_TIMES, item => {
             if (ctx.currentFolder) {
                 return runTestMultipleTimes(ctx.currentFolder, item, false);
