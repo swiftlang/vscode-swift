@@ -281,7 +281,7 @@ export class TestRunProxy {
                 const testItem = this._testItems[parseInt(key)];
                 const attachments = this.attachments[key];
                 this.appendOutput(
-                    `\r\n${testItem.label}${SymbolRenderer.ansiEscapeCodePrefix}90m reported ${attachments.length} attachment${attachments.length === 1 ? "" : "s"}:${SymbolRenderer.resetANSIEscapeCode}`
+                    `\r\n${testItem.label}${SymbolRenderer.ansiEscapeCodePrefix}90m recorded ${attachments.length} attachment${attachments.length === 1 ? "" : "s"}:${SymbolRenderer.resetANSIEscapeCode}`
                 );
 
                 for (const attachment of attachments) {
@@ -572,7 +572,7 @@ export class TestRunner {
                         swiftTestingConfigFile,
                         {
                             // TODO: This ought to be a configuration file
-                            experimentalAttachmentPath: "/Users/plemarquand/Desktop/ttt",
+                            experimentalAttachmentsPath: "/Users/plemarquand/Desktop/ttt",
                         }
                     );
                     const testBuildConfig = await TestingConfigurationFactory.swiftTestingConfig(
@@ -848,7 +848,7 @@ export class TestRunner {
                         fifoPipePath,
                         swiftTestingConfigFile,
                         {
-                            experimentalAttachmentPath: "/Users/plemarquand/Desktop/ttt",
+                            experimentalAttachmentsPath: "/Users/plemarquand/Desktop/ttt",
                         }
                     );
 
