@@ -97,7 +97,7 @@ interface RunEnded {
 }
 
 interface ValueAttached {
-    kind: "valueAttached";
+    kind: "_valueAttached";
     _attachment: {
         path?: string;
     };
@@ -469,7 +469,7 @@ export class SwiftTestingOutputParser {
                 this.completionMap.set(testIndex, true);
                 runState.completed(testIndex, { timestamp: item.payload.instant.absolute });
                 return;
-            } else if (item.payload.kind === "valueAttached" && item.payload._attachment.path) {
+            } else if (item.payload.kind === "_valueAttached" && item.payload._attachment.path) {
                 const testID = this.idFromOptionalTestCase(item.payload.testID);
                 const testIndex = this.getTestCaseIndex(runState, testID);
 

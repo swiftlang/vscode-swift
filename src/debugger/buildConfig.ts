@@ -100,7 +100,7 @@ export class BuildConfigurationFactory {
 }
 
 interface SwiftTestingConfigFile {
-    experimentalAttachmentPath: string | undefined;
+    experimentalAttachmentsPath: string | undefined;
 }
 
 export class SwiftTestingBuildAguments {
