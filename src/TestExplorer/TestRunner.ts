@@ -40,6 +40,8 @@ import { BuildConfigurationFactory, TestingConfigurationFactory } from "../debug
 import { TestKind, isDebugging, isRelease } from "./TestKind";
 import { reduceTestItemChildren } from "./TestUtils";
 import { CompositeCancellationToken } from "../utilities/cancellation";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import stripAnsi = require("strip-ansi");
 
 export enum TestLibrary {
     xctest = "XCTest",
@@ -264,7 +266,7 @@ export class TestRunProxy {
         test?: vscode.TestItem
     ) {
         testRun.appendOutput(output, location, test);
-        this.runState.output.push(output);
+        this.runState.output.push(stripAnsi(output));
     }
 
     private prependIterationToOutput(output: string): string {
