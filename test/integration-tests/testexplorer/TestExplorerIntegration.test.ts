@@ -479,6 +479,8 @@ suite("Test Explorer Suite", function () {
             let xcTestFailureMessage: string;
 
             beforeEach(() => {
+                const suffix = process.platform === "win32" ? "\x1b[0K" : "";
+
                 // From 5.7 to 5.10 running with the --parallel option dumps the test results out
                 // to the console with no newlines, so it isn't possible to distinguish where errors
                 // begin and end. Consequently we can't record them, and so we manually mark them
@@ -487,7 +489,7 @@ suite("Test Explorer Suite", function () {
                     runProfile === TestKind.parallel &&
                     !workspaceContext.toolchain.hasMultiLineParallelTestOutput
                         ? "failed"
-                        : "failed - oh no";
+                        : `failed - oh no${suffix}`;
             });
 
             suite(runProfile, () => {
