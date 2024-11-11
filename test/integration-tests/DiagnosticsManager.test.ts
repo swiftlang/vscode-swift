@@ -28,9 +28,9 @@ import { activateExtensionForSuite, folderInRootWorkspace } from "./utilities/te
 const waitForDiagnostics = (uris: vscode.Uri[], allowEmpty: boolean = true) =>
     new Promise<void>(res =>
         vscode.languages.onDidChangeDiagnostics(e => {
-            const paths = e.uris.map(u => u.path);
+            const paths = e.uris.map(u => u.fsPath);
             for (const uri of uris) {
-                if (!paths.includes(uri.path)) {
+                if (!paths.includes(uri.fsPath)) {
                     return;
                 }
                 if (!allowEmpty && !vscode.languages.getDiagnostics(uri).length) {
