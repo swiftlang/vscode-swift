@@ -16,7 +16,6 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import { expect } from "chai";
-import { folderContextPromise, globalWorkspaceContextPromise } from "../extension.test";
 import { waitForNoRunningTasks } from "../../utilities";
 import { testAssetUri } from "../../fixtures";
 import { FolderContext } from "../../../src/FolderContext";
@@ -25,21 +24,26 @@ import { Commands } from "../../../src/commands";
 import { makeDebugConfigurations } from "../../../src/debugger/launch";
 import { Workbench } from "../../../src/utilities/commands";
 import { continueSession, waitForDebugAdapterCommand } from "../../utilities/debug";
-import { SettingsMap, updateSettings } from "../testexplorer/utilities";
+import {
+    activateExtension,
+    deactivateExtension,
+    folderInRootWorkspace,
+    updateSettings,
+} from "../utilities/testutilities";
 
 suite("Build Commands", function () {
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
-    let settingsTeardown: () => Promise<SettingsMap>;
+    let settingsTeardown: () => Promise<void>;
     const uri = testAssetUri("defaultPackage/Sources/PackageExe/main.swift");
     const breakpoints = [
         new vscode.SourceBreakpoint(new vscode.Location(uri, new vscode.Position(2, 0))),
     ];
 
     suiteSetup(async function () {
-        workspaceContext = await globalWorkspaceContextPromise;
+        workspaceContext = await activateExtension();
         await waitForNoRunningTasks();
-        folderContext = await folderContextPromise("defaultPackage");
+        folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
         await workspaceContext.focusFolder(folderContext);
         await vscode.window.showTextDocument(uri);
         settingsTeardown = await updateSettings({
@@ -51,6 +55,7 @@ suite("Build Commands", function () {
     suiteTeardown(async () => {
         await settingsTeardown();
         await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
+        await deactivateExtension();
     });
 
     test("Swift: Run Build", async () => {

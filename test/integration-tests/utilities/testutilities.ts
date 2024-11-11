@@ -74,8 +74,8 @@ const extensionBootstrapper = (() => {
             let workspaceContext: WorkspaceContext | undefined;
 
             // We can only _really_ call activate through
-            // `vscode.extensions.getExtension<Api>("sswg.swift-lang")`
-            // _once_. Subsequent activations must be done through the returned API object.
+            // `vscode.extensions.getExtension<Api>("sswg.swift-lang")` once.
+            // Subsequent activations must be done through the returned API object.
             if (!activator) {
                 activatedAPI = await ext.activate();
                 activator = activatedAPI.activate;
