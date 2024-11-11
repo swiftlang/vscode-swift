@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import { expect } from "chai";
+import * as path from "path";
 import {
     PackageDependenciesProvider,
     PackageNode,
@@ -47,7 +48,7 @@ suite("PackageDependencyProvider Test Suite", function () {
         expect(dep).to.not.be.undefined;
         expect(dep?.location).to.equal("https://github.com/swiftlang/swift-markdown.git");
         expect(dep?.path).to.equal(
-            `${testAssetPath("dependencies")}/.build/checkouts/swift-markdown`
+            path.join(testAssetPath("dependencies"), ".build/checkouts/swift-markdown")
         );
     });
 
@@ -70,20 +71,22 @@ suite("PackageDependencyProvider Test Suite", function () {
         const folder = folders.find(n => n.name === "Sources");
         expect(folder).to.not.be.undefined;
 
-        expect(folder?.path).to.equal(`${testAssetPath("defaultPackage")}/Sources`);
+        expect(folder?.path).to.equal(path.join(testAssetPath("defaultPackage"), "Sources"));
 
         const childFolders = await treeProvider.getChildren(folder);
         const childFolder = childFolders.find(n => n.name === "PackageExe");
         expect(childFolder).to.not.be.undefined;
 
-        expect(childFolder?.path).to.equal(`${testAssetPath("defaultPackage")}/Sources/PackageExe`);
+        expect(childFolder?.path).to.equal(
+            path.join(testAssetPath("defaultPackage"), "Sources/PackageExe")
+        );
 
         const files = await treeProvider.getChildren(childFolder);
         const file = files.find(n => n.name === "main.swift");
         expect(file).to.not.be.undefined;
 
         expect(file?.path).to.equal(
-            `${testAssetPath("defaultPackage")}/Sources/PackageExe/main.swift`
+            path.join(testAssetPath("defaultPackage"), "Sources/PackageExe/main.swift")
         );
     });
 
@@ -97,19 +100,19 @@ suite("PackageDependencyProvider Test Suite", function () {
         const folder = folders.find(n => n.name === "Sources");
         expect(folder).to.not.be.undefined;
 
-        const path = `${testAssetPath("dependencies")}/.build/checkouts/swift-markdown`;
-        expect(folder?.path).to.equal(`${path}/Sources`);
+        const depPath = path.join(testAssetPath("dependencies"), ".build/checkouts/swift-markdown");
+        expect(folder?.path).to.equal(path.join(depPath, "Sources"));
 
         const childFolders = await treeProvider.getChildren(folder);
         const childFolder = childFolders.find(n => n.name === "CAtomic");
         expect(childFolder).to.not.be.undefined;
 
-        expect(childFolder?.path).to.equal(`${path}/Sources/CAtomic`);
+        expect(childFolder?.path).to.equal(path.join(depPath, "Sources/CAtomic"));
 
         const files = await treeProvider.getChildren(childFolder);
         const file = files.find(n => n.name === "CAtomic.c");
         expect(file).to.not.be.undefined;
 
-        expect(file?.path).to.equal(`${path}/Sources/CAtomic/CAtomic.c`);
+        expect(file?.path).to.equal(path.join(depPath, "Sources/CAtomic/CAtomic.c"));
     });
 });
