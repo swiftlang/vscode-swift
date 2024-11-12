@@ -30,7 +30,7 @@ suite("Documentation Preview Editor", function () {
     suiteSetup(async function () {
         workspaceContext = await globalWorkspaceContextPromise;
         await waitForNoRunningTasks();
-        folderContext = await folderContextPromise("SlothCreatorBuildingDocCDocumentationInXcode");
+        folderContext = await folderContextPromise("SlothCreatorExample");
         await workspaceContext.focusFolder(folderContext);
     });
 
@@ -41,9 +41,7 @@ suite("Documentation Preview Editor", function () {
     test("renders documentation for an opened Swift file", async function () {
         // Open a Swift file before we launch the documentation preview
         await vscode.window.showTextDocument(
-            testAssetUri(
-                "SlothCreatorBuildingDocCDocumentationInXcode/Sources/SlothCreator/Models/Sloth.swift"
-            )
+            testAssetUri("SlothCreatorExample/Sources/SlothCreator/Models/Sloth.swift")
         );
 
         // Launch the documentation preview and wait for the content to update
