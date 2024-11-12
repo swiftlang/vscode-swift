@@ -119,7 +119,9 @@ suite("Test Explorer Suite", function () {
             });
         });
 
-        afterEach(async () => await settingsTeardown());
+        afterEach(async () => {
+            await settingsTeardown();
+        });
     });
 
     suite("Standard", () => {

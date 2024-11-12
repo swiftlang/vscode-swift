@@ -48,7 +48,7 @@ export async function setupTestExplorerTest(settings: SettingsMap = {}) {
 
     return {
         settingsTeardown: async () => {
-            settingsTeardown();
+            await settingsTeardown();
             await deactivateExtension();
         },
         workspaceContext,

@@ -23,7 +23,7 @@ import { activateExtension, deactivateExtension, updateSettings } from "./utilit
 
 suite("BackgroundCompilation Test Suite", () => {
     let workspaceContext: WorkspaceContext;
-    let settingsTeardown: () => void;
+    let settingsTeardown: () => Promise<void>;
 
     beforeEach(async function () {
         workspaceContext = await activateExtension(this.currentTest);
@@ -36,7 +36,7 @@ suite("BackgroundCompilation Test Suite", () => {
     });
 
     afterEach(async () => {
-        settingsTeardown();
+        await settingsTeardown();
         await deactivateExtension();
     });
 
