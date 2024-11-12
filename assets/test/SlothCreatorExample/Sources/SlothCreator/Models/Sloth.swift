@@ -10,7 +10,7 @@ import Foundation
 /// A model representing a sloth.
 ///
 /// Sloths are mammals known for their slowness of movement. They spend most of their
-/// lives hanging upside down in trees.
+/// lives dangling upside down in trees.
 ///
 /// You can create a sloth using the ``init(name:color:power:)`` initializer, or
 /// create a randomly generated sloth using a ``SlothGenerator``:

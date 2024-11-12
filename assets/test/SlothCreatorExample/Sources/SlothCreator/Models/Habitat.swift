@@ -7,7 +7,7 @@ The model type for the habitat where sloths live.
 
 /// The habitat where sloths live.
 ///
-/// Sloths love hanging out in rain forests, and are especially grateful for hot and humid habitats.
+/// Sloths love dangling out in rain forests, and are especially grateful for hot and humid habitats.
 /// They spend much of their time asleep, so make sure the habitats you create provide
 /// comfortable and reliable branches in a large number of trees for them to feel safe and
 /// protected.

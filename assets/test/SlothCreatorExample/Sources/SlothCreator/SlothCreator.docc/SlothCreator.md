@@ -10,7 +10,7 @@ Sloths need careful feeding and maintenance to ensure their health and happiness
 
 You can visualize and observe your sloths by adding a ``SlothView`` to a SwiftUI view structure.
 
-![A sloth hanging off a tree.](sloth.png)
+![A sloth dangling off a tree.](sloth.png)
 
 
 ## Topics
