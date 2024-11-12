@@ -917,7 +917,8 @@ suite("DiagnosticsManager Test Suite", async function () {
         });
     });
 
-    suite("SourceKit-LSP diagnostics", () => {
+    // Skipped until we enable it in a nightly build
+    suite("SourceKit-LSP diagnostics @slow", () => {
         suiteSetup(async function () {
             if (workspaceContext.swiftVersion.isLessThan(new Version(5, 7, 0))) {
                 this.skip();
