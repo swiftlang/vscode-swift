@@ -16,6 +16,7 @@ import * as vscode from "vscode";
 import { DocumentationPreviewEditor } from "./DocumentationPreviewEditor";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { RenderNode } from "./webview/WebviewMessage";
+import contextKeys from "../contextKeys";
 
 export class DocumentationManager {
     private previewEditor?: DocumentationPreviewEditor;
@@ -29,6 +30,10 @@ export class DocumentationManager {
     onPreviewDidUpdateContent = this.editorUpdatedContentEmitter.event;
 
     async launchDocumentationPreview(): Promise<boolean> {
+        if (!contextKeys.supportsDocumentationRendering) {
+            return false;
+        }
+
         if (!this.previewEditor) {
             const folderContext = this.context.currentFolder;
             if (!folderContext) {

@@ -688,7 +688,7 @@
       "commandPalette": [
         {
           "command": "swift.previewDocumentation",
-          "when": "swift.hasPackage"
+          "when": "swift.supportsDocumentationRendering"
         },
         {
           "command": "swift.createNewProject",

@@ -26,6 +26,7 @@ import { RenderNode } from "../../../src/documentation/webview/WebviewMessage";
 suite("Documentation Preview Editor", function () {
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
+    this.timeout(5000); // Tests are short, but rely on SourceKit-LSP: give 5 seconds for each one
 
     suiteSetup(async function () {
         workspaceContext = await globalWorkspaceContextPromise;
