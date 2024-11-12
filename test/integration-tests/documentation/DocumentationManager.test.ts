@@ -22,11 +22,13 @@ import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Commands } from "../../../src/commands";
 import { Workbench } from "../../../src/utilities/commands";
 import { RenderNode } from "../../../src/documentation/webview/WebviewMessage";
+import contextKeys from "../../../src/contextKeys";
 
 suite("Documentation Preview Editor", function () {
+    this.timeout(5000); // Tests are short, but rely on SourceKit-LSP: give 5 seconds for each one
+
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
-    this.timeout(5000); // Tests are short, but rely on SourceKit-LSP: give 5 seconds for each one
 
     suiteSetup(async function () {
         workspaceContext = await globalWorkspaceContextPromise;
@@ -40,6 +42,11 @@ suite("Documentation Preview Editor", function () {
     });
 
     test("renders documentation for an opened Swift file", async function () {
+        if (!contextKeys.supportsDocumentationRendering) {
+            this.skip();
+            return;
+        }
+
         // Open a Swift file before we launch the documentation preview
         await vscode.window.showTextDocument(
             testAssetUri("SlothCreatorExample/Sources/SlothCreator/Models/Sloth.swift")
