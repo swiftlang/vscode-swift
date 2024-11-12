@@ -92,10 +92,6 @@ export type VueAppMessage = RenderedMessage | NavigationMessage | UpdateContentM
  */
 export interface RenderedMessage {
     type: "rendered";
-    data: {
-        time?: number;
-        route: string;
-    };
 }
 
 /**

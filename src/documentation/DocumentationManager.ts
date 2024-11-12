@@ -13,26 +13,20 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
-import * as path from "path";
 import { DocumentationPreviewEditor } from "./DocumentationPreviewEditor";
 import { WorkspaceContext } from "../WorkspaceContext";
-import { FolderContext } from "../FolderContext";
-import { createSwiftTask } from "../tasks/SwiftTaskProvider";
-import { executeTaskWithUI, updateAfterError } from "../commands/utilities";
-import { NavigateMessage, WebviewMessage } from "./webview/WebviewMessage";
+import { RenderNode } from "./webview/WebviewMessage";
 
 export class DocumentationManager {
     private previewEditor?: DocumentationPreviewEditor;
+    private editorUpdatedContentEmitter = new vscode.EventEmitter<RenderNode>();
 
     constructor(
         private readonly extension: vscode.ExtensionContext,
         private readonly context: WorkspaceContext
     ) {}
 
-    getEditorOnNavigateEvent(): vscode.EventEmitter<NavigateMessage> | undefined {
-        return this.previewEditor?.onNavigateEvent;
-    }
+    onPreviewDidUpdateContent = this.editorUpdatedContentEmitter.event;
 
     async launchDocumentationPreview(): Promise<boolean> {
         if (!this.previewEditor) {
@@ -41,17 +35,11 @@ export class DocumentationManager {
                 return false;
             }
 
-            const archive = await this.buildDocumentation(folderContext);
-            if (!archive) {
-                return false;
-            }
-
-            this.previewEditor = new DocumentationPreviewEditor(
-                archive,
-                this.extension,
-                this.context
-            );
+            this.previewEditor = new DocumentationPreviewEditor(this.extension, this.context);
             const subscriptions: vscode.Disposable[] = [
+                this.previewEditor.onDidUpdateContent(content => {
+                    this.editorUpdatedContentEmitter.fire(content);
+                }),
                 this.previewEditor.onDidDispose(() => {
                     subscriptions.forEach(d => d.dispose());
                     this.previewEditor = undefined;
@@ -61,40 +49,5 @@ export class DocumentationManager {
             this.previewEditor.reveal();
         }
         return true;
-    }
-
-    private async buildDocumentation(folderContext: FolderContext): Promise<string | undefined> {
-        const buildPath = path.join(folderContext.folder.fsPath, ".build", "vscode-swift");
-        const outputPath = path.join(buildPath, "documentation-preview");
-        await fs.rm(outputPath, { recursive: true, force: true });
-        await fs.mkdir(outputPath, { recursive: true });
-        const task = createSwiftTask(
-            [
-                "package",
-                "--disable-sandbox",
-                "generate-documentation",
-                "--enable-experimental-combined-documentation",
-                "--output-path",
-                outputPath,
-            ],
-            "Build Documentation",
-            {
-                cwd: folderContext.folder,
-                scope: folderContext.workspaceFolder,
-                prefix: folderContext.name,
-                presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
-            },
-            folderContext.workspaceContext.toolchain,
-            {
-                DOCC_HTML_DIR: this.extension.asAbsolutePath("assets/swift-docc-render"),
-            }
-        );
-        const succeeded = await executeTaskWithUI(task, "Building Documentation", folderContext);
-        updateAfterError(succeeded, folderContext);
-        if (!succeeded) {
-            vscode.window.showErrorMessage("Failed to build documentation via SwiftDocC");
-            return;
-        }
-        return outputPath;
     }
 }

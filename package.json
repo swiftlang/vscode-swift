@@ -59,6 +59,24 @@
           ".swiftinterface",
           ".swift"
         ]
+      },
+      {
+        "id": "swift-docc-markdown",
+        "aliases": [
+          "Swift DocC Markdown"
+        ],
+        "filenamePatterns": [
+          "**/*.docc/**/*.md"
+        ]
+      },
+      {
+        "id": "swift-docc-tutorial",
+        "aliases": [
+          "Swift DocC Tutorial"
+        ],
+        "filenamePatterns": [
+          "**/*.docc/**/*.tutorial"
+        ]
       }
     ],
     "snippets": [

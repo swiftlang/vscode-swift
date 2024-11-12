@@ -15,32 +15,22 @@
 /**
  * Represents a message that can be sent between the webview and vscode-swift
  */
-export type WebviewMessage = ReadyMessage | NavigateMessage | RenderMessage | UpdateContentMessage;
+export type WebviewMessage = LoadedMessage | RenderedMessage | UpdateContentMessage;
 
 /**
- * Sent from the webview to the extension to indicate that the webview is
- * ready to receive messages.
+ * Sent from the webview to the extension to indicate that the webview has loaded
+ * and is ready to receive messages.
  */
-export interface ReadyMessage {
-    type: "ready";
-}
-
-/**
- * Sent from the extension to the webview after the "ready" message is
- * received in order to navigate to a particular documentation page.
- */
-export interface NavigateMessage {
-    type: "navigate";
-    route: string;
+export interface LoadedMessage {
+    type: "loaded";
 }
 
 /**
  * Sent from the webview to the extension to indicate that content has been
  * rendered to the screen.
  */
-export interface RenderMessage {
+export interface RenderedMessage {
     type: "rendered";
-    route: string;
 }
 
 /**
@@ -51,5 +41,20 @@ export interface RenderMessage {
  */
 export interface UpdateContentMessage {
     type: "update-content";
-    data: unknown;
+    content: RenderNode;
+}
+
+export interface RenderNode {
+    schemaVersion: {
+        major: number;
+        minor: number;
+        patch: number;
+    };
+
+    kind: "symbol" | "article" | "tutorial" | "project" | "section" | "overview";
+
+    identifier: {
+        url: string;
+        interfacedLanguage: string;
+    };
 }

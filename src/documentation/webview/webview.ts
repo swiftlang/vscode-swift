@@ -12,31 +12,26 @@
 //
 //===----------------------------------------------------------------------===//
 
-import debounce from "lodash.debounce";
-import { WebviewState } from "./WebviewState";
-import { WebviewMessage } from "./WebviewMessage";
+import { RenderNode, WebviewMessage } from "./WebviewMessage";
 import { createCommunicationBridge } from "./CommunicationBridge";
 
 createCommunicationBridge().then(async bridge => {
     const vscode = acquireVsCodeApi();
-    const state: WebviewState = vscode.getState() ?? {};
+    let activeDocumentationPath: string | undefined;
+    let contentToApplyOnRender: RenderNode | undefined;
 
     // Handle messages coming from swift-docc-render
     bridge.onDidReceiveMessage(message => {
         switch (message.type) {
             case "rendered":
-                if (state.scrollPosition?.route === message.data.route) {
-                    window.scrollTo({ left: state.scrollPosition.x, top: state.scrollPosition.y });
-                } else {
-                    window.scrollTo({ left: 0, top: 0 });
-                    state.scrollPosition = {
-                        route: message.data.route,
-                        x: 0,
-                        y: 0,
-                    };
-                    vscode.setState(state);
+                if (contentToApplyOnRender) {
+                    setTimeout(() => {
+                        bridge.send({ type: "contentUpdate", data: contentToApplyOnRender });
+                        contentToApplyOnRender = undefined;
+                    }, 1);
+                    break;
                 }
-                vscode.postMessage({ type: "rendered", route: message.data.route });
+                vscode.postMessage({ type: "rendered" });
                 break;
         }
     });
@@ -49,29 +44,73 @@ createCommunicationBridge().then(async bridge => {
 
         const message = event.data as WebviewMessage;
         switch (message.type) {
-            case "navigate":
-                bridge.send({ type: "navigation", data: message.route });
-                break;
             case "update-content":
-                bridge.send({ type: "contentUpdate", data: message.data });
+                handleUpdateContentMessage(message.content);
                 break;
         }
     });
-
-    // Store the current scroll state so that we can restore it if we are hidden
-    window.addEventListener(
-        "scroll",
-        debounce(() => {
-            if (!state.scrollPosition) {
-                return;
+    function handleUpdateContentMessage(renderNode: RenderNode) {
+        const documentationPath: string = (() => {
+            switch (renderNode.kind) {
+                case "symbol":
+                case "article":
+                    return "/live/documentation";
+                case "overview":
+                    return "/live/tutorials-overview";
+                default:
+                    return "/live/tutorials";
             }
-
-            state.scrollPosition.x = window.scrollX;
-            state.scrollPosition.y = window.scrollY;
-            vscode.setState(state);
-        }, 200)
-    );
+        })();
+        if (activeDocumentationPath !== documentationPath) {
+            activeDocumentationPath = documentationPath;
+            contentToApplyOnRender = renderNode;
+            bridge.send({
+                type: "navigation",
+                data: documentationPath,
+            });
+        } else {
+            bridge.send({ type: "contentUpdate", data: renderNode });
+        }
+    }
 
     // Notify vscode-swift that we're ready to receive messages
-    vscode.postMessage({ type: "ready" });
+    vscode.postMessage({ type: "loaded" });
 });
+
+declare global {
+    /**
+     * An API provided by VS Code used to retrieve/store state and communicate with
+     * the extension that created this WebView.
+     */
+    interface VSCodeWebviewAPI {
+        /**
+         * Get the current state of this WebView.
+         *
+         * Used in combination with {@link setState} to retain state even if this WebView is hidden.
+         *
+         * @returns the current value of the state
+         */
+        getState(): unknown | undefined;
+
+        /**
+         * Set the current state of this Webview.
+         *
+         * Used in combination with {@link getState} to retain state even if this WebView is hidden.
+         *
+         * @param value the current value of the state
+         */
+        setState(value: unknown): void;
+
+        /**
+         * Send an event to the extension that created this WebView.
+         *
+         * @param event the {@link WebviewMessage} that will be sent
+         */
+        postMessage(event: WebviewMessage): void;
+    }
+
+    /**
+     * Get the {@link VSCodeWebviewAPI} provided to this WebView by VS Code.
+     */
+    function acquireVsCodeApi(): VSCodeWebviewAPI;
+}
