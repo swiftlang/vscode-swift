@@ -1,10 +1,3 @@
-/*
-See LICENSE folder for this sample’s licensing information.
-
-Abstract:
-The model type for the habitat where sloths live.
-*/
-
 /// The habitat where sloths live.
 ///
 /// Sloths love dangling out in rain forests, and are especially grateful for hot and humid habitats.

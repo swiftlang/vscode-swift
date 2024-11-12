@@ -1,10 +1,3 @@
-/*
-See LICENSE folder for this sample’s licensing information.
-
-Abstract:
-A view to configure a sloth's power.
-*/
-
 import SwiftUI
 
 /// A view to configure a sloth's power.

@@ -1,10 +1,3 @@
-/*
-See LICENSE folder for this sample’s licensing information.
-
-Abstract:
-The model type for the color of a sloth.
-*/
-
 import Foundation
 
 extension Sloth {

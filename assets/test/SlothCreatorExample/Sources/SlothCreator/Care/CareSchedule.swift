@@ -1,10 +1,3 @@
-/*
-See LICENSE folder for this sample’s licensing information.
-
-Abstract:
-A representation of a schedule of events that provide care for a sloth.
-*/
-
 import Foundation
 
 /// A schedule to maintain the health and happiness of a sloth.

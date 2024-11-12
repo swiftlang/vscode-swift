@@ -1,10 +1,3 @@
-/*
-See LICENSE folder for this sample’s licensing information.
-
-Abstract:
-A view that displays a sloth.
-*/
-
 import SwiftUI
 
 /// A view that displays a sloth.

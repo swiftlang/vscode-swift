@@ -1,10 +1,3 @@
-/*
-See LICENSE folder for this sample’s licensing information.
-
-Abstract:
-The model type for a sloth.
-*/
-
 import Foundation
 
 /// A model representing a sloth.
