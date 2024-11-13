@@ -113,17 +113,27 @@ export function getLaunchConfiguration(
     const wsLaunchSection = vscode.workspace.getConfiguration("launch", folderCtx.workspaceFolder);
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
     const { folder } = getFolderAndNameSuffix(folderCtx);
-    const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
+    const targetPath = path.join(
+        BuildFlags.buildDirectoryFromWorkspacePath(folder, true),
+        "debug",
+        target
+    );
+    // Users could be on different platforms with different path annotations,
+    // so normalize before we compare.
     return launchConfigs.find(
-        config => config.program === path.join(buildDirectory, "debug", target)
+        config => path.normalize(config.program) === path.normalize(targetPath)
     );
 }
 
 // Return array of DebugConfigurations for executables based on what is in Package.swift
 function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfiguration[] {
     const executableProducts = ctx.swiftPackage.executableProducts;
+
+    // Windows understand the forward slashes, so make the configuration unified as posix path
+    // to make it easier for users switching between platforms.
     const { folder, nameSuffix } = getFolderAndNameSuffix(ctx, undefined, "posix");
     const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true, "posix");
+
     return executableProducts.flatMap(product => {
         const baseConfig = {
             type: DebugAdapter.getLaunchConfigType(ctx.workspaceContext.swiftVersion),
