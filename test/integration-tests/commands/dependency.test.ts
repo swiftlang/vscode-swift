@@ -116,7 +116,11 @@ suite("Dependency Commmands Test Suite", function () {
             expect(output).to.include("required");
         }
 
-        test("Use local dependency - Reset", async () => {
+        test("Use local dependency - Reset", async function () {
+            // spm reset after using local dependency is broken on windows
+            if (process.platform === "win32") {
+                this.skip();
+            }
             await useLocalDependencyTest();
 
             // Contract: spm reset
