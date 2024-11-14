@@ -59,7 +59,7 @@ suite("PackageDependencyProvider Test Suite", function () {
 
         const dep = items.find(n => n.name === "defaultpackage") as PackageNode;
         expect(dep).to.not.be.undefined;
-        expect(dep?.location).to.equal(testAssetPath("defaultPackage"));
+        assertPathsEqual(dep?.location, testAssetPath("defaultPackage"));
         assertPathsEqual(dep?.path, testAssetPath("defaultPackage"));
     });
 
