@@ -26,6 +26,8 @@ import {
     SettingsMap,
     updateSettings,
 } from "../utilities/testutilities";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import stripAnsi = require("strip-ansi");
 
 /**
  * Sets up a test that leverages the TestExplorer, returning the TestExplorer,
@@ -139,8 +141,8 @@ export function assertTestResults(
                 .map(({ test, message }) => ({
                     test: test.id,
                     issues: Array.isArray(message)
-                        ? message.map(({ message }) => message)
-                        : [(message as vscode.TestMessage).message],
+                        ? message.map(({ message }) => stripAnsi(message.toString()))
+                        : [stripAnsi((message as vscode.TestMessage).message.toString())],
                 }))
                 .sort(),
             skipped: testRun.runState.skipped.map(({ id }) => id).sort(),
