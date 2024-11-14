@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import { expect } from "chai";
+import * as vscode from "vscode";
 import * as path from "path";
 import {
     PackageDependenciesProvider,
@@ -47,7 +48,8 @@ suite("PackageDependencyProvider Test Suite", function () {
         const dep = items.find(n => n.name === "swift-markdown") as PackageNode;
         expect(dep).to.not.be.undefined;
         expect(dep?.location).to.equal("https://github.com/swiftlang/swift-markdown.git");
-        expect(dep?.path).to.equal(
+        assertPathsEqual(
+            dep?.path,
             path.join(testAssetPath("dependencies"), ".build/checkouts/swift-markdown")
         );
     });
@@ -58,7 +60,7 @@ suite("PackageDependencyProvider Test Suite", function () {
         const dep = items.find(n => n.name === "defaultpackage") as PackageNode;
         expect(dep).to.not.be.undefined;
         expect(dep?.location).to.equal(testAssetPath("defaultPackage"));
-        expect(dep?.path).to.equal(testAssetPath("defaultPackage"));
+        assertPathsEqual(dep?.path, testAssetPath("defaultPackage"));
     });
 
     test("Lists local dependency file structure", async () => {
@@ -71,13 +73,14 @@ suite("PackageDependencyProvider Test Suite", function () {
         const folder = folders.find(n => n.name === "Sources");
         expect(folder).to.not.be.undefined;
 
-        expect(folder?.path).to.equal(path.join(testAssetPath("defaultPackage"), "Sources"));
+        assertPathsEqual(folder?.path, path.join(testAssetPath("defaultPackage"), "Sources"));
 
         const childFolders = await treeProvider.getChildren(folder);
         const childFolder = childFolders.find(n => n.name === "PackageExe");
         expect(childFolder).to.not.be.undefined;
 
-        expect(childFolder?.path).to.equal(
+        assertPathsEqual(
+            childFolder?.path,
             path.join(testAssetPath("defaultPackage"), "Sources/PackageExe")
         );
 
@@ -85,7 +88,8 @@ suite("PackageDependencyProvider Test Suite", function () {
         const file = files.find(n => n.name === "main.swift");
         expect(file).to.not.be.undefined;
 
-        expect(file?.path).to.equal(
+        assertPathsEqual(
+            file?.path,
             path.join(testAssetPath("defaultPackage"), "Sources/PackageExe/main.swift")
         );
     });
@@ -101,18 +105,25 @@ suite("PackageDependencyProvider Test Suite", function () {
         expect(folder).to.not.be.undefined;
 
         const depPath = path.join(testAssetPath("dependencies"), ".build/checkouts/swift-markdown");
-        expect(folder?.path).to.equal(path.join(depPath, "Sources"));
+        assertPathsEqual(folder?.path, path.join(depPath, "Sources"));
 
         const childFolders = await treeProvider.getChildren(folder);
         const childFolder = childFolders.find(n => n.name === "CAtomic");
         expect(childFolder).to.not.be.undefined;
 
-        expect(childFolder?.path).to.equal(path.join(depPath, "Sources/CAtomic"));
+        assertPathsEqual(childFolder?.path, path.join(depPath, "Sources/CAtomic"));
 
         const files = await treeProvider.getChildren(childFolder);
         const file = files.find(n => n.name === "CAtomic.c");
         expect(file).to.not.be.undefined;
 
-        expect(file?.path).to.equal(path.join(depPath, "Sources/CAtomic/CAtomic.c"));
+        assertPathsEqual(file?.path, path.join(depPath, "Sources/CAtomic/CAtomic.c"));
     });
+
+    function assertPathsEqual(path1: string | undefined, path2: string | undefined) {
+        expect(path1).to.not.be.undefined;
+        expect(path2).to.not.be.undefined;
+        // Convert to vscode.Uri to normalize paths, including drive letter capitalization on Windows.
+        expect(vscode.Uri.file(path1!).fsPath).to.equal(vscode.Uri.file(path2!).fsPath);
+    }
 });
