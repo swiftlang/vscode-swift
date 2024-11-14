@@ -151,7 +151,12 @@ export function assertTestResults(
         },
         {
             passed: (state.passed ?? []).sort(),
-            failed: (state.failed ?? []).sort(),
+            failed: (state.failed ?? [])
+                .map(({ test, issues }) => ({
+                    test,
+                    issues: issues.map(message => stripAnsi(message)),
+                }))
+                .sort(),
             skipped: (state.skipped ?? []).sort(),
             errored: (state.errored ?? []).sort(),
             unknown: 0,
