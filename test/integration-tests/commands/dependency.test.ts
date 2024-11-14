@@ -33,8 +33,8 @@ import {
 
 suite("Dependency Commmands Test Suite", function () {
     // full workflow's interaction with spm is longer than the default timeout
-    // 15 seconds for each test should be more than enough
-    this.timeout(15 * 1000);
+    // 60 seconds for each test should be more than enough
+    this.timeout(60 * 1000);
 
     suite("spm Resolve Update Contract Tests", function () {
         let folderContext: FolderContext;
