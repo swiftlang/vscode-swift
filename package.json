@@ -165,7 +165,7 @@
       },
       {
         "command": "swift.switchPlatform",
-        "title": "Select Swift SDK...",
+        "title": "Select Target Platform...",
         "category": "Swift"
       },
       {
