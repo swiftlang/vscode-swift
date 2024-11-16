@@ -188,7 +188,7 @@ export type SettingsMap = { [key: string]: unknown };
  * "section.name" format, and the value is the new setting value.
  * @returns A function that, when called, resets the settings back to their original values.
  */
-export async function updateSettings(settings: SettingsMap): Promise<() => Promise<void>> {
+export async function updateSettings(settings: SettingsMap): Promise<() => Promise<SettingsMap>> {
     const applySettings = async (settings: SettingsMap) => {
         const savedOriginalSettings: SettingsMap = {};
         Object.keys(settings).forEach(async setting => {
@@ -224,9 +224,7 @@ export async function updateSettings(settings: SettingsMap): Promise<() => Promi
     const savedOriginalSettings = await applySettings(settings);
 
     // Clients call the callback to reset updated settings to their original value
-    return async () => {
-        await applySettings(savedOriginalSettings);
-    };
+    return async () => await applySettings(savedOriginalSettings);
 }
 
 /**

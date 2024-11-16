@@ -24,6 +24,7 @@ import {
     eventPromise,
     gatherTests,
     runTest,
+    SettingsMap,
     setupTestExplorerTest,
     waitForTestExplorerReady,
 } from "./utilities";
@@ -41,6 +42,7 @@ import {
     reduceTestItemChildren,
 } from "../../../src/TestExplorer/TestUtils";
 import { runnableTag } from "../../../src/TestExplorer/TestDiscovery";
+import { Commands } from "../../../src/commands";
 
 suite("Test Explorer Suite", function () {
     const MAX_TEST_RUN_TIME_MINUTES = 5;
@@ -51,7 +53,7 @@ suite("Test Explorer Suite", function () {
     let testExplorer: TestExplorer;
 
     suite("Debugging", function () {
-        let settingsTeardown: () => void;
+        let settingsTeardown: () => Promise<SettingsMap>;
 
         async function runXCTest() {
             const suiteId = "PackageTests.PassingXCTestSuite";
@@ -303,7 +305,7 @@ suite("Test Explorer Suite", function () {
                     // Stub the showInputBox method to return the input text
                     windowMock.showInputBox.resolves(`${numIterations}`);
 
-                    vscode.commands.executeCommand("swift.runTestsMultipleTimes", testItems[0]);
+                    vscode.commands.executeCommand(Commands.RUN_TESTS_MULTIPLE_TIMES, testItems[0]);
 
                     const testRun = await eventPromise(testExplorer.onCreateTestRun);
 
@@ -418,7 +420,7 @@ suite("Test Explorer Suite", function () {
                     // Stub the showInputBox method to return the input text
                     windowMock.showInputBox.resolves(`${numIterations}`);
 
-                    vscode.commands.executeCommand("swift.runTestsMultipleTimes", testItems[0]);
+                    vscode.commands.executeCommand(Commands.RUN_TESTS_MULTIPLE_TIMES, testItems[0]);
 
                     const testRun = await eventPromise(testExplorer.onCreateTestRun);
 

@@ -24,10 +24,14 @@ import { executeTaskWithUI } from "../utilities";
  * @param identifier Identifier for dependency
  * @param ctx workspace context
  */
-export async function useLocalDependency(identifier: string, ctx: WorkspaceContext) {
+export async function useLocalDependency(
+    identifier: string,
+    ctx: WorkspaceContext
+): Promise<boolean> {
     const currentFolder = ctx.currentFolder;
     if (!currentFolder) {
-        return;
+        ctx.outputChannel.log("currentFolder is not set.");
+        return false;
     }
     const folders = await vscode.window.showOpenDialog({
         canSelectFiles: false,
@@ -39,7 +43,7 @@ export async function useLocalDependency(identifier: string, ctx: WorkspaceConte
     });
 
     if (!folders) {
-        return;
+        return false;
     }
     const folder = folders[0];
     const task = createSwiftTask(
@@ -62,4 +66,5 @@ export async function useLocalDependency(identifier: string, ctx: WorkspaceConte
     if (success) {
         ctx.fireEvent(currentFolder, FolderOperation.resolvedUpdated);
     }
+    return success;
 }

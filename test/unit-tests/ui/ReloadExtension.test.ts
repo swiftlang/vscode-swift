@@ -15,6 +15,7 @@ import { expect } from "chai";
 import { mockGlobalObject } from "../../MockUtils";
 import * as vscode from "vscode";
 import { showReloadExtensionNotification } from "../../../src/ui/ReloadExtension";
+import { Workbench } from "../../../src/utilities/commands";
 
 suite("showReloadExtensionNotification()", async function () {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
@@ -38,7 +39,7 @@ suite("showReloadExtensionNotification()", async function () {
         await showReloadExtensionNotification("Want to reload?");
 
         expect(mockedVSCodeCommands.executeCommand).to.have.been.calledOnceWithExactly(
-            "workbench.action.reloadWindow"
+            Workbench.ACTION_RELOADWINDOW
         );
     });
 
