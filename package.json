@@ -592,8 +592,7 @@
           "swift.SDK": {
             "type": "string",
             "default": "",
-            "markdownDescription": "The path of the SDK to compile against (`--sdk` parameter). This is of use when supporting non-standard SDK layouts on Windows and using custom SDKs. The default SDK is determined by the environment on macOS and Windows.",
-            "deprecationMessage": "Please use `swift.swiftSDK` with a triple (such as `arm64-apple-ios`) or Swift SDK name instead.",
+            "markdownDescription": "The path of the SDK to compile against (`--sdk` parameter). This is of use when supporting non-standard SDK layouts on Windows and using custom SDKs. The default SDK is determined by the environment on macOS and Windows.\n\nFor SwiftPM projects, prefer using `swift.swiftSDK` with a triple (such as `arm64-apple-ios`) or Swift SDK name instead.",
             "order": 3
           },
           "swift.swiftSDK": {
