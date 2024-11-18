@@ -44,10 +44,10 @@ If you haven't already, follow the instructions in [Development](#development) t
 npm run dev-package
 ```
 
-This builds a file that looks like `swift-lang-[version]-dev.vsix`. Now install the extension with:
+This builds a file that looks like `vscode-swift-[version]-dev.vsix`. Now install the extension with:
 
 ```sh
-code --install-extension swift-lang-[version]-dev.vsix
+code --install-extension vscode-swift-[version]-dev.vsix
 ```
 
 Alternatively you can install the extension from the Extensions panel by clicking the `...` button at the top of the panel and choosing `Install from VSIX...`.
