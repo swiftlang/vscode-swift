@@ -94,7 +94,7 @@ function createContextKeys(): ContextKeys {
 
         set isActivated(value: boolean) {
             isActivated = value;
-            vscode.commands.executeCommand("setContext", "swift.hasPackage", value);
+            vscode.commands.executeCommand("setContext", "swift.isActivated", value);
         },
 
         get hasPackage() {
