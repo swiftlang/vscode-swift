@@ -35,6 +35,7 @@ suite("Build Commands", function () {
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
     let settingsTeardown: () => Promise<void>;
+    let buildPath: string;
     const uri = testAssetUri("defaultPackage/Sources/PackageExe/main.swift");
     const breakpoints = [
         new vscode.SourceBreakpoint(new vscode.Location(uri, new vscode.Position(2, 0))),
@@ -44,6 +45,7 @@ suite("Build Commands", function () {
         workspaceContext = await activateExtension();
         await waitForNoRunningTasks();
         folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
+        buildPath = path.join(folderContext.folder.fsPath, ".build");
         await workspaceContext.focusFolder(folderContext);
         await vscode.window.showTextDocument(uri);
         settingsTeardown = await updateSettings({
@@ -58,6 +60,13 @@ suite("Build Commands", function () {
         await deactivateExtension();
     });
 
+    teardown(() => {
+        // Remove the build directory after each test case
+        if (fs.existsSync(buildPath)) {
+            fs.rmSync(buildPath, { recursive: true, force: true });
+        }
+    });
+
     test("Swift: Run Build", async () => {
         // A breakpoint will have not effect on the Run command.
         vscode.debug.addBreakpoints(breakpoints);
@@ -69,10 +78,12 @@ suite("Build Commands", function () {
     });
 
     test("Swift: Clean Build", async () => {
-        const buildPath = path.join(folderContext.folder.fsPath, ".build");
+        let result = await vscode.commands.executeCommand(Commands.RUN);
+        expect(result).to.be.true;
+
         const beforeItemCount = fs.readdirSync(buildPath).length;
 
-        const result = await vscode.commands.executeCommand(Commands.CLEAN_BUILD);
+        result = await vscode.commands.executeCommand(Commands.CLEAN_BUILD);
         expect(result).to.be.true;
 
         const afterItemCount = fs.readdirSync(buildPath).length;
