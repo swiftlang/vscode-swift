@@ -58,25 +58,23 @@ suite("Build Commands", function () {
         await deactivateExtension();
     });
 
-    test("Swift: Run Build", async () => {
+    test("Swift: Run Build, Swift: Clean Build", async () => {
         // A breakpoint will have not effect on the Run command.
         vscode.debug.addBreakpoints(breakpoints);
 
-        const result = await vscode.commands.executeCommand(Commands.RUN);
+        let result = await vscode.commands.executeCommand(Commands.RUN);
         expect(result).to.be.true;
 
         vscode.debug.removeBreakpoints(breakpoints);
-    });
 
-    test("Swift: Clean Build", async () => {
         const buildPath = path.join(folderContext.folder.fsPath, ".build");
         const beforeItemCount = fs.readdirSync(buildPath).length;
 
-        const result = await vscode.commands.executeCommand(Commands.CLEAN_BUILD);
+        result = await vscode.commands.executeCommand(Commands.CLEAN_BUILD);
         expect(result).to.be.true;
 
         const afterItemCount = fs.readdirSync(buildPath).length;
-        // This test will run in order after the Swift: Run Build test,
+        // This test step will run in order after the Swift: Run Build test step,
         // where .build folder is going to be filled with built artifacts.
         // After executing the clean command the build directory is guranteed to have less entry.
         expect(afterItemCount).to.be.lessThan(beforeItemCount);
