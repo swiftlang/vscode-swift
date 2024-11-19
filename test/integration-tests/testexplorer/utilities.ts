@@ -36,12 +36,12 @@ import stripAnsi = require("strip-ansi");
  * @returns Object containing the TestExplorer, WorkspaceContext and a callback to revert
  * the settings back to their original values.
  */
-export async function setupTestExplorerTest(settings: SettingsMap = {}) {
+export async function setupTestExplorerTest(currentTest?: Mocha.Test, settings: SettingsMap = {}) {
     const settingsTeardown = await updateSettings(settings);
 
     const testProject = testAssetUri("defaultPackage");
 
-    const workspaceContext = await activateExtension();
+    const workspaceContext = await activateExtension(currentTest);
     const testExplorer = testExplorerFor(workspaceContext, testProject);
 
     // Set up the listener before bringing the text explorer in to focus,
