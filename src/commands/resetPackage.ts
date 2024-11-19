@@ -26,7 +26,7 @@ export async function resetPackage(ctx: WorkspaceContext) {
     if (!current) {
         return;
     }
-    await folderResetPackage(current);
+    return await folderResetPackage(current);
 }
 
 /**
@@ -47,22 +47,32 @@ export async function folderResetPackage(folderContext: FolderContext) {
         folderContext.workspaceContext.toolchain
     );
 
-    await executeTaskWithUI(task, "Reset Package", folderContext).then(async success => {
-        if (!success) {
-            return;
-        }
-        const resolveTask = createSwiftTask(
-            ["package", "resolve"],
-            SwiftTaskProvider.resolvePackageName,
-            {
-                cwd: folderContext.folder,
-                scope: folderContext.workspaceFolder,
-                prefix: folderContext.name,
-                presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
-            },
-            folderContext.workspaceContext.toolchain
-        );
+    return await executeTaskWithUI(task, "Reset Package", folderContext).then(
+        async success => {
+            if (!success) {
+                return false;
+            }
+            const resolveTask = createSwiftTask(
+                ["package", "resolve"],
+                SwiftTaskProvider.resolvePackageName,
+                {
+                    cwd: folderContext.folder,
+                    scope: folderContext.workspaceFolder,
+                    prefix: folderContext.name,
+                    presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+                },
+                folderContext.workspaceContext.toolchain
+            );
 
-        await executeTaskWithUI(resolveTask, "Resolving Dependencies", folderContext);
-    });
+            const result = await executeTaskWithUI(
+                resolveTask,
+                "Resolving Dependencies",
+                folderContext
+            );
+            return result;
+        },
+        reason => {
+            return reason;
+        }
+    );
 }

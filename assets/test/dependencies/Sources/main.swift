@@ -1,2 +1,4 @@
+import PackageLib
 
-print("dependencies")
+print("Test Asset:(dependencies)")
+print(a)

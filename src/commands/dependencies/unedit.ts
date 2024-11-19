@@ -26,12 +26,13 @@ import { FolderContext } from "../../FolderContext";
 export async function uneditDependency(identifier: string, ctx: WorkspaceContext) {
     const currentFolder = ctx.currentFolder;
     if (!currentFolder) {
-        return;
+        ctx.outputChannel.log("currentFolder is not set.");
+        return false;
     }
     ctx.outputChannel.log(`unedit dependency ${identifier}`, currentFolder.name);
     const status = `Reverting edited dependency ${identifier} (${currentFolder.name})`;
-    ctx.statusItem.showStatusWhileRunning(status, async () => {
-        await uneditFolderDependency(currentFolder, identifier, ctx);
+    return await ctx.statusItem.showStatusWhileRunning(status, async () => {
+        return await uneditFolderDependency(currentFolder, identifier, ctx);
     });
 }
 
@@ -67,6 +68,7 @@ async function uneditFolderDependency(
                 vscode.workspace.updateWorkspaceFolders(folderIndex, 1);
             }
         }
+        return true;
     } catch (error) {
         const execError = error as { stderr: string };
         // if error contains "has uncommited changes" then ask if user wants to force the unedit
@@ -79,12 +81,13 @@ async function uneditFolderDependency(
 
             if (result === "No") {
                 ctx.outputChannel.log(execError.stderr, folder.name);
-                return;
+                return false;
             }
             await uneditFolderDependency(folder, identifier, ctx, ["--force"]);
         } else {
             ctx.outputChannel.log(execError.stderr, folder.name);
             vscode.window.showErrorMessage(`${execError.stderr}`);
         }
+        return false;
     }
 }
