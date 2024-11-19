@@ -116,6 +116,7 @@ suite("DiagnosticsManager Test Suite", async function () {
 
                 if (allDiagnosticsFulfilled) {
                     diagnosticWaiterDisposable?.dispose();
+                    diagnosticWaiterDisposable = undefined;
                     resolve();
                 }
             });
@@ -146,6 +147,7 @@ suite("DiagnosticsManager Test Suite", async function () {
 
     teardown(function () {
         diagnosticWaiterDisposable?.dispose();
+        diagnosticWaiterDisposable = undefined;
         const allDiagnosticsFulfilled = Object.values(remainingExpectedDiagnostics ?? {}).every(
             diagnostics => diagnostics.length === 0
         );

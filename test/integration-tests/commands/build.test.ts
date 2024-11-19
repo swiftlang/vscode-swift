@@ -30,6 +30,7 @@ import {
     updateSettings,
 } from "../utilities/testutilities";
 import { pathExists } from "../../../src/utilities/filesystem";
+import { Version } from "../../../src/utilities/version";
 
 suite("Build Commands", function () {
     let folderContext: FolderContext;
@@ -42,6 +43,15 @@ suite("Build Commands", function () {
 
     activateExtensionForSuite({
         async setup(ctx) {
+            // The description of this package is crashing on Windows with Swift 5.9.x and below,
+            // preventing it from being built.
+            if (
+                process.platform === "win32" &&
+                ctx.swiftVersion.isLessThan(new Version(5, 10, 0))
+            ) {
+                this.skip();
+            }
+
             workspaceContext = ctx;
             await waitForNoRunningTasks();
             folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
