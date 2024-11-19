@@ -69,6 +69,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
 
     private activeTextEditor?: vscode.TextEditor;
     private subscriptions: vscode.Disposable[] = [];
+    private isDisposed: boolean = false;
 
     private disposeEmitter = new vscode.EventEmitter<void>();
     private renderEmitter = new vscode.EventEmitter<void>();
@@ -81,7 +82,10 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         this.activeTextEditor = vscode.window.activeTextEditor;
         this.subscriptions.push(
             this.webviewPanel.webview.onDidReceiveMessage(this.receiveMessage, this),
-            vscode.window.onDidChangeActiveTextEditor(this.handleActiveTextEditorChange, this),
+            vscode.window.onDidChangeTextEditorSelection(
+                this.handleTextEditorSelectionChange,
+                this
+            ),
             vscode.workspace.onDidChangeTextDocument(this.handleDocumentChange, this),
             this.webviewPanel.onDidDispose(this.dispose, this)
         );
@@ -103,6 +107,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
     }
 
     dispose() {
+        this.isDisposed = true;
         this.subscriptions.forEach(subscription => subscription.dispose());
         this.subscriptions = [];
         this.webviewPanel.dispose();
@@ -110,6 +115,9 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
     }
 
     private postMessage(message: WebviewMessage) {
+        if (this.isDisposed) {
+            return;
+        }
         if (message.type === "update-content") {
             this.updateContentEmitter.fire(message.content);
         }
@@ -130,12 +138,12 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         }
     }
 
-    private handleActiveTextEditorChange(activeTextEditor: vscode.TextEditor | undefined) {
-        if (this.activeTextEditor === activeTextEditor || activeTextEditor === undefined) {
+    private handleTextEditorSelectionChange(event: vscode.TextEditorSelectionChangeEvent) {
+        if (event.textEditor === undefined) {
             return;
         }
-        this.activeTextEditor = activeTextEditor;
-        this.convertDocumentation(activeTextEditor);
+        this.activeTextEditor = event.textEditor;
+        this.convertDocumentation(event.textEditor);
     }
 
     private handleDocumentChange(event: vscode.TextDocumentChangeEvent) {
