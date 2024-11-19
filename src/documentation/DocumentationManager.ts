@@ -21,6 +21,7 @@ import contextKeys from "../contextKeys";
 export class DocumentationManager implements vscode.Disposable {
     private previewEditor?: DocumentationPreviewEditor;
     private editorUpdatedContentEmitter = new vscode.EventEmitter<RenderNode>();
+    private editorRenderedEmitter = new vscode.EventEmitter<void>();
 
     constructor(
         private readonly extension: vscode.ExtensionContext,
@@ -28,6 +29,7 @@ export class DocumentationManager implements vscode.Disposable {
     ) {}
 
     onPreviewDidUpdateContent = this.editorUpdatedContentEmitter.event;
+    onPreviewDidRenderContent = this.editorRenderedEmitter.event;
 
     async launchDocumentationPreview(): Promise<boolean> {
         if (!contextKeys.supportsDocumentationRendering) {
@@ -43,7 +45,12 @@ export class DocumentationManager implements vscode.Disposable {
             this.previewEditor = new DocumentationPreviewEditor(this.extension, this.context);
             const subscriptions: vscode.Disposable[] = [
                 this.previewEditor.onDidUpdateContent(content => {
+                    //                    console.log(`message content:\n${JSON.stringify(content, null, 2)}`);
                     this.editorUpdatedContentEmitter.fire(content);
+                }),
+                this.previewEditor.onDidRenderContent(() => {
+                    console.log(`rendered.`);
+                    this.editorRenderedEmitter.fire();
                 }),
                 this.previewEditor.onDidDispose(() => {
                     subscriptions.forEach(d => d.dispose());

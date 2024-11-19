@@ -24,6 +24,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
     private subscriptions: vscode.Disposable[] = [];
 
     private disposeEmitter = new vscode.EventEmitter<void>();
+    private renderEmitter = new vscode.EventEmitter<void>();
     private updateContentEmitter = new vscode.EventEmitter<RenderNode>();
 
     constructor(
@@ -59,12 +60,14 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                 this.webviewPanel.webview.html = documentationHTML;
                 this.subscriptions.push(
                     this.webviewPanel.webview.onDidReceiveMessage(this.receiveMessage.bind(this)),
-                    vscode.window.onDidChangeActiveTextEditor(editor =>
-                        this.renderDocumentation(editor)
-                    ),
-                    vscode.window.onDidChangeTextEditorSelection(event =>
-                        this.renderDocumentation(event.textEditor)
-                    ),
+                    vscode.window.onDidChangeActiveTextEditor(editor => {
+                        console.log(`editor changed`);
+                        this.renderDocumentation(editor);
+                    }),
+                    vscode.window.onDidChangeTextEditorSelection(event => {
+                        console.log(`change kind:{${event.kind}}`);
+                        this.renderDocumentation(event.textEditor);
+                    }),
                     this.webviewPanel.onDidDispose(this.dispose.bind(this))
                 );
                 // Reveal the editor, but don't change the focus of the active text editor
@@ -78,6 +81,9 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
 
     /** An event that is fired when the Documentation Preview Editor updates its content */
     onDidUpdateContent = this.updateContentEmitter.event;
+
+    /** An event that is fired when the Documentation Preview Editor renders its content */
+    onDidRenderContent = this.renderEmitter.event;
 
     reveal() {
         this.webviewPanel.reveal();
@@ -101,6 +107,9 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         switch (message.type) {
             case "loaded":
                 this.renderDocumentation(vscode.window.activeTextEditor);
+                break;
+            case "rendered":
+                this.renderEmitter.fire();
                 break;
         }
     }
