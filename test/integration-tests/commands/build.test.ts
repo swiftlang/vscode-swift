@@ -35,6 +35,7 @@ suite("Build Commands", function () {
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
     let settingsTeardown: () => Promise<void>;
+    let buildPath: string;
     const uri = testAssetUri("defaultPackage/Sources/PackageExe/main.swift");
     const breakpoints = [
         new vscode.SourceBreakpoint(new vscode.Location(uri, new vscode.Position(2, 0))),
@@ -44,6 +45,7 @@ suite("Build Commands", function () {
         workspaceContext = await activateExtension();
         await waitForNoRunningTasks();
         folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
+        buildPath = path.join(folderContext.folder.fsPath, ".build");
         await workspaceContext.focusFolder(folderContext);
         await vscode.window.showTextDocument(uri);
         settingsTeardown = await updateSettings({
@@ -58,23 +60,34 @@ suite("Build Commands", function () {
         await deactivateExtension();
     });
 
-    test("Swift: Run Build, Swift: Clean Build", async () => {
+    teardown(() => {
+        // Remove the build directory after each test case
+        if (fs.existsSync(buildPath)) {
+            fs.rmSync(buildPath, { recursive: true, force: true });
+        }
+    });
+
+    test("Swift: Run Build", async () => {
         // A breakpoint will have not effect on the Run command.
         vscode.debug.addBreakpoints(breakpoints);
 
-        let result = await vscode.commands.executeCommand(Commands.RUN);
+        const result = await vscode.commands.executeCommand(Commands.RUN);
         expect(result).to.be.true;
 
         vscode.debug.removeBreakpoints(breakpoints);
+    });
 
-        const buildPath = path.join(folderContext.folder.fsPath, ".build");
+    test("Swift: Clean Build", async () => {
+        let result = await vscode.commands.executeCommand(Commands.RUN);
+        expect(result).to.be.true;
+
         const beforeItemCount = fs.readdirSync(buildPath).length;
 
         result = await vscode.commands.executeCommand(Commands.CLEAN_BUILD);
         expect(result).to.be.true;
 
         const afterItemCount = fs.readdirSync(buildPath).length;
-        // This test step will run in order after the Swift: Run Build test step,
+        // This test will run in order after the Swift: Run Build test,
         // where .build folder is going to be filled with built artifacts.
         // After executing the clean command the build directory is guranteed to have less entry.
         expect(afterItemCount).to.be.lessThan(beforeItemCount);
