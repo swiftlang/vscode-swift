@@ -15,7 +15,6 @@
 import * as vscode from "vscode";
 import * as assert from "assert";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { folderContextPromise, globalWorkspaceContextPromise } from "../extension.test";
 import {
     SwiftTaskProvider,
     createSwiftTask,
@@ -31,6 +30,11 @@ import {
 import { Version } from "../../../src/utilities/version";
 import { FolderContext } from "../../../src/FolderContext";
 import { mockGlobalObject } from "../../MockUtils";
+import {
+    activateExtension,
+    deactivateExtension,
+    folderInRootWorkspace,
+} from "../utilities/testutilities";
 
 suite("SwiftTaskProvider Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -39,13 +43,17 @@ suite("SwiftTaskProvider Test Suite", () => {
     let folderContext: FolderContext;
 
     suiteSetup(async () => {
-        workspaceContext = await globalWorkspaceContextPromise;
+        workspaceContext = await activateExtension();
         toolchain = workspaceContext.toolchain;
         assert.notEqual(workspaceContext.folders.length, 0);
         workspaceFolder = workspaceContext.folders[0].workspaceFolder;
 
         // Make sure have another folder
-        folderContext = await folderContextPromise("diagnostics");
+        folderContext = await folderInRootWorkspace("diagnostics", workspaceContext);
+    });
+
+    suiteTeardown(async () => {
+        await deactivateExtension();
     });
 
     suite("createSwiftTask", () => {

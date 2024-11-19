@@ -17,31 +17,31 @@ import {
     PackageDependenciesProvider,
     PackageNode,
 } from "../../../src/ui/PackageDependencyProvider";
-import { folderContextPromise, globalWorkspaceContextPromise } from "../extension.test";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities";
 import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
 import { testAssetPath } from "../../fixtures";
-import { Version } from "../../../src/utilities/version";
+import {
+    activateExtension,
+    deactivateExtension,
+    folderInRootWorkspace,
+} from "../utilities/testutilities";
 
 suite("PackageDependencyProvider Test Suite", function () {
     let treeProvider: PackageDependenciesProvider;
     this.timeout(2 * 60 * 1000); // Allow up to 2 minutes to build
 
     suiteSetup(async function () {
-        const workspaceContext = await globalWorkspaceContextPromise;
-        // workspace-state.json was not introduced until swift 5.7
-        if (workspaceContext.toolchain.swiftVersion.isLessThan(new Version(5, 7, 0))) {
-            this.skip();
-        }
+        const workspaceContext = await activateExtension();
         await waitForNoRunningTasks();
-        const folderContext = await folderContextPromise("dependencies");
+        const folderContext = await folderInRootWorkspace("dependencies", workspaceContext);
         await executeTaskAndWaitForResult((await getBuildAllTask(folderContext)) as SwiftTask);
         await workspaceContext.focusFolder(folderContext);
         treeProvider = new PackageDependenciesProvider(workspaceContext);
     });
 
-    suiteTeardown(() => {
-        treeProvider?.dispose();
+    suiteTeardown(async () => {
+        treeProvider.dispose();
+        await deactivateExtension();
     });
 
     test("Includes remote dependency", async () => {

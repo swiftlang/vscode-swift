@@ -22,8 +22,12 @@ import { createBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { DiagnosticsManager } from "../../src/DiagnosticsManager";
 import { FolderContext } from "../../src/FolderContext";
 import { Version } from "../../src/utilities/version";
-import { folderContextPromise, globalWorkspaceContextPromise } from "./extension.test";
 import { Workbench } from "../../src/utilities/commands";
+import {
+    activateExtension,
+    deactivateExtension,
+    folderInRootWorkspace,
+} from "./utilities/testutilities";
 
 const waitForDiagnostics = (uris: vscode.Uri[], allowEmpty: boolean = true) =>
     new Promise<void>(res =>
@@ -92,14 +96,14 @@ suite("DiagnosticsManager Test Suite", async function () {
     let cppHeaderUri: vscode.Uri;
 
     suiteSetup(async function () {
-        workspaceContext = await globalWorkspaceContextPromise;
+        workspaceContext = await activateExtension(this.currentTest);
         toolchain = workspaceContext.toolchain;
         workspaceFolder = testAssetWorkspaceFolder("diagnostics");
         cWorkspaceFolder = testAssetWorkspaceFolder("diagnosticsC");
         cppWorkspaceFolder = testAssetWorkspaceFolder("diagnosticsCpp");
-        folderContext = await folderContextPromise("diagnostics");
-        cFolderContext = await folderContextPromise("diagnosticsC");
-        cppFolderContext = await folderContextPromise("diagnosticsCpp");
+        folderContext = await folderInRootWorkspace("diagnostics", workspaceContext);
+        cFolderContext = await folderInRootWorkspace("diagnosticsC", workspaceContext);
+        cppFolderContext = await folderInRootWorkspace("diagnosticsCpp", workspaceContext);
         mainUri = vscode.Uri.file(`${workspaceFolder.uri.path}/Sources/main.swift`);
         funcUri = vscode.Uri.file(`${workspaceFolder.uri.path}/Sources/func.swift`);
         cUri = vscode.Uri.file(`${cWorkspaceFolder.uri.path}/Sources/MyPoint/MyPoint.c`);
@@ -107,6 +111,10 @@ suite("DiagnosticsManager Test Suite", async function () {
         cppHeaderUri = vscode.Uri.file(
             `${cppWorkspaceFolder.uri.path}/Sources/MyPoint/include/MyPoint.h`
         );
+    });
+
+    suiteTeardown(async () => {
+        await deactivateExtension();
     });
 
     suite("Parse diagnostics", async () => {
@@ -139,11 +147,6 @@ suite("DiagnosticsManager Test Suite", async function () {
                 this.timeout(2 * 60 * 1000); // Allow 2 minutes to build
                 const task = createBuildAllTask(folderContext);
                 await executeTaskAndWaitForResult(task);
-            });
-
-            setup(async () => {
-                await waitForNoRunningTasks();
-                workspaceContext.diagnostics.clear();
             });
 
             suiteTeardown(async () => {

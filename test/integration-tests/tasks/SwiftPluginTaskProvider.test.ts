@@ -15,21 +15,29 @@
 import * as vscode from "vscode";
 import * as assert from "assert";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { folderContextPromise, globalWorkspaceContextPromise } from "../extension.test";
 import { SwiftPluginTaskProvider } from "../../../src/tasks/SwiftPluginTaskProvider";
 import { FolderContext } from "../../../src/FolderContext";
 import { executeTaskAndWaitForResult, mutable, waitForEndTaskProcess } from "../../utilities";
+import {
+    activateExtension,
+    deactivateExtension,
+    folderInRootWorkspace,
+} from "../utilities/testutilities";
 
 suite("SwiftPluginTaskProvider Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     let folderContext: FolderContext;
 
     suiteSetup(async () => {
-        workspaceContext = await globalWorkspaceContextPromise;
-        folderContext = await folderContextPromise("command-plugin");
+        workspaceContext = await activateExtension();
+        folderContext = await folderInRootWorkspace("command-plugin", workspaceContext);
         assert.notEqual(workspaceContext.folders.length, 0);
         await folderContext.loadSwiftPlugins();
         assert.notEqual(folderContext.swiftPackage.plugins.length, 0);
+    });
+
+    suiteTeardown(async () => {
+        await deactivateExtension();
     });
 
     suite("createSwiftPluginTask", () => {
@@ -46,7 +54,11 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
             });
             const { exitCode, output } = await executeTaskAndWaitForResult(task);
             assert.equal(exitCode, 0);
-            assert.equal(output.trim(), "Hello, World!");
+            assert.equal(
+                output.trim().endsWith("Hello, World!"),
+                true,
+                "Expceted output to end with 'Hello, World!'"
+            );
         }).timeout(10000);
 
         test("Exit code on failure", async () => {

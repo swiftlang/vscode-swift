@@ -16,9 +16,9 @@ import * as vscode from "vscode";
 import * as assert from "assert";
 import { testSwiftTask } from "../../fixtures";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { globalWorkspaceContextPromise } from "../extension.test";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
+import { activateExtension, deactivateExtension } from "../utilities/testutilities";
 
 suite("SwiftExecution Tests Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -26,10 +26,14 @@ suite("SwiftExecution Tests Suite", () => {
     let workspaceFolder: vscode.WorkspaceFolder;
 
     suiteSetup(async () => {
-        workspaceContext = await globalWorkspaceContextPromise;
+        workspaceContext = await activateExtension();
         toolchain = await SwiftToolchain.create();
         assert.notEqual(workspaceContext.folders.length, 0);
         workspaceFolder = workspaceContext.folders[0].workspaceFolder;
+    });
+
+    suiteTeardown(async () => {
+        await deactivateExtension();
     });
 
     setup(async () => {

@@ -1275,7 +1275,7 @@
     "pretest": "npm run compile-tests",
     "soundness": "docker compose -f docker/docker-compose.yaml -p swift-vscode-soundness-prb run --rm soundness",
     "test-soundness": "scripts/soundness.sh",
-    "test": "vscode-test",
+    "test": "VSCODE_TEST=1 vscode-test",
     "test-ci": "docker/test-ci.sh ci",
     "test-nightly": "docker/test-ci.sh nightly",
     "integration-test": "npm test -- --label integrationTests",
