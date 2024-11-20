@@ -17,12 +17,12 @@ import * as langclient from "vscode-languageclient/node";
 import { expect } from "chai";
 import { LanguageClientManager } from "../../../src/sourcekit-lsp/LanguageClientManager";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { folderContextPromise, globalWorkspaceContextPromise } from "../extension.test";
 import { testAssetUri } from "../../fixtures";
 import { FolderContext } from "../../../src/FolderContext";
 import { waitForEndTaskProcess, waitForNoRunningTasks } from "../../utilities";
 import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
 import { Version } from "../../../src/utilities/version";
+import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 
 async function waitForClientState(
     languageClientManager: LanguageClientManager,
@@ -45,23 +45,29 @@ suite("Integration, Macros Functionality Support with Sourcekit-lsp", function (
     let workspaceContext: WorkspaceContext;
     let folderContext: FolderContext;
 
-    suiteSetup(async function () {
-        workspaceContext = await globalWorkspaceContextPromise;
+    activateExtensionForSuite({
+        async setup(ctx) {
+            workspaceContext = ctx;
+            // Macro support in Swift started from 5.9, related support in Sourcekit-lsp started from 5.10
+            if (workspaceContext.swiftVersion.isLessThan(new Version(5, 10, 0))) {
+                this.skip();
+            }
 
-        // Wait for a clean starting point, and build all tasks for the fixture
-        await waitForNoRunningTasks();
-        folderContext = await folderContextPromise("swift-macro");
-        await workspaceContext.focusFolder(folderContext);
-        const tasks = (await getBuildAllTask(folderContext)) as SwiftTask;
-        const exitPromise = waitForEndTaskProcess(tasks);
-        await vscode.tasks.executeTask(tasks);
-        const exitCode = await exitPromise;
-        expect(exitCode).to.equal(0);
+            // Wait for a clean starting point, and build all tasks for the fixture
+            await waitForNoRunningTasks();
+            folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
+            await workspaceContext.focusFolder(folderContext);
+            const tasks = (await getBuildAllTask(folderContext)) as SwiftTask;
+            const exitPromise = waitForEndTaskProcess(tasks);
+            await vscode.tasks.executeTask(tasks);
+            const exitCode = await exitPromise;
+            expect(exitCode).to.equal(0);
 
-        // Ensure lsp client is ready
-        clientManager = workspaceContext.languageClientManager;
-        const clientState = await waitForClientState(clientManager, langclient.State.Running);
-        expect(clientState).to.equals(langclient.State.Running);
+            // Ensure lsp client is ready
+            clientManager = workspaceContext.languageClientManager;
+            const clientState = await waitForClientState(clientManager, langclient.State.Running);
+            expect(clientState).to.equals(langclient.State.Running);
+        },
     });
 
     test("Inline/Expand Macro", async function () {
@@ -84,7 +90,8 @@ suite("Integration, Macros Functionality Support with Sourcekit-lsp", function (
 
         // Log and assert the code actions
         expect(codeActions).to.be.an("array");
-        // Expand Macro action requires Swift 6.10
+        // Expand Macro action requires Swift 6.1
+        // Inline Macro action requires Swift 5.10, anything less than 5.10 is skipped in suite set up
         if (workspaceContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))) {
             expect(codeActions.length).to.be.equal(2);
         } else {
