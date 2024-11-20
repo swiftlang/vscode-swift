@@ -30,7 +30,6 @@ import {
     updateSettings,
 } from "../utilities/testutilities";
 import { pathExists } from "../../../src/utilities/filesystem";
-import { Version } from "../../../src/utilities/version";
 
 suite("Build Commands", function () {
     let folderContext: FolderContext;
@@ -44,11 +43,9 @@ suite("Build Commands", function () {
     activateExtensionForSuite({
         async setup(ctx) {
             // The description of this package is crashing on Windows with Swift 5.9.x and below,
-            // preventing it from being built.
-            if (
-                process.platform === "win32" &&
-                ctx.swiftVersion.isLessThan(new Version(5, 10, 0))
-            ) {
+            // preventing it from being built. The cleanup in the teardown is failng as well with
+            // an EBUSY error. Skip this test on Windows until the issue is resolved.
+            if (process.platform === "win32") {
                 this.skip();
             }
 
