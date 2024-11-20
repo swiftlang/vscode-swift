@@ -17,20 +17,18 @@ import * as assert from "assert";
 import { TaskManager } from "../../../src/tasks/TaskManager";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { waitForNoRunningTasks } from "../../utilities";
-import { activateExtension, deactivateExtension } from "../utilities/testutilities";
+import { activateExtensionForSuite } from "../utilities/testutilities";
 
 suite("TaskManager Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     let taskManager: TaskManager;
 
-    suiteSetup(async () => {
-        workspaceContext = await activateExtension();
-        taskManager = workspaceContext.tasks;
-        assert.notEqual(workspaceContext.folders.length, 0);
-    });
-
-    suiteTeardown(async () => {
-        await deactivateExtension();
+    activateExtensionForSuite({
+        async setup(ctx) {
+            workspaceContext = ctx;
+            taskManager = workspaceContext.tasks;
+            assert.notEqual(workspaceContext.folders.length, 0);
+        },
     });
 
     setup(async () => {

@@ -18,20 +18,18 @@ import { testAssetPath } from "../../fixtures";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftExecOperation, TaskOperation, TaskQueue } from "../../../src/tasks/TaskQueue";
 import { waitForNoRunningTasks } from "../../utilities";
-import { activateExtension, deactivateExtension } from "../utilities/testutilities";
+import { activateExtensionForSuite } from "../utilities/testutilities";
 
 suite("TaskQueue Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     let taskQueue: TaskQueue;
 
-    suiteSetup(async () => {
-        workspaceContext = await activateExtension();
-        assert.notEqual(workspaceContext.folders.length, 0);
-        taskQueue = workspaceContext.folders[0].taskQueue;
-    });
-
-    suiteTeardown(async () => {
-        await deactivateExtension();
+    activateExtensionForSuite({
+        async setup(ctx) {
+            workspaceContext = ctx;
+            assert.notEqual(workspaceContext.folders.length, 0);
+            taskQueue = workspaceContext.folders[0].taskQueue;
+        },
     });
 
     setup(async () => {

@@ -14,30 +14,24 @@
 
 import * as assert from "assert";
 import * as vscode from "vscode";
-import { beforeEach, afterEach } from "mocha";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { testAssetUri } from "../fixtures";
 import { waitForNoRunningTasks } from "../utilities";
 import { Workbench } from "../../src/utilities/commands";
-import { activateExtension, deactivateExtension, updateSettings } from "./utilities/testutilities";
+import { activateExtensionForTest, updateSettings } from "./utilities/testutilities";
 
 suite("BackgroundCompilation Test Suite", () => {
     let workspaceContext: WorkspaceContext;
-    let settingsTeardown: () => Promise<void>;
 
-    beforeEach(async function () {
-        workspaceContext = await activateExtension(this.currentTest);
-
-        assert.notEqual(workspaceContext.folders.length, 0);
-        await waitForNoRunningTasks();
-        settingsTeardown = await updateSettings({
-            "swift.backgroundCompilation": true,
-        });
-    });
-
-    afterEach(async () => {
-        await settingsTeardown();
-        await deactivateExtension();
+    activateExtensionForTest({
+        async setup(ctx) {
+            workspaceContext = ctx;
+            assert.notEqual(workspaceContext.folders.length, 0);
+            await waitForNoRunningTasks();
+            return await updateSettings({
+                "swift.backgroundCompilation": true,
+            });
+        },
     });
 
     suiteTeardown(async () => {

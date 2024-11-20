@@ -53,13 +53,70 @@ const extensionBootstrapper = (() => {
         }
     });
 
+    function testRunnerSetup(
+        before: Mocha.HookFunction,
+        setup:
+            | ((
+                  this: Mocha.Context,
+                  ctx: WorkspaceContext
+              ) => Promise<(() => Promise<void>) | void>)
+            | undefined,
+        after: Mocha.HookFunction,
+        teardown: ((this: Mocha.Context) => Promise<void>) | undefined,
+        testAssets?: string[]
+    ) {
+        let workspaceContext: WorkspaceContext | undefined;
+        let autoTeardown: void | (() => Promise<void>);
+        before(async function () {
+            // Always activate the extension. If no test assets are provided,
+            // default to adding `defaultPackage` to the workspace.
+            workspaceContext = await extensionBootstrapper.activateExtension(
+                this.currentTest,
+                testAssets ?? ["defaultPackage"]
+            );
+            if (!setup) {
+                return;
+            }
+            try {
+                // If the setup returns a promise it is used to undo whatever setup it did.
+                // Typically this is the promise returned from `updateSettings`, which will
+                // undo any settings changed during setup.
+                autoTeardown = await setup.call(this, workspaceContext);
+            } catch (error) {
+                console.error(`Error during test/suite setup, captured logs are:`);
+                workspaceContext.outputChannel.logs.map(log => console.log(log));
+                throw error;
+            }
+        });
+
+        after(async function () {
+            try {
+                // First run the users supplied teardown, then await the autoTeardown if it exists.
+                if (teardown) {
+                    await teardown.call(this);
+                }
+                if (autoTeardown) {
+                    await autoTeardown();
+                }
+            } catch (error) {
+                if (workspaceContext) {
+                    console.error(`Error during test/suite teardown, captured logs are:`);
+                    workspaceContext.outputChannel.logs.map(log => console.log(log));
+                }
+                throw error;
+            }
+
+            await extensionBootstrapper.deactivateExtension();
+        });
+    }
+
     return {
         // Activates the extension and adds the defaultPackage to the workspace.
         // We can only truly call `vscode.Extension<Api>.activate()` once for an entire
         // test run, so after it is called once we switch over to calling activate on
         // the returned API object which behaves like the extension is being launched for
         // the first time _as long as everything is disposed of properly in `deactivate()`_.
-        activateExtension: async function (currentTest?: Mocha.Test) {
+        activateExtension: async function (currentTest?: Mocha.Test, testAssets?: string[]) {
             if (activatedAPI) {
                 throw new Error(
                     `Extension is already activated. Last test that activated the extension: ${lastTestName}`
@@ -89,11 +146,12 @@ const extensionBootstrapper = (() => {
                 throw new Error("Extension did not activate. Workspace context is not available.");
             }
 
-            // Always adds defaultPackage to the workspace. This may need to be refactored if we want
-            // to scope tests more narowly to sub packages within the test assets.
+            // Add assets required for the suite/test to the workspace.
             const workspaceFolder = getRootWorkspaceFolder();
-            const packageFolder = testAssetUri("defaultPackage");
-            await workspaceContext.addPackageFolder(packageFolder, workspaceFolder);
+            for (const asset of testAssets ?? []) {
+                const packageFolder = testAssetUri(asset);
+                await workspaceContext.addPackageFolder(packageFolder, workspaceFolder);
+            }
 
             // Save the test name so if the test doesn't clean up by deactivating properly the next
             // test that tries to activate can throw an error with the name of the test that needs to clean up.
@@ -115,9 +173,43 @@ const extensionBootstrapper = (() => {
             await vscode.commands.executeCommand("workbench.action.closeAllEditors");
 
             await activatedAPI.workspaceContext?.removeWorkspaceFolder(getRootWorkspaceFolder());
-            activatedAPI.deactivate();
+            await activatedAPI.deactivate();
             activatedAPI = undefined;
             lastTestName = undefined;
+        },
+
+        activateExtensionForSuite: async function (config?: {
+            setup?: (
+                this: Mocha.Context,
+                ctx: WorkspaceContext
+            ) => Promise<(() => Promise<void>) | void>;
+            teardown?: (this: Mocha.Context) => Promise<void>;
+            testAssets?: string[];
+        }) {
+            testRunnerSetup(
+                mocha.before,
+                config?.setup,
+                mocha.after,
+                config?.teardown,
+                config?.testAssets
+            );
+        },
+
+        activateExtensionForTest: async function (config?: {
+            setup?: (
+                this: Mocha.Context,
+                ctx: WorkspaceContext
+            ) => Promise<(() => Promise<void>) | void>;
+            teardown?: (this: Mocha.Context) => Promise<void>;
+            testAssets?: string[];
+        }) {
+            testRunnerSetup(
+                mocha.beforeEach,
+                config?.setup,
+                mocha.afterEach,
+                config?.teardown,
+                config?.testAssets
+            );
         },
     };
 })();
@@ -131,6 +223,16 @@ export const activateExtension = extensionBootstrapper.activateExtension;
  * Deactivates the extension in tests.
  */
 export const deactivateExtension = extensionBootstrapper.deactivateExtension;
+
+/**
+ * Activates the extension for the duration of the suite, deactivating it when the suite completes.
+ */
+export const activateExtensionForSuite = extensionBootstrapper.activateExtensionForSuite;
+
+/*
+ * Activates the extension for the duration of the test, deactivating it when the test completes.
+ */
+export const activateExtensionForTest = extensionBootstrapper.activateExtensionForTest;
 
 /**
  * Given a name of a folder in the root test workspace, adds that folder to the
