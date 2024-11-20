@@ -40,11 +40,7 @@ import {
     reduceTestItemChildren,
 } from "../../../src/TestExplorer/TestUtils";
 import { runnableTag } from "../../../src/TestExplorer/TestDiscovery";
-import {
-    activateExtensionForSuite,
-    activateExtensionForTest,
-    updateSettings,
-} from "../utilities/testutilities";
+import { activateExtensionForTest, updateSettings } from "../utilities/testutilities";
 import { Commands } from "../../../src/commands";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 
@@ -164,27 +160,24 @@ suite("Test Explorer Suite", function () {
     });
 
     suite("Standard", () => {
-        activateExtensionForSuite({
+        activateExtensionForTest({
             async setup(ctx) {
                 workspaceContext = ctx;
+                const packageFolder = testAssetUri("defaultPackage");
+                const targetFolder = workspaceContext.folders.find(
+                    folder => folder.folder.path === packageFolder.path
+                );
+
+                if (!targetFolder) {
+                    throw new Error("Unable to find test explorer");
+                }
+
+                testExplorer = targetFolder.addTestExplorer();
+
+                // Set up the listener before bringing the text explorer in to focus,
+                // which starts searching the workspace for tests.
+                await waitForTestExplorerReady(testExplorer);
             },
-        });
-
-        beforeEach(async () => {
-            const packageFolder = testAssetUri("defaultPackage");
-            const targetFolder = workspaceContext.folders.find(
-                folder => folder.folder.path === packageFolder.path
-            );
-
-            if (!targetFolder) {
-                throw new Error("Unable to find test explorer");
-            }
-
-            testExplorer = targetFolder.addTestExplorer();
-
-            // Set up the listener before bringing the text explorer in to focus,
-            // which starts searching the workspace for tests.
-            await waitForTestExplorerReady(testExplorer);
         });
 
         test("Finds Tests", async function () {
