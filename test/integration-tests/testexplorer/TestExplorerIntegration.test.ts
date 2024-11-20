@@ -175,10 +175,12 @@ suite("Test Explorer Suite", function () {
             const targetFolder = workspaceContext.folders.find(
                 folder => folder.folder.path === packageFolder.path
             );
-            if (!targetFolder || !targetFolder.testExplorer) {
+
+            if (!targetFolder) {
                 throw new Error("Unable to find test explorer");
             }
-            testExplorer = targetFolder.testExplorer;
+
+            testExplorer = targetFolder.addTestExplorer();
 
             // Set up the listener before bringing the text explorer in to focus,
             // which starts searching the workspace for tests.
