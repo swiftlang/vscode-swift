@@ -76,17 +76,6 @@ suite("Test Explorer Suite", function () {
             });
         }
 
-        beforeEach(() => {
-            settingsTeardown = undefined;
-        });
-
-        afterEach(async () => {
-            // If a test was skipped there may be nothing to teardown.
-            if (settingsTeardown) {
-                await settingsTeardown();
-            }
-        });
-
         suite("lldb-dap", () => {
             activateExtensionForTest({
                 async setup(ctx) {

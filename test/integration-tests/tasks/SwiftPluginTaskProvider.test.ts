@@ -18,10 +18,7 @@ import { expect } from "chai";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftPluginTaskProvider } from "../../../src/tasks/SwiftPluginTaskProvider";
 import { FolderContext } from "../../../src/FolderContext";
-import {
-    activateExtensionForSuite,
-    folderInRootWorkspace,
-} from "../utilities/testutilities";
+import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import {
     cleanOutput,
     executeTaskAndWaitForResult,
