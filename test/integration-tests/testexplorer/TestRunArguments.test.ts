@@ -317,4 +317,35 @@ suite("TestRunArguments Suite", () => {
             testItems: [testTargetId, xcSuiteId, xcTestId, anotherXcSuiteId, anotherXcTestId1],
         });
     });
+
+    test("Full XCTest Target (debug mode)", () => {
+        const xcTestId2 = "XCTest Item 2";
+        const anotherXcSuiteId = "Another XCTest Suite";
+        const anotherXcTestId1 = "Another XCTest Item 1";
+        const anotherXcTestId2 = "Another XCTest Item 2";
+        const dsl = `
+        tt:${testTargetId}
+            xc:${xcSuiteId}
+                xc:${xcTestId}
+                xc:${xcTestId2}
+            xc:${anotherXcSuiteId}
+                xc:${anotherXcTestId1}
+                xc:${anotherXcTestId2}
+        `;
+        createTestItemTree(controller, dsl);
+        const testArgs = new TestRunArguments(runRequestByIds([testTargetId]), true);
+        assertRunArguments(testArgs, {
+            xcTestArgs: [xcSuiteId, anotherXcSuiteId],
+            swiftTestArgs: [],
+            testItems: [
+                anotherXcTestId1,
+                anotherXcTestId2,
+                anotherXcSuiteId,
+                xcSuiteId,
+                testTargetId,
+                xcTestId2,
+                xcTestId,
+            ],
+        });
+    });
 });
