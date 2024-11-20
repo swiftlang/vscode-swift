@@ -38,8 +38,9 @@ async function waitForClientState(
 }
 
 suite("Integration, Macros Functionality Support with Sourcekit-lsp", function () {
-    // Take around 60 seconds if running in isolation, longer than default timeout
-    this.timeout(2 * 60 * 1000);
+    // Take around 45 seconds if running in isolation, longer than default timeout
+    // But tests run a bit faster in CI when some artifacts are built by earlier test run
+    this.timeout(2 * 45 * 1000);
 
     let clientManager: LanguageClientManager;
     let workspaceContext: WorkspaceContext;
@@ -55,7 +56,7 @@ suite("Integration, Macros Functionality Support with Sourcekit-lsp", function (
 
             // Wait for a clean starting point, and build all tasks for the fixture
             await waitForNoRunningTasks();
-            folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
+            folderContext = await folderInRootWorkspace("swift-macro", workspaceContext);
             await workspaceContext.focusFolder(folderContext);
             const tasks = (await getBuildAllTask(folderContext)) as SwiftTask;
             const exitPromise = waitForEndTaskProcess(tasks);
