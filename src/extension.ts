@@ -47,7 +47,7 @@ export interface Api {
     workspaceContext?: WorkspaceContext;
     outputChannel: SwiftOutputChannel;
     activate(): Promise<Api>;
-    deactivate(): void;
+    deactivate(): Promise<void>;
 }
 
 /**
@@ -114,7 +114,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                 workspaceContext: undefined,
                 outputChannel,
                 activate: () => activate(context),
-                deactivate: () => deactivate(context),
+                deactivate: async () => {
+                    await workspaceContext.stop();
+                    await deactivate(context);
+                },
             };
         }
 
@@ -257,7 +260,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             workspaceContext,
             outputChannel,
             activate: () => activate(context),
-            deactivate: () => deactivate(context),
+            deactivate: async () => {
+                await workspaceContext.stop();
+                await deactivate(context);
+            },
         };
     } catch (error) {
         const errorMessage = getErrorDescription(error);
@@ -269,7 +275,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
 }
 
 async function deactivate(context: vscode.ExtensionContext): Promise<void> {
-    console.debug("Deactivating Swift for Visual Studio Code...");
     contextKeys.isActivated = false;
     context.subscriptions.forEach(subscription => subscription.dispose());
     context.subscriptions.length = 0;

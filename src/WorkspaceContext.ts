@@ -171,6 +171,14 @@ export class WorkspaceContext implements vscode.Disposable {
         this.lastFocusUri = vscode.window.activeTextEditor?.document.uri;
     }
 
+    async stop() {
+        try {
+            await this.languageClientManager.stop();
+        } catch {
+            // ignore
+        }
+    }
+
     dispose() {
         this.folders.forEach(f => f.dispose());
         this.folders.length = 0;

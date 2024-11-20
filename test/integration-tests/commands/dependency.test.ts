@@ -26,8 +26,8 @@ import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import * as sinon from "sinon";
 import { Commands } from "../../../src/commands";
 import {
-    activateExtension,
-    deactivateExtension,
+    activateExtensionForSuite,
+    activateExtensionForTest,
     folderInRootWorkspace,
 } from "../utilities/testutilities";
 
@@ -40,15 +40,13 @@ suite("Dependency Commmands Test Suite", function () {
         let folderContext: FolderContext;
         let workspaceContext: WorkspaceContext;
 
-        suiteSetup(async () => {
-            workspaceContext = await activateExtension();
-            await waitForNoRunningTasks();
-            folderContext = await folderInRootWorkspace("dependencies", workspaceContext);
-            await workspaceContext.focusFolder(folderContext);
-        });
-
-        suiteTeardown(async () => {
-            await deactivateExtension();
+        activateExtensionForSuite({
+            async setup(ctx) {
+                workspaceContext = ctx;
+                await waitForNoRunningTasks();
+                folderContext = await folderInRootWorkspace("dependencies", workspaceContext);
+                await workspaceContext.focusFolder(folderContext);
+            },
         });
 
         test("Contract: spm resolve", async () => {
@@ -64,29 +62,29 @@ suite("Dependency Commmands Test Suite", function () {
         let treeProvider: PackageDependenciesProvider;
         let item: PackageNode;
 
-        setup(async () => {
-            // Check before each test case start:
-            // Expect to fail without setting up local version
-            workspaceContext = await activateExtension();
-            await waitForNoRunningTasks();
-            folderContext = await folderInRootWorkspace("dependencies", workspaceContext);
-            await workspaceContext.focusFolder(folderContext);
+        activateExtensionForTest({
+            async setup(ctx) {
+                // Check before each test case start:
+                // Expect to fail without setting up local version
+                workspaceContext = ctx;
+                await waitForNoRunningTasks();
+                folderContext = await folderInRootWorkspace("dependencies", workspaceContext);
+                await workspaceContext.focusFolder(folderContext);
 
-            tasks = (await getBuildAllTask(folderContext)) as SwiftTask;
-            const { exitCode, output } = await executeTaskAndWaitForResult(tasks);
-            expect(exitCode).to.not.equal(0);
-            expect(output).to.include("PackageLib");
-            expect(output).to.include("required");
+                tasks = (await getBuildAllTask(folderContext)) as SwiftTask;
+                const { exitCode, output } = await executeTaskAndWaitForResult(tasks);
+                expect(exitCode).to.not.equal(0);
+                expect(output).to.include("PackageLib");
+                expect(output).to.include("required");
 
-            treeProvider = new PackageDependenciesProvider(workspaceContext);
+                treeProvider = new PackageDependenciesProvider(workspaceContext);
 
-            const items = await treeProvider.getChildren();
-            item = items.find(n => n.name === "swift-markdown") as PackageNode;
-        });
-
-        teardown(async () => {
-            treeProvider?.dispose();
-            await deactivateExtension();
+                const items = await treeProvider.getChildren();
+                item = items.find(n => n.name === "swift-markdown") as PackageNode;
+            },
+            async teardown() {
+                treeProvider?.dispose();
+            },
         });
 
         async function useLocalDependencyTest() {

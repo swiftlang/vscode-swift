@@ -18,11 +18,7 @@ import { runTestMultipleTimes } from "../../../src/commands/testMultipleTimes";
 import { mockGlobalObject } from "../../MockUtils";
 import { FolderContext } from "../../../src/FolderContext";
 import { TestRunProxy } from "../../../src/TestExplorer/TestRunner";
-import {
-    activateExtension,
-    deactivateExtension,
-    folderInRootWorkspace,
-} from "../utilities/testutilities";
+import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 
 suite("Test Multiple Times Command Test Suite", () => {
     const windowMock = mockGlobalObject(vscode, "window");
@@ -30,22 +26,19 @@ suite("Test Multiple Times Command Test Suite", () => {
     let folderContext: FolderContext;
     let testItem: vscode.TestItem;
 
-    suiteSetup(async () => {
-        const workspaceContext = await activateExtension();
-        folderContext = await folderInRootWorkspace("diagnostics", workspaceContext);
-        folderContext.addTestExplorer();
+    activateExtensionForSuite({
+        async setup(ctx) {
+            folderContext = await folderInRootWorkspace("diagnostics", ctx);
+            folderContext.addTestExplorer();
 
-        const item = folderContext.testExplorer?.controller.createTestItem(
-            "testId",
-            "Test Item For Testing"
-        );
+            const item = folderContext.testExplorer?.controller.createTestItem(
+                "testId",
+                "Test Item For Testing"
+            );
 
-        expect(item).to.not.be.undefined;
-        testItem = item!;
-    });
-
-    suiteTeardown(async () => {
-        await deactivateExtension();
+            expect(item).to.not.be.undefined;
+            testItem = item!;
+        },
     });
 
     test("Runs successfully after testing 0 times", async () => {

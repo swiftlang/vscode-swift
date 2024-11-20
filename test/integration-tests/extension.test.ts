@@ -13,21 +13,18 @@
 //===----------------------------------------------------------------------===//
 
 import * as assert from "assert";
-import { beforeEach, afterEach } from "mocha";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { getBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { SwiftExecution } from "../../src/tasks/SwiftExecution";
-import { activateExtension, deactivateExtension } from "./utilities/testutilities";
+import { activateExtensionForTest } from "./utilities/testutilities";
 
 suite("Extension Test Suite", () => {
     let workspaceContext: WorkspaceContext;
 
-    beforeEach(async function () {
-        workspaceContext = await activateExtension(this.currentTest);
-    });
-
-    afterEach(async () => {
-        await deactivateExtension();
+    activateExtensionForTest({
+        async setup(ctx) {
+            workspaceContext = ctx;
+        },
     });
 
     suite("Temporary Folder Test Suite", () => {

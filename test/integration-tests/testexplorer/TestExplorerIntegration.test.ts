@@ -14,7 +14,7 @@
 
 import * as assert from "assert";
 import * as vscode from "vscode";
-import { beforeEach, afterEach } from "mocha";
+import { beforeEach } from "mocha";
 import { testAssetUri } from "../../fixtures";
 import { TestExplorer } from "../../../src/TestExplorer/TestExplorer";
 import {
@@ -24,7 +24,7 @@ import {
     eventPromise,
     gatherTests,
     runTest,
-    setupTestExplorerTest,
+    testExplorerFor,
     waitForTestExplorerReady,
 } from "./utilities";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
@@ -40,8 +40,13 @@ import {
     reduceTestItemChildren,
 } from "../../../src/TestExplorer/TestUtils";
 import { runnableTag } from "../../../src/TestExplorer/TestDiscovery";
-import { activateExtension, deactivateExtension } from "../utilities/testutilities";
+import {
+    activateExtensionForSuite,
+    activateExtensionForTest,
+    updateSettings,
+} from "../utilities/testutilities";
 import { Commands } from "../../../src/commands";
+import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 
 suite("Test Explorer Suite", function () {
     const MAX_TEST_RUN_TIME_MINUTES = 5;
@@ -52,8 +57,6 @@ suite("Test Explorer Suite", function () {
     let testExplorer: TestExplorer;
 
     suite("Debugging", function () {
-        let settingsTeardown: () => Promise<void>;
-
         async function runXCTest() {
             const suiteId = "PackageTests.PassingXCTestSuite";
             const testId = `${suiteId}/testPassing`;
@@ -74,19 +77,27 @@ suite("Test Explorer Suite", function () {
         }
 
         suite("lldb-dap", () => {
-            beforeEach(async function () {
-                const testContext = await setupTestExplorerTest({
-                    "swift.debugger.useDebugAdapterFromToolchain": true,
-                });
+            activateExtensionForTest({
+                async setup(ctx) {
+                    // lldb-dap is only present in the toolchain in 6.0 and up.
+                    if (ctx.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+                        this.skip();
+                    }
 
-                workspaceContext = testContext.workspaceContext;
-                testExplorer = testContext.testExplorer;
-                settingsTeardown = testContext.settingsTeardown;
+                    workspaceContext = ctx;
+                    testExplorer = testExplorerFor(
+                        workspaceContext,
+                        testAssetUri("defaultPackage")
+                    );
 
-                // lldb-dap is only present in the toolchain in 6.0 and up.
-                if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
-                    this.skip();
-                }
+                    // Set up the listener before bringing the text explorer in to focus,
+                    // which starts searching the workspace for tests.
+                    await waitForTestExplorerReady(testExplorer);
+
+                    return await updateSettings({
+                        "swift.debugger.useDebugAdapterFromToolchain": true,
+                    });
+                },
             });
 
             test("Debugs specified XCTest test", runXCTest);
@@ -94,15 +105,45 @@ suite("Test Explorer Suite", function () {
         });
 
         suite("CodeLLDB", () => {
-            beforeEach(async function () {
-                const testContext = await setupTestExplorerTest({
-                    "swift.debugger.useDebugAdapterFromToolchain": false,
-                    ...(process.env["CI"] === "1" ? { "lldb.library": "/usr/lib/liblldb.so" } : {}),
-                });
+            async function getLLDBDebugAdapterPath() {
+                switch (process.platform) {
+                    case "linux":
+                        return "/usr/lib/liblldb.so";
+                    case "win32":
+                        return await (await SwiftToolchain.create()).getLLDBDebugAdapter();
+                    default:
+                        throw new Error("Please provide the path to lldb for this platform");
+                }
+            }
 
-                workspaceContext = testContext.workspaceContext;
-                testExplorer = testContext.testExplorer;
-                settingsTeardown = testContext.settingsTeardown;
+            activateExtensionForTest({
+                async setup(ctx) {
+                    // CodeLLDB on windows doesn't print output and so cannot be parsed
+                    if (process.platform === "win32") {
+                        this.skip();
+                        return;
+                    }
+
+                    workspaceContext = ctx;
+                    testExplorer = testExplorerFor(
+                        workspaceContext,
+                        testAssetUri("defaultPackage")
+                    );
+
+                    // Set up the listener before bringing the text explorer in to focus,
+                    // which starts searching the workspace for tests.
+                    await waitForTestExplorerReady(testExplorer);
+
+                    const lldbPath =
+                        process.env["CI"] === "1"
+                            ? { "lldb.library": await getLLDBDebugAdapterPath() }
+                            : {};
+
+                    return await updateSettings({
+                        "swift.debugger.useDebugAdapterFromToolchain": false,
+                        ...lldbPath,
+                    });
+                },
             });
 
             test("Debugs specified XCTest test", async function () {
@@ -112,6 +153,7 @@ suite("Test Explorer Suite", function () {
                 }
                 await runXCTest();
             });
+
             test("Debugs specified swift-testing test", async function () {
                 if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
                     this.skip();
@@ -119,19 +161,13 @@ suite("Test Explorer Suite", function () {
                 await runSwiftTesting();
             });
         });
-
-        afterEach(async () => {
-            await settingsTeardown();
-        });
     });
 
     suite("Standard", () => {
-        suiteSetup(async () => {
-            workspaceContext = await activateExtension();
-        });
-
-        suiteTeardown(async () => {
-            await deactivateExtension();
+        activateExtensionForSuite({
+            async setup(ctx) {
+                workspaceContext = ctx;
+            },
         });
 
         beforeEach(async () => {

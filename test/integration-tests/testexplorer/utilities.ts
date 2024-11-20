@@ -63,7 +63,7 @@ export async function setupTestExplorerTest(settings: SettingsMap = {}) {
  * @param packageFolder The package folder within the workspace
  * @returns The TestExplorer for the package
  */
-function testExplorerFor(
+export function testExplorerFor(
     workspaceContext: WorkspaceContext,
     packageFolder: vscode.Uri
 ): TestExplorer {

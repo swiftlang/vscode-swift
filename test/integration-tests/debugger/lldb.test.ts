@@ -15,17 +15,15 @@
 import { expect } from "chai";
 import { getLLDBLibPath, getLldbProcess } from "../../../src/debugger/lldb";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { activateExtension, deactivateExtension } from "../utilities/testutilities";
+import { activateExtensionForSuite } from "../utilities/testutilities";
 
 suite("lldb contract test suite", () => {
     let workspaceContext: WorkspaceContext;
 
-    suiteSetup(async () => {
-        workspaceContext = await activateExtension();
-    });
-
-    suiteTeardown(async () => {
-        await deactivateExtension();
+    activateExtensionForSuite({
+        async setup(ctx) {
+            workspaceContext = ctx;
+        },
     });
 
     test("getLldbProcess Contract Test, make sure the command returns", async () => {

@@ -59,6 +59,7 @@ export class DiagnosticsManager implements vscode.Disposable {
     private diagnosticCollection: vscode.DiagnosticCollection =
         vscode.languages.createDiagnosticCollection("swift");
     private allDiagnostics: Map<string, vscode.Diagnostic[]> = new Map();
+    private disposed = false;
 
     constructor(context: WorkspaceContext) {
         this.onDidChangeConfigurationDisposible = vscode.workspace.onDidChangeConfiguration(e => {
@@ -114,6 +115,10 @@ export class DiagnosticsManager implements vscode.Disposable {
         sourcePredicate: SourcePredicate,
         newDiagnostics: vscode.Diagnostic[]
     ): void {
+        if (this.disposed) {
+            return;
+        }
+
         const isFromSourceKit = !sourcePredicate(DiagnosticsManager.swiftc);
         // Is a descrepency between SourceKit-LSP and older versions
         // of Swift as to whether the first letter is capitalized or not,
@@ -230,6 +235,7 @@ export class DiagnosticsManager implements vscode.Disposable {
     }
 
     dispose() {
+        this.disposed = true;
         this.diagnosticCollection.dispose();
         this.onDidStartTaskDisposible.dispose();
         this.onDidChangeConfigurationDisposible.dispose();

@@ -17,27 +17,22 @@ import * as assert from "assert";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftPluginTaskProvider } from "../../../src/tasks/SwiftPluginTaskProvider";
 import { FolderContext } from "../../../src/FolderContext";
+import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import { executeTaskAndWaitForResult, mutable, waitForEndTaskProcess } from "../../utilities";
-import {
-    activateExtension,
-    deactivateExtension,
-    folderInRootWorkspace,
-} from "../utilities/testutilities";
+import { expect } from "chai";
 
 suite("SwiftPluginTaskProvider Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     let folderContext: FolderContext;
 
-    suiteSetup(async () => {
-        workspaceContext = await activateExtension();
-        folderContext = await folderInRootWorkspace("command-plugin", workspaceContext);
-        assert.notEqual(workspaceContext.folders.length, 0);
-        await folderContext.loadSwiftPlugins();
-        assert.notEqual(folderContext.swiftPackage.plugins.length, 0);
-    });
-
-    suiteTeardown(async () => {
-        await deactivateExtension();
+    activateExtensionForSuite({
+        async setup(ctx) {
+            workspaceContext = ctx;
+            folderContext = await folderInRootWorkspace("command-plugin", workspaceContext);
+            expect(workspaceContext.folders).to.not.have.lengthOf(0);
+            await folderContext.loadSwiftPlugins();
+            expect(workspaceContext.folders).to.not.have.lengthOf(0);
+        },
     });
 
     suite("createSwiftPluginTask", () => {

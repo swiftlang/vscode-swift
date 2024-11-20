@@ -19,18 +19,16 @@ import { FolderOperation, WorkspaceContext } from "../../src/WorkspaceContext";
 import { createBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { Version } from "../../src/utilities/version";
 import { SwiftExecution } from "../../src/tasks/SwiftExecution";
-import { activateExtension, deactivateExtension } from "./utilities/testutilities";
+import { activateExtensionForSuite } from "./utilities/testutilities";
 
 suite("WorkspaceContext Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     const packageFolder: vscode.Uri = testAssetUri("defaultPackage");
 
-    suiteSetup(async function () {
-        workspaceContext = await activateExtension();
-    });
-
-    suiteTeardown(async () => {
-        await deactivateExtension();
+    activateExtensionForSuite({
+        async setup(ctx) {
+            workspaceContext = ctx;
+        },
     });
 
     suite("Folder Events", () => {

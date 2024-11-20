@@ -25,8 +25,7 @@ import { makeDebugConfigurations } from "../../../src/debugger/launch";
 import { Workbench } from "../../../src/utilities/commands";
 import { continueSession, waitForDebugAdapterCommand } from "../../utilities/debug";
 import {
-    activateExtension,
-    deactivateExtension,
+    activateExtensionForSuite,
     folderInRootWorkspace,
     updateSettings,
 } from "../utilities/testutilities";
@@ -34,33 +33,32 @@ import {
 suite("Build Commands", function () {
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
-    let settingsTeardown: () => Promise<void>;
     let buildPath: string;
     const uri = testAssetUri("defaultPackage/Sources/PackageExe/main.swift");
     const breakpoints = [
         new vscode.SourceBreakpoint(new vscode.Location(uri, new vscode.Position(2, 0))),
     ];
 
-    suiteSetup(async function () {
-        workspaceContext = await activateExtension();
-        await waitForNoRunningTasks();
-        folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
-        buildPath = path.join(folderContext.folder.fsPath, ".build");
-        await workspaceContext.focusFolder(folderContext);
-        await vscode.window.showTextDocument(uri);
-        settingsTeardown = await updateSettings({
-            "swift.autoGenerateLaunchConfigurations": true,
-        });
-        await makeDebugConfigurations(folderContext, undefined, true);
+    activateExtensionForSuite({
+        async setup(ctx) {
+            workspaceContext = ctx;
+            await waitForNoRunningTasks();
+            folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
+            buildPath = path.join(folderContext.folder.fsPath, ".build");
+            await workspaceContext.focusFolder(folderContext);
+            await vscode.window.showTextDocument(uri);
+            const settingsTeardown = await updateSettings({
+                "swift.autoGenerateLaunchConfigurations": true,
+            });
+            await makeDebugConfigurations(folderContext, undefined, true);
+            return settingsTeardown;
+        },
+        async teardown() {
+            await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
+        },
     });
 
-    suiteTeardown(async () => {
-        await settingsTeardown();
-        await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
-        await deactivateExtension();
-    });
-
-    teardown(() => {
+    teardown(async () => {
         // Remove the build directory after each test case
         if (fs.existsSync(buildPath)) {
             fs.rmSync(buildPath, { recursive: true, force: true });
