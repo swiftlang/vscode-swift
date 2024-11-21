@@ -32,6 +32,9 @@ import {
 import { pathExists } from "../../../src/utilities/filesystem";
 
 suite("Build Commands", function () {
+    // Default timeout is a bit too short, give it a little bit more time
+    this.timeout(30 * 1000);
+
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
     let buildPath: string;
