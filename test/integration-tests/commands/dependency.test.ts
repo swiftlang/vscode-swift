@@ -134,15 +134,11 @@ suite("Dependency Commmands Test Suite", function () {
         });
 
         test("Contract: spm update", async function () {
-            // This test is flaky, test in CI setting when the below change get merged in and find
-            // out exactly where the command fails.
-            // https://github.com/swiftlang/vscode-swift/pull/1194
-            this.skip();
-            await useLocalDependencyTest();
-
             // Contract: spm update
             let result = await vscode.commands.executeCommand(Commands.UPDATE_DEPENDENCIES);
             expect(result).to.be.true;
+
+            await useLocalDependencyTest();
 
             // Clean up
             result = await vscode.commands.executeCommand(Commands.UNEDIT_DEPENDENCY, item);
