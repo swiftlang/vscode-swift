@@ -38,9 +38,8 @@ async function waitForClientState(
 }
 
 suite("Integration, Macros Functionality Support with Sourcekit-lsp", function () {
-    // Take around 45 seconds if running in isolation, longer than default timeout
-    // But tests run a bit faster in CI when some artifacts are built by earlier test run
-    this.timeout(2 * 45 * 1000);
+    // Take around 60 seconds if running in isolation, longer than default timeout
+    this.timeout(2 * 60 * 1000);
 
     let clientManager: LanguageClientManager;
     let workspaceContext: WorkspaceContext;
@@ -93,21 +92,28 @@ suite("Integration, Macros Functionality Support with Sourcekit-lsp", function (
         expect(codeActions).to.be.an("array");
         // Expand Macro action requires Swift 6.1
         // Inline Macro action requires Swift 5.10, anything less than 5.10 is skipped in suite set up
+        let expectedLength;
         if (workspaceContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))) {
-            expect(codeActions.length).to.be.equal(2);
+            expectedLength = 2;
         } else {
-            expect(codeActions.length).to.be.equal(1);
+            expectedLength = 1;
         }
+        expect(
+            codeActions.length,
+            `Unexpected codeActions length. Received actions: ${JSON.stringify(codeActions, null, 2)}`
+        ).to.be.equal(expectedLength);
 
         const expectedMacro = '(a + b, "a + b")';
         // Loop through the code actions and execute them based on the command id
         for (const action of codeActions) {
             expect(action.command).is.not.undefined;
             const command = action.command!;
+            expect(command.arguments).is.not.undefined;
+            const commandArgs = command.arguments!;
             // The id for the action is not clear, the title is "inline macro"
             if (command.command === "semantic.refactor.command") {
                 // Run inline macro action
-                await vscode.commands.executeCommand(command.command, ...(command.arguments ?? []));
+                await vscode.commands.executeCommand(command.command, ...commandArgs);
 
                 // Assert that the macro was inlined correctly
                 const endPosition = new vscode.Position(5, 37);
@@ -146,7 +152,7 @@ suite("Integration, Macros Functionality Support with Sourcekit-lsp", function (
                 );
 
                 // Run expand macro action
-                await vscode.commands.executeCommand(command.command, ...(command.arguments ?? []));
+                await vscode.commands.executeCommand(command.command, ...commandArgs);
 
                 // Wait for the expanded macro document to be opened
                 const referenceDocument = await expandedMacroUriPromise;
