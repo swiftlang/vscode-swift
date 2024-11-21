@@ -82,9 +82,14 @@ const extensionBootstrapper = (() => {
                 // Typically this is the promise returned from `updateSettings`, which will
                 // undo any settings changed during setup.
                 autoTeardown = await setup.call(this, workspaceContext);
-            } catch (error) {
-                console.error(`Error during test/suite setup, captured logs are:`);
-                workspaceContext.outputChannel.logs.map(log => console.log(log));
+            } catch (error: any) {
+                // Mocha will throw an error to break out of a test if `.skip` is used.
+                if (error.message?.indexOf("sync skip;") === -1) {
+                    console.error(`Error during test/suite setup: ${JSON.stringify(error)}`);
+                    console.error("Captured logs are:");
+                    workspaceContext.outputChannel.logs.map(log => console.error(log));
+                    console.error("================ end test logs ================");
+                }
                 throw error;
             }
         });
