@@ -151,6 +151,8 @@ export async function getLldbProcess(
             }
         });
     } catch (error) {
-        vscode.window.showErrorMessage(`Failed to run LLDB: ${getErrorDescription(error)}`);
+        const errorMessage = `Failed to run LLDB: ${getErrorDescription(error)}`;
+        ctx.outputChannel.log(errorMessage);
+        vscode.window.showErrorMessage(errorMessage);
     }
 }
