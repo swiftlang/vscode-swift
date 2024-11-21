@@ -63,7 +63,15 @@ suite("Test Explorer Suite", function () {
             });
         }
 
-        async function runSwiftTesting() {
+        async function runSwiftTesting(this: Mocha.Context) {
+            if (
+                // swift-testing was not able to produce JSON events until 6.0.2 on Windows.
+                process.platform === "win32" &&
+                workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 2))
+            ) {
+                this.skip();
+            }
+
             const testId = "PackageTests.topLevelTestPassing()";
             const testRun = await runTest(testExplorer, TestKind.debug, testId);
 
@@ -97,7 +105,9 @@ suite("Test Explorer Suite", function () {
             });
 
             test("Debugs specified XCTest test", runXCTest);
-            test("Debugs specified swift-testing test", runSwiftTesting);
+            test("Debugs specified swift-testing test", async function () {
+                await runSwiftTesting.call(this);
+            });
         });
 
         suite("CodeLLDB", () => {
@@ -154,7 +164,7 @@ suite("Test Explorer Suite", function () {
                 if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
                     this.skip();
                 }
-                await runSwiftTesting();
+                await runSwiftTesting.call(this);
             });
         });
     });
@@ -235,7 +245,12 @@ suite("Test Explorer Suite", function () {
 
         suite("swift-testing", () => {
             suiteSetup(function () {
-                if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+                if (
+                    workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0)) ||
+                    // swift-testing was not able to produce JSON events until 6.0.2 on Windows.
+                    (process.platform === "win32" &&
+                        workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 2)))
+                ) {
                     this.skip();
                 }
             });
@@ -488,7 +503,11 @@ suite("Test Explorer Suite", function () {
             suite(runProfile, () => {
                 suite(`swift-testing (${runProfile})`, function () {
                     suiteSetup(function () {
-                        if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+                        if (
+                            workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0)) ||
+                            (process.platform === "win32" &&
+                                workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 2)))
+                        ) {
                             this.skip();
                         }
                     });
