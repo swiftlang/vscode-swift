@@ -36,7 +36,27 @@ suite("Dependency Commmands Test Suite", function () {
     // 15 seconds for each test should be more than enough
     this.timeout(15 * 1000);
 
-    suite("spm Resolve Update Contract Tests", function () {
+    suite("spm Update Contract Tests", function () {
+        let folderContext: FolderContext;
+        let workspaceContext: WorkspaceContext;
+
+        activateExtensionForSuite({
+            async setup(ctx) {
+                workspaceContext = ctx;
+                await waitForNoRunningTasks();
+                folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
+                await workspaceContext.focusFolder(folderContext);
+            },
+        });
+
+        test("Contract: spm update", async function () {
+            // Contract: spm update
+            const result = await vscode.commands.executeCommand(Commands.UPDATE_DEPENDENCIES);
+            expect(result).to.be.true;
+        });
+    });
+
+    suite("spm Resolve Contract Tests", function () {
         let folderContext: FolderContext;
         let workspaceContext: WorkspaceContext;
 
@@ -128,20 +148,6 @@ suite("Dependency Commmands Test Suite", function () {
 
             // Contract: spm unedit
             const result = await vscode.commands.executeCommand(Commands.UNEDIT_DEPENDENCY, item);
-            expect(result).to.be.true;
-
-            await assertDependencyNoLongerExists();
-        });
-
-        test("Contract: spm update", async function () {
-            // Contract: spm update
-            let result = await vscode.commands.executeCommand(Commands.UPDATE_DEPENDENCIES);
-            expect(result).to.be.true;
-
-            await useLocalDependencyTest();
-
-            // Clean up
-            result = await vscode.commands.executeCommand(Commands.UNEDIT_DEPENDENCY, item);
             expect(result).to.be.true;
 
             await assertDependencyNoLongerExists();
