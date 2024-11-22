@@ -42,9 +42,8 @@ module.exports = defineConfig({
                 color: true,
                 timeout,
                 forbidOnly: isCIBuild,
-                //                grep: isFastTestRun ? "@slow" : undefined,
-                //                invert: isFastTestRun,
-                grep: "Documentation Preview",
+                grep: isFastTestRun ? "@slow" : undefined,
+                invert: isFastTestRun,
                 slow: 10000,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
                 reporterOptions: {

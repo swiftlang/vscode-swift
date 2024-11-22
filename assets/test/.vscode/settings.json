@@ -2,7 +2,6 @@
     "swift.disableAutoResolve": true,
     "swift.autoGenerateLaunchConfigurations": false,
     "swift.debugger.useDebugAdapterFromToolchain": true,
-    "swift.sourcekit-lsp.serverPath": "/Users/michaelweng/dt/sourcekit-lsp/.build/debug/sourcekit-lsp",
     "swift.additionalTestArguments": [
         "-Xswiftc",
         "-DTEST_ARGUMENT_SET_VIA_TEST_BUILD_ARGUMENTS_SETTING"
