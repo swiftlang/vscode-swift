@@ -239,12 +239,16 @@ export async function gatherTests(
     const testItems = tests.map(test => {
         const testItem = getTestItem(controller, test);
         if (!testItem) {
-            const testsInController: string[] = [];
-            controller.items.forEach(item => {
-                testsInController.push(
-                    `${item.id}: ${item.label} ${item.error ? `(error: ${item.error})` : ""}`
-                );
-            });
+            const testsInController = reduceTestItemChildren(
+                controller.items,
+                (acc, item) => {
+                    acc.push(
+                        `${item.id}: ${item.label} ${item.error ? `(error: ${item.error})` : ""}`
+                    );
+                    return acc;
+                },
+                [] as string[]
+            );
 
             assert.fail(
                 `Unable to find ${test} in Test Controller. Items in test controller are: ${testsInController.join(", ")}`
