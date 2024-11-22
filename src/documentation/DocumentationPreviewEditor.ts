@@ -41,6 +41,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                 localResourceRoots: [
                     vscode.Uri.file(this.extension.asAbsolutePath("assets/documentation-webview")),
                     vscode.Uri.file(swiftDoccRenderPath),
+                    ...context.folders.map(f => f.folder),
                 ],
             }
         );
@@ -130,6 +131,14 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
     }
 
     private parseRenderNode(content: string): RenderNode {
-        return JSON.parse(content);
+        const renderNode: RenderNode = JSON.parse(content);
+        for (const referenceKey of Object.getOwnPropertyNames(renderNode.references)) {
+            const reference = renderNode.references[referenceKey];
+            for (const variant of reference.variants ?? []) {
+                const uri = vscode.Uri.parse(variant.url).with({ scheme: "file" });
+                variant.url = this.webviewPanel.webview.asWebviewUri(uri).toString();
+            }
+        }
+        return renderNode;
     }
 }

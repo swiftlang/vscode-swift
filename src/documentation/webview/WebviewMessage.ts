@@ -57,4 +57,12 @@ export interface RenderNode {
         url: string;
         interfacedLanguage: string;
     };
+
+    references: {
+        [key: string]: {
+            variants?: {
+                url: string;
+            }[];
+        };
+    };
 }

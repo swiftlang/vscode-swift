@@ -167,6 +167,7 @@ export class WorkspaceContext implements vscode.Disposable {
             onChangeConfig,
             this.tasks,
             this.diagnostics,
+            this.documentation,
             this.languageClientManager,
             this.outputChannel,
             this.statusItem,

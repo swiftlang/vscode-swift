@@ -18,7 +18,7 @@ import { WorkspaceContext } from "../WorkspaceContext";
 import { RenderNode } from "./webview/WebviewMessage";
 import contextKeys from "../contextKeys";
 
-export class DocumentationManager {
+export class DocumentationManager implements vscode.Disposable {
     private previewEditor?: DocumentationPreviewEditor;
     private editorUpdatedContentEmitter = new vscode.EventEmitter<RenderNode>();
 
@@ -54,5 +54,9 @@ export class DocumentationManager {
             this.previewEditor.reveal();
         }
         return true;
+    }
+
+    dispose() {
+        this.previewEditor?.dispose();
     }
 }
