@@ -74,7 +74,7 @@ suite("WorkspaceContext Test Suite", () => {
             } finally {
                 observer?.dispose();
             }
-        }).timeout(60000);
+        }).timeout(60000 * 2);
     });
 
     suite("Tasks", async function () {

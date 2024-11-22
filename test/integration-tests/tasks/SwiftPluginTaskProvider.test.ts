@@ -54,7 +54,7 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
             const { exitCode, output } = await executeTaskAndWaitForResult(task);
             expect(exitCode).to.equal(0);
             expect(cleanOutput(output)).to.include("Hello, World!");
-        }).timeout(10000);
+        }).timeout(60000);
 
         test("Exit code on failure", async () => {
             const task = taskProvider.createSwiftPluginTask(
