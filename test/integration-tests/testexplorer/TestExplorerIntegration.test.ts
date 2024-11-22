@@ -83,8 +83,8 @@ suite("Test Explorer Suite", function () {
         suite("lldb-dap", () => {
             activateExtensionForTest({
                 async setup(ctx) {
-                    // lldb-dap is only present in the toolchain in 6.0 and up.
-                    if (ctx.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+                    // lldb-dap is only present/functional in the toolchain in 6.0.2 and up.
+                    if (ctx.swiftVersion.isLessThan(new Version(6, 0, 2))) {
                         this.skip();
                     }
 
