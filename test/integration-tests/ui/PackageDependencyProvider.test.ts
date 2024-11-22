@@ -40,6 +40,7 @@ suite("PackageDependencyProvider Test Suite", function () {
         async teardown() {
             treeProvider.dispose();
         },
+        testAssets: ["dependencies"],
     });
 
     test("Includes remote dependency", async () => {
@@ -58,7 +59,10 @@ suite("PackageDependencyProvider Test Suite", function () {
         const items = await treeProvider.getChildren();
 
         const dep = items.find(n => n.name === "defaultpackage") as PackageNode;
-        expect(dep).to.not.be.undefined;
+        expect(
+            dep,
+            `Expected to find defaultPackage, but instead items were ${items.map(n => n.name)}`
+        ).to.not.be.undefined;
         assertPathsEqual(dep?.location, testAssetPath("defaultPackage"));
         assertPathsEqual(dep?.path, testAssetPath("defaultPackage"));
     });
@@ -67,7 +71,10 @@ suite("PackageDependencyProvider Test Suite", function () {
         const items = await treeProvider.getChildren();
 
         const dep = items.find(n => n.name === "defaultpackage") as PackageNode;
-        expect(dep).to.not.be.undefined;
+        expect(
+            dep,
+            `Expected to find defaultPackage, but instead items were ${items.map(n => n.name)}`
+        ).to.not.be.undefined;
 
         const folders = await treeProvider.getChildren(dep);
         const folder = folders.find(n => n.name === "Sources");
