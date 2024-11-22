@@ -37,23 +37,23 @@ suite("Extension Activation/Deactivation Tests", () => {
         }
 
         test("Activation", async function () {
-            await activate(this.currentTest);
+            await activate(this.test as Mocha.Test);
         });
 
         test("Duplicate Activation", async function () {
-            await activate(this.currentTest);
-            assert.rejects(activateExtension(this.currentTest), err => {
+            await activate(this.test as Mocha.Test);
+            assert.rejects(activateExtension(this.test as Mocha.Test), err => {
                 const msg = (err as unknown as any).message;
                 return (
                     msg.includes("Extension is already activated") &&
-                    msg.includes(this.currentTest?.fullTitle())
+                    msg.includes((this.test as Mocha.Test)?.titlePath().join(" → "))
                 );
             });
         });
     });
 
     test("Deactivation", async function () {
-        const workspaceContext = await activateExtension(this.currentTest);
+        const workspaceContext = await activateExtension(this.test as Mocha.Test);
         await deactivateExtension();
         const ext = vscode.extensions.getExtension("sswg.swift-lang");
         assert(ext);

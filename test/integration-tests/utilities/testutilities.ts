@@ -140,10 +140,14 @@ const extensionBootstrapper = (() => {
             // Subsequent activations must be done through the returned API object.
             if (!activator) {
                 activatedAPI = await ext.activate();
+                // Save the test name so if the test doesn't clean up by deactivating properly the next
+                // test that tries to activate can throw an error with the name of the test that needs to clean up.
+                lastTestName = currentTest?.titlePath().join(" → ");
                 activator = activatedAPI.activate;
                 workspaceContext = activatedAPI.workspaceContext;
             } else {
                 activatedAPI = await activator();
+                lastTestName = currentTest?.titlePath().join(" → ");
                 workspaceContext = activatedAPI.workspaceContext;
             }
 
@@ -157,10 +161,6 @@ const extensionBootstrapper = (() => {
                 const packageFolder = testAssetUri(asset);
                 await workspaceContext.addPackageFolder(packageFolder, workspaceFolder);
             }
-
-            // Save the test name so if the test doesn't clean up by deactivating properly the next
-            // test that tries to activate can throw an error with the name of the test that needs to clean up.
-            lastTestName = currentTest?.fullTitle();
 
             return workspaceContext;
         },
