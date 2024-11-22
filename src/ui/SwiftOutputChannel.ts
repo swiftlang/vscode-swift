@@ -86,15 +86,10 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
     }
 
     logDiagnostic(message: string, label?: string) {
-        if (!configuration.diagnostics) {
+        if (!configuration.diagnostics && process.env["CI"] !== "1") {
             return;
         }
-        let fullMessage: string;
-        if (label !== undefined) {
-            fullMessage = `${label}: ${message}`;
-        } else {
-            fullMessage = message;
-        }
+        const fullMessage = label !== undefined ? `${label}: ${message}` : message;
         this.appendLine(`${this.nowFormatted}: ${fullMessage}`);
     }
 
