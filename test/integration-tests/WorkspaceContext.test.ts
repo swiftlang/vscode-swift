@@ -45,22 +45,26 @@ suite("WorkspaceContext Test Suite", () => {
     suite("Folder Events", () => {
         test("Add", async () => {
             let count = 0;
-            const observer = workspaceContext?.onDidChangeFolders(({ folder, operation }) => {
-                assert(folder !== null);
-                assert.strictEqual(folder!.swiftPackage.name, "package2");
-                switch (operation) {
-                    case FolderOperation.add:
-                        count++;
-                        break;
+            let observer: vscode.Disposable | undefined;
+            try {
+                observer = workspaceContext?.onDidChangeFolders(({ folder, operation }) => {
+                    assert(folder !== null);
+                    assert.strictEqual(folder!.swiftPackage.name, "package2");
+                    switch (operation) {
+                        case FolderOperation.add:
+                            count++;
+                            break;
+                    }
+                });
+                const workspaceFolder = vscode.workspace.workspaceFolders?.values().next().value;
+                if (!workspaceFolder) {
+                    throw new Error("No workspace folders found in workspace");
                 }
-            });
-            const workspaceFolder = vscode.workspace.workspaceFolders?.values().next().value;
-            if (!workspaceFolder) {
-                throw new Error("No workspace folders found in workspace");
+                await workspaceContext?.addPackageFolder(testAssetUri("package2"), workspaceFolder);
+                assert.strictEqual(count, 1);
+            } finally {
+                observer?.dispose();
             }
-            await workspaceContext?.addPackageFolder(testAssetUri("package2"), workspaceFolder);
-            assert.strictEqual(count, 1);
-            observer?.dispose();
         }).timeout(15000);
     });
 
