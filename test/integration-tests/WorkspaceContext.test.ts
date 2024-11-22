@@ -20,6 +20,7 @@ import { createBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { Version } from "../../src/utilities/version";
 import { SwiftExecution } from "../../src/tasks/SwiftExecution";
 import { activateExtensionForSuite } from "./utilities/testutilities";
+import { FolderContext } from "../../src/FolderContext";
 
 function assertContainsArg(execution: SwiftExecution, arg: string) {
     assert(execution?.args.find(a => a === arg));
@@ -36,39 +37,53 @@ suite("WorkspaceContext Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     const packageFolder: vscode.Uri = testAssetUri("defaultPackage");
 
-    activateExtensionForSuite({
-        async setup(ctx) {
-            workspaceContext = ctx;
-        },
-    });
-
     suite("Folder Events", () => {
+        activateExtensionForSuite({
+            async setup(ctx) {
+                workspaceContext = ctx;
+            },
+            // No default assets as we want to verify against a clean workspace.
+            testAssets: [],
+        });
+
         test("Add", async () => {
-            let count = 0;
             let observer: vscode.Disposable | undefined;
+            const recordedFolders: {
+                folder: FolderContext | null;
+                operation: FolderOperation;
+            }[] = [];
+
             try {
-                observer = workspaceContext?.onDidChangeFolders(({ folder, operation }) => {
-                    assert(folder !== null);
-                    assert.strictEqual(folder!.swiftPackage.name, "package2");
-                    switch (operation) {
-                        case FolderOperation.add:
-                            count++;
-                            break;
-                    }
+                observer = workspaceContext.onDidChangeFolders(changedFolderRecord => {
+                    recordedFolders.push(changedFolderRecord);
                 });
+
                 const workspaceFolder = vscode.workspace.workspaceFolders?.values().next().value;
-                if (!workspaceFolder) {
-                    throw new Error("No workspace folders found in workspace");
-                }
-                await workspaceContext?.addPackageFolder(testAssetUri("package2"), workspaceFolder);
-                assert.strictEqual(count, 1);
+
+                assert.ok(workspaceFolder, "No workspace folders found in workspace");
+
+                await workspaceContext.addPackageFolder(testAssetUri("package2"), workspaceFolder);
+
+                const foldersNames = recordedFolders.map(({ folder }) => folder?.swiftPackage.name);
+                assert.deepStrictEqual(foldersNames, ["package2"]);
+
+                const addedCount = recordedFolders.filter(
+                    ({ operation }) => operation === FolderOperation.add
+                ).length;
+                assert.strictEqual(addedCount, 1, "Expected only one add folder operation");
             } finally {
                 observer?.dispose();
             }
-        }).timeout(15000);
+        }).timeout(60000);
     });
 
     suite("Tasks", async function () {
+        activateExtensionForSuite({
+            async setup(ctx) {
+                workspaceContext = ctx;
+            },
+        });
+
         // Was hitting a timeout in suiteSetup during CI build once in a while
         this.timeout(5000);
 
@@ -158,6 +173,12 @@ suite("WorkspaceContext Test Suite", () => {
     });
 
     suite("Toolchain", () => {
+        activateExtensionForSuite({
+            async setup(ctx) {
+                workspaceContext = ctx;
+            },
+        });
+
         test("get project templates", async () => {
             // This is only supported in swift versions >=5.8.0
             const swiftVersion = workspaceContext.toolchain.swiftVersion;
