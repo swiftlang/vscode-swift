@@ -122,15 +122,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         }
 
         const workspaceContext = await WorkspaceContext.create(outputChannel, toolchain);
-
-        workspaceContext.outputChannel.log(`Platform: ${process.platform}`);
-        workspaceContext.outputChannel.log(
-            `Swift Version: ${workspaceContext.swiftVersion.toString()}`
-        );
-        workspaceContext.outputChannel.log(
-            `Swift toolchain found at: ${toolchain.swiftFolderPath}`
-        );
-
         context.subscriptions.push(...commands.register(workspaceContext));
         context.subscriptions.push(workspaceContext);
         context.subscriptions.push(registerDebugger(workspaceContext));
