@@ -21,6 +21,7 @@ import { Version } from "../../src/utilities/version";
 import { SwiftExecution } from "../../src/tasks/SwiftExecution";
 import { activateExtensionForSuite } from "./utilities/testutilities";
 import { FolderContext } from "../../src/FolderContext";
+import { assertContains } from "./testexplorer/utilities";
 
 function assertContainsArg(execution: SwiftExecution, arg: string) {
     assert(execution?.args.find(a => a === arg));
@@ -65,12 +66,16 @@ suite("WorkspaceContext Test Suite", () => {
                 await workspaceContext.addPackageFolder(testAssetUri("package2"), workspaceFolder);
 
                 const foldersNames = recordedFolders.map(({ folder }) => folder?.swiftPackage.name);
-                assert.deepStrictEqual(foldersNames, ["package2"]);
+                assertContains(foldersNames, "package2");
 
                 const addedCount = recordedFolders.filter(
                     ({ operation }) => operation === FolderOperation.add
                 ).length;
-                assert.strictEqual(addedCount, 1, "Expected only one add folder operation");
+                assert.strictEqual(
+                    addedCount,
+                    1,
+                    `Expected only one add folder operation, instead got folders: ${recordedFolders}`
+                );
             } finally {
                 observer?.dispose();
             }

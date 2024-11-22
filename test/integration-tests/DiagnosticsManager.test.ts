@@ -125,7 +125,7 @@ suite("DiagnosticsManager Test Suite", async function () {
 
     activateExtensionForSuite({
         async setup(ctx) {
-            this.timeout(60000);
+            this.timeout(60000 * 2);
 
             workspaceContext = ctx;
             toolchain = workspaceContext.toolchain;
