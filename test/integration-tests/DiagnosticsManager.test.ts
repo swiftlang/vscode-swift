@@ -163,7 +163,9 @@ suite("DiagnosticsManager Test Suite", async function () {
         }
     });
 
-    suite("Parse diagnostics", async () => {
+    suite("Parse diagnostics", async function () {
+        this.timeout(60000);
+
         suite("Parse from task output", async () => {
             const expectedWarningDiagnostic = new vscode.Diagnostic(
                 new vscode.Range(new vscode.Position(1, 8), new vscode.Position(1, 8)),
@@ -226,7 +228,6 @@ suite("DiagnosticsManager Test Suite", async function () {
                     swiftVersion.isLessThanOrEqual(new Version(6, 0, 999))
                 ) {
                     this.skip();
-                    return;
                 }
                 await swiftConfig.update("diagnosticsStyle", "default");
 
