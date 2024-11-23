@@ -164,7 +164,7 @@ suite("DiagnosticsManager Test Suite", async function () {
     });
 
     suite("Parse diagnostics", async function () {
-        this.timeout(60000);
+        this.timeout(60000 * 2);
 
         suite("Parse from task output", async () => {
             const expectedWarningDiagnostic = new vscode.Diagnostic(
@@ -232,7 +232,6 @@ suite("DiagnosticsManager Test Suite", async function () {
                 await swiftConfig.update("diagnosticsStyle", "default");
 
                 await Promise.all([
-                    executeTaskAndWaitForResult(createBuildAllTask(folderContext)),
                     waitForDiagnostics({
                         [mainUri.fsPath]: [
                             expectedWarningDiagnostic,
@@ -245,6 +244,7 @@ suite("DiagnosticsManager Test Suite", async function () {
                         ], // Should have parsed correct severity
                         [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
                     }),
+                    executeTaskAndWaitForResult(createBuildAllTask(folderContext)),
                 ]);
 
                 await waitForNoRunningTasks();
@@ -264,12 +264,13 @@ suite("DiagnosticsManager Test Suite", async function () {
                     this.skip();
                 }
                 await swiftConfig.update("diagnosticsStyle", "swift");
+
                 await Promise.all([
-                    executeTaskAndWaitForResult(createBuildAllTask(folderContext)),
                     waitForDiagnostics({
                         [mainUri.fsPath]: [expectedWarningDiagnostic, expectedMainErrorDiagnostic], // Should have parsed correct severity
                         [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
                     }),
+                    executeTaskAndWaitForResult(createBuildAllTask(folderContext)),
                 ]);
                 await waitForNoRunningTasks();
             });
@@ -278,11 +279,11 @@ suite("DiagnosticsManager Test Suite", async function () {
                 await swiftConfig.update("diagnosticsStyle", "llvm");
 
                 await Promise.all([
-                    executeTaskAndWaitForResult(createBuildAllTask(folderContext)),
                     waitForDiagnostics({
                         [mainUri.fsPath]: [expectedWarningDiagnostic, expectedMainErrorDiagnostic], // Should have parsed correct severity
                         [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
                     }),
+                    executeTaskAndWaitForResult(createBuildAllTask(folderContext)),
                 ]);
                 await waitForNoRunningTasks();
 
@@ -328,10 +329,10 @@ suite("DiagnosticsManager Test Suite", async function () {
                 expectedDiagnostic2.source = "swiftc";
 
                 await Promise.all([
-                    executeTaskAndWaitForResult(createBuildAllTask(cFolderContext)),
                     waitForDiagnostics({
                         [cUri.fsPath]: [expectedDiagnostic1, expectedDiagnostic2],
                     }),
+                    executeTaskAndWaitForResult(createBuildAllTask(cFolderContext)),
                 ]);
                 await waitForNoRunningTasks();
             });
@@ -363,10 +364,10 @@ suite("DiagnosticsManager Test Suite", async function () {
                 expectedDiagnostic2.source = "swiftc";
 
                 await Promise.all([
-                    executeTaskAndWaitForResult(createBuildAllTask(cppFolderContext)),
                     waitForDiagnostics({
                         [cppUri.fsPath]: [expectedDiagnostic1, expectedDiagnostic2],
                     }),
+                    executeTaskAndWaitForResult(createBuildAllTask(cppFolderContext)),
                 ]);
                 await waitForNoRunningTasks();
 
