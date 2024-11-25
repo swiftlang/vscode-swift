@@ -26,8 +26,8 @@ import { RenderNode } from "../../../src/documentation/webview/WebviewMessage";
 
 suite("Documentation Preview", function () {
     // Tests are short, but rely on SourceKit-LSP: give 30 seconds for each one
-    this.timeout(30 * 1000);
-    //this.timeout(30 * 30 * 1000);
+    // this.timeout(30 * 1000);
+    this.timeout(30 * 30 * 1000);
 
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
@@ -48,6 +48,35 @@ suite("Documentation Preview", function () {
             this.skip();
         }
     });
+
+    async function editRenderTest(
+        line: number, // zero-based index, for line 3 this var will be 2
+        expectedEdit: string,
+        editor: vscode.TextEditor,
+        document: vscode.TextDocument
+    ) {
+        // Set up test promise
+        const contentPromise = waitForNextContentUpdate(workspaceContext);
+
+        // Edit the focused text document, appending expected edit at the end of line 3
+        await editor.edit(editBuilder => {
+            const lineEnd = document.lineAt(line).range.end;
+            editBuilder.insert(lineEnd, expectedEdit);
+        });
+
+        // Update the cursor position to the end of the inserted text
+        const newCursorPos = new vscode.Position(
+            line,
+            document.lineAt(line).range.end.character + expectedEdit.length
+        );
+        editor.selection = new vscode.Selection(newCursorPos, newCursorPos);
+
+        await expect(waitForRender(workspaceContext)).to.eventually.be.true;
+        console.log("Waiting for post edit content update...");
+        const updatedContent = await contentPromise;
+        const updatedContentString = JSON.stringify(updatedContent, null, 2);
+        expect(updatedContentString, `${updatedContentString}`).to.include(expectedEdit);
+    }
 
     async function initialRenderTest(
         uri: string,
@@ -113,7 +142,7 @@ suite("Documentation Preview", function () {
 
         // FIXME: We are off by 1 right now... so need to do 1 more action
         // FIXME: Also the above is consistent only if on cached-run (second run and onwards)
-        await waitForRender(workspaceContext);
+        await expect(waitForRender(workspaceContext)).to.eventually.be.true;
         console.log("Waiting for post edit content update...");
         let updatedContent = await contentPromise;
         let updatedContentString = JSON.stringify(updatedContent, null, 2);
@@ -125,7 +154,7 @@ suite("Documentation Preview", function () {
         editor.selection = new vscode.Selection(initPos, initPos);
 
         // Wait for render and test promise to complete
-        await waitForRender(workspaceContext);
+        await expect(waitForRender(workspaceContext)).to.eventually.be.true;
         console.log("Waiting for post edit content update, FIXME: 1+ action...");
         updatedContent = await contentPromise;
         updatedContentString = JSON.stringify(updatedContent, null, 2);
@@ -140,6 +169,9 @@ suite("Documentation Preview", function () {
             "Meet SlothCreator",
             expectedEdit
         );
+
+        // Insert edit at the end of line 3 and assert for change
+        await editRenderTest(2, expectedEdit, editor, document);
     });
 
     test("renders documentation for a single tutorial file", async function () {
@@ -150,6 +182,9 @@ suite("Documentation Preview", function () {
             "Creating Custom Sloths",
             expectedEdit
         );
+
+        // Insert edit at the end of line 3 and assert for change
+        await editRenderTest(2, expectedEdit, editor, document);
     });
 
     test("renders documentation for a generic markdown file", async function () {
@@ -160,6 +195,9 @@ suite("Documentation Preview", function () {
             "Getting Started with Sloths",
             expectedEdit
         );
+
+        // Insert edit at the end of line 3 and assert for change
+        await editRenderTest(2, expectedEdit, editor, document);
     });
 
     test("renders documentation for a symbol linkage markdown file", async function () {
@@ -168,10 +206,13 @@ suite("Documentation Preview", function () {
         // Check for initial Render
         const expectedEdit = "my edit: symbol linkage markdown";
         const { editor, document } = await initialRenderTest(
-            "SlothCreatorExample/Sources/SlothCreator/SlothCreator.docc/GettingStarted.md",
-            "Getting Started with Sloths",
+            "SlothCreatorExample/Sources/SlothCreator/SlothCreator.docc/SlothCreator.md",
+            "Catalog sloths you find",
             expectedEdit
         );
+
+        // Insert edit at the end of line 3 and assert for change
+        await editRenderTest(2, expectedEdit, editor, document);
     });
 
     test("renders documentation for a symbol providing markdown file", async function () {
@@ -180,10 +221,13 @@ suite("Documentation Preview", function () {
         // Check for initial Render
         const expectedEdit = "my edit: symbol providing markdown";
         const { editor, document } = await initialRenderTest(
-            "SlothCreatorExample/Sources/SlothCreator/SlothCreator.docc/SlothCreator.md",
-            "Catalog sloths you find",
+            "SlothCreatorExample/Sources/SlothCreator/SlothCreator.docc/Extensions/Sloth.md",
+            "Creating a Sloth",
             expectedEdit
         );
+
+        // Insert edit at the end of line 3 and assert for change
+        await editRenderTest(2, expectedEdit, editor, document);
     });
 });
 
