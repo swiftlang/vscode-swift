@@ -19,6 +19,11 @@ import { RenderNode, WebviewMessage } from "./webview/WebviewMessage";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { RenderDocumentationRequest } from "../sourcekit-lsp/extensions/RenderDocumentationRequest";
 
+export enum PreviewEditorConstant {
+    VIEW_TYPE = "swift.previewDocumentationEditor",
+    TITLE = "Preview Swift Documentation",
+}
+
 export class DocumentationPreviewEditor implements vscode.Disposable {
     private readonly webviewPanel: vscode.WebviewPanel;
     private subscriptions: vscode.Disposable[] = [];
@@ -34,8 +39,8 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         const swiftDoccRenderPath = this.extension.asAbsolutePath("assets/swift-docc-render");
         // Create and hook up events for the WebviewPanel
         this.webviewPanel = vscode.window.createWebviewPanel(
-            "swift.previewDocumentationEditor",
-            "Preview Swift Documentation",
+            PreviewEditorConstant.VIEW_TYPE,
+            PreviewEditorConstant.TITLE,
             { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
             {
                 enableScripts: true,
