@@ -670,12 +670,7 @@ export class TestRunner {
                 outputStream.write(replaced);
             });
 
-            let cancellation: vscode.Disposable;
             task.execution.onDidClose(code => {
-                if (cancellation) {
-                    cancellation.dispose();
-                }
-
                 // undefined or 0 are viewed as success
                 if (!code) {
                     resolve();
