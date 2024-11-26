@@ -20,6 +20,7 @@ import { testAssetUri } from "../../fixtures";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { FolderContext } from "../../../src/FolderContext";
 import { waitForNoRunningTasks } from "../../utilities";
+import { Workbench } from "../../../src/utilities/commands";
 
 function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);
@@ -175,7 +176,7 @@ const extensionBootstrapper = (() => {
             await waitForNoRunningTasks({ timeout: 10000 });
 
             // Close all editors before deactivating the extension.
-            await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+            await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
 
             await activatedAPI.workspaceContext?.removeWorkspaceFolder(getRootWorkspaceFolder());
             await activatedAPI.deactivate();

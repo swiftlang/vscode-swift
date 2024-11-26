@@ -17,7 +17,6 @@ import * as vscode from "vscode";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { testAssetUri } from "../fixtures";
 import { waitForNoRunningTasks } from "../utilities";
-import { Workbench } from "../../src/utilities/commands";
 import { activateExtensionForTest, updateSettings } from "./utilities/testutilities";
 
 suite("BackgroundCompilation Test Suite", () => {
@@ -32,10 +31,6 @@ suite("BackgroundCompilation Test Suite", () => {
                 "swift.backgroundCompilation": true,
             });
         },
-    });
-
-    suiteTeardown(async () => {
-        await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
     });
 
     test("build all on save @slow", async () => {

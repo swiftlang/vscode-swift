@@ -61,9 +61,6 @@ suite("Build Commands", function () {
             await makeDebugConfigurations(folderContext, undefined, true);
             return settingsTeardown;
         },
-        async teardown() {
-            await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
-        },
     });
 
     test("Swift: Run Build", async () => {
