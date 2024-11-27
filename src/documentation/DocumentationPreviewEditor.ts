@@ -66,11 +66,9 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                 this.subscriptions.push(
                     this.webviewPanel.webview.onDidReceiveMessage(this.receiveMessage.bind(this)),
                     vscode.window.onDidChangeActiveTextEditor(editor => {
-                        console.log(`editor changed`);
                         this.renderDocumentation(editor);
                     }),
                     vscode.window.onDidChangeTextEditorSelection(event => {
-                        console.log(`change kind:{${event.kind}}`);
                         this.renderDocumentation(event.textEditor);
                     }),
                     this.webviewPanel.onDidDispose(this.dispose.bind(this))
