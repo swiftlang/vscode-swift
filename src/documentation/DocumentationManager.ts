@@ -48,7 +48,6 @@ export class DocumentationManager implements vscode.Disposable {
                     this.editorUpdatedContentEmitter.fire(content);
                 }),
                 this.previewEditor.onDidRenderContent(() => {
-                    console.log(`rendered.`);
                     this.editorRenderedEmitter.fire();
                 }),
                 this.previewEditor.onDidDispose(() => {
