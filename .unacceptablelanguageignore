@@ -1,2 +1,3 @@
+assets/swift-docc-render
 src/utilities/utilities.ts
 src/tasks/SwiftProcess.ts
