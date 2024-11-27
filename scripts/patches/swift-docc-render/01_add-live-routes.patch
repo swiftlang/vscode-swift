@@ -1,0 +1,54 @@
+diff --git a/src/routes.js b/src/routes.js
+index 0c928ce..f745003 100644
+--- a/src/routes.js
++++ b/src/routes.js
+@@ -9,7 +9,6 @@
+ */
+ 
+ import {
+-  documentationTopicName,
+   notFoundRouteName,
+   serverErrorRouteName,
+ } from 'docc-render/constants/router';
+@@ -18,25 +17,32 @@ import NotFound from 'theme/views/NotFound.vue';
+ 
+ export default [
+   {
+-    path: '/tutorials/:id',
+-    name: 'tutorials-overview',
++    path: '/live/tutorials-overview',
++    name: 'live-tutorials-overview',
+     component: () => import(
+       /* webpackChunkName: "tutorials-overview" */ 'theme/views/TutorialsOverview.vue'
+     ),
++    meta: {
++      skipFetchingData: true,
++    },
+   },
+   {
+-    path: '/tutorials/:id/*',
+-    name: 'topic',
++    path: '/live/tutorials',
++    name: 'live-tutorials',
+     component: () => import(
+       /* webpackChunkName: "topic" */ 'theme/views/Topic.vue'
+     ),
++    meta: {
++      skipFetchingData: true,
++    },
+   },
+   {
+-    path: '/documentation*',
+-    name: documentationTopicName,
+-    component: () => import(
+-      /* webpackChunkName: "documentation-topic" */ 'theme/views/DocumentationTopic.vue'
+-    ),
++    path: '/live/documentation',
++    name: 'live-documentation',
++    component: () => import(/* webpackChunkName: "documentation-topic" */ 'docc-render/views/DocumentationTopic.vue'),
++    meta: {
++      skipFetchingData: true,
++    },
+   },
+   {
+     path: '*',
