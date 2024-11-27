@@ -45,7 +45,6 @@ export class DocumentationManager implements vscode.Disposable {
             this.previewEditor = new DocumentationPreviewEditor(this.extension, this.context);
             const subscriptions: vscode.Disposable[] = [
                 this.previewEditor.onDidUpdateContent(content => {
-                    //                    console.log(`message content:\n${JSON.stringify(content, null, 2)}`);
                     this.editorUpdatedContentEmitter.fire(content);
                 }),
                 this.previewEditor.onDidRenderContent(() => {
