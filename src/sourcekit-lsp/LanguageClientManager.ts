@@ -272,7 +272,7 @@ export class LanguageClientManager implements vscode.Disposable {
     // The language client stops asnyhronously, so we need to wait for it to stop
     // instead of doing it in dispose, which must be synchronous.
     async stop() {
-        if (this.languageClient && this.languageClient.state === langclient.State.Running) {
+        if (this.languageClient && this.languageClient.state === State.Running) {
             await this.languageClient.dispose();
         }
     }
