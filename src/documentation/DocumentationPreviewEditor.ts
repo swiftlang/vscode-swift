@@ -19,11 +19,17 @@ import { RenderNode, WebviewMessage } from "./webview/WebviewMessage";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { RenderDocumentationRequest } from "../sourcekit-lsp/extensions/RenderDocumentationRequest";
 
+export enum PreviewEditorConstant {
+    VIEW_TYPE = "swift.previewDocumentationEditor",
+    TITLE = "Preview Swift Documentation",
+}
+
 export class DocumentationPreviewEditor implements vscode.Disposable {
     private readonly webviewPanel: vscode.WebviewPanel;
     private subscriptions: vscode.Disposable[] = [];
 
     private disposeEmitter = new vscode.EventEmitter<void>();
+    private renderEmitter = new vscode.EventEmitter<void>();
     private updateContentEmitter = new vscode.EventEmitter<RenderNode>();
 
     constructor(
@@ -33,8 +39,8 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         const swiftDoccRenderPath = this.extension.asAbsolutePath("assets/swift-docc-render");
         // Create and hook up events for the WebviewPanel
         this.webviewPanel = vscode.window.createWebviewPanel(
-            "swift.previewDocumentationEditor",
-            "Preview Swift Documentation",
+            PreviewEditorConstant.VIEW_TYPE,
+            PreviewEditorConstant.TITLE,
             { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
             {
                 enableScripts: true,
@@ -59,12 +65,12 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                 this.webviewPanel.webview.html = documentationHTML;
                 this.subscriptions.push(
                     this.webviewPanel.webview.onDidReceiveMessage(this.receiveMessage.bind(this)),
-                    vscode.window.onDidChangeActiveTextEditor(editor =>
-                        this.renderDocumentation(editor)
-                    ),
-                    vscode.window.onDidChangeTextEditorSelection(event =>
-                        this.renderDocumentation(event.textEditor)
-                    ),
+                    vscode.window.onDidChangeActiveTextEditor(editor => {
+                        this.renderDocumentation(editor);
+                    }),
+                    vscode.window.onDidChangeTextEditorSelection(event => {
+                        this.renderDocumentation(event.textEditor);
+                    }),
                     this.webviewPanel.onDidDispose(this.dispose.bind(this))
                 );
                 // Reveal the editor, but don't change the focus of the active text editor
@@ -78,6 +84,9 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
 
     /** An event that is fired when the Documentation Preview Editor updates its content */
     onDidUpdateContent = this.updateContentEmitter.event;
+
+    /** An event that is fired when the Documentation Preview Editor renders its content */
+    onDidRenderContent = this.renderEmitter.event;
 
     reveal() {
         this.webviewPanel.reveal();
@@ -101,6 +110,9 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         switch (message.type) {
             case "loaded":
                 this.renderDocumentation(vscode.window.activeTextEditor);
+                break;
+            case "rendered":
+                this.renderEmitter.fire();
                 break;
         }
     }
