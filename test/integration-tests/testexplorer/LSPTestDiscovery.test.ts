@@ -79,7 +79,7 @@ class TestLanguageClient {
     }
 }
 
-suite.only("LSPTestDiscovery Suite", () => {
+suite("LSPTestDiscovery Suite", () => {
     let client: TestLanguageClient;
     let discoverer: LSPTestDiscovery;
     let pkg: SwiftPackage;
