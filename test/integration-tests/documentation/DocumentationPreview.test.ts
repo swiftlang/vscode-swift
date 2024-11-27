@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import contextKeys from "../../../src/contextKeys";
 import { expect } from "chai";
-import { folderContextPromise, globalWorkspaceContextPromise } from "../extension.test";
+import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import { waitForNoRunningTasks } from "../../utilities";
 import { testAssetUri } from "../../fixtures";
 import { FolderContext } from "../../../src/FolderContext";
@@ -32,11 +32,13 @@ suite("Documentation Preview", function () {
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
 
-    suiteSetup(async function () {
-        workspaceContext = await globalWorkspaceContextPromise;
-        await waitForNoRunningTasks();
-        folderContext = await folderContextPromise("SlothCreatorExample");
-        await workspaceContext.focusFolder(folderContext);
+    activateExtensionForSuite({
+        async setup(ctx) {
+            workspaceContext = ctx;
+            await waitForNoRunningTasks();
+            folderContext = await folderInRootWorkspace("SlothCreatorExample", ctx);
+            await ctx.focusFolder(folderContext);
+        },
     });
 
     suiteTeardown(async () => {
