@@ -176,9 +176,19 @@ export class WorkspaceContext implements vscode.Disposable {
         this.lastFocusUri = vscode.window.activeTextEditor?.document.uri;
     }
 
+    async stop() {
+        try {
+            await this.languageClientManager.stop();
+        } catch {
+            // ignore
+        }
+    }
+
     dispose() {
         this.folders.forEach(f => f.dispose());
+        this.folders.length = 0;
         this.subscriptions.forEach(item => item.dispose());
+        this.subscriptions.length = 0;
     }
 
     get swiftVersion() {
@@ -401,7 +411,7 @@ export class WorkspaceContext implements vscode.Disposable {
      * @param folder folder being removed
      */
     async removeWorkspaceFolder(workspaceFolder: vscode.WorkspaceFolder) {
-        this.folders.forEach(async folder => {
+        for (const folder of this.folders) {
             if (folder.workspaceFolder !== workspaceFolder) {
                 return;
             }
@@ -417,7 +427,7 @@ export class WorkspaceContext implements vscode.Disposable {
                 await observer({ folder, operation: FolderOperation.remove, workspace: this });
             }
             folder.dispose();
-        });
+        }
         this.folders = this.folders.filter(folder => folder.workspaceFolder !== workspaceFolder);
     }
 

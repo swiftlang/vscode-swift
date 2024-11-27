@@ -3,9 +3,6 @@
         {
             "type": "swift-lldb",
             "request": "launch",
-            "sourceLanguages": [
-                "swift"
-            ],
             "name": "Debug PackageExe (defaultPackage)",
             "program": "${workspaceFolder:test}/defaultPackage/.build/debug/PackageExe",
             "args": [],
@@ -15,9 +12,6 @@
         {
             "type": "swift-lldb",
             "request": "launch",
-            "sourceLanguages": [
-                "swift"
-            ],
             "name": "Release PackageExe (defaultPackage)",
             "program": "${workspaceFolder:test}/defaultPackage/.build/release/PackageExe",
             "args": [],

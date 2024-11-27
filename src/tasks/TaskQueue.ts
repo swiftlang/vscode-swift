@@ -85,6 +85,9 @@ export class TaskOperation implements SwiftOperation {
         workspaceContext: WorkspaceContext,
         token?: vscode.CancellationToken
     ): Promise<number | undefined> {
+        if (token?.isCancellationRequested) {
+            return Promise.resolve(undefined);
+        }
         workspaceContext.outputChannel.log(`Exec Task: ${this.task.detail ?? this.task.name}`);
         return workspaceContext.tasks.executeTaskAndWait(this.task, token);
     }
@@ -230,6 +233,7 @@ export class TaskQueue {
         if (!this.activeOperation) {
             // get task from queue
             const operation = this.queue.shift();
+
             if (operation) {
                 //const task = operation.task;
                 this.activeOperation = operation;
@@ -250,17 +254,11 @@ export class TaskQueue {
                     .run(this.workspaceContext)
                     .then(result => {
                         // log result
-                        if (operation.log) {
+                        if (operation.log && !operation.token?.isCancellationRequested) {
                             switch (result) {
                                 case 0:
                                     this.workspaceContext.outputChannel.log(
                                         `${operation.log}: ... done.`,
-                                        this.folderContext.name
-                                    );
-                                    break;
-                                case undefined:
-                                    this.workspaceContext.outputChannel.log(
-                                        `${operation.log}: ... cancelled.`,
                                         this.folderContext.name
                                     );
                                     break;

@@ -12,7 +12,7 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "dependencies",
-            dependencies: [],
+            dependencies: [.product(name: "PackageLib", package: "Swift-Markdown")],
             path: "Sources"),
     ]
 )

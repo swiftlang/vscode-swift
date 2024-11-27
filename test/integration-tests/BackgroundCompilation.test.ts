@@ -15,23 +15,26 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
-import { globalWorkspaceContextPromise } from "./extension.test";
 import { testAssetUri } from "../fixtures";
 import { waitForNoRunningTasks } from "../utilities";
 import { Workbench } from "../../src/utilities/commands";
+import { activateExtensionForTest, updateSettings } from "./utilities/testutilities";
 
 suite("BackgroundCompilation Test Suite", () => {
     let workspaceContext: WorkspaceContext;
 
-    suiteSetup(async () => {
-        workspaceContext = await globalWorkspaceContextPromise;
-        assert.notEqual(workspaceContext.folders.length, 0);
-        await waitForNoRunningTasks();
-        await vscode.workspace.getConfiguration("swift").update("backgroundCompilation", true);
+    activateExtensionForTest({
+        async setup(ctx) {
+            workspaceContext = ctx;
+            assert.notEqual(workspaceContext.folders.length, 0);
+            await waitForNoRunningTasks();
+            return await updateSettings({
+                "swift.backgroundCompilation": true,
+            });
+        },
     });
 
     suiteTeardown(async () => {
-        await vscode.workspace.getConfiguration("swift").update("backgroundCompilation", undefined);
         await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
     });
 

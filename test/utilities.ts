@@ -91,19 +91,30 @@ export async function waitForClose(fixture: {
  * utility can be used to make sure no task is running
  * before starting a new test
  */
-export function waitForNoRunningTasks(): Promise<void> {
-    return new Promise<void>(res => {
+export function waitForNoRunningTasks(options?: { timeout: number }): Promise<void> {
+    return new Promise<void>((res, reject) => {
         if (vscode.tasks.taskExecutions.length === 0) {
             res();
             return;
         }
+        let timeout: NodeJS.Timeout;
         const disposable = vscode.tasks.onDidEndTask(() => {
             if (vscode.tasks.taskExecutions.length > 0) {
                 return;
             }
             disposable?.dispose();
+            clearTimeout(timeout);
             res();
         });
+        if (options?.timeout) {
+            timeout = setTimeout(() => {
+                disposable.dispose();
+                const runningTasks = vscode.tasks.taskExecutions.map(e => e.task.name);
+                reject(
+                    `Timed out waiting for tasks to complete. The following ${runningTasks.length} tasks are still running: ${runningTasks}.`
+                );
+            }, options.timeout);
+        }
     });
 }
 

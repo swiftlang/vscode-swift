@@ -269,6 +269,14 @@ export class LanguageClientManager implements vscode.Disposable {
         this.cancellationToken = new vscode.CancellationTokenSource();
     }
 
+    // The language client stops asnyhronously, so we need to wait for it to stop
+    // instead of doing it in dispose, which must be synchronous.
+    async stop() {
+        if (this.languageClient && this.languageClient.state === langclient.State.Running) {
+            await this.languageClient.dispose();
+        }
+    }
+
     dispose() {
         this.cancellationToken?.cancel();
         this.cancellationToken?.dispose();
@@ -276,7 +284,6 @@ export class LanguageClientManager implements vscode.Disposable {
         this.peekDocuments?.dispose();
         this.getReferenceDocument?.dispose();
         this.subscriptions.forEach(item => item.dispose());
-        this.languageClient?.stop();
         this.namedOutputChannels.forEach(channel => channel.dispose());
     }
 

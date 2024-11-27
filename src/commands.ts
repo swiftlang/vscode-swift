@@ -69,6 +69,12 @@ export enum Commands {
     DEBUG = "swift.debug",
     CLEAN_BUILD = "swift.cleanBuild",
     PREVIEW_DOCUMENTATION = "swift.previewDocumentation",
+    RESOLVE_DEPENDENCIES = "swift.resolveDependencies",
+    UPDATE_DEPENDENCIES = "swift.updateDependencies",
+    RUN_TESTS_MULTIPLE_TIMES = "swift.runTestsMultipleTimes",
+    RESET_PACKAGE = "swift.resetPackage",
+    USE_LOCAL_DEPENDENCY = "swift.useLocalDependency",
+    UNEDIT_DEPENDENCY = "swift.uneditDependency",
 }
 
 /**
@@ -77,14 +83,16 @@ export enum Commands {
 export function register(ctx: WorkspaceContext): vscode.Disposable[] {
     return [
         vscode.commands.registerCommand("swift.newFile", uri => newSwiftFile(uri)),
-        vscode.commands.registerCommand("swift.resolveDependencies", () =>
+        vscode.commands.registerCommand(Commands.RESOLVE_DEPENDENCIES, () =>
             resolveDependencies(ctx)
         ),
-        vscode.commands.registerCommand("swift.updateDependencies", () => updateDependencies(ctx)),
+        vscode.commands.registerCommand(Commands.UPDATE_DEPENDENCIES, () =>
+            updateDependencies(ctx)
+        ),
         vscode.commands.registerCommand(Commands.RUN, () => runBuild(ctx)),
         vscode.commands.registerCommand(Commands.DEBUG, () => debugBuild(ctx)),
         vscode.commands.registerCommand(Commands.CLEAN_BUILD, () => cleanBuild(ctx)),
-        vscode.commands.registerCommand("swift.runTestsMultipleTimes", item => {
+        vscode.commands.registerCommand(Commands.RUN_TESTS_MULTIPLE_TIMES, item => {
             if (ctx.currentFolder) {
                 return runTestMultipleTimes(ctx.currentFolder, item, false);
             }
@@ -96,7 +104,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         }),
         // Note: This is only available on macOS (gated in `package.json`) because its the only OS that has the iOS SDK available.
         vscode.commands.registerCommand("swift.switchPlatform", () => switchPlatform()),
-        vscode.commands.registerCommand("swift.resetPackage", () => resetPackage(ctx)),
+        vscode.commands.registerCommand(Commands.RESET_PACKAGE, () => resetPackage(ctx)),
         vscode.commands.registerCommand("swift.runScript", () => runSwiftScript(ctx)),
         vscode.commands.registerCommand("swift.openPackage", () => {
             if (ctx.currentFolder) {
@@ -113,7 +121,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand("swift.insertFunctionComment", () =>
             insertFunctionComment(ctx)
         ),
-        vscode.commands.registerCommand("swift.useLocalDependency", item => {
+        vscode.commands.registerCommand(Commands.USE_LOCAL_DEPENDENCY, item => {
             if (item instanceof PackageNode) {
                 return useLocalDependency(item.name, ctx);
             }
@@ -123,7 +131,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
                 return editDependency(item.name, ctx);
             }
         }),
-        vscode.commands.registerCommand("swift.uneditDependency", item => {
+        vscode.commands.registerCommand(Commands.UNEDIT_DEPENDENCY, item => {
             if (item instanceof PackageNode) {
                 return uneditDependency(item.name, ctx);
             }

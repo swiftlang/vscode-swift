@@ -123,7 +123,8 @@ export class TestRunArguments {
                 const { xcTestResult, swiftTestResult } = this.simplifyTestArgs(
                     testItem,
                     xcTestArgs,
-                    swiftTestArgs
+                    swiftTestArgs,
+                    isDebug
                 );
 
                 return {
@@ -156,12 +157,23 @@ export class TestRunArguments {
     private simplifyTestArgs(
         testItem: vscode.TestItem,
         xcTestArgs: vscode.TestItem[],
-        swiftTestArgs: vscode.TestItem[]
+        swiftTestArgs: vscode.TestItem[],
+        isDebug: boolean
     ): { xcTestResult: vscode.TestItem[]; swiftTestResult: vscode.TestItem[] } {
         // If we've worked all the way up to a test target, it may have both swift-testing
         // and XCTests.
         const isTestTarget = !!testItem.tags.find(tag => tag.id === "test-target");
+
         if (isTestTarget) {
+            // We cannot simplify away test suites leaving only the target if we are debugging,
+            // since the exact names of test suites to run need to be passed to the xctest binary.
+            // It will not debug all tests with only the target name.
+            if (isDebug) {
+                return {
+                    xcTestResult: xcTestArgs,
+                    swiftTestResult: swiftTestArgs,
+                };
+            }
             return {
                 // Add a trailing .* to match a test target name exactly.
                 // This prevents TestTarget matching TestTarget2.

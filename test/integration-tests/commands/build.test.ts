@@ -16,7 +16,6 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import { expect } from "chai";
-import { folderContextPromise, globalWorkspaceContextPromise } from "../extension.test";
 import { waitForNoRunningTasks } from "../../utilities";
 import { testAssetUri } from "../../fixtures";
 import { FolderContext } from "../../../src/FolderContext";
@@ -25,32 +24,45 @@ import { Commands } from "../../../src/commands";
 import { makeDebugConfigurations } from "../../../src/debugger/launch";
 import { Workbench } from "../../../src/utilities/commands";
 import { continueSession, waitForDebugAdapterCommand } from "../../utilities/debug";
-import { SettingsMap, updateSettings } from "../testexplorer/utilities";
+import {
+    activateExtensionForSuite,
+    folderInRootWorkspace,
+    updateSettings,
+} from "../utilities/testutilities";
 
 suite("Build Commands", function () {
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
-    let settingsTeardown: () => Promise<SettingsMap>;
+    let buildPath: string;
     const uri = testAssetUri("defaultPackage/Sources/PackageExe/main.swift");
     const breakpoints = [
         new vscode.SourceBreakpoint(new vscode.Location(uri, new vscode.Position(2, 0))),
     ];
 
-    suiteSetup(async function () {
-        workspaceContext = await globalWorkspaceContextPromise;
-        await waitForNoRunningTasks();
-        folderContext = await folderContextPromise("defaultPackage");
-        await workspaceContext.focusFolder(folderContext);
-        await vscode.window.showTextDocument(uri);
-        settingsTeardown = await updateSettings({
-            "swift.autoGenerateLaunchConfigurations": true,
-        });
-        await makeDebugConfigurations(folderContext, undefined, true);
+    activateExtensionForSuite({
+        async setup(ctx) {
+            workspaceContext = ctx;
+            await waitForNoRunningTasks();
+            folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
+            buildPath = path.join(folderContext.folder.fsPath, ".build");
+            await workspaceContext.focusFolder(folderContext);
+            await vscode.window.showTextDocument(uri);
+            const settingsTeardown = await updateSettings({
+                "swift.autoGenerateLaunchConfigurations": true,
+            });
+            await makeDebugConfigurations(folderContext, undefined, true);
+            return settingsTeardown;
+        },
+        async teardown() {
+            await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
+        },
     });
 
-    suiteTeardown(async () => {
-        await settingsTeardown();
-        await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
+    teardown(async () => {
+        // Remove the build directory after each test case
+        if (fs.existsSync(buildPath)) {
+            fs.rmSync(buildPath, { recursive: true, force: true });
+        }
     });
 
     test("Swift: Run Build", async () => {
@@ -64,10 +76,12 @@ suite("Build Commands", function () {
     });
 
     test("Swift: Clean Build", async () => {
-        const buildPath = path.join(folderContext.folder.fsPath, ".build");
+        let result = await vscode.commands.executeCommand(Commands.RUN);
+        expect(result).to.be.true;
+
         const beforeItemCount = fs.readdirSync(buildPath).length;
 
-        const result = await vscode.commands.executeCommand(Commands.CLEAN_BUILD);
+        result = await vscode.commands.executeCommand(Commands.CLEAN_BUILD);
         expect(result).to.be.true;
 
         const afterItemCount = fs.readdirSync(buildPath).length;

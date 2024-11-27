@@ -24,9 +24,10 @@ import { executeTaskWithUI, updateAfterError } from "./../utilities";
 export async function updateDependencies(ctx: WorkspaceContext) {
     const current = ctx.currentFolder;
     if (!current) {
-        return;
+        ctx.outputChannel.log("currentFolder is not set.");
+        return false;
     }
-    await updateFolderDependencies(current);
+    return await updateFolderDependencies(current);
 }
 
 /**
@@ -46,7 +47,7 @@ export async function updateFolderDependencies(folderContext: FolderContext) {
         folderContext.workspaceContext.toolchain
     );
 
-    await executeTaskWithUI(task, "Updating Dependencies", folderContext).then(result => {
-        updateAfterError(result, folderContext);
-    });
+    const result = await executeTaskWithUI(task, "Updating Dependencies", folderContext);
+    updateAfterError(result, folderContext);
+    return result;
 }
