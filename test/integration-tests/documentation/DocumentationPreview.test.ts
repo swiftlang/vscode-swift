@@ -68,7 +68,6 @@ suite("Documentation Preview", function () {
         editor.selection = new vscode.Selection(newCursorPos, newCursorPos);
 
         await expect(waitForRender(workspaceContext)).to.eventually.be.true;
-        console.log("Waiting for post edit content update...");
         const updatedContent = await contentPromise;
         const updatedContentString = JSON.stringify(updatedContent, null, 2);
         expect(updatedContentString, `${updatedContentString}`).to.include(expectedEdit);
@@ -99,7 +98,6 @@ suite("Documentation Preview", function () {
         await expect(waitForRender(workspaceContext)).to.eventually.be.true;
 
         // Wait for the test promise to complete
-        console.log("Waiting for initial content update...");
         const updatedContent = await contentPromise;
         const updatedContentString = JSON.stringify(updatedContent, null, 2);
 
@@ -135,7 +133,6 @@ suite("Documentation Preview", function () {
         // FIXME: We are off by 1 right now... so need to do 1 more action
         // FIXME: Also the off by 1 behaviour is consistent only if on cached-run (second run and onwards)
         await expect(waitForRender(workspaceContext)).to.eventually.be.true;
-        console.log("Waiting for post edit content update...");
         let updatedContent = await contentPromise;
         let updatedContentString = JSON.stringify(updatedContent, null, 2);
         expect(updatedContentString, `${updatedContentString}`).to.not.include(expectedEdit);
@@ -147,7 +144,6 @@ suite("Documentation Preview", function () {
 
         // Wait for render and test promise to complete
         await expect(waitForRender(workspaceContext)).to.eventually.be.true;
-        console.log("Waiting for post edit content update, FIXME: 1+ action...");
         updatedContent = await contentPromise;
         updatedContentString = JSON.stringify(updatedContent, null, 2);
         expect(updatedContentString, `${updatedContentString}`).to.include(expectedEdit);
@@ -169,7 +165,6 @@ suite("Documentation Preview", function () {
 
         // Wait for render and test promise to complete
         await expect(waitForRender(workspaceContext)).to.eventually.be.true;
-        console.log("Waiting for post cursor change content update...");
         const updatedContent = await contentPromise;
         const updatedContentString = JSON.stringify(updatedContent, null, 2);
         expect(updatedContentString, `${updatedContentString}`).to.include(expectedSymbol);
@@ -277,7 +272,6 @@ suite("Documentation Preview", function () {
 
         // Wait for render and assert webview panel retains render of last focused editor when the panel is visible
         await expect(waitForRender(workspaceContext)).to.eventually.be.true;
-        console.log("Waiting for post visible tab change content update...");
         const updatedContent = await contentPromise;
         const updatedContentString = JSON.stringify(updatedContent, null, 2);
         // FIXME: This feature is not implemented yet
@@ -307,7 +301,6 @@ suite("Documentation Preview", function () {
 
         // Wait for render and assert webview panel to displayed that no documentation is available
         await expect(waitForRender(workspaceContext)).to.eventually.be.true;
-        console.log("Waiting for post extension editor change content update...");
         const updatedContent = await contentPromise;
         const updatedContentString = JSON.stringify(updatedContent, null, 2);
         expect(updatedContentString, `${updatedContentString}`).to.include(
