@@ -12,3 +12,6 @@ repeat {
   line = readLine()
   print(line ?? "nil")
 } while line != nil;
+
+import Testing
+#expect(try myFunc() != 0)
