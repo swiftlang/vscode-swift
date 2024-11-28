@@ -21,6 +21,7 @@ import {
     createSwiftTask,
     createBuildAllTask,
     getBuildAllTask,
+    SwiftTask,
 } from "../../../src/tasks/SwiftTaskProvider";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import {
@@ -63,9 +64,9 @@ suite("SwiftTaskProvider Test Suite", () => {
                 { cwd: workspaceFolder.uri, scope: vscode.TaskScope.Workspace },
                 toolchain
             );
-            const { exitCode } = await executeTaskAndWaitForResult(task);
-            expect(exitCode).to.equal(0);
-        });
+            const { exitCode, output } = await executeTaskAndWaitForResult(task);
+            expect(exitCode, `${output}`).to.equal(0);
+        }).timeout(10000);
 
         test("Exit code on failure", async () => {
             const task = createSwiftTask(
@@ -95,9 +96,9 @@ suite("SwiftTaskProvider Test Suite", () => {
                     new Version(1, 2, 3)
                 )
             );
-            const { exitCode } = await executeTaskAndWaitForResult(task);
-            expect(exitCode).to.not.equal(0);
-        });
+            const { exitCode, output } = await executeTaskAndWaitForResult(task);
+            expect(exitCode, `${output}`).to.not.equal(0);
+        }).timeout(10000);
     });
 
     suite("provideTasks", () => {
@@ -115,12 +116,10 @@ suite("SwiftTaskProvider Test Suite", () => {
                     .and.to.include("-Xswiftc -diagnostic-style=llvm");
             });
 
-            test("executes @slow", async () => {
+            test("executes", async () => {
                 assert(task);
-                const exitPromise = waitForEndTaskProcess(task);
-                await vscode.tasks.executeTask(task);
-                const exitCode = await exitPromise;
-                expect(exitCode).to.equal(0);
+                const { exitCode, output } = await executeTaskAndWaitForResult(task as SwiftTask);
+                expect(exitCode, `${output}`).to.equal(0);
             }).timeout(180000); // 3 minutes to build
         });
 

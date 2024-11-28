@@ -14,11 +14,11 @@
 
 import * as assert from "assert";
 import * as vscode from "vscode";
-import { WorkspaceContext } from "../../src/WorkspaceContext";
-import { testAssetUri } from "../fixtures";
-import { waitForNoRunningTasks } from "../utilities";
-import { Workbench } from "../../src/utilities/commands";
-import { activateExtensionForTest, updateSettings } from "./utilities/testutilities";
+import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import { testAssetUri } from "../../fixtures";
+import { waitForNoRunningTasks } from "../../utilities";
+import { Workbench } from "../../../src/utilities/commands";
+import { activateExtensionForTest, updateSettings } from "../utilities/testutilities";
 
 suite("BackgroundCompilation Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -38,7 +38,7 @@ suite("BackgroundCompilation Test Suite", () => {
         await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
     });
 
-    test("build all on save @slow", async () => {
+    test("build all on save", async () => {
         const taskPromise = new Promise<void>(res => {
             vscode.tasks.onDidStartTask(e => {
                 const task = e.execution.task;
@@ -58,5 +58,5 @@ suite("BackgroundCompilation Test Suite", () => {
         await vscode.workspace.save(uri);
 
         await taskPromise;
-    }).timeout(120000);
+    }).timeout(2 * 60 * 1000);
 });
