@@ -619,7 +619,7 @@ export class LanguageClientManager {
         // In 6.0.1 it is no longer experimental, and so "auto" or "true" enables it.
         if (
             this.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
-            (configuration.backgroundIndexing === "true" ||
+            (configuration.backgroundIndexing === "on" ||
                 (configuration.backgroundIndexing === "auto" &&
                     this.swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))))
         ) {

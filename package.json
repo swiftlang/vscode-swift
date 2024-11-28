@@ -477,12 +477,12 @@
           "swift.sourcekit-lsp.backgroundIndexing": {
             "type": "string",
             "enum": [
-              "true",
-              "false",
+              "on",
+              "off",
               "auto"
             ],
             "default": "auto",
-            "markdownDescription": "Enable or disable background indexing. `auto` will enable background indexing if the Swift version is >= 6.1. This option has no effect in Swift versions prior to 6.0.",
+            "markdownDescription": "Turns background indexing `on` or `off`. `auto` will enable background indexing if the Swift version is >= 6.1. This option has no effect in Swift versions prior to 6.0.",
             "order": 4
           },
           "swift.sourcekit-lsp.trace.server": {

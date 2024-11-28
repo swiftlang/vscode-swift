@@ -242,14 +242,14 @@ const configuration = {
             .get<boolean>("backgroundCompilation", false);
     },
     /** background indexing */
-    get backgroundIndexing(): "true" | "false" | "auto" {
+    get backgroundIndexing(): "on" | "off" | "auto" {
         const value = vscode.workspace
             .getConfiguration("swift.sourcekit-lsp")
             .get("backgroundIndexing", "auto");
 
         // Legacy versions of this setting were a boolean, convert to the new string version.
         if (typeof value === "boolean") {
-            return value ? "true" : "false";
+            return value ? "on" : "off";
         } else {
             return value;
         }

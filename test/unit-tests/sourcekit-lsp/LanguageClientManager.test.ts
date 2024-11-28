@@ -161,7 +161,7 @@ suite("LanguageClientManager Suite", () => {
         // LSP configuration defaults
         mockedConfig.path = "";
         mockedConfig.buildArguments = [];
-        mockedConfig.backgroundIndexing = "false";
+        mockedConfig.backgroundIndexing = "off";
         mockedConfig.swiftEnvironmentVariables = {};
         mockedLspConfig.supportCFamily = "cpptools-inactive";
         mockedLspConfig.disable = false;
@@ -216,7 +216,7 @@ suite("LanguageClientManager Suite", () => {
 
     test("chooses the correct backgroundIndexing value is true, swift version if 6.0.0", async () => {
         mockedWorkspace.swiftVersion = new Version(6, 0, 0);
-        mockedConfig.backgroundIndexing = "true";
+        mockedConfig.backgroundIndexing = "on";
 
         new LanguageClientManager(instance(mockedWorkspace));
         await waitForReturnedPromises(languageClientMock.start);
