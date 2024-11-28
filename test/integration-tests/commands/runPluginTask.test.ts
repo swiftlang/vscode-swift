@@ -54,10 +54,7 @@ suite("Build Commands", function () {
 
         // Check if both tasks have the and names
         const taskLabels = tasks.map(task => task.name);
-        const expectedLabels = [
-            "swift-plugin: command-plugin",
-            "swift: command-plugin from tasks.json",
-        ];
+        const expectedLabels = ["command-plugin", "swift: command-plugin from tasks.json"];
         expect(taskLabels).to.deep.equal(expectedLabels);
     });
 });
