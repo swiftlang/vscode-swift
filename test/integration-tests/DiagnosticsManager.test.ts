@@ -137,7 +137,7 @@ suite("DiagnosticsManager Test Suite", async function () {
             expectedFuncErrorDiagnostic.source = "swiftc";
 
             const expectedMacroDiagnostic = new vscode.Diagnostic(
-                new vscode.Range(new vscode.Position(16, 26), new vscode.Position(16, 26)),
+                new vscode.Range(new vscode.Position(17, 26), new vscode.Position(17, 26)),
                 "No calls to throwing functions occur within 'try' expression",
                 vscode.DiagnosticSeverity.Warning
             );
@@ -178,7 +178,9 @@ suite("DiagnosticsManager Test Suite", async function () {
                 // Should have parsed correct severity
                 assertHasDiagnostic(mainUri, expectedWarningDiagnostic);
                 assertHasDiagnostic(mainUri, expectedMainErrorDiagnostic);
-                assertHasDiagnostic(mainUri, expectedMacroDiagnostic);
+                if (workspaceContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
+                    assertHasDiagnostic(mainUri, expectedMacroDiagnostic);
+                }
                 // Check parsed for other file
                 assertHasDiagnostic(funcUri, expectedFuncErrorDiagnostic);
             }).timeout(2 * 60 * 1000); // Allow 2 minutes to build
@@ -201,7 +203,9 @@ suite("DiagnosticsManager Test Suite", async function () {
                 // Should have parsed severity
                 assertHasDiagnostic(mainUri, expectedWarningDiagnostic);
                 assertHasDiagnostic(mainUri, expectedMainErrorDiagnostic);
-                assertHasDiagnostic(mainUri, expectedMacroDiagnostic);
+                if (workspaceContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
+                    assertHasDiagnostic(mainUri, expectedMacroDiagnostic);
+                }
                 // Check parsed for other file
                 assertHasDiagnostic(funcUri, expectedFuncErrorDiagnostic);
             }).timeout(2 * 60 * 1000); // Allow 2 minutes to build

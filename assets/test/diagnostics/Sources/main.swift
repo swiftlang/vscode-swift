@@ -13,5 +13,7 @@ repeat {
   print(line ?? "nil")
 } while line != nil;
 
+#if canImport(Testing)
 import Testing
 #expect(try myFunc() != 0)
+#endif
