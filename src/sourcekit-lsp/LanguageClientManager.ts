@@ -616,7 +616,7 @@ export class LanguageClientManager {
 
         // Swift 6.0.0 and later supports background indexing.
         // In 6.0.0 it is experimental so only "true" enables it.
-        // In 6.0.1 it is no longer experimental, and so "auto" or "true" enables it.
+        // In 6.1.0 it is no longer experimental, and so "auto" or "true" enables it.
         if (
             this.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
             (configuration.backgroundIndexing === "on" ||
