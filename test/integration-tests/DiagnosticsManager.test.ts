@@ -56,7 +56,7 @@ function assertHasDiagnostic(uri: vscode.Uri, expected: vscode.Diagnostic): vsco
     assert.notEqual(
         diagnostic,
         undefined,
-        `Could not find diagnostic matching:\n${JSON.stringify(expected)}`
+        `Could not find diagnostic matching:\n${JSON.stringify(expected)}\nDiagnostics:\n${JSON.stringify(diagnostics)}`
     );
     return diagnostic!;
 }
@@ -66,7 +66,7 @@ function assertWithoutDiagnostic(uri: vscode.Uri, expected: vscode.Diagnostic) {
     assert.equal(
         diagnostics.find(findDiagnostic(expected)),
         undefined,
-        `Unexpected diagnostic matching:\n${JSON.stringify(expected)}`
+        `Unexpected diagnostic matching:\n${JSON.stringify(expected)}\nDiagnostics:\n${JSON.stringify(diagnostics)}`
     );
 }
 
@@ -136,6 +136,23 @@ suite("DiagnosticsManager Test Suite", async function () {
             );
             expectedFuncErrorDiagnostic.source = "swiftc";
 
+            const expectedMacroDiagnostic = new vscode.Diagnostic(
+                new vscode.Range(new vscode.Position(17, 26), new vscode.Position(17, 26)),
+                "No calls to throwing functions occur within 'try' expression",
+                vscode.DiagnosticSeverity.Warning
+            );
+
+            expectedMacroDiagnostic.source = "swiftc";
+            expectedMacroDiagnostic.relatedInformation = [
+                {
+                    location: {
+                        uri: mainUri,
+                        range: expectedMacroDiagnostic.range,
+                    },
+                    message: "Expanded code originates here",
+                },
+            ];
+
             // SourceKit-LSP sometimes sends diagnostics
             // after first build and can cause intermittent
             // failure if `swiftc` diagnostic is fixed
@@ -161,6 +178,9 @@ suite("DiagnosticsManager Test Suite", async function () {
                 // Should have parsed correct severity
                 assertHasDiagnostic(mainUri, expectedWarningDiagnostic);
                 assertHasDiagnostic(mainUri, expectedMainErrorDiagnostic);
+                if (workspaceContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
+                    assertHasDiagnostic(mainUri, expectedMacroDiagnostic);
+                }
                 // Check parsed for other file
                 assertHasDiagnostic(funcUri, expectedFuncErrorDiagnostic);
             }).timeout(2 * 60 * 1000); // Allow 2 minutes to build
@@ -183,6 +203,9 @@ suite("DiagnosticsManager Test Suite", async function () {
                 // Should have parsed severity
                 assertHasDiagnostic(mainUri, expectedWarningDiagnostic);
                 assertHasDiagnostic(mainUri, expectedMainErrorDiagnostic);
+                if (workspaceContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
+                    assertHasDiagnostic(mainUri, expectedMacroDiagnostic);
+                }
                 // Check parsed for other file
                 assertHasDiagnostic(funcUri, expectedFuncErrorDiagnostic);
             }).timeout(2 * 60 * 1000); // Allow 2 minutes to build
@@ -198,6 +221,9 @@ suite("DiagnosticsManager Test Suite", async function () {
 
                 // Should have parsed severity
                 assertHasDiagnostic(mainUri, expectedWarningDiagnostic);
+
+                // llvm style doesn't do macro diagnostics
+                assertWithoutDiagnostic(mainUri, expectedMacroDiagnostic);
                 const diagnostic = assertHasDiagnostic(mainUri, expectedMainErrorDiagnostic);
                 // Should have parsed related note
                 assert.equal(diagnostic.relatedInformation?.length, 1);
