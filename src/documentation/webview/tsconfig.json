@@ -1,0 +1,8 @@
+{
+  "extends": "../../../tsconfig-base.json",
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "lib": ["ES2021", "DOM"]
+  },
+  "include": ["**/*"]
+}

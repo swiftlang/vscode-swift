@@ -651,12 +651,12 @@ export class TestRunner {
                 `Building and Running Tests${kindLabel}`,
                 {
                     cwd: this.folderContext.folder,
+                    env: { ...process.env, ...testBuildConfig.env },
                     scope: this.folderContext.workspaceFolder,
                     prefix: this.folderContext.name,
                     presentationOptions: { reveal: vscode.TaskRevealKind.Never },
                 },
-                this.folderContext.workspaceContext.toolchain,
-                { ...process.env, ...testBuildConfig.env }
+                this.folderContext.workspaceContext.toolchain
             );
 
             task.execution.onDidWrite(str => {

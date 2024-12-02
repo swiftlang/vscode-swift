@@ -1,10 +1,12 @@
-out
-dist
-coverage
-test-results
 node_modules
 default.profraw
 *.vsix
 .vscode-test
 .build
-assets/test/**/Package.resolved
+.DS_Store
+
+/assets/documentation-webview/
+/assets/test/**/Package.resolved
+/coverage/
+/dist/
+/test-results/

@@ -1,15 +1,19 @@
 // Place your settings in this file to overwrite default and user settings.
 {
-    "files.exclude": {
-        "dist": false // set this to true to hide the "dist" folder with the compiled JS files
-    },
-    "search.exclude": {
-        "dist": true // set this to false to include "dist" folder in search results
-    },
-    // Turn off tsc task auto detection since we have the necessary tasks as npm scripts
-    "typescript.tsc.autoDetect": "off",
+  "files.exclude": {
+    "dist": false, // set this to true to hide the "dist" folder with the compiled JS files
+    "swift-docc-render": false // set this to true to hide the "swift-docc-render" folder
+  },
+  "search.exclude": {
+    "dist": true, // set this to false to include "dist" folder in search results
+    "swift-docc-render": true // set this to false to include "swift-docc-render" submodule in search results
+  },
+  // Turn off tsc task auto detection since we have the necessary tasks as npm scripts
+  "typescript.tsc.autoDetect": "off",
+  // Tell VS Code to use the same version of TypeScript as the build
+  "typescript.tsdk": "node_modules/typescript/lib",
 
-    // Configure Prettier
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
+  // Configure Prettier
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
 }

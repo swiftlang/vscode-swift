@@ -201,9 +201,8 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
             const task = createSwiftTask(
                 ["--help"],
                 "help",
-                { cwd: workspaceFolder.uri, scope: vscode.TaskScope.Workspace },
-                instance(toolchain),
-                { BAZ: "2" }
+                { cwd: workspaceFolder.uri, env: { BAZ: "2" }, scope: vscode.TaskScope.Workspace },
+                instance(toolchain)
             );
             const execution = task.execution as SwiftExecution;
             assert.deepEqual(execution.options.env, { FOO: "1", BAZ: "2" });
@@ -216,11 +215,11 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 "help",
                 {
                     cwd: workspaceFolder.uri,
+                    env: { BAZ: "2" },
                     scope: vscode.TaskScope.Workspace,
                     presentationOptions: { reveal: vscode.TaskRevealKind.Always },
                 },
-                instance(toolchain),
-                { BAZ: "2" }
+                instance(toolchain)
             );
             assert.deepEqual(task.presentationOptions, { reveal: vscode.TaskRevealKind.Always });
         });
@@ -232,11 +231,11 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 "help",
                 {
                     cwd: workspaceFolder.uri,
+                    env: { BAZ: "2" },
                     scope: vscode.TaskScope.Workspace,
                     group: vscode.TaskGroup.Build,
                 },
-                instance(toolchain),
-                { BAZ: "2" }
+                instance(toolchain)
             );
             assert.equal(task.group, vscode.TaskGroup.Build);
         });
@@ -248,11 +247,11 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 "help",
                 {
                     cwd: workspaceFolder.uri,
+                    env: { BAZ: "2" },
                     scope: vscode.TaskScope.Workspace,
                     showBuildStatus: "progress",
                 },
-                instance(toolchain),
-                { BAZ: "2" }
+                instance(toolchain)
             );
             assert.equal(task.definition.showBuildStatus, "progress");
         });
@@ -264,11 +263,11 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 "help",
                 {
                     cwd: workspaceFolder.uri,
+                    env: { BAZ: "2" },
                     scope: vscode.TaskScope.Workspace,
                     disableTaskQueue: true,
                 },
-                instance(toolchain),
-                { BAZ: "2" }
+                instance(toolchain)
             );
             assert.equal(task.definition.disableTaskQueue, true);
         });
@@ -280,11 +279,11 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 "help",
                 {
                     cwd: workspaceFolder.uri,
+                    env: { BAZ: "2" },
                     scope: vscode.TaskScope.Workspace,
                     dontTriggerTestDiscovery: true,
                 },
-                instance(toolchain),
-                { BAZ: "2" }
+                instance(toolchain)
             );
             assert.equal(task.definition.dontTriggerTestDiscovery, true);
         });

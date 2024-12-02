@@ -1,0 +1,26 @@
+Submodule swift-docc-render contains modified content
+diff --git a/swift-docc-render/src/mixins/communicationBridgeUtils.js b/swift-docc-render/src/mixins/communicationBridgeUtils.js
+index 4f1bc9a..7ae7257 100644
+--- a/swift-docc-render/src/mixins/communicationBridgeUtils.js
++++ b/swift-docc-render/src/mixins/communicationBridgeUtils.js
+@@ -38,6 +38,7 @@ export default {
+         type: 'rendered',
+         data: {
+           time,
++          route: this.$route.path,
+         },
+       });
+     },
+diff --git a/swift-docc-render/src/setup-utils/SwiftDocCRenderRouter.js b/swift-docc-render/src/setup-utils/SwiftDocCRenderRouter.js
+index 87ba2a4..17bd401 100644
+--- a/swift-docc-render/src/setup-utils/SwiftDocCRenderRouter.js
++++ b/swift-docc-render/src/setup-utils/SwiftDocCRenderRouter.js
+@@ -32,7 +32,7 @@ const defaultRoutes = [
+ 
+ export default function createRouterInstance(routerConfig = {}) {
+   const router = new Router({
+-    mode: 'history',
++    mode: 'abstract',
+     base: baseUrl,
+     scrollBehavior,
+     ...routerConfig,

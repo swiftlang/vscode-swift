@@ -24,6 +24,8 @@
   ],
   "activationEvents": [
     "onLanguage:swift",
+    "onLanguage:swift-docc-markdown",
+    "onLanguage:swift-docc-tutorial",
     "workspaceContains:Package.swift",
     "workspaceContains:compile_commands.json",
     "onDebugResolve:swift-lldb"
@@ -57,6 +59,24 @@
           ".swiftinterface",
           ".swift"
         ]
+      },
+      {
+        "id": "swift-docc-markdown",
+        "aliases": [
+          "Swift DocC Markdown"
+        ],
+        "filenamePatterns": [
+          "**/*.docc/**/*.md"
+        ]
+      },
+      {
+        "id": "swift-docc-tutorial",
+        "aliases": [
+          "Swift DocC Tutorial"
+        ],
+        "filenamePatterns": [
+          "**/*.docc/**/*.tutorial"
+        ]
       }
     ],
     "snippets": [
@@ -74,6 +94,11 @@
       }
     ],
     "commands": [
+      {
+        "command": "swift.previewDocumentation",
+        "title": "Preview Documentation",
+        "category": "Swift"
+      },
       {
         "command": "swift.createNewProject",
         "title": "Create New Project...",
@@ -661,6 +686,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "swift.previewDocumentation",
+          "when": "swift.supportsDocumentationRendering"
+        },
         {
           "command": "swift.createNewProject",
           "when": "!swift.isActivated || swift.createNewProjectAvailable"
@@ -1271,10 +1300,13 @@
     "vadimcn.vscode-lldb"
   ],
   "scripts": {
-    "vscode:prepublish": "npm run bundle",
-    "bundle": "del-cli ./dist && esbuild ./src/extension.ts --bundle --outfile=dist/src/extension.js --external:vscode --format=cjs --platform=node --target=node18 --minify --sourcemap",
-    "compile": "del-cli ./dist && tsc",
-    "watch": "del-cli ./dist && tsc --watch",
+    "vscode:prepublish": "npm run bundle-extension && npm run bundle-documentation-webview",
+    "bundle-extension": "del-cli ./dist && esbuild ./src/extension.ts --bundle --outfile=dist/src/extension.js --external:vscode --format=cjs --platform=node --target=node18 --minify --sourcemap",
+    "bundle-documentation-webview": "npm run compile-documentation-webview -- --minify",
+    "compile": "del-cli ./dist/ && tsc --build",
+    "watch": "npm run compile -- --watch",
+    "compile-documentation-webview": "del-cli ./assets/documentation-webview && esbuild ./src/documentation/webview/webview.ts --bundle --outfile=assets/documentation-webview/index.js --format=cjs --sourcemap",
+    "watch-documentation-webview": "npm run compile-documentation-webview -- --watch",
     "lint": "eslint ./ --ext ts && tsc --noEmit",
     "format": "prettier --check .",
     "pretest": "npm run compile-tests",
@@ -1327,6 +1359,7 @@
     "sinon-chai": "^3.7.0",
     "source-map-support": "^0.5.21",
     "strip-ansi": "^6.0.1",
+    "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   },
   "dependencies": {

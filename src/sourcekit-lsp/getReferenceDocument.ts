@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
-import { GetReferenceDocumentParams, GetReferenceDocumentRequest } from "./lspExtensions";
+import { GetReferenceDocumentParams, GetReferenceDocumentRequest } from "./extensions";
 
 export function activateGetReferenceDocument(client: langclient.LanguageClient): vscode.Disposable {
     const getReferenceDocument = vscode.workspace.registerTextDocumentContentProvider(
@@ -25,7 +25,11 @@ export function activateGetReferenceDocument(client: langclient.LanguageClient):
                     uri: client.code2ProtocolConverter.asUri(uri),
                 };
 
-                const result = await client.sendRequest(GetReferenceDocumentRequest, params, token);
+                const result = await client.sendRequest(
+                    GetReferenceDocumentRequest.type,
+                    params,
+                    token
+                );
 
                 if (result) {
                     return result.content;

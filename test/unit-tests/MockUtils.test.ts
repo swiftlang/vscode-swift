@@ -218,8 +218,8 @@ suite("MockUtils Test Suite", () => {
         });
 
         test("can mock the contextKeys module", () => {
-            // Initial value should be undefined
-            expect(contextKeys.isActivated).to.be.undefined;
+            // Initial value should match default value in context keys
+            expect(contextKeys.isActivated).to.be.false;
             // Make sure that you can set the value of contextKeys using the mock
             mockedContextKeys.isActivated = true;
             expect(contextKeys.isActivated).to.be.true;

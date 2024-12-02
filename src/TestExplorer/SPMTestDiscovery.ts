@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import { TestStyle } from "../sourcekit-lsp/lspExtensions";
+import { TestStyle } from "../sourcekit-lsp/extensions";
 import { TestClass } from "./TestDiscovery";
 
 /*

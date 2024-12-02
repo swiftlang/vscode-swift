@@ -4,6 +4,9 @@
 !*.json
 !*.ts
 
+# Directories ignored by default that actually should be formatted
+!.vscode/
+
 # NodeJS
 node_modules/
 
@@ -15,3 +18,4 @@ node_modules/
 /coverage/
 /dist/
 /snippets/
+/swift-docc-render/

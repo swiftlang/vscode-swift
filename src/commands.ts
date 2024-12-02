@@ -68,6 +68,7 @@ export enum Commands {
     RUN = "swift.run",
     DEBUG = "swift.debug",
     CLEAN_BUILD = "swift.cleanBuild",
+    PREVIEW_DOCUMENTATION = "swift.previewDocumentation",
     RESOLVE_DEPENDENCIES = "swift.resolveDependencies",
     UPDATE_DEPENDENCIES = "swift.updateDependencies",
     RUN_TESTS_MULTIPLE_TIMES = "swift.runTestsMultipleTimes",
@@ -153,6 +154,10 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand(
             "swift.runAllTestsParallel",
             async () => await runAllTestsParallel(ctx)
+        ),
+        vscode.commands.registerCommand(
+            Commands.PREVIEW_DOCUMENTATION,
+            async () => await ctx.documentation.launchDocumentationPreview()
         ),
     ];
 }
