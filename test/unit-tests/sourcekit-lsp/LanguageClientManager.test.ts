@@ -65,6 +65,14 @@ suite("LanguageClientManager Suite", () => {
     let createFilesEmitter: AsyncEventEmitter<vscode.FileCreateEvent>;
     let deleteFilesEmitter: AsyncEventEmitter<vscode.FileDeleteEvent>;
 
+    const doesNotHave = (prop: any) =>
+        match(function (actual) {
+            if (typeof actual === "object") {
+                return !(prop in actual);
+            }
+            return actual[prop] === undefined;
+        }, "doesNotHave");
+
     setup(async () => {
         // Mock pieces of the VSCode API
         mockedVSCodeWindow.activeTextEditor = undefined;
@@ -153,7 +161,7 @@ suite("LanguageClientManager Suite", () => {
         // LSP configuration defaults
         mockedConfig.path = "";
         mockedConfig.buildArguments = [];
-        mockedConfig.backgroundIndexing = false;
+        mockedConfig.backgroundIndexing = "off";
         mockedConfig.swiftEnvironmentVariables = {};
         mockedLspConfig.supportCFamily = "cpptools-inactive";
         mockedLspConfig.disable = false;
@@ -175,6 +183,50 @@ suite("LanguageClientManager Suite", () => {
             /* clientOptions */ match.object
         );
         expect(languageClientMock.start).to.have.been.calledOnce;
+    });
+
+    test("chooses the correct backgroundIndexing value is auto, swift version if 6.0.0", async () => {
+        mockedWorkspace.swiftVersion = new Version(6, 0, 0);
+        mockedConfig.backgroundIndexing = "auto";
+        new LanguageClientManager(instance(mockedWorkspace));
+        await waitForReturnedPromises(languageClientMock.start);
+
+        expect(mockedLangClientModule.LanguageClient).to.have.been.calledOnceWith(
+            match.string,
+            match.string,
+            match.object,
+            match.hasNested("initializationOptions", doesNotHave("backgroundIndexing"))
+        );
+    });
+
+    test("chooses the correct backgroundIndexing value is auto, swift version if 6.1.0", async () => {
+        mockedWorkspace.swiftVersion = new Version(6, 1, 0);
+        mockedConfig.backgroundIndexing = "auto";
+
+        new LanguageClientManager(instance(mockedWorkspace));
+        await waitForReturnedPromises(languageClientMock.start);
+
+        expect(mockedLangClientModule.LanguageClient).to.have.been.calledOnceWith(
+            match.string,
+            match.string,
+            match.object,
+            match.hasNested("initializationOptions.backgroundIndexing", match.truthy)
+        );
+    });
+
+    test("chooses the correct backgroundIndexing value is true, swift version if 6.0.0", async () => {
+        mockedWorkspace.swiftVersion = new Version(6, 0, 0);
+        mockedConfig.backgroundIndexing = "on";
+
+        new LanguageClientManager(instance(mockedWorkspace));
+        await waitForReturnedPromises(languageClientMock.start);
+
+        expect(mockedLangClientModule.LanguageClient).to.have.been.calledOnceWith(
+            match.string,
+            match.string,
+            match.object,
+            match.hasNested("initializationOptions.backgroundIndexing", match.truthy)
+        );
     });
 
     test("notifies SourceKit-LSP of WorkspaceFolder changes", async () => {

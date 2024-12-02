@@ -129,6 +129,8 @@ export class LanguageClientManager {
     // that are not at the root of their workspace
     public subFolderWorkspaces: vscode.Uri[];
     private namedOutputChannels: Map<string, LSPOutputChannel> = new Map();
+    private swiftVersion: Version;
+
     /** Get the current state of the underlying LanguageClient */
     public get state(): langclient.State {
         if (!this.languageClient) {
@@ -142,9 +144,8 @@ export class LanguageClientManager {
             LanguageClientManager.indexingLogName,
             new LSPOutputChannel(LanguageClientManager.indexingLogName, false, true)
         );
-        this.singleServerSupport = workspaceContext.swiftVersion.isGreaterThanOrEqual(
-            new Version(5, 7, 0)
-        );
+        this.swiftVersion = workspaceContext.swiftVersion;
+        this.singleServerSupport = this.swiftVersion.isGreaterThanOrEqual(new Version(5, 7, 0));
         this.subscriptions = [];
         this.subFolderWorkspaces = [];
         if (this.singleServerSupport) {
@@ -613,10 +614,18 @@ export class LanguageClientManager {
             },
         };
 
-        if (configuration.backgroundIndexing) {
+        // Swift 6.0.0 and later supports background indexing.
+        // In 6.0.0 it is experimental so only "true" enables it.
+        // In 6.1.0 it is no longer experimental, and so "auto" or "true" enables it.
+        if (
+            this.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
+            (configuration.backgroundIndexing === "on" ||
+                (configuration.backgroundIndexing === "auto" &&
+                    this.swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))))
+        ) {
             options = {
                 ...options,
-                backgroundIndexing: configuration.backgroundIndexing,
+                backgroundIndexing: true,
                 backgroundPreparationMode: "enabled",
             };
         }
