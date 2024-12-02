@@ -31,7 +31,6 @@ import {
     mockGlobalValue,
     mockFn,
 } from "../../MockUtils";
-import * as langClient from "vscode-languageclient/node";
 import {
     Code2ProtocolConverter,
     DidChangeWorkspaceFoldersNotification,
@@ -43,8 +42,10 @@ import {
 import { LanguageClientManager } from "../../../src/sourcekit-lsp/LanguageClientManager";
 import configuration from "../../../src/configuration";
 import { FolderContext } from "../../../src/FolderContext";
+import { LanguageClientFactory } from "../../../src/sourcekit-lsp/LanguageClientFactory";
 
 suite("LanguageClientManager Suite", () => {
+    let languageClientFactoryMock: MockedObject<LanguageClientFactory>;
     let languageClientMock: MockedObject<LanguageClient>;
     let mockedConverter: MockedObject<Code2ProtocolConverter>;
     let changeStateEmitter: AsyncEventEmitter<StateChangeEvent>;
@@ -54,7 +55,6 @@ suite("LanguageClientManager Suite", () => {
     let mockedToolchain: MockedObject<SwiftToolchain>;
     let mockedBuildFlags: MockedObject<BuildFlags>;
 
-    const mockedLangClientModule = mockGlobalModule(langClient);
     const mockedConfig = mockGlobalModule(configuration);
     const mockedEnvironment = mockGlobalValue(process, "env");
     const mockedLspConfig = mockGlobalObject(configuration, "lsp");
@@ -157,7 +157,9 @@ suite("LanguageClientManager Suite", () => {
             onDidChangeState: mockFn(s => s.callsFake(changeStateEmitter.event)),
         });
         // `new LanguageClient()` will always return the mocked LanguageClient
-        mockedLangClientModule.LanguageClient.returns(instance(languageClientMock));
+        languageClientFactoryMock = mockObject<LanguageClientFactory>({
+            createLanguageClient: mockFn(s => s.returns(instance(languageClientMock))),
+        });
         // LSP configuration defaults
         mockedConfig.path = "";
         mockedConfig.buildArguments = [];
@@ -172,11 +174,11 @@ suite("LanguageClientManager Suite", () => {
     });
 
     test("launches SourceKit-LSP on startup", async () => {
-        const sut = new LanguageClientManager(instance(mockedWorkspace));
+        const sut = new LanguageClientManager(instance(mockedWorkspace), languageClientFactoryMock);
         await waitForReturnedPromises(languageClientMock.start);
 
         expect(sut.state).to.equal(State.Running);
-        expect(mockedLangClientModule.LanguageClient).to.have.been.calledOnceWith(
+        expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledOnceWith(
             /* id */ match.string,
             /* name */ match.string,
             /* serverOptions */ match.has("command", "/path/to/toolchain/bin/sourcekit-lsp"),
@@ -250,7 +252,7 @@ suite("LanguageClientManager Suite", () => {
             },
             workspaceContext: instance(mockedWorkspace),
         });
-        new LanguageClientManager(instance(mockedWorkspace));
+        new LanguageClientManager(instance(mockedWorkspace), languageClientFactoryMock);
         await waitForReturnedPromises(languageClientMock.start);
 
         // Add the first folder
@@ -311,21 +313,21 @@ suite("LanguageClientManager Suite", () => {
 
     test("doesn't launch SourceKit-LSP if disabled by the user", async () => {
         mockedLspConfig.disable = true;
-        const sut = new LanguageClientManager(instance(mockedWorkspace));
+        const sut = new LanguageClientManager(instance(mockedWorkspace), languageClientFactoryMock);
         await waitForReturnedPromises(languageClientMock.start);
 
         expect(sut.state).to.equal(State.Stopped);
-        expect(mockedLangClientModule.LanguageClient).to.not.have.been.called;
+        expect(languageClientFactoryMock.createLanguageClient).to.not.have.been.called;
         expect(languageClientMock.start).to.not.have.been.called;
     });
 
     test("user can provide a custom SourceKit-LSP executable", async () => {
         mockedLspConfig.serverPath = "/path/to/my/custom/sourcekit-lsp";
-        const sut = new LanguageClientManager(instance(mockedWorkspace));
+        const sut = new LanguageClientManager(instance(mockedWorkspace), languageClientFactoryMock);
         await waitForReturnedPromises(languageClientMock.start);
 
         expect(sut.state).to.equal(State.Running);
-        expect(mockedLangClientModule.LanguageClient).to.have.been.calledOnceWith(
+        expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledOnceWith(
             /* id */ match.string,
             /* name */ match.string,
             /* serverOptions */ match.has("command", "/path/to/my/custom/sourcekit-lsp"),
@@ -364,11 +366,14 @@ suite("LanguageClientManager Suite", () => {
         });
 
         test("doesn't launch SourceKit-LSP on startup", async () => {
-            const sut = new LanguageClientManager(instance(mockedWorkspace));
+            const sut = new LanguageClientManager(
+                instance(mockedWorkspace),
+                languageClientFactoryMock
+            );
             await waitForReturnedPromises(languageClientMock.start);
 
             expect(sut.state).to.equal(State.Stopped);
-            expect(mockedLangClientModule.LanguageClient).to.not.have.been.called;
+            expect(languageClientFactoryMock.createLanguageClient).to.not.have.been.called;
             expect(languageClientMock.start).to.not.have.been.called;
         });
 
@@ -382,7 +387,10 @@ suite("LanguageClientManager Suite", () => {
                     ),
                 })
             );
-            const sut = new LanguageClientManager(instance(mockedWorkspace));
+            const sut = new LanguageClientManager(
+                instance(mockedWorkspace),
+                languageClientFactoryMock
+            );
             await waitForReturnedPromises(languageClientMock.start);
 
             // Add the folder to the workspace
@@ -393,7 +401,7 @@ suite("LanguageClientManager Suite", () => {
             });
 
             expect(sut.state).to.equal(State.Running);
-            expect(mockedLangClientModule.LanguageClient).to.have.been.calledOnceWith(
+            expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledOnceWith(
                 /* id */ match.string,
                 /* name */ match.string,
                 /* serverOptions */ match.object,
@@ -411,7 +419,10 @@ suite("LanguageClientManager Suite", () => {
                     document: instance(mockedTextDocument),
                 })
             );
-            const sut = new LanguageClientManager(instance(mockedWorkspace));
+            const sut = new LanguageClientManager(
+                instance(mockedWorkspace),
+                languageClientFactoryMock
+            );
             await waitForReturnedPromises(languageClientMock.start);
 
             // Add the first folder to the workspace
@@ -431,8 +442,8 @@ suite("LanguageClientManager Suite", () => {
             });
 
             expect(sut.state).to.equal(State.Running);
-            expect(mockedLangClientModule.LanguageClient).to.have.been.calledTwice;
-            expect(mockedLangClientModule.LanguageClient).to.have.been.calledWith(
+            expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledTwice;
+            expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledWith(
                 /* id */ match.string,
                 /* name */ match.string,
                 /* serverOptions */ match.object,

@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import { WorkspaceContext } from "../WorkspaceContext";
-import { reindexProjectRequest } from "../sourcekit-lsp/lspExtensions";
+import { ReIndexProjectRequest } from "../sourcekit-lsp/extensions";
 
 /**
  * Request that the SourceKit-LSP server reindexes the workspace.
@@ -22,7 +22,7 @@ import { reindexProjectRequest } from "../sourcekit-lsp/lspExtensions";
 export function reindexProject(workspaceContext: WorkspaceContext): Promise<unknown> {
     return workspaceContext.languageClientManager.useLanguageClient(async (client, token) => {
         try {
-            await client.sendRequest(reindexProjectRequest, {}, token);
+            await client.sendRequest(ReIndexProjectRequest.type, token);
             const result = await vscode.window.showWarningMessage(
                 "Re-indexing a project should never be necessary and indicates a bug in SourceKit-LSP. Please file an issue describing which symbol was out-of-date and how you got into the state.",
                 "Report Issue",
