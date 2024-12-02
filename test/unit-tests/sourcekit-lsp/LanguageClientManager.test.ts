@@ -190,10 +190,11 @@ suite("LanguageClientManager Suite", () => {
     test("chooses the correct backgroundIndexing value is auto, swift version if 6.0.0", async () => {
         mockedWorkspace.swiftVersion = new Version(6, 0, 0);
         mockedConfig.backgroundIndexing = "auto";
-        new LanguageClientManager(instance(mockedWorkspace));
+
+        new LanguageClientManager(instance(mockedWorkspace), languageClientFactoryMock);
         await waitForReturnedPromises(languageClientMock.start);
 
-        expect(mockedLangClientModule.LanguageClient).to.have.been.calledOnceWith(
+        expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledOnceWith(
             match.string,
             match.string,
             match.object,
@@ -205,10 +206,10 @@ suite("LanguageClientManager Suite", () => {
         mockedWorkspace.swiftVersion = new Version(6, 1, 0);
         mockedConfig.backgroundIndexing = "auto";
 
-        new LanguageClientManager(instance(mockedWorkspace));
+        new LanguageClientManager(instance(mockedWorkspace), languageClientFactoryMock);
         await waitForReturnedPromises(languageClientMock.start);
 
-        expect(mockedLangClientModule.LanguageClient).to.have.been.calledOnceWith(
+        expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledOnceWith(
             match.string,
             match.string,
             match.object,
@@ -220,10 +221,10 @@ suite("LanguageClientManager Suite", () => {
         mockedWorkspace.swiftVersion = new Version(6, 0, 0);
         mockedConfig.backgroundIndexing = "on";
 
-        new LanguageClientManager(instance(mockedWorkspace));
+        new LanguageClientManager(instance(mockedWorkspace), languageClientFactoryMock);
         await waitForReturnedPromises(languageClientMock.start);
 
-        expect(mockedLangClientModule.LanguageClient).to.have.been.calledOnceWith(
+        expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledOnceWith(
             match.string,
             match.string,
             match.object,
