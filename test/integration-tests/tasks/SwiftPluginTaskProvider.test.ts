@@ -69,8 +69,8 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
                 }
             );
             mutable(task.execution).command = "/definitely/not/swift";
-            const { exitCode } = await executeTaskAndWaitForResult(task);
-            expect(exitCode).to.not.equal(0);
+            const { exitCode, output } = await executeTaskAndWaitForResult(task);
+            expect(exitCode, `${output}`).to.not.equal(0);
         }).timeout(10000);
     });
 

@@ -93,7 +93,7 @@ suite("Dependency Commmands Test Suite", function () {
 
                 tasks = (await getBuildAllTask(folderContext)) as SwiftTask;
                 const { exitCode, output } = await executeTaskAndWaitForResult(tasks);
-                expect(exitCode).to.not.equal(0);
+                expect(exitCode, `${output}`).to.not.equal(0);
                 expect(output).to.include("PackageLib");
                 expect(output).to.include("required");
 
@@ -128,7 +128,7 @@ suite("Dependency Commmands Test Suite", function () {
         async function assertDependencyNoLongerExists() {
             // Expect to fail again now dependency is missing
             const { exitCode, output } = await executeTaskAndWaitForResult(tasks);
-            expect(exitCode).to.not.equal(0);
+            expect(exitCode, `${output}`).to.not.equal(0);
             expect(output).to.include("PackageLib");
             expect(output).to.include("required");
         }

@@ -211,7 +211,8 @@ suite("DiagnosticsManager Test Suite", async function () {
             suiteSetup(async function () {
                 this.timeout(2 * 60 * 1000); // Allow 2 minutes to build
                 const task = createBuildAllTask(folderContext);
-                await executeTaskAndWaitForResult(task);
+                const { exitCode, output } = await executeTaskAndWaitForResult(task);
+                assert.equal(exitCode, 0, `${output}`);
             });
 
             suiteTeardown(async () => {
@@ -995,7 +996,8 @@ suite("DiagnosticsManager Test Suite", async function () {
         test("Provides swift diagnostics", async () => {
             // Build for indexing
             let task = createBuildAllTask(folderContext);
-            await executeTaskAndWaitForResult(task);
+            let { exitCode, output } = await executeTaskAndWaitForResult(task);
+            assert.equal(exitCode, 0, `${output}`);
 
             // Open file
             const promise = Promise.resolve(); // waitForDiagnostics([mainUri], false);
@@ -1004,7 +1006,8 @@ suite("DiagnosticsManager Test Suite", async function () {
             await vscode.window.showTextDocument(document);
 
             task = createBuildAllTask(folderContext);
-            await executeTaskAndWaitForResult(task);
+            ({ exitCode, output } = await executeTaskAndWaitForResult(task));
+            assert.equal(exitCode, 0, `${output}`);
 
             // Retrigger diagnostics
             await workspaceContext.focusFolder(folderContext);
@@ -1036,7 +1039,8 @@ suite("DiagnosticsManager Test Suite", async function () {
         test("Provides clang diagnostics", async () => {
             // Build for indexing
             const task = createBuildAllTask(cFolderContext);
-            await executeTaskAndWaitForResult(task);
+            const { exitCode, output } = await executeTaskAndWaitForResult(task);
+            assert.equal(exitCode, 0, `${output}`);
 
             // Open file
             const promise = Promise.resolve(); //  waitForDiagnostics([cUri], false);

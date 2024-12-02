@@ -33,7 +33,10 @@ suite("PackageDependencyProvider Test Suite", function () {
             const workspaceContext = ctx;
             await waitForNoRunningTasks();
             const folderContext = await folderInRootWorkspace("dependencies", workspaceContext);
-            await executeTaskAndWaitForResult((await getBuildAllTask(folderContext)) as SwiftTask);
+            const { exitCode, output } = await executeTaskAndWaitForResult(
+                (await getBuildAllTask(folderContext)) as SwiftTask
+            );
+            expect(exitCode, `${output}`).to.be.equals(0);
             await workspaceContext.focusFolder(folderContext);
             treeProvider = new PackageDependenciesProvider(workspaceContext);
         },
@@ -47,7 +50,7 @@ suite("PackageDependencyProvider Test Suite", function () {
         const items = await treeProvider.getChildren();
 
         const dep = items.find(n => n.name === "swift-markdown") as PackageNode;
-        expect(dep).to.not.be.undefined;
+        expect(dep, `${JSON.stringify(items, null, 2)}`).to.not.be.undefined;
         expect(dep?.location).to.equal("https://github.com/swiftlang/swift-markdown.git");
         assertPathsEqual(
             dep?.path,
@@ -59,6 +62,9 @@ suite("PackageDependencyProvider Test Suite", function () {
         const items = await treeProvider.getChildren();
 
         const dep = items.find(n => n.name === "defaultpackage") as PackageNode;
+        expect(dep, `${JSON.stringify(items, null, 2)}`).to.not.be.undefined;
+        expect(dep?.location).to.equal(testAssetPath("defaultPackage"));
+        expect(dep?.path).to.equal(testAssetPath("defaultPackage"));
         expect(
             dep,
             `Expected to find defaultPackage, but instead items were ${items.map(n => n.name)}`
@@ -71,6 +77,7 @@ suite("PackageDependencyProvider Test Suite", function () {
         const items = await treeProvider.getChildren();
 
         const dep = items.find(n => n.name === "defaultpackage") as PackageNode;
+        expect(dep, `${JSON.stringify(items, null, 2)}`).to.not.be.undefined;
         expect(
             dep,
             `Expected to find defaultPackage, but instead items were ${items.map(n => n.name)}`
@@ -105,7 +112,7 @@ suite("PackageDependencyProvider Test Suite", function () {
         const items = await treeProvider.getChildren();
 
         const dep = items.find(n => n.name === "swift-markdown") as PackageNode;
-        expect(dep).to.not.be.undefined;
+        expect(dep, `${JSON.stringify(items, null, 2)}`).to.not.be.undefined;
 
         const folders = await treeProvider.getChildren(dep);
         const folder = folders.find(n => n.name === "Sources");
