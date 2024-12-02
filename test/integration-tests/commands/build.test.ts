@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as fs from "fs";
+import * as fs from "fs/promises";
 import * as path from "path";
 import { expect } from "chai";
 import { waitForNoRunningTasks } from "../../utilities";
@@ -29,6 +29,7 @@ import {
     folderInRootWorkspace,
     updateSettings,
 } from "../utilities/testutilities";
+import { pathExists } from "../../../src/utilities/filesystem";
 
 suite("Build Commands", function () {
     let folderContext: FolderContext;
@@ -60,8 +61,8 @@ suite("Build Commands", function () {
 
     teardown(async () => {
         // Remove the build directory after each test case
-        if (fs.existsSync(buildPath)) {
-            fs.rmSync(buildPath, { recursive: true, force: true });
+        if (await pathExists(buildPath)) {
+            await fs.rm(buildPath, { recursive: true, force: true });
         }
     });
 
@@ -79,12 +80,12 @@ suite("Build Commands", function () {
         let result = await vscode.commands.executeCommand(Commands.RUN);
         expect(result).to.be.true;
 
-        const beforeItemCount = fs.readdirSync(buildPath).length;
+        const beforeItemCount = (await fs.readdir(buildPath)).length;
 
         result = await vscode.commands.executeCommand(Commands.CLEAN_BUILD);
         expect(result).to.be.true;
 
-        const afterItemCount = fs.readdirSync(buildPath).length;
+        const afterItemCount = (await fs.readdir(buildPath)).length;
         // This test will run in order after the Swift: Run Build test,
         // where .build folder is going to be filled with built artifacts.
         // After executing the clean command the build directory is guranteed to have less entry.
