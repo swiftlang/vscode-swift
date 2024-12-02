@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import * as fs from "fs";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
 import configuration from "./configuration";
@@ -255,6 +256,7 @@ export class DiagnosticsManager implements vscode.Disposable {
             };
             let remainingData: string | undefined;
             let lastDiagnostic: vscode.Diagnostic | undefined;
+            let lastDiagnosticNeedsSaving = false;
             disposables.push(
                 swiftExecution.onDidWrite(data => {
                     const sanitizedData = (remainingData || "") + stripAnsi(data);
@@ -293,6 +295,18 @@ export class DiagnosticsManager implements vscode.Disposable {
                             lastDiagnostic.relatedInformation = (
                                 lastDiagnostic.relatedInformation || []
                             ).concat(relatedInformation);
+
+                            if (lastDiagnosticNeedsSaving) {
+                                const expandedUri = relatedInformation.location.uri.fsPath;
+                                const currentUriDiagnostics = diagnostics.get(expandedUri) || [];
+                                lastDiagnostic.range = relatedInformation.location.range;
+                                diagnostics.set(expandedUri, [
+                                    ...currentUriDiagnostics,
+                                    lastDiagnostic,
+                                ]);
+
+                                lastDiagnosticNeedsSaving = false;
+                            }
                             continue;
                         }
                         const { uri, diagnostic } = result as ParsedDiagnostic;
@@ -312,7 +326,15 @@ export class DiagnosticsManager implements vscode.Disposable {
                             continue;
                         }
                         lastDiagnostic = diagnostic;
-                        diagnostics.set(uri, [...currentUriDiagnostics, diagnostic]);
+
+                        // If the diagnostic comes from a macro expansion the URI is going to be an invalid URI.
+                        // Save the diagnostic for when we get the related information which has the macro expansion location
+                        // that should be used as the correct URI.
+                        if (this.isValidUri(uri)) {
+                            diagnostics.set(uri, [...currentUriDiagnostics, diagnostic]);
+                        } else {
+                            lastDiagnosticNeedsSaving = true;
+                        }
                     }
                 }),
                 swiftExecution.onDidClose(done)
@@ -320,10 +342,20 @@ export class DiagnosticsManager implements vscode.Disposable {
         });
     }
 
+    private isValidUri(uri: string): boolean {
+        try {
+            fs.accessSync(uri, fs.constants.F_OK);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
     private parseDiagnostic(
         line: string
     ): ParsedDiagnostic | vscode.DiagnosticRelatedInformation | undefined {
-        const diagnosticRegex = /^(.*?):(\d+)(?::(\d+))?:\s+(warning|error|note):\s+([^\\[]*)/g;
+        const diagnosticRegex =
+            /^(?:\S+\s+)?(.*?):(\d+)(?::(\d+))?:\s+(warning|error|note):\s+([^\\[]*)/g;
         const match = diagnosticRegex.exec(line);
         if (!match) {
             return;
