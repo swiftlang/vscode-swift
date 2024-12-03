@@ -59,9 +59,6 @@ suite("PackageDependencyProvider Test Suite", function () {
         const items = await treeProvider.getChildren();
 
         const dep = items.find(n => n.name === "defaultpackage") as PackageNode;
-        expect(dep, `${JSON.stringify(items, null, 2)}`).to.not.be.undefined;
-        expect(dep?.location).to.equal(testAssetPath("defaultPackage"));
-        expect(dep?.path).to.equal(testAssetPath("defaultPackage"));
         expect(
             dep,
             `Expected to find defaultPackage, but instead items were ${items.map(n => n.name)}`
@@ -74,7 +71,6 @@ suite("PackageDependencyProvider Test Suite", function () {
         const items = await treeProvider.getChildren();
 
         const dep = items.find(n => n.name === "defaultpackage") as PackageNode;
-        expect(dep, `${JSON.stringify(items, null, 2)}`).to.not.be.undefined;
         expect(
             dep,
             `Expected to find defaultPackage, but instead items were ${items.map(n => n.name)}`
