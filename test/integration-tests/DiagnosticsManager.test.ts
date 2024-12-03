@@ -401,14 +401,12 @@ suite("DiagnosticsManager Test Suite", async function () {
             test("Parse partial line", async () => {
                 const fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
                 await vscode.tasks.executeTask(fixture.task);
-                const diagnosticsPromise = Promise.resolve(); // waitForDiagnostics([mainUri]);
                 // Wait to spawn before writing
                 fixture.process.write(`${mainUri.fsPath}:13:5: err`, "");
                 fixture.process.write("or: Cannot find 'fo", "");
                 fixture.process.write("o' in scope");
                 fixture.process.close(1);
                 await waitForNoRunningTasks();
-                await diagnosticsPromise;
                 // Should have parsed
                 assertHasDiagnostic(mainUri, outputDiagnostic);
             });
@@ -417,7 +415,6 @@ suite("DiagnosticsManager Test Suite", async function () {
             test("Ignore duplicates", async () => {
                 const fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
                 await vscode.tasks.executeTask(fixture.task);
-                const diagnosticsPromise = Promise.resolve(); // waitForDiagnostics([mainUri]);
                 // Wait to spawn before writing
                 const output = `${mainUri.fsPath}:13:5: error: Cannot find 'foo' in scope`;
                 fixture.process.write(output);
@@ -425,7 +422,6 @@ suite("DiagnosticsManager Test Suite", async function () {
                 fixture.process.write(output);
                 fixture.process.close(1);
                 await waitForNoRunningTasks();
-                await diagnosticsPromise;
                 const diagnostics = vscode.languages.getDiagnostics(mainUri);
                 // Should only include one
                 assert.equal(diagnostics.length, 1);
@@ -435,12 +431,10 @@ suite("DiagnosticsManager Test Suite", async function () {
             test("New set of swiftc diagnostics clear old list", async () => {
                 let fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
                 await vscode.tasks.executeTask(fixture.task);
-                let diagnosticsPromise = Promise.resolve(); // waitForDiagnostics([mainUri]);
                 // Wait to spawn before writing
                 fixture.process.write(`${mainUri.fsPath}:13:5: error: Cannot find 'foo' in scope`);
                 fixture.process.close(1);
                 await waitForNoRunningTasks();
-                await diagnosticsPromise;
                 let diagnostics = vscode.languages.getDiagnostics(mainUri);
                 // Should only include one
                 assert.equal(diagnostics.length, 1);
@@ -449,10 +443,8 @@ suite("DiagnosticsManager Test Suite", async function () {
                 // Run again but no diagnostics returned
                 fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
                 await vscode.tasks.executeTask(fixture.task);
-                diagnosticsPromise = Promise.resolve(); // waitForDiagnostics([mainUri]);
                 fixture.process.close(0);
                 await waitForNoRunningTasks();
-                await diagnosticsPromise;
                 diagnostics = vscode.languages.getDiagnostics(mainUri);
                 // Should have cleaned up
                 assert.equal(diagnostics.length, 0);

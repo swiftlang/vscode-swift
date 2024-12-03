@@ -15,7 +15,7 @@
 const { defineConfig } = require("@vscode/test-cli");
 const path = require("path");
 
-const isCIBuild = false; // process.env["CI"] === "1";
+const isCIBuild = process.env["CI"] === "1";
 const isFastTestRun = process.env["FAST_TEST_RUN"] === "1";
 
 // "env" in launch.json doesn't seem to work with vscode-test

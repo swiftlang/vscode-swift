@@ -74,25 +74,25 @@ export async function debugBuildWithOptions(
 ) {
     const current = ctx.currentFolder;
     if (!current) {
-        console.log(" >>> debugBuildWithOptions: No current folder on WorkspaceContext");
+        console.log("debugBuildWithOptions: No current folder on WorkspaceContext");
         return;
     }
 
     const file = vscode.window.activeTextEditor?.document.fileName;
     if (!file) {
-        console.log(" >>> debugBuildWithOptions: No active text editor");
+        console.log("debugBuildWithOptions: No active text editor");
         return;
     }
 
     const target = current.swiftPackage.getTarget(file);
     if (!target) {
-        console.log(" >>> debugBuildWithOptions: No active target");
+        console.log("debugBuildWithOptions: No active target");
         return;
     }
 
     if (target.type !== "executable") {
         console.log(
-            ` >>> debugBuildWithOptions: Target is not an executable, instead is ${target.type}`
+            `debugBuildWithOptions: Target is not an executable, instead is ${target.type}`
         );
         return;
     }

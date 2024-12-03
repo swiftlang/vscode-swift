@@ -74,7 +74,7 @@ suite("WorkspaceContext Test Suite", () => {
                 assert.strictEqual(
                     addedCount,
                     1,
-                    `Expected only one add folder operation, instead got folders: ${recordedFolders}`
+                    `Expected only one add folder operation, instead got folders: ${recordedFolders.map(folder => folder.folder?.name)}`
                 );
             } finally {
                 observer?.dispose();
