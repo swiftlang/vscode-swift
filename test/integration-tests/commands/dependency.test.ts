@@ -33,8 +33,8 @@ import {
 
 suite("Dependency Commmands Test Suite", function () {
     // full workflow's interaction with spm is longer than the default timeout
-    // 15 seconds for each test should be more than enough
-    this.timeout(15 * 1000);
+    // 60 seconds for each test should be more than enough
+    this.timeout(60 * 1000);
 
     suite("spm Update Contract Tests", function () {
         let folderContext: FolderContext;
@@ -133,7 +133,11 @@ suite("Dependency Commmands Test Suite", function () {
             expect(output).to.include("required");
         }
 
-        test("Use local dependency - Reset", async () => {
+        test("Use local dependency - Reset", async function () {
+            // spm reset after using local dependency is broken on windows
+            if (process.platform === "win32") {
+                this.skip();
+            }
             await useLocalDependencyTest();
 
             // Contract: spm reset

@@ -13,6 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import stripAnsi = require("strip-ansi");
 import { SwiftTaskFixture } from "./fixtures";
 import { SwiftTask } from "../src/tasks/SwiftTaskProvider";
 
@@ -140,4 +142,15 @@ export function waitForEndTaskProcess(task: vscode.Task): Promise<number | undef
             })
         );
     });
+}
+
+/**
+ * Cleans the provided output stripping ansi and
+ * cleaning extra whitespace
+ *
+ * @param output
+ * @returns cleaned output
+ */
+export function cleanOutput(output: string) {
+    return stripAnsi(output).trim();
 }

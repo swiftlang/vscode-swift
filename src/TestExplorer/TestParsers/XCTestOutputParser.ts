@@ -15,6 +15,8 @@
 import { ITestRunState, TestIssueDiff } from "./TestRunState";
 import { sourceLocationToVSCodeLocation } from "../../utilities/utilities";
 import { MarkdownString, Location } from "vscode";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import stripAnsi = require("strip-ansi");
 
 /** Regex for parsing XCTest output */
 interface TestRegex {
@@ -148,7 +150,10 @@ export class XCTestOutputParser implements IXCTestOutputParser {
      * Parse results from `swift test` and update tests accordingly
      * @param output Output from `swift test`
      */
-    public parseResult(output: string, runState: ITestRunState) {
+    public parseResult(rawOutput: string, runState: ITestRunState) {
+        // Windows is inserting ANSI codes into the output to do things like clear the cursor,
+        // which we don't care about.
+        const output = process.platform === "win32" ? stripAnsi(rawOutput) : rawOutput;
         const output2 = output.replace(/\r\n/g, "\n");
         const lines = output2.split("\n");
         if (runState.excess) {

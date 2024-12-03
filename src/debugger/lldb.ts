@@ -142,7 +142,7 @@ export async function getLldbProcess(
             "platform process list --show-args --all-users",
         ]);
         const entries = stdout.split("\n");
-        return entries.flatMap(line => {
+        const processes = entries.flatMap(line => {
             const match = /^(\d+)\s+\d+\s+\S+\s+\S+\s+(.+)$/.exec(line);
             if (match) {
                 return [{ pid: parseInt(match[1]), label: `${match[1]}: ${match[2]}` }];
@@ -150,7 +150,10 @@ export async function getLldbProcess(
                 return [];
             }
         });
+        return processes;
     } catch (error) {
-        vscode.window.showErrorMessage(`Failed to run LLDB: ${getErrorDescription(error)}`);
+        const errorMessage = `Failed to run LLDB: ${getErrorDescription(error)}`;
+        ctx.outputChannel.log(errorMessage);
+        vscode.window.showErrorMessage(errorMessage);
     }
 }

@@ -26,6 +26,8 @@ import {
     SettingsMap,
     updateSettings,
 } from "../utilities/testutilities";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import stripAnsi = require("strip-ansi");
 
 /**
  * Sets up a test that leverages the TestExplorer, returning the TestExplorer,
@@ -34,12 +36,12 @@ import {
  * @returns Object containing the TestExplorer, WorkspaceContext and a callback to revert
  * the settings back to their original values.
  */
-export async function setupTestExplorerTest(settings: SettingsMap = {}) {
+export async function setupTestExplorerTest(currentTest?: Mocha.Test, settings: SettingsMap = {}) {
     const settingsTeardown = await updateSettings(settings);
 
     const testProject = testAssetUri("defaultPackage");
 
-    const workspaceContext = await activateExtension();
+    const workspaceContext = await activateExtension(currentTest);
     const testExplorer = testExplorerFor(workspaceContext, testProject);
 
     // Set up the listener before bringing the text explorer in to focus,
@@ -139,8 +141,8 @@ export function assertTestResults(
                 .map(({ test, message }) => ({
                     test: test.id,
                     issues: Array.isArray(message)
-                        ? message.map(({ message }) => message)
-                        : [(message as vscode.TestMessage).message],
+                        ? message.map(({ message }) => stripAnsi(message.toString()))
+                        : [stripAnsi((message as vscode.TestMessage).message.toString())],
                 }))
                 .sort(),
             skipped: testRun.runState.skipped.map(({ id }) => id).sort(),
@@ -149,7 +151,12 @@ export function assertTestResults(
         },
         {
             passed: (state.passed ?? []).sort(),
-            failed: (state.failed ?? []).sort(),
+            failed: (state.failed ?? [])
+                .map(({ test, issues }) => ({
+                    test,
+                    issues: issues.map(message => stripAnsi(message)),
+                }))
+                .sort(),
             skipped: (state.skipped ?? []).sort(),
             errored: (state.errored ?? []).sort(),
             unknown: 0,
@@ -232,12 +239,16 @@ export async function gatherTests(
     const testItems = tests.map(test => {
         const testItem = getTestItem(controller, test);
         if (!testItem) {
-            const testsInController: string[] = [];
-            controller.items.forEach(item => {
-                testsInController.push(
-                    `${item.id}: ${item.label} ${item.error ? `(error: ${item.error})` : ""}`
-                );
-            });
+            const testsInController = reduceTestItemChildren(
+                controller.items,
+                (acc, item) => {
+                    acc.push(
+                        `${item.id}: ${item.label} ${item.error ? `(error: ${item.error})` : ""}`
+                    );
+                    return acc;
+                },
+                [] as string[]
+            );
 
             assert.fail(
                 `Unable to find ${test} in Test Controller. Items in test controller are: ${testsInController.join(", ")}`

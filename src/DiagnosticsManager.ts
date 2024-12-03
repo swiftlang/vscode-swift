@@ -89,13 +89,13 @@ export class DiagnosticsManager implements vscode.Disposable {
                 .then(map => {
                     // Clean up old "swiftc" diagnostics
                     this.removeSwiftcDiagnostics();
-                    map.forEach((diagnostics, uri) =>
+                    map.forEach((diagnostics, uri) => {
                         this.handleDiagnostics(
                             vscode.Uri.file(uri),
                             DiagnosticsManager.isSwiftc,
                             diagnostics
-                        )
-                    );
+                        );
+                    });
                 })
                 .catch(e =>
                     context.outputChannel.log(`${e}`, 'Failed to provide "swiftc" diagnostics')

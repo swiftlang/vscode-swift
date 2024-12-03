@@ -43,6 +43,13 @@ suite("Build Commands", function () {
 
     activateExtensionForSuite({
         async setup(ctx) {
+            // The description of this package is crashing on Windows with Swift 5.9.x and below,
+            // preventing it from being built. The cleanup in the teardown is failng as well with
+            // an EBUSY error. Skip this test on Windows until the issue is resolved.
+            if (process.platform === "win32") {
+                this.skip();
+            }
+
             workspaceContext = ctx;
             await waitForNoRunningTasks();
             folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);

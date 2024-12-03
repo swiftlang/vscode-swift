@@ -82,9 +82,14 @@ const extensionBootstrapper = (() => {
                 // Typically this is the promise returned from `updateSettings`, which will
                 // undo any settings changed during setup.
                 autoTeardown = await setup.call(this, workspaceContext);
-            } catch (error) {
-                console.error(`Error during test/suite setup, captured logs are:`);
-                workspaceContext.outputChannel.logs.map(log => console.log(log));
+            } catch (error: any) {
+                // Mocha will throw an error to break out of a test if `.skip` is used.
+                if (error.message?.indexOf("sync skip;") === -1) {
+                    console.error(`Error during test/suite setup: ${JSON.stringify(error)}`);
+                    console.error("Captured logs are:");
+                    workspaceContext.outputChannel.logs.map(log => console.error(log));
+                    console.error("================ end test logs ================");
+                }
                 throw error;
             }
         });
@@ -135,10 +140,14 @@ const extensionBootstrapper = (() => {
             // Subsequent activations must be done through the returned API object.
             if (!activator) {
                 activatedAPI = await ext.activate();
+                // Save the test name so if the test doesn't clean up by deactivating properly the next
+                // test that tries to activate can throw an error with the name of the test that needs to clean up.
+                lastTestName = currentTest?.titlePath().join(" → ");
                 activator = activatedAPI.activate;
                 workspaceContext = activatedAPI.workspaceContext;
             } else {
                 activatedAPI = await activator();
+                lastTestName = currentTest?.titlePath().join(" → ");
                 workspaceContext = activatedAPI.workspaceContext;
             }
 
@@ -152,10 +161,6 @@ const extensionBootstrapper = (() => {
                 const packageFolder = testAssetUri(asset);
                 await workspaceContext.addPackageFolder(packageFolder, workspaceFolder);
             }
-
-            // Save the test name so if the test doesn't clean up by deactivating properly the next
-            // test that tries to activate can throw an error with the name of the test that needs to clean up.
-            lastTestName = currentTest?.fullTitle();
 
             return workspaceContext;
         },
