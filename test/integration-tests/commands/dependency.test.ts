@@ -120,7 +120,7 @@ suite("Dependency Commmands Test Suite", function () {
 
             // This will now pass as we have the required library
             const { exitCode, output } = await executeTaskAndWaitForResult(tasks);
-            expect(exitCode, `Exit code non zero, command output:\n${output}`).to.equal(0);
+            expect(exitCode, `${output}`).to.equal(0);
             expect(output).to.include("defaultpackage");
             expect(output).to.include("not used by any target");
         }

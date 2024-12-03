@@ -29,7 +29,6 @@ import {
     folderInRootWorkspace,
     updateSettings,
 } from "../utilities/testutilities";
-import { pathExists } from "../../../src/utilities/filesystem";
 
 suite("Build Commands", function () {
     // Default timeout is a bit too short, give it a little bit more time
@@ -37,7 +36,6 @@ suite("Build Commands", function () {
 
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
-    let buildPath: string;
     const uri = testAssetUri("defaultPackage/Sources/PackageExe/main.swift");
     const breakpoints = [
         new vscode.SourceBreakpoint(new vscode.Location(uri, new vscode.Position(2, 0))),
@@ -48,7 +46,6 @@ suite("Build Commands", function () {
             workspaceContext = ctx;
             await waitForNoRunningTasks();
             folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
-            buildPath = path.join(folderContext.folder.fsPath, ".build");
             await workspaceContext.focusFolder(folderContext);
             await vscode.window.showTextDocument(uri);
             const settingsTeardown = await updateSettings({
@@ -60,13 +57,6 @@ suite("Build Commands", function () {
         async teardown() {
             await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
         },
-    });
-
-    teardown(async () => {
-        // Remove the build directory after each test case
-        if (await pathExists(buildPath)) {
-            await fs.rm(buildPath, { recursive: true, force: true });
-        }
     });
 
     test("Swift: Run Build", async () => {
@@ -83,14 +73,14 @@ suite("Build Commands", function () {
         let result = await vscode.commands.executeCommand(Commands.RUN);
         expect(result).to.be.true;
 
+        const buildPath = path.join(folderContext.folder.fsPath, ".build");
         const beforeItemCount = (await fs.readdir(buildPath)).length;
 
         result = await vscode.commands.executeCommand(Commands.CLEAN_BUILD);
         expect(result).to.be.true;
 
         const afterItemCount = (await fs.readdir(buildPath)).length;
-        // This test will run in order after the Swift: Run Build test,
-        // where .build folder is going to be filled with built artifacts.
+        // .build folder is going to be filled with built artifacts after Commands.RUN command
         // After executing the clean command the build directory is guranteed to have less entry.
         expect(afterItemCount).to.be.lessThan(beforeItemCount);
     });
