@@ -259,7 +259,7 @@ suite("DiagnosticsManager Test Suite", async function () {
                     swiftVersion.isLessThan(new Version(5, 10, 0)) ||
                     (process.platform === "win32" &&
                         swiftVersion.isGreaterThanOrEqual(new Version(5, 10, 0)) &&
-                        swiftVersion.isLessThanOrEqual(new Version(6, 0, 0)))
+                        swiftVersion.isLessThanOrEqual(new Version(6, 0, 999)))
                 ) {
                     this.skip();
                 }
