@@ -22,6 +22,8 @@ import {
     deactivateExtension,
 } from "./utilities/testutilities";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
+import { testAssetUri } from "../fixtures";
+import { assertContains } from "./testexplorer/utilities";
 
 suite("Extension Activation/Deactivation Tests", () => {
     suite("Extension Activation", () => {
@@ -95,6 +97,31 @@ suite("Extension Activation/Deactivation Tests", () => {
 
         test("Assert workspace context is recreated per test", () => {
             assert.notStrictEqual(workspaceContext, capturedWorkspaceContext);
+        });
+    });
+
+    suite("Activates for cmake projects", () => {
+        let workspaceContext: WorkspaceContext;
+
+        activateExtensionForTest({
+            async setup(ctx) {
+                workspaceContext = ctx;
+            },
+            testAssets: ["cmake", "cmake-compile-flags"],
+        });
+
+        test("compile_commands.json", async () => {
+            const lspWorkspaces = workspaceContext.languageClientManager.subFolderWorkspaces.map(
+                ({ fsPath }) => fsPath
+            );
+            assertContains(lspWorkspaces, testAssetUri("cmake").fsPath);
+        });
+
+        test("compile_flags.txt", async () => {
+            const lspWorkspaces = workspaceContext.languageClientManager.subFolderWorkspaces.map(
+                ({ fsPath }) => fsPath
+            );
+            assertContains(lspWorkspaces, testAssetUri("cmake-compile-flags").fsPath);
         });
     });
 });
