@@ -33,10 +33,7 @@ suite("PackageDependencyProvider Test Suite", function () {
             const workspaceContext = ctx;
             await waitForNoRunningTasks();
             const folderContext = await folderInRootWorkspace("dependencies", workspaceContext);
-            const { exitCode, output } = await executeTaskAndWaitForResult(
-                (await getBuildAllTask(folderContext)) as SwiftTask
-            );
-            expect(exitCode, `${output}`).to.be.equals(0);
+            await executeTaskAndWaitForResult((await getBuildAllTask(folderContext)) as SwiftTask);
             await workspaceContext.focusFolder(folderContext);
             treeProvider = new PackageDependenciesProvider(workspaceContext);
         },

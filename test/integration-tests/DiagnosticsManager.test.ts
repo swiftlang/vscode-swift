@@ -211,8 +211,9 @@ suite("DiagnosticsManager Test Suite", async function () {
             suiteSetup(async function () {
                 this.timeout(2 * 60 * 1000); // Allow 2 minutes to build
                 const task = createBuildAllTask(folderContext);
-                const { exitCode, output } = await executeTaskAndWaitForResult(task);
-                assert.equal(exitCode, 0, `${output}`);
+                // This return exit code and output for the task but we will omit it here
+                // because the failures are expected and we just want the task to build
+                await executeTaskAndWaitForResult(task);
             });
 
             suiteTeardown(async () => {
@@ -996,8 +997,7 @@ suite("DiagnosticsManager Test Suite", async function () {
         test("Provides swift diagnostics", async () => {
             // Build for indexing
             let task = createBuildAllTask(folderContext);
-            let { exitCode, output } = await executeTaskAndWaitForResult(task);
-            assert.equal(exitCode, 0, `${output}`);
+            await executeTaskAndWaitForResult(task);
 
             // Open file
             const promise = Promise.resolve(); // waitForDiagnostics([mainUri], false);
@@ -1006,8 +1006,7 @@ suite("DiagnosticsManager Test Suite", async function () {
             await vscode.window.showTextDocument(document);
 
             task = createBuildAllTask(folderContext);
-            ({ exitCode, output } = await executeTaskAndWaitForResult(task));
-            assert.equal(exitCode, 0, `${output}`);
+            await executeTaskAndWaitForResult(task);
 
             // Retrigger diagnostics
             await workspaceContext.focusFolder(folderContext);
@@ -1039,8 +1038,7 @@ suite("DiagnosticsManager Test Suite", async function () {
         test("Provides clang diagnostics", async () => {
             // Build for indexing
             const task = createBuildAllTask(cFolderContext);
-            const { exitCode, output } = await executeTaskAndWaitForResult(task);
-            assert.equal(exitCode, 0, `${output}`);
+            await executeTaskAndWaitForResult(task);
 
             // Open file
             const promise = Promise.resolve(); //  waitForDiagnostics([cUri], false);
