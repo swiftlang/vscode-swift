@@ -39,6 +39,7 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
         this.logStore.append(value);
 
         if (this.logToConsole) {
+            // eslint-disable-next-line no-console
             console.log(value);
         }
     }
@@ -48,6 +49,7 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
         this.logStore.appendLine(value);
 
         if (this.logToConsole) {
+            // eslint-disable-next-line no-console
             console.log(value);
         }
     }
