@@ -25,11 +25,7 @@ import { FolderContext } from "../../../src/FolderContext";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import * as sinon from "sinon";
 import { Commands } from "../../../src/commands";
-import {
-    activateExtensionForSuite,
-    activateExtensionForTest,
-    folderInRootWorkspace,
-} from "../utilities/testutilities";
+import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 
 suite("Dependency Commmands Test Suite", function () {
     // full workflow's interaction with spm is longer than the default timeout
@@ -82,7 +78,7 @@ suite("Dependency Commmands Test Suite", function () {
         let treeProvider: PackageDependenciesProvider;
         let item: PackageNode;
 
-        activateExtensionForTest({
+        activateExtensionForSuite({
             async setup(ctx) {
                 // Check before each test case start:
                 // Expect to fail without setting up local version
@@ -111,12 +107,13 @@ suite("Dependency Commmands Test Suite", function () {
             // Contract: spm edit with user supplied local version of dependency
             const windowMock = sinon.stub(vscode.window, "showOpenDialog");
             windowMock.resolves([testAssetUri("Swift-Markdown")]);
-            const result = await vscode.commands.executeCommand(
-                Commands.USE_LOCAL_DEPENDENCY,
-                item
-            );
+            let result = await vscode.commands.executeCommand(Commands.USE_LOCAL_DEPENDENCY, item);
             expect(result).to.be.true;
             windowMock.restore();
+
+            // Make sure new dependencies resolve before building
+            result = await vscode.commands.executeCommand(Commands.RESOLVE_DEPENDENCIES);
+            expect(result).to.be.true;
 
             // This will now pass as we have the required library
             const { exitCode, output } = await executeTaskAndWaitForResult(tasks);
