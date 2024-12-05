@@ -211,6 +211,8 @@ suite("DiagnosticsManager Test Suite", async function () {
             suiteSetup(async function () {
                 this.timeout(2 * 60 * 1000); // Allow 2 minutes to build
                 const task = createBuildAllTask(folderContext);
+                // This return exit code and output for the task but we will omit it here
+                // because the failures are expected and we just want the task to build
                 await executeTaskAndWaitForResult(task);
             });
 

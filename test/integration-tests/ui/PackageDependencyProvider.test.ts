@@ -47,7 +47,7 @@ suite("PackageDependencyProvider Test Suite", function () {
         const items = await treeProvider.getChildren();
 
         const dep = items.find(n => n.name === "swift-markdown") as PackageNode;
-        expect(dep).to.not.be.undefined;
+        expect(dep, `${JSON.stringify(items, null, 2)}`).to.not.be.undefined;
         expect(dep?.location).to.equal("https://github.com/swiftlang/swift-markdown.git");
         assertPathsEqual(
             dep?.path,
@@ -105,7 +105,7 @@ suite("PackageDependencyProvider Test Suite", function () {
         const items = await treeProvider.getChildren();
 
         const dep = items.find(n => n.name === "swift-markdown") as PackageNode;
-        expect(dep).to.not.be.undefined;
+        expect(dep, `${JSON.stringify(items, null, 2)}`).to.not.be.undefined;
 
         const folders = await treeProvider.getChildren(dep);
         const folder = folders.find(n => n.name === "Sources");
