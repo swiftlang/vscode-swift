@@ -80,6 +80,12 @@ suite("Dependency Commmands Test Suite", function () {
 
         activateExtensionForSuite({
             async setup(ctx) {
+                // FIXME: Disable this test suite as this is dependent on external git dependency
+                // and introduces flakinesss when run in the CI setting. The spm command only
+                // runs if the dependency is remote, which make faking difficult.
+                // For enabling the test in the future, we would need to set up the environment
+                // into a pre-resolved state, so spm does not need to visit remote git url.
+                this.skip();
                 // Check before each test case start:
                 // Expect to fail without setting up local version
                 workspaceContext = ctx;
