@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.4 - 2024-12-06
+
+### Added
+
+- Activate extension when `compile_flags.txt` or `buildServer.json` is present ([#1240](https://github.com/swiftlang/vscode-swift/pull/1240))
+- Add `"auto"` mode to sourcekit-lsp `backgroundIndexing` setting ([#1232](https://github.com/swiftlang/vscode-swift/pull/1232))
+
+### Fixed
+
+- Fix location for diagnostics generated from macros via `swiftc` ([#1234](https://github.com/swiftlang/vscode-swift/pull/1234))
+- Fixed inability to `Debug Test` on test targets in Test Explorer ([#1209](https://github.com/swiftlang/vscode-swift/pull/1209))
+- Fixed bug that could cause all tests to run when only some tests were requested ([#1186](https://github.com/swiftlang/vscode-swift/pull/1186))
+- Fix test runs not being able to be cancelled in some situations ([#1153](https://github.com/swiftlang/vscode-swift/pull/1153))
+
 ## 1.11.3 - 2024-09-23
 
 ### Fixed
