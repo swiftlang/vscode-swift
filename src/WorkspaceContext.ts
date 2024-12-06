@@ -349,7 +349,7 @@ export class WorkspaceContext implements vscode.Disposable {
     }
 
     async searchForPackages(folder: vscode.Uri, workspaceFolder: vscode.WorkspaceFolder) {
-        // add folder if Package.swift/compile_commands.json exists
+        // add folder if Package.swift/compile_commands.json/compile_flags.txt/buildServer.json exists
         if (await this.isValidWorkspaceFolder(folder.fsPath)) {
             await this.addPackageFolder(folder, workspaceFolder);
             return;
@@ -614,13 +614,15 @@ export class WorkspaceContext implements vscode.Disposable {
 
     /**
      * Return if folder is considered a valid root folder ie does it contain a SwiftPM
-     * Package.swift or a CMake compile_commands.json
+     * Package.swift or a CMake compile_commands.json, compile_flags.txt, or a BSP buildServer.json.
      */
     async isValidWorkspaceFolder(folder: string): Promise<boolean> {
         return (
             ((await pathExists(folder, "Package.swift")) &&
                 !configuration.disableSwiftPMIntegration) ||
-            (await pathExists(folder, "compile_commands.json"))
+            (await pathExists(folder, "compile_commands.json")) ||
+            (await pathExists(folder, "compile_flags.txt")) ||
+            (await pathExists(folder, "buildServer.json"))
         );
     }
 
