@@ -22,7 +22,6 @@ import { FolderContext } from "../../../src/FolderContext";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Commands } from "../../../src/commands";
 import { makeDebugConfigurations } from "../../../src/debugger/launch";
-import { Workbench } from "../../../src/utilities/commands";
 import { continueSession, waitForDebugAdapterCommand } from "../../utilities/debug";
 import {
     activateExtensionForSuite,
@@ -60,9 +59,6 @@ suite("Build Commands", function () {
             });
             await makeDebugConfigurations(folderContext, undefined, true);
             return settingsTeardown;
-        },
-        async teardown() {
-            await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
         },
     });
 
