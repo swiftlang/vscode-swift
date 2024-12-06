@@ -22,8 +22,6 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { TaskOperation } from "./tasks/TaskQueue";
 
 export class BackgroundCompilation {
-    private waitingToRun = false;
-
     constructor(private folderContext: FolderContext) {}
 
     /**
