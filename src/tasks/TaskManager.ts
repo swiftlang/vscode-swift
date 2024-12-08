@@ -104,7 +104,9 @@ export class TaskManager implements vscode.Disposable {
         });
         // setup startingTaskPromise to be resolved one task has started
         if (this.startingTaskPromise !== undefined) {
-            console.warn("TaskManager: Starting promise should be undefined if we reach here.");
+            this.workspaceContext.outputChannel.appendLine(
+                "TaskManager: Starting promise should be undefined if we reach here."
+            );
         }
         this.startingTaskPromise = new Promise<void>(resolve => {
             this.taskStartObserver = () => {
@@ -122,7 +124,7 @@ export class TaskManager implements vscode.Disposable {
                 });
             },
             error => {
-                console.log(error);
+                this.workspaceContext.outputChannel.appendLine(`Error executing task: ${error}`);
                 disposable.dispose();
                 this.startingTaskPromise = undefined;
                 reject(error);

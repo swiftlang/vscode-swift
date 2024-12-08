@@ -14,6 +14,7 @@
 
 import * as xml2js from "xml2js";
 import { TestRunnerTestRunState } from "./TestRunner";
+import { OutputChannel } from "vscode";
 
 export interface TestResults {
     tests: number;
@@ -48,14 +49,15 @@ export class TestXUnitParser {
 
     async parse(
         buffer: string,
-        runState: TestRunnerTestRunState
+        runState: TestRunnerTestRunState,
+        outputChannel: OutputChannel
     ): Promise<TestResults | undefined> {
         const xml = await xml2js.parseStringPromise(buffer);
         try {
             return await this.parseXUnit(xml, runState);
         } catch (error) {
             // ignore error
-            console.log(error);
+            outputChannel.appendLine(`Error parsing xUnit output: ${error}`);
             return undefined;
         }
     }

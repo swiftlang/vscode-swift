@@ -15,6 +15,7 @@
 import * as vscode from "vscode";
 import { DebugAdapter } from "./debugAdapter";
 import { Version } from "../utilities/version";
+import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 
 /**
  * Factory class for building LoggingDebugAdapterTracker
@@ -82,12 +83,16 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
         LoggingDebugAdapterTracker.debugSessionIdMap[id] = this;
     }
 
-    static setDebugSessionCallback(session: vscode.DebugSession, cb: (log: string) => void) {
+    static setDebugSessionCallback(
+        session: vscode.DebugSession,
+        outputChannel: SwiftOutputChannel,
+        cb: (log: string) => void
+    ) {
         const loggingDebugAdapter = this.debugSessionIdMap[session.id];
         if (loggingDebugAdapter) {
             loggingDebugAdapter.cb = cb;
         } else {
-            console.error("Could not find debug adapter for session:", session.id);
+            outputChannel.appendLine("Could not find debug adapter for session: " + session.id);
         }
     }
 
