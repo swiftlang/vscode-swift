@@ -13,19 +13,11 @@ env:
     NVM_DIR=/usr/local/nvm
     CI=1
     VSCODE_TEST=1
-    FAST_TEST_RUN=${{ github.event_name == 'schedule' && '1' || '0' }}
-  LINUX_PRE_BUILD_COMMAND: |
-    apt-get update && apt-get install -y rsync curl gpg libasound2 libgbm1 libgtk-3-0 libnss3 xvfb build-essential
-    mkdir -p $NVM_DIR
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-    /bin/bash -c "source $NVM_DIR/nvm.sh && nvm install $NODE_VERSION"
-    echo "$NODE_PATH" >> $GITHUB_PATH
+    FAST_TEST_RUN=${{ github.event_name == 'schedule' && '1' || '0' }}    
   WINDOWS_ENV_VARS: |
     CI=1
     VSCODE_TEST=1
     FAST_TEST_RUN=${{ github.event_name == 'schedule' && '1' || '0' }}
-  WINDOWS_PRE_BUILD_COMMAND: |
-    .github\workflows\scripts\windows\install-nodejs.ps1
 
 jobs:
   tests:
@@ -35,12 +27,12 @@ jobs:
       # Linux
       linux_exclude_swift_versions: '[{"swift_version": "nightly-main"}]'
       linux_env_vars: $LINUX_ENV_VARS
-      linux_pre_build_command: eval $LINUX_PRE_BUILD_COMMAND
+      linux_pre_build_command: .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./docker/test.sh
       # Windows
       windows_exclude_swift_versions: '[{"swift_version": "nightly"}]'
       windows_env_vars: $WINDOWS_ENV_VARS
-      windows_pre_build_command: $WINDOWS_PRE_BUILD_COMMAND
+      windows_pre_build_command: .github\workflows\scripts\windows\install-nodejs.ps1
       windows_build_command: docker\test-windows.ps1
       enable_windows_docker: false
 
@@ -61,7 +53,7 @@ jobs:
       windows_env_vars: |
         $WINDOWS_ENV_VARS
         VSCODE_VERSION='insiders'
-      windows_pre_build_command: $WINDOWS_PRE_BUILD_COMMAND
+      windows_pre_build_command: .github\workflows\scripts\windows\install-nodejs.ps1
       windows_build_command: docker\test-windows.ps1
       enable_windows_docker: false
 
