@@ -35,7 +35,7 @@ jobs:
       # Linux
       linux_exclude_swift_versions: '[{"swift_version": "nightly-main"}]'
       linux_env_vars: $LINUX_ENV_VARS
-      linux_pre_build_command: $LINUX_PRE_BUILD_COMMAND
+      linux_pre_build_command: eval $LINUX_PRE_BUILD_COMMAND
       linux_build_command: ./docker/test.sh
       # Windows
       windows_exclude_swift_versions: '[{"swift_version": "nightly"}]'
@@ -54,7 +54,7 @@ jobs:
       linux_env_vars: |
         $LINUX_ENV_VARS
         VSCODE_VERSION='insiders'
-      linux_pre_build_command: $LINUX_PRE_BUILD_COMMAND
+      linux_pre_build_command: eval $LINUX_PRE_BUILD_COMMAND
       linux_build_command: ./docker/test.sh
       # Windows
       windows_exclude_swift_versions: '[{"swift_version": "nightly"}]'
