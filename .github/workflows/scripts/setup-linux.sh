@@ -13,9 +13,9 @@
 ##
 ##===----------------------------------------------------------------------===##
 
-NODE_VERSION=v18.19.0
-NODE_PATH=/usr/local/nvm/versions/node/v18.19.0/bin
-NVM_DIR=/usr/local/nvm
+export NODE_VERSION=v18.19.0
+export NODE_PATH=/usr/local/nvm/versions/node/v18.19.0/bin
+export NVM_DIR=/usr/local/nvm
 
 apt-get update && apt-get install -y rsync curl gpg libasound2 libgbm1 libgtk-3-0 libnss3 xvfb build-essential
 mkdir -p $NVM_DIR
