@@ -8,9 +8,6 @@ on:
 
 env:
   LINUX_ENV_VARS: |
-    NODE_VERSION=v18.19.0
-    NODE_PATH=/usr/local/nvm/versions/node/v18.19.0/bin
-    NVM_DIR=/usr/local/nvm
     CI=1
     VSCODE_TEST=1
     FAST_TEST_RUN=${{ github.event_name == 'schedule' && '1' || '0' }}    
@@ -27,7 +24,7 @@ jobs:
       # Linux
       linux_exclude_swift_versions: '[{"swift_version": "nightly-main"}]'
       linux_env_vars: $LINUX_ENV_VARS
-      linux_pre_build_command: .github/workflows/scripts/setup-linux.sh
+      linux_pre_build_command: source .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./docker/test.sh
       # Windows
       windows_exclude_swift_versions: '[{"swift_version": "nightly"}]'
@@ -46,7 +43,7 @@ jobs:
       linux_env_vars: |
         $LINUX_ENV_VARS
         VSCODE_VERSION='insiders'
-      linux_pre_build_command: eval $LINUX_PRE_BUILD_COMMAND
+      linux_pre_build_command: source .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./docker/test.sh
       # Windows
       windows_exclude_swift_versions: '[{"swift_version": "nightly"}]'
