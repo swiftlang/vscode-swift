@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { expect } from "chai";
-import { waitForNoRunningTasks } from "../../utilities";
+import { waitForNoRunningTasks } from "../../utilities/tasks";
 import { testAssetUri } from "../../fixtures";
 import { FolderContext } from "../../../src/FolderContext";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
@@ -100,7 +100,6 @@ suite("Build Commands", function () {
         const bpPromise = waitForDebugAdapterCommand(
             "Debug PackageExe (defaultPackage)",
             "stackTrace",
-            workspaceContext
         );
 
         const result = vscode.commands.executeCommand(Commands.DEBUG);

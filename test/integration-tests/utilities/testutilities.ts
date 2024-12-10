@@ -19,7 +19,7 @@ import { Api } from "../../../src/extension";
 import { testAssetUri } from "../../fixtures";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { FolderContext } from "../../../src/FolderContext";
-import { waitForNoRunningTasks } from "../../utilities";
+import { waitForNoRunningTasks } from "../../utilities/tasks";
 
 function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);

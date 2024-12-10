@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { folderContextPromise } from "./extension.test";
 import { testAssetPath, testAssetUri } from "../fixtures";
 import { waitForNoRunningTasks } from "../utilities/tasks";
 import { expect } from "chai";
@@ -24,26 +23,33 @@ import {
     waitUntilDebugSessionTerminates,
 } from "../utilities/debug";
 import { Version } from "../../src/utilities/version";
+import { activateExtensionForSuite, folderInRootWorkspace } from "./utilities/testutilities";
+import { WorkspaceContext } from "../../src/WorkspaceContext";
 
 suite("SwiftSnippet Test Suite", () => {
     const uri = testAssetUri("defaultPackage/Snippets/hello.swift");
     const breakpoints = [
         new vscode.SourceBreakpoint(new vscode.Location(uri, new vscode.Position(2, 0))),
     ];
+    let workspaceContext: WorkspaceContext;
 
-    suiteSetup(async function () {
-        const folder = await folderContextPromise("defaultPackage");
-        if (folder.workspaceContext.toolchain.swiftVersion.isLessThan(new Version(6, 0, 0))) {
-            this.skip();
-        }
-        await waitForNoRunningTasks();
+    activateExtensionForSuite({
+        async setup(ctx) {
+            workspaceContext = ctx;
 
-        // File needs to be open for command to be enabled
-        const doc = await vscode.workspace.openTextDocument(uri.fsPath);
-        await vscode.window.showTextDocument(doc);
-
-        // Set a breakpoint
-        vscode.debug.addBreakpoints(breakpoints);
+            const folder = await folderInRootWorkspace("defaultPackage", workspaceContext);
+            if (folder.workspaceContext.toolchain.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+                this.skip();
+            }
+            await waitForNoRunningTasks();
+    
+            // File needs to be open for command to be enabled
+            const doc = await vscode.workspace.openTextDocument(uri.fsPath);
+            await vscode.window.showTextDocument(doc);
+    
+            // Set a breakpoint
+            vscode.debug.addBreakpoints(breakpoints);
+        },
     });
 
     suiteTeardown(async () => {

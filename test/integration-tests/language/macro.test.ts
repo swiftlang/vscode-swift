@@ -19,7 +19,7 @@ import { LanguageClientManager } from "../../../src/sourcekit-lsp/LanguageClient
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { testAssetUri } from "../../fixtures";
 import { FolderContext } from "../../../src/FolderContext";
-import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities";
+import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
 import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
 import { Version } from "../../../src/utilities/version";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";

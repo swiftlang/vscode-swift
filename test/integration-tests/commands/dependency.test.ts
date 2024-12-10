@@ -18,7 +18,7 @@ import {
     PackageDependenciesProvider,
     PackageNode,
 } from "../../../src/ui/PackageDependencyProvider";
-import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities";
+import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
 import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
 import { testAssetUri } from "../../fixtures";
 import { FolderContext } from "../../../src/FolderContext";
