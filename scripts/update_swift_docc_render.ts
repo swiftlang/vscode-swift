@@ -11,8 +11,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+/* eslint-disable no-console */
 
-import simpleGit from "simple-git";
+import simpleGit, { ResetMode } from "simple-git";
 import { spawn } from "child_process";
 import { stat, mkdtemp, mkdir, rm, readdir } from "fs/promises";
 import * as path from "path";
@@ -38,8 +39,10 @@ async function cloneSwiftDocCRender(buildDirectory: string): Promise<string> {
     const swiftDocCRenderDirectory = path.join(buildDirectory, "swift-docc-render");
     const git = simpleGit({ baseDir: buildDirectory });
     console.log("> git clone https://github.com/swiftlang/swift-docc-render.git");
+    const revision = "10b097153d89d7bfc2dd400b47181a782a0cfaa0";
     await git.clone("https://github.com/swiftlang/swift-docc-render.git", swiftDocCRenderDirectory);
     await git.cwd(swiftDocCRenderDirectory);
+    await git.reset(ResetMode.HARD, [revision]);
     // Apply our patches to swift-docc-render
     const patches = (
         await readdir(path.join(__dirname, "patches", "swift-docc-render"), {
@@ -85,7 +88,7 @@ async function exec(
     if (process.argv.includes("postinstall")) {
         try {
             await stat(outputDirectory);
-            console.log(`${outputDirectory} exists, skipping build.`)
+            console.log(`${outputDirectory} exists, skipping build.`);
             return;
         } catch {
             // Proceed with creating
