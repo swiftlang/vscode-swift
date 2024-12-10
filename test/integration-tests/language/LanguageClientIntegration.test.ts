@@ -18,7 +18,6 @@ import { expect } from "chai";
 import { LanguageClientManager } from "../../../src/sourcekit-lsp/LanguageClientManager";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { testAssetUri } from "../../fixtures";
-import { FolderContext } from "../../../src/FolderContext";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
 import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
 import { Version } from "../../../src/utilities/version";
@@ -37,38 +36,43 @@ async function waitForClientState(
     return clientState;
 }
 
-suite("Integration, Macros Functionality Support with Sourcekit-lsp", function () {
-    // Take around 60 seconds if running in isolation, longer than default timeout
-    this.timeout(2 * 60 * 1000);
+async function buildProject(ctx: WorkspaceContext, name: string) {
+    await waitForNoRunningTasks();
+    const folderContext = await folderInRootWorkspace(name, ctx);
+    const task = (await getBuildAllTask(folderContext)) as SwiftTask;
+    const { exitCode, output } = await executeTaskAndWaitForResult(task);
+    expect(exitCode, `${output}`).to.equal(0);
+}
 
+suite("Language Client Integration Suite", function () {
     let clientManager: LanguageClientManager;
     let workspaceContext: WorkspaceContext;
-    let folderContext: FolderContext;
 
     activateExtensionForSuite({
         async setup(ctx) {
+            this.timeout(5 * 60 * 1000);
+
             workspaceContext = ctx;
-            // Expand Macro support in Swift started from 6.1
-            if (workspaceContext.swiftVersion.isLessThan(new Version(6, 1, 0))) {
-                this.skip();
-            }
 
             // Wait for a clean starting point, and build all tasks for the fixture
-            await waitForNoRunningTasks();
-            folderContext = await folderInRootWorkspace("swift-macro", workspaceContext);
-            await workspaceContext.focusFolder(folderContext);
-            const tasks = (await getBuildAllTask(folderContext)) as SwiftTask;
-            const { exitCode, output } = await executeTaskAndWaitForResult(tasks);
-            expect(exitCode, `${output}`).to.equal(0);
+            if (workspaceContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))) {
+                await buildProject(ctx, "swift-macro");
+            }
+            await buildProject(ctx, "defaultPackage");
 
             // Ensure lsp client is ready
-            clientManager = workspaceContext.languageClientManager;
+            clientManager = ctx.languageClientManager;
             const clientState = await waitForClientState(clientManager, langclient.State.Running);
             expect(clientState).to.equals(langclient.State.Running);
         },
     });
 
     test("Expand Macro", async function () {
+        // Expand Macro support in Swift started from 6.1
+        if (workspaceContext.swiftVersion.isLessThan(new Version(6, 1, 0))) {
+            this.skip();
+        }
+
         // Focus on the file of interest
         const uri = testAssetUri("swift-macro/Sources/swift-macroClient/main.swift");
         await vscode.window.showTextDocument(uri);
@@ -127,5 +131,65 @@ suite("Integration, Macros Functionality Support with Sourcekit-lsp", function (
         // Assert that the content contains the expected result
         const content = referenceDocument.getText();
         expect(content).to.include(expectedMacro);
+    });
+
+    suite("Symbols", () => {
+        const uri = testAssetUri("defaultPackage/Sources/PackageExe/main.swift");
+        const expectedDefinitionUri = testAssetUri(
+            "defaultPackage/Sources/PackageLib/PackageLib.swift"
+        );
+        // Position of the symbol 'a' in main.swift
+        const position = new vscode.Position(2, 6);
+
+        test("Goto Definition", async function () {
+            // Focus on the file of interest
+            const editor = await vscode.window.showTextDocument(uri);
+            const document = editor.document;
+
+            // Position of the symbol 'a' in main.swift
+            const definitionLocations = await vscode.commands.executeCommand<vscode.Location[]>(
+                "vscode.executeDefinitionProvider",
+                document.uri,
+                position
+            );
+
+            expect(definitionLocations).to.have.lengthOf(
+                1,
+                "There should be one definition of 'a'."
+            );
+
+            const definition = definitionLocations[0];
+
+            // Assert that the definition is in PackageLib.swift at line 0
+            expect(definition.uri.toString()).to.equal(expectedDefinitionUri.toString());
+            expect(definition.range.start.line).to.equal(0);
+        });
+
+        test("Find All References", async function () {
+            // Focus on the file of interest
+            const editor = await vscode.window.showTextDocument(uri);
+            const document = editor.document;
+
+            const referenceLocations = await vscode.commands.executeCommand<vscode.Location[]>(
+                "vscode.executeReferenceProvider",
+                document.uri,
+                position
+            );
+
+            // We expect 2 references - one in `main.swift` and one in `PackageLib.swift`
+            expect(referenceLocations).to.have.lengthOf(
+                2,
+                "There should be two references to 'a'."
+            );
+
+            // Extract reference URIs and sort them to have a predictable order
+            const referenceUris = referenceLocations.map(ref => ref.uri.toString()).sort();
+            const expectedUris = [
+                uri.toString(), // Reference in main.swift
+                expectedDefinitionUri.toString(), // Reference in PackageLib.swift
+            ].sort();
+
+            expect(referenceUris).to.deep.equal(expectedUris);
+        });
     });
 });
