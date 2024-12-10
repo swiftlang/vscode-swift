@@ -19,7 +19,11 @@ import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftPluginTaskProvider } from "../../../src/tasks/SwiftPluginTaskProvider";
 import { FolderContext } from "../../../src/FolderContext";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
-import { cleanOutput, executeTaskAndWaitForResult, waitForEndTaskProcess } from "../../utilities/tasks";
+import {
+    cleanOutput,
+    executeTaskAndWaitForResult,
+    waitForEndTaskProcess,
+} from "../../utilities/tasks";
 import { mutable } from "../../utilities/types";
 
 suite("SwiftPluginTaskProvider Test Suite", () => {

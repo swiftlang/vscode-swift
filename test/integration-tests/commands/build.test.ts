@@ -99,7 +99,7 @@ suite("Build Commands", function () {
         // but "stackTrace" is the deterministic sync point we will use to make sure we can execute continue
         const bpPromise = waitForDebugAdapterCommand(
             "Debug PackageExe (defaultPackage)",
-            "stackTrace",
+            "stackTrace"
         );
 
         const result = vscode.commands.executeCommand(Commands.DEBUG);

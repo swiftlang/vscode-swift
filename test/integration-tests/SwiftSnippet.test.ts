@@ -42,11 +42,11 @@ suite("SwiftSnippet Test Suite", () => {
                 this.skip();
             }
             await waitForNoRunningTasks();
-    
+
             // File needs to be open for command to be enabled
             const doc = await vscode.workspace.openTextDocument(uri.fsPath);
             await vscode.window.showTextDocument(doc);
-    
+
             // Set a breakpoint
             vscode.debug.addBreakpoints(breakpoints);
         },

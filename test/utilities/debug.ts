@@ -13,8 +13,6 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 import { Workbench } from "../../src/utilities/commands";
-import { DebugAdapter } from "../../src/debugger/debugAdapter";
-import { WorkspaceContext } from "../../src/WorkspaceContext";
 
 export async function continueSession(): Promise<void> {
     await vscode.commands.executeCommand(Workbench.ACTION_DEBUG_CONTINUE);
@@ -30,29 +28,26 @@ export async function continueSession(): Promise<void> {
  */
 export async function waitForDebugAdapterMessage(
     name: string,
-    matches: (message: any) => boolean,
+    matches: (message: any) => boolean
 ): Promise<any> {
     return await new Promise<any>(res => {
-        const disposable = vscode.debug.registerDebugAdapterTrackerFactory(
-            "swift-lldb",
-            {
-                createDebugAdapterTracker: function (
-                    session: vscode.DebugSession
-                ): vscode.ProviderResult<vscode.DebugAdapterTracker> {
-                    if (session.name !== name) {
-                        return;
-                    }
-                    return {
-                        onDidSendMessage(message) {
-                            if (matches(message)) {
-                                disposable.dispose();
-                                res(message);
-                            }
-                        },
-                    };
-                },
-            }
-        );
+        const disposable = vscode.debug.registerDebugAdapterTrackerFactory("swift-lldb", {
+            createDebugAdapterTracker: function (
+                session: vscode.DebugSession
+            ): vscode.ProviderResult<vscode.DebugAdapterTracker> {
+                if (session.name !== name) {
+                    return;
+                }
+                return {
+                    onDidSendMessage(message) {
+                        if (matches(message)) {
+                            disposable.dispose();
+                            res(message);
+                        }
+                    },
+                };
+            },
+        });
     });
 }
 
