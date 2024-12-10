@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
+import { DebugProtocol } from "@vscode/debugprotocol";
 import { Workbench } from "../../src/utilities/commands";
 
 export async function continueSession(): Promise<void> {
@@ -26,11 +27,11 @@ export async function continueSession(): Promise<void> {
  * @param workspaceContext The workspace context containing toolchain information.
  * @returns A promise that resolves with the matching message.
  */
-export async function waitForDebugAdapterMessage(
+export async function waitForDebugAdapterMessage<T extends DebugProtocol.ProtocolMessage>(
     name: string,
-    matches: (message: any) => boolean
-): Promise<any> {
-    return await new Promise<any>(res => {
+    matches: (message: T) => boolean
+): Promise<T> {
+    return await new Promise<T>(res => {
         const disposable = vscode.debug.registerDebugAdapterTrackerFactory("swift-lldb", {
             createDebugAdapterTracker: function (
                 session: vscode.DebugSession
@@ -75,8 +76,14 @@ export async function waitUntilDebugSessionTerminates(name: string): Promise<vsc
  * @param workspaceContext The workspace context containing toolchain information.
  * @returns A promise that resolves with the matching command message.
  */
-export async function waitForDebugAdapterCommand(name: string, command: string): Promise<any> {
-    return await waitForDebugAdapterMessage(name, (m: any) => m.command === command);
+export async function waitForDebugAdapterRequest(
+    name: string,
+    command: string
+): Promise<DebugProtocol.Request> {
+    return await waitForDebugAdapterMessage(
+        name,
+        (m: DebugProtocol.Request) => m.command === command
+    );
 }
 
 /**
@@ -87,8 +94,11 @@ export async function waitForDebugAdapterCommand(name: string, command: string):
  * @param workspaceContext The workspace context containing toolchain information.
  * @returns A promise that resolves with the matching command event.
  */
-export async function waitForDebugAdapterEvent(name: string, event: string): Promise<any> {
-    return await waitForDebugAdapterMessage(name, (m: any) => m.event === event);
+export async function waitForDebugAdapterEvent(
+    name: string,
+    event: string
+): Promise<DebugProtocol.Event> {
+    return await waitForDebugAdapterMessage(name, (m: DebugProtocol.Event) => m.event === event);
 }
 
 /**

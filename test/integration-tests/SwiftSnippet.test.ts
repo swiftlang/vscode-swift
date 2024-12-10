@@ -18,7 +18,7 @@ import { waitForNoRunningTasks } from "../utilities/tasks";
 import { expect } from "chai";
 import {
     continueSession,
-    waitForDebugAdapterCommand,
+    waitForDebugAdapterRequest,
     waitForDebugAdapterExit,
     waitUntilDebugSessionTerminates,
 } from "../utilities/debug";
@@ -26,7 +26,9 @@ import { Version } from "../../src/utilities/version";
 import { activateExtensionForSuite, folderInRootWorkspace } from "./utilities/testutilities";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 
-suite("SwiftSnippet Test Suite", () => {
+suite("SwiftSnippet Test Suite", function () {
+    this.timeout(120000);
+
     const uri = testAssetUri("defaultPackage/Snippets/hello.swift");
     const breakpoints = [
         new vscode.SourceBreakpoint(new vscode.Location(uri, new vscode.Position(2, 0))),
@@ -72,10 +74,10 @@ suite("SwiftSnippet Test Suite", () => {
             `${testAssetPath("defaultPackage")}/.build/debug/hello`
         );
         expect(session.configuration).to.have.property("noDebug", true);
-    }).timeout(120000);
+    });
 
     test("Run `Swift: Debug Swift Snippet` command for snippet file", async () => {
-        const bpPromise = waitForDebugAdapterCommand("Run hello", "stackTrace");
+        const bpPromise = waitForDebugAdapterRequest("Run hello", "stackTrace");
         const sessionPromise = waitUntilDebugSessionTerminates("Run hello");
         const exitPromise = waitForDebugAdapterExit("Run hello");
 
@@ -93,5 +95,5 @@ suite("SwiftSnippet Test Suite", () => {
             `${testAssetPath("defaultPackage")}/.build/debug/hello`
         );
         expect(session.configuration).to.not.have.property("noDebug");
-    }).timeout(120000);
+    });
 });
