@@ -108,5 +108,6 @@ export async function waitForDebugAdapterEvent(
  * @returns exit code of the DAP
  */
 export async function waitForDebugAdapterExit(name: string): Promise<number> {
-    return await waitForDebugAdapterEvent(name, "exited").then(m => m.body.exitCode);
+    const message = await waitForDebugAdapterEvent(name, "exited");
+    return message.body.exitCode;
 }
