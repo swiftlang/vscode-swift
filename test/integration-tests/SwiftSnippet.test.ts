@@ -25,6 +25,7 @@ import {
 import { Version } from "../../src/utilities/version";
 import { activateExtensionForSuite, folderInRootWorkspace } from "./utilities/testutilities";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
+import { join } from "path";
 
 suite("SwiftSnippet Test Suite", function () {
     this.timeout(120000);
@@ -69,8 +70,12 @@ suite("SwiftSnippet Test Suite", function () {
         expect(exitCode).to.equal(0);
 
         const session = await sessionPromise;
+        let path = join(testAssetPath("defaultPackage"), ".build", "debug", "hello");
+        if (process.platform === "win32") {
+            path = path + ".exe";
+        }
         expect(session.configuration.program?.toLowerCase()).to.equal(
-            `${testAssetPath("defaultPackage")}/.build/debug/hello`.toLocaleLowerCase() // Windows may use d:\ or D:\
+            path.toLocaleLowerCase() // Windows may use d:\ or D:\
         );
         expect(session.configuration).to.have.property("noDebug", true);
     });
@@ -89,8 +94,12 @@ suite("SwiftSnippet Test Suite", function () {
         expect(exitCode).to.equal(0);
 
         const session = await sessionPromise;
+        let path = join(testAssetPath("defaultPackage"), ".build", "debug", "hello");
+        if (process.platform === "win32") {
+            path = path + ".exe";
+        }
         expect(session.configuration.program?.toLowerCase()).to.equal(
-            `${testAssetPath("defaultPackage")}/.build/debug/hello`.toLocaleLowerCase() // Windows may use d:\ or D:\
+            path.toLocaleLowerCase() // Windows may use d:\ or D:\
         );
         expect(session.configuration).to.not.have.property("noDebug");
     });
