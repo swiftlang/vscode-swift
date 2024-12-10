@@ -69,9 +69,8 @@ suite("SwiftSnippet Test Suite", function () {
         expect(exitCode).to.equal(0);
 
         const session = await sessionPromise;
-        expect(session.configuration).to.have.property(
-            "program",
-            `${testAssetPath("defaultPackage")}/.build/debug/hello`
+        expect(session.configuration.program?.toLowerCase()).to.equal(
+            `${testAssetPath("defaultPackage")}/.build/debug/hello`.toLocaleLowerCase() // Windows may use d:\ or D:\
         );
         expect(session.configuration).to.have.property("noDebug", true);
     });
@@ -90,9 +89,8 @@ suite("SwiftSnippet Test Suite", function () {
         expect(exitCode).to.equal(0);
 
         const session = await sessionPromise;
-        expect(session.configuration).to.have.property(
-            "program",
-            `${testAssetPath("defaultPackage")}/.build/debug/hello`
+        expect(session.configuration.program?.toLowerCase()).to.equal(
+            `${testAssetPath("defaultPackage")}/.build/debug/hello`.toLocaleLowerCase() // Windows may use d:\ or D:\
         );
         expect(session.configuration).to.not.have.property("noDebug");
     });
