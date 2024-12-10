@@ -468,6 +468,7 @@ export class SwiftToolchain {
     get diagnostics(): string {
         let str = "";
         str += this.swiftVersionString;
+        str += `\nPlatform: ${process.platform}`;
         str += `\nSwift Path: ${this.swiftFolderPath}`;
         str += `\nToolchain Path: ${this.toolchainPath}`;
         if (this.runtimePath) {

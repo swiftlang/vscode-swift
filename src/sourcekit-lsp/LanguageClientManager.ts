@@ -14,7 +14,20 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
-import * as langclient from "vscode-languageclient/node";
+import {
+    CloseAction,
+    CloseHandlerResult,
+    DidChangeWorkspaceFoldersNotification,
+    ErrorAction,
+    ErrorHandler,
+    ErrorHandlerResult,
+    LanguageClientOptions,
+    Message,
+    MessageType,
+    RevealOutputChannelOn,
+    State,
+    vsdiag,
+} from "vscode-languageclient";
 import configuration from "../configuration";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { isPathInsidePath } from "../utilities/filesystem";
@@ -23,7 +36,7 @@ import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
 import { activateLegacyInlayHints } from "./inlayHints";
 import { activatePeekDocuments } from "./peekDocuments";
 import { FolderContext } from "../FolderContext";
-import { LanguageClient } from "vscode-languageclient/node";
+import { Executable, LanguageClient, ServerOptions } from "vscode-languageclient/node";
 import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
 import { DiagnosticsManager } from "../DiagnosticsManager";
 import { LSPLogger, LSPOutputChannel } from "./LSPOutputChannel";
@@ -31,15 +44,14 @@ import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { promptForDiagnostics } from "../commands/captureDiagnostics";
 import { activateGetReferenceDocument } from "./getReferenceDocument";
 import { uriConverters } from "./uriConverters";
+import { LanguageClientFactory } from "./LanguageClientFactory";
+import { SourceKitLogMessageNotification, SourceKitLogMessageParams } from "./extensions";
 
-interface SourceKitLogMessageParams extends langclient.LogMessageParams {
-    logName?: string;
-}
-
-/** Manages the creation and destruction of Language clients as we move between
+/**
+ * Manages the creation and destruction of Language clients as we move between
  * workspace folders
  */
-export class LanguageClientManager {
+export class LanguageClientManager implements vscode.Disposable {
     // known log names
     static indexingLogName = "SourceKit-LSP: Indexing";
 
@@ -110,7 +122,7 @@ export class LanguageClientManager {
      * undefined means not setup
      * null means in the process of restarting
      */
-    private languageClient: langclient.LanguageClient | null | undefined;
+    private languageClient: LanguageClient | null | undefined;
     private cancellationToken?: vscode.CancellationTokenSource;
     private legacyInlayHints?: vscode.Disposable;
     private peekDocuments?: vscode.Disposable;
@@ -129,22 +141,26 @@ export class LanguageClientManager {
     // that are not at the root of their workspace
     public subFolderWorkspaces: vscode.Uri[];
     private namedOutputChannels: Map<string, LSPOutputChannel> = new Map();
+    private swiftVersion: Version;
+
     /** Get the current state of the underlying LanguageClient */
-    public get state(): langclient.State {
+    public get state(): State {
         if (!this.languageClient) {
-            return langclient.State.Stopped;
+            return State.Stopped;
         }
         return this.languageClient.state;
     }
 
-    constructor(public workspaceContext: WorkspaceContext) {
+    constructor(
+        public workspaceContext: WorkspaceContext,
+        private languageClientFactory: LanguageClientFactory = new LanguageClientFactory()
+    ) {
         this.namedOutputChannels.set(
             LanguageClientManager.indexingLogName,
             new LSPOutputChannel(LanguageClientManager.indexingLogName, false, true)
         );
-        this.singleServerSupport = workspaceContext.swiftVersion.isGreaterThanOrEqual(
-            new Version(5, 7, 0)
-        );
+        this.swiftVersion = workspaceContext.swiftVersion;
+        this.singleServerSupport = this.swiftVersion.isGreaterThanOrEqual(new Version(5, 7, 0));
         this.subscriptions = [];
         this.subFolderWorkspaces = [];
         if (this.singleServerSupport) {
@@ -196,7 +212,7 @@ export class LanguageClientManager {
             // Enabling/Disabling sourcekit-lsp shows a special notification
             if (event.affectsConfiguration("swift.sourcekit-lsp.disable")) {
                 if (configuration.lsp.disable) {
-                    if (this.state === langclient.State.Stopped) {
+                    if (this.state === State.Stopped) {
                         // Language client is already stopped
                         return;
                     }
@@ -204,7 +220,7 @@ export class LanguageClientManager {
                         "You have disabled the Swift language server, but it is still running. Would you like to stop it now?";
                     restartLSPButton = "Stop Language Server";
                 } else {
-                    if (this.state !== langclient.State.Stopped) {
+                    if (this.state !== State.Stopped) {
                         // Langauge client is already running
                         return;
                     }
@@ -212,7 +228,7 @@ export class LanguageClientManager {
                         "You have enabled the Swift language server. Would you like to start it now?";
                     restartLSPButton = "Start Language Server";
                 }
-            } else if (configuration.lsp.disable && this.state === langclient.State.Stopped) {
+            } else if (configuration.lsp.disable && this.state === State.Stopped) {
                 // Ignore configuration changes if SourceKit-LSP is disabled
                 return;
             }
@@ -245,6 +261,14 @@ export class LanguageClientManager {
         this.cancellationToken = new vscode.CancellationTokenSource();
     }
 
+    // The language client stops asnyhronously, so we need to wait for it to stop
+    // instead of doing it in dispose, which must be synchronous.
+    async stop() {
+        if (this.languageClient && this.languageClient.state === State.Running) {
+            await this.languageClient.dispose();
+        }
+    }
+
     dispose() {
         this.cancellationToken?.cancel();
         this.cancellationToken?.dispose();
@@ -252,7 +276,6 @@ export class LanguageClientManager {
         this.peekDocuments?.dispose();
         this.getReferenceDocument?.dispose();
         this.subscriptions.forEach(item => item.dispose());
-        this.languageClient?.stop();
         this.namedOutputChannels.forEach(channel => channel.dispose());
     }
 
@@ -264,10 +287,7 @@ export class LanguageClientManager {
      * @returns result of process
      */
     async useLanguageClient<Return>(process: {
-        (
-            client: langclient.LanguageClient,
-            cancellationToken: vscode.CancellationToken
-        ): Promise<Return>;
+        (client: LanguageClient, cancellationToken: vscode.CancellationToken): Promise<Return>;
     }): Promise<Return> {
         if (!this.languageClient || !this.clientReadyPromise) {
             throw new Error(LanguageClientError.LanguageClientUnavailable);
@@ -303,7 +323,7 @@ export class LanguageClientManager {
                     uri: client.code2ProtocolConverter.asUri(uri),
                     name: FolderContext.uriName(uri),
                 };
-                client.sendNotification(langclient.DidChangeWorkspaceFoldersNotification.type, {
+                client.sendNotification(DidChangeWorkspaceFoldersNotification.type, {
                     event: { added: [workspaceFolder], removed: [] },
                 });
             });
@@ -320,7 +340,7 @@ export class LanguageClientManager {
                     uri: client.code2ProtocolConverter.asUri(uri),
                     name: FolderContext.uriName(uri),
                 };
-                client.sendNotification(langclient.DidChangeWorkspaceFoldersNotification.type, {
+                client.sendNotification(DidChangeWorkspaceFoldersNotification.type, {
                     event: { added: [], removed: [workspaceFolder] },
                 });
             });
@@ -333,7 +353,7 @@ export class LanguageClientManager {
                 uri: client.code2ProtocolConverter.asUri(uri),
                 name: FolderContext.uriName(uri),
             };
-            client.sendNotification(langclient.DidChangeWorkspaceFoldersNotification.type, {
+            client.sendNotification(DidChangeWorkspaceFoldersNotification.type, {
                 event: { added: [workspaceFolder], removed: [] },
             });
         }
@@ -446,7 +466,7 @@ export class LanguageClientManager {
     }
 
     private createLSPClient(folder?: vscode.Uri): {
-        client: langclient.LanguageClient;
+        client: LanguageClient;
         errorHandler: SourceKitLSPErrorHandler;
     } {
         const toolchainSourceKitLSP =
@@ -464,7 +484,7 @@ export class LanguageClientManager {
             ),
         ];
 
-        const sourcekit: langclient.Executable = {
+        const sourcekit: Executable = {
             command: serverPath,
             args: lspConfig.serverArguments.concat(sdkArguments),
             options: {
@@ -492,16 +512,16 @@ export class LanguageClientManager {
             };
         }
 
-        const serverOptions: langclient.ServerOptions = sourcekit;
+        const serverOptions: ServerOptions = sourcekit;
         let workspaceFolder = undefined;
         if (folder) {
             workspaceFolder = { uri: folder, name: FolderContext.uriName(folder), index: 0 };
         }
 
         const errorHandler = new SourceKitLSPErrorHandler(5);
-        const clientOptions: langclient.LanguageClientOptions = {
+        const clientOptions: LanguageClientOptions = {
             documentSelector: LanguageClientManager.documentSelector,
-            revealOutputChannelOn: langclient.RevealOutputChannelOn.Never,
+            revealOutputChannelOn: RevealOutputChannelOn.Never,
             workspaceFolder: workspaceFolder,
             outputChannel: new SwiftOutputChannel("SourceKit Language Server", false),
             middleware: {
@@ -538,7 +558,7 @@ export class LanguageClientManager {
                 },
                 provideDiagnostics: async (uri, previousResultId, token, next) => {
                     const result = await next(uri, previousResultId, token);
-                    if (result?.kind === langclient.vsdiag.DocumentDiagnosticReportKind.unChanged) {
+                    if (result?.kind === vsdiag.DocumentDiagnosticReportKind.unChanged) {
                         return undefined;
                     }
                     const document = uri as vscode.TextDocument;
@@ -583,7 +603,7 @@ export class LanguageClientManager {
         };
 
         return {
-            client: new langclient.LanguageClient(
+            client: this.languageClientFactory.createLanguageClient(
                 "swift.sourcekit-lsp",
                 "SourceKit Language Server",
                 serverOptions,
@@ -606,10 +626,18 @@ export class LanguageClientManager {
             },
         };
 
-        if (configuration.backgroundIndexing) {
+        // Swift 6.0.0 and later supports background indexing.
+        // In 6.0.0 it is experimental so only "true" enables it.
+        // In 6.1.0 it is no longer experimental, and so "auto" or "true" enables it.
+        if (
+            this.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
+            (configuration.backgroundIndexing === "on" ||
+                (configuration.backgroundIndexing === "auto" &&
+                    this.swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))))
+        ) {
             options = {
                 ...options,
-                backgroundIndexing: configuration.backgroundIndexing,
+                backgroundIndexing: true,
                 backgroundPreparationMode: "enabled",
             };
         }
@@ -623,21 +651,14 @@ export class LanguageClientManager {
 
         return options;
     }
-    /* eslint-enable @typescript-eslint/no-explicit-any */
 
-    private async startClient(
-        client: langclient.LanguageClient,
-        errorHandler: SourceKitLSPErrorHandler
-    ) {
+    private async startClient(client: LanguageClient, errorHandler: SourceKitLSPErrorHandler) {
         client.onDidChangeState(e => {
             // if state is now running add in any sub-folder workspaces that
             // we have cached. If this is the first time we are starting then
             // we won't have any sub folder workspaces, but if the server crashed
             // or we forced a restart then we need to do this
-            if (
-                e.oldState === langclient.State.Starting &&
-                e.newState === langclient.State.Running
-            ) {
+            if (e.oldState === State.Starting && e.newState === State.Running) {
                 this.addSubFolderWorkspaces(client);
             }
         });
@@ -651,7 +672,7 @@ export class LanguageClientManager {
             this.workspaceContext.outputChannel.log(`SourceKit-LSP setup`);
         }
 
-        client.onNotification(langclient.LogMessageNotification.type, params => {
+        client.onNotification(SourceKitLogMessageNotification.type, params => {
             this.logMessage(client, params as SourceKitLogMessageParams);
         });
 
@@ -684,7 +705,7 @@ export class LanguageClientManager {
         return this.clientReadyPromise;
     }
 
-    private logMessage(client: langclient.LanguageClient, params: SourceKitLogMessageParams) {
+    private logMessage(client: LanguageClient, params: SourceKitLogMessageParams) {
         let logger: LSPLogger = client;
         if (params.logName) {
             const outputChannel =
@@ -694,19 +715,19 @@ export class LanguageClientManager {
             logger = outputChannel;
         }
         switch (params.type) {
-            case langclient.MessageType.Info:
+            case MessageType.Info:
                 logger.info(params.message);
                 break;
-            case langclient.MessageType.Debug:
+            case MessageType.Debug:
                 logger.debug(params.message);
                 break;
-            case langclient.MessageType.Warning:
+            case MessageType.Warning:
                 logger.warn(params.message);
                 break;
-            case langclient.MessageType.Error:
+            case MessageType.Error:
                 logger.error(params.message);
                 break;
-            case langclient.MessageType.Log:
+            case MessageType.Log:
                 logger.info(params.message);
                 break;
         }
@@ -718,7 +739,7 @@ export class LanguageClientManager {
  * an error message that asks if you want to restart the sourcekit-lsp server again
  * after so many crashes
  */
-export class SourceKitLSPErrorHandler implements langclient.ErrorHandler {
+export class SourceKitLSPErrorHandler implements ErrorHandler {
     private restarts: number[];
     private enabled: boolean = false;
 
@@ -741,32 +762,32 @@ export class SourceKitLSPErrorHandler implements langclient.ErrorHandler {
      */
     error(
         _error: Error,
-        _message: langclient.Message | undefined,
+        _message: Message | undefined,
         count: number | undefined
-    ): langclient.ErrorHandlerResult | Promise<langclient.ErrorHandlerResult> {
+    ): ErrorHandlerResult | Promise<ErrorHandlerResult> {
         if (count && count <= 3) {
-            return { action: langclient.ErrorAction.Continue };
+            return { action: ErrorAction.Continue };
         }
-        return { action: langclient.ErrorAction.Shutdown };
+        return { action: ErrorAction.Shutdown };
     }
     /**
      * The connection to the server got closed.
      */
-    closed(): langclient.CloseHandlerResult | Promise<langclient.CloseHandlerResult> {
+    closed(): CloseHandlerResult | Promise<CloseHandlerResult> {
         if (!this.enabled) {
             return {
-                action: langclient.CloseAction.DoNotRestart,
+                action: CloseAction.DoNotRestart,
                 handled: true,
             };
         }
 
         this.restarts.push(Date.now());
         if (this.restarts.length <= this.maxRestartCount) {
-            return { action: langclient.CloseAction.Restart };
+            return { action: CloseAction.Restart };
         } else {
             const diff = this.restarts[this.restarts.length - 1] - this.restarts[0];
             if (diff <= 3 * 60 * 1000) {
-                return new Promise<langclient.CloseHandlerResult>(resolve => {
+                return new Promise<CloseHandlerResult>(resolve => {
                     vscode.window
                         .showErrorMessage(
                             `The SourceKit-LSP server crashed ${
@@ -778,15 +799,15 @@ export class SourceKitLSPErrorHandler implements langclient.ErrorHandler {
                         .then(result => {
                             if (result === "Yes") {
                                 this.restarts = [];
-                                resolve({ action: langclient.CloseAction.Restart });
+                                resolve({ action: CloseAction.Restart });
                             } else {
-                                resolve({ action: langclient.CloseAction.DoNotRestart });
+                                resolve({ action: CloseAction.DoNotRestart });
                             }
                         });
                 });
             } else {
                 this.restarts.shift();
-                return { action: langclient.CloseAction.Restart };
+                return { action: CloseAction.Restart };
             }
         }
     }

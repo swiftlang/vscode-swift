@@ -16,17 +16,19 @@ import * as vscode from "vscode";
 import * as assert from "assert";
 import { TaskManager } from "../../../src/tasks/TaskManager";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { globalWorkspaceContextPromise } from "../extension.test";
 import { waitForNoRunningTasks } from "../../utilities";
+import { activateExtensionForSuite } from "../utilities/testutilities";
 
 suite("TaskManager Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     let taskManager: TaskManager;
 
-    suiteSetup(async () => {
-        workspaceContext = await globalWorkspaceContextPromise;
-        taskManager = workspaceContext.tasks;
-        assert.notEqual(workspaceContext.folders.length, 0);
+    activateExtensionForSuite({
+        async setup(ctx) {
+            workspaceContext = ctx;
+            taskManager = workspaceContext.tasks;
+            assert.notEqual(workspaceContext.folders.length, 0);
+        },
     });
 
     setup(async () => {

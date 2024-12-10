@@ -1,30 +1,30 @@
 // See https://go.microsoft.com/fwlink/?LinkId=733558
 // for the documentation about the tasks.json format
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"label": "build",
-			"type": "npm",
-			"script": "watch",
-			"problemMatcher": "$tsc-watch",
-			"presentation": {
-				"reveal": "never"
-			},
-			"isBackground": true,
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			}
-		},
-		{
-			"label": "compile-tests",
-			"type": "npm",
-			"script": "compile-tests",
-			"problemMatcher": "$tsc",
-			"presentation": {
-				"reveal": "never"
-			}
-		}
-	]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "npm",
+      "script": "watch",
+      "problemMatcher": "$tsc-watch",
+      "presentation": {
+        "reveal": "never"
+      },
+      "isBackground": true,
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "compile-tests",
+      "type": "npm",
+      "script": "compile-tests",
+      "problemMatcher": "$tsc",
+      "presentation": {
+        "reveal": "never"
+      }
+    }
+  ]
 }

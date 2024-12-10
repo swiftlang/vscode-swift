@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import * as fs from "fs";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
 import configuration from "./configuration";
@@ -59,6 +60,7 @@ export class DiagnosticsManager implements vscode.Disposable {
     private diagnosticCollection: vscode.DiagnosticCollection =
         vscode.languages.createDiagnosticCollection("swift");
     private allDiagnostics: Map<string, vscode.Diagnostic[]> = new Map();
+    private disposed = false;
 
     constructor(context: WorkspaceContext) {
         this.onDidChangeConfigurationDisposible = vscode.workspace.onDidChangeConfiguration(e => {
@@ -87,13 +89,13 @@ export class DiagnosticsManager implements vscode.Disposable {
                 .then(map => {
                     // Clean up old "swiftc" diagnostics
                     this.removeSwiftcDiagnostics();
-                    map.forEach((diagnostics, uri) =>
+                    map.forEach((diagnostics, uri) => {
                         this.handleDiagnostics(
                             vscode.Uri.file(uri),
                             DiagnosticsManager.isSwiftc,
                             diagnostics
-                        )
-                    );
+                        );
+                    });
                 })
                 .catch(e =>
                     context.outputChannel.log(`${e}`, 'Failed to provide "swiftc" diagnostics')
@@ -114,6 +116,10 @@ export class DiagnosticsManager implements vscode.Disposable {
         sourcePredicate: SourcePredicate,
         newDiagnostics: vscode.Diagnostic[]
     ): void {
+        if (this.disposed) {
+            return;
+        }
+
         const isFromSourceKit = !sourcePredicate(DiagnosticsManager.swiftc);
         // Is a descrepency between SourceKit-LSP and older versions
         // of Swift as to whether the first letter is capitalized or not,
@@ -230,6 +236,7 @@ export class DiagnosticsManager implements vscode.Disposable {
     }
 
     dispose() {
+        this.disposed = true;
         this.diagnosticCollection.dispose();
         this.onDidStartTaskDisposible.dispose();
         this.onDidChangeConfigurationDisposible.dispose();
@@ -249,6 +256,7 @@ export class DiagnosticsManager implements vscode.Disposable {
             };
             let remainingData: string | undefined;
             let lastDiagnostic: vscode.Diagnostic | undefined;
+            let lastDiagnosticNeedsSaving = false;
             disposables.push(
                 swiftExecution.onDidWrite(data => {
                     const sanitizedData = (remainingData || "") + stripAnsi(data);
@@ -287,6 +295,18 @@ export class DiagnosticsManager implements vscode.Disposable {
                             lastDiagnostic.relatedInformation = (
                                 lastDiagnostic.relatedInformation || []
                             ).concat(relatedInformation);
+
+                            if (lastDiagnosticNeedsSaving) {
+                                const expandedUri = relatedInformation.location.uri.fsPath;
+                                const currentUriDiagnostics = diagnostics.get(expandedUri) || [];
+                                lastDiagnostic.range = relatedInformation.location.range;
+                                diagnostics.set(expandedUri, [
+                                    ...currentUriDiagnostics,
+                                    lastDiagnostic,
+                                ]);
+
+                                lastDiagnosticNeedsSaving = false;
+                            }
                             continue;
                         }
                         const { uri, diagnostic } = result as ParsedDiagnostic;
@@ -306,7 +326,15 @@ export class DiagnosticsManager implements vscode.Disposable {
                             continue;
                         }
                         lastDiagnostic = diagnostic;
-                        diagnostics.set(uri, [...currentUriDiagnostics, diagnostic]);
+
+                        // If the diagnostic comes from a macro expansion the URI is going to be an invalid URI.
+                        // Save the diagnostic for when we get the related information which has the macro expansion location
+                        // that should be used as the correct URI.
+                        if (this.isValidUri(uri)) {
+                            diagnostics.set(uri, [...currentUriDiagnostics, diagnostic]);
+                        } else {
+                            lastDiagnosticNeedsSaving = true;
+                        }
                     }
                 }),
                 swiftExecution.onDidClose(done)
@@ -314,10 +342,20 @@ export class DiagnosticsManager implements vscode.Disposable {
         });
     }
 
+    private isValidUri(uri: string): boolean {
+        try {
+            fs.accessSync(uri, fs.constants.F_OK);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
     private parseDiagnostic(
         line: string
     ): ParsedDiagnostic | vscode.DiagnosticRelatedInformation | undefined {
-        const diagnosticRegex = /^(.*?):(\d+)(?::(\d+))?:\s+(warning|error|note):\s+([^\\[]*)/g;
+        const diagnosticRegex =
+            /^(?:\S+\s+)?(.*?):(\d+)(?::(\d+))?:\s+(warning|error|note):\s+([^\\[]*)/g;
         const match = diagnosticRegex.exec(line);
         if (!match) {
             return;

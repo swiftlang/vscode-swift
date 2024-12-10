@@ -53,6 +53,7 @@ module.exports = defineConfig({
                 },
             },
             reuseMachineInstall: !isCIBuild,
+            installExtensions: ["vadimcn.vscode-lldb"],
         },
         {
             label: "unitTests",

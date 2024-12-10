@@ -16,29 +16,12 @@ import * as vscode from "vscode";
 import * as TestDiscovery from "./TestDiscovery";
 import {
     LSPTestItem,
-    textDocumentTestsRequest,
-    workspaceTestsRequest,
-} from "../sourcekit-lsp/lspExtensions";
-import { InitializeResult, RequestType } from "vscode-languageclient/node";
+    TextDocumentTestsRequest,
+    WorkspaceTestsRequest,
+} from "../sourcekit-lsp/extensions";
 import { SwiftPackage, TargetType } from "../SwiftPackage";
-import { Converter } from "vscode-languageclient/lib/common/protocolConverter";
-
-interface ILanguageClient {
-    get initializeResult(): InitializeResult | undefined;
-    get protocol2CodeConverter(): Converter;
-
-    sendRequest<P, R, E>(
-        type: RequestType<P, R, E>,
-        params: P,
-        token?: vscode.CancellationToken
-    ): Promise<R>;
-}
-
-interface ILanguageClientManager {
-    useLanguageClient<Return>(process: {
-        (client: ILanguageClient, cancellationToken: vscode.CancellationToken): Promise<Return>;
-    }): Promise<Return>;
-}
+import { LanguageClientManager } from "../sourcekit-lsp/LanguageClientManager";
+import { LanguageClient } from "vscode-languageclient/node";
 
 /**
  * Used to augment test discovery via `swift test --list-tests`.
@@ -49,7 +32,7 @@ interface ILanguageClientManager {
  * these results.
  */
 export class LSPTestDiscovery {
-    constructor(private languageClient: ILanguageClientManager) {}
+    constructor(private languageClient: LanguageClientManager) {}
 
     /**
      * Return a list of tests in the supplied document.
@@ -62,15 +45,15 @@ export class LSPTestDiscovery {
         return await this.languageClient.useLanguageClient(async (client, token) => {
             // Only use the lsp for this request if it supports the
             // textDocument/tests method, and is at least version 2.
-            if (this.checkExperimentalCapability(client, textDocumentTestsRequest.method, 2)) {
+            if (this.checkExperimentalCapability(client, TextDocumentTestsRequest.method, 2)) {
                 const testsInDocument = await client.sendRequest(
-                    textDocumentTestsRequest,
+                    TextDocumentTestsRequest.type,
                     { textDocument: { uri: document.toString() } },
                     token
                 );
                 return this.transformToTestClass(client, swiftPackage, testsInDocument);
             } else {
-                throw new Error(`${textDocumentTestsRequest.method} requests not supported`);
+                throw new Error(`${TextDocumentTestsRequest.method} requests not supported`);
             }
         });
     }
@@ -83,11 +66,11 @@ export class LSPTestDiscovery {
         return await this.languageClient.useLanguageClient(async (client, token) => {
             // Only use the lsp for this request if it supports the
             // workspace/tests method, and is at least version 2.
-            if (this.checkExperimentalCapability(client, workspaceTestsRequest.method, 2)) {
-                const tests = await client.sendRequest(workspaceTestsRequest, {}, token);
+            if (this.checkExperimentalCapability(client, WorkspaceTestsRequest.method, 2)) {
+                const tests = await client.sendRequest(WorkspaceTestsRequest.type, token);
                 return this.transformToTestClass(client, swiftPackage, tests);
             } else {
-                throw new Error(`${workspaceTestsRequest.method} requests not supported`);
+                throw new Error(`${WorkspaceTestsRequest.method} requests not supported`);
             }
         });
     }
@@ -97,7 +80,7 @@ export class LSPTestDiscovery {
      * above the supplied `minVersion`.
      */
     private checkExperimentalCapability(
-        client: ILanguageClient,
+        client: LanguageClient,
         method: string,
         minVersion: number
     ) {
@@ -114,7 +97,7 @@ export class LSPTestDiscovery {
      * updating the format of the location.
      */
     private transformToTestClass(
-        client: ILanguageClient,
+        client: LanguageClient,
         swiftPackage: SwiftPackage,
         input: LSPTestItem[]
     ): TestDiscovery.TestClass[] {

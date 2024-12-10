@@ -12,6 +12,7 @@
     "no-throw-literal": "warn",
     // TODO "@typescript-eslint/semi" rule moved to https://eslint.style
     "semi": "error",
+    "no-console": "warn",
     // Mostly fails tests, ex. expect(...).to.be.true returns a Chai.Assertion
     "@typescript-eslint/no-unused-expressions": "off",
     "@typescript-eslint/no-non-null-assertion": "off",

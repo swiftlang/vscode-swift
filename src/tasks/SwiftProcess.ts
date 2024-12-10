@@ -104,7 +104,7 @@ export class SwiftPtyProcess implements SwiftProcess {
                 useConpty,
                 // https://github.com/swiftlang/vscode-swift/issues/1074
                 // Causing weird truncation issues
-                cols: !isWindows || useConpty ? undefined : 2147483647, // Max int32
+                cols: isWindows ? 4096 : undefined,
             });
             this.spawnEmitter.fire();
             this.spawnedProcess.onData(data => {

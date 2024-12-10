@@ -152,7 +152,10 @@ export class FolderContext implements vscode.Disposable {
 
     /** Create Test explorer for this folder */
     addTestExplorer() {
-        this.testExplorer = new TestExplorer(this);
+        if (this.testExplorer === undefined) {
+            this.testExplorer = new TestExplorer(this);
+        }
+        return this.testExplorer;
     }
 
     /** Create Test explorer for this folder */

@@ -24,11 +24,8 @@ import {
     eventPromise,
     gatherTests,
     runTest,
-    SettingsMap,
-    setupTestExplorerTest,
     waitForTestExplorerReady,
 } from "./utilities";
-import { globalWorkspaceContextPromise } from "../extension.test";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Version } from "../../../src/utilities/version";
 import { TestKind } from "../../../src/TestExplorer/TestKind";
@@ -42,7 +39,9 @@ import {
     reduceTestItemChildren,
 } from "../../../src/TestExplorer/TestUtils";
 import { runnableTag } from "../../../src/TestExplorer/TestDiscovery";
+import { activateExtensionForSuite, updateSettings } from "../utilities/testutilities";
 import { Commands } from "../../../src/commands";
+import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 
 suite("Test Explorer Suite", function () {
     const MAX_TEST_RUN_TIME_MINUTES = 5;
@@ -52,9 +51,27 @@ suite("Test Explorer Suite", function () {
     let workspaceContext: WorkspaceContext;
     let testExplorer: TestExplorer;
 
-    suite("Debugging", function () {
-        let settingsTeardown: () => Promise<SettingsMap>;
+    activateExtensionForSuite({
+        async setup(ctx) {
+            workspaceContext = ctx;
+            const packageFolder = testAssetUri("defaultPackage");
+            const targetFolder = workspaceContext.folders.find(
+                folder => folder.folder.path === packageFolder.path
+            );
 
+            if (!targetFolder) {
+                throw new Error("Unable to find test explorer");
+            }
+
+            testExplorer = targetFolder.addTestExplorer();
+
+            // Set up the listener before bringing the text explorer in to focus,
+            // which starts searching the workspace for tests.
+            await waitForTestExplorerReady(testExplorer);
+        },
+    });
+
+    suite("Debugging", function () {
         async function runXCTest() {
             const suiteId = "PackageTests.PassingXCTestSuite";
             const testId = `${suiteId}/testPassing`;
@@ -65,7 +82,15 @@ suite("Test Explorer Suite", function () {
             });
         }
 
-        async function runSwiftTesting() {
+        async function runSwiftTesting(this: Mocha.Context) {
+            if (
+                // swift-testing was not able to produce JSON events until 6.0.2 on Windows.
+                process.platform === "win32" &&
+                workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 2))
+            ) {
+                this.skip();
+            }
+
             const testId = "PackageTests.topLevelTestPassing()";
             const testRun = await runTest(testExplorer, TestKind.debug, testId);
 
@@ -75,35 +100,64 @@ suite("Test Explorer Suite", function () {
         }
 
         suite("lldb-dap", () => {
+            let resetSettings: (() => Promise<void>) | undefined;
             beforeEach(async function () {
-                const testContext = await setupTestExplorerTest({
+                // lldb-dap is only present/functional in the toolchain in 6.0.2 and up.
+                if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 2))) {
+                    this.skip();
+                }
+
+                resetSettings = await updateSettings({
                     "swift.debugger.useDebugAdapterFromToolchain": true,
                 });
+            });
 
-                workspaceContext = testContext.workspaceContext;
-                testExplorer = testContext.testExplorer;
-                settingsTeardown = testContext.settingsTeardown;
-
-                // lldb-dap is only present in the toolchain in 6.0 and up.
-                if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
-                    this.skip();
+            afterEach(async () => {
+                if (resetSettings) {
+                    await resetSettings();
                 }
             });
 
             test("Debugs specified XCTest test", runXCTest);
-            test("Debugs specified swift-testing test", runSwiftTesting);
+            test("Debugs specified swift-testing test", async function () {
+                await runSwiftTesting.call(this);
+            });
         });
 
         suite("CodeLLDB", () => {
-            beforeEach(async function () {
-                const testContext = await setupTestExplorerTest({
-                    "swift.debugger.useDebugAdapterFromToolchain": false,
-                    ...(process.env["CI"] === "1" ? { "lldb.library": "/usr/lib/liblldb.so" } : {}),
-                });
+            async function getLLDBDebugAdapterPath() {
+                switch (process.platform) {
+                    case "linux":
+                        return "/usr/lib/liblldb.so";
+                    case "win32":
+                        return await (await SwiftToolchain.create()).getLLDBDebugAdapter();
+                    default:
+                        throw new Error("Please provide the path to lldb for this platform");
+                }
+            }
 
-                workspaceContext = testContext.workspaceContext;
-                testExplorer = testContext.testExplorer;
-                settingsTeardown = testContext.settingsTeardown;
+            let resetSettings: (() => Promise<void>) | undefined;
+            beforeEach(async function () {
+                // CodeLLDB on windows doesn't print output and so cannot be parsed
+                if (process.platform === "win32") {
+                    this.skip();
+                }
+
+                const lldbPath =
+                    process.env["CI"] === "1"
+                        ? { "lldb.library": await getLLDBDebugAdapterPath() }
+                        : {};
+
+                resetSettings = await updateSettings({
+                    "swift.debugger.useDebugAdapterFromToolchain": false,
+                    ...lldbPath,
+                });
+            });
+
+            afterEach(async () => {
+                if (resetSettings) {
+                    await resetSettings();
+                }
             });
 
             test("Debugs specified XCTest test", async function () {
@@ -113,37 +167,17 @@ suite("Test Explorer Suite", function () {
                 }
                 await runXCTest();
             });
+
             test("Debugs specified swift-testing test", async function () {
                 if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
                     this.skip();
                 }
-                await runSwiftTesting();
+                await runSwiftTesting.call(this);
             });
         });
-
-        afterEach(() => settingsTeardown());
     });
 
     suite("Standard", () => {
-        suiteSetup(async () => {
-            workspaceContext = await globalWorkspaceContextPromise;
-        });
-
-        beforeEach(async () => {
-            const packageFolder = testAssetUri("defaultPackage");
-            const targetFolder = workspaceContext.folders.find(
-                folder => folder.folder.path === packageFolder.path
-            );
-            if (!targetFolder || !targetFolder.testExplorer) {
-                throw new Error("Unable to find test explorer");
-            }
-            testExplorer = targetFolder.testExplorer;
-
-            // Set up the listener before bringing the text explorer in to focus,
-            // which starts searching the workspace for tests.
-            await waitForTestExplorerReady(testExplorer);
-        });
-
         test("Finds Tests", async function () {
             if (workspaceContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
                 // 6.0 uses the LSP which returns tests in the order they're declared.
@@ -199,7 +233,12 @@ suite("Test Explorer Suite", function () {
 
         suite("swift-testing", () => {
             suiteSetup(function () {
-                if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+                if (
+                    workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0)) ||
+                    // swift-testing was not able to produce JSON events until 6.0.2 on Windows.
+                    (process.platform === "win32" &&
+                        workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 2)))
+                ) {
                     this.skip();
                 }
             });
@@ -446,13 +485,17 @@ suite("Test Explorer Suite", function () {
                     runProfile === TestKind.parallel &&
                     !workspaceContext.toolchain.hasMultiLineParallelTestOutput
                         ? "failed"
-                        : "failed - oh no";
+                        : `failed - oh no`;
             });
 
             suite(runProfile, () => {
                 suite(`swift-testing (${runProfile})`, function () {
                     suiteSetup(function () {
-                        if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+                        if (
+                            workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0)) ||
+                            (process.platform === "win32" &&
+                                workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 2)))
+                        ) {
                             this.skip();
                         }
                     });

@@ -14,14 +14,26 @@
 
 import { expect } from "chai";
 import { getLLDBLibPath, getLldbProcess } from "../../../src/debugger/lldb";
-import { globalWorkspaceContextPromise } from "../extension.test";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import { activateExtensionForTest } from "../utilities/testutilities";
+import { Version } from "../../../src/utilities/version";
 
 suite("lldb contract test suite", () => {
     let workspaceContext: WorkspaceContext;
 
-    suiteSetup(async () => {
-        workspaceContext = await globalWorkspaceContextPromise;
+    activateExtensionForTest({
+        async setup(ctx) {
+            // lldb.exe on Windows is not launching correctly, but only in Docker.
+            if (
+                process.env["CI"] &&
+                process.platform === "win32" &&
+                ctx.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
+                ctx.swiftVersion.isLessThan(new Version(6, 0, 2))
+            ) {
+                this.skip();
+            }
+            workspaceContext = ctx;
+        },
     });
 
     test("getLldbProcess Contract Test, make sure the command returns", async () => {

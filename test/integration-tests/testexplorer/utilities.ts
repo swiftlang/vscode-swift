@@ -19,8 +19,15 @@ import { TestRunProxy } from "../../../src/TestExplorer/TestRunner";
 import { TestExplorer } from "../../../src/TestExplorer/TestExplorer";
 import { TestKind } from "../../../src/TestExplorer/TestKind";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { globalWorkspaceContextPromise } from "../extension.test";
 import { testAssetUri } from "../../fixtures";
+import {
+    activateExtension,
+    deactivateExtension,
+    SettingsMap,
+    updateSettings,
+} from "../utilities/testutilities";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import stripAnsi = require("strip-ansi");
 
 /**
  * Sets up a test that leverages the TestExplorer, returning the TestExplorer,
@@ -29,12 +36,12 @@ import { testAssetUri } from "../../fixtures";
  * @returns Object containing the TestExplorer, WorkspaceContext and a callback to revert
  * the settings back to their original values.
  */
-export async function setupTestExplorerTest(settings: SettingsMap = {}) {
+export async function setupTestExplorerTest(currentTest?: Mocha.Test, settings: SettingsMap = {}) {
     const settingsTeardown = await updateSettings(settings);
 
     const testProject = testAssetUri("defaultPackage");
 
-    const workspaceContext = await globalWorkspaceContextPromise;
+    const workspaceContext = await activateExtension(currentTest);
     const testExplorer = testExplorerFor(workspaceContext, testProject);
 
     // Set up the listener before bringing the text explorer in to focus,
@@ -42,7 +49,10 @@ export async function setupTestExplorerTest(settings: SettingsMap = {}) {
     await waitForTestExplorerReady(testExplorer);
 
     return {
-        settingsTeardown,
+        settingsTeardown: async () => {
+            await settingsTeardown();
+            await deactivateExtension();
+        },
         workspaceContext,
         testExplorer,
     };
@@ -55,7 +65,7 @@ export async function setupTestExplorerTest(settings: SettingsMap = {}) {
  * @param packageFolder The package folder within the workspace
  * @returns The TestExplorer for the package
  */
-function testExplorerFor(
+export function testExplorerFor(
     workspaceContext: WorkspaceContext,
     packageFolder: vscode.Uri
 ): TestExplorer {
@@ -131,8 +141,8 @@ export function assertTestResults(
                 .map(({ test, message }) => ({
                     test: test.id,
                     issues: Array.isArray(message)
-                        ? message.map(({ message }) => message)
-                        : [(message as vscode.TestMessage).message],
+                        ? message.map(({ message }) => stripAnsi(message.toString()))
+                        : [stripAnsi((message as vscode.TestMessage).message.toString())],
                 }))
                 .sort(),
             skipped: testRun.runState.skipped.map(({ id }) => id).sort(),
@@ -141,7 +151,12 @@ export function assertTestResults(
         },
         {
             passed: (state.passed ?? []).sort(),
-            failed: (state.failed ?? []).sort(),
+            failed: (state.failed ?? [])
+                .map(({ test, issues }) => ({
+                    test,
+                    issues: issues.map(message => stripAnsi(message)),
+                }))
+                .sort(),
             skipped: (state.skipped ?? []).sort(),
             errored: (state.errored ?? []).sort(),
             unknown: 0,
@@ -160,71 +175,6 @@ export function eventPromise<T>(event: vscode.Event<T>): Promise<T> {
     return new Promise(resolve => {
         event(t => resolve(t));
     });
-}
-
-function decomposeSettingName(setting: string): { section: string; name: string } {
-    const splitNames = setting.split(".");
-    const name = splitNames.pop();
-    const section = splitNames.join(".");
-    if (name === undefined) {
-        throw new Error(`Invalid setting name: ${setting}, must be in the form swift.settingName`);
-    }
-    return { section, name };
-}
-
-export type SettingsMap = { [key: string]: unknown };
-
-/**
- * Updates VS Code workspace settings and provides a callback to revert them. This
- * should be called before the extension is activated.
- *
- * This function modifies VS Code workspace settings based on the provided
- * `settings` object. Each key in the `settings` object corresponds to a setting
- * name in the format "section.name", and the value is the new setting value to be applied.
- * The original settings are stored, and a callback is returned, which when invoked,
- * reverts the settings back to their original values.
- *
- * @param settings - A map where each key is a string representing the setting name in
- * "section.name" format, and the value is the new setting value.
- * @returns A function that, when called, resets the settings back to their original values.
- */
-export async function updateSettings(settings: SettingsMap): Promise<() => Promise<SettingsMap>> {
-    const applySettings = async (settings: SettingsMap) => {
-        const savedOriginalSettings: SettingsMap = {};
-        Object.keys(settings).forEach(async setting => {
-            const { section, name } = decomposeSettingName(setting);
-            const config = vscode.workspace.getConfiguration(section, { languageId: "swift" });
-            savedOriginalSettings[setting] = config.get(name);
-            await config.update(
-                name,
-                settings[setting] === "" ? undefined : settings[setting],
-                vscode.ConfigurationTarget.Workspace
-            );
-        });
-
-        // There is actually a delay between when the config.update promise resolves and when
-        // the setting is actually written. If we exit this function right away the test might
-        // start before the settings are actually written. Verify that all the settings are set
-        // to their new value before continuing.
-        for (const setting of Object.keys(settings)) {
-            const { section, name } = decomposeSettingName(setting);
-            while (
-                vscode.workspace.getConfiguration(section, { languageId: "swift" }).get(name) !==
-                settings[setting]
-            ) {
-                // Not yet, wait a bit and try again.
-                await new Promise(resolve => setTimeout(resolve, 30));
-            }
-        }
-
-        return savedOriginalSettings;
-    };
-
-    // Updates the settings
-    const savedOriginalSettings = await applySettings(settings);
-
-    // Clients call the callback to reset updated settings to their original value
-    return async () => await applySettings(savedOriginalSettings);
 }
 
 /**
@@ -289,12 +239,16 @@ export async function gatherTests(
     const testItems = tests.map(test => {
         const testItem = getTestItem(controller, test);
         if (!testItem) {
-            const testsInController: string[] = [];
-            controller.items.forEach(item => {
-                testsInController.push(
-                    `${item.id}: ${item.label} ${item.error ? `(error: ${item.error})` : ""}`
-                );
-            });
+            const testsInController = reduceTestItemChildren(
+                controller.items,
+                (acc, item) => {
+                    acc.push(
+                        `${item.id}: ${item.label} ${item.error ? `(error: ${item.error})` : ""}`
+                    );
+                    return acc;
+                },
+                [] as string[]
+            );
 
             assert.fail(
                 `Unable to find ${test} in Test Controller. Items in test controller are: ${testsInController.join(", ")}`

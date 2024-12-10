@@ -2,7 +2,7 @@
   "name": "swift-lang",
   "displayName": "Swift",
   "description": "Swift Language Support for Visual Studio Code.",
-  "version": "1.11.3",
+  "version": "1.11.4",
   "publisher": "sswg",
   "icon": "icon.png",
   "repository": {
@@ -26,6 +26,8 @@
     "onLanguage:swift",
     "workspaceContains:Package.swift",
     "workspaceContains:compile_commands.json",
+    "workspaceContains:compile_flags.txt",
+    "workspaceContains:buildServer.json",
     "onDebugResolve:swift-lldb"
   ],
   "main": "./dist/src/extension.js",
@@ -475,9 +477,14 @@
             "order": 3
           },
           "swift.sourcekit-lsp.backgroundIndexing": {
-            "type": "boolean",
-            "default": false,
-            "markdownDescription": "**Experimental**: Enable or disable background indexing. This option has no effect in Swift versions prior to 6.0.",
+            "type": "string",
+            "enum": [
+              "on",
+              "off",
+              "auto"
+            ],
+            "default": "auto",
+            "markdownDescription": "Turns background indexing `on` or `off`. `auto` will enable background indexing if the Swift version is >= 6.1. This option has no effect in Swift versions prior to 6.0.",
             "order": 4
           },
           "swift.sourcekit-lsp.trace.server": {
@@ -1300,16 +1307,16 @@
     "@types/chai-subset": "^1.3.5",
     "@types/glob": "^7.1.6",
     "@types/lcov-parse": "^1.0.2",
-    "@types/mocha": "^10.0.9",
+    "@types/mocha": "^10.0.10",
     "@types/mock-fs": "^4.13.4",
-    "@types/node": "^18.19.64",
+    "@types/node": "^18.19.67",
     "@types/plist": "^3.0.5",
     "@types/sinon": "^17.0.3",
     "@types/sinon-chai": "^3.2.12",
     "@types/vscode": "^1.88.0",
     "@types/xml2js": "^0.4.14",
-    "@typescript-eslint/eslint-plugin": "^8.14.0",
-    "@typescript-eslint/parser": "^8.14.0",
+    "@typescript-eslint/eslint-plugin": "^8.16.0",
+    "@typescript-eslint/parser": "^8.16.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
     "@vscode/vsce": "^2.32.0",
@@ -1323,12 +1330,12 @@
     "mocha": "^10.8.2",
     "mock-fs": "^5.4.1",
     "node-pty": "^1.0.0",
-    "prettier": "^3.3.3",
+    "prettier": "^3.4.1",
     "sinon": "^19.0.2",
     "sinon-chai": "^3.7.0",
     "source-map-support": "^0.5.21",
     "strip-ansi": "^6.0.1",
-    "typescript": "^5.6.3"
+    "typescript": "^5.7.2"
   },
   "dependencies": {
     "lcov-parse": "^1.0.0",

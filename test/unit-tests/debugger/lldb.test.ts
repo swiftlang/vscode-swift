@@ -30,6 +30,7 @@ import {
 } from "../../MockUtils";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 
 suite("debugger.lldb Tests", () => {
     suite("getLLDBLibPath Tests", () => {
@@ -144,11 +145,16 @@ suite("debugger.lldb Tests", () => {
         let mockToolchain: MockedObject<SwiftToolchain>;
 
         setup(() => {
+            windowMock.createOutputChannel.returns({
+                appendLine() {},
+            } as unknown as vscode.LogOutputChannel);
+
             mockToolchain = mockObject<SwiftToolchain>({
                 getLLDB: mockFn(s => s.resolves("/path/to/lldb")),
             });
             mockContext = mockObject<WorkspaceContext>({
                 toolchain: instance(mockToolchain),
+                outputChannel: new SwiftOutputChannel("mockChannel", false),
             });
         });
 

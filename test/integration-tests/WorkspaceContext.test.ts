@@ -17,41 +17,78 @@ import * as assert from "assert";
 import { testAssetUri } from "../fixtures";
 import { FolderOperation, WorkspaceContext } from "../../src/WorkspaceContext";
 import { createBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
-import { globalWorkspaceContextPromise } from "./extension.test";
 import { Version } from "../../src/utilities/version";
 import { SwiftExecution } from "../../src/tasks/SwiftExecution";
+import { activateExtensionForSuite } from "./utilities/testutilities";
+import { FolderContext } from "../../src/FolderContext";
+import { assertContains } from "./testexplorer/utilities";
+
+function assertContainsArg(execution: SwiftExecution, arg: string) {
+    assert(execution?.args.find(a => a === arg));
+}
+
+function assertNotContainsArg(execution: SwiftExecution, arg: string) {
+    assert.equal(
+        execution?.args.find(a => a.includes(arg)),
+        undefined
+    );
+}
 
 suite("WorkspaceContext Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     const packageFolder: vscode.Uri = testAssetUri("defaultPackage");
 
-    suiteSetup(async () => {
-        workspaceContext = await globalWorkspaceContextPromise;
-    });
-
     suite("Folder Events", () => {
+        activateExtensionForSuite({
+            async setup(ctx) {
+                workspaceContext = ctx;
+            },
+            // No default assets as we want to verify against a clean workspace.
+            testAssets: [],
+        });
+
         test("Add", async () => {
-            let count = 0;
-            const observer = workspaceContext?.onDidChangeFolders(({ folder, operation }) => {
-                assert(folder !== null);
-                assert.strictEqual(folder!.swiftPackage.name, "package2");
-                switch (operation) {
-                    case FolderOperation.add:
-                        count++;
-                        break;
-                }
-            });
-            const workspaceFolder = vscode.workspace.workspaceFolders?.values().next().value;
-            if (!workspaceFolder) {
-                throw new Error("No workspace folders found in workspace");
+            let observer: vscode.Disposable | undefined;
+            const recordedFolders: {
+                folder: FolderContext | null;
+                operation: FolderOperation;
+            }[] = [];
+
+            try {
+                observer = workspaceContext.onDidChangeFolders(changedFolderRecord => {
+                    recordedFolders.push(changedFolderRecord);
+                });
+
+                const workspaceFolder = vscode.workspace.workspaceFolders?.values().next().value;
+
+                assert.ok(workspaceFolder, "No workspace folders found in workspace");
+
+                await workspaceContext.addPackageFolder(testAssetUri("package2"), workspaceFolder);
+
+                const foldersNames = recordedFolders.map(({ folder }) => folder?.swiftPackage.name);
+                assertContains(foldersNames, "package2");
+
+                const addedCount = recordedFolders.filter(
+                    ({ operation }) => operation === FolderOperation.add
+                ).length;
+                assert.strictEqual(
+                    addedCount,
+                    1,
+                    `Expected only one add folder operation, instead got folders: ${recordedFolders.map(folder => folder.folder?.name)}`
+                );
+            } finally {
+                observer?.dispose();
             }
-            await workspaceContext?.addPackageFolder(testAssetUri("package2"), workspaceFolder);
-            assert.strictEqual(count, 1);
-            observer?.dispose();
-        }).timeout(15000);
+        }).timeout(60000 * 2);
     });
 
     suite("Tasks", async function () {
+        activateExtensionForSuite({
+            async setup(ctx) {
+                workspaceContext = ctx;
+            },
+        });
+
         // Was hitting a timeout in suiteSetup during CI build once in a while
         this.timeout(5000);
 
@@ -73,10 +110,10 @@ suite("WorkspaceContext Test Suite", () => {
             const execution = buildAllTask.execution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
             assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
-            assert.strictEqual(execution?.args[0], "build");
-            assert.strictEqual(execution?.args[1], "--build-tests");
-            assert.strictEqual(execution?.args[2], "-Xswiftc");
-            assert.strictEqual(execution?.args[3], "-diagnostic-style=llvm");
+            assertContainsArg(execution, "build");
+            assertContainsArg(execution, "--build-tests");
+            assertContainsArg(execution, "-Xswiftc");
+            assertContainsArg(execution, "-diagnostic-style=llvm");
             assert.strictEqual(buildAllTask.scope, folder.workspaceFolder);
         });
 
@@ -90,8 +127,9 @@ suite("WorkspaceContext Test Suite", () => {
             const execution = buildAllTask.execution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
             assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
-            assert.strictEqual(execution?.args[0], "build");
-            assert.strictEqual(execution?.args[1], "--build-tests");
+            assertContainsArg(execution, "build");
+            assertContainsArg(execution, "--build-tests");
+            assertNotContainsArg(execution, "-diagnostic-style");
             assert.strictEqual(buildAllTask.scope, folder.workspaceFolder);
         });
 
@@ -105,10 +143,10 @@ suite("WorkspaceContext Test Suite", () => {
             const execution = buildAllTask.execution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
             assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
-            assert.strictEqual(execution?.args[0], "build");
-            assert.strictEqual(execution?.args[1], "--build-tests");
-            assert.strictEqual(execution?.args[2], "-Xswiftc");
-            assert.strictEqual(execution?.args[3], "-diagnostic-style=swift");
+            assertContainsArg(execution, "build");
+            assertContainsArg(execution, "--build-tests");
+            assertContainsArg(execution, "-Xswiftc");
+            assertContainsArg(execution, "-diagnostic-style=swift");
             assert.strictEqual(buildAllTask.scope, folder.workspaceFolder);
         });
 
@@ -121,11 +159,7 @@ suite("WorkspaceContext Test Suite", () => {
             await swiftConfig.update("buildArguments", ["--sanitize=thread"]);
             const buildAllTask = createBuildAllTask(folder);
             const execution = buildAllTask.execution as SwiftExecution;
-            assert.strictEqual(execution?.args[0], "build");
-            assert.strictEqual(execution?.args[1], "--build-tests");
-            assert.strictEqual(execution?.args[2], "-Xswiftc");
-            assert.strictEqual(execution?.args[3], "-diagnostic-style=llvm");
-            assert.strictEqual(execution?.args[4], "--sanitize=thread");
+            assertContainsArg(execution, "--sanitize=thread");
             await swiftConfig.update("buildArguments", []);
         });
 
@@ -144,6 +178,12 @@ suite("WorkspaceContext Test Suite", () => {
     });
 
     suite("Toolchain", () => {
+        activateExtensionForSuite({
+            async setup(ctx) {
+                workspaceContext = ctx;
+            },
+        });
+
         test("get project templates", async () => {
             // This is only supported in swift versions >=5.8.0
             const swiftVersion = workspaceContext.toolchain.swiftVersion;

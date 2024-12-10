@@ -14,34 +14,34 @@
 
 import * as assert from "assert";
 import * as vscode from "vscode";
-import * as ls from "vscode-languageserver-protocol";
-import * as p2c from "vscode-languageclient/lib/common/protocolConverter";
 import { beforeEach } from "mocha";
-import { InitializeResult, RequestType } from "vscode-languageclient";
+import {
+    LanguageClient,
+    MessageSignature,
+    RequestType0,
+    RequestType,
+    Location,
+    Range,
+    Position,
+} from "vscode-languageclient/node";
+import * as p2c from "vscode-languageclient/lib/common/protocolConverter";
 import { LSPTestDiscovery } from "../../../src/TestExplorer/LSPTestDiscovery";
 import { SwiftPackage, Target, TargetType } from "../../../src/SwiftPackage";
 import { TestClass } from "../../../src/TestExplorer/TestDiscovery";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import {
     LSPTestItem,
-    textDocumentTestsRequest,
-    workspaceTestsRequest,
-} from "../../../src/sourcekit-lsp/lspExtensions";
+    TextDocumentTestsRequest,
+    WorkspaceTestsRequest,
+} from "../../../src/sourcekit-lsp/extensions";
+import { instance, mockFn, mockObject } from "../../MockUtils";
+import { LanguageClientManager } from "../../../src/sourcekit-lsp/LanguageClientManager";
 
 class TestLanguageClient {
     private responses = new Map<string, unknown>();
     private responseVersions = new Map<string, number>();
-
-    setResponse<P, R, E>(type: RequestType<P, R, E>, response: R) {
-        this.responses.set(type.method, response);
-    }
-
-    setResponseVersion<P, R, E>(type: RequestType<P, R, E>, version: number) {
-        this.responseVersions.set(type.method, version);
-    }
-
-    get initializeResult(): InitializeResult | undefined {
-        return {
+    private client = mockObject<LanguageClient>({
+        initializeResult: {
             capabilities: {
                 experimental: {
                     "textDocument/tests": {
@@ -52,15 +52,30 @@ class TestLanguageClient {
                     },
                 },
             },
-        };
-    }
-    get protocol2CodeConverter(): p2c.Converter {
-        return p2c.createConverter(undefined, true, true);
+        },
+        protocol2CodeConverter: p2c.createConverter(undefined, true, true),
+        sendRequest: mockFn(s =>
+            s.callsFake((type: MessageSignature): Promise<unknown> => {
+                const response = this.responses.get(type.method);
+                return response
+                    ? Promise.resolve(response)
+                    : Promise.reject("Method not implemented");
+            })
+        ),
+    });
+
+    public get languageClient(): LanguageClient {
+        return instance(this.client);
     }
 
-    sendRequest<P, R, E>(type: RequestType<P, R, E>): Promise<R> {
-        const response = this.responses.get(type.method) as R | undefined;
-        return response ? Promise.resolve(response) : Promise.reject("Method not implemented");
+    setResponse<R, E>(type: RequestType0<R, E>, response: R): void;
+    setResponse<P, R, E>(type: RequestType<P, R, E>, response: R): void;
+    setResponse(type: MessageSignature, response: unknown) {
+        this.responses.set(type.method, response);
+    }
+
+    setResponseVersion(type: MessageSignature, version: number) {
+        this.responseVersions.set(type.method, version);
     }
 }
 
@@ -68,29 +83,39 @@ suite("LSPTestDiscovery Suite", () => {
     let client: TestLanguageClient;
     let discoverer: LSPTestDiscovery;
     let pkg: SwiftPackage;
-    const file = vscode.Uri.file("file:///some/file.swift");
+    const file = vscode.Uri.file("/some/file.swift");
 
-    beforeEach(async () => {
+    beforeEach(async function () {
+        this.timeout(10000000);
         pkg = await SwiftPackage.create(file, await SwiftToolchain.create());
         client = new TestLanguageClient();
-        discoverer = new LSPTestDiscovery({
-            useLanguageClient(process) {
-                return process(client, new vscode.CancellationTokenSource().token);
-            },
-        });
+        discoverer = new LSPTestDiscovery(
+            instance(
+                mockObject<LanguageClientManager>({
+                    useLanguageClient: mockFn(s =>
+                        s.callsFake(process => {
+                            return process(
+                                client.languageClient,
+                                new vscode.CancellationTokenSource().token
+                            );
+                        })
+                    ),
+                })
+            )
+        );
     });
 
     suite("Empty responses", () => {
-        test(textDocumentTestsRequest.method, async () => {
-            client.setResponse(textDocumentTestsRequest, []);
+        test(TextDocumentTestsRequest.method, async () => {
+            client.setResponse(TextDocumentTestsRequest.type, []);
 
             const testClasses = await discoverer.getDocumentTests(pkg, file);
 
             assert.deepStrictEqual(testClasses, []);
         });
 
-        test(workspaceTestsRequest.method, async () => {
-            client.setResponse(workspaceTestsRequest, []);
+        test(WorkspaceTestsRequest.method, async () => {
+            client.setResponse(WorkspaceTestsRequest.type, []);
 
             const testClasses = await discoverer.getWorkspaceTests(pkg);
 
@@ -99,14 +124,14 @@ suite("LSPTestDiscovery Suite", () => {
     });
 
     suite("Unsupported LSP version", () => {
-        test(textDocumentTestsRequest.method, async () => {
-            client.setResponseVersion(textDocumentTestsRequest, 0);
+        test(TextDocumentTestsRequest.method, async () => {
+            client.setResponseVersion(TextDocumentTestsRequest.type, 0);
 
             await assert.rejects(() => discoverer.getDocumentTests(pkg, file));
         });
 
-        test(workspaceTestsRequest.method, async () => {
-            client.setResponseVersion(workspaceTestsRequest, 0);
+        test(WorkspaceTestsRequest.method, async () => {
+            client.setResponseVersion(WorkspaceTestsRequest.type, 0);
 
             await assert.rejects(() => discoverer.getWorkspaceTests(pkg));
         });
@@ -140,9 +165,9 @@ suite("LSPTestDiscovery Suite", () => {
                     disabled: false,
                     style: "swift-testing",
                     tags: [],
-                    location: ls.Location.create(
+                    location: Location.create(
                         file.fsPath,
-                        ls.Range.create(ls.Position.create(1, 0), ls.Position.create(2, 0))
+                        Range.create(Position.create(1, 0), Position.create(2, 0))
                     ),
                     children: [],
                 },
@@ -150,21 +175,21 @@ suite("LSPTestDiscovery Suite", () => {
 
             expected = items.map(item => ({
                 ...item,
-                location: client.protocol2CodeConverter.asLocation(item.location),
+                location: client.languageClient.protocol2CodeConverter.asLocation(item.location),
                 children: [],
             }));
         });
 
-        test(textDocumentTestsRequest.method, async () => {
-            client.setResponse(textDocumentTestsRequest, items);
+        test(TextDocumentTestsRequest.method, async () => {
+            client.setResponse(TextDocumentTestsRequest.type, items);
 
             const testClasses = await discoverer.getDocumentTests(pkg, file);
 
             assert.deepStrictEqual(testClasses, expected);
         });
 
-        test(workspaceTestsRequest.method, async () => {
-            client.setResponse(workspaceTestsRequest, items);
+        test(WorkspaceTestsRequest.method, async () => {
+            client.setResponse(WorkspaceTestsRequest.type, items);
 
             const testClasses = await discoverer.getWorkspaceTests(pkg);
 
@@ -179,7 +204,7 @@ suite("LSPTestDiscovery Suite", () => {
                 style: "XCTest",
             }));
 
-            client.setResponse(workspaceTestsRequest, items);
+            client.setResponse(WorkspaceTestsRequest.type, items);
 
             const testClasses = await discoverer.getWorkspaceTests(pkg);
 
@@ -193,7 +218,7 @@ suite("LSPTestDiscovery Suite", () => {
                 id: `${testTargetName}.topLevelTest()`,
             }));
 
-            client.setResponse(workspaceTestsRequest, items);
+            client.setResponse(WorkspaceTestsRequest.type, items);
 
             const target: Target = {
                 c99name: testTargetName,

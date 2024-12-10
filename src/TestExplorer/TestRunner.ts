@@ -40,6 +40,8 @@ import { BuildConfigurationFactory, TestingConfigurationFactory } from "../debug
 import { TestKind, isDebugging, isRelease } from "./TestKind";
 import { reduceTestItemChildren } from "./TestUtils";
 import { CompositeCancellationToken } from "../utilities/cancellation";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import stripAnsi = require("strip-ansi");
 
 export enum TestLibrary {
     xctest = "XCTest",
@@ -264,7 +266,7 @@ export class TestRunProxy {
         test?: vscode.TestItem
     ) {
         testRun.appendOutput(output, location, test);
-        this.runState.output.push(output);
+        this.runState.output.push(stripAnsi(output));
     }
 
     private prependIterationToOutput(output: string): string {
@@ -670,12 +672,7 @@ export class TestRunner {
                 outputStream.write(replaced);
             });
 
-            let cancellation: vscode.Disposable;
             task.execution.onDidClose(code => {
-                if (cancellation) {
-                    cancellation.dispose();
-                }
-
                 // undefined or 0 are viewed as success
                 if (!code) {
                     resolve();
@@ -738,7 +735,11 @@ export class TestRunner {
             const xUnitParser = new TestXUnitParser(
                 this.folderContext.workspaceContext.toolchain.hasMultiLineParallelTestOutput
             );
-            const results = await xUnitParser.parse(buffer, runState);
+            const results = await xUnitParser.parse(
+                buffer,
+                runState,
+                this.workspaceContext.outputChannel
+            );
             if (results) {
                 this.testRun.appendOutput(
                     `\r\nExecuted ${results.tests} tests, with ${results.failures} failures and ${results.errors} errors.\r\n`
@@ -868,9 +869,13 @@ export class TestRunner {
                             );
 
                             const outputHandler = this.testOutputHandler(config.testType, runState);
-                            LoggingDebugAdapterTracker.setDebugSessionCallback(session, output => {
-                                outputHandler(output);
-                            });
+                            LoggingDebugAdapterTracker.setDebugSessionCallback(
+                                session,
+                                this.workspaceContext.outputChannel,
+                                output => {
+                                    outputHandler(output);
+                                }
+                            );
 
                             const cancellation = this.testRun.token.onCancellationRequested(() => {
                                 this.workspaceContext.outputChannel.logDiagnostic(

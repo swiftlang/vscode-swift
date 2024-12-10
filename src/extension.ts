@@ -44,19 +44,23 @@ import { resolveFolderDependencies } from "./commands/dependencies/resolve";
  * or by the integration test runner for VS Code extensions.
  */
 export interface Api {
-    workspaceContext: WorkspaceContext;
+    workspaceContext?: WorkspaceContext;
+    outputChannel: SwiftOutputChannel;
+    activate(): Promise<Api>;
+    deactivate(): Promise<void>;
 }
 
 /**
  * Activate the extension. This is the main entry point.
  */
-export async function activate(context: vscode.ExtensionContext): Promise<Api | undefined> {
+export async function activate(context: vscode.ExtensionContext): Promise<Api> {
     try {
-        console.debug("Activating Swift for Visual Studio Code...");
-        const outputChannel = new SwiftOutputChannel("Swift");
+        const outputChannel = new SwiftOutputChannel("Swift", !process.env["VSCODE_TEST"]);
+        outputChannel.log("Activating Swift for Visual Studio Code...");
 
         checkAndWarnAboutWindowsSymlinks(outputChannel);
 
+        context.subscriptions.push(outputChannel);
         context.subscriptions.push(new SwiftEnvironmentVariablesManager(context));
         context.subscriptions.push(
             vscode.window.registerTerminalProfileProvider(
@@ -109,7 +113,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
 
         if (!toolchain) {
             showToolchainError();
-            return;
+            return {
+                workspaceContext: undefined,
+                outputChannel,
+                activate: () => activate(context),
+                deactivate: async () => {
+                    await workspaceContext.stop();
+                    await deactivate(context);
+                },
+            };
         }
 
         const workspaceContext = await WorkspaceContext.create(outputChannel, toolchain);
@@ -240,13 +252,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
             logObserver,
             languageStatusItem,
             pluginTaskProvider,
-            taskProvider
+            taskProvider,
+            workspaceContext
         );
 
         // Mark the extension as activated.
         contextKeys.isActivated = true;
 
-        return { workspaceContext };
+        return {
+            workspaceContext,
+            outputChannel,
+            activate: () => activate(context),
+            deactivate: async () => {
+                await workspaceContext.stop();
+                await deactivate(context);
+            },
+        };
     } catch (error) {
         const errorMessage = getErrorDescription(error);
         // show this error message as the VS Code error message only shows when running
@@ -254,4 +275,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api | 
         vscode.window.showErrorMessage(`Activating Swift extension failed: ${errorMessage}`);
         throw error;
     }
+}
+
+async function deactivate(context: vscode.ExtensionContext): Promise<void> {
+    contextKeys.isActivated = false;
+    context.subscriptions.forEach(subscription => subscription.dispose());
+    context.subscriptions.length = 0;
 }

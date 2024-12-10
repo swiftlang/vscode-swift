@@ -171,9 +171,19 @@ export class WorkspaceContext implements vscode.Disposable {
         this.lastFocusUri = vscode.window.activeTextEditor?.document.uri;
     }
 
+    async stop() {
+        try {
+            await this.languageClientManager.stop();
+        } catch {
+            // ignore
+        }
+    }
+
     dispose() {
         this.folders.forEach(f => f.dispose());
+        this.folders.length = 0;
         this.subscriptions.forEach(item => item.dispose());
+        this.subscriptions.length = 0;
     }
 
     get swiftVersion() {
@@ -243,6 +253,7 @@ export class WorkspaceContext implements vscode.Disposable {
         // add event listener for when a workspace folder is added/removed
         const onWorkspaceChange = vscode.workspace.onDidChangeWorkspaceFolders(event => {
             if (this === undefined) {
+                // eslint-disable-next-line no-console
                 console.log("Trying to run onDidChangeWorkspaceFolders on deleted context");
                 return;
             }
@@ -251,6 +262,7 @@ export class WorkspaceContext implements vscode.Disposable {
         // add event listener for when the active edited text document changes
         const onDidChangeActiveWindow = vscode.window.onDidChangeActiveTextEditor(async editor => {
             if (this === undefined) {
+                // eslint-disable-next-line no-console
                 console.log("Trying to run onDidChangeWorkspaceFolders on deleted context");
                 return;
             }
@@ -339,7 +351,7 @@ export class WorkspaceContext implements vscode.Disposable {
     }
 
     async searchForPackages(folder: vscode.Uri, workspaceFolder: vscode.WorkspaceFolder) {
-        // add folder if Package.swift/compile_commands.json exists
+        // add folder if Package.swift/compile_commands.json/compile_flags.txt/buildServer.json exists
         if (await this.isValidWorkspaceFolder(folder.fsPath)) {
             await this.addPackageFolder(folder, workspaceFolder);
             return;
@@ -388,7 +400,7 @@ export class WorkspaceContext implements vscode.Disposable {
      * @param folder folder being removed
      */
     async removeWorkspaceFolder(workspaceFolder: vscode.WorkspaceFolder) {
-        this.folders.forEach(async folder => {
+        for (const folder of this.folders) {
             if (folder.workspaceFolder !== workspaceFolder) {
                 return;
             }
@@ -404,7 +416,7 @@ export class WorkspaceContext implements vscode.Disposable {
                 await observer({ folder, operation: FolderOperation.remove, workspace: this });
             }
             folder.dispose();
-        });
+        }
         this.folders = this.folders.filter(folder => folder.workspaceFolder !== workspaceFolder);
     }
 
@@ -604,13 +616,15 @@ export class WorkspaceContext implements vscode.Disposable {
 
     /**
      * Return if folder is considered a valid root folder ie does it contain a SwiftPM
-     * Package.swift or a CMake compile_commands.json
+     * Package.swift or a CMake compile_commands.json, compile_flags.txt, or a BSP buildServer.json.
      */
     async isValidWorkspaceFolder(folder: string): Promise<boolean> {
         return (
             ((await pathExists(folder, "Package.swift")) &&
                 !configuration.disableSwiftPMIntegration) ||
-            (await pathExists(folder, "compile_commands.json"))
+            (await pathExists(folder, "compile_commands.json")) ||
+            (await pathExists(folder, "compile_flags.txt")) ||
+            (await pathExists(folder, "buildServer.json"))
         );
     }
 

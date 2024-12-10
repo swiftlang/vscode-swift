@@ -30,7 +30,7 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
     ) {
         this.name = name;
         this.logToConsole = process.env["CI"] !== "1" && logToConsole;
-        this.channel = vscode.window.createOutputChannel(name);
+        this.channel = vscode.window.createOutputChannel(name, "Swift");
         this.logStore = new RollingLog(logStoreLinesSize);
     }
 
@@ -39,6 +39,7 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
         this.logStore.append(value);
 
         if (this.logToConsole) {
+            // eslint-disable-next-line no-console
             console.log(value);
         }
     }
@@ -48,6 +49,7 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
         this.logStore.appendLine(value);
 
         if (this.logToConsole) {
+            // eslint-disable-next-line no-console
             console.log(value);
         }
     }
@@ -59,6 +61,7 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
 
     clear(): void {
         this.channel.clear();
+        this.logStore.clear();
     }
 
     show(_column?: unknown, preserveFocus?: boolean | undefined): void {
@@ -71,6 +74,7 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
 
     dispose() {
         this.channel.dispose();
+        this.logStore.dispose();
     }
 
     log(message: string, label?: string) {
@@ -84,15 +88,10 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
     }
 
     logDiagnostic(message: string, label?: string) {
-        if (!configuration.diagnostics) {
+        if (!configuration.diagnostics && process.env["CI"] !== "1") {
             return;
         }
-        let fullMessage: string;
-        if (label !== undefined) {
-            fullMessage = `${label}: ${message}`;
-        } else {
-            fullMessage = message;
-        }
+        const fullMessage = label !== undefined ? `${label}: ${message}` : message;
         this.appendLine(`${this.nowFormatted}: ${fullMessage}`);
     }
 
@@ -110,12 +109,11 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
     }
 }
 
-class RollingLog {
+class RollingLog implements vscode.Disposable {
     private _logs: (string | null)[];
     private startIndex: number = 0;
     private endIndex: number = 0;
     private logCount: number = 0;
-    private appending: boolean = false;
 
     constructor(private maxLogs: number) {
         this._logs = new Array(maxLogs).fill(null);
@@ -131,6 +129,17 @@ class RollingLog {
 
     private incrementIndex(index: number): number {
         return (index + 1) % this.maxLogs;
+    }
+
+    dispose() {
+        this.clear();
+    }
+
+    clear() {
+        this._logs = new Array(this.maxLogs).fill(null);
+        this.startIndex = 0;
+        this.endIndex = 0;
+        this.logCount = 0;
     }
 
     appendLine(log: string) {
@@ -155,7 +164,6 @@ class RollingLog {
         }
         const newLogLine = (this._logs[this.endIndex] ?? "") + log;
         this._logs[this.endIndex] = newLogLine;
-        this.appending = true;
     }
 
     replace(log: string) {

@@ -13,10 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as fs from "fs";
+import * as fs from "fs/promises";
 import * as path from "path";
 import { expect } from "chai";
-import { folderContextPromise, globalWorkspaceContextPromise } from "../extension.test";
 import { waitForNoRunningTasks } from "../../utilities";
 import { testAssetUri } from "../../fixtures";
 import { FolderContext } from "../../../src/FolderContext";
@@ -25,32 +24,46 @@ import { Commands } from "../../../src/commands";
 import { makeDebugConfigurations } from "../../../src/debugger/launch";
 import { Workbench } from "../../../src/utilities/commands";
 import { continueSession, waitForDebugAdapterCommand } from "../../utilities/debug";
-import { SettingsMap, updateSettings } from "../testexplorer/utilities";
+import {
+    activateExtensionForSuite,
+    folderInRootWorkspace,
+    updateSettings,
+} from "../utilities/testutilities";
 
 suite("Build Commands", function () {
+    // Default timeout is a bit too short, give it a little bit more time
+    this.timeout(30 * 1000);
+
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
-    let settingsTeardown: () => Promise<SettingsMap>;
     const uri = testAssetUri("defaultPackage/Sources/PackageExe/main.swift");
     const breakpoints = [
         new vscode.SourceBreakpoint(new vscode.Location(uri, new vscode.Position(2, 0))),
     ];
 
-    suiteSetup(async function () {
-        workspaceContext = await globalWorkspaceContextPromise;
-        await waitForNoRunningTasks();
-        folderContext = await folderContextPromise("defaultPackage");
-        await workspaceContext.focusFolder(folderContext);
-        await vscode.window.showTextDocument(uri);
-        settingsTeardown = await updateSettings({
-            "swift.autoGenerateLaunchConfigurations": true,
-        });
-        await makeDebugConfigurations(folderContext, undefined, true);
-    });
+    activateExtensionForSuite({
+        async setup(ctx) {
+            // The description of this package is crashing on Windows with Swift 5.9.x and below,
+            // preventing it from being built. The cleanup in the teardown is failng as well with
+            // an EBUSY error. Skip this test on Windows until the issue is resolved.
+            if (process.platform === "win32") {
+                this.skip();
+            }
 
-    suiteTeardown(async () => {
-        await settingsTeardown();
-        await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
+            workspaceContext = ctx;
+            await waitForNoRunningTasks();
+            folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
+            await workspaceContext.focusFolder(folderContext);
+            await vscode.window.showTextDocument(uri);
+            const settingsTeardown = await updateSettings({
+                "swift.autoGenerateLaunchConfigurations": true,
+            });
+            await makeDebugConfigurations(folderContext, undefined, true);
+            return settingsTeardown;
+        },
+        async teardown() {
+            await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
+        },
     });
 
     test("Swift: Run Build", async () => {
@@ -64,15 +77,17 @@ suite("Build Commands", function () {
     });
 
     test("Swift: Clean Build", async () => {
-        const buildPath = path.join(folderContext.folder.fsPath, ".build");
-        const beforeItemCount = fs.readdirSync(buildPath).length;
-
-        const result = await vscode.commands.executeCommand(Commands.CLEAN_BUILD);
+        let result = await vscode.commands.executeCommand(Commands.RUN);
         expect(result).to.be.true;
 
-        const afterItemCount = fs.readdirSync(buildPath).length;
-        // This test will run in order after the Swift: Run Build test,
-        // where .build folder is going to be filled with built artifacts.
+        const buildPath = path.join(folderContext.folder.fsPath, ".build");
+        const beforeItemCount = (await fs.readdir(buildPath)).length;
+
+        result = await vscode.commands.executeCommand(Commands.CLEAN_BUILD);
+        expect(result).to.be.true;
+
+        const afterItemCount = (await fs.readdir(buildPath)).length;
+        // .build folder is going to be filled with built artifacts after Commands.RUN command
         // After executing the clean command the build directory is guranteed to have less entry.
         expect(afterItemCount).to.be.lessThan(beforeItemCount);
     });
