@@ -19,13 +19,22 @@ import { expect } from "chai";
 import {
     continueSession,
     waitForDebugAdapterRequest,
-    waitForDebugAdapterExit,
     waitUntilDebugSessionTerminates,
 } from "../utilities/debug";
 import { Version } from "../../src/utilities/version";
 import { activateExtensionForSuite, folderInRootWorkspace } from "./utilities/testutilities";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { join } from "path";
+import { closeAllEditors } from "../utilities/commands";
+
+function normalizePath(...segments: string[]): string {
+    let path = join(...segments);
+    if (process.platform === "win32") {
+        path = path + ".exe";
+        path = path.replace(/\//g, "\\");
+    }
+    return path.toLocaleLowerCase(); // Windows may use d:\ or D:\
+}
 
 suite("SwiftSnippet Test Suite", function () {
     this.timeout(120000);
@@ -56,26 +65,19 @@ suite("SwiftSnippet Test Suite", function () {
     });
 
     suiteTeardown(async () => {
-        await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+        closeAllEditors();
         vscode.debug.removeBreakpoints(breakpoints);
     });
 
     test("Run `Swift: Run Swift Snippet` command for snippet file", async () => {
         const sessionPromise = waitUntilDebugSessionTerminates("Run hello");
-        const exitPromise = waitForDebugAdapterExit("Run hello");
 
-        await vscode.commands.executeCommand("swift.runSnippet");
+        const succeeded = await vscode.commands.executeCommand("swift.runSnippet");
 
-        const exitCode = await exitPromise;
-        expect(exitCode).to.equal(0);
-
+        expect(succeeded).to.be.true;
         const session = await sessionPromise;
-        let path = join(testAssetPath("defaultPackage"), ".build", "debug", "hello");
-        if (process.platform === "win32") {
-            path = path + ".exe";
-        }
-        expect(session.configuration.program?.toLowerCase()).to.equal(
-            path.toLocaleLowerCase() // Windows may use d:\ or D:\
+        expect(normalizePath(session.configuration.program)).to.equal(
+            normalizePath(testAssetPath("defaultPackage"), ".build", "debug", "hello")
         );
         expect(session.configuration).to.have.property("noDebug", true);
     });
@@ -83,23 +85,17 @@ suite("SwiftSnippet Test Suite", function () {
     test("Run `Swift: Debug Swift Snippet` command for snippet file", async () => {
         const bpPromise = waitForDebugAdapterRequest("Run hello", "stackTrace");
         const sessionPromise = waitUntilDebugSessionTerminates("Run hello");
-        const exitPromise = waitForDebugAdapterExit("Run hello");
 
-        vscode.commands.executeCommand("swift.debugSnippet");
+        const succeeded = vscode.commands.executeCommand("swift.debugSnippet");
 
         // Once bp is hit, continue
         await bpPromise.then(() => continueSession());
 
-        const exitCode = await exitPromise;
-        expect(exitCode).to.equal(0);
+        await expect(succeeded).to.eventually.be.true;
 
         const session = await sessionPromise;
-        let path = join(testAssetPath("defaultPackage"), ".build", "debug", "hello");
-        if (process.platform === "win32") {
-            path = path + ".exe";
-        }
-        expect(session.configuration.program?.toLowerCase()).to.equal(
-            path.toLocaleLowerCase() // Windows may use d:\ or D:\
+        expect(normalizePath(session.configuration.program)).to.equal(
+            normalizePath(testAssetPath("defaultPackage"), ".build", "debug", "hello")
         );
         expect(session.configuration).to.not.have.property("noDebug");
     });
