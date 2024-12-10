@@ -735,7 +735,11 @@ export class TestRunner {
             const xUnitParser = new TestXUnitParser(
                 this.folderContext.workspaceContext.toolchain.hasMultiLineParallelTestOutput
             );
-            const results = await xUnitParser.parse(buffer, runState);
+            const results = await xUnitParser.parse(
+                buffer,
+                runState,
+                this.workspaceContext.outputChannel
+            );
             if (results) {
                 this.testRun.appendOutput(
                     `\r\nExecuted ${results.tests} tests, with ${results.failures} failures and ${results.errors} errors.\r\n`
@@ -865,9 +869,13 @@ export class TestRunner {
                             );
 
                             const outputHandler = this.testOutputHandler(config.testType, runState);
-                            LoggingDebugAdapterTracker.setDebugSessionCallback(session, output => {
-                                outputHandler(output);
-                            });
+                            LoggingDebugAdapterTracker.setDebugSessionCallback(
+                                session,
+                                this.workspaceContext.outputChannel,
+                                output => {
+                                    outputHandler(output);
+                                }
+                            );
 
                             const cancellation = this.testRun.token.onCancellationRequested(() => {
                                 this.workspaceContext.outputChannel.logDiagnostic(

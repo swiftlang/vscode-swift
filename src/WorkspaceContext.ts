@@ -253,6 +253,7 @@ export class WorkspaceContext implements vscode.Disposable {
         // add event listener for when a workspace folder is added/removed
         const onWorkspaceChange = vscode.workspace.onDidChangeWorkspaceFolders(event => {
             if (this === undefined) {
+                // eslint-disable-next-line no-console
                 console.log("Trying to run onDidChangeWorkspaceFolders on deleted context");
                 return;
             }
@@ -261,6 +262,7 @@ export class WorkspaceContext implements vscode.Disposable {
         // add event listener for when the active edited text document changes
         const onDidChangeActiveWindow = vscode.window.onDidChangeActiveTextEditor(async editor => {
             if (this === undefined) {
+                // eslint-disable-next-line no-console
                 console.log("Trying to run onDidChangeWorkspaceFolders on deleted context");
                 return;
             }
