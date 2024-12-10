@@ -14,7 +14,7 @@
 
 import simpleGit from "simple-git";
 import { spawn } from "child_process";
-import { mkdtemp, mkdir, rm, readdir } from "fs/promises";
+import { stat, mkdtemp, mkdir, rm, readdir } from "fs/promises";
 import * as path from "path";
 import { tmpdir } from "os";
 import * as semver from "semver";
@@ -81,8 +81,17 @@ async function exec(
 }
 
 (async () => {
-    checkNodeVersion();
     const outputDirectory = path.join(__dirname, "..", "assets", "swift-docc-render");
+    if (process.argv.includes("postinstall")) {
+        try {
+            await stat(outputDirectory);
+            console.log(`${outputDirectory} exists, skipping build.`)
+            return;
+        } catch {
+            // Proceed with creating
+        }
+    }
+    checkNodeVersion();
     await rm(outputDirectory, { force: true, recursive: true });
     await mkdir(outputDirectory, { recursive: true });
     const buildDirectory = await mkdtemp(path.join(tmpdir(), "update_swift_docc_render"));

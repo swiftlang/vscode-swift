@@ -1280,6 +1280,7 @@
     "lint": "eslint ./ --ext ts && tsc --noEmit",
     "update-swift-docc-render": "tsx ./scripts/update_swift_docc_render.ts",
     "format": "prettier --check .",
+    "postinstall": "npx tsx scripts/update_swift_docc_render.ts postinstall",
     "pretest": "npm run compile-tests",
     "soundness": "docker compose -f docker/docker-compose.yaml -p swift-vscode-soundness-prb run --rm soundness",
     "test-soundness": "scripts/soundness.sh",
