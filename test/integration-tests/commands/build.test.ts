@@ -16,14 +16,14 @@ import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { expect } from "chai";
-import { waitForNoRunningTasks } from "../../utilities";
+import { waitForNoRunningTasks } from "../../utilities/tasks";
 import { testAssetUri } from "../../fixtures";
 import { FolderContext } from "../../../src/FolderContext";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Commands } from "../../../src/commands";
 import { makeDebugConfigurations } from "../../../src/debugger/launch";
 import { Workbench } from "../../../src/utilities/commands";
-import { continueSession, waitForDebugAdapterCommand } from "../../utilities/debug";
+import { continueSession, waitForDebugAdapterRequest } from "../../utilities/debug";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
@@ -97,10 +97,9 @@ suite("Build Commands", function () {
         // Promise used to indicate we hit the break point.
         // NB: "stopped" is the exact command when debuggee has stopped due to break point,
         // but "stackTrace" is the deterministic sync point we will use to make sure we can execute continue
-        const bpPromise = waitForDebugAdapterCommand(
+        const bpPromise = waitForDebugAdapterRequest(
             "Debug PackageExe (defaultPackage)",
-            "stackTrace",
-            workspaceContext
+            "stackTrace"
         );
 
         const result = vscode.commands.executeCommand(Commands.DEBUG);

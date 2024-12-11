@@ -16,7 +16,7 @@ import * as assert from "assert";
 import * as vscode from "vscode";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { testAssetUri } from "../fixtures";
-import { waitForNoRunningTasks } from "../utilities";
+import { waitForNoRunningTasks } from "../utilities/tasks";
 import { Workbench } from "../../src/utilities/commands";
 import { activateExtensionForTest, updateSettings } from "./utilities/testutilities";
 

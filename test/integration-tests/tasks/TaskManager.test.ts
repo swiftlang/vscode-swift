@@ -16,8 +16,8 @@ import * as vscode from "vscode";
 import * as assert from "assert";
 import { TaskManager } from "../../../src/tasks/TaskManager";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { waitForNoRunningTasks } from "../../utilities";
 import { activateExtensionForSuite } from "../utilities/testutilities";
+import { waitForNoRunningTasks } from "../../utilities/tasks";
 
 suite("TaskManager Test Suite", () => {
     let workspaceContext: WorkspaceContext;

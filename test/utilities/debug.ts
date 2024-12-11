@@ -12,9 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
+import { DebugProtocol } from "@vscode/debugprotocol";
 import { Workbench } from "../../src/utilities/commands";
-import { DebugAdapter } from "../../src/debugger/debugAdapter";
-import { WorkspaceContext } from "../../src/WorkspaceContext";
 
 export async function continueSession(): Promise<void> {
     await vscode.commands.executeCommand(Workbench.ACTION_DEBUG_CONTINUE);
@@ -28,33 +27,45 @@ export async function continueSession(): Promise<void> {
  * @param workspaceContext The workspace context containing toolchain information.
  * @returns A promise that resolves with the matching message.
  */
-export async function waitForDebugAdapterMessage(
+export async function waitForDebugAdapterMessage<T extends DebugProtocol.ProtocolMessage>(
     name: string,
-    matches: (message: any) => boolean,
-    workspaceContext: WorkspaceContext
-): Promise<any> {
-    return await new Promise<any>(res => {
-        const disposable = vscode.debug.registerDebugAdapterTrackerFactory(
-            DebugAdapter.getLaunchConfigType(workspaceContext.toolchain.swiftVersion),
-            {
-                createDebugAdapterTracker: function (
-                    session: vscode.DebugSession
-                ): vscode.ProviderResult<vscode.DebugAdapterTracker> {
-                    if (session.name !== name) {
-                        return;
-                    }
-                    return {
-                        onDidSendMessage(message) {
-                            if (matches(message)) {
-                                disposable.dispose();
-                                res(message);
-                            }
-                        },
-                    };
-                },
-            }
-        );
+    matches: (message: T) => boolean
+): Promise<T> {
+    return await new Promise<T>(res => {
+        const disposable = vscode.debug.registerDebugAdapterTrackerFactory("swift-lldb", {
+            createDebugAdapterTracker: function (
+                session: vscode.DebugSession
+            ): vscode.ProviderResult<vscode.DebugAdapterTracker> {
+                if (session.name !== name) {
+                    return;
+                }
+                return {
+                    onDidSendMessage(message) {
+                        if (matches(message)) {
+                            disposable.dispose();
+                            res(message);
+                        }
+                    },
+                };
+            },
+        });
     });
+}
+
+/**
+ * Waits for a specific debug session to terminate.
+ *
+ * @param name The name of the debug session to wait for.
+ * @returns the terminated DebugSession
+ */
+export async function waitUntilDebugSessionTerminates(name: string): Promise<vscode.DebugSession> {
+    return await new Promise<vscode.DebugSession>(res =>
+        vscode.debug.onDidTerminateDebugSession(e => {
+            if (e.name === name) {
+                res(e);
+            }
+        })
+    );
 }
 
 /**
@@ -65,14 +76,38 @@ export async function waitForDebugAdapterMessage(
  * @param workspaceContext The workspace context containing toolchain information.
  * @returns A promise that resolves with the matching command message.
  */
-export async function waitForDebugAdapterCommand(
+export async function waitForDebugAdapterRequest(
     name: string,
-    command: string,
-    workspaceContext: WorkspaceContext
-): Promise<any> {
+    command: string
+): Promise<DebugProtocol.Request> {
     return await waitForDebugAdapterMessage(
         name,
-        (m: any) => m.command === command,
-        workspaceContext
+        (m: DebugProtocol.Request) => m.command === command
     );
+}
+
+/**
+ * Waits for a specific event to be sent by the debug adapter.
+ *
+ * @param name The name of the debug session to wait for.
+ * @param command The command to wait for.
+ * @param workspaceContext The workspace context containing toolchain information.
+ * @returns A promise that resolves with the matching command event.
+ */
+export async function waitForDebugAdapterEvent(
+    name: string,
+    event: string
+): Promise<DebugProtocol.Event> {
+    return await waitForDebugAdapterMessage(name, (m: DebugProtocol.Event) => m.event === event);
+}
+
+/**
+ * Waits for a debug adapter for the specified DebugSession name to terminate.
+ *
+ * @param name The name of the debug session to wait for.
+ * @returns exit code of the DAP
+ */
+export async function waitForDebugAdapterExit(name: string): Promise<number> {
+    const message = await waitForDebugAdapterEvent(name, "exited");
+    return message.body.exitCode;
 }

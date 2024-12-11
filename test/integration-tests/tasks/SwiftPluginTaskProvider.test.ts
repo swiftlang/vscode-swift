@@ -22,9 +22,9 @@ import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/t
 import {
     cleanOutput,
     executeTaskAndWaitForResult,
-    mutable,
     waitForEndTaskProcess,
-} from "../../utilities";
+} from "../../utilities/tasks";
+import { mutable } from "../../utilities/types";
 
 suite("SwiftPluginTaskProvider Test Suite", () => {
     let workspaceContext: WorkspaceContext;

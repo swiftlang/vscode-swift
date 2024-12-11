@@ -49,22 +49,22 @@ export function setSnippetContextKey(ctx: WorkspaceContext) {
  * If current file is a Swift Snippet run it
  * @param ctx Workspace Context
  */
-export async function runSnippet(ctx: WorkspaceContext) {
-    await debugSnippetWithOptions(ctx, { noDebug: true });
+export async function runSnippet(ctx: WorkspaceContext): Promise<boolean | undefined> {
+    return await debugSnippetWithOptions(ctx, { noDebug: true });
 }
 
 /**
  * If current file is a Swift Snippet run it in the debugger
  * @param ctx Workspace Context
  */
-export async function debugSnippet(ctx: WorkspaceContext) {
-    await debugSnippetWithOptions(ctx, {});
+export async function debugSnippet(ctx: WorkspaceContext): Promise<boolean | undefined> {
+    return await debugSnippetWithOptions(ctx, {});
 }
 
 export async function debugSnippetWithOptions(
     ctx: WorkspaceContext,
     options: vscode.DebugSessionOptions
-) {
+): Promise<boolean | undefined> {
     const folderContext = ctx.currentFolder;
     if (!ctx.currentDocument || !folderContext) {
         return;
@@ -89,7 +89,7 @@ export async function debugSnippetWithOptions(
 
     try {
         // queue build task and when it is complete run executable in the debugger
-        await folderContext.taskQueue
+        return await folderContext.taskQueue
             .queueOperation(new TaskOperation(snippetBuildTask))
             .then(result => {
                 if (result === 0) {
@@ -106,5 +106,6 @@ export async function debugSnippetWithOptions(
             });
     } catch {
         // ignore error if task failed to run
+        return;
     }
 }
