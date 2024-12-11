@@ -996,21 +996,8 @@ suite("DiagnosticsManager Test Suite", async function () {
 
         test("Provides swift diagnostics", async () => {
             // Build for indexing
-            let task = createBuildAllTask(folderContext);
+            const task = createBuildAllTask(folderContext);
             await executeTaskAndWaitForResult(task);
-
-            // Open file
-            const promise = Promise.resolve(); // waitForDiagnostics([mainUri], false);
-            const document = await vscode.workspace.openTextDocument(mainUri);
-            await vscode.languages.setTextDocumentLanguage(document, "swift");
-            await vscode.window.showTextDocument(document);
-
-            task = createBuildAllTask(folderContext);
-            await executeTaskAndWaitForResult(task);
-
-            // Retrigger diagnostics
-            await workspaceContext.focusFolder(folderContext);
-            await promise;
 
             const lspSource = toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))
                 ? "SourceKit"
@@ -1023,7 +1010,6 @@ suite("DiagnosticsManager Test Suite", async function () {
                 vscode.DiagnosticSeverity.Warning
             );
             expectedDiagnostic1.source = lspSource; // Set by LSP
-            assertHasDiagnostic(mainUri, expectedDiagnostic1);
 
             // Include error
             const expectedDiagnostic2 = new vscode.Diagnostic(
@@ -1032,6 +1018,20 @@ suite("DiagnosticsManager Test Suite", async function () {
                 vscode.DiagnosticSeverity.Error
             );
             expectedDiagnostic2.source = lspSource; // Set by LSP
+
+            // Open file
+            const promise = waitForDiagnostics({
+                [mainUri.fsPath]: [expectedDiagnostic1, expectedDiagnostic2],
+            });
+            const document = await vscode.workspace.openTextDocument(mainUri);
+            await vscode.languages.setTextDocumentLanguage(document, "swift");
+            await vscode.window.showTextDocument(document);
+
+            // Retrigger diagnostics
+            await workspaceContext.focusFolder(folderContext);
+            await promise;
+
+            assertHasDiagnostic(mainUri, expectedDiagnostic1);
             assertHasDiagnostic(mainUri, expectedDiagnostic2);
         }).timeout(2 * 60 * 1000); // Allow 2 minutes to build
 
@@ -1040,23 +1040,13 @@ suite("DiagnosticsManager Test Suite", async function () {
             const task = createBuildAllTask(cFolderContext);
             await executeTaskAndWaitForResult(task);
 
-            // Open file
-            const promise = Promise.resolve(); //  waitForDiagnostics([cUri], false);
-            const document = await vscode.workspace.openTextDocument(cUri);
-            await vscode.languages.setTextDocumentLanguage(document, "c");
-            await vscode.window.showTextDocument(document);
-
-            // Retrigger diagnostics
-            await workspaceContext.focusFolder(cFolderContext);
-            await promise;
-
+            // No string manipulation
             const expectedDiagnostic1 = new vscode.Diagnostic(
                 new vscode.Range(new vscode.Position(5, 10), new vscode.Position(5, 13)),
                 "Use of undeclared identifier 'bar'",
                 vscode.DiagnosticSeverity.Error
             );
             expectedDiagnostic1.source = "clang"; // Set by LSP
-            assertHasDiagnostic(cUri, expectedDiagnostic1);
 
             // Remove "(fix available)" from string from SourceKit
             const expectedDiagnostic2 = new vscode.Diagnostic(
@@ -1065,6 +1055,20 @@ suite("DiagnosticsManager Test Suite", async function () {
                 vscode.DiagnosticSeverity.Error
             );
             expectedDiagnostic2.source = "clang"; // Set by LSP
+
+            // Open file
+            const promise = waitForDiagnostics({
+                [cUri.fsPath]: [expectedDiagnostic1, expectedDiagnostic2],
+            });
+            const document = await vscode.workspace.openTextDocument(cUri);
+            await vscode.languages.setTextDocumentLanguage(document, "c");
+            await vscode.window.showTextDocument(document);
+
+            // Retrigger diagnostics
+            await workspaceContext.focusFolder(cFolderContext);
+            await promise;
+
+            assertHasDiagnostic(cUri, expectedDiagnostic1);
             assertHasDiagnostic(cUri, expectedDiagnostic2);
         }).timeout(2 * 60 * 1000); // Allow 2 minutes to build
     });
