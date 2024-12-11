@@ -449,7 +449,7 @@ suite("Test Explorer Suite", function () {
                 test("@slow runs an XCTest multiple times", async function () {
                     const testItems = await gatherTests(
                         testExplorer.controller,
-                        "PackageTests.topLevelTestPassing()"
+                        "PackageTests.PassingXCTestSuite/testPassing"
                     );
 
                     await testExplorer.folderContext.workspaceContext.focusFolder(
@@ -466,7 +466,10 @@ suite("Test Explorer Suite", function () {
                     await eventPromise(testRun.onTestRunComplete);
 
                     assertTestResults(testRun, {
-                        passed: ["PackageTests.topLevelTestPassing()"],
+                        passed: [
+                            "PackageTests.PassingXCTestSuite",
+                            "PackageTests.PassingXCTestSuite/testPassing",
+                        ],
                     });
                 });
             });
