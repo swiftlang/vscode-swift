@@ -30,7 +30,7 @@ import { closeAllEditors } from "../utilities/commands";
 function normalizePath(...segments: string[]): string {
     let path = join(...segments);
     if (process.platform === "win32") {
-        path = path + ".exe";
+        path = path.endsWith(".exe") ? path : path + ".exe";
         path = path.replace(/\//g, "\\");
     }
     return path.toLocaleLowerCase(); // Windows may use d:\ or D:\
