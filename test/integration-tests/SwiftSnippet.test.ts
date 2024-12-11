@@ -36,7 +36,7 @@ function normalizePath(...segments: string[]): string {
     return path.toLocaleLowerCase(); // Windows may use d:\ or D:\
 }
 
-suite("SwiftSnippet Test Suite", function () {
+suite("SwiftSnippet Test Suite @slow", function () {
     this.timeout(120000);
 
     const uri = testAssetUri("defaultPackage/Snippets/hello.swift");
