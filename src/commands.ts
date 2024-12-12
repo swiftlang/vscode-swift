@@ -74,6 +74,7 @@ export enum Commands {
     RESET_PACKAGE = "swift.resetPackage",
     USE_LOCAL_DEPENDENCY = "swift.useLocalDependency",
     UNEDIT_DEPENDENCY = "swift.uneditDependency",
+    RUN_PLUGIN_TASK = "swift.runPluginTask",
 }
 
 /**
@@ -112,7 +113,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         }),
         vscode.commands.registerCommand("swift.runSnippet", () => runSnippet(ctx)),
         vscode.commands.registerCommand("swift.debugSnippet", () => debugSnippet(ctx)),
-        vscode.commands.registerCommand("swift.runPluginTask", () => runPluginTask()),
+        vscode.commands.registerCommand(Commands.RUN_PLUGIN_TASK, () => runPluginTask()),
         vscode.commands.registerCommand("swift.restartLSPServer", () =>
             ctx.languageClientManager.restart()
         ),
