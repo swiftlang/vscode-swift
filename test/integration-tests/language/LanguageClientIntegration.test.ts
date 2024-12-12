@@ -138,6 +138,7 @@ suite("Language Client Integration Suite @slow", function () {
         const expectedDefinitionUri = testAssetUri(
             "defaultPackage/Sources/PackageLib/PackageLib.swift"
         );
+        const snippetUri = testAssetUri("defaultPackage/Snippets/hello.swift");
         // Position of the symbol 'a' in main.swift
         const position = new vscode.Position(2, 6);
 
@@ -178,18 +179,21 @@ suite("Language Client Integration Suite @slow", function () {
 
             // We expect 2 references - one in `main.swift` and one in `PackageLib.swift`
             expect(referenceLocations).to.have.lengthOf(
-                2,
+                3,
                 "There should be two references to 'a'."
             );
 
             // Extract reference URIs and sort them to have a predictable order
-            const referenceUris = referenceLocations.map(ref => ref.uri.toString()).sort();
+            const referenceUris = referenceLocations.map(ref => ref.uri.toString());
             const expectedUris = [
+                snippetUri.toString(),
                 uri.toString(), // Reference in main.swift
                 expectedDefinitionUri.toString(), // Reference in PackageLib.swift
-            ].sort();
+            ];
 
-            expect(referenceUris).to.deep.equal(expectedUris);
+            for (const uri of expectedUris) {
+                expect(referenceUris).to.contain(uri);
+            }
         });
     });
 });
