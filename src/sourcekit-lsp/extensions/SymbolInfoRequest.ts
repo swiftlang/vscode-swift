@@ -150,7 +150,7 @@ export interface SymbolDetails {
  * any additional client or server capabilities to use.
  */
 export namespace SymbolInfoRequest {
-    export const method = "textDocument/documentSymbol" as const;
+    export const method = "textDocument/symbolInfo" as const;
     export const messageDirection: MessageDirection = MessageDirection.clientToServer;
-    export const type = new RequestType<SymbolInfoParams, SymbolDetails, never>(method);
+    export const type = new RequestType<SymbolInfoParams, SymbolDetails[], never>(method);
 }
