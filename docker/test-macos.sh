@@ -36,9 +36,7 @@ trap "cleanup" EXIT
 curl -O "https://nodejs.org/dist/v$NODE_VERSION/$NODE_ARCHIVE"
 curl -O "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt"
 
-NODE_CHECKSUM="$(grep "$NODE_ARCHIVE" SHASUMS256.txt)"
-
-grep "$NODE_ARCHIVE" SHASUMS256.txt | sha256sum -c -
+grep "$NODE_ARCHIVE" SHASUMS256.txt | shasum -a 256 -c -
 
 tar -xzf "$NODE_ARCHIVE" -C "$ARTIFACTS"
 
