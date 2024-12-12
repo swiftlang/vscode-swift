@@ -44,7 +44,7 @@ async function buildProject(ctx: WorkspaceContext, name: string) {
     expect(exitCode, `${output}`).to.equal(0);
 }
 
-suite("Language Client Integration Suite", function () {
+suite("Language Client Integration Suite @slow", function () {
     let clientManager: LanguageClientManager;
     let workspaceContext: WorkspaceContext;
 
