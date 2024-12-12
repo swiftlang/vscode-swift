@@ -36,11 +36,11 @@ trap "cleanup" EXIT
 curl -O "https://nodejs.org/dist/v$NODE_VERSION/$NODE_ARCHIVE"
 curl -O "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt"
 
-NODE_CHECKSUM="$(grep $NODE_ARCHIVE SHASUMS256.txt)"
+NODE_CHECKSUM="$(grep "$NODE_ARCHIVE" SHASUMS256.txt)"
 
 grep "$NODE_ARCHIVE" SHASUMS256.txt | sha256sum -c -
 
-tar -xzf $NODE_ARCHIVE -C $ARTIFACTS
+tar -xzf "$NODE_ARCHIVE" -C "$ARTIFACTS"
 
 export NPM_CONFIG_CACHE="$ARTIFACTS/$NODE_NAME/cache"
 export NPM_CONFIG_PREFIX="$ARTIFACTS/$NODE_NAME"
@@ -50,7 +50,7 @@ export NPM_CONFIG_GLOBALCONFIG="$ARTIFACTS/$NODE_NAME/globalnpmrc"
 PATH="$ARTIFACTS/$NODE_NAME/bin:$PATH"
 
 mkdir -p $(dirname "$VSCODE_SETTINGS")
-cat <<EOT > $VSCODE_SETTINGS
+cat <<EOT > "$VSCODE_SETTINGS"
 {
     "swift.buildArguments": [
         "--disable-sandbox",
@@ -60,8 +60,8 @@ cat <<EOT > $VSCODE_SETTINGS
 }
 EOT
 
-mkdir -p $(dirname "$LSP_SETTINGS")
-cat <<EOT > $LSP_SETTINGS
+mkdir -p "$(dirname "$LSP_SETTINGS")"
+cat <<EOT > "$LSP_SETTINGS"
 {
     "swiftPM": {
         "disableSandbox": true,
