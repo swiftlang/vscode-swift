@@ -235,13 +235,13 @@ export class WorkspaceContext implements vscode.Disposable {
             const experimentalCaps = client.initializeResult?.capabilities.experimental;
             if (!experimentalCaps) {
                 contextKeys.supportsReindexing = false;
-                contextKeys.supportsDocumentationRendering = false;
+                contextKeys.supportsDocumentationLivePreview = false;
                 return;
             }
             contextKeys.supportsReindexing =
                 experimentalCaps["workspace/triggerReindex"] !== undefined;
-            contextKeys.supportsDocumentationRendering =
-                experimentalCaps["textDocument/renderDocumentation"] !== undefined;
+            contextKeys.supportsDocumentationLivePreview =
+                experimentalCaps["textDocument/convertDocumentation"] !== undefined;
         });
 
         setSnippetContextKey(this);

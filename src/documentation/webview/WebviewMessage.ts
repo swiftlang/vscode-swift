@@ -37,13 +37,34 @@ export interface RenderedMessage {
  * Sent from the extension to the webview to update its contents. The data
  * format is the same as DocC's JSON index.
  *
+ * Automatically removes any other loading/error messages.
+ *
  * This must be sent AFTER the webview has done at least one render.
  */
 export interface UpdateContentMessage {
     type: "update-content";
-    content: RenderNode;
+    content: WebviewContent;
 }
 
+export type WebviewContent = RenderNodeContent | ErrorContent;
+
+export interface RenderNodeContent {
+    type: "render-node";
+    renderNode: RenderNode;
+}
+
+export interface ErrorContent {
+    type: "error";
+    errorMessage: string;
+}
+
+/**
+ * A Swift DocC render node that represents a single page of documentation.
+ *
+ * In order to maintain maximum compatibility this interface only exposes the bare minimum
+ * that we need to support live preview. This interface must be kept up to date with
+ * https://github.com/swiftlang/swift-docc/blob/main/Sources/SwiftDocC/Model/Rendering/RenderNode.swift
+ */
 export interface RenderNode {
     schemaVersion: {
         major: number;

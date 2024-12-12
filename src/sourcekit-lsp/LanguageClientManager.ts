@@ -75,10 +75,10 @@ export class LanguageClientManager implements vscode.Disposable {
     ];
     // document selector for swift-docc documentation
     static documentationDocumentSelector: SourceKitDocumentSelector = [
-        { scheme: "file", language: "swift-docc-markdown" },
-        { scheme: "untitled", language: "swift-docc-markdown" },
-        { scheme: "file", language: "swift-docc-tutorial" },
-        { scheme: "untitiled", language: "swift-docc-tutorial" },
+        { scheme: "file", language: "markdown" },
+        { scheme: "untitled", language: "markdown" },
+        { scheme: "file", language: "tutorial" },
+        { scheme: "untitiled", language: "tutorial" },
     ];
     static get documentSelector(): DocumentSelector {
         let documentSelector: SourceKitDocumentSelector;

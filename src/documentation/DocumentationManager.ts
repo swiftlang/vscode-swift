@@ -15,12 +15,12 @@
 import * as vscode from "vscode";
 import { DocumentationPreviewEditor } from "./DocumentationPreviewEditor";
 import { WorkspaceContext } from "../WorkspaceContext";
-import { RenderNode } from "./webview/WebviewMessage";
+import { WebviewContent } from "./webview/WebviewMessage";
 import contextKeys from "../contextKeys";
 
 export class DocumentationManager implements vscode.Disposable {
     private previewEditor?: DocumentationPreviewEditor;
-    private editorUpdatedContentEmitter = new vscode.EventEmitter<RenderNode>();
+    private editorUpdatedContentEmitter = new vscode.EventEmitter<WebviewContent>();
     private editorRenderedEmitter = new vscode.EventEmitter<void>();
 
     constructor(
@@ -32,7 +32,7 @@ export class DocumentationManager implements vscode.Disposable {
     onPreviewDidRenderContent = this.editorRenderedEmitter.event;
 
     async launchDocumentationPreview(): Promise<boolean> {
-        if (!contextKeys.supportsDocumentationRendering) {
+        if (!contextKeys.supportsDocumentationLivePreview) {
             return false;
         }
 

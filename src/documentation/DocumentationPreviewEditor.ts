@@ -15,9 +15,9 @@
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { RenderNode, WebviewMessage } from "./webview/WebviewMessage";
+import { RenderNode, WebviewContent, WebviewMessage } from "./webview/WebviewMessage";
 import { WorkspaceContext } from "../WorkspaceContext";
-import { RenderDocumentationRequest } from "../sourcekit-lsp/extensions/RenderDocumentationRequest";
+import { ConvertDocumentationRequest } from "../sourcekit-lsp/extensions/ConvertDocumentationRequest";
 
 export enum PreviewEditorConstant {
     VIEW_TYPE = "swift.previewDocumentationEditor",
@@ -30,7 +30,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
 
     private disposeEmitter = new vscode.EventEmitter<void>();
     private renderEmitter = new vscode.EventEmitter<void>();
-    private updateContentEmitter = new vscode.EventEmitter<RenderNode>();
+    private updateContentEmitter = new vscode.EventEmitter<WebviewContent>();
 
     constructor(
         private readonly extension: vscode.ExtensionContext,
@@ -66,10 +66,10 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                 this.subscriptions.push(
                     this.webviewPanel.webview.onDidReceiveMessage(this.receiveMessage.bind(this)),
                     vscode.window.onDidChangeActiveTextEditor(editor => {
-                        this.renderDocumentation(editor);
+                        this.convertDocumentation(editor);
                     }),
                     vscode.window.onDidChangeTextEditorSelection(event => {
-                        this.renderDocumentation(event.textEditor);
+                        this.convertDocumentation(event.textEditor);
                     }),
                     this.webviewPanel.onDidDispose(this.dispose.bind(this))
                 );
@@ -109,7 +109,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
     private receiveMessage(message: WebviewMessage) {
         switch (message.type) {
             case "loaded":
-                this.renderDocumentation(vscode.window.activeTextEditor);
+                this.convertDocumentation(vscode.window.activeTextEditor);
                 break;
             case "rendered":
                 this.renderEmitter.fire();
@@ -117,7 +117,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         }
     }
 
-    private async renderDocumentation(editor: vscode.TextEditor | undefined): Promise<void> {
+    private async convertDocumentation(editor: vscode.TextEditor | undefined): Promise<void> {
         const document = editor?.document;
         if (!document || document.uri.scheme !== "file") {
             return undefined;
@@ -125,7 +125,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
 
         const response = await this.context.languageClientManager.useLanguageClient(
             async client => {
-                return await client.sendRequest(RenderDocumentationRequest.type, {
+                return await client.sendRequest(ConvertDocumentationRequest.type, {
                     textDocument: {
                         uri: document.uri.toString(),
                     },
@@ -133,12 +133,22 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                 });
             }
         );
-        if (!response.content) {
+        if (response.type === "error") {
+            this.postMessage({
+                type: "update-content",
+                content: {
+                    type: "error",
+                    errorMessage: response.error.message,
+                },
+            });
             return;
         }
         this.postMessage({
             type: "update-content",
-            content: this.parseRenderNode(response.content),
+            content: {
+                type: "render-node",
+                renderNode: this.parseRenderNode(response.renderNode),
+            },
         });
     }
 

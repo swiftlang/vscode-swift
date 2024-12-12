@@ -12,13 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-import { RenderNode, WebviewMessage } from "./WebviewMessage";
+import { RenderNode, WebviewContent, WebviewMessage } from "./WebviewMessage";
 import { createCommunicationBridge } from "./CommunicationBridge";
 
 createCommunicationBridge().then(async bridge => {
     const vscode = acquireVsCodeApi();
     let activeDocumentationPath: string | undefined;
     let contentToApplyOnRender: RenderNode | undefined;
+
+    window.document.getElementById("app");
 
     // Handle messages coming from swift-docc-render
     bridge.onDidReceiveMessage(message => {
@@ -49,27 +51,32 @@ createCommunicationBridge().then(async bridge => {
                 break;
         }
     });
-    function handleUpdateContentMessage(renderNode: RenderNode) {
-        const documentationPath: string = (() => {
-            switch (renderNode.kind) {
-                case "symbol":
-                case "article":
-                    return "/live/documentation";
-                case "overview":
-                    return "/live/tutorials-overview";
-                default:
-                    return "/live/tutorials";
+    function handleUpdateContentMessage(content: WebviewContent) {
+        if (content.type === "render-node") {
+            const renderNode = content.renderNode;
+            const documentationPath: string = (() => {
+                switch (renderNode.kind) {
+                    case "symbol":
+                    case "article":
+                        return "/live/documentation";
+                    case "overview":
+                        return "/live/tutorials-overview";
+                    default:
+                        return "/live/tutorials";
+                }
+            })();
+            if (activeDocumentationPath !== documentationPath) {
+                activeDocumentationPath = documentationPath;
+                contentToApplyOnRender = renderNode;
+                bridge.send({
+                    type: "navigation",
+                    data: documentationPath,
+                });
+            } else {
+                bridge.send({ type: "contentUpdate", data: renderNode });
             }
-        })();
-        if (activeDocumentationPath !== documentationPath) {
-            activeDocumentationPath = documentationPath;
-            contentToApplyOnRender = renderNode;
-            bridge.send({
-                type: "navigation",
-                data: documentationPath,
-            });
         } else {
-            bridge.send({ type: "contentUpdate", data: renderNode });
+            // Show the error message
         }
     }
 

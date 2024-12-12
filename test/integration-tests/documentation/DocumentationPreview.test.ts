@@ -16,13 +16,13 @@ import * as vscode from "vscode";
 import contextKeys from "../../../src/contextKeys";
 import { expect } from "chai";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
-import { waitForNoRunningTasks } from "../../utilities";
+import { waitForNoRunningTasks } from "../../utilities/tasks";
 import { testAssetUri } from "../../fixtures";
 import { FolderContext } from "../../../src/FolderContext";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Commands } from "../../../src/commands";
 import { Workbench } from "../../../src/utilities/commands";
-import { RenderNode } from "../../../src/documentation/webview/WebviewMessage";
+import { WebviewContent } from "../../../src/documentation/webview/WebviewMessage";
 import { PreviewEditorConstant } from "../../../src/documentation/DocumentationPreviewEditor";
 
 suite("Documentation Preview", function () {
@@ -46,7 +46,7 @@ suite("Documentation Preview", function () {
     });
 
     setup(function () {
-        if (!contextKeys.supportsDocumentationRendering) {
+        if (!contextKeys.supportsDocumentationLivePreview) {
             this.skip();
         }
     });
@@ -311,14 +311,12 @@ suite("Documentation Preview", function () {
     });
 });
 
-function waitForNextContentUpdate(context: WorkspaceContext): Promise<RenderNode> {
-    return new Promise<RenderNode>(resolve => {
-        const disposable = context.documentation.onPreviewDidUpdateContent(
-            (renderNode: RenderNode) => {
-                resolve(renderNode);
-                disposable.dispose();
-            }
-        );
+function waitForNextContentUpdate(context: WorkspaceContext): Promise<WebviewContent> {
+    return new Promise<WebviewContent>(resolve => {
+        const disposable = context.documentation.onPreviewDidUpdateContent(content => {
+            resolve(content);
+            disposable.dispose();
+        });
     });
 }
 

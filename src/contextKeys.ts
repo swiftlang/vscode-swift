@@ -69,9 +69,9 @@ interface ContextKeys {
     supportsReindexing: boolean;
 
     /**
-     * Whether the SourceKit-LSP server supports documentation rendering.
+     * Whether the SourceKit-LSP server supports documentation live preview.
      */
-    supportsDocumentationRendering: boolean;
+    supportsDocumentationLivePreview: boolean;
 }
 
 /** Creates the getters and setters for the VS Code Swift extension's context keys. */
@@ -85,7 +85,7 @@ function createContextKeys(): ContextKeys {
     let lldbVSCodeAvailable: boolean = false;
     let createNewProjectAvailable: boolean = false;
     let supportsReindexing: boolean = false;
-    let supportsDocumentationRendering: boolean = false;
+    let supportsDocumentationLivePreview: boolean = false;
 
     return {
         get isActivated() {
@@ -173,15 +173,15 @@ function createContextKeys(): ContextKeys {
             vscode.commands.executeCommand("setContext", "swift.supportsReindexing", value);
         },
 
-        get supportsDocumentationRendering() {
-            return supportsDocumentationRendering;
+        get supportsDocumentationLivePreview() {
+            return supportsDocumentationLivePreview;
         },
 
-        set supportsDocumentationRendering(value: boolean) {
-            supportsDocumentationRendering = value;
+        set supportsDocumentationLivePreview(value: boolean) {
+            supportsDocumentationLivePreview = value;
             vscode.commands.executeCommand(
                 "setContext",
-                "swift.supportsDocumentationRendering",
+                "swift.supportsDocumentationLivePreview",
                 value
             );
         },

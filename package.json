@@ -24,8 +24,6 @@
   ],
   "activationEvents": [
     "onLanguage:swift",
-    "onLanguage:swift-docc-markdown",
-    "onLanguage:swift-docc-tutorial",
     "workspaceContains:Package.swift",
     "workspaceContains:compile_commands.json",
     "workspaceContains:compile_flags.txt",
@@ -63,21 +61,12 @@
         ]
       },
       {
-        "id": "swift-docc-markdown",
+        "id": "tutorial",
         "aliases": [
-          "Swift DocC Markdown"
+          "Tutorial"
         ],
         "filenamePatterns": [
-          "**/*.docc/**/*.md"
-        ]
-      },
-      {
-        "id": "swift-docc-tutorial",
-        "aliases": [
-          "Swift DocC Tutorial"
-        ],
-        "filenamePatterns": [
-          "**/*.docc/**/*.tutorial"
+          "*.tutorial"
         ]
       }
     ],
@@ -690,7 +679,7 @@
       "commandPalette": [
         {
           "command": "swift.previewDocumentation",
-          "when": "swift.supportsDocumentationRendering"
+          "when": "swift.supportsDocumentationLivePreview"
         },
         {
           "command": "swift.createNewProject",
