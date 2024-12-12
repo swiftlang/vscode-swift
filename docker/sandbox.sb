@@ -1,0 +1,103 @@
+(version 1)
+; Deny everything by default
+(deny default)
+
+; Get fonts
+(import "system.sb")
+
+; Helpers
+(define (param-regex param-name param-relative-regex)
+    (regex (string-append "^" (regex-quote (param param-name)) param-relative-regex)))
+(define (param-subpath param-name param-relative-subpath)
+    (subpath (string-append (param param-name) param-relative-subpath)))
+(define workspace
+    (param "workspace"))
+
+; Read
+(allow file-read-metadata
+    (subpath "/"))
+(allow file-read*
+    (subpath workspace)
+    (path "/")
+    (path "/private/etc/ssl/openssl.cnf")
+    (path "/Library/Preferences/com.apple.dt.Xcode.plist")
+    (path "/dev/dtracehelper")
+    (path "/dev/fd")
+    (path "/dev/null")
+    (path "/dev/ptmx")
+    (regex #"^/dev/tty.*")
+    (path "/etc/shells")
+    (path "/private/etc/shells")
+    (path "/private/etc/ssl/cert.pem")
+    (path "/usr/local/share/git-core/gitconfig")
+    (subpath "/Users/award999/repos/sourcekit-lsp/.build") ; REMOVE
+    (regex #"^/Users/[^/]+/.gitconfig$")
+    (regex #"^/Users/[^/]+/.sourcekit-lsp.*")
+    (regex #"^/Users/[^/]+/.swiftpm.*")
+    (regex #"^/Users/[^/]+/Library/org.swift.swiftpm.*")
+    (regex #"^/Users/[^/]+/Library/Developer/Toolchains")
+    (regex #"^/Users/[^/]+/Library/Developer/Xcode/DerivedData.*")
+    (regex #"^/Users/[^/]+/Library/Caches/org.swift.swiftpm.*")
+    (regex #"^/Users/[^/]+/Library/Application Support/Code.*")
+    (regex #"^/Users/[^/]+/Library/Saved Application State/com.microsoft.VSCode.savedState.*")
+    (regex #"^/private/var/folders/[^/]+/[^/]+/.+")
+    (subpath "/Library/Developer/Toolchains")
+    (subpath "/Applications/Xcode.app")
+    (subpath "/Applications/Xcode-beta.app")
+    (subpath "/bin")
+    (subpath "/usr/bin")
+    (subpath "/usr/libexec/path_helper")
+    (regex #"^/Users/[^/]+/.vscode/argv.json")
+)
+
+(allow mach-lookup)
+(allow mach-register)
+
+; Write
+(allow file-write*
+    (subpath workspace)
+    (path "/dev/null")
+    (path "/dev/ptmx")
+    (regex #"^/dev/tty.*")
+    (regex #"^/Users/[^/]+/.sourcekit-lsp.*")
+    (regex #"^/Users/[^/]+/Library/org.swift.swiftpm.*")
+    (regex #"^/Users/[^/]+/Library/Caches/org.swift.swiftpm.*")
+    (regex #"^/Users/[^/]+/Library/Developer/Xcode/DerivedData.*")
+    (regex #"^/Users/[^/]+/Library/Application Support/Code.*")
+    (regex #"^/private/var/folders/[^/]+/[^/]+/.+")
+    (regex #"^/Users/[^/]+/.vscode/argv.json")
+)
+
+; Execute
+(allow process-exec*)
+(allow process-fork)
+
+; Network
+(allow system-socket)
+(allow network-outbound
+    (path "/private/var/run/mDNSResponder")
+    (remote tcp4 "*:443")
+)
+
+; Open VSCode window
+(allow file-ioctl)
+; (allow file-issue-extension)
+(allow iokit-open-user-client)
+; (allow system-fsctl) ; HFSIOC_SET_HOTFILE_STATE
+
+; VSCode sockets
+(allow network*
+    (param-regex "workspace" "/.vscode-test/user-data/1\.[0-9]+-main\.sock")
+)
+
+; VSCode terminal
+(allow pseudo-tty)
+
+; SourceKit-LSP
+(allow job-creation)
+
+; JSON language server
+(allow signal)
+
+; Uncomment when connected to Ottawa office network
+(system-network)
