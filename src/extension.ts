@@ -38,6 +38,7 @@ import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 import { checkAndWarnAboutWindowsSymlinks } from "./ui/win32";
 import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "./terminal";
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
+import { SelectedXcodeWatcher } from "./toolchain/SelectedXcodeWatcher";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -125,6 +126,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         context.subscriptions.push(...commands.register(workspaceContext));
         context.subscriptions.push(workspaceContext);
         context.subscriptions.push(registerDebugger(workspaceContext));
+        context.subscriptions.push(new SelectedXcodeWatcher(outputChannel));
 
         // listen for workspace folder changes and active text editor changes
         workspaceContext.setupEventListeners();
