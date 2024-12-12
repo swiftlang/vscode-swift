@@ -16,7 +16,7 @@
 set -e
 
 NODE_VERSION="$(cat .nvmrc)"
-NODE_NAME="node-v$NODE_VERSION-darwin-arm64"
+NODE_NAME="node-v$NODE_VERSION-darwin-x64"
 NODE_ARCHIVE="$NODE_NAME.tar.gz"
 ARTIFACTS="$PWD/.vscode-test"
 VSCODE_SETTINGS="$ARTIFACTS/user-data/User/settings.json"
