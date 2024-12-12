@@ -52,6 +52,8 @@
 
 (allow mach-lookup)
 (allow mach-register)
+(allow sysctl-read)
+(allow ipc-posix-shm-read-data (literal "apple.shm.notification_center"))
 
 ; Write
 (allow file-write*
@@ -76,6 +78,7 @@
 (allow system-socket)
 (allow network-outbound
     (path "/private/var/run/mDNSResponder")
+    (remote tcp4 "*:80")
     (remote tcp4 "*:443")
     (remote tcp4 "*:3128")
 )
@@ -99,6 +102,3 @@
 
 ; JSON language server
 (allow signal)
-
-; Uncomment when connected to Ottawa office network
-(system-network)
