@@ -1,0 +1,13 @@
+diff --git a/src/setup-utils/SwiftDocCRenderRouter.js b/src/setup-utils/SwiftDocCRenderRouter.js
+index 87ba2a4..17bd401 100644
+--- a/src/setup-utils/SwiftDocCRenderRouter.js
++++ b/src/setup-utils/SwiftDocCRenderRouter.js
+@@ -32,7 +32,7 @@ const defaultRoutes = [
+ 
+ export default function createRouterInstance(routerConfig = {}) {
+   const router = new Router({
+-    mode: 'history',
++    mode: 'abstract',
+     base: baseUrl,
+     scrollBehavior,
+     ...routerConfig,

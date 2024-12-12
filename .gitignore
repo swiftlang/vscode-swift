@@ -8,3 +8,4 @@ default.profraw
 .vscode-test
 .build
 assets/test/**/Package.resolved
+assets/swift-docc-render
