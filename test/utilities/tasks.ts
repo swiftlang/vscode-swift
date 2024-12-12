@@ -36,23 +36,19 @@ export function mutable<T>(target: T): Mutable<T> {
 export async function executeTaskAndWaitForResult(
     fixture: SwiftTaskFixture | SwiftTask
 ): Promise<{ exitCode?: number; output: string }> {
-    const task = ("task" in fixture ? fixture.task : fixture) as SwiftTask;
-    let output = "";
-    const disposables = [task.execution.onDidWrite(e => (output += e))];
-    const promise = new Promise<number | undefined>(res =>
-        disposables.push(
-            task.execution.onDidClose(e => {
-                disposables.forEach(d => d.dispose());
-                res(typeof e === "number" ? e : undefined);
-            })
-        )
-    );
-    await vscode.tasks.executeTask(task);
-    const exitCode = await promise;
-    return {
-        output,
-        exitCode,
-    };
+    const task = "task" in fixture ? fixture.task : fixture;
+    const exitPromise = waitForEndTaskProcess(task);
+    return await vscode.tasks.executeTask(task).then(async execution => {
+        let output = "";
+        const runningTask = execution.task as SwiftTask;
+        const disposables = [runningTask.execution.onDidWrite(e => (output += e))];
+        const exitCode = await exitPromise;
+        disposables.forEach(d => d.dispose());
+        return {
+            output,
+            exitCode,
+        };
+    });
 }
 
 /**
