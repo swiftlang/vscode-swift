@@ -23,11 +23,11 @@ VSCODE_SETTINGS="$ARTIFACTS/user-data/User/settings.json"
 LSP_SETTINGS="$HOME/.sourcekit-lsp/config.json"
 
 export TMPDIR="$ARTIFACTS/tmp"
-mkdir -p $TMPDIR
+mkdir -p "$TMPDIR"
 
 function cleanup {
     rm SHASUMS256.txt
-    rm $NODE_ARCHIVE
+    rm "$NODE_ARCHIVE"
     rm -rf "$ARTIFACTS"
     rm -rf "$LSP_SETTINGS"
 }
@@ -47,7 +47,7 @@ export NPM_CONFIG_GLOBALCONFIG="$ARTIFACTS/$NODE_NAME/globalnpmrc"
 
 PATH="$ARTIFACTS/$NODE_NAME/bin:$PATH"
 
-mkdir -p $(dirname "$VSCODE_SETTINGS")
+mkdir -p "$(dirname "$VSCODE_SETTINGS")"
 cat <<EOT > "$VSCODE_SETTINGS"
 {
     "swift.buildArguments": [
