@@ -160,7 +160,7 @@ suite("TestDiscovery Suite", () => {
     });
 
     test("handles adding a test to an existing parent when updating with a partial tree", () => {
-        const child = testItem("AppTarget.AppTests/ChildTests");
+        const child = testItem("AppTarget.AppTests/ChildTests/SubChildTests");
 
         updateTestsForTarget(testController, { id: "AppTarget", label: "AppTarget" }, [child]);
 
@@ -176,7 +176,13 @@ suite("TestDiscovery Suite", () => {
                             {
                                 id: "AppTarget.AppTests/ChildTests",
                                 tags: [{ id: "XCTest" }, { id: "runnable" }],
-                                children: [],
+                                children: [
+                                    {
+                                        id: "AppTarget.AppTests/ChildTests/SubChildTests",
+                                        tags: [{ id: "XCTest" }, { id: "runnable" }],
+                                        children: [],
+                                    },
+                                ],
                             },
                         ],
                     },
