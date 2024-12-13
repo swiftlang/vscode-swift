@@ -518,7 +518,8 @@ export class LanguageClientManager {
                     const definitions = result as vscode.Location[];
                     if (
                         definitions &&
-                        path.extname(definitions[0].uri.path) === ".swiftinterface"
+                        path.extname(definitions[0].uri.path) === ".swiftinterface" &&
+                        definitions[0].uri.scheme === "file"
                     ) {
                         const uri = definitions[0].uri.with({ scheme: "readonly" });
                         return new vscode.Location(uri, definitions[0].range);
