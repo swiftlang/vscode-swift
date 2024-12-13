@@ -77,4 +77,4 @@ npm run package
 
 # Need to set proxy to download VS Code
 export npm_config_https_proxy="$HTTPS_PROXY"
-NO_PROXY="*" CI=1 FAST_TEST_RUN=1 npm run coverage -- --coverage-output "$PWD/coverage"
+VSCODE_DATA_DIR="$PWD/ud" CI=1 FAST_TEST_RUN=1 npm run coverage -- --coverage-output "$PWD/coverage"

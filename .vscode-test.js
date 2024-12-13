@@ -18,6 +18,8 @@ const path = require("path");
 const isCIBuild = process.env["CI"] === "1";
 const isFastTestRun = process.env["FAST_TEST_RUN"] === "1";
 
+const dataDir = process.env["VSCODE_DATA_DIR"];
+
 // "env" in launch.json doesn't seem to work with vscode-test
 const isDebugRun = !(process.env["_"] ?? "").endsWith("node_modules/.bin/vscode-test");
 
@@ -36,7 +38,7 @@ module.exports = defineConfig({
                 "--disable-crash-reporter",
                 "--disable-workspace-trust",
                 "--disable-telemetry",
-            ],
+            ].concat(dataDir ? ["--user-data-dir", dataDir] : []),
             mocha: {
                 ui: "tdd",
                 color: true,
@@ -65,7 +67,7 @@ module.exports = defineConfig({
                 "--disable-crash-reporter",
                 "--disable-workspace-trust",
                 "--disable-telemetry",
-            ],
+            ].concat(dataDir ? ["--user-data-dir", dataDir] : []),
             mocha: {
                 ui: "tdd",
                 color: true,
