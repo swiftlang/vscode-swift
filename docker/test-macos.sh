@@ -75,12 +75,6 @@ npm run lint
 npm run format
 npm run package
 
-# Download vscode
-mkdir -p .vscode-test 
-curl -O -L "https://code.visualstudio.com/sha/download?build=stable&os=darwin-universal"
-unzip download -d .vscode-test
-rm download
-
-# export npm_config_proxy="$HTTPS_PROXY"
+# Need to set proxy to download VS Code
 export npm_config_https_proxy="$HTTPS_PROXY"
-VSCODE_INSTALL="$(pwd)/.vscode-test/Visual Studio Code.app" CI=1 FAST_TEST_RUN=1 npm run coverage -- --coverage-output "$PWD/coverage"
+NO_PROXY="*" CI=1 FAST_TEST_RUN=1 npm run coverage -- --coverage-output "$PWD/coverage"

@@ -21,6 +21,7 @@
     (path "/")
     (path "/private/etc/ssl/openssl.cnf")
     (path "/Library/Preferences/com.apple.dt.Xcode.plist")
+    (path "/Library/Preferences/com.apple.ViewBridge.plist")
     (path "/dev/dtracehelper")
     (path "/dev/fd")
     (path "/dev/null")
