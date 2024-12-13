@@ -18,6 +18,7 @@ import { beforeEach } from "mocha";
 import {
     TestClass,
     updateTests,
+    updateTestsForTarget,
     updateTestsFromClasses,
 } from "../../../src/TestExplorer/TestDiscovery";
 import { reduceTestItemChildren } from "../../../src/TestExplorer/TestUtils";
@@ -156,6 +157,32 @@ suite("TestDiscovery Suite", () => {
         ]);
         assert.deepStrictEqual(testController.items.get("foo")?.uri, newLocation.uri);
         assert.deepStrictEqual(testController.items.get("foo")?.label, "New Label");
+    });
+
+    test("handles adding a test to an existing parent when updating with a partial tree", () => {
+        const child = testItem("AppTarget.AppTests/ChildTests");
+
+        updateTestsForTarget(testController, { id: "AppTarget", label: "AppTarget" }, [child]);
+
+        assert.deepStrictEqual(testControllerChildren(testController.items), [
+            {
+                id: "AppTarget",
+                tags: [{ id: "test-target" }, { id: "runnable" }],
+                children: [
+                    {
+                        id: "AppTarget.AppTests",
+                        tags: [{ id: "XCTest" }, { id: "runnable" }],
+                        children: [
+                            {
+                                id: "AppTarget.AppTests/ChildTests",
+                                tags: [{ id: "XCTest" }, { id: "runnable" }],
+                                children: [],
+                            },
+                        ],
+                    },
+                ],
+            },
+        ]);
     });
 
     test("updates tests from classes within a swift package", async () => {

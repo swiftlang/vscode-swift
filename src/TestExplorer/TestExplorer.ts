@@ -210,23 +210,17 @@ export class TestExplorer {
                 if (target && target.type === "test") {
                     testExplorer.lspTestDiscovery
                         .getDocumentTests(folder.swiftPackage, uri)
-                        .then(
-                            tests =>
-                                [
-                                    {
-                                        id: target.c99name,
-                                        label: target.name,
-                                        children: tests,
-                                        location: undefined,
-                                        disabled: false,
-                                        style: "test-target",
-                                        tags: [],
-                                    },
-                                ] as TestDiscovery.TestClass[]
+                        .then(tests =>
+                            TestDiscovery.updateTestsForTarget(
+                                testExplorer.controller,
+                                { id: target.c99name, label: target.name },
+                                tests,
+                                uri
+                            )
                         )
                         // Fallback to parsing document symbols for XCTests only
-                        .catch(() => parseTestsFromDocumentSymbols(target.name, symbols, uri))
-                        .then(tests => {
+                        .catch(() => {
+                            const tests = parseTestsFromDocumentSymbols(target.name, symbols, uri);
                             testExplorer.updateTests(testExplorer.controller, tests, uri);
                         });
                 }
