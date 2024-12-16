@@ -94,7 +94,7 @@
 
 ; VSCode sockets
 (allow network*
-    (param-regex "workspace" "/.vscode-test/user-data/1\.[0-9]+-main\.sock")
+    (param-regex "workspace" "/ud/1\.[0-9]+-main\.sock")
 )
 
 ; VSCode terminal
