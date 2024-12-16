@@ -75,6 +75,8 @@ npm run lint
 npm run format
 npm run package
 
+launchctl load -w /System/Library/LaunchAgents/com.apple.fontd.useragent.plist
+
 # Need to set proxy to download VS Code
 export npm_config_https_proxy="$HTTPS_PROXY"
 VSCODE_DATA_DIR="$PWD/ud" CI=1 FAST_TEST_RUN=1 npm run coverage -- --coverage-output "$PWD/coverage"
