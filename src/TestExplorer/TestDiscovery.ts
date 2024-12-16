@@ -79,6 +79,11 @@ export function updateTestsForTarget(
     // suite `Bar` will be dropped. To avoid this, we syntheize the intermediate children
     // just like we synthesize the test target.
     function synthesizeChildren(testItem: TestClass): TestClass {
+        // Only Swift Testing tests can be nested in a way that requires synthesis.
+        if (testItem.style === "XCTest") {
+            return testItem;
+        }
+
         const item = { ...testItem };
         // To determine if any root level test items are missing a parent we check how many
         // components there are in the ID. If there are more than one (the test target) then
