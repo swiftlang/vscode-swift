@@ -81,7 +81,6 @@
 (allow system-socket)
 (allow network-outbound
     (path "/private/var/run/mDNSResponder")
-    (remote tcp4 "*:80")
     (remote tcp4 "*:443")
     (remote tcp4 "*:3128")
 )

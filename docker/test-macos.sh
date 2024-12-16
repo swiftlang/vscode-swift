@@ -19,7 +19,8 @@ NODE_VERSION="$(cat .nvmrc)"
 NODE_NAME="node-v$NODE_VERSION-darwin-x64"
 NODE_ARCHIVE="$NODE_NAME.tar.gz"
 ARTIFACTS="$PWD/.vscode-test"
-VSCODE_SETTINGS="$ARTIFACTS/user-data/User/settings.json"
+USER_DATA="$PWD/ud"
+VSCODE_SETTINGS="$USER_DATA/User/settings.json"
 LSP_SETTINGS="$HOME/.sourcekit-lsp/config.json"
 
 export TMPDIR="$ARTIFACTS/tmp"
@@ -30,6 +31,7 @@ function cleanup {
     rm "$NODE_ARCHIVE"
     rm -rf "$ARTIFACTS"
     rm -rf "$LSP_SETTINGS"
+    rm -rf "$USER_DATA"
 }
 trap "cleanup" EXIT
 
@@ -50,11 +52,7 @@ PATH="$ARTIFACTS/$NODE_NAME/bin:$PATH"
 mkdir -p "$(dirname "$VSCODE_SETTINGS")"
 cat <<EOT > "$VSCODE_SETTINGS"
 {
-    "swift.buildArguments": [
-        "--disable-sandbox",
-        "-Xswiftc",
-        "-disable-sandbox"
-    ]
+    "swift.disableSandbox": true
 }
 EOT
 
