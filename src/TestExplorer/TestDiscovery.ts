@@ -66,6 +66,61 @@ export function updateTestsFromClasses(
     updateTests(testController, targets);
 }
 
+export function updateTestsForTarget(
+    testController: vscode.TestController,
+    testTarget: { id: string; label: string },
+    testItems: TestClass[],
+    filterFile?: vscode.Uri
+) {
+    // Because swift-testing suites can be defined through nested extensions the tests
+    // provided might not be directly parented to the test target. For instance, the
+    // target might be `Foo`, and one of the child `testItems` might be `Foo.Bar/Baz`.
+    // If we simply attach the `testItems` to the root test target then the intermediate
+    // suite `Bar` will be dropped. To avoid this, we syntheize the intermediate children
+    // just like we synthesize the test target.
+    function synthesizeChildren(testItem: TestClass): TestClass {
+        // Only Swift Testing tests can be nested in a way that requires synthesis.
+        if (testItem.style === "XCTest") {
+            return testItem;
+        }
+
+        const item = { ...testItem };
+        // To determine if any root level test items are missing a parent we check how many
+        // components there are in the ID. If there are more than one (the test target) then
+        // we synthesize all the intermediary test items.
+        const idComponents = testItem.id.split(/\.|\//);
+        idComponents.pop(); // Remove the last component to get the parent ID components
+        if (idComponents.length > 1) {
+            let newId = idComponents.slice(0, 2).join(".");
+            const remainingIdComponents = idComponents.slice(2);
+            if (remainingIdComponents.length) {
+                newId += "/" + remainingIdComponents.join("/");
+            }
+            return synthesizeChildren({
+                id: newId,
+                label: idComponents[idComponents.length - 1],
+                children: [item],
+                location: undefined,
+                disabled: false,
+                style: item.style,
+                tags: item.tags,
+            });
+        }
+        return item;
+    }
+
+    const testTargetClass: TestClass = {
+        id: testTarget.id,
+        label: testTarget.label,
+        children: testItems.map(synthesizeChildren),
+        location: undefined,
+        disabled: false,
+        style: "test-target",
+        tags: [],
+    };
+    updateTests(testController, [testTargetClass], filterFile);
+}
+
 /**
  * Update Test Controller TestItems based off array of TestTargets
  * @param testController Test controller

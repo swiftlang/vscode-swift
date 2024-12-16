@@ -18,11 +18,13 @@ import { beforeEach } from "mocha";
 import {
     TestClass,
     updateTests,
+    updateTestsForTarget,
     updateTestsFromClasses,
 } from "../../../src/TestExplorer/TestDiscovery";
 import { reduceTestItemChildren } from "../../../src/TestExplorer/TestUtils";
 import { SwiftPackage, Target, TargetType } from "../../../src/SwiftPackage";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
+import { TestStyle } from "../../../src/sourcekit-lsp/extensions";
 
 suite("TestDiscovery Suite", () => {
     let testController: vscode.TestController;
@@ -49,12 +51,12 @@ suite("TestDiscovery Suite", () => {
         );
     }
 
-    function testItem(id: string): TestClass {
+    function testItem(id: string, style: TestStyle = "XCTest"): TestClass {
         return {
             id,
             label: id,
             disabled: false,
-            style: "XCTest",
+            style,
             location: undefined,
             tags: [],
             children: [],
@@ -156,6 +158,38 @@ suite("TestDiscovery Suite", () => {
         ]);
         assert.deepStrictEqual(testController.items.get("foo")?.uri, newLocation.uri);
         assert.deepStrictEqual(testController.items.get("foo")?.label, "New Label");
+    });
+
+    test("handles adding a test to an existing parent when updating with a partial tree", () => {
+        const child = testItem("AppTarget.AppTests/ChildTests/SubChildTests", "swift-testing");
+
+        updateTestsForTarget(testController, { id: "AppTarget", label: "AppTarget" }, [child]);
+
+        assert.deepStrictEqual(testControllerChildren(testController.items), [
+            {
+                id: "AppTarget",
+                tags: [{ id: "test-target" }, { id: "runnable" }],
+                children: [
+                    {
+                        id: "AppTarget.AppTests",
+                        tags: [{ id: "swift-testing" }, { id: "runnable" }],
+                        children: [
+                            {
+                                id: "AppTarget.AppTests/ChildTests",
+                                tags: [{ id: "swift-testing" }, { id: "runnable" }],
+                                children: [
+                                    {
+                                        id: "AppTarget.AppTests/ChildTests/SubChildTests",
+                                        tags: [{ id: "swift-testing" }, { id: "runnable" }],
+                                        children: [],
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+        ]);
     });
 
     test("updates tests from classes within a swift package", async () => {
