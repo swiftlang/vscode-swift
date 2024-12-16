@@ -26,6 +26,19 @@ const isDebugRun = !(process.env["_"] ?? "").endsWith("node_modules/.bin/vscode-
 // so tests don't timeout when a breakpoint is hit
 const timeout = isDebugRun ? Number.MAX_SAFE_INTEGER : 3000;
 
+const launchArgs = [
+    "--disable-updates",
+    "--disable-crash-reporter",
+    "--disable-workspace-trust",
+    "--disable-telemetry",
+];
+if (dataDir) {
+    launchArgs.push("--user-data-dir", dataDir);
+}
+if (process.platform === "darwin" && process.arch === "x64") {
+    launchArgs.push("--disable-gpu");
+}
+
 module.exports = defineConfig({
     tests: [
         {
@@ -33,12 +46,7 @@ module.exports = defineConfig({
             files: ["dist/test/common.js", "dist/test/integration-tests/**/*.test.js"],
             version: process.env["VSCODE_VERSION"] ?? "stable",
             workspaceFolder: "./assets/test",
-            launchArgs: [
-                "--disable-updates",
-                "--disable-crash-reporter",
-                "--disable-workspace-trust",
-                "--disable-telemetry",
-            ].concat(dataDir ? ["--user-data-dir", dataDir] : []),
+            launchArgs,
             mocha: {
                 ui: "tdd",
                 color: true,
@@ -61,13 +69,7 @@ module.exports = defineConfig({
             label: "unitTests",
             files: ["dist/test/common.js", "dist/test/unit-tests/**/*.test.js"],
             version: process.env["VSCODE_VERSION"] ?? "stable",
-            launchArgs: [
-                "--disable-extensions",
-                "--disable-updates",
-                "--disable-crash-reporter",
-                "--disable-workspace-trust",
-                "--disable-telemetry",
-            ].concat(dataDir ? ["--user-data-dir", dataDir] : []),
+            launchArgs: launchArgs.concat("--disable-extensions"),
             mocha: {
                 ui: "tdd",
                 color: true,

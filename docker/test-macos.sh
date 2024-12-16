@@ -24,6 +24,7 @@ VSCODE_SETTINGS="$USER_DATA/User/settings.json"
 LSP_SETTINGS="$HOME/.sourcekit-lsp/config.json"
 
 export TMPDIR="$ARTIFACTS/tmp"
+export TMP="$TMPDIR"
 mkdir -p "$TMPDIR"
 
 function cleanup {
