@@ -48,7 +48,7 @@
     (subpath "/bin")
     (subpath "/usr/bin")
     (subpath "/usr/libexec/path_helper")
-    (regex #"^/Users/[^/]+/.vscode/argv.json")
+    (regex #"^/Users/[^/]+/.vscode.*")
 )
 
 (allow mach-lookup)
@@ -68,7 +68,7 @@
     (regex #"^/Users/[^/]+/Library/Developer/Xcode/DerivedData.*")
     (regex #"^/Users/[^/]+/Library/Application Support/Code.*")
     (regex #"^/private/var/folders/[^/]+/[^/]+/.+")
-    (regex #"^/Users/[^/]+/.vscode/argv.json")
+    (regex #"^/Users/[^/]+/.vscode.*")
 )
 
 ; Execute
