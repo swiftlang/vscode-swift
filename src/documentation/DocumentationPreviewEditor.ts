@@ -36,7 +36,9 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         private readonly extension: vscode.ExtensionContext,
         private readonly context: WorkspaceContext
     ) {
-        const swiftDoccRenderPath = this.extension.asAbsolutePath("assets/swift-docc-render");
+        const swiftDoccRenderPath = this.extension.asAbsolutePath(
+            path.join("assets", "swift-docc-render")
+        );
         // Create and hook up events for the WebviewPanel
         this.webviewPanel = vscode.window.createWebviewPanel(
             PreviewEditorConstant.VIEW_TYPE,
@@ -45,7 +47,9 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
             {
                 enableScripts: true,
                 localResourceRoots: [
-                    vscode.Uri.file(this.extension.asAbsolutePath("assets/documentation-webview")),
+                    vscode.Uri.file(
+                        this.extension.asAbsolutePath(path.join("assets", "documentation-webview"))
+                    ),
                     vscode.Uri.file(swiftDoccRenderPath),
                     ...context.folders.map(f => f.folder),
                 ],
@@ -55,7 +59,11 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
             vscode.Uri.file(swiftDoccRenderPath)
         );
         const scriptURI = this.webviewPanel.webview.asWebviewUri(
-            vscode.Uri.file(this.extension.asAbsolutePath("assets/documentation-webview/index.js"))
+            vscode.Uri.file(
+                this.extension.asAbsolutePath(
+                    path.join("assets", "documentation-webview", "index.js")
+                )
+            )
         );
         fs.readFile(path.join(swiftDoccRenderPath, "index.html"), "utf-8").then(
             documentationHTML => {

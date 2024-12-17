@@ -24,9 +24,9 @@ export interface CommunicationBridge {
 
 /**
  * Creates a {@link CommunicationBridge} that can send and receive messages from
- * swift-docc-render.
+ * swift-docc-render. Waits for swift-docc-render to be initialized before resolving.
  *
- * Waits for swift-docc-render to be initialized before resolving.
+ * This must be kept up to date with src/plugins/CommunicationBridge.js in swift-docc-render.
  *
  * @returns A promise that resolves to the created CommunicationBridge
  */
