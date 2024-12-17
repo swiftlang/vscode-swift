@@ -75,6 +75,7 @@ export enum Commands {
     USE_LOCAL_DEPENDENCY = "swift.useLocalDependency",
     UNEDIT_DEPENDENCY = "swift.uneditDependency",
     RUN_PLUGIN_TASK = "swift.runPluginTask",
+    PREVIEW_DOCUMENTATION = "swift.previewDocumentation",
 }
 
 /**
@@ -154,6 +155,10 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand(
             "swift.runAllTestsParallel",
             async () => await runAllTestsParallel(ctx)
+        ),
+        vscode.commands.registerCommand(
+            Commands.PREVIEW_DOCUMENTATION,
+            async () => await ctx.documentation.launchDocumentationPreview()
         ),
     ];
 }

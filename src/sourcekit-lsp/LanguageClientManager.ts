@@ -18,6 +18,7 @@ import {
     CloseAction,
     CloseHandlerResult,
     DidChangeWorkspaceFoldersNotification,
+    DocumentSelector,
     ErrorAction,
     ErrorHandler,
     ErrorHandlerResult,
@@ -56,7 +57,7 @@ export class LanguageClientManager implements vscode.Disposable {
     static indexingLogName = "SourceKit-LSP: Indexing";
 
     // document selector used by language client
-    static appleLangDocumentSelector = [
+    static appleLangDocumentSelector: SourceKitDocumentSelector = [
         { scheme: "sourcekit-lsp", language: "swift" },
         { scheme: "file", language: "swift" },
         { scheme: "untitled", language: "swift" },
@@ -66,14 +67,21 @@ export class LanguageClientManager implements vscode.Disposable {
         { scheme: "untitled", language: "objective-cpp" },
     ];
     // document selector used by language client
-    static cFamilyDocumentSelector = [
+    static cFamilyDocumentSelector: SourceKitDocumentSelector = [
         { scheme: "file", language: "c" },
         { scheme: "untitled", language: "c" },
         { scheme: "file", language: "cpp" },
         { scheme: "untitled", language: "cpp" },
     ];
-    static get documentSelector(): { scheme: string; language: string }[] {
-        let documentSelector: { scheme: string; language: string }[];
+    // document selector for swift-docc documentation
+    static documentationDocumentSelector: SourceKitDocumentSelector = [
+        { scheme: "file", language: "markdown" },
+        { scheme: "untitled", language: "markdown" },
+        { scheme: "file", language: "tutorial" },
+        { scheme: "untitiled", language: "tutorial" },
+    ];
+    static get documentSelector(): DocumentSelector {
+        let documentSelector: SourceKitDocumentSelector;
         switch (configuration.lsp.supportCFamily) {
             case "enable":
                 documentSelector = [
@@ -98,9 +106,10 @@ export class LanguageClientManager implements vscode.Disposable {
                           ];
             }
         }
-        documentSelector = documentSelector.filter(doc =>
-            configuration.lsp.supportedLanguages.includes(doc.language)
-        );
+        documentSelector = documentSelector.filter(doc => {
+            return configuration.lsp.supportedLanguages.includes(doc.language);
+        });
+        documentSelector.push(...LanguageClientManager.documentationDocumentSelector);
         return documentSelector;
     }
 
@@ -810,3 +819,8 @@ export class SourceKitLSPErrorHandler implements ErrorHandler {
 export const enum LanguageClientError {
     LanguageClientUnavailable = "Language Client Unavailable",
 }
+
+type SourceKitDocumentSelector = {
+    scheme: string;
+    language: string;
+}[];

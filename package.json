@@ -59,6 +59,15 @@
           ".swiftinterface",
           ".swift"
         ]
+      },
+      {
+        "id": "tutorial",
+        "aliases": [
+          "Tutorial"
+        ],
+        "filenamePatterns": [
+          "*.tutorial"
+        ]
       }
     ],
     "snippets": [
@@ -76,6 +85,11 @@
       }
     ],
     "commands": [
+      {
+        "command": "swift.previewDocumentation",
+        "title": "Preview Documentation",
+        "category": "Swift"
+      },
       {
         "command": "swift.createNewProject",
         "title": "Create New Project...",
@@ -663,6 +677,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "swift.previewDocumentation",
+          "when": "swift.supportsDocumentationLivePreview"
+        },
         {
           "command": "swift.createNewProject",
           "when": "!swift.isActivated || swift.createNewProjectAvailable"
@@ -1274,9 +1292,13 @@
   ],
   "scripts": {
     "vscode:prepublish": "npm run bundle",
-    "bundle": "del-cli ./dist && esbuild ./src/extension.ts --bundle --outfile=dist/src/extension.js --external:vscode --format=cjs --platform=node --target=node18 --minify --sourcemap",
-    "compile": "del-cli ./dist && tsc",
-    "watch": "del-cli ./dist && tsc --watch",
+    "bundle": "del-cli ./dist && npm run bundle-extension && npm run bundle-documentation-webview",
+    "bundle-extension": "del-cli ./dist && esbuild ./src/extension.ts --bundle --outfile=dist/src/extension.js --external:vscode --format=cjs --platform=node --target=node18 --minify --sourcemap",
+    "bundle-documentation-webview": "npm run compile-documentation-webview -- --minify",
+    "compile": "del-cli ./dist/ && tsc --build",
+    "watch": "npm run compile -- --watch",
+    "compile-documentation-webview": "del-cli ./assets/documentation-webview && esbuild ./src/documentation/webview/webview.ts --bundle --outfile=assets/documentation-webview/index.js --format=cjs --sourcemap",
+    "watch-documentation-webview": "npm run compile-documentation-webview -- --watch",
     "lint": "eslint ./ --ext ts && tsc --noEmit",
     "update-swift-docc-render": "tsx ./scripts/update_swift_docc_render.ts",
     "format": "prettier --check .",

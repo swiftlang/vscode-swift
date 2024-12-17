@@ -4,7 +4,15 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "build",
+      "label": "Build Extension",
+      "dependsOn": ["compile", "compile-documentation-webview"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "compile",
       "type": "npm",
       "script": "watch",
       "problemMatcher": "$tsc-watch",
@@ -13,8 +21,49 @@
       },
       "isBackground": true,
       "group": {
-        "kind": "build",
-        "isDefault": true
+        "kind": "build"
+      }
+    },
+    {
+      "label": "compile-documentation-webview",
+      "type": "npm",
+      "script": "watch-documentation-webview",
+      "problemMatcher": [
+        {
+          "owner": "esbuild",
+          "severity": "error",
+          "source": "esbuild",
+          "fileLocation": "relative",
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": {
+              "regexp": "\\[watch\\] build started"
+            },
+            "endsPattern": {
+              "regexp": "\\[watch\\] build finished"
+            }
+          },
+          "pattern": [
+            {
+              "regexp": "^[✘▲] \\[([A-Z]+)\\] (.+)",
+              "severity": 1,
+              "message": 2
+            },
+            {
+              "regexp": "^(?:\\t| {4})(?!\\s)([^:]+)(?::([0-9]+))?(?::([0-9]+))?:$",
+              "file": 1,
+              "line": 2,
+              "column": 3
+            }
+          ]
+        }
+      ],
+      "presentation": {
+        "reveal": "never"
+      },
+      "isBackground": true,
+      "group": {
+        "kind": "build"
       }
     },
     {

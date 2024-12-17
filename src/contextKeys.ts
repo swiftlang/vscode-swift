@@ -21,72 +21,176 @@ import * as vscode from "vscode";
  *   https://code.visualstudio.com/api/references/when-clause-contexts
  */
 
-/**
- * Type-safe wrapper around context keys used in `when` clauses.
- */
-const contextKeys = {
+/** Interface for getting and setting the VS Code Swift extension's context keys */
+interface ContextKeys {
     /**
      * Whether or not the swift extension is activated.
      */
-    set isActivated(value: boolean) {
-        vscode.commands.executeCommand("setContext", "swift.isActivated", value);
-    },
+    isActivated: boolean;
 
     /**
      * Whether the workspace folder contains a Swift package.
      */
-    set hasPackage(value: boolean) {
-        vscode.commands.executeCommand("setContext", "swift.hasPackage", value);
-    },
+    hasPackage: boolean;
 
     /**
      * Whether the Swift package has any dependencies to display in the Package Dependencies view.
      */
-    set packageHasDependencies(value: boolean) {
-        vscode.commands.executeCommand("setContext", "swift.packageHasDependencies", value);
-    },
+    packageHasDependencies: boolean;
 
     /**
      * Whether the Swift package has any plugins.
      */
-    set packageHasPlugins(value: boolean) {
-        vscode.commands.executeCommand("setContext", "swift.packageHasPlugins", value);
-    },
+    packageHasPlugins: boolean;
 
     /**
      * Whether current active file is in a SwiftPM source target folder
      */
-    set currentTargetType(value: string | undefined) {
-        vscode.commands.executeCommand("setContext", "swift.currentTargetType", value ?? "none");
-    },
+    currentTargetType: string | undefined;
 
     /**
      * Whether current active file is a Snippet
      */
-    set fileIsSnippet(value: boolean) {
-        vscode.commands.executeCommand("setContext", "swift.fileIsSnippet", value);
-    },
+    fileIsSnippet: boolean;
 
     /**
      * Whether current active file is a Snippet
      */
-    set lldbVSCodeAvailable(value: boolean) {
-        vscode.commands.executeCommand("setContext", "swift.lldbVSCodeAvailable", value);
-    },
+    lldbVSCodeAvailable: boolean;
 
     /**
      * Whether the swift.createNewProject command is available.
      */
-    set createNewProjectAvailable(value: boolean) {
-        vscode.commands.executeCommand("setContext", "swift.createNewProjectAvailable", value);
-    },
+    createNewProjectAvailable: boolean;
 
     /**
      * Whether the SourceKit-LSP server supports reindexing the workspace.
      */
-    set supportsReindexing(value: boolean) {
-        vscode.commands.executeCommand("setContext", "swift.supportsReindexing", value);
-    },
-};
+    supportsReindexing: boolean;
+
+    /**
+     * Whether the SourceKit-LSP server supports documentation live preview.
+     */
+    supportsDocumentationLivePreview: boolean;
+}
+
+/** Creates the getters and setters for the VS Code Swift extension's context keys. */
+function createContextKeys(): ContextKeys {
+    let isActivated: boolean = false;
+    let hasPackage: boolean = false;
+    let packageHasDependencies: boolean = false;
+    let packageHasPlugins: boolean = false;
+    let currentTargetType: string | undefined = undefined;
+    let fileIsSnippet: boolean = false;
+    let lldbVSCodeAvailable: boolean = false;
+    let createNewProjectAvailable: boolean = false;
+    let supportsReindexing: boolean = false;
+    let supportsDocumentationLivePreview: boolean = false;
+
+    return {
+        get isActivated() {
+            return isActivated;
+        },
+
+        set isActivated(value: boolean) {
+            isActivated = value;
+            vscode.commands.executeCommand("setContext", "swift.isActivated", value);
+        },
+
+        get hasPackage() {
+            return hasPackage;
+        },
+
+        set hasPackage(value: boolean) {
+            hasPackage = value;
+            vscode.commands.executeCommand("setContext", "swift.hasPackage", value);
+        },
+
+        get packageHasDependencies() {
+            return packageHasDependencies;
+        },
+
+        set packageHasDependencies(value: boolean) {
+            packageHasDependencies = value;
+            vscode.commands.executeCommand("setContext", "swift.packageHasDependencies", value);
+        },
+
+        get packageHasPlugins() {
+            return packageHasPlugins;
+        },
+
+        set packageHasPlugins(value: boolean) {
+            packageHasPlugins = value;
+            vscode.commands.executeCommand("setContext", "swift.packageHasPlugins", value);
+        },
+
+        get currentTargetType() {
+            return currentTargetType;
+        },
+
+        set currentTargetType(value: string | undefined) {
+            currentTargetType = value;
+            vscode.commands.executeCommand(
+                "setContext",
+                "swift.currentTargetType",
+                value ?? "none"
+            );
+        },
+
+        get fileIsSnippet() {
+            return fileIsSnippet;
+        },
+
+        set fileIsSnippet(value: boolean) {
+            fileIsSnippet = value;
+            vscode.commands.executeCommand("setContext", "swift.fileIsSnippet", value);
+        },
+
+        get lldbVSCodeAvailable() {
+            return lldbVSCodeAvailable;
+        },
+
+        set lldbVSCodeAvailable(value: boolean) {
+            lldbVSCodeAvailable = value;
+            vscode.commands.executeCommand("setContext", "swift.lldbVSCodeAvailable", value);
+        },
+
+        get createNewProjectAvailable() {
+            return createNewProjectAvailable;
+        },
+
+        set createNewProjectAvailable(value: boolean) {
+            createNewProjectAvailable = value;
+            vscode.commands.executeCommand("setContext", "swift.createNewProjectAvailable", value);
+        },
+
+        get supportsReindexing() {
+            return supportsReindexing;
+        },
+
+        set supportsReindexing(value: boolean) {
+            supportsReindexing = value;
+            vscode.commands.executeCommand("setContext", "swift.supportsReindexing", value);
+        },
+
+        get supportsDocumentationLivePreview() {
+            return supportsDocumentationLivePreview;
+        },
+
+        set supportsDocumentationLivePreview(value: boolean) {
+            supportsDocumentationLivePreview = value;
+            vscode.commands.executeCommand(
+                "setContext",
+                "swift.supportsDocumentationLivePreview",
+                value
+            );
+        },
+    };
+}
+
+/**
+ * Type-safe wrapper around context keys used in `when` clauses.
+ */
+const contextKeys: ContextKeys = createContextKeys();
 
 export default contextKeys;

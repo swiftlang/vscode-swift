@@ -8,6 +8,8 @@
   },
   // Turn off tsc task auto detection since we have the necessary tasks as npm scripts
   "typescript.tsc.autoDetect": "off",
+  // Tell VS Code to use the same version of TypeScript as the build
+  "typescript.tsdk": "node_modules/typescript/lib",
 
   // Configure Prettier
   "editor.formatOnSave": true,
