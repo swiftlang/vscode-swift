@@ -271,9 +271,7 @@ export function createSwiftTask(
     cmdEnv: { [key: string]: string } = {}
 ): SwiftTask {
     const swift = toolchain.getToolchainExecutable("swift");
-    args = toolchain.buildFlags.withSwiftSDKFlags(args);
-    args = toolchain.buildFlags.withSwiftPackageFlags(args);
-    args = toolchain.buildFlags.withDisableSandboxFlags(args);
+    args = toolchain.buildFlags.withAdditionalFlags(args);
 
     // Add relative path current working directory
     const cwd = config.cwd.fsPath;
@@ -424,7 +422,8 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
     resolveTask(task: vscode.Task, token: vscode.CancellationToken): vscode.Task {
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
-        const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
+        const toolchain = this.workspaceContext.toolchain;
+        const swift = toolchain.getToolchainExecutable("swift");
         // platform specific
         let platform: TaskPlatformSpecificConfig | undefined;
         if (process.platform === "win32") {
@@ -435,7 +434,8 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             platform = task.definition.macos;
         }
         // get args and cwd values from either platform specific block or base
-        const args = platform?.args ?? task.definition.args;
+        let args = platform?.args ?? task.definition.args;
+        args = toolchain.buildFlags.withAdditionalFlags(args);
         const env = platform?.env ?? task.definition.env;
         const fullCwd = resolveTaskCwd(task, platform?.cwd ?? task.definition.cwd);
 

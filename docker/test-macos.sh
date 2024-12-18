@@ -15,8 +15,10 @@
 
 set -e
 
+platform=$([ $(arch) == "arm64" ] && echo "arm64" || echo "x64")
+
 NODE_VERSION="$(cat .nvmrc)"
-NODE_NAME="node-v$NODE_VERSION-darwin-x64"
+NODE_NAME="node-v$NODE_VERSION-darwin-$platform"
 NODE_ARCHIVE="$NODE_NAME.tar.gz"
 ARTIFACTS="$PWD/.vscode-test"
 USER_DATA="$PWD/ud"
@@ -76,4 +78,4 @@ npm run package
 
 # Need to set proxy to download VS Code
 export npm_config_https_proxy="$HTTPS_PROXY"
-VSCODE_DATA_DIR="$PWD/ud" CI=1 FAST_TEST_RUN=1 npm run coverage -- --coverage-output "$PWD/coverage"
+VSCODE_DATA_DIR="$USER_DATA" CI=1 FAST_TEST_RUN=1 npm run coverage -- --coverage-output "$PWD/coverage"

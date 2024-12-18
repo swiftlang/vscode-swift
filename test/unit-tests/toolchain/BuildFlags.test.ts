@@ -233,19 +233,19 @@ suite("BuildFlags Test Suite", () => {
         });
     });
 
-    suite("withSwiftSDKFlags", () => {
+    suite("withAdditionalFlags", () => {
         const sdkConfig = mockGlobalValue(configuration, "sdk");
 
         test("package", () => {
             for (const sub of ["dump-symbol-graph", "diagnose-api-breaking-changes", "resolve"]) {
                 sdkConfig.setValue("");
                 expect(
-                    buildFlags.withSwiftSDKFlags(["package", sub, "--disable-sandbox"])
+                    buildFlags.withAdditionalFlags(["package", sub, "--disable-sandbox"])
                 ).to.deep.equal(["package", sub, "--disable-sandbox"]);
 
                 sdkConfig.setValue("/some/full/path/to/sdk");
                 expect(
-                    buildFlags.withSwiftSDKFlags(["package", sub, "--disable-sandbox"])
+                    buildFlags.withAdditionalFlags(["package", sub, "--disable-sandbox"])
                 ).to.deep.equal([
                     "package",
                     sub,
@@ -257,24 +257,24 @@ suite("BuildFlags Test Suite", () => {
 
             sdkConfig.setValue("");
             expect(
-                buildFlags.withSwiftSDKFlags(["package", "init", "--disable-sandbox"])
+                buildFlags.withAdditionalFlags(["package", "init", "--disable-sandbox"])
             ).to.deep.equal(["package", "init", "--disable-sandbox"]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
             expect(
-                buildFlags.withSwiftSDKFlags(["package", "init", "--disable-sandbox"])
+                buildFlags.withAdditionalFlags(["package", "init", "--disable-sandbox"])
             ).to.deep.equal(["package", "init", "--disable-sandbox"]);
         });
 
         test("build", () => {
             sdkConfig.setValue("");
             expect(
-                buildFlags.withSwiftSDKFlags(["build", "--target", "MyExecutable"])
+                buildFlags.withAdditionalFlags(["build", "--target", "MyExecutable"])
             ).to.deep.equal(["build", "--target", "MyExecutable"]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
             expect(
-                buildFlags.withSwiftSDKFlags(["build", "--target", "MyExecutable"])
+                buildFlags.withAdditionalFlags(["build", "--target", "MyExecutable"])
             ).to.deep.equal([
                 "build",
                 "--sdk",
@@ -287,12 +287,12 @@ suite("BuildFlags Test Suite", () => {
         test("run", () => {
             sdkConfig.setValue("");
             expect(
-                buildFlags.withSwiftSDKFlags(["run", "--product", "MyExecutable"])
+                buildFlags.withAdditionalFlags(["run", "--product", "MyExecutable"])
             ).to.deep.equal(["run", "--product", "MyExecutable"]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
             expect(
-                buildFlags.withSwiftSDKFlags(["run", "--product", "MyExecutable"])
+                buildFlags.withAdditionalFlags(["run", "--product", "MyExecutable"])
             ).to.deep.equal([
                 "run",
                 "--sdk",
@@ -304,14 +304,14 @@ suite("BuildFlags Test Suite", () => {
 
         test("test", () => {
             sdkConfig.setValue("");
-            expect(buildFlags.withSwiftSDKFlags(["test", "--filter", "MyTests"])).to.deep.equal([
+            expect(buildFlags.withAdditionalFlags(["test", "--filter", "MyTests"])).to.deep.equal([
                 "test",
                 "--filter",
                 "MyTests",
             ]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
-            expect(buildFlags.withSwiftSDKFlags(["test", "--filter", "MyTests"])).to.deep.equal([
+            expect(buildFlags.withAdditionalFlags(["test", "--filter", "MyTests"])).to.deep.equal([
                 "test",
                 "--sdk",
                 "/some/full/path/to/sdk",
@@ -322,10 +322,16 @@ suite("BuildFlags Test Suite", () => {
 
         test("other commands", () => {
             sdkConfig.setValue("");
-            expect(buildFlags.withSwiftSDKFlags(["help", "repl"])).to.deep.equal(["help", "repl"]);
+            expect(buildFlags.withAdditionalFlags(["help", "repl"])).to.deep.equal([
+                "help",
+                "repl",
+            ]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
-            expect(buildFlags.withSwiftSDKFlags(["help", "repl"])).to.deep.equal(["help", "repl"]);
+            expect(buildFlags.withAdditionalFlags(["help", "repl"])).to.deep.equal([
+                "help",
+                "repl",
+            ]);
         });
     });
 
