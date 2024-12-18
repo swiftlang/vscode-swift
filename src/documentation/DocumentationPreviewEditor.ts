@@ -17,7 +17,13 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { RenderNode, WebviewContent, WebviewMessage } from "./webview/WebviewMessage";
 import { WorkspaceContext } from "../WorkspaceContext";
-import { ConvertDocumentationRequest } from "../sourcekit-lsp/extensions/ConvertDocumentationRequest";
+import {
+    ConvertDocumentationRequest,
+    ConvertDocumentationResponse,
+} from "../sourcekit-lsp/extensions/ConvertDocumentationRequest";
+import { LSPErrorCodes, ResponseError } from "vscode-languageclient";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import throttle = require("lodash.throttle");
 
 export enum PreviewEditorConstant {
     VIEW_TYPE = "swift.previewDocumentationEditor",
@@ -152,50 +158,78 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         }
     }
 
-    private async convertDocumentation(textEditor: vscode.TextEditor): Promise<void> {
-        const document = textEditor.document;
-        if (
-            document.uri.scheme !== "file" ||
-            !["markdown", "tutorial", "swift"].includes(document.languageId)
-        ) {
-            this.postMessage({
-                type: "update-content",
-                content: {
-                    type: "error",
-                    errorMessage: PreviewEditorConstant.UNSUPPORTED_EDITOR_ERROR_MESSAGE,
-                },
-            });
-            return;
-        }
-
-        const response = await this.context.languageClientManager.useLanguageClient(
-            async client => {
-                return await client.sendRequest(ConvertDocumentationRequest.type, {
-                    textDocument: {
-                        uri: document.uri.toString(),
+    private convertDocumentation = throttle(
+        async (textEditor: vscode.TextEditor): Promise<void> => {
+            const document = textEditor.document;
+            if (
+                document.uri.scheme !== "file" ||
+                !["markdown", "tutorial", "swift"].includes(document.languageId)
+            ) {
+                this.postMessage({
+                    type: "update-content",
+                    content: {
+                        type: "error",
+                        errorMessage: PreviewEditorConstant.UNSUPPORTED_EDITOR_ERROR_MESSAGE,
                     },
-                    position: textEditor.selection.start,
+                });
+                return;
+            }
+
+            try {
+                const response = await this.context.languageClientManager.useLanguageClient(
+                    async (client): Promise<ConvertDocumentationResponse | undefined> => {
+                        return await client.sendRequest(ConvertDocumentationRequest.type, {
+                            textDocument: {
+                                uri: document.uri.toString(),
+                            },
+                            position: textEditor.selection.start,
+                        });
+                    }
+                );
+                if (!response) {
+                    return;
+                }
+                if (response.type === "error") {
+                    this.postMessage({
+                        type: "update-content",
+                        content: {
+                            type: "error",
+                            errorMessage: response.error.message,
+                        },
+                    });
+                    return;
+                }
+                this.postMessage({
+                    type: "update-content",
+                    content: {
+                        type: "render-node",
+                        renderNode: this.parseRenderNode(response.renderNode),
+                    },
+                });
+            } catch (error) {
+                if (!(error instanceof ResponseError)) {
+                    this.context.outputChannel.log("failed to convert documentation:");
+                    this.context.outputChannel.log(`${error}`);
+                    return;
+                }
+                if (error.code === LSPErrorCodes.RequestCancelled) {
+                    // We can safely ignore cancellations
+                    return undefined;
+                }
+                this.context.outputChannel.log("`textDocument/convertDocumentation` failed:");
+                this.context.outputChannel.log(JSON.stringify(error.toJson(), undefined, 2));
+                this.postMessage({
+                    type: "update-content",
+                    content: {
+                        type: "error",
+                        errorMessage: "An internal error occurred",
+                    },
                 });
             }
-        );
-        if (response.type === "error") {
-            this.postMessage({
-                type: "update-content",
-                content: {
-                    type: "error",
-                    errorMessage: response.error.message,
-                },
-            });
-            return;
-        }
-        this.postMessage({
-            type: "update-content",
-            content: {
-                type: "render-node",
-                renderNode: this.parseRenderNode(response.renderNode),
-            },
-        });
-    }
+        },
+        100 /* 10 times per second */,
+        { trailing: true }
+    );
 
     private parseRenderNode(content: string): RenderNode {
         const renderNode: RenderNode = JSON.parse(content);
