@@ -17,7 +17,13 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { RenderNode, WebviewContent, WebviewMessage } from "./webview/WebviewMessage";
 import { WorkspaceContext } from "../WorkspaceContext";
-import { ConvertDocumentationRequest } from "../sourcekit-lsp/extensions/ConvertDocumentationRequest";
+import {
+    ConvertDocumentationRequest,
+    ConvertDocumentationResponse,
+} from "../sourcekit-lsp/extensions/ConvertDocumentationRequest";
+import { LSPErrorCodes, ResponseError } from "vscode-languageclient";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import throttle = require("lodash.throttle");
 
 export enum PreviewEditorConstant {
     VIEW_TYPE = "swift.previewDocumentationEditor",
@@ -69,6 +75,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
 
     private activeTextEditor?: vscode.TextEditor;
     private subscriptions: vscode.Disposable[] = [];
+    private isDisposed: boolean = false;
 
     private disposeEmitter = new vscode.EventEmitter<void>();
     private renderEmitter = new vscode.EventEmitter<void>();
@@ -81,12 +88,14 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         this.activeTextEditor = vscode.window.activeTextEditor;
         this.subscriptions.push(
             this.webviewPanel.webview.onDidReceiveMessage(this.receiveMessage, this),
-            vscode.window.onDidChangeActiveTextEditor(this.handleActiveTextEditorChange, this),
+            vscode.window.onDidChangeTextEditorSelection(
+                this.handleTextEditorSelectionChange,
+                this
+            ),
             vscode.workspace.onDidChangeTextDocument(this.handleDocumentChange, this),
             this.webviewPanel.onDidDispose(this.dispose, this)
         );
-        // Reveal the editor, but don't change the focus of the active text editor
-        webviewPanel.reveal(undefined, true);
+        this.reveal();
     }
 
     /** An event that is fired when the Documentation Preview Editor is disposed */
@@ -99,10 +108,12 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
     onDidRenderContent = this.renderEmitter.event;
 
     reveal() {
-        this.webviewPanel.reveal();
+        // Reveal the editor, but don't change the focus of the active text editor
+        this.webviewPanel.reveal(undefined, true);
     }
 
     dispose() {
+        this.isDisposed = true;
         this.subscriptions.forEach(subscription => subscription.dispose());
         this.subscriptions = [];
         this.webviewPanel.dispose();
@@ -110,6 +121,9 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
     }
 
     private postMessage(message: WebviewMessage) {
+        if (this.isDisposed) {
+            return;
+        }
         if (message.type === "update-content") {
             this.updateContentEmitter.fire(message.content);
         }
@@ -130,12 +144,12 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         }
     }
 
-    private handleActiveTextEditorChange(activeTextEditor: vscode.TextEditor | undefined) {
-        if (this.activeTextEditor === activeTextEditor || activeTextEditor === undefined) {
+    private handleTextEditorSelectionChange(event: vscode.TextEditorSelectionChangeEvent) {
+        if (event.textEditor === undefined) {
             return;
         }
-        this.activeTextEditor = activeTextEditor;
-        this.convertDocumentation(activeTextEditor);
+        this.activeTextEditor = event.textEditor;
+        this.convertDocumentation(event.textEditor);
     }
 
     private handleDocumentChange(event: vscode.TextDocumentChangeEvent) {
@@ -144,50 +158,78 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         }
     }
 
-    private async convertDocumentation(textEditor: vscode.TextEditor): Promise<void> {
-        const document = textEditor.document;
-        if (
-            document.uri.scheme !== "file" ||
-            !["markdown", "tutorial", "swift"].includes(document.languageId)
-        ) {
-            this.postMessage({
-                type: "update-content",
-                content: {
-                    type: "error",
-                    errorMessage: PreviewEditorConstant.UNSUPPORTED_EDITOR_ERROR_MESSAGE,
-                },
-            });
-            return;
-        }
-
-        const response = await this.context.languageClientManager.useLanguageClient(
-            async client => {
-                return await client.sendRequest(ConvertDocumentationRequest.type, {
-                    textDocument: {
-                        uri: document.uri.toString(),
+    private convertDocumentation = throttle(
+        async (textEditor: vscode.TextEditor): Promise<void> => {
+            const document = textEditor.document;
+            if (
+                document.uri.scheme !== "file" ||
+                !["markdown", "tutorial", "swift"].includes(document.languageId)
+            ) {
+                this.postMessage({
+                    type: "update-content",
+                    content: {
+                        type: "error",
+                        errorMessage: PreviewEditorConstant.UNSUPPORTED_EDITOR_ERROR_MESSAGE,
                     },
-                    position: textEditor.selection.start,
+                });
+                return;
+            }
+
+            try {
+                const response = await this.context.languageClientManager.useLanguageClient(
+                    async (client): Promise<ConvertDocumentationResponse | undefined> => {
+                        return await client.sendRequest(ConvertDocumentationRequest.type, {
+                            textDocument: {
+                                uri: document.uri.toString(),
+                            },
+                            position: textEditor.selection.start,
+                        });
+                    }
+                );
+                if (!response) {
+                    return;
+                }
+                if (response.type === "error") {
+                    this.postMessage({
+                        type: "update-content",
+                        content: {
+                            type: "error",
+                            errorMessage: response.error.message,
+                        },
+                    });
+                    return;
+                }
+                this.postMessage({
+                    type: "update-content",
+                    content: {
+                        type: "render-node",
+                        renderNode: this.parseRenderNode(response.renderNode),
+                    },
+                });
+            } catch (error) {
+                if (!(error instanceof ResponseError)) {
+                    this.context.outputChannel.log("failed to convert documentation:");
+                    this.context.outputChannel.log(`${error}`);
+                    return;
+                }
+                if (error.code === LSPErrorCodes.RequestCancelled) {
+                    // We can safely ignore cancellations
+                    return undefined;
+                }
+                this.context.outputChannel.log("`textDocument/convertDocumentation` failed:");
+                this.context.outputChannel.log(JSON.stringify(error.toJson(), undefined, 2));
+                this.postMessage({
+                    type: "update-content",
+                    content: {
+                        type: "error",
+                        errorMessage: "An internal error occurred",
+                    },
                 });
             }
-        );
-        if (response.type === "error") {
-            this.postMessage({
-                type: "update-content",
-                content: {
-                    type: "error",
-                    errorMessage: response.error.message,
-                },
-            });
-            return;
-        }
-        this.postMessage({
-            type: "update-content",
-            content: {
-                type: "render-node",
-                renderNode: this.parseRenderNode(response.renderNode),
-            },
-        });
-    }
+        },
+        100 /* 10 times per second */,
+        { trailing: true }
+    );
 
     private parseRenderNode(content: string): RenderNode {
         const renderNode: RenderNode = JSON.parse(content);
