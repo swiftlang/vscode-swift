@@ -26,24 +26,15 @@ export enum PreviewEditorConstant {
 }
 
 export class DocumentationPreviewEditor implements vscode.Disposable {
-    private readonly webviewPanel: vscode.WebviewPanel;
-    private activeTextEditor?: vscode.TextEditor;
-    private subscriptions: vscode.Disposable[] = [];
-
-    private disposeEmitter = new vscode.EventEmitter<void>();
-    private renderEmitter = new vscode.EventEmitter<void>();
-    private updateContentEmitter = new vscode.EventEmitter<WebviewContent>();
-
-    constructor(
-        private readonly extension: vscode.ExtensionContext,
-        private readonly context: WorkspaceContext
-    ) {
-        this.activeTextEditor = vscode.window.activeTextEditor;
-        const swiftDoccRenderPath = this.extension.asAbsolutePath(
+    static async create(
+        extension: vscode.ExtensionContext,
+        context: WorkspaceContext
+    ): Promise<DocumentationPreviewEditor> {
+        const swiftDoccRenderPath = extension.asAbsolutePath(
             path.join("assets", "swift-docc-render")
         );
         // Create and hook up events for the WebviewPanel
-        this.webviewPanel = vscode.window.createWebviewPanel(
+        const webviewPanel = vscode.window.createWebviewPanel(
             PreviewEditorConstant.VIEW_TYPE,
             PreviewEditorConstant.TITLE,
             { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
@@ -51,37 +42,52 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                 enableScripts: true,
                 localResourceRoots: [
                     vscode.Uri.file(
-                        this.extension.asAbsolutePath(path.join("assets", "documentation-webview"))
+                        extension.asAbsolutePath(path.join("assets", "documentation-webview"))
                     ),
                     vscode.Uri.file(swiftDoccRenderPath),
                     ...context.folders.map(f => f.folder),
                 ],
             }
         );
-        const webviewBaseURI = this.webviewPanel.webview.asWebviewUri(
+        const webviewBaseURI = webviewPanel.webview.asWebviewUri(
             vscode.Uri.file(swiftDoccRenderPath)
         );
-        const scriptURI = this.webviewPanel.webview.asWebviewUri(
+        const scriptURI = webviewPanel.webview.asWebviewUri(
             vscode.Uri.file(
-                this.extension.asAbsolutePath(
-                    path.join("assets", "documentation-webview", "index.js")
-                )
+                extension.asAbsolutePath(path.join("assets", "documentation-webview", "index.js"))
             )
         );
-        fs.readFile(path.join(swiftDoccRenderPath, "index.html"), "utf-8").then(doccRenderHTML => {
-            doccRenderHTML = doccRenderHTML
-                .replaceAll("{{BASE_PATH}}", webviewBaseURI.toString())
-                .replace("</body>", `<script src="${scriptURI.toString()}"></script></body>`);
-            this.webviewPanel.webview.html = doccRenderHTML;
-            this.subscriptions.push(
-                this.webviewPanel.webview.onDidReceiveMessage(this.receiveMessage, this),
-                vscode.window.onDidChangeActiveTextEditor(this.handleActiveTextEditorChange, this),
-                vscode.workspace.onDidChangeTextDocument(this.handleDocumentChange, this),
-                this.webviewPanel.onDidDispose(this.dispose, this)
-            );
-            // Reveal the editor, but don't change the focus of the active text editor
-            this.webviewPanel.reveal(undefined, true);
-        });
+        let doccRenderHTML = await fs.readFile(
+            path.join(swiftDoccRenderPath, "index.html"),
+            "utf-8"
+        );
+        doccRenderHTML = doccRenderHTML
+            .replaceAll("{{BASE_PATH}}", webviewBaseURI.toString())
+            .replace("</body>", `<script src="${scriptURI.toString()}"></script></body>`);
+        webviewPanel.webview.html = doccRenderHTML;
+        // Reveal the editor, but don't change the focus of the active text editor
+        webviewPanel.reveal(undefined, true);
+        return new DocumentationPreviewEditor(context, webviewPanel);
+    }
+
+    private activeTextEditor?: vscode.TextEditor;
+    private subscriptions: vscode.Disposable[] = [];
+
+    private disposeEmitter = new vscode.EventEmitter<void>();
+    private renderEmitter = new vscode.EventEmitter<void>();
+    private updateContentEmitter = new vscode.EventEmitter<WebviewContent>();
+
+    private constructor(
+        private readonly context: WorkspaceContext,
+        private readonly webviewPanel: vscode.WebviewPanel
+    ) {
+        this.activeTextEditor = vscode.window.activeTextEditor;
+        this.subscriptions.push(
+            this.webviewPanel.webview.onDidReceiveMessage(this.receiveMessage, this),
+            vscode.window.onDidChangeActiveTextEditor(this.handleActiveTextEditorChange, this),
+            vscode.workspace.onDidChangeTextDocument(this.handleDocumentChange, this),
+            this.webviewPanel.onDidDispose(this.dispose, this)
+        );
     }
 
     /** An event that is fired when the Documentation Preview Editor is disposed */
