@@ -211,9 +211,13 @@ export class SwiftPackage implements PackageContents {
         toolchain: SwiftToolchain
     ): Promise<SwiftPackageState> {
         try {
-            let { stdout } = await execSwift(["package", "describe", "--type", "json"], toolchain, {
-                cwd: folder.fsPath,
-            });
+            let { stdout } = await execSwift(
+                toolchain.buildFlags.withAdditionalFlags(["package", "describe", "--type", "json"]),
+                toolchain,
+                {
+                    cwd: folder.fsPath,
+                }
+            );
             // remove lines from `swift package describe` until we find a "{"
             while (!stdout.startsWith("{")) {
                 const firstNewLine = stdout.indexOf("\n");

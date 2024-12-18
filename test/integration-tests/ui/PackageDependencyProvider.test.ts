@@ -34,8 +34,8 @@ suite("PackageDependencyProvider Test Suite", function () {
             await waitForNoRunningTasks();
             const folderContext = await folderInRootWorkspace("dependencies", workspaceContext);
             await executeTaskAndWaitForResult((await getBuildAllTask(folderContext)) as SwiftTask);
-            await workspaceContext.focusFolder(folderContext);
             treeProvider = new PackageDependenciesProvider(workspaceContext);
+            await workspaceContext.focusFolder(folderContext);
         },
         async teardown() {
             treeProvider.dispose();

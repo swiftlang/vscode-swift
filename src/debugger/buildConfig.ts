@@ -448,7 +448,7 @@ export class TestingConfigurationFactory {
 
     private addSwiftTestingFlagsArgs(args: string[]): string[] {
         return [
-            ...args,
+            ...this.ctx.workspaceContext.toolchain.buildFlags.withAdditionalFlags(args),
             "--enable-swift-testing",
             "--event-stream-version",
             "0",

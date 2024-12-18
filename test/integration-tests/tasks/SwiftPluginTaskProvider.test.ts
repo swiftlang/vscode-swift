@@ -26,9 +26,11 @@ import {
 } from "../../utilities/tasks";
 import { mutable } from "../../utilities/types";
 
-suite("SwiftPluginTaskProvider Test Suite", () => {
+suite("SwiftPluginTaskProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;
     let folderContext: FolderContext;
+
+    this.timeout(60000); // Mostly only when running suite with .only
 
     activateExtensionForSuite({
         async setup(ctx) {
@@ -54,7 +56,7 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
             const { exitCode, output } = await executeTaskAndWaitForResult(task);
             expect(exitCode).to.equal(0);
             expect(cleanOutput(output)).to.include("Hello, World!");
-        }).timeout(60000);
+        });
 
         test("Exit code on failure", async () => {
             const task = taskProvider.createSwiftPluginTask(
@@ -71,7 +73,7 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
             mutable(task.execution).command = "/definitely/not/swift";
             const { exitCode, output } = await executeTaskAndWaitForResult(task);
             expect(exitCode, `${output}`).to.not.equal(0);
-        }).timeout(10000);
+        });
     });
 
     suite("provideTasks", () => {
@@ -84,7 +86,7 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
             });
 
             test("provides", () => {
-                expect(task?.detail).to.equal("swift package command_plugin");
+                expect(task?.definition.command).to.equal("command_plugin");
             });
 
             test("executes", async () => {
@@ -93,7 +95,7 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
                 await vscode.tasks.executeTask(task);
                 const exitCode = await exitPromise;
                 expect(exitCode).to.equal(0);
-            }).timeout(30000); // 30 seconds to run
+            });
         });
 
         suite("includes command plugin provided by tasks.json", async () => {
@@ -114,7 +116,7 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
                 await vscode.tasks.executeTask(task);
                 const exitCode = await exitPromise;
                 expect(exitCode).to.equal(0);
-            }).timeout(30000); // 30 seconds to run
+            });
         });
     });
 });

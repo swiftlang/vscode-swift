@@ -37,7 +37,7 @@ export class BuildFlags {
      *
      * @param args original commandline arguments
      */
-    withSwiftSDKFlags(args: string[]): string[] {
+    private withSwiftSDKFlags(args: string[]): string[] {
         switch (args[0]) {
             case "package": {
                 const subcommand = args.splice(0, 2).concat(this.buildPathFlags());
@@ -178,7 +178,7 @@ export class BuildFlags {
      *
      * @param args original commandline arguments
      */
-    withDisableSandboxFlags(args: string[]): string[] {
+    private withDisableSandboxFlags(args: string[]): string[] {
         if (!configuration.disableSandbox) {
             return args;
         }
@@ -195,6 +195,10 @@ export class BuildFlags {
                 // Do nothing for other commands
                 return args;
         }
+    }
+
+    withAdditionalFlags(args: string[]): string[] {
+        return this.withDisableSandboxFlags(this.withSwiftSDKFlags(args));
     }
 
     /**

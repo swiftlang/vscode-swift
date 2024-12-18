@@ -49,7 +49,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
 
     setup(async () => {
         buildFlags = mockObject<BuildFlags>({
-            withSwiftSDKFlags: mockFn(s => s.returns([])),
+            withAdditionalFlags: mockFn(s => s.returns([])),
         });
         toolchain = mockObject<SwiftToolchain>({
             swiftVersion: new Version(6, 0, 0),
@@ -183,7 +183,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
         });
 
         test("include sdk flags", () => {
-            buildFlags.withSwiftSDKFlags
+            buildFlags.withAdditionalFlags
                 .withArgs(match(["build"]))
                 .returns(["build", "--sdk", "/path/to/sdk"]);
             const task = createSwiftTask(
