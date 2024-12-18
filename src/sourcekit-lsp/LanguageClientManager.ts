@@ -651,6 +651,14 @@ export class LanguageClientManager implements vscode.Disposable {
                 backgroundPreparationMode: "enabled",
             };
         }
+
+        if (configuration.swiftSDK !== "") {
+            options = {
+                ...options,
+                swiftPM: { swiftSDK: configuration.swiftSDK },
+            };
+        }
+
         return options;
     }
 

@@ -99,7 +99,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                     );
                 }
                 // on sdk config change, restart sourcekit-lsp
-                if (event.affectsConfiguration("swift.SDK")) {
+                if (
+                    event.affectsConfiguration("swift.SDK") ||
+                    event.affectsConfiguration("swift.swiftSDK")
+                ) {
                     // FIXME: There is a bug stopping us from restarting SourceKit-LSP directly.
                     // As long as it's fixed we won't need to reload on newer versions.
                     showReloadExtensionNotification(
