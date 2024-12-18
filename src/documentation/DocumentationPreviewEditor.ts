@@ -113,8 +113,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
             vscode.workspace.onDidChangeTextDocument(this.handleDocumentChange, this),
             this.webviewPanel.onDidDispose(this.dispose, this)
         );
-        // Reveal the editor, but don't change the focus of the active text editor
-        webviewPanel.reveal(undefined, true);
+        this.reveal();
     }
 
     /** An event that is fired when the Documentation Preview Editor is disposed */
@@ -127,7 +126,8 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
     onDidRenderContent = this.renderEmitter.event;
 
     reveal() {
-        this.webviewPanel.reveal();
+        // Reveal the editor, but don't change the focus of the active text editor
+        this.webviewPanel.reveal(undefined, true);
     }
 
     dispose() {
