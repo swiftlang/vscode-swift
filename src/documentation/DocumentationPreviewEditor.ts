@@ -33,7 +33,6 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         const swiftDoccRenderPath = extension.asAbsolutePath(
             path.join("assets", "swift-docc-render")
         );
-        // Create and hook up events for the WebviewPanel
         const webviewPanel = vscode.window.createWebviewPanel(
             PreviewEditorConstant.VIEW_TYPE,
             PreviewEditorConstant.TITLE,
@@ -65,8 +64,6 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
             .replaceAll("{{BASE_PATH}}", webviewBaseURI.toString())
             .replace("</body>", `<script src="${scriptURI.toString()}"></script></body>`);
         webviewPanel.webview.html = doccRenderHTML;
-        // Reveal the editor, but don't change the focus of the active text editor
-        webviewPanel.reveal(undefined, true);
         return new DocumentationPreviewEditor(context, webviewPanel);
     }
 
@@ -88,6 +85,8 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
             vscode.workspace.onDidChangeTextDocument(this.handleDocumentChange, this),
             this.webviewPanel.onDidDispose(this.dispose, this)
         );
+        // Reveal the editor, but don't change the focus of the active text editor
+        webviewPanel.reveal(undefined, true);
     }
 
     /** An event that is fired when the Documentation Preview Editor is disposed */
