@@ -7,7 +7,9 @@
             "program": "${workspaceFolder:test}/defaultPackage/.build/debug/PackageExe",
             "args": [],
             "cwd": "${workspaceFolder:test}/defaultPackage",
-            "preLaunchTask": "swift: Build Debug PackageExe (defaultPackage)"
+            "preLaunchTask": "swift: Build Debug PackageExe (defaultPackage)",
+            "disableASLR": false,
+            "initCommands": ["settings set target.disable-aslr false"],
         },
         {
             "type": "swift-lldb",
@@ -16,7 +18,9 @@
             "program": "${workspaceFolder:test}/defaultPackage/.build/release/PackageExe",
             "args": [],
             "cwd": "${workspaceFolder:test}/defaultPackage",
-            "preLaunchTask": "swift: Build Release PackageExe (defaultPackage)"
+            "preLaunchTask": "swift: Build Release PackageExe (defaultPackage)",
+            "disableASLR": false,
+            "initCommands": ["settings set target.disable-aslr false"],
         }
     ]
 }

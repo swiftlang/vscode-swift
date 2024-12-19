@@ -21,18 +21,14 @@ import { testAssetUri } from "../../fixtures";
 import { FolderContext } from "../../../src/FolderContext";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Commands } from "../../../src/commands";
-import { makeDebugConfigurations } from "../../../src/debugger/launch";
 import { Workbench } from "../../../src/utilities/commands";
 import { continueSession, waitForDebugAdapterRequest } from "../../utilities/debug";
-import {
-    activateExtensionForSuite,
-    folderInRootWorkspace,
-    updateSettings,
-} from "../utilities/testutilities";
+import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
+import { Version } from "../../../src/utilities/version";
 
-suite("Build Commands", function () {
+suite("Build Commands @slow", function () {
     // Default timeout is a bit too short, give it a little bit more time
-    this.timeout(120 * 1000);
+    this.timeout(2 * 60 * 1000);
 
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
@@ -43,10 +39,11 @@ suite("Build Commands", function () {
 
     activateExtensionForSuite({
         async setup(ctx) {
-            // The description of this package is crashing on Windows with Swift 5.9.x and below,
-            // preventing it from being built. The cleanup in the teardown is failng as well with
-            // an EBUSY error. Skip this test on Windows until the issue is resolved.
-            if (process.platform === "win32") {
+            // The description of this package is crashing on Windows with Swift 5.9.x and below
+            if (
+                process.platform === "win32" &&
+                ctx.toolchain.swiftVersion.isLessThan(new Version(6, 0, 0))
+            ) {
                 this.skip();
             }
 
@@ -55,11 +52,6 @@ suite("Build Commands", function () {
             folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
             await workspaceContext.focusFolder(folderContext);
             await vscode.window.showTextDocument(uri);
-            const settingsTeardown = await updateSettings({
-                "swift.autoGenerateLaunchConfigurations": true,
-            });
-            await makeDebugConfigurations(folderContext, undefined, true);
-            return settingsTeardown;
         },
         async teardown() {
             await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
@@ -92,13 +84,14 @@ suite("Build Commands", function () {
         expect(afterItemCount).to.be.lessThan(beforeItemCount);
     });
 
-    test("Swift: Debug Build @slow", async () => {
+    test("Swift: Debug Build", async () => {
         vscode.debug.addBreakpoints(breakpoints);
         // Promise used to indicate we hit the break point.
         // NB: "stopped" is the exact command when debuggee has stopped due to break point,
         // but "stackTrace" is the deterministic sync point we will use to make sure we can execute continue
         const bpPromise = waitForDebugAdapterRequest(
             "Debug PackageExe (defaultPackage)",
+            workspaceContext.toolchain.swiftVersion,
             "stackTrace"
         );
 
