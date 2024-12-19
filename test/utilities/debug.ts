@@ -14,6 +14,8 @@
 import * as vscode from "vscode";
 import { DebugProtocol } from "@vscode/debugprotocol";
 import { Workbench } from "../../src/utilities/commands";
+import { DebugAdapter } from "../../src/debugger/debugAdapter";
+import { Version } from "../../src/utilities/version";
 
 export async function continueSession(): Promise<void> {
     await vscode.commands.executeCommand(Workbench.ACTION_DEBUG_CONTINUE);
@@ -29,26 +31,30 @@ export async function continueSession(): Promise<void> {
  */
 export async function waitForDebugAdapterMessage<T extends DebugProtocol.ProtocolMessage>(
     name: string,
+    version: Version,
     matches: (message: T) => boolean
 ): Promise<T> {
     return await new Promise<T>(res => {
-        const disposable = vscode.debug.registerDebugAdapterTrackerFactory("swift-lldb", {
-            createDebugAdapterTracker: function (
-                session: vscode.DebugSession
-            ): vscode.ProviderResult<vscode.DebugAdapterTracker> {
-                if (session.name !== name) {
-                    return;
-                }
-                return {
-                    onDidSendMessage(message) {
-                        if (matches(message)) {
-                            disposable.dispose();
-                            res(message);
-                        }
-                    },
-                };
-            },
-        });
+        const disposable = vscode.debug.registerDebugAdapterTrackerFactory(
+            DebugAdapter.getLaunchConfigType(version),
+            {
+                createDebugAdapterTracker: function (
+                    session: vscode.DebugSession
+                ): vscode.ProviderResult<vscode.DebugAdapterTracker> {
+                    if (session.name !== name) {
+                        return;
+                    }
+                    return {
+                        onDidSendMessage(message) {
+                            if (matches(message)) {
+                                disposable.dispose();
+                                res(message);
+                            }
+                        },
+                    };
+                },
+            }
+        );
     });
 }
 
@@ -78,10 +84,12 @@ export async function waitUntilDebugSessionTerminates(name: string): Promise<vsc
  */
 export async function waitForDebugAdapterRequest(
     name: string,
+    version: Version,
     command: string
 ): Promise<DebugProtocol.Request> {
     return await waitForDebugAdapterMessage(
         name,
+        version,
         (m: DebugProtocol.Request) => m.command === command
     );
 }
@@ -96,9 +104,14 @@ export async function waitForDebugAdapterRequest(
  */
 export async function waitForDebugAdapterEvent(
     name: string,
+    version: Version,
     event: string
 ): Promise<DebugProtocol.Event> {
-    return await waitForDebugAdapterMessage(name, (m: DebugProtocol.Event) => m.event === event);
+    return await waitForDebugAdapterMessage(
+        name,
+        version,
+        (m: DebugProtocol.Event) => m.event === event
+    );
 }
 
 /**
@@ -107,7 +120,7 @@ export async function waitForDebugAdapterEvent(
  * @param name The name of the debug session to wait for.
  * @returns exit code of the DAP
  */
-export async function waitForDebugAdapterExit(name: string): Promise<number> {
-    const message = await waitForDebugAdapterEvent(name, "exited");
+export async function waitForDebugAdapterExit(name: string, version: Version): Promise<number> {
+    const message = await waitForDebugAdapterEvent(name, version, "exited");
     return message.body.exitCode;
 }

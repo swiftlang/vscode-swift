@@ -50,7 +50,7 @@ suite("SwiftSnippet Test Suite @slow", function () {
             workspaceContext = ctx;
 
             const folder = await folderInRootWorkspace("defaultPackage", workspaceContext);
-            if (folder.workspaceContext.toolchain.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+            if (folder.workspaceContext.toolchain.swiftVersion.isLessThan(new Version(5, 9, 0))) {
                 this.skip();
             }
             await waitForNoRunningTasks();
@@ -83,7 +83,11 @@ suite("SwiftSnippet Test Suite @slow", function () {
     });
 
     test("Run `Swift: Debug Swift Snippet` command for snippet file", async () => {
-        const bpPromise = waitForDebugAdapterRequest("Run hello", "stackTrace");
+        const bpPromise = waitForDebugAdapterRequest(
+            "Run hello",
+            workspaceContext.toolchain.swiftVersion,
+            "stackTrace"
+        );
         const sessionPromise = waitUntilDebugSessionTerminates("Run hello");
 
         const succeeded = vscode.commands.executeCommand("swift.debugSnippet");
