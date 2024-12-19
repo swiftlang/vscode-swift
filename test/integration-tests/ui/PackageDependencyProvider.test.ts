@@ -32,10 +32,11 @@ suite("PackageDependencyProvider Test Suite", function () {
         async setup(ctx) {
             const workspaceContext = ctx;
             await waitForNoRunningTasks();
+            await folderInRootWorkspace("defaultPackage", workspaceContext);
             const folderContext = await folderInRootWorkspace("dependencies", workspaceContext);
             await executeTaskAndWaitForResult((await getBuildAllTask(folderContext)) as SwiftTask);
-            await workspaceContext.focusFolder(folderContext);
             treeProvider = new PackageDependenciesProvider(workspaceContext);
+            await workspaceContext.focusFolder(folderContext);
         },
         async teardown() {
             treeProvider.dispose();
