@@ -42,7 +42,7 @@ suite("Build Commands @slow", function () {
             // The description of this package is crashing on Windows with Swift 5.9.x and below
             if (
                 process.platform === "win32" &&
-                ctx.toolchain.swiftVersion.isLessThan(new Version(6, 0, 0))
+                ctx.toolchain.swiftVersion.isLessThanOrEqual(new Version(5, 9, 0))
             ) {
                 this.skip();
             }
