@@ -15,7 +15,6 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
 import { beforeEach, afterEach } from "mocha";
-import { testAssetUri } from "../../fixtures";
 import { TestExplorer } from "../../../src/TestExplorer/TestExplorer";
 import {
     assertContains,
@@ -39,7 +38,11 @@ import {
     reduceTestItemChildren,
 } from "../../../src/TestExplorer/TestUtils";
 import { runnableTag } from "../../../src/TestExplorer/TestDiscovery";
-import { activateExtensionForSuite, updateSettings } from "../utilities/testutilities";
+import {
+    activateExtensionForSuite,
+    folderInRootWorkspace,
+    updateSettings,
+} from "../utilities/testutilities";
 import { Commands } from "../../../src/commands";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 
@@ -54,10 +57,7 @@ suite("Test Explorer Suite", function () {
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
-            const packageFolder = testAssetUri("defaultPackage");
-            const targetFolder = workspaceContext.folders.find(
-                folder => folder.folder.path === packageFolder.path
-            );
+            const targetFolder = await folderInRootWorkspace("defaultPackage", workspaceContext);
 
             if (!targetFolder) {
                 throw new Error("Unable to find test explorer");

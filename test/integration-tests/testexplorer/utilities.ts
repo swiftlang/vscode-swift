@@ -164,7 +164,7 @@ export function assertTestResults(
     );
 }
 
-function syncPromise(callback: () => void): Promise<void> {
+export function syncPromise(callback: () => void): Promise<void> {
     return new Promise(resolve => {
         callback();
         resolve();
@@ -188,14 +188,11 @@ export function eventPromise<T>(event: vscode.Event<T>): Promise<T> {
 export async function waitForTestExplorerReady(
     testExplorer: TestExplorer
 ): Promise<vscode.TestController> {
-    return (
-        await Promise.all([
-            testExplorer.controller.items.size === 0
-                ? eventPromise(testExplorer.onTestItemsDidChange)
-                : Promise.resolve(testExplorer.controller),
-            syncPromise(() => vscode.commands.executeCommand("workbench.view.testing.focus")),
-        ])
-    )[0];
+    await vscode.commands.executeCommand("workbench.view.testing.focus");
+    const controller = await (testExplorer.controller.items.size === 0
+        ? eventPromise(testExplorer.onTestItemsDidChange)
+        : Promise.resolve(testExplorer.controller));
+    return controller;
 }
 
 /**
