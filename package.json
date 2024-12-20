@@ -36,8 +36,22 @@
       "swift-icon": {
         "description": "The official icon for the Swift programming language",
         "default": {
-          "fontPath": "assets/icon-font.woff",
+          "fontPath": "assets/icons/icon-font.woff",
           "fontCharacter": "\\E001"
+        }
+      },
+      "swift-documentation": {
+        "description": "The icon for the Swift documentation preview editor",
+        "default": {
+          "fontPath": "assets/icons/icon-font.woff",
+          "fontCharacter": "\\E002"
+        }
+      },
+      "swift-documentation-preview": {
+        "description": "The icon used as a button for showing the Swift documentation preview editor",
+        "default": {
+          "fontPath": "assets/icons/icon-font.woff",
+          "fontCharacter": "\\E003"
         }
       }
     },
@@ -88,7 +102,8 @@
       {
         "command": "swift.previewDocumentation",
         "title": "Preview Documentation",
-        "category": "Swift"
+        "category": "Swift",
+        "icon": "$(swift-documentation-preview)"
       },
       {
         "command": "swift.createNewProject",
@@ -777,6 +792,13 @@
       "editor/context": [
         {
           "submenu": "swift.editor"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "swift.previewDocumentation",
+          "when": "swift.supportsDocumentationLivePreview && (editorLangId == markdown || editorLangId == tutorial || editorLangId == swift)",
+          "group": "navigation"
         }
       ],
       "swift.editor": [

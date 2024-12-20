@@ -48,6 +48,18 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                 ],
             }
         );
+        webviewPanel.iconPath = {
+            light: vscode.Uri.file(
+                extension.asAbsolutePath(
+                    path.join("assets", "icons", "light", "swift-documentation.svg")
+                )
+            ),
+            dark: vscode.Uri.file(
+                extension.asAbsolutePath(
+                    path.join("assets", "icons", "dark", "swift-documentation.svg")
+                )
+            ),
+        };
         const webviewBaseURI = webviewPanel.webview.asWebviewUri(
             vscode.Uri.file(swiftDoccRenderPath)
         );
