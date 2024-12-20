@@ -76,7 +76,8 @@ createCommunicationBridge().then(async bridge => {
                 bridge.send({ type: "contentUpdate", data: renderNode });
             }
         } else {
-            // Show the error message
+            // TODO: Show the error message
+            vscode.postMessage({ type: "rendered" });
         }
     }
 
