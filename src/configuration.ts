@@ -65,6 +65,23 @@ export interface FolderConfiguration {
     readonly autoGenerateLaunchConfigurations: boolean;
     /** disable automatic running of swift package resolve */
     readonly disableAutoResolve: boolean;
+    /** look up saved permissions for the supplied plugin */
+    pluginPermissions(pluginId: string): PluginPermissionConfiguration;
+}
+
+export interface PluginPermissionConfiguration {
+    /** Disable using the sandbox when executing plugins */
+    disableSandbox?: boolean;
+    /** Allow the plugin to write to the package directory */
+    allowWritingToPackageDirectory?: boolean;
+    /** Allow the plugin to write to an additional directory or directories  */
+    allowWritingToDirectory?: string | string[];
+    /**
+     * Allow the plugin to make network connections
+     * For a list of valid options see:
+     * https://github.com/swiftlang/swift-package-manager/blob/0401a2ae55077cfd1f4c0acd43ae0a1a56ab21ef/Sources/Commands/PackageCommands/PluginCommand.swift#L62
+     */
+    allowNetworkConnections?: string;
 }
 
 /**
@@ -144,6 +161,13 @@ const configuration = {
                 return vscode.workspace
                     .getConfiguration("swift", workspaceFolder)
                     .get<boolean>("searchSubfoldersForPackages", false);
+            },
+            pluginPermissions(pluginId: string): PluginPermissionConfiguration {
+                return (
+                    vscode.workspace.getConfiguration("swift", workspaceFolder).get<{
+                        [key: string]: PluginPermissionConfiguration;
+                    }>("pluginPermissions", {})[pluginId] ?? {}
+                );
             },
         };
     },

@@ -16,10 +16,10 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { PackagePlugin } from "../SwiftPackage";
-import configuration from "../configuration";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { SwiftExecution } from "../tasks/SwiftExecution";
 import { resolveTaskCwd } from "../utilities/tasks";
+import configuration, { PluginPermissionConfiguration } from "../configuration";
 import { SwiftTask } from "./SwiftTaskProvider";
 
 // Interface class for defining task configuration
@@ -76,17 +76,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
         const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
-        const sandboxArg = task.definition.disableSandbox ? ["--disable-sandbox"] : [];
-        const writingToPackageArg = task.definition.allowWritingToPackageDirectory
-            ? ["--allow-writing-to-package-directory"]
-            : [];
-        let swiftArgs = [
-            "package",
-            ...sandboxArg,
-            ...writingToPackageArg,
-            task.definition.command,
-            ...task.definition.args,
-        ];
+        let swiftArgs = ["package", task.definition.command, ...task.definition.args];
         swiftArgs = this.workspaceContext.toolchain.buildFlags.withSwiftSDKFlags(swiftArgs);
 
         const cwd = resolveTaskCwd(task, task.definition.cwd);
@@ -121,15 +111,9 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         const relativeCwd = path.relative(config.scope.uri.fsPath, config.cwd.fsPath);
         const taskDefinitionCwd = relativeCwd !== "" ? relativeCwd : undefined;
         const definition = this.getTaskDefinition(plugin, taskDefinitionCwd);
-        // Add arguments based on definition
-        const sandboxArg = definition.disableSandbox ? ["--disable-sandbox"] : [];
-        const writingToPackageArg = definition.allowWritingToPackageDirectory
-            ? ["--allow-writing-to-package-directory"]
-            : [];
         let swiftArgs = [
             "package",
-            ...sandboxArg,
-            ...writingToPackageArg,
+            ...this.pluginArgumentsFromConfiguration(config.scope, definition, plugin),
             plugin.command,
             ...definition.args,
         ];
@@ -196,9 +180,65 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
                 definition.allowWritingToPackageDirectory = true;
                 break;
 
+            case "swift-format, format-source-code":
+                definition.allowWritingToPackageDirectory = true;
+                break;
+
             default:
                 break;
         }
         return definition;
+    }
+
+    /**
+     * Generates a list of permission related plugin arguments from two sources,
+     * the hardcoded list of permissions defined on a per-plugin basis in getTaskDefinition,
+     * and the user-configured permissions in the workspace settings. The user-configured settings
+     * take precedence.
+     * @param folderContext The folder context to search for the `swift.pluginPermissions` key.
+     * @param taskDefinition The task definition to search for the `disableSandbox` and `allowWritingToPackageDirectory` keys.
+     * @param plugin The plugin to generate arguments for.
+     * @returns A list of permission related arguments to pass when invoking the plugin.
+     */
+    private pluginArgumentsFromConfiguration(
+        folderContext: vscode.WorkspaceFolder,
+        taskDefinition: vscode.TaskDefinition,
+        plugin: PackagePlugin
+    ): string[] {
+        const config = configuration
+            .folder(folderContext)
+            .pluginPermissions(`${plugin.package}:${plugin.command}`);
+
+        const taskDefinitionConfiguration: PluginPermissionConfiguration = {};
+        if (taskDefinition.disableSandbox) {
+            taskDefinitionConfiguration.disableSandbox = true;
+        }
+        if (taskDefinition.allowWritingToPackageDirectory) {
+            taskDefinitionConfiguration.allowWritingToPackageDirectory = true;
+        }
+
+        return this.pluginArguments({
+            ...taskDefinitionConfiguration,
+            ...config,
+        });
+    }
+
+    private pluginArguments(config: PluginPermissionConfiguration): string[] {
+        const args = [];
+        if (config.allowWritingToPackageDirectory) {
+            args.push("--allow-writing-to-package-directory");
+        }
+        if (config.allowWritingToDirectory) {
+            if (Array.isArray(config.allowWritingToPackageDirectory)) {
+                args.push("--allow-writing-to-directory", ...config.allowWritingToDirectory);
+            } else {
+                args.push("--allow-writing-to-directory");
+            }
+        }
+        if (config.allowNetworkConnections) {
+            args.push("--allow-network-connections");
+            args.push(config.allowNetworkConnections);
+        }
+        return args;
     }
 }

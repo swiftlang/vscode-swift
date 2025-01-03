@@ -394,6 +394,12 @@
             "type": "boolean",
             "default": true,
             "markdownDescription": "Controls whether or not the extension will contribute environment variables defined in `Swift: Environment Variables` to the integrated terminal. If this is set to `true` and a custom `Swift: Path` is also set then the swift path is appended to the terminal's `PATH`."
+          },
+          "swift.pluginPermissions": {
+            "type": "object",
+            "default": {},
+            "markdownDescription": "TODO: Document",
+            "scope": "machine-overridable"
           }
         }
       },
