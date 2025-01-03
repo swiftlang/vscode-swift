@@ -191,10 +191,12 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
     }
 
     /**
-     * Generates a list of permission related plugin arguments from two sources,
-     * the hardcoded list of permissions defined on a per-plugin basis in getTaskDefinition,
-     * and the user-configured permissions in the workspace settings. The user-configured settings
-     * take precedence.
+     * Generates a list of permission related plugin arguments from two potential sources,
+     * the hardcoded list of permissions defined on a per-plugin basis in getTaskDefinition
+     * and the user-configured permissions in the workspace settings. User-configured permissions
+     * are keyed by either plugin command name (package), or in the form `name:command`.
+     * User-configured permissions take precedence over the hardcoded permissions, and the more
+     * specific form of `name:command` takes precedence over the more general form of `name`.
      * @param folderContext The folder context to search for the `swift.pluginPermissions` key.
      * @param taskDefinition The task definition to search for the `disableSandbox` and `allowWritingToPackageDirectory` keys.
      * @param plugin The plugin to generate arguments for.
@@ -205,9 +207,9 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         taskDefinition: vscode.TaskDefinition,
         plugin: PackagePlugin
     ): string[] {
-        const config = configuration
-            .folder(folderContext)
-            .pluginPermissions(`${plugin.package}:${plugin.command}`);
+        const config = configuration.folder(folderContext);
+        const packageConfig = config.pluginPermissions(plugin.package);
+        const commandConfig = config.pluginPermissions(`${plugin.package}:${plugin.command}`);
 
         const taskDefinitionConfiguration: PluginPermissionConfiguration = {};
         if (taskDefinition.disableSandbox) {
@@ -219,7 +221,8 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
 
         return this.pluginArguments({
             ...taskDefinitionConfiguration,
-            ...config,
+            ...packageConfig,
+            ...commandConfig,
         });
     }
 
