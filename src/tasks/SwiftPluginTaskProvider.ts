@@ -76,7 +76,12 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
         const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
-        let swiftArgs = ["package", task.definition.command, ...task.definition.args];
+        let swiftArgs = [
+            "package",
+            ...this.pluginArguments(task.definition as PluginPermissionConfiguration),
+            task.definition.command,
+            ...task.definition.args,
+        ];
         swiftArgs = this.workspaceContext.toolchain.buildFlags.withSwiftSDKFlags(swiftArgs);
 
         const cwd = resolveTaskCwd(task, task.definition.cwd);
@@ -228,6 +233,9 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
 
     private pluginArguments(config: PluginPermissionConfiguration): string[] {
         const args = [];
+        if (config.disableSandbox) {
+            args.push("--disable-sandbox");
+        }
         if (config.allowWritingToPackageDirectory) {
             args.push("--allow-writing-to-package-directory");
         }
