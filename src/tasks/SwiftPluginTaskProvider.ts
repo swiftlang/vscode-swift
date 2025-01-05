@@ -240,7 +240,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             args.push("--allow-writing-to-package-directory");
         }
         if (config.allowWritingToDirectory) {
-            if (Array.isArray(config.allowWritingToPackageDirectory)) {
+            if (Array.isArray(config.allowWritingToDirectory)) {
                 args.push("--allow-writing-to-directory", ...config.allowWritingToDirectory);
             } else {
                 args.push("--allow-writing-to-directory");

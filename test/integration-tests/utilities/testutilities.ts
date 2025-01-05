@@ -21,6 +21,7 @@ import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { FolderContext } from "../../../src/FolderContext";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
 import { closeAllEditors } from "../../utilities/commands";
+import { isDeepStrictEqual } from "util";
 
 function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);
@@ -296,8 +297,10 @@ export async function updateSettings(settings: SettingsMap): Promise<() => Promi
         for (const setting of Object.keys(settings)) {
             const { section, name } = decomposeSettingName(setting);
             while (
-                vscode.workspace.getConfiguration(section, { languageId: "swift" }).get(name) !==
-                settings[setting]
+                isDeepStrictEqual(
+                    vscode.workspace.getConfiguration(section, { languageId: "swift" }).get(name),
+                    settings[setting]
+                ) === false
             ) {
                 // Not yet, wait a bit and try again.
                 await new Promise(resolve => setTimeout(resolve, 30));
