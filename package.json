@@ -398,8 +398,42 @@
           "swift.pluginPermissions": {
             "type": "object",
             "default": {},
-            "markdownDescription": "TODO: Document",
-            "scope": "machine-overridable"
+            "markdownDescription": "Configures a list of permissions to be used when running a command plugins.\n\nPermissions objects are defined in the form:\n\n`{ \"PluginName:command\": { \"allowWritingToPackageDirectory\": true } }`.\n\nA key of `PluginName:command` will set permissions for a specific command. A key of `PluginName` will set permissions for all commands in the plugin.",
+            "scope": "machine-overridable",
+            "patternProperties": {
+              "^([a-zA-Z0-9_-]+(:[a-zA-Z0-9_-]+)?)$": {
+                "type": "object",
+                "properties": {
+                  "disableSandbox": {
+                    "type": "boolean",
+                    "description": "Disable using the sandbox when executing plugins"
+                  },
+                  "allowWritingToPackageDirectory": {
+                    "type": "boolean",
+                    "description": "Allow the plugin to write to the package directory"
+                  },
+                  "allowWritingToDirectory": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "description": "Allow the plugin to write to an additional directory"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Allow the plugin to write to additional directories"
+                      }
+                    ]
+                  },
+                  "allowNetworkConnections": {
+                    "type": "string",
+                    "description": "Allow the plugin to make network connections"
+                  }
+                }
+              }
+            }
           }
         }
       },
