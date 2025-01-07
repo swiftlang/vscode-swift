@@ -33,6 +33,20 @@ export async function waitForClient<Result>(
     return result;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-namespace
+export namespace PollIndexRequest {
+    export const method = "workspace/_pollIndex" as const;
+    export const messageDirection: langclient.MessageDirection =
+        langclient.MessageDirection.clientToServer;
+    export const type = new langclient.RequestType<object, object, never>(method);
+}
+
+export async function waitForIndex(languageClientManager: LanguageClientManager): Promise<void> {
+    await languageClientManager.useLanguageClient(async (client, token) =>
+        client.sendRequest(PollIndexRequest.type, {}, token)
+    );
+}
+
 export async function waitForClientState(
     languageClientManager: LanguageClientManager,
     expectedState: langclient.State

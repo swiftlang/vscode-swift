@@ -23,7 +23,7 @@ import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider
 import { Version } from "../../../src/utilities/version";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import { FolderContext } from "../../../src/FolderContext";
-import { waitForClientState, waitForCodeActions } from "../utilities/lsputilities";
+import { waitForClientState, waitForCodeActions, waitForIndex } from "../utilities/lsputilities";
 
 async function buildProject(ctx: WorkspaceContext, name: string) {
     await waitForNoRunningTasks();
@@ -68,13 +68,18 @@ suite("Language Client Integration Suite @slow", function () {
         await vscode.window.showTextDocument(uri);
         await workspaceContext.focusFolder(macroFolderContext);
 
+        console.log("here 1");
+
         // Beginning of macro, #
         const position = new vscode.Position(5, 21);
 
         // Create a range starting and ending at the specified position
         const range = new vscode.Selection(position, position.with({ character: 22 }));
 
+        await waitForIndex(workspaceContext.languageClientManager);
+        console.log("here 2");
         await waitForCodeActions(workspaceContext.languageClientManager, uri, range);
+        console.log("here 3");
 
         // Execute the code action provider command
         const codeActions = await vscode.commands.executeCommand<vscode.CodeAction[]>(
@@ -90,6 +95,8 @@ suite("Language Client Integration Suite @slow", function () {
 
         // Assert that the expand macro command is available
         expect(expandMacroAction).is.not.undefined;
+
+        console.log("here 4");
 
         // Set up a promise that resolves when the expected document is opened
         const expandedMacroUriPromise = new Promise<vscode.TextDocument>((resolve, reject) => {
@@ -112,9 +119,11 @@ suite("Language Client Integration Suite @slow", function () {
         expect(command.arguments).is.not.undefined;
         const commandArgs = command.arguments!;
         await vscode.commands.executeCommand(command.command, ...commandArgs);
+        console.log("here 5");
 
         // Wait for the expanded macro document to be opened
         const referenceDocument = await expandedMacroUriPromise;
+        console.log("here 6");
 
         // Verify that the reference document was successfully opened
         expect(referenceDocument).to.not.be.undefined;
