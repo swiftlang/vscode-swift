@@ -2,7 +2,7 @@
 //
 // This source file is part of the VS Code Swift open source project
 //
-// Copyright (c) 2024 the VS Code Swift project authors
+// Copyright (c) 2024-2025 the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -14,13 +14,15 @@
 
 import { RenderNode, WebviewContent, WebviewMessage } from "./WebviewMessage";
 import { createCommunicationBridge } from "./CommunicationBridge";
+import { ErrorMessage } from "./ErrorMessage";
 
 createCommunicationBridge().then(async bridge => {
     const vscode = acquireVsCodeApi();
     let activeDocumentationPath: string | undefined;
     let contentToApplyOnRender: RenderNode | undefined;
 
-    window.document.getElementById("app");
+    // An HTML element that displays an error message to the user
+    const errorMessage = new ErrorMessage();
 
     // Handle messages coming from swift-docc-render
     bridge.onDidReceiveMessage(message => {
@@ -53,6 +55,7 @@ createCommunicationBridge().then(async bridge => {
     });
     function handleUpdateContentMessage(content: WebviewContent) {
         if (content.type === "render-node") {
+            hideErrorMessage();
             const renderNode = content.renderNode;
             const documentationPath: string = (() => {
                 switch (renderNode.kind) {
@@ -76,8 +79,25 @@ createCommunicationBridge().then(async bridge => {
                 bridge.send({ type: "contentUpdate", data: renderNode });
             }
         } else {
-            // Show the error message
+            showErrorMessage(content.errorMessage);
+            vscode.postMessage({ type: "rendered" });
         }
+    }
+
+    function showErrorMessage(message: string) {
+        const app = window.document.getElementById("app");
+        if (app) {
+            app.style.display = "none";
+        }
+        errorMessage.show(message);
+    }
+
+    function hideErrorMessage() {
+        const app = window.document.getElementById("app");
+        if (app) {
+            app.style.display = "block";
+        }
+        errorMessage.hide();
     }
 
     // Notify vscode-swift that we're ready to receive messages

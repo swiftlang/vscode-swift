@@ -2,7 +2,7 @@
 //
 // This source file is part of the VS Code Swift open source project
 //
-// Copyright (c) 2024 the VS Code Swift project authors
+// Copyright (c) 2024-2025 the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -41,6 +41,11 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                 enableScripts: true,
                 localResourceRoots: [
                     vscode.Uri.file(
+                        extension.asAbsolutePath(
+                            path.join("node_modules", "@vscode/codicons", "dist")
+                        )
+                    ),
+                    vscode.Uri.file(
                         extension.asAbsolutePath(path.join("assets", "documentation-webview"))
                     ),
                     vscode.Uri.file(swiftDoccRenderPath),
@@ -72,8 +77,16 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
             path.join(swiftDoccRenderPath, "index.html"),
             "utf-8"
         );
+        const codiconsUri = webviewPanel.webview.asWebviewUri(
+            vscode.Uri.file(
+                extension.asAbsolutePath(
+                    path.join("node_modules", "@vscode/codicons", "dist", "codicon.css")
+                )
+            )
+        );
         doccRenderHTML = doccRenderHTML
             .replaceAll("{{BASE_PATH}}", webviewBaseURI.toString())
+            .replace("</head>", `<link href="${codiconsUri}" rel="stylesheet" /></head>`)
             .replace("</body>", `<script src="${scriptURI.toString()}"></script></body>`);
         webviewPanel.webview.html = doccRenderHTML;
         return new DocumentationPreviewEditor(context, webviewPanel);
