@@ -223,11 +223,19 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         if (taskDefinition.allowWritingToPackageDirectory) {
             taskDefinitionConfiguration.allowWritingToPackageDirectory = true;
         }
+        if (taskDefinition.allowWritingToDirectory) {
+            taskDefinitionConfiguration.allowWritingToDirectory =
+                taskDefinition.allowWritingToDirectory;
+        }
+        if (taskDefinition.allowNetworkConnections) {
+            taskDefinitionConfiguration.allowNetworkConnections =
+                taskDefinition.allowNetworkConnections;
+        }
 
         return this.pluginArguments({
-            ...taskDefinitionConfiguration,
             ...packageConfig,
             ...commandConfig,
+            ...taskDefinitionConfiguration,
         });
     }
 
