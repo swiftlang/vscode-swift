@@ -83,16 +83,21 @@ export async function waitForCodeActions(
     return (
         (await waitForClient(
             languageClientManager,
-            async (client, token) =>
-                client.sendRequest(
-                    langclient.CodeActionRequest.type,
-                    {
-                        context: langclient.CodeActionContext.create([]),
-                        textDocument: langclient.TextDocumentIdentifier.create(uri.toString()),
-                        range,
-                    },
-                    token
-                ),
+            async (client, token) => {
+                try {
+                    return client.sendRequest(
+                        langclient.CodeActionRequest.type,
+                        {
+                            context: langclient.CodeActionContext.create([]),
+                            textDocument: langclient.TextDocumentIdentifier.create(uri.toString()),
+                            range,
+                        },
+                        token
+                    );
+                } catch (e) {
+                    // Ignore
+                }
+            },
             s => (s || []).length > 0
         )) || []
     );
