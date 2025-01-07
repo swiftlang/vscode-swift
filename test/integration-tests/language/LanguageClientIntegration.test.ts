@@ -22,19 +22,8 @@ import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilit
 import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
 import { Version } from "../../../src/utilities/version";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
-
-async function waitForClientState(
-    languageClientManager: LanguageClientManager,
-    expectedState: langclient.State
-): Promise<langclient.State> {
-    let clientState = undefined;
-    while (clientState !== expectedState) {
-        clientState = await languageClientManager.useLanguageClient(async client => client.state);
-        console.warn("Language client is not ready yet. Retrying in 100 ms...");
-        await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    return clientState;
-}
+import { FolderContext } from "../../../src/FolderContext";
+import { waitForClientState, waitForCodeActions } from "../utilities/lsputilities";
 
 async function buildProject(ctx: WorkspaceContext, name: string) {
     await waitForNoRunningTasks();
@@ -42,28 +31,29 @@ async function buildProject(ctx: WorkspaceContext, name: string) {
     const task = (await getBuildAllTask(folderContext)) as SwiftTask;
     const { exitCode, output } = await executeTaskAndWaitForResult(task);
     expect(exitCode, `${output}`).to.equal(0);
+    return folderContext;
 }
 
 suite("Language Client Integration Suite @slow", function () {
+    this.timeout(5 * 60 * 1000);
+
     let clientManager: LanguageClientManager;
     let workspaceContext: WorkspaceContext;
+    let macroFolderContext: FolderContext;
 
     activateExtensionForSuite({
         async setup(ctx) {
-            this.timeout(5 * 60 * 1000);
-
             workspaceContext = ctx;
 
             // Wait for a clean starting point, and build all tasks for the fixture
             if (workspaceContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))) {
-                await buildProject(ctx, "swift-macro");
+                macroFolderContext = await buildProject(ctx, "swift-macro");
             }
             await buildProject(ctx, "defaultPackage");
 
             // Ensure lsp client is ready
             clientManager = ctx.languageClientManager;
-            const clientState = await waitForClientState(clientManager, langclient.State.Running);
-            expect(clientState).to.equals(langclient.State.Running);
+            await waitForClientState(clientManager, langclient.State.Running);
         },
     });
 
@@ -76,12 +66,15 @@ suite("Language Client Integration Suite @slow", function () {
         // Focus on the file of interest
         const uri = testAssetUri("swift-macro/Sources/swift-macroClient/main.swift");
         await vscode.window.showTextDocument(uri);
+        await workspaceContext.focusFolder(macroFolderContext);
 
         // Beginning of macro, #
         const position = new vscode.Position(5, 21);
 
         // Create a range starting and ending at the specified position
-        const range = new vscode.Range(position, position);
+        const range = new vscode.Selection(position, position.with({ character: 22 }));
+
+        await waitForCodeActions(workspaceContext.languageClientManager, uri, range);
 
         // Execute the code action provider command
         const codeActions = await vscode.commands.executeCommand<vscode.CodeAction[]>(
@@ -89,8 +82,6 @@ suite("Language Client Integration Suite @slow", function () {
             uri,
             range
         );
-
-        const expectedMacro = '(a + b, "a + b")';
 
         // Find the "expand.macro.command" action
         const expandMacroAction = codeActions.find(
@@ -129,6 +120,7 @@ suite("Language Client Integration Suite @slow", function () {
         expect(referenceDocument).to.not.be.undefined;
 
         // Assert that the content contains the expected result
+        const expectedMacro = '(a + b, "a + b")';
         const content = referenceDocument.getText();
         expect(content).to.include(expectedMacro);
     });
