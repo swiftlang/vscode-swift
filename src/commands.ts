@@ -39,6 +39,7 @@ import { runPluginTask } from "./commands/runPluginTask";
 import { runTestMultipleTimes } from "./commands/testMultipleTimes";
 import { newSwiftFile } from "./commands/newFile";
 import { runAllTestsParallel } from "./commands/runParallelTests";
+import { evaluateExpression } from "./repl/command";
 
 /**
  * References:
@@ -160,5 +161,6 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             Commands.PREVIEW_DOCUMENTATION,
             async () => await ctx.documentation.launchDocumentationPreview()
         ),
+        vscode.commands.registerCommand("swift.evaluate", () => evaluateExpression(ctx)),
     ];
 }

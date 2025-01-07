@@ -253,6 +253,11 @@
         "command": "swift.runAllTestsParallel",
         "title": "Run All Tests in Parallel",
         "category": "Test"
+      },
+      {
+        "command": "swift.evaluate",
+        "title": "Evaluate in REPL",
+        "category": "Swift"
       }
     ],
     "configuration": [
@@ -394,6 +399,16 @@
             "type": "boolean",
             "default": true,
             "markdownDescription": "Controls whether or not the extension will contribute environment variables defined in `Swift: Environment Variables` to the integrated terminal. If this is set to `true` and a custom `Swift: Path` is also set then the swift path is appended to the terminal's `PATH`."
+            "order": 15
+          },
+          "swift.repl": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Use the native Swift REPL.",
+            "order": 16,
+            "tags": [
+              "experimental"
+            ]
           }
         }
       },
@@ -831,6 +846,11 @@
           "command": "swift.cleanBuild",
           "group": "2_pkg@1",
           "when": "swift.hasPackage"
+        },
+        {
+          "command": "swift.evaluate",
+          "group": "1_file@6",
+          "when": "editorFocus && editorLangId == swift && config.swift.repl"
         }
       ],
       "view/title": [
