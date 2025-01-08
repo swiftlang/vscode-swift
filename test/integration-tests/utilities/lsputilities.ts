@@ -58,37 +58,6 @@ export async function waitForClientState(
     );
 }
 
-export async function waitForSymbols(
-    languageClientManager: LanguageClientManager,
-    uri: vscode.Uri
-): Promise<langclient.DocumentSymbol[] | langclient.SymbolInformation[]> {
-    let symbols: langclient.DocumentSymbol[] | langclient.SymbolInformation[] = [];
-    while (symbols?.length === 0) {
-        symbols =
-            (await languageClientManager.useLanguageClient(async (client, token) =>
-                client.sendRequest(
-                    langclient.DocumentSymbolRequest.type,
-                    { textDocument: langclient.TextDocumentIdentifier.create(uri.toString()) },
-                    token
-                )
-            )) || [];
-        console.warn("Language client is not ready yet. Retrying in 100 ms...");
-        await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    return (
-        (await waitForClient(
-            languageClientManager,
-            async (client, token) =>
-                client.sendRequest(
-                    langclient.DocumentSymbolRequest.type,
-                    { textDocument: langclient.TextDocumentIdentifier.create(uri.toString()) },
-                    token
-                ),
-            s => (s || []).length > 0
-        )) || []
-    );
-}
-
 export async function waitForCodeActions(
     languageClientManager: LanguageClientManager,
     uri: vscode.Uri,
