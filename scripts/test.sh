@@ -32,7 +32,7 @@ npm ci
 npm run lint
 npm run format
 npm run package
-npm run test-soundness -- --force-run
+npm run soundness -- --force-run
 
 xvfb-run -a npm run coverage 2>&1 | grep -Ev "Failed to connect to the bus|GPU stall due to ReadPixels"
 exit_code=${PIPESTATUS[0]}
