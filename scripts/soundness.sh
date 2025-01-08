@@ -17,7 +17,7 @@ if [[ "$1" != "--force-run" ]]; then
     # This file is supplanted by the GitHub Actions enabled in
     # https://github.com/swiftlang/vscode-swift/pull/1159,
     # Until https://github.com/swiftlang/vscode-swift/pull/1176 is
-    # merged we still run the licence check here via the docker/test.sh
+    # merged we still run the licence check here via the scripts/test.sh
     # with the --force-run flag, and the soundness Jenkins job is skipped
     # with this exit 0. This lets us run this licence check in the GitHub Actions
     # until the standard licence check in GH Actions can be used.
@@ -96,7 +96,6 @@ EOF
             \( \! -path './node_modules/*' -a \
             \( \! -path './out/*' -a \
             \( \! -path './.vscode-test/*' -a \
-            \( \! -path './docker/*' -a \
             \( \! -path './dist/*' -a \
             \( \! -path './assets/*' -a \
             \( \! -path './coverage/*' -a \

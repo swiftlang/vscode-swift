@@ -17,13 +17,13 @@ jobs:
         NVM_DIR=/usr/local/nvm
         CI=1
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
-      linux_build_command: ./docker/test.sh
+      linux_build_command: ./scripts/test.sh
       # Windows
       windows_env_vars: |
         CI=1
         VSCODE_TEST=1
       windows_pre_build_command: .github\workflows\scripts\windows\install-nodejs.ps1
-      windows_build_command: docker\test-windows.ps1
+      windows_build_command: scripts\test_windows.ps1
       enable_windows_docker: false
 
   tests_insiders:
@@ -40,7 +40,7 @@ jobs:
         VSCODE_TEST=1
         VSCODE_VERSION=insiders
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
-      linux_build_command: ./docker/test.sh
+      linux_build_command: ./scripts/test.sh
       # Windows
       windows_exclude_swift_versions: '[{"swift_version": "5.9"}, {"swift_version": "nightly-6.0"}, {"swift_version": "nightly"}]'
       windows_env_vars: |
@@ -48,5 +48,5 @@ jobs:
         VSCODE_TEST=1
         VSCODE_VERSION=insiders
       windows_pre_build_command: .github\workflows\scripts\windows\install-nodejs.ps1
-      windows_build_command: docker\test-windows.ps1
+      windows_build_command: scripts\test_windows.ps1
       enable_windows_docker: false
