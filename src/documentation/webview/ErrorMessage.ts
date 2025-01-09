@@ -38,6 +38,10 @@ export class ErrorMessage {
 
 function createContainer(): HTMLDivElement {
     const containerElement = document.createElement("div");
+    containerElement.style.backgroundColor = "var(--vscode-editor-background)";
+    containerElement.style.color = "var(--vscode-foreground)";
+    containerElement.style.fontFamily = "var(--vscode-font-family)";
+    containerElement.style.fontWeight = "var(--vscode-font-weight)";
     containerElement.style.width = "100%";
     containerElement.style.height = "100%";
     containerElement.style.display = "none";
@@ -61,7 +65,6 @@ function createIcon(): HTMLSpanElement {
 
 function createMessage(): HTMLSpanElement {
     const messageElement = document.createElement("span");
-    messageElement.style.color = "var(--vscode-foreground)";
     messageElement.style.fontSize = "14px";
     return messageElement;
 }
