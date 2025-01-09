@@ -26,26 +26,29 @@ import { executeTaskWithUI } from "../utilities";
  */
 export async function useLocalDependency(
     identifier: string,
-    ctx: WorkspaceContext
+    ctx: WorkspaceContext,
+    dep: vscode.Uri | undefined
 ): Promise<boolean> {
     const currentFolder = ctx.currentFolder;
     if (!currentFolder) {
         ctx.outputChannel.log("currentFolder is not set.");
         return false;
     }
-    const folders = await vscode.window.showOpenDialog({
-        canSelectFiles: false,
-        canSelectFolders: true,
-        canSelectMany: false,
-        defaultUri: currentFolder.folder,
-        openLabel: "Select",
-        title: "Select folder",
-    });
-
-    if (!folders) {
-        return false;
+    let folder = dep;
+    if (!folder) {
+        const folders = await vscode.window.showOpenDialog({
+            canSelectFiles: false,
+            canSelectFolders: true,
+            canSelectMany: false,
+            defaultUri: currentFolder.folder,
+            openLabel: "Select",
+            title: "Select folder",
+        });
+        if (!folders) {
+            return false;
+        }
+        folder = folders[0];
     }
-    const folder = folders[0];
     const task = createSwiftTask(
         ["package", "edit", "--path", folder.fsPath, identifier],
         "Edit Package Dependency",
