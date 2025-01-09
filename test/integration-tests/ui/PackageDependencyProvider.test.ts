@@ -23,25 +23,31 @@ import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilit
 import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
 import { testAssetPath } from "../../fixtures";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
+import { FolderContext } from "../../../src/FolderContext";
+import { WorkspaceContext } from "../../../src/WorkspaceContext";
 
 suite("PackageDependencyProvider Test Suite", function () {
+    let workspaceContext: WorkspaceContext;
+    let folderContext: FolderContext;
     let treeProvider: PackageDependenciesProvider;
     this.timeout(2 * 60 * 1000); // Allow up to 2 minutes to build
 
     activateExtensionForSuite({
         async setup(ctx) {
-            const workspaceContext = ctx;
+            workspaceContext = ctx;
             await waitForNoRunningTasks();
-            await folderInRootWorkspace("defaultPackage", workspaceContext);
-            const folderContext = await folderInRootWorkspace("dependencies", workspaceContext);
+            folderContext = await folderInRootWorkspace("dependencies", workspaceContext);
             await executeTaskAndWaitForResult((await getBuildAllTask(folderContext)) as SwiftTask);
+            await folderContext.reload();
             treeProvider = new PackageDependenciesProvider(workspaceContext);
-            await workspaceContext.focusFolder(folderContext);
         },
         async teardown() {
             treeProvider.dispose();
         },
-        testAssets: ["dependencies"],
+    });
+
+    setup(async () => {
+        await workspaceContext.focusFolder(folderContext);
     });
 
     test("Includes remote dependency", async () => {

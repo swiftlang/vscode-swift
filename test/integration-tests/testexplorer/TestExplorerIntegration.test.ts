@@ -131,6 +131,7 @@ suite("Test Explorer Suite", function () {
                 switch (process.platform) {
                     case "linux":
                         return "/usr/lib/liblldb.so";
+                    case "darwin":
                     case "win32":
                         return await (await SwiftToolchain.create()).getLLDBDebugAdapter();
                     default:
