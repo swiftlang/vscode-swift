@@ -360,7 +360,7 @@ export class DiagnosticsManager implements vscode.Disposable {
         if (!match) {
             return;
         }
-        const uri = match[1];
+        const uri = vscode.Uri.file(match[1]).fsPath;
         const message = this.capitalize(match[5]).trim();
         const range = this.range(match[2], match[3]);
         const severity = this.severity(match[4]);
