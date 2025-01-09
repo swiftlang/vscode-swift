@@ -8,4 +8,7 @@
 !dist/**
 !images/**
 !snippets/**
-!assets/icon-font.woff
+!assets/icons/**
+!assets/documentation-webview/**
+!assets/swift-docc-render/**
+!node_modules/@vscode/codicons/**
