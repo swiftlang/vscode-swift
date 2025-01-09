@@ -157,7 +157,7 @@ suite("DiagnosticsManager Test Suite", async function () {
                 ([_uri, diagnostics]) => diagnostics.length > 0
             );
             console.error(
-                `${title} - Not all diagnostics were fulfilled`,
+                `${title} - Not all diagnostics were fulfilled. Remaining:`,
                 JSON.stringify(remainingDiagnostics, undefined, " ")
             );
         }
