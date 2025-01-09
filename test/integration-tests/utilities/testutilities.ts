@@ -22,6 +22,8 @@ import { FolderContext } from "../../../src/FolderContext";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
 import { closeAllEditors } from "../../utilities/commands";
 import { isDeepStrictEqual } from "util";
+import { Version } from "../../../src/utilities/version";
+import configuration from "../../../src/configuration";
 
 function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);
@@ -65,7 +67,9 @@ const extensionBootstrapper = (() => {
             | undefined,
         after: Mocha.HookFunction,
         teardown: ((this: Mocha.Context) => Promise<void>) | undefined,
-        testAssets?: string[]
+        testAssets?: string[],
+        requiresLSP: boolean = false,
+        requiresDebugger: boolean = false
     ) {
         let workspaceContext: WorkspaceContext | undefined;
         let autoTeardown: void | (() => Promise<void>);
@@ -76,6 +80,18 @@ const extensionBootstrapper = (() => {
                 this.currentTest,
                 testAssets ?? ["defaultPackage"]
             );
+            // Need the `disableSandbox` configuration which is only in 6.1
+            // https://github.com/swiftlang/sourcekit-lsp/commit/7e2d12a7a0d184cc820ae6af5ddbb8aa18b1501c
+            if (
+                process.platform === "darwin" &&
+                workspaceContext.toolchain.swiftVersion.isLessThan(new Version(6, 1, 0)) &&
+                requiresLSP
+            ) {
+                this.skip();
+            }
+            if (requiresDebugger && configuration.debugger.disable) {
+                this.skip();
+            }
             if (!setup) {
                 return;
             }
@@ -192,13 +208,17 @@ const extensionBootstrapper = (() => {
             ) => Promise<(() => Promise<void>) | void>;
             teardown?: (this: Mocha.Context) => Promise<void>;
             testAssets?: string[];
+            requiresLSP?: boolean;
+            requiresDebugger?: boolean;
         }) {
             testRunnerSetup(
                 mocha.before,
                 config?.setup,
                 mocha.after,
                 config?.teardown,
-                config?.testAssets
+                config?.testAssets,
+                config?.requiresLSP,
+                config?.requiresDebugger
             );
         },
 
@@ -209,13 +229,17 @@ const extensionBootstrapper = (() => {
             ) => Promise<(() => Promise<void>) | void>;
             teardown?: (this: Mocha.Context) => Promise<void>;
             testAssets?: string[];
+            requiresLSP?: boolean;
+            requiresDebugger?: boolean;
         }) {
             testRunnerSetup(
                 mocha.beforeEach,
                 config?.setup,
                 mocha.afterEach,
                 config?.teardown,
-                config?.testAssets
+                config?.testAssets,
+                config?.requiresLSP,
+                config?.requiresDebugger
             );
         },
     };

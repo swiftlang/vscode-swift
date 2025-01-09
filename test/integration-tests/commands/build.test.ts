@@ -28,7 +28,7 @@ import { Version } from "../../../src/utilities/version";
 
 suite("Build Commands @slow", function () {
     // Default timeout is a bit too short, give it a little bit more time
-    this.timeout(2 * 60 * 1000);
+    this.timeout(3 * 60 * 1000);
 
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
@@ -56,6 +56,7 @@ suite("Build Commands @slow", function () {
         async teardown() {
             await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
         },
+        requiresDebugger: true,
     });
 
     test("Swift: Run Build", async () => {

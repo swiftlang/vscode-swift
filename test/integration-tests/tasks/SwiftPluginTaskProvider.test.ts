@@ -30,10 +30,13 @@ import {
 } from "../../utilities/tasks";
 import { mutable } from "../../utilities/types";
 import { SwiftExecution } from "../../../src/tasks/SwiftExecution";
+import { SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
 
-suite("SwiftPluginTaskProvider Test Suite", () => {
+suite("SwiftPluginTaskProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;
     let folderContext: FolderContext;
+
+    this.timeout(60000); // Mostly only when running suite with .only
 
     suite("settings plugin arguments", () => {
         activateExtensionForSuite({
@@ -59,17 +62,20 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
             const tasks = await vscode.tasks.fetchTasks({ type: "swift-plugin" });
             const task = tasks.find(t => t.name === "command-plugin");
             const swiftExecution = task?.execution as SwiftExecution;
-            assert.deepEqual(swiftExecution.args, [
-                "package",
-                "--disable-sandbox",
-                "--allow-writing-to-package-directory",
-                "--allow-writing-to-directory",
-                "/foo",
-                "/bar",
-                "--allow-network-connections",
-                "all",
-                "command_plugin",
-            ]);
+            assert.deepEqual(
+                swiftExecution.args,
+                workspaceContext.toolchain.buildFlags.withAdditionalFlags([
+                    "package",
+                    "--disable-sandbox",
+                    "--allow-writing-to-package-directory",
+                    "--allow-writing-to-directory",
+                    "/foo",
+                    "/bar",
+                    "--allow-network-connections",
+                    "all",
+                    "command_plugin",
+                ])
+            );
         });
     });
 
@@ -101,7 +107,7 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
                 const { exitCode, output } = await executeTaskAndWaitForResult(task);
                 expect(exitCode).to.equal(0);
                 expect(cleanOutput(output)).to.include("Hello, World!");
-            }).timeout(60000);
+            });
 
             test("Exit code on failure", async () => {
                 const task = taskProvider.createSwiftPluginTask(
@@ -118,20 +124,25 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
                 mutable(task.execution).command = "/definitely/not/swift";
                 const { exitCode, output } = await executeTaskAndWaitForResult(task);
                 expect(exitCode, `${output}`).to.not.equal(0);
-            }).timeout(10000);
+            });
         });
 
         suite("provideTasks", () => {
             suite("includes command plugin provided by the extension", async () => {
-                let task: vscode.Task | undefined;
+                let task: SwiftTask | undefined;
 
                 setup(async () => {
                     const tasks = await vscode.tasks.fetchTasks({ type: "swift-plugin" });
-                    task = tasks.find(t => t.name === "command-plugin");
+                    task = tasks.find(t => t.name === "command-plugin") as SwiftTask;
                 });
 
                 test("provides", () => {
-                    expect(task?.detail).to.equal("swift package command_plugin");
+                    expect(task?.execution.args).to.deep.equal(
+                        workspaceContext.toolchain.buildFlags.withAdditionalFlags([
+                            "package",
+                            "command_plugin",
+                        ])
+                    );
                 });
 
                 test("executes", async () => {
@@ -140,7 +151,7 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
                     await vscode.tasks.executeTask(task);
                     const exitCode = await exitPromise;
                     expect(exitCode).to.equal(0);
-                }).timeout(30000); // 30 seconds to run
+                });
             });
 
             suite("includes command plugin provided by tasks.json", async () => {
@@ -152,7 +163,7 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
                 });
 
                 test("provides", () => {
-                    expect(task?.detail).to.equal("swift package command_plugin --foo");
+                    expect(task?.detail).to.include("swift package command_plugin --foo");
                 });
 
                 test("executes", async () => {
@@ -161,7 +172,7 @@ suite("SwiftPluginTaskProvider Test Suite", () => {
                     await vscode.tasks.executeTask(task);
                     const exitCode = await exitPromise;
                     expect(exitCode).to.equal(0);
-                }).timeout(30000); // 30 seconds to run
+                });
             });
         });
     });

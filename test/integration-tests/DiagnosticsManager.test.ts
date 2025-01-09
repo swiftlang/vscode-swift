@@ -216,7 +216,7 @@ suite("DiagnosticsManager Test Suite", async function () {
             // after first build and can cause intermittent
             // failure if `swiftc` diagnostic is fixed
             suiteSetup(async function () {
-                this.timeout(2 * 60 * 1000); // Allow 2 minutes to build
+                this.timeout(3 * 60 * 1000); // Allow 3 minutes to build
                 const task = createBuildAllTask(folderContext);
                 // This return exit code and output for the task but we will omit it here
                 // because the failures are expected and we just want the task to build
@@ -1062,7 +1062,7 @@ suite("DiagnosticsManager Test Suite", async function () {
 
             assertHasDiagnostic(mainUri, expectedDiagnostic1);
             assertHasDiagnostic(mainUri, expectedDiagnostic2);
-        }).timeout(2 * 60 * 1000); // Allow 2 minutes to build
+        }).timeout(3 * 60 * 1000); // Allow 3 minutes to build
 
         test("Provides clang diagnostics", async () => {
             // Build for indexing
@@ -1099,6 +1099,6 @@ suite("DiagnosticsManager Test Suite", async function () {
 
             assertHasDiagnostic(cUri, expectedDiagnostic1);
             assertHasDiagnostic(cUri, expectedDiagnostic2);
-        }).timeout(2 * 60 * 1000); // Allow 2 minutes to build
+        }).timeout(3 * 60 * 1000); // Allow 3 minutes to build
     });
 });

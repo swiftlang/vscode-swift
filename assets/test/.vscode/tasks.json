@@ -35,6 +35,7 @@
 			"command": "command_plugin",
 			"args": ["--foo"],
 			"cwd": "command-plugin",
+			"disableSandbox": true,
 			"problemMatcher": [
 				"$swiftc"
 			],

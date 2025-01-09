@@ -35,7 +35,10 @@ export async function resetPackage(ctx: WorkspaceContext) {
  */
 export async function folderResetPackage(folderContext: FolderContext) {
     const task = createSwiftTask(
-        ["package", "reset"],
+        folderContext.workspaceContext.toolchain.buildFlags.withAdditionalFlags([
+            "package",
+            "reset",
+        ]),
         "Reset Package Dependencies",
         {
             cwd: folderContext.folder,

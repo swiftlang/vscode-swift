@@ -31,7 +31,7 @@ suite("SwiftPluginTaskProvider Unit Test Suite", () => {
 
     setup(async () => {
         buildFlags = mockObject<BuildFlags>({
-            withSwiftSDKFlags: mockFn(s => s.callsFake(args => args)),
+            withAdditionalFlags: mockFn(s => s.callsFake(args => args)),
         });
         toolchain = mockObject<SwiftToolchain>({
             swiftVersion: new Version(6, 0, 0),
@@ -192,7 +192,7 @@ suite("SwiftPluginTaskProvider Unit Test Suite", () => {
         });
 
         test("includes sdk flags", async () => {
-            buildFlags.withSwiftSDKFlags
+            buildFlags.withAdditionalFlags
                 .withArgs(match(["package", "my-plugin"]))
                 .returns(["package", "my-plugin", "--sdk", "/path/to/sdk"]);
             const taskProvider = new SwiftPluginTaskProvider(instance(workspaceContext));

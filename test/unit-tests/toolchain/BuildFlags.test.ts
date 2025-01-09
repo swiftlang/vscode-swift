@@ -24,6 +24,8 @@ suite("BuildFlags Test Suite", () => {
     let mockedToolchain: MockedObject<SwiftToolchain>;
     let buildFlags: BuildFlags;
 
+    const sandboxConfig = mockGlobalValue(configuration, "disableSandbox");
+
     suiteSetup(async () => {
         mockedToolchain = mockObject<SwiftToolchain>({
             swiftVersion: new Version(6, 0, 0),
@@ -33,6 +35,7 @@ suite("BuildFlags Test Suite", () => {
 
     setup(() => {
         mockedPlatform.setValue("darwin");
+        sandboxConfig.setValue(false);
     });
 
     suite("getDarwinTarget", () => {
@@ -233,19 +236,19 @@ suite("BuildFlags Test Suite", () => {
         });
     });
 
-    suite("withSwiftSDKFlags", () => {
+    suite("withAdditionalFlags", () => {
         const sdkConfig = mockGlobalValue(configuration, "sdk");
 
         test("package", () => {
             for (const sub of ["dump-symbol-graph", "diagnose-api-breaking-changes", "resolve"]) {
                 sdkConfig.setValue("");
                 expect(
-                    buildFlags.withSwiftSDKFlags(["package", sub, "--disable-sandbox"])
+                    buildFlags.withAdditionalFlags(["package", sub, "--disable-sandbox"])
                 ).to.deep.equal(["package", sub, "--disable-sandbox"]);
 
                 sdkConfig.setValue("/some/full/path/to/sdk");
                 expect(
-                    buildFlags.withSwiftSDKFlags(["package", sub, "--disable-sandbox"])
+                    buildFlags.withAdditionalFlags(["package", sub, "--disable-sandbox"])
                 ).to.deep.equal([
                     "package",
                     sub,
@@ -256,25 +259,36 @@ suite("BuildFlags Test Suite", () => {
             }
 
             sdkConfig.setValue("");
-            expect(
-                buildFlags.withSwiftSDKFlags(["package", "init", "--disable-sandbox"])
-            ).to.deep.equal(["package", "init", "--disable-sandbox"]);
+            expect(buildFlags.withAdditionalFlags(["package", "init"])).to.deep.equal([
+                "package",
+                "init",
+            ]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
-            expect(
-                buildFlags.withSwiftSDKFlags(["package", "init", "--disable-sandbox"])
-            ).to.deep.equal(["package", "init", "--disable-sandbox"]);
+            expect(buildFlags.withAdditionalFlags(["package", "init"])).to.deep.equal([
+                "package",
+                "init",
+            ]);
+
+            sandboxConfig.setValue(true);
+            expect(buildFlags.withAdditionalFlags(["package", "init"])).to.deep.equal([
+                "package",
+                "--disable-sandbox",
+                "-Xswiftc",
+                "-disable-sandbox",
+                "init",
+            ]);
         });
 
         test("build", () => {
             sdkConfig.setValue("");
             expect(
-                buildFlags.withSwiftSDKFlags(["build", "--target", "MyExecutable"])
+                buildFlags.withAdditionalFlags(["build", "--target", "MyExecutable"])
             ).to.deep.equal(["build", "--target", "MyExecutable"]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
             expect(
-                buildFlags.withSwiftSDKFlags(["build", "--target", "MyExecutable"])
+                buildFlags.withAdditionalFlags(["build", "--target", "MyExecutable"])
             ).to.deep.equal([
                 "build",
                 "--sdk",
@@ -282,17 +296,31 @@ suite("BuildFlags Test Suite", () => {
                 "--target",
                 "MyExecutable",
             ]);
+
+            sandboxConfig.setValue(true);
+            expect(
+                buildFlags.withAdditionalFlags(["build", "--target", "MyExecutable"])
+            ).to.deep.equal([
+                "build",
+                "--sdk",
+                "/some/full/path/to/sdk",
+                "--target",
+                "MyExecutable",
+                "--disable-sandbox",
+                "-Xswiftc",
+                "-disable-sandbox",
+            ]);
         });
 
         test("run", () => {
             sdkConfig.setValue("");
             expect(
-                buildFlags.withSwiftSDKFlags(["run", "--product", "MyExecutable"])
+                buildFlags.withAdditionalFlags(["run", "--product", "MyExecutable"])
             ).to.deep.equal(["run", "--product", "MyExecutable"]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
             expect(
-                buildFlags.withSwiftSDKFlags(["run", "--product", "MyExecutable"])
+                buildFlags.withAdditionalFlags(["run", "--product", "MyExecutable"])
             ).to.deep.equal([
                 "run",
                 "--sdk",
@@ -300,32 +328,70 @@ suite("BuildFlags Test Suite", () => {
                 "--product",
                 "MyExecutable",
             ]);
+
+            sandboxConfig.setValue(true);
+            expect(
+                buildFlags.withAdditionalFlags(["run", "--product", "MyExecutable"])
+            ).to.deep.equal([
+                "run",
+                "--sdk",
+                "/some/full/path/to/sdk",
+                "--product",
+                "MyExecutable",
+                "--disable-sandbox",
+                "-Xswiftc",
+                "-disable-sandbox",
+            ]);
         });
 
         test("test", () => {
             sdkConfig.setValue("");
-            expect(buildFlags.withSwiftSDKFlags(["test", "--filter", "MyTests"])).to.deep.equal([
+            expect(buildFlags.withAdditionalFlags(["test", "--filter", "MyTests"])).to.deep.equal([
                 "test",
                 "--filter",
                 "MyTests",
             ]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
-            expect(buildFlags.withSwiftSDKFlags(["test", "--filter", "MyTests"])).to.deep.equal([
+            expect(buildFlags.withAdditionalFlags(["test", "--filter", "MyTests"])).to.deep.equal([
                 "test",
                 "--sdk",
                 "/some/full/path/to/sdk",
                 "--filter",
                 "MyTests",
             ]);
+
+            sandboxConfig.setValue(true);
+            expect(buildFlags.withAdditionalFlags(["test", "--filter", "MyTests"])).to.deep.equal([
+                "test",
+                "--sdk",
+                "/some/full/path/to/sdk",
+                "--filter",
+                "MyTests",
+                "--disable-sandbox",
+                "-Xswiftc",
+                "-disable-sandbox",
+            ]);
         });
 
         test("other commands", () => {
             sdkConfig.setValue("");
-            expect(buildFlags.withSwiftSDKFlags(["help", "repl"])).to.deep.equal(["help", "repl"]);
+            expect(buildFlags.withAdditionalFlags(["help", "repl"])).to.deep.equal([
+                "help",
+                "repl",
+            ]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
-            expect(buildFlags.withSwiftSDKFlags(["help", "repl"])).to.deep.equal(["help", "repl"]);
+            expect(buildFlags.withAdditionalFlags(["help", "repl"])).to.deep.equal([
+                "help",
+                "repl",
+            ]);
+
+            sandboxConfig.setValue(true);
+            expect(buildFlags.withAdditionalFlags(["help", "repl"])).to.deep.equal([
+                "help",
+                "repl",
+            ]);
         });
     });
 

@@ -49,8 +49,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
 
     setup(async () => {
         buildFlags = mockObject<BuildFlags>({
-            withSwiftSDKFlags: mockFn(s => s.returns([])),
-            withSwiftPackageFlags: mockFn(s => s.returns(s.args)),
+            withAdditionalFlags: mockFn(s => s.callsFake(arr => arr)),
         });
         toolchain = mockObject<SwiftToolchain>({
             swiftVersion: new Version(6, 0, 0),
@@ -184,11 +183,8 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
         });
 
         test("include sdk flags", () => {
-            buildFlags.withSwiftSDKFlags
+            buildFlags.withAdditionalFlags
                 .withArgs(match(["build"]))
-                .returns(["build", "--sdk", "/path/to/sdk"]);
-            buildFlags.withSwiftPackageFlags
-                .withArgs(match(["build", "--sdk", "/path/to/sdk"]))
                 .returns(["build", "--sdk", "/path/to/sdk", "--replace-scm-with-registry"]);
             const task = createSwiftTask(
                 ["build"],
