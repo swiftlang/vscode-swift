@@ -82,7 +82,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             task.definition.command,
             ...task.definition.args,
         ];
-        swiftArgs = this.workspaceContext.toolchain.buildFlags.withSwiftSDKFlags(swiftArgs);
+        swiftArgs = this.workspaceContext.toolchain.buildFlags.withAdditionalFlags(swiftArgs);
 
         const cwd = resolveTaskCwd(task, task.definition.cwd);
         const newTask = new vscode.Task(
@@ -122,7 +122,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             plugin.command,
             ...definition.args,
         ];
-        swiftArgs = this.workspaceContext.toolchain.buildFlags.withSwiftSDKFlags(swiftArgs);
+        swiftArgs = this.workspaceContext.toolchain.buildFlags.withAdditionalFlags(swiftArgs);
 
         const presentation = config?.presentationOptions ?? {};
         const task = new vscode.Task(

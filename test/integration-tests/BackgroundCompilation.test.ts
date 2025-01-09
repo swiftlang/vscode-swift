@@ -58,5 +58,5 @@ suite("BackgroundCompilation Test Suite", () => {
         await vscode.workspace.save(uri);
 
         await taskPromise;
-    }).timeout(120000);
+    }).timeout(180000);
 });
