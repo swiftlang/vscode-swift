@@ -27,11 +27,7 @@ import {
     ParallelXCTestOutputParser,
     XCTestOutputParser,
 } from "./TestParsers/XCTestOutputParser";
-import {
-    SwiftTestingOutputParser,
-    SymbolRenderer,
-    TestSymbol,
-} from "./TestParsers/SwiftTestingOutputParser";
+import { SwiftTestingOutputParser, SymbolRenderer } from "./TestParsers/SwiftTestingOutputParser";
 import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
 import { TaskOperation } from "../tasks/TaskQueue";
 import { TestXUnitParser } from "./TestXUnitParser";
@@ -280,18 +276,18 @@ export class TestRunProxy {
     private reportAttachments() {
         const attachmentKeys = Object.keys(this.attachments);
         if (attachmentKeys.length > 0) {
-            for (const key of attachmentKeys) {
-                const testItem = this._testItems[parseInt(key)];
+            let attachment = "";
+            const totalAttachments = attachmentKeys.reduce((acc, key) => {
                 const attachments = this.attachments[key];
-                this.appendOutput(
-                    `\r\n${testItem.label}${SymbolRenderer.ansiEscapeCodePrefix}90m recorded ${attachments.length} attachment${attachments.length === 1 ? "" : "s"}:${SymbolRenderer.resetANSIEscapeCode}`
-                );
+                attachment = attachments.length ? attachments[0] : attachment;
+                return acc + attachments.length;
+            }, 0);
 
-                for (const attachment of attachments) {
-                    this.appendOutput(
-                        `\r\n${SymbolRenderer.eventMessageSymbol(TestSymbol.attachment)} ${attachment}`
-                    );
-                }
+            if (attachment) {
+                attachment = path.dirname(attachment);
+                this.appendOutput(
+                    `\r\n${SymbolRenderer.ansiEscapeCodePrefix}90mRecorded ${totalAttachments} attachment${totalAttachments === 1 ? "" : "s"} to ${attachment}${SymbolRenderer.resetANSIEscapeCode}`
+                );
             }
         }
     }
@@ -560,63 +556,55 @@ export class TestRunner {
         if (this.testArgs.hasSwiftTestingTests) {
             const testRunTime = Date.now();
             const fifoPipePath = this.generateFifoPipePath(testRunTime);
-            const swiftTestingConfigFile = await this.generateSwiftTestingConfigPath();
 
-            await TemporaryFolder.withNamedTemporaryFiles(
-                [fifoPipePath, swiftTestingConfigFile],
-                async () => {
-                    // macOS/Linux require us to create the named pipe before we use it.
-                    // Windows just lets us communicate by specifying a pipe path without any ceremony.
-                    if (process.platform !== "win32") {
-                        await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
-                    }
-                    // Create the swift-testing configuration JSON file, peparing any
-                    // directories the configuration may require.
-                    const swiftTestingConfiguration = await SwiftTestingConfigurationSetup.setup(
-                        this.folderContext,
-                        testRunTime
-                    );
-                    const swiftTestingArgs = await SwiftTestingBuildAguments.build(
-                        fifoPipePath,
-                        swiftTestingConfigFile,
-                        swiftTestingConfiguration
-                    );
-                    const testBuildConfig = await TestingConfigurationFactory.swiftTestingConfig(
-                        this.folderContext,
-                        swiftTestingArgs,
-                        this.testKind,
-                        this.testArgs.swiftTestArgs,
-                        true
-                    );
-
-                    if (testBuildConfig === null || this.testRun.isCancellationRequested) {
-                        return this.testRun.runState;
-                    }
-
-                    const outputStream = this.testOutputWritable(
-                        TestLibrary.swiftTesting,
-                        runState
-                    );
-
-                    // Watch the pipe for JSONL output and parse the events into test explorer updates.
-                    // The await simply waits for the watching to be configured.
-                    await this.swiftTestOutputParser.watch(fifoPipePath, runState);
-
-                    await this.launchTests(
-                        runState,
-                        this.testKind === TestKind.parallel ? TestKind.standard : this.testKind,
-                        outputStream,
-                        testBuildConfig,
-                        TestLibrary.swiftTesting
-                    );
-
-                    await SwiftTestingConfigurationSetup.cleanup(
-                        this.folderContext,
-                        testRunTime,
-                        this.workspaceContext.outputChannel
-                    );
+            await TemporaryFolder.withNamedTemporaryFiles([fifoPipePath], async () => {
+                // macOS/Linux require us to create the named pipe before we use it.
+                // Windows just lets us communicate by specifying a pipe path without any ceremony.
+                if (process.platform !== "win32") {
+                    await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
                 }
-            );
+                // Create the swift-testing configuration JSON file, peparing any
+                // directories the configuration may require.
+                const attachmentFolder = await SwiftTestingConfigurationSetup.setupAttachmentFolder(
+                    this.folderContext,
+                    testRunTime
+                );
+                const swiftTestingArgs = await SwiftTestingBuildAguments.build(
+                    fifoPipePath,
+                    attachmentFolder
+                );
+                const testBuildConfig = await TestingConfigurationFactory.swiftTestingConfig(
+                    this.folderContext,
+                    swiftTestingArgs,
+                    this.testKind,
+                    this.testArgs.swiftTestArgs,
+                    true
+                );
+
+                if (testBuildConfig === null || this.testRun.isCancellationRequested) {
+                    return this.testRun.runState;
+                }
+
+                const outputStream = this.testOutputWritable(TestLibrary.swiftTesting, runState);
+
+                // Watch the pipe for JSONL output and parse the events into test explorer updates.
+                // The await simply waits for the watching to be configured.
+                await this.swiftTestOutputParser.watch(fifoPipePath, runState);
+
+                await this.launchTests(
+                    runState,
+                    this.testKind === TestKind.parallel ? TestKind.standard : this.testKind,
+                    outputStream,
+                    testBuildConfig,
+                    TestLibrary.swiftTesting
+                );
+
+                await SwiftTestingConfigurationSetup.cleanupAttachmentFolder(
+                    this.folderContext,
+                    testRunTime,
+                    this.workspaceContext.outputChannel
+                );
+            });
         }
 
         if (this.testArgs.hasXCTests) {
@@ -844,197 +832,185 @@ export class TestRunner {
         const buildConfigs: Array<vscode.DebugConfiguration | undefined> = [];
         const fifoPipePath = this.generateFifoPipePath(testRunTime);
 
-        const swiftTestingConfigFile = await this.generateSwiftTestingConfigPath();
+        await TemporaryFolder.withNamedTemporaryFiles([fifoPipePath], async () => {
+            if (this.testArgs.hasSwiftTestingTests) {
+                // macOS/Linux require us to create the named pipe before we use it.
+                // Windows just lets us communicate by specifying a pipe path without any ceremony.
+                if (process.platform !== "win32") {
+                    await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
+                }
+                // Create the swift-testing configuration JSON file, peparing any
+                // directories the configuration may require.
+                const attachmentFolder = await SwiftTestingConfigurationSetup.setupAttachmentFolder(
+                    this.folderContext,
+                    testRunTime
+                );
+                const swiftTestingArgs = await SwiftTestingBuildAguments.build(
+                    fifoPipePath,
+                    attachmentFolder
+                );
 
-        await TemporaryFolder.withNamedTemporaryFiles(
-            [fifoPipePath, swiftTestingConfigFile],
-            async () => {
-                if (this.testArgs.hasSwiftTestingTests) {
-                    // macOS/Linux require us to create the named pipe before we use it.
-                    // Windows just lets us communicate by specifying a pipe path without any ceremony.
-                    if (process.platform !== "win32") {
-                        await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
-                    }
-                    // Create the swift-testing configuration JSON file, peparing any
-                    // directories the configuration may require.
-                    const swiftTestingConfiguration = await SwiftTestingConfigurationSetup.setup(
-                        this.folderContext,
-                        testRunTime
-                    );
-                    const swiftTestingArgs = await SwiftTestingBuildAguments.build(
-                        fifoPipePath,
-                        swiftTestingConfigFile,
-                        swiftTestingConfiguration
-                    );
+                const swiftTestBuildConfig = await TestingConfigurationFactory.swiftTestingConfig(
+                    this.folderContext,
+                    swiftTestingArgs,
+                    this.testKind,
+                    this.testArgs.swiftTestArgs,
+                    true
+                );
 
-                    const swiftTestBuildConfig =
-                        await TestingConfigurationFactory.swiftTestingConfig(
-                            this.folderContext,
-                            swiftTestingArgs,
-                            this.testKind,
-                            this.testArgs.swiftTestArgs,
-                            true
+                if (swiftTestBuildConfig !== null) {
+                    swiftTestBuildConfig.testType = TestLibrary.swiftTesting;
+                    swiftTestBuildConfig.preLaunchTask = null;
+
+                    // If we're testing in both frameworks we're going to start more than one debugging
+                    // session. If both build configurations have the same name LLDB will replace the
+                    // output of the first one in the Debug Console with the output of the second one.
+                    // If they each have a unique name the Debug Console gets a nice dropdown the user
+                    // can switch between to see the output for both sessions.
+                    swiftTestBuildConfig.name = `Swift Testing: ${swiftTestBuildConfig.name}`;
+
+                    // output test build configuration
+                    if (configuration.diagnostics) {
+                        const configJSON = JSON.stringify(swiftTestBuildConfig);
+                        this.workspaceContext.outputChannel.logDiagnostic(
+                            `swift-testing Debug Config: ${configJSON}`,
+                            this.folderContext.name
                         );
+                    }
 
-                    if (swiftTestBuildConfig !== null) {
-                        swiftTestBuildConfig.testType = TestLibrary.swiftTesting;
-                        swiftTestBuildConfig.preLaunchTask = null;
+                    buildConfigs.push(swiftTestBuildConfig);
+                }
+            }
 
-                        // If we're testing in both frameworks we're going to start more than one debugging
-                        // session. If both build configurations have the same name LLDB will replace the
-                        // output of the first one in the Debug Console with the output of the second one.
-                        // If they each have a unique name the Debug Console gets a nice dropdown the user
-                        // can switch between to see the output for both sessions.
-                        swiftTestBuildConfig.name = `Swift Testing: ${swiftTestBuildConfig.name}`;
+            // create launch config for testing
+            if (this.testArgs.hasXCTests) {
+                const xcTestBuildConfig = await TestingConfigurationFactory.xcTestConfig(
+                    this.folderContext,
+                    this.testKind,
+                    this.testArgs.xcTestArgs,
+                    true
+                );
 
-                        // output test build configuration
-                        if (configuration.diagnostics) {
-                            const configJSON = JSON.stringify(swiftTestBuildConfig);
-                            this.workspaceContext.outputChannel.logDiagnostic(
-                                `swift-testing Debug Config: ${configJSON}`,
-                                this.folderContext.name
-                            );
+                if (xcTestBuildConfig !== null) {
+                    xcTestBuildConfig.testType = TestLibrary.xctest;
+                    xcTestBuildConfig.preLaunchTask = null;
+                    xcTestBuildConfig.name = `XCTest: ${xcTestBuildConfig.name}`;
+
+                    // output test build configuration
+                    if (configuration.diagnostics) {
+                        const configJSON = JSON.stringify(xcTestBuildConfig);
+                        this.workspaceContext.outputChannel.logDiagnostic(
+                            `XCTest Debug Config: ${configJSON}`,
+                            this.folderContext.name
+                        );
+                    }
+
+                    buildConfigs.push(xcTestBuildConfig);
+                }
+            }
+
+            const validBuildConfigs = buildConfigs.filter(
+                config => config !== null
+            ) as vscode.DebugConfiguration[];
+
+            const debugRuns = validBuildConfigs.map(config => {
+                return () =>
+                    new Promise<void>((resolve, reject) => {
+                        if (this.testRun.isCancellationRequested) {
+                            resolve();
+                            return;
                         }
 
-                        buildConfigs.push(swiftTestBuildConfig);
-                    }
-                }
-
-                // create launch config for testing
-                if (this.testArgs.hasXCTests) {
-                    const xcTestBuildConfig = await TestingConfigurationFactory.xcTestConfig(
-                        this.folderContext,
-                        this.testKind,
-                        this.testArgs.xcTestArgs,
-                        true
-                    );
-
-                    if (xcTestBuildConfig !== null) {
-                        xcTestBuildConfig.testType = TestLibrary.xctest;
-                        xcTestBuildConfig.preLaunchTask = null;
-                        xcTestBuildConfig.name = `XCTest: ${xcTestBuildConfig.name}`;
-
-                        // output test build configuration
-                        if (configuration.diagnostics) {
-                            const configJSON = JSON.stringify(xcTestBuildConfig);
-                            this.workspaceContext.outputChannel.logDiagnostic(
-                                `XCTest Debug Config: ${configJSON}`,
-                                this.folderContext.name
-                            );
-                        }
-
-                        buildConfigs.push(xcTestBuildConfig);
-                    }
-                }
-
-                const validBuildConfigs = buildConfigs.filter(
-                    config => config !== null
-                ) as vscode.DebugConfiguration[];
-
-                const debugRuns = validBuildConfigs.map(config => {
-                    return () =>
-                        new Promise<void>((resolve, reject) => {
-                            if (this.testRun.isCancellationRequested) {
-                                resolve();
-                                return;
+                        // add cancelation
+                        const startSession = vscode.debug.onDidStartDebugSession(session => {
+                            if (config.testType === TestLibrary.xctest) {
+                                this.testRun.testRunStarted();
                             }
 
-                            // add cancelation
-                            const startSession = vscode.debug.onDidStartDebugSession(session => {
-                                if (config.testType === TestLibrary.xctest) {
-                                    this.testRun.testRunStarted();
-                                }
+                            this.workspaceContext.outputChannel.logDiagnostic(
+                                "Start Test Debugging",
+                                this.folderContext.name
+                            );
 
+                            const outputHandler = this.testOutputHandler(config.testType, runState);
+                            LoggingDebugAdapterTracker.setDebugSessionCallback(
+                                session,
+                                this.workspaceContext.outputChannel,
+                                output => {
+                                    outputHandler(output);
+                                }
+                            );
+
+                            const cancellation = this.testRun.token.onCancellationRequested(() => {
                                 this.workspaceContext.outputChannel.logDiagnostic(
-                                    "Start Test Debugging",
+                                    "Test Debugging Cancelled",
                                     this.folderContext.name
                                 );
-
-                                const outputHandler = this.testOutputHandler(
-                                    config.testType,
-                                    runState
-                                );
-                                LoggingDebugAdapterTracker.setDebugSessionCallback(
-                                    session,
-                                    this.workspaceContext.outputChannel,
-                                    output => {
-                                        outputHandler(output);
-                                    }
-                                );
-
-                                const cancellation = this.testRun.token.onCancellationRequested(
-                                    () => {
-                                        this.workspaceContext.outputChannel.logDiagnostic(
-                                            "Test Debugging Cancelled",
-                                            this.folderContext.name
-                                        );
-                                        vscode.debug.stopDebugging(session);
-                                        resolve();
-                                    }
-                                );
-                                subscriptions.push(cancellation);
+                                vscode.debug.stopDebugging(session);
+                                resolve();
                             });
-                            subscriptions.push(startSession);
-
-                            vscode.debug
-                                .startDebugging(this.folderContext.workspaceFolder, config)
-                                .then(
-                                    async started => {
-                                        if (started) {
-                                            if (config.testType === TestLibrary.swiftTesting) {
-                                                // Watch the pipe for JSONL output and parse the events into test explorer updates.
-                                                // The await simply waits for the watching to be configured.
-                                                await this.swiftTestOutputParser.watch(
-                                                    fifoPipePath,
-                                                    runState
-                                                );
-                                            }
-
-                                            // show test results pane
-                                            vscode.commands.executeCommand(
-                                                "testing.showMostRecentOutput"
-                                            );
-
-                                            const terminateSession =
-                                                vscode.debug.onDidTerminateDebugSession(() => {
-                                                    this.workspaceContext.outputChannel.logDiagnostic(
-                                                        "Stop Test Debugging",
-                                                        this.folderContext.name
-                                                    );
-                                                    // dispose terminate debug handler
-                                                    subscriptions.forEach(sub => sub.dispose());
-
-                                                    vscode.commands.executeCommand(
-                                                        "workbench.view.extension.test"
-                                                    );
-
-                                                    resolve();
-                                                });
-                                            subscriptions.push(terminateSession);
-                                        } else {
-                                            subscriptions.forEach(sub => sub.dispose());
-                                            reject("Debugger not started");
-                                        }
-                                    },
-                                    reason => {
-                                        subscriptions.forEach(sub => sub.dispose());
-                                        reject(reason);
-                                    }
-                                );
+                            subscriptions.push(cancellation);
                         });
-                });
+                        subscriptions.push(startSession);
 
-                // Run each debugging session sequentially
-                await debugRuns.reduce((p, fn) => p.then(() => fn()), Promise.resolve());
+                        vscode.debug
+                            .startDebugging(this.folderContext.workspaceFolder, config)
+                            .then(
+                                async started => {
+                                    if (started) {
+                                        if (config.testType === TestLibrary.swiftTesting) {
+                                            // Watch the pipe for JSONL output and parse the events into test explorer updates.
+                                            // The await simply waits for the watching to be configured.
+                                            await this.swiftTestOutputParser.watch(
+                                                fifoPipePath,
+                                                runState
+                                            );
+                                        }
 
-                // Clean up any leftover resources
-                await SwiftTestingConfigurationSetup.cleanup(
-                    this.folderContext,
-                    testRunTime,
-                    this.workspaceContext.outputChannel
-                );
-            }
-        );
+                                        // show test results pane
+                                        vscode.commands.executeCommand(
+                                            "testing.showMostRecentOutput"
+                                        );
+
+                                        const terminateSession =
+                                            vscode.debug.onDidTerminateDebugSession(() => {
+                                                this.workspaceContext.outputChannel.logDiagnostic(
+                                                    "Stop Test Debugging",
+                                                    this.folderContext.name
+                                                );
+                                                // dispose terminate debug handler
+                                                subscriptions.forEach(sub => sub.dispose());
+
+                                                vscode.commands.executeCommand(
+                                                    "workbench.view.extension.test"
+                                                );
+
+                                                resolve();
+                                            });
+                                        subscriptions.push(terminateSession);
+                                    } else {
+                                        subscriptions.forEach(sub => sub.dispose());
+                                        reject("Debugger not started");
+                                    }
+                                },
+                                reason => {
+                                    subscriptions.forEach(sub => sub.dispose());
+                                    reject(reason);
+                                }
+                            );
+                    });
+            });
+
+            // Run each debugging session sequentially
+            await debugRuns.reduce((p, fn) => p.then(() => fn()), Promise.resolve());
+
+            // Clean up any leftover resources
+            await SwiftTestingConfigurationSetup.cleanupAttachmentFolder(
+                this.folderContext,
+                testRunTime,
+                this.workspaceContext.outputChannel
+            );
+        });
     }
 
     /** Returns a callback that handles a chunk of stdout output from a test run. */
@@ -1092,11 +1068,6 @@ export class TestRunner {
         return process.platform === "win32"
             ? `\\\\.\\pipe\\vscodemkfifo-${testRunDateNow}`
             : path.join(os.tmpdir(), `vscodemkfifo-${testRunDateNow}`);
-    }
-
-    private async generateSwiftTestingConfigPath(): Promise<string> {
-        const tmpdir = await asyncfs.mkdtemp(path.join(os.tmpdir(), "swift-testing-"));
-        return path.join(tmpdir, "swift-testing-config.json");
     }
 }
 

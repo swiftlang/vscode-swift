@@ -99,31 +99,25 @@ export class BuildConfigurationFactory {
     }
 }
 
-interface SwiftTestingConfigFile {
-    experimentalAttachmentsPath?: string;
-}
-
 export class SwiftTestingBuildAguments {
     private constructor(
         public fifoPipePath: string,
-        public configFilePath: string
+        public attachmentPath: string | undefined
     ) {}
 
     public static async build(
         fifoPipePath: string,
-        swiftTestingConfigFile: string,
-        configuration: SwiftTestingConfigFile
+        attachmentPath: string | undefined
     ): Promise<SwiftTestingBuildAguments> {
-        await fs.writeFile(swiftTestingConfigFile, JSON.stringify(configuration));
-        return new SwiftTestingBuildAguments(fifoPipePath, swiftTestingConfigFile);
+        return new SwiftTestingBuildAguments(fifoPipePath, attachmentPath);
     }
 }
 
 export class SwiftTestingConfigurationSetup {
-    public static async setup(
+    public static async setupAttachmentFolder(
         folderContext: FolderContext,
         testRunTime: number
-    ): Promise<SwiftTestingConfigFile> {
+    ): Promise<string | undefined> {
         const attachmentPath = SwiftTestingConfigurationSetup.resolveAttachmentPath(
             folderContext,
             testRunTime
@@ -132,15 +126,13 @@ export class SwiftTestingConfigurationSetup {
             // Create the directory if it doesn't exist.
             await fs.mkdir(attachmentPath, { recursive: true });
 
-            return {
-                experimentalAttachmentsPath: attachmentPath,
-            };
+            return attachmentPath;
         }
 
-        return {};
+        return attachmentPath;
     }
 
-    public static async cleanup(
+    public static async cleanupAttachmentFolder(
         folderContext: FolderContext,
         testRunTime: number,
         outputChannel: vscode.OutputChannel
@@ -542,16 +534,23 @@ export class TestingConfigurationFactory {
             );
         }
 
-        return [
+        const swiftTestingArgs = [
             ...args,
             "--enable-swift-testing",
             "--event-stream-version",
             "0",
             "--event-stream-output-path",
             this.swiftTestingArguments.fifoPipePath,
-            "--configuration-path",
-            this.swiftTestingArguments.configFilePath,
         ];
+
+        if (this.swiftTestingArguments.attachmentPath && this.swiftVersionGreaterOrEqual(6, 1, 0)) {
+            swiftTestingArgs.push(
+                "--experimental-attachments-path",
+                this.swiftTestingArguments.attachmentPath
+            );
+        }
+
+        return swiftTestingArgs;
     }
 
     private addTestsToArgs(args: string[]): string[] {
