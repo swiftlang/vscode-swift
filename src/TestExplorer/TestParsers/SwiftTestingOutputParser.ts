@@ -513,7 +513,7 @@ export class SymbolRenderer {
      * @param message An event message, typically found on an `EventRecordPayload`.
      * @returns A string colorized with ANSI escape codes.
      */
-    static eventMessageSymbol(symbol: TestSymbol): string {
+    public static eventMessageSymbol(symbol: TestSymbol): string {
         return this.colorize(symbol, this.symbol(symbol));
     }
 

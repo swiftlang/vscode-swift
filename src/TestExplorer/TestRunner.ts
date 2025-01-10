@@ -27,7 +27,11 @@ import {
     ParallelXCTestOutputParser,
     XCTestOutputParser,
 } from "./TestParsers/XCTestOutputParser";
-import { SwiftTestingOutputParser, SymbolRenderer } from "./TestParsers/SwiftTestingOutputParser";
+import {
+    SwiftTestingOutputParser,
+    SymbolRenderer,
+    TestSymbol,
+} from "./TestParsers/SwiftTestingOutputParser";
 import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
 import { TaskOperation } from "../tasks/TaskQueue";
 import { TestXUnitParser } from "./TestXUnitParser";
@@ -286,7 +290,7 @@ export class TestRunProxy {
             if (attachment) {
                 attachment = path.dirname(attachment);
                 this.appendOutput(
-                    `\r\n${SymbolRenderer.ansiEscapeCodePrefix}90mRecorded ${totalAttachments} attachment${totalAttachments === 1 ? "" : "s"} to ${attachment}${SymbolRenderer.resetANSIEscapeCode}`
+                    `${SymbolRenderer.eventMessageSymbol(TestSymbol.attachment)} ${SymbolRenderer.ansiEscapeCodePrefix}90mRecorded ${totalAttachments} attachment${totalAttachments === 1 ? "" : "s"} to ${attachment}${SymbolRenderer.resetANSIEscapeCode}`
                 );
             }
         }
