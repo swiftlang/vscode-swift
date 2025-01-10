@@ -14,6 +14,8 @@
 
 import * as assert from "assert";
 import * as vscode from "vscode";
+import * as path from "path";
+import * as fs from "fs";
 import { beforeEach, afterEach } from "mocha";
 import { TestExplorer } from "../../../src/TestExplorer/TestExplorer";
 import {
@@ -204,6 +206,7 @@ suite("Test Explorer Suite", function () {
                         ["testPassing()", "testFailing()", "testDisabled()"],
                         "testWithKnownIssue()",
                         "testWithKnownIssueAndUnknownIssue()",
+                        "testAttachment()",
                         "DuplicateSuffixTests",
                         ["testPassing()", "testPassingSuffix()"],
                     ],
@@ -241,6 +244,44 @@ suite("Test Explorer Suite", function () {
                 ) {
                     this.skip();
                 }
+            });
+
+            test("attachments", async function () {
+                // Attachments were introduced in 6.1
+                if (workspaceContext.swiftVersion.isLessThan(new Version(6, 1, 0))) {
+                    this.skip();
+                }
+
+                const testRun = await runTest(
+                    testExplorer,
+                    TestKind.standard,
+                    "PackageTests.testAttachment()"
+                );
+
+                assertTestResults(testRun, {
+                    passed: ["PackageTests.testAttachment()"],
+                });
+
+                // Verify the attachment was attached and the contents are correct.
+                const attachments = path.join(
+                    testExplorer.folderContext.folder.fsPath,
+                    "./.build/attachments"
+                );
+
+                const attachmentFolders = fs.readdirSync(attachments).map(folder => ({
+                    name: folder,
+                    time: fs.statSync(path.join(attachments, folder)).mtime.getTime(),
+                }));
+                assert(attachmentFolders.length > 0, "Attachments directory is empty");
+
+                const latestFolder = attachmentFolders.sort((a, b) => b.time - a.time)[0];
+                const latestFolderPath = path.join(attachments, latestFolder.name);
+                const latestFolderContents = fs.readdirSync(latestFolderPath);
+                assert.deepStrictEqual(latestFolderContents, ["hello.txt"]);
+
+                const attachmentPath = path.join(latestFolderPath, "hello.txt");
+                const attachment = fs.readFileSync(attachmentPath, "utf8");
+                assert.equal(attachment, "Hello, world!");
             });
 
             test("withKnownIssue", async () => {
@@ -572,8 +613,8 @@ suite("Test Explorer Suite", function () {
 
                         assertTestResults(testRun, {
                             passed: [
-                                `${testId}/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])`,
-                                `${testId}/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [51])])`,
+                                `${testId}/PackageTests.swift:63:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])`,
+                                `${testId}/PackageTests.swift:63:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [51])])`,
                             ],
                             failed: [
                                 {
@@ -583,7 +624,7 @@ suite("Test Explorer Suite", function () {
                                             text: "Expectation failed: (arg → 2) != 2",
                                         })}`,
                                     ],
-                                    test: `${testId}/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])`,
+                                    test: `${testId}/PackageTests.swift:63:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])`,
                                 },
                                 {
                                     issues: [],

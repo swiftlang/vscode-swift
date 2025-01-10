@@ -42,9 +42,13 @@ final class DebugReleaseTestSuite: XCTestCase {
   }
 }
 
-#if swift(>=6.0)
+#if swift(>=6.1)
+@_spi(Experimental) import Testing
+#elseif swift(>=6.0)
 import Testing
+#endif
 
+#if swift(>=6.0)
 @Test func topLevelTestPassing() {
   print("A print statement in a test.")
   #if !TEST_ARGUMENT_SET_VIA_TEST_BUILD_ARGUMENTS_SETTING
@@ -98,7 +102,12 @@ struct MixedSwiftTestingSuite {
   }
   #expect(2 == 3)
 }
+#endif
 
+#if swift(>=6.1)
+@Test func testAttachment() throws {
+  Attachment("Hello, world!", named: "hello.txt").attach()
+}
 #endif
 
 final class DuplicateSuffixTests: XCTestCase {

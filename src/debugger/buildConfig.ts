@@ -100,7 +100,7 @@ export class BuildConfigurationFactory {
 }
 
 interface SwiftTestingConfigFile {
-    experimentalAttachmentsPath: string | undefined;
+    experimentalAttachmentsPath?: string;
 }
 
 export class SwiftTestingBuildAguments {
@@ -116,6 +116,75 @@ export class SwiftTestingBuildAguments {
     ): Promise<SwiftTestingBuildAguments> {
         await fs.writeFile(swiftTestingConfigFile, JSON.stringify(configuration));
         return new SwiftTestingBuildAguments(fifoPipePath, swiftTestingConfigFile);
+    }
+}
+
+export class SwiftTestingConfigurationSetup {
+    public static async setup(
+        folderContext: FolderContext,
+        testRunTime: number
+    ): Promise<SwiftTestingConfigFile> {
+        const attachmentPath = SwiftTestingConfigurationSetup.resolveAttachmentPath(
+            folderContext,
+            testRunTime
+        );
+        if (attachmentPath) {
+            // Create the directory if it doesn't exist.
+            await fs.mkdir(attachmentPath, { recursive: true });
+
+            return {
+                experimentalAttachmentsPath: attachmentPath,
+            };
+        }
+
+        return {};
+    }
+
+    public static async cleanup(
+        folderContext: FolderContext,
+        testRunTime: number,
+        outputChannel: vscode.OutputChannel
+    ): Promise<void> {
+        const attachmentPath = SwiftTestingConfigurationSetup.resolveAttachmentPath(
+            folderContext,
+            testRunTime
+        );
+
+        if (attachmentPath) {
+            try {
+                // If no attachments were written during the test run clean up the folder
+                // that was created to contain them to prevent accumulation of empty folders
+                // after every run.
+                const files = await fs.readdir(attachmentPath);
+                if (files.length === 0) {
+                    await fs.rmdir(attachmentPath);
+                }
+            } catch (error) {
+                outputChannel.appendLine(`Failed to clean up attachment path: ${error}`);
+            }
+        }
+    }
+
+    private static resolveAttachmentPath(
+        folderContext: FolderContext,
+        testRunTime: number
+    ): string | undefined {
+        let attachmentPath = configuration.folder(folderContext.workspaceFolder).attachmentsPath;
+        if (attachmentPath.length > 0) {
+            // If the attachment path is relative, resolve it relative to the workspace folder.
+            if (!path.isAbsolute(attachmentPath)) {
+                attachmentPath = path.resolve(folderContext.folder.fsPath, attachmentPath);
+            }
+
+            const dateString = this.dateString(testRunTime);
+            return path.join(attachmentPath, dateString);
+        }
+        return undefined;
+    }
+
+    private static dateString(time: number): string {
+        const date = new Date(time);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}_${String(date.getHours()).padStart(2, "0")}-${String(date.getMinutes()).padStart(2, "0")}-${String(date.getSeconds()).padStart(2, "0")}`;
     }
 }
 

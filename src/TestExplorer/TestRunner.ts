@@ -43,6 +43,7 @@ import { TestCoverage } from "../coverage/LcovResults";
 import {
     BuildConfigurationFactory,
     SwiftTestingBuildAguments,
+    SwiftTestingConfigurationSetup,
     TestingConfigurationFactory,
 } from "../debugger/buildConfig";
 import { TestKind, isDebugging, isRelease } from "./TestKind";
@@ -557,7 +558,8 @@ export class TestRunner {
         // Run swift-testing first, then XCTest.
         // swift-testing being parallel by default should help these run faster.
         if (this.testArgs.hasSwiftTestingTests) {
-            const fifoPipePath = this.generateFifoPipePath();
+            const testRunTime = Date.now();
+            const fifoPipePath = this.generateFifoPipePath(testRunTime);
             const swiftTestingConfigFile = await this.generateSwiftTestingConfigPath();
 
             await TemporaryFolder.withNamedTemporaryFiles(
@@ -568,14 +570,16 @@ export class TestRunner {
                     if (process.platform !== "win32") {
                         await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
                     }
-                    // Create the swift-testing configuration JSON file.
+                    // Create the swift-testing configuration JSON file, peparing any
+                    // directories the configuration may require.
+                    const swiftTestingConfiguration = await SwiftTestingConfigurationSetup.setup(
+                        this.folderContext,
+                        testRunTime
+                    );
                     const swiftTestingArgs = await SwiftTestingBuildAguments.build(
                         fifoPipePath,
                         swiftTestingConfigFile,
-                        {
-                            // TODO: This ought to be a configuration file
-                            experimentalAttachmentsPath: "/Users/plemarquand/Desktop/ttt",
-                        }
+                        swiftTestingConfiguration
                     );
                     const testBuildConfig = await TestingConfigurationFactory.swiftTestingConfig(
                         this.folderContext,
@@ -604,6 +608,12 @@ export class TestRunner {
                         outputStream,
                         testBuildConfig,
                         TestLibrary.swiftTesting
+                    );
+
+                    await SwiftTestingConfigurationSetup.cleanup(
+                        this.folderContext,
+                        testRunTime,
+                        this.workspaceContext.outputChannel
                     );
                 }
             );
@@ -829,9 +839,10 @@ export class TestRunner {
             throw new Error(`Build failed with exit code ${buildExitCode}`);
         }
 
+        const testRunTime = Date.now();
         const subscriptions: vscode.Disposable[] = [];
         const buildConfigs: Array<vscode.DebugConfiguration | undefined> = [];
-        const fifoPipePath = this.generateFifoPipePath();
+        const fifoPipePath = this.generateFifoPipePath(testRunTime);
 
         const swiftTestingConfigFile = await this.generateSwiftTestingConfigPath();
 
@@ -844,13 +855,16 @@ export class TestRunner {
                     if (process.platform !== "win32") {
                         await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
                     }
-                    // Create the swift-testing configuration JSON file.
+                    // Create the swift-testing configuration JSON file, peparing any
+                    // directories the configuration may require.
+                    const swiftTestingConfiguration = await SwiftTestingConfigurationSetup.setup(
+                        this.folderContext,
+                        testRunTime
+                    );
                     const swiftTestingArgs = await SwiftTestingBuildAguments.build(
                         fifoPipePath,
                         swiftTestingConfigFile,
-                        {
-                            experimentalAttachmentsPath: "/Users/plemarquand/Desktop/ttt",
-                        }
+                        swiftTestingConfiguration
                     );
 
                     const swiftTestBuildConfig =
@@ -1012,6 +1026,13 @@ export class TestRunner {
 
                 // Run each debugging session sequentially
                 await debugRuns.reduce((p, fn) => p.then(() => fn()), Promise.resolve());
+
+                // Clean up any leftover resources
+                await SwiftTestingConfigurationSetup.cleanup(
+                    this.folderContext,
+                    testRunTime,
+                    this.workspaceContext.outputChannel
+                );
             }
         );
     }
@@ -1067,10 +1088,10 @@ export class TestRunner {
         }
     }
 
-    private generateFifoPipePath(): string {
+    private generateFifoPipePath(testRunDateNow: number): string {
         return process.platform === "win32"
-            ? `\\\\.\\pipe\\vscodemkfifo-${Date.now()}`
-            : path.join(os.tmpdir(), `vscodemkfifo-${Date.now()}`);
+            ? `\\\\.\\pipe\\vscodemkfifo-${testRunDateNow}`
+            : path.join(os.tmpdir(), `vscodemkfifo-${testRunDateNow}`);
     }
 
     private async generateSwiftTestingConfigPath(): Promise<string> {
