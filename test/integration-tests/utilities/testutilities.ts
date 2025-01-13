@@ -78,6 +78,8 @@ const extensionBootstrapper = (() => {
                 this.currentTest,
                 testAssets ?? ["defaultPackage"]
             );
+            // Need the `disableSandbox` configuration which is only in 6.1
+            // https://github.com/swiftlang/sourcekit-lsp/commit/7e2d12a7a0d184cc820ae6af5ddbb8aa18b1501c
             if (
                 process.platform === "darwin" &&
                 workspaceContext.toolchain.swiftVersion.isLessThan(new Version(6, 1, 0)) &&
