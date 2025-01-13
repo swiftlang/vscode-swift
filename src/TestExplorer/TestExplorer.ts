@@ -261,6 +261,14 @@ export class TestExplorer {
     async discoverTestsInWorkspaceSPM(token: vscode.CancellationToken) {
         async function runDiscover(explorer: TestExplorer, firstTry: boolean) {
             try {
+                // we depend on sourcekit-lsp to detect swift-testing tests so let the user know
+                // that things won't work properly if sourcekit-lsp has been disabled for some reason
+                if (firstTry === true && configuration.lsp.disable === true) {
+                    vscode.window.showInformationMessage(
+                        `swift-testing tests may not be detected correctly since SourceKit-LSP
+                        has been disabled for this workspace.`
+                    );
+                }
                 const toolchain = explorer.folderContext.workspaceContext.toolchain;
                 // get build options before build is run so we can be sure they aren't changed
                 // mid-build
