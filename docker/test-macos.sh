@@ -15,7 +15,7 @@
 
 set -e
 
-platform=$([ $(arch) == "arm64" ] && echo "arm64" || echo "x64")
+platform=$([ "$(arch)" == "arm64" ] && echo "arm64" || echo "x64")
 
 NODE_VERSION="$(cat .nvmrc)"
 NODE_NAME="node-v$NODE_VERSION-darwin-$platform"

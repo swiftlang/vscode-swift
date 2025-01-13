@@ -58,6 +58,7 @@
     (subpath "/bin")
     (subpath "/usr/bin")
     (subpath "/usr/local/bin")
+    (subpath "/usr/lib/swift")
     (subpath "/usr/libexec/path_helper")
     (subpath "/usr/local/share/git-core")
     (subpath "/usr/local/share/hwtrace")
