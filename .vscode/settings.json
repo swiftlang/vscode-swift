@@ -13,5 +13,9 @@
 
   // Configure Prettier
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode"
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+  // Disable for when opening files in this workspace
+  "swift.disableAutoResolve": true,
+  "swift.autoGenerateLaunchConfigurations": false
 }

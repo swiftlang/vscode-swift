@@ -122,9 +122,9 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand("swift.insertFunctionComment", () =>
             insertFunctionComment(ctx)
         ),
-        vscode.commands.registerCommand(Commands.USE_LOCAL_DEPENDENCY, item => {
+        vscode.commands.registerCommand(Commands.USE_LOCAL_DEPENDENCY, (item, dep) => {
             if (item instanceof PackageNode) {
-                return useLocalDependency(item.name, ctx);
+                return useLocalDependency(item.name, ctx, dep);
             }
         }),
         vscode.commands.registerCommand("swift.editDependency", item => {
