@@ -109,14 +109,18 @@ export async function execFile(
             options.env = { ...(options.env ?? process.env), ...runtimeEnv };
         }
     }
-    return new Promise<{ stdout: string; stderr: string }>((resolve, reject) =>
-        cp.execFile(executable, args, options, (error, stdout, stderr) => {
-            if (error) {
-                reject(new ExecFileError(error, stdout, stderr));
-            }
-            resolve({ stdout, stderr });
-        })
-    );
+    return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+        try {
+            cp.execFile(executable, args, options, (error, stdout, stderr) => {
+                if (error) {
+                    reject(new ExecFileError(error, stdout, stderr));
+                }
+                resolve({ stdout, stderr });
+            });
+        } catch (e) {
+            reject(e);
+        }
+    });
 }
 
 export async function execFileStreamOutput(

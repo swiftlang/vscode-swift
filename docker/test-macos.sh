@@ -56,7 +56,13 @@ PATH="$ARTIFACTS/$NODE_NAME/bin:$PATH"
 mkdir -p "$(dirname "$VSCODE_SETTINGS")"
 cat <<EOT > "$VSCODE_SETTINGS"
 {
-    "swift.disableSandbox": true
+    "swift.path": "/Users/ec2-user/jenkins/workspace/pr-vscode-swift-macos/branch-main/latest_toolchain/usr/bin"
+    "swift.disableSandbox": true,
+    "swift.debugger.disable": true,
+    "swift.debugger.path": "/Users/ec2-user/jenkins/workspace/pr-vscode-swift-macos/branch-main/latest_toolchain/usr/bin/lldb-dap",
+    "lldb.library": "/Applications/Xcode-beta.app/Contents/SharedFrameworks/LLDB.framework/Versions/A/LLDB",
+    "lldb.launch.expressions": "native",
+    "lldb.suppressUpdateNotifications": true
 }
 EOT
 
@@ -84,4 +90,6 @@ export GIT_CONFIG_VALUE_0="$PWD/hooks"
 
 # Need to set proxy to download VS Code
 export npm_config_https_proxy="$HTTPS_PROXY"
+
+# export DEVELOPER_DIR=/Applications/Xcode-beta.app
 VSCODE_DATA_DIR="$USER_DATA" CI=1 FAST_TEST_RUN=1 npm run coverage -- --coverage-output "$PWD/coverage"

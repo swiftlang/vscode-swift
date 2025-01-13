@@ -31,6 +31,10 @@ const launchArgs = [
     "--disable-crash-reporter",
     "--disable-workspace-trust",
     "--disable-telemetry",
+    "--disable-extension",
+    "vscode.github",
+    "--disable-extension",
+    "vscode.github-authentication",
 ];
 if (dataDir) {
     launchArgs.push("--user-data-dir", dataDir);

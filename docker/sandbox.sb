@@ -3,7 +3,7 @@
 (deny default)
 
 ; Get fonts
-(import "system.sb")
+; (import "system.sb")
 
 ; Helpers
 (define (param-regex param-name param-relative-regex)
@@ -50,18 +50,33 @@
     (regex #"^/private/var/folders/[^/]+/[^/]+/.+")
     (regex #"^/Library/Preferences/.*.plist")
     (regex #"^/[^/]+/Library/Python")
+    (subpath "/Library/Developer/CommandLineTools")
     (subpath "/Library/Developer/Toolchains")
     (subpath "/Library/Frameworks/UIAutomation.framework")
     (subpath "/Library/Python")
+    (subpath "/System/Library/Perl")
     (subpath "/Applications/Xcode.app")
     (subpath "/Applications/Xcode-beta.app")
     (subpath "/bin")
     (subpath "/usr/bin")
     (subpath "/usr/local/bin")
-    (subpath "/usr/lib/swift")
     (subpath "/usr/libexec/path_helper")
     (subpath "/usr/local/share/git-core")
     (subpath "/usr/local/share/hwtrace")
+
+    (regex #".*/LLDB.framework/.*")
+    (regex #".*/Python3.framework/.*")
+    (regex #".*/branch-main/.*")
+    (regex #".*/usr/lib/swift/.*")
+    ; (regex #".*/Frameworks/.*")
+    ; (regex #".*/PrivateFrameworks/.*")
+
+    ; (subpath "/System/Volumes/Preboot")
+    ; (subpath "/System/Volumes")
+    ; (subpath "/usr/lib")
+    ; (subpath "/Users/ec2-user")
+    ; (subpath "/Library/Developer/CommandLineTool")
+    ; (subpath "/")
 )
 
 (allow mach-lookup)
@@ -84,8 +99,11 @@
     (regex #"^/Users/[^/]+/Library/Caches/com.apple.python.*")
     (regex #"^/Users/[^/]+/Library/Developer/Xcode/DerivedData.*")
     (regex #"^/Users/[^/]+/Library/Application Support/Code.*")
+    (regex #"^/Users/[^/]+/Library/Application Support/Microsoft.*")
     (regex #"^/private/var/folders/[^/]+/[^/]+/.+")
     (regex #"^/Users/[^/]+/.vscode.*")
+
+    (regex #".*/branch-main.*")
 )
 
 ; Execute

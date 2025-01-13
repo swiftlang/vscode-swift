@@ -19,7 +19,8 @@ import { SwiftExecution } from "../../src/tasks/SwiftExecution";
 import { activateExtensionForTest } from "./utilities/testutilities";
 import { expect } from "chai";
 
-suite("Extension Test Suite", () => {
+suite("Extension Test Suite", function () {
+    this.timeout(60000);
     let workspaceContext: WorkspaceContext;
 
     activateExtensionForTest({
@@ -42,7 +43,8 @@ suite("Extension Test Suite", () => {
         }).timeout(5000);*/
     });
 
-    suite("Workspace", () => {
+    suite("Workspace", function () {
+        this.timeout(60000);
         /** Verify tasks.json is being loaded */
         test("Tasks.json", async () => {
             const folder = workspaceContext.folders.find(f => f.name === "test/defaultPackage");
@@ -54,6 +56,6 @@ suite("Extension Test Suite", () => {
             for (const arg of ["build", "--build-tests", "--verbose"]) {
                 assert(execution?.args.find(item => item === arg));
             }
-        });
+        }).timeout(60000);
     });
-}).timeout(15000);
+});

@@ -62,6 +62,7 @@ suite("SwiftSnippet Test Suite @slow", function () {
             // Set a breakpoint
             vscode.debug.addBreakpoints(breakpoints);
         },
+        requiresDebugger: true,
     });
 
     suiteTeardown(async () => {

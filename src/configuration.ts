@@ -51,6 +51,8 @@ export interface DebuggerConfiguration {
     readonly useDebugAdapterFromToolchain: boolean;
     /** Return path to debug adapter */
     readonly customDebugAdapterPath: string;
+    /** Whether or not to disable setting up the debugger */
+    readonly disable: boolean;
 }
 
 /** workspace folder configuration */
@@ -198,6 +200,11 @@ const configuration = {
             },
             get customDebugAdapterPath(): string {
                 return vscode.workspace.getConfiguration("swift.debugger").get<string>("path", "");
+            },
+            get disable(): boolean {
+                return vscode.workspace
+                    .getConfiguration("swift.debugger")
+                    .get<boolean>("disable", false);
             },
         };
     },

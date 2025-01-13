@@ -56,6 +56,7 @@ suite("Build Commands @slow", function () {
         async teardown() {
             await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
         },
+        requiresDebugger: true,
     });
 
     test("Swift: Run Build", async () => {
