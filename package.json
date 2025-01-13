@@ -1393,8 +1393,8 @@
     "@types/sinon-chai": "^3.2.12",
     "@types/vscode": "^1.88.0",
     "@types/xml2js": "^0.4.14",
-    "@typescript-eslint/eslint-plugin": "^8.19.1",
-    "@typescript-eslint/parser": "^8.19.1",
+    "@typescript-eslint/eslint-plugin": "^8.20.0",
+    "@typescript-eslint/parser": "^8.20.0",
     "@vscode/debugprotocol": "^1.68.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
@@ -1405,7 +1405,7 @@
     "del-cli": "^6.0.0",
     "esbuild": "^0.24.2",
     "eslint": "^8.57.0",
-    "eslint-config-prettier": "^9.1.0",
+    "eslint-config-prettier": "^10.0.1",
     "mocha": "^10.8.2",
     "mock-fs": "^5.4.1",
     "node-pty": "^1.0.0",
@@ -1417,7 +1417,7 @@
     "source-map-support": "^0.5.21",
     "strip-ansi": "^6.0.1",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.3"
   },
   "dependencies": {
     "@vscode/codicons": "^0.0.36",
