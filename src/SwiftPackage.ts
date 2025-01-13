@@ -148,7 +148,7 @@ export interface CheckoutState {
 
 export interface WorkspaceStateDependency {
     packageRef: { identity: string; kind: string; location: string; name: string };
-    state: { name: string; path?: string; checkoutState?: CheckoutState };
+    state: { name: string; path?: string; checkoutState?: CheckoutState; version?: string };
     subpath: string;
 }
 

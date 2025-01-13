@@ -358,6 +358,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                 dependency.state.checkoutState?.version ??
                 dependency.state.checkoutState?.branch ??
                 dependency.state.checkoutState?.revision.substring(0, 7) ??
+                dependency.state.version ??
                 "unknown"
             );
         }
@@ -389,7 +390,11 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                 workspaceFolder,
                 true
             );
-            return path.join(buildDirectory, "checkouts", dependency.subpath);
+            if (dependency.packageRef.kind === "registry") {
+                return path.join(buildDirectory, "registry", "downloads", dependency.subpath);
+            } else {
+                return path.join(buildDirectory, "checkouts", dependency.subpath);
+            }
         }
     }
 }
