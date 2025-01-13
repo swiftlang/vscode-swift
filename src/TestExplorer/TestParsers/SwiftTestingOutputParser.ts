@@ -52,7 +52,8 @@ export type EventRecordPayload =
     | TestCaseEnded
     | IssueRecorded
     | TestSkipped
-    | RunEnded;
+    | RunEnded
+    | ValueAttached;
 
 export interface EventRecord extends VersionedRecord {
     kind: "event";
@@ -92,6 +93,15 @@ interface RunStarted {
 
 interface RunEnded {
     kind: "runEnded";
+    messages: EventMessage[];
+}
+
+interface ValueAttached {
+    kind: "_valueAttached";
+    _attachment: {
+        path?: string;
+    };
+    testID: string;
     messages: EventMessage[];
 }
 
@@ -148,6 +158,7 @@ export enum TestSymbol {
     difference = "difference",
     warning = "warning",
     details = "details",
+    attachment = "attachment",
     none = "none",
 }
 
@@ -169,7 +180,8 @@ export class SwiftTestingOutputParser {
 
     constructor(
         public testRunStarted: () => void,
-        public addParameterizedTestCase: (testClass: TestClass, parentIndex: number) => void
+        public addParameterizedTestCase: (testClass: TestClass, parentIndex: number) => void,
+        public onAttachment: (testIndex: number, path: string) => void
     ) {}
 
     /**
@@ -457,6 +469,12 @@ export class SwiftTestingOutputParser {
                 this.completionMap.set(testIndex, true);
                 runState.completed(testIndex, { timestamp: item.payload.instant.absolute });
                 return;
+            } else if (item.payload.kind === "_valueAttached" && item.payload._attachment.path) {
+                const testID = this.idFromOptionalTestCase(item.payload.testID);
+                const testIndex = this.getTestCaseIndex(runState, testID);
+
+                this.onAttachment(testIndex, item.payload._attachment.path);
+                return;
             }
         }
     }
@@ -495,7 +513,7 @@ export class SymbolRenderer {
      * @param message An event message, typically found on an `EventRecordPayload`.
      * @returns A string colorized with ANSI escape codes.
      */
-    static eventMessageSymbol(symbol: TestSymbol): string {
+    public static eventMessageSymbol(symbol: TestSymbol): string {
         return this.colorize(symbol, this.symbol(symbol));
     }
 
@@ -521,6 +539,8 @@ export class SymbolRenderer {
                     return "\u{25B2}"; // Unicode: BLACK UP-POINTING TRIANGLE
                 case TestSymbol.details:
                     return "\u{2192}"; // Unicode: RIGHTWARDS ARROW
+                case TestSymbol.attachment:
+                    return "\u{2399}"; // Unicode: PRINT SCREEN SYMBOL
                 case TestSymbol.none:
                     return "";
             }
@@ -540,6 +560,8 @@ export class SymbolRenderer {
                     return "\u{26A0}\u{FE0E}"; // Unicode: WARNING SIGN + VARIATION SELECTOR-15 (disable emoji)
                 case TestSymbol.details:
                     return "\u{21B3}"; // Unicode: DOWNWARDS ARROW WITH TIP RIGHTWARDS
+                case TestSymbol.attachment:
+                    return "\u{2399}"; // Unicode: PRINT SCREEN SYMBOL
                 case TestSymbol.none:
                     return " ";
             }
@@ -562,6 +584,8 @@ export class SymbolRenderer {
                 return `${SymbolRenderer.ansiEscapeCodePrefix}91m${symbol}${SymbolRenderer.resetANSIEscapeCode}`;
             case TestSymbol.warning:
                 return `${SymbolRenderer.ansiEscapeCodePrefix}93m${symbol}${SymbolRenderer.resetANSIEscapeCode}`;
+            case TestSymbol.attachment:
+                return `${SymbolRenderer.ansiEscapeCodePrefix}94m${symbol}${SymbolRenderer.resetANSIEscapeCode}`;
             case TestSymbol.none:
             default:
                 return symbol;

@@ -27,7 +27,11 @@ import {
     ParallelXCTestOutputParser,
     XCTestOutputParser,
 } from "./TestParsers/XCTestOutputParser";
-import { SwiftTestingOutputParser } from "./TestParsers/SwiftTestingOutputParser";
+import {
+    SwiftTestingOutputParser,
+    SymbolRenderer,
+    TestSymbol,
+} from "./TestParsers/SwiftTestingOutputParser";
 import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
 import { TaskOperation } from "../tasks/TaskQueue";
 import { TestXUnitParser } from "./TestXUnitParser";
@@ -36,7 +40,12 @@ import { TestRunArguments } from "./TestRunArguments";
 import { TemporaryFolder } from "../utilities/tempFolder";
 import { TestClass, runnableTag, upsertTestItem } from "./TestDiscovery";
 import { TestCoverage } from "../coverage/LcovResults";
-import { BuildConfigurationFactory, TestingConfigurationFactory } from "../debugger/buildConfig";
+import {
+    BuildConfigurationFactory,
+    SwiftTestingBuildAguments,
+    SwiftTestingConfigurationSetup,
+    TestingConfigurationFactory,
+} from "../debugger/buildConfig";
 import { TestKind, isDebugging, isRelease } from "./TestKind";
 import { reduceTestItemChildren } from "./TestUtils";
 import { CompositeCancellationToken } from "../utilities/cancellation";
@@ -67,6 +76,7 @@ export class TestRunProxy {
     private queuedOutput: string[] = [];
     private _testItems: vscode.TestItem[];
     private iteration: number | undefined;
+    private attachments: { [key: string]: string[] } = {};
     public coverage: TestCoverage;
     public token: CompositeCancellationToken;
 
@@ -177,6 +187,12 @@ export class TestRunProxy {
         this.addedTestItems.push({ testClass, parentIndex });
     };
 
+    public addAttachment = (testIndex: number, attachment: string) => {
+        const attachments = this.attachments[testIndex] ?? [];
+        attachments.push(attachment);
+        this.attachments[testIndex] = attachments;
+    };
+
     public getTestIndex(id: string, filename?: string): number {
         return this.testItemFinder.getIndex(id, filename);
     }
@@ -231,6 +247,8 @@ export class TestRunProxy {
         if (!this.runStarted) {
             this.testRunStarted();
         }
+
+        this.reportAttachments();
         this.testRun?.end();
         this.testRunCompleteEmitter.fire();
         this.token.dispose();
@@ -256,6 +274,25 @@ export class TestRunProxy {
             this.performAppendOutput(this.testRun, tranformedOutput, location, test);
         } else {
             this.queuedOutput.push(tranformedOutput);
+        }
+    }
+
+    private reportAttachments() {
+        const attachmentKeys = Object.keys(this.attachments);
+        if (attachmentKeys.length > 0) {
+            let attachment = "";
+            const totalAttachments = attachmentKeys.reduce((acc, key) => {
+                const attachments = this.attachments[key];
+                attachment = attachments.length ? attachments[0] : attachment;
+                return acc + attachments.length;
+            }, 0);
+
+            if (attachment) {
+                attachment = path.dirname(attachment);
+                this.appendOutput(
+                    `${SymbolRenderer.eventMessageSymbol(TestSymbol.attachment)} ${SymbolRenderer.ansiEscapeCodePrefix}90mRecorded ${totalAttachments} attachment${totalAttachments === 1 ? "" : "s"} to ${attachment}${SymbolRenderer.resetANSIEscapeCode}`
+                );
+            }
         }
     }
 
@@ -321,7 +358,8 @@ export class TestRunner {
                 : new XCTestOutputParser();
         this.swiftTestOutputParser = new SwiftTestingOutputParser(
             this.testRun.testRunStarted,
-            this.testRun.addParameterizedTestCase
+            this.testRun.addParameterizedTestCase,
+            this.testRun.addAttachment
         );
     }
 
@@ -334,7 +372,8 @@ export class TestRunner {
         // The SwiftTestingOutputParser holds state and needs to be reset between iterations.
         this.swiftTestOutputParser = new SwiftTestingOutputParser(
             this.testRun.testRunStarted,
-            this.testRun.addParameterizedTestCase
+            this.testRun.addParameterizedTestCase,
+            this.testRun.addAttachment
         );
         this.testRun.setIteration(iteration);
     }
@@ -519,18 +558,28 @@ export class TestRunner {
         // Run swift-testing first, then XCTest.
         // swift-testing being parallel by default should help these run faster.
         if (this.testArgs.hasSwiftTestingTests) {
-            const fifoPipePath = this.generateFifoPipePath();
+            const testRunTime = Date.now();
+            const fifoPipePath = this.generateFifoPipePath(testRunTime);
 
-            await TemporaryFolder.withNamedTemporaryFile(fifoPipePath, async () => {
+            await TemporaryFolder.withNamedTemporaryFiles([fifoPipePath], async () => {
                 // macOS/Linux require us to create the named pipe before we use it.
                 // Windows just lets us communicate by specifying a pipe path without any ceremony.
                 if (process.platform !== "win32") {
                     await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
                 }
-
+                // Create the swift-testing configuration JSON file, peparing any
+                // directories the configuration may require.
+                const attachmentFolder = await SwiftTestingConfigurationSetup.setupAttachmentFolder(
+                    this.folderContext,
+                    testRunTime
+                );
+                const swiftTestingArgs = await SwiftTestingBuildAguments.build(
+                    fifoPipePath,
+                    attachmentFolder
+                );
                 const testBuildConfig = await TestingConfigurationFactory.swiftTestingConfig(
                     this.folderContext,
-                    fifoPipePath,
+                    swiftTestingArgs,
                     this.testKind,
                     this.testArgs.swiftTestArgs,
                     true
@@ -540,6 +589,8 @@ export class TestRunner {
                     return this.testRun.runState;
                 }
 
+                const outputStream = this.testOutputWritable(TestLibrary.swiftTesting, runState);
+
                 // Watch the pipe for JSONL output and parse the events into test explorer updates.
                 // The await simply waits for the watching to be configured.
                 await this.swiftTestOutputParser.watch(fifoPipePath, runState);
@@ -547,9 +598,15 @@ export class TestRunner {
                 await this.launchTests(
                     runState,
                     this.testKind === TestKind.parallel ? TestKind.standard : this.testKind,
-                    this.testOutputWritable(TestLibrary.swiftTesting, runState),
+                    outputStream,
                     testBuildConfig,
                     TestLibrary.swiftTesting
+                );
+
+                await SwiftTestingConfigurationSetup.cleanupAttachmentFolder(
+                    this.folderContext,
+                    testRunTime,
+                    this.workspaceContext.outputChannel
                 );
             });
         }
@@ -774,21 +831,32 @@ export class TestRunner {
             throw new Error(`Build failed with exit code ${buildExitCode}`);
         }
 
+        const testRunTime = Date.now();
         const subscriptions: vscode.Disposable[] = [];
         const buildConfigs: Array<vscode.DebugConfiguration | undefined> = [];
-        const fifoPipePath = this.generateFifoPipePath();
+        const fifoPipePath = this.generateFifoPipePath(testRunTime);
 
-        await TemporaryFolder.withNamedTemporaryFile(fifoPipePath, async () => {
+        await TemporaryFolder.withNamedTemporaryFiles([fifoPipePath], async () => {
             if (this.testArgs.hasSwiftTestingTests) {
                 // macOS/Linux require us to create the named pipe before we use it.
                 // Windows just lets us communicate by specifying a pipe path without any ceremony.
                 if (process.platform !== "win32") {
                     await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
                 }
+                // Create the swift-testing configuration JSON file, peparing any
+                // directories the configuration may require.
+                const attachmentFolder = await SwiftTestingConfigurationSetup.setupAttachmentFolder(
+                    this.folderContext,
+                    testRunTime
+                );
+                const swiftTestingArgs = await SwiftTestingBuildAguments.build(
+                    fifoPipePath,
+                    attachmentFolder
+                );
 
                 const swiftTestBuildConfig = await TestingConfigurationFactory.swiftTestingConfig(
                     this.folderContext,
-                    fifoPipePath,
+                    swiftTestingArgs,
                     this.testKind,
                     this.testArgs.swiftTestArgs,
                     true
@@ -930,9 +998,6 @@ export class TestRunner {
                                     }
                                 },
                                 reason => {
-                                    this.workspaceContext.outputChannel.logDiagnostic(
-                                        `Failed to debug test: ${reason}`
-                                    );
                                     subscriptions.forEach(sub => sub.dispose());
                                     reject(reason);
                                 }
@@ -942,6 +1007,13 @@ export class TestRunner {
 
             // Run each debugging session sequentially
             await debugRuns.reduce((p, fn) => p.then(() => fn()), Promise.resolve());
+
+            // Clean up any leftover resources
+            await SwiftTestingConfigurationSetup.cleanupAttachmentFolder(
+                this.folderContext,
+                testRunTime,
+                this.workspaceContext.outputChannel
+            );
         });
     }
 
@@ -996,10 +1068,10 @@ export class TestRunner {
         }
     }
 
-    private generateFifoPipePath(): string {
+    private generateFifoPipePath(testRunDateNow: number): string {
         return process.platform === "win32"
-            ? `\\\\.\\pipe\\vscodemkfifo-${Date.now()}`
-            : path.join(os.tmpdir(), `vscodemkfifo-${Date.now()}`);
+            ? `\\\\.\\pipe\\vscodemkfifo-${testRunDateNow}`
+            : path.join(os.tmpdir(), `vscodemkfifo-${testRunDateNow}`);
     }
 }
 

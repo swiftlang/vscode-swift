@@ -99,6 +99,87 @@ export class BuildConfigurationFactory {
     }
 }
 
+export class SwiftTestingBuildAguments {
+    private constructor(
+        public fifoPipePath: string,
+        public attachmentPath: string | undefined
+    ) {}
+
+    public static async build(
+        fifoPipePath: string,
+        attachmentPath: string | undefined
+    ): Promise<SwiftTestingBuildAguments> {
+        return new SwiftTestingBuildAguments(fifoPipePath, attachmentPath);
+    }
+}
+
+export class SwiftTestingConfigurationSetup {
+    public static async setupAttachmentFolder(
+        folderContext: FolderContext,
+        testRunTime: number
+    ): Promise<string | undefined> {
+        const attachmentPath = SwiftTestingConfigurationSetup.resolveAttachmentPath(
+            folderContext,
+            testRunTime
+        );
+        if (attachmentPath) {
+            // Create the directory if it doesn't exist.
+            await fs.mkdir(attachmentPath, { recursive: true });
+
+            return attachmentPath;
+        }
+
+        return attachmentPath;
+    }
+
+    public static async cleanupAttachmentFolder(
+        folderContext: FolderContext,
+        testRunTime: number,
+        outputChannel: vscode.OutputChannel
+    ): Promise<void> {
+        const attachmentPath = SwiftTestingConfigurationSetup.resolveAttachmentPath(
+            folderContext,
+            testRunTime
+        );
+
+        if (attachmentPath) {
+            try {
+                // If no attachments were written during the test run clean up the folder
+                // that was created to contain them to prevent accumulation of empty folders
+                // after every run.
+                const files = await fs.readdir(attachmentPath);
+                if (files.length === 0) {
+                    await fs.rmdir(attachmentPath);
+                }
+            } catch (error) {
+                outputChannel.appendLine(`Failed to clean up attachment path: ${error}`);
+            }
+        }
+    }
+
+    private static resolveAttachmentPath(
+        folderContext: FolderContext,
+        testRunTime: number
+    ): string | undefined {
+        let attachmentPath = configuration.folder(folderContext.workspaceFolder).attachmentsPath;
+        if (attachmentPath.length > 0) {
+            // If the attachment path is relative, resolve it relative to the workspace folder.
+            if (!path.isAbsolute(attachmentPath)) {
+                attachmentPath = path.resolve(folderContext.folder.fsPath, attachmentPath);
+            }
+
+            const dateString = this.dateString(testRunTime);
+            return path.join(attachmentPath, dateString);
+        }
+        return undefined;
+    }
+
+    private static dateString(time: number): string {
+        const date = new Date(time);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}_${String(date.getHours()).padStart(2, "0")}-${String(date.getMinutes()).padStart(2, "0")}-${String(date.getSeconds()).padStart(2, "0")}`;
+    }
+}
+
 /**
  * Creates `vscode.DebugConfiguration`s for different combinations of
  * testing library, test kind and platform. Use the static `swiftTestingConfig`
@@ -107,17 +188,17 @@ export class BuildConfigurationFactory {
 export class TestingConfigurationFactory {
     public static async swiftTestingConfig(
         ctx: FolderContext,
-        fifoPipePath: string,
+        buildArguments: SwiftTestingBuildAguments,
         testKind: TestKind,
         testList: string[],
         expandEnvVariables = false
     ): Promise<vscode.DebugConfiguration | null> {
         return new TestingConfigurationFactory(
             ctx,
-            fifoPipePath,
             testKind,
             TestLibrary.swiftTesting,
             testList,
+            buildArguments,
             expandEnvVariables
         ).build();
     }
@@ -130,10 +211,10 @@ export class TestingConfigurationFactory {
     ): Promise<vscode.DebugConfiguration | null> {
         return new TestingConfigurationFactory(
             ctx,
-            "",
             testKind,
             TestLibrary.xctest,
             testList,
+            undefined,
             expandEnvVariables
         ).build();
     }
@@ -145,20 +226,20 @@ export class TestingConfigurationFactory {
     ): Promise<string> {
         return new TestingConfigurationFactory(
             ctx,
-            "",
             testKind,
             testLibrary,
             [],
+            undefined,
             true
         ).testExecutableOutputPath();
     }
 
     private constructor(
         private ctx: FolderContext,
-        private fifoPipePath: string,
         private testKind: TestKind,
         private testLibrary: TestLibrary,
         private testList: string[],
+        private swiftTestingArguments?: SwiftTestingBuildAguments,
         private expandEnvVariables = false
     ) {}
 
@@ -447,14 +528,29 @@ export class TestingConfigurationFactory {
     }
 
     private addSwiftTestingFlagsArgs(args: string[]): string[] {
-        return [
+        if (!this.swiftTestingArguments) {
+            throw new Error(
+                "Attempted to create swift testing flags without any swift testing arguments. This is an internal error, please report an issue at https://github.com/swiftlang/vscode-swift/issues/new"
+            );
+        }
+
+        const swiftTestingArgs = [
             ...args,
             "--enable-swift-testing",
             "--event-stream-version",
             "0",
             "--event-stream-output-path",
-            this.fifoPipePath,
+            this.swiftTestingArguments.fifoPipePath,
         ];
+
+        if (this.swiftTestingArguments.attachmentPath && this.swiftVersionGreaterOrEqual(6, 1, 0)) {
+            swiftTestingArgs.push(
+                "--experimental-attachments-path",
+                this.swiftTestingArguments.attachmentPath
+            );
+        }
+
+        return swiftTestingArgs;
     }
 
     private addTestsToArgs(args: string[]): string[] {

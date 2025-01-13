@@ -65,6 +65,8 @@ export interface FolderConfiguration {
     readonly autoGenerateLaunchConfigurations: boolean;
     /** disable automatic running of swift package resolve */
     readonly disableAutoResolve: boolean;
+    /** location to save swift-testing attachments */
+    readonly attachmentsPath: string;
     /** look up saved permissions for the supplied plugin */
     pluginPermissions(pluginId: string): PluginPermissionConfiguration;
 }
@@ -161,6 +163,11 @@ const configuration = {
                 return vscode.workspace
                     .getConfiguration("swift", workspaceFolder)
                     .get<boolean>("searchSubfoldersForPackages", false);
+            },
+            get attachmentsPath(): string {
+                return vscode.workspace
+                    .getConfiguration("swift", workspaceFolder)
+                    .get<string>("attachmentsPath", "./.build/attachments");
             },
             pluginPermissions(pluginId: string): PluginPermissionConfiguration {
                 return (
