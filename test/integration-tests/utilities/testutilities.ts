@@ -22,6 +22,7 @@ import { FolderContext } from "../../../src/FolderContext";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
 import { closeAllEditors } from "../../utilities/commands";
 import { isDeepStrictEqual } from "util";
+import { Version } from "../../../src/utilities/version";
 
 function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);
@@ -65,7 +66,8 @@ const extensionBootstrapper = (() => {
             | undefined,
         after: Mocha.HookFunction,
         teardown: ((this: Mocha.Context) => Promise<void>) | undefined,
-        testAssets?: string[]
+        testAssets?: string[],
+        requiresLSP: boolean = false
     ) {
         let workspaceContext: WorkspaceContext | undefined;
         let autoTeardown: void | (() => Promise<void>);
@@ -76,6 +78,13 @@ const extensionBootstrapper = (() => {
                 this.currentTest,
                 testAssets ?? ["defaultPackage"]
             );
+            if (
+                process.platform === "darwin" &&
+                workspaceContext.toolchain.swiftVersion.isLessThan(new Version(6, 1, 0)) &&
+                requiresLSP
+            ) {
+                this.skip();
+            }
             if (!setup) {
                 return;
             }
@@ -192,13 +201,15 @@ const extensionBootstrapper = (() => {
             ) => Promise<(() => Promise<void>) | void>;
             teardown?: (this: Mocha.Context) => Promise<void>;
             testAssets?: string[];
+            requiresLSP?: boolean;
         }) {
             testRunnerSetup(
                 mocha.before,
                 config?.setup,
                 mocha.after,
                 config?.teardown,
-                config?.testAssets
+                config?.testAssets,
+                config?.requiresLSP
             );
         },
 

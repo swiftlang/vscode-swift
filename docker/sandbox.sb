@@ -97,6 +97,20 @@
     (path "/private/var/run/mDNSResponder")
     (remote tcp4 "*:443")
     (remote tcp4 "*:3128")
+    ; (local tcp4 "*:*") ; CodeLLDB
+)
+
+; CodeLLDB
+; (allow network-bind 
+;    (local tcp4 "*:*")
+; )
+; (allow network-inbound
+;    (local tcp4 "*:*")
+; )
+
+; VSCode sockets
+(allow network*
+    (param-regex "workspace" "/ud/1\.[0-9]+-main\.sock")
 )
 
 ; Open VSCode window
@@ -104,11 +118,6 @@
 ; (allow file-issue-extension)
 (allow iokit-open-user-client)
 ; (allow system-fsctl) ; HFSIOC_SET_HOTFILE_STATE
-
-; VSCode sockets
-(allow network*
-    (param-regex "workspace" "/ud/1\.[0-9]+-main\.sock")
-)
 
 ; VSCode terminal
 (allow pseudo-tty)

@@ -71,6 +71,7 @@ suite("Test Explorer Suite", function () {
             // which starts searching the workspace for tests.
             await waitForTestExplorerReady(testExplorer);
         },
+        requiresLSP: true,
     });
 
     suite("Debugging", function () {

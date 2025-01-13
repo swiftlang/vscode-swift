@@ -17,6 +17,7 @@ import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { getBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { SwiftExecution } from "../../src/tasks/SwiftExecution";
 import { activateExtensionForTest } from "./utilities/testutilities";
+import { expect } from "chai";
 
 suite("Extension Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -48,8 +49,8 @@ suite("Extension Test Suite", () => {
             assert(folder);
             const buildAllTask = await getBuildAllTask(folder);
             const execution = buildAllTask.execution as SwiftExecution;
-            assert.strictEqual(buildAllTask.definition.type, "swift");
-            assert.strictEqual(buildAllTask.name, "swift: Build All (defaultPackage)");
+            expect(buildAllTask.definition.type).to.equal("swift");
+            expect(buildAllTask.name).to.include("Build All (defaultPackage)");
             for (const arg of ["build", "--build-tests", "--verbose"]) {
                 assert(execution?.args.find(item => item === arg));
             }

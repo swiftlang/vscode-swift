@@ -49,7 +49,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
 
     setup(async () => {
         buildFlags = mockObject<BuildFlags>({
-            withAdditionalFlags: mockFn(s => s.returns([])),
+            withAdditionalFlags: mockFn(s => s.callsFake(arr => arr)),
         });
         toolchain = mockObject<SwiftToolchain>({
             swiftVersion: new Version(6, 0, 0),

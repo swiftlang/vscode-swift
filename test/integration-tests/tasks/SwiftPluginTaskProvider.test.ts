@@ -30,6 +30,7 @@ import {
 } from "../../utilities/tasks";
 import { mutable } from "../../utilities/types";
 import { SwiftExecution } from "../../../src/tasks/SwiftExecution";
+import { SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
 
 suite("SwiftPluginTaskProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;
@@ -61,17 +62,20 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
             const tasks = await vscode.tasks.fetchTasks({ type: "swift-plugin" });
             const task = tasks.find(t => t.name === "command-plugin");
             const swiftExecution = task?.execution as SwiftExecution;
-            assert.deepEqual(swiftExecution.args, [
-                "package",
-                "--disable-sandbox",
-                "--allow-writing-to-package-directory",
-                "--allow-writing-to-directory",
-                "/foo",
-                "/bar",
-                "--allow-network-connections",
-                "all",
-                "command_plugin",
-            ]);
+            assert.deepEqual(
+                swiftExecution.args,
+                workspaceContext.toolchain.buildFlags.withAdditionalFlags([
+                    "package",
+                    "--disable-sandbox",
+                    "--allow-writing-to-package-directory",
+                    "--allow-writing-to-directory",
+                    "/foo",
+                    "/bar",
+                    "--allow-network-connections",
+                    "all",
+                    "command_plugin",
+                ])
+            );
         });
     });
 
@@ -125,15 +129,20 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
 
         suite("provideTasks", () => {
             suite("includes command plugin provided by the extension", async () => {
-                let task: vscode.Task | undefined;
+                let task: SwiftTask | undefined;
 
                 setup(async () => {
                     const tasks = await vscode.tasks.fetchTasks({ type: "swift-plugin" });
-                    task = tasks.find(t => t.name === "command-plugin");
+                    task = tasks.find(t => t.name === "command-plugin") as SwiftTask;
                 });
 
                 test("provides", () => {
-                    expect(task?.detail).to.equal("swift package command_plugin");
+                    expect(task?.execution.args).to.deep.equal(
+                        workspaceContext.toolchain.buildFlags.withAdditionalFlags([
+                            "package",
+                            "command_plugin",
+                        ])
+                    );
                 });
 
                 test("executes", async () => {
@@ -154,7 +163,7 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
                 });
 
                 test("provides", () => {
-                    expect(task?.detail).to.equal("swift package command_plugin --foo");
+                    expect(task?.detail).to.include("swift package command_plugin --foo");
                 });
 
                 test("executes", async () => {

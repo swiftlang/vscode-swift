@@ -434,8 +434,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             platform = task.definition.macos;
         }
         // get args and cwd values from either platform specific block or base
-        let args = platform?.args ?? task.definition.args;
-        args = toolchain.buildFlags.withAdditionalFlags(args);
+        const args = platform?.args ?? task.definition.args;
         const env = platform?.env ?? task.definition.env;
         const fullCwd = resolveTaskCwd(task, platform?.cwd ?? task.definition.cwd);
 

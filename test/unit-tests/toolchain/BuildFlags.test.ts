@@ -24,6 +24,8 @@ suite("BuildFlags Test Suite", () => {
     let mockedToolchain: MockedObject<SwiftToolchain>;
     let buildFlags: BuildFlags;
 
+    const sandboxConfig = mockGlobalValue(configuration, "disableSandbox");
+
     suiteSetup(async () => {
         mockedToolchain = mockObject<SwiftToolchain>({
             swiftVersion: new Version(6, 0, 0),
@@ -33,6 +35,7 @@ suite("BuildFlags Test Suite", () => {
 
     setup(() => {
         mockedPlatform.setValue("darwin");
+        sandboxConfig.setValue(false);
     });
 
     suite("getDarwinTarget", () => {
@@ -256,14 +259,25 @@ suite("BuildFlags Test Suite", () => {
             }
 
             sdkConfig.setValue("");
-            expect(
-                buildFlags.withAdditionalFlags(["package", "init", "--disable-sandbox"])
-            ).to.deep.equal(["package", "init", "--disable-sandbox"]);
+            expect(buildFlags.withAdditionalFlags(["package", "init"])).to.deep.equal([
+                "package",
+                "init",
+            ]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
-            expect(
-                buildFlags.withAdditionalFlags(["package", "init", "--disable-sandbox"])
-            ).to.deep.equal(["package", "init", "--disable-sandbox"]);
+            expect(buildFlags.withAdditionalFlags(["package", "init"])).to.deep.equal([
+                "package",
+                "init",
+            ]);
+
+            sandboxConfig.setValue(true);
+            expect(buildFlags.withAdditionalFlags(["package", "init"])).to.deep.equal([
+                "package",
+                "--disable-sandbox",
+                "-Xswiftc",
+                "-disable-sandbox",
+                "init",
+            ]);
         });
 
         test("build", () => {
@@ -281,6 +295,20 @@ suite("BuildFlags Test Suite", () => {
                 "/some/full/path/to/sdk",
                 "--target",
                 "MyExecutable",
+            ]);
+
+            sandboxConfig.setValue(true);
+            expect(
+                buildFlags.withAdditionalFlags(["build", "--target", "MyExecutable"])
+            ).to.deep.equal([
+                "build",
+                "--sdk",
+                "/some/full/path/to/sdk",
+                "--target",
+                "MyExecutable",
+                "--disable-sandbox",
+                "-Xswiftc",
+                "-disable-sandbox",
             ]);
         });
 
@@ -300,6 +328,20 @@ suite("BuildFlags Test Suite", () => {
                 "--product",
                 "MyExecutable",
             ]);
+
+            sandboxConfig.setValue(true);
+            expect(
+                buildFlags.withAdditionalFlags(["run", "--product", "MyExecutable"])
+            ).to.deep.equal([
+                "run",
+                "--sdk",
+                "/some/full/path/to/sdk",
+                "--product",
+                "MyExecutable",
+                "--disable-sandbox",
+                "-Xswiftc",
+                "-disable-sandbox",
+            ]);
         });
 
         test("test", () => {
@@ -318,6 +360,18 @@ suite("BuildFlags Test Suite", () => {
                 "--filter",
                 "MyTests",
             ]);
+
+            sandboxConfig.setValue(true);
+            expect(buildFlags.withAdditionalFlags(["test", "--filter", "MyTests"])).to.deep.equal([
+                "test",
+                "--sdk",
+                "/some/full/path/to/sdk",
+                "--filter",
+                "MyTests",
+                "--disable-sandbox",
+                "-Xswiftc",
+                "-disable-sandbox",
+            ]);
         });
 
         test("other commands", () => {
@@ -328,6 +382,12 @@ suite("BuildFlags Test Suite", () => {
             ]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
+            expect(buildFlags.withAdditionalFlags(["help", "repl"])).to.deep.equal([
+                "help",
+                "repl",
+            ]);
+
+            sandboxConfig.setValue(true);
             expect(buildFlags.withAdditionalFlags(["help", "repl"])).to.deep.equal([
                 "help",
                 "repl",

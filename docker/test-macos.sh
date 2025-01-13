@@ -37,6 +37,7 @@ function cleanup {
     rm -rf "$USER_DATA"
 }
 trap "cleanup" EXIT
+trap "cleanup" INT
 
 curl -O "https://nodejs.org/dist/v$NODE_VERSION/$NODE_ARCHIVE"
 curl -O "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt"
@@ -75,6 +76,11 @@ npm ci -ignore-script node-pty
 npm run lint
 npm run format
 npm run package
+
+# Ignore hooks when running locally for development
+export GIT_CONFIG_COUNT=1
+export GIT_CONFIG_KEY_0="core.hookspath"
+export GIT_CONFIG_VALUE_0="$PWD/hooks"
 
 # Need to set proxy to download VS Code
 export npm_config_https_proxy="$HTTPS_PROXY"
