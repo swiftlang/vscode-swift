@@ -187,6 +187,25 @@ suite("LanguageClientManager Suite", () => {
         expect(languageClientMock.start).to.have.been.calledOnce;
     });
 
+    test("launches SourceKit-LSP on startup with swiftSDK", async () => {
+        mockedConfig.swiftSDK = "arm64-apple-ios";
+
+        const sut = new LanguageClientManager(instance(mockedWorkspace), languageClientFactoryMock);
+        await waitForReturnedPromises(languageClientMock.start);
+
+        expect(sut.state).to.equal(State.Running);
+        expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledOnceWith(
+            /* id */ match.string,
+            /* name */ match.string,
+            /* serverOptions */ match.has("command", "/path/to/toolchain/bin/sourcekit-lsp"),
+            /* clientOptions */ match.hasNested(
+                "initializationOptions.swiftPM.swiftSDK",
+                "arm64-apple-ios"
+            )
+        );
+        expect(languageClientMock.start).to.have.been.calledOnce;
+    });
+
     test("chooses the correct backgroundIndexing value is auto, swift version if 6.0.0", async () => {
         mockedWorkspace.swiftVersion = new Version(6, 0, 0);
         mockedConfig.backgroundIndexing = "auto";

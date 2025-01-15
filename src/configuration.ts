@@ -221,12 +221,19 @@ const configuration = {
     get runtimePath(): string {
         return vscode.workspace.getConfiguration("swift").get<string>("runtimePath", "");
     },
-    /** Path to custom swift sdk */
+    /** Path to custom --sdk */
     get sdk(): string {
         return vscode.workspace.getConfiguration("swift").get<string>("SDK", "");
     },
     set sdk(value: string | undefined) {
         vscode.workspace.getConfiguration("swift").update("SDK", value);
+    },
+    /** Path to custom --swift-sdk */
+    get swiftSDK(): string {
+        return vscode.workspace.getConfiguration("swift").get<string>("swiftSDK", "");
+    },
+    set swiftSDK(value: string | undefined) {
+        vscode.workspace.getConfiguration("swift").update("swiftSDK", value);
     },
     /** swift build arguments */
     get buildArguments(): string[] {
