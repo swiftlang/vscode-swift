@@ -179,6 +179,9 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
             }
             if (mark[0] === "throws") {
                 throws = true;
+
+                // Check for a type annotation on the throw i.e. throws(MyError)
+                parser.match(/^\s*(\(.*\))/);
             }
         }
         // if we find a `->` then function returns a value

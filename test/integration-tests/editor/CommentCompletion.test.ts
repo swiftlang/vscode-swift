@@ -164,6 +164,27 @@ suite("CommentCompletion Test Suite", () => {
         ]);
     });
 
+    test("Comment completion on complex typed throwing function", async () => {
+        const { document, positions } = await openDocument(`
+            /// 1️⃣
+            func foo(bar: Int, baz: String) -> Data throws(MyError) { return Data() }`);
+        const position = positions["1️⃣"];
+
+        const items = await provider.functionCommentCompletion.provideCompletionItems(
+            document,
+            position
+        );
+        assert.deepEqual(items, [
+            expectedCompletionItem(
+                ` $1
+/// - Parameters:
+///   - bar: $2
+///   - baz: $3
+/// - Returns: $4`
+            ),
+        ]);
+    });
+
     test("Comment Insertion", async () => {
         const { document, positions } = await openDocument(`
             /// 1️⃣
