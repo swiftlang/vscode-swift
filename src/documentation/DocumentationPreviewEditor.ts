@@ -205,23 +205,23 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                 },
             });
         } catch (error) {
-            if (!(error instanceof ResponseError)) {
+            // Update the preview editor to reflect what error occurred
+            let errorMessage = "An internal error occurred";
+            if (error instanceof ResponseError) {
+                if (error.code === LSPErrorCodes.RequestCancelled) {
+                    // We can safely ignore cancellations
+                    return undefined;
+                }
+                if (error.code === LSPErrorCodes.RequestFailed) {
+                    errorMessage = error.message;
+                }
+                this.context.outputChannel.log(
+                    `SourceKit-LSP request "${DocCDocumentationRequest.method}" failed:`
+                );
+                this.context.outputChannel.log(JSON.stringify(error.toJson(), undefined, 2));
+            } else {
                 this.context.outputChannel.log("failed to convert documentation:");
                 this.context.outputChannel.log(`${error}`);
-                return;
-            }
-            if (error.code === LSPErrorCodes.RequestCancelled) {
-                // We can safely ignore cancellations
-                return undefined;
-            }
-            this.context.outputChannel.log(
-                `SourceKit-LSP request "${DocCDocumentationRequest.method}" failed:`
-            );
-            this.context.outputChannel.log(JSON.stringify(error.toJson(), undefined, 2));
-            // Update the preview editor to reflect what error occurred
-            let errorMessage = "An internal error occurred in SourceKit-LSP";
-            if (error.code === LSPErrorCodes.RequestFailed) {
-                errorMessage = error.message;
             }
             this.postMessage({
                 type: "update-content",
