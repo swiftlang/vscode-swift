@@ -17,7 +17,8 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { RenderNode, WebviewContent, WebviewMessage } from "./webview/WebviewMessage";
 import { WorkspaceContext } from "../WorkspaceContext";
-import { ConvertDocumentationRequest } from "../sourcekit-lsp/extensions/ConvertDocumentationRequest";
+import { DocCDocumentationRequest, DocCDocumentationResponse } from "../sourcekit-lsp/extensions";
+import { LSPErrorCodes, ResponseError } from "vscode-languageclient";
 
 export enum PreviewEditorConstant {
     VIEW_TYPE = "swift.previewDocumentationEditor",
@@ -185,33 +186,51 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
             return;
         }
 
-        const response = await this.context.languageClientManager.useLanguageClient(
-            async client => {
-                return await client.sendRequest(ConvertDocumentationRequest.type, {
-                    textDocument: {
-                        uri: document.uri.toString(),
-                    },
-                    position: textEditor.selection.start,
-                });
+        try {
+            const response = await this.context.languageClientManager.useLanguageClient(
+                async (client): Promise<DocCDocumentationResponse> => {
+                    return await client.sendRequest(DocCDocumentationRequest.type, {
+                        textDocument: {
+                            uri: document.uri.toString(),
+                        },
+                        position: textEditor.selection.start,
+                    });
+                }
+            );
+            this.postMessage({
+                type: "update-content",
+                content: {
+                    type: "render-node",
+                    renderNode: this.parseRenderNode(response.renderNode),
+                },
+            });
+        } catch (error) {
+            if (!(error instanceof ResponseError)) {
+                this.context.outputChannel.log("failed to convert documentation:");
+                this.context.outputChannel.log(`${error}`);
+                return;
             }
-        );
-        if (response.type === "error") {
+            if (error.code === LSPErrorCodes.RequestCancelled) {
+                // We can safely ignore cancellations
+                return undefined;
+            }
+            this.context.outputChannel.log(
+                `SourceKit-LSP request "${DocCDocumentationRequest.method}" failed:`
+            );
+            this.context.outputChannel.log(JSON.stringify(error.toJson(), undefined, 2));
+            // Update the preview editor to reflect what error occurred
+            let errorMessage = "An internal error occurred in SourceKit-LSP";
+            if (error.code === LSPErrorCodes.RequestFailed) {
+                errorMessage = error.message;
+            }
             this.postMessage({
                 type: "update-content",
                 content: {
                     type: "error",
-                    errorMessage: response.error.message,
+                    errorMessage: errorMessage,
                 },
             });
-            return;
         }
-        this.postMessage({
-            type: "update-content",
-            content: {
-                type: "render-node",
-                renderNode: this.parseRenderNode(response.renderNode),
-            },
-        });
     }
 
     private parseRenderNode(content: string): RenderNode {

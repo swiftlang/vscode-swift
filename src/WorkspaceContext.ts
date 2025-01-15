@@ -34,6 +34,7 @@ import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { DiagnosticsManager } from "./DiagnosticsManager";
 import { DocumentationManager } from "./documentation/DocumentationManager";
+import { DocCDocumentationRequest, ReIndexProjectRequest } from "./sourcekit-lsp/extensions";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -239,9 +240,9 @@ export class WorkspaceContext implements vscode.Disposable {
                 return;
             }
             contextKeys.supportsReindexing =
-                experimentalCaps["workspace/triggerReindex"] !== undefined;
+                experimentalCaps[ReIndexProjectRequest.method] !== undefined;
             contextKeys.supportsDocumentationLivePreview =
-                experimentalCaps["textDocument/convertDocumentation"] !== undefined;
+                experimentalCaps[DocCDocumentationRequest.method] !== undefined;
         });
 
         setSnippetContextKey(this);
