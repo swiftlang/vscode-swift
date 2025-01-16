@@ -206,28 +206,33 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
             });
         } catch (error) {
             // Update the preview editor to reflect what error occurred
-            let errorMessage = "An internal error occurred";
+            let livePreviewErrorMessage = "An internal error occurred";
+            const baseLogErrorMessage = `SourceKit-LSP request "${DocCDocumentationRequest.method}" failed: `;
             if (error instanceof ResponseError) {
                 if (error.code === LSPErrorCodes.RequestCancelled) {
                     // We can safely ignore cancellations
                     return undefined;
                 }
-                if (error.code === LSPErrorCodes.RequestFailed) {
-                    errorMessage = error.message;
+                switch (error.code) {
+                    case LSPErrorCodes.RequestFailed:
+                        // RequestFailed response errors can be shown to the user
+                        livePreviewErrorMessage = error.message;
+                        break;
+                    default:
+                        // We should log additional info for other response errors
+                        this.context.outputChannel.log(
+                            baseLogErrorMessage + JSON.stringify(error.toJson(), undefined, 2)
+                        );
+                        break;
                 }
-                this.context.outputChannel.log(
-                    `SourceKit-LSP request "${DocCDocumentationRequest.method}" failed:`
-                );
-                this.context.outputChannel.log(JSON.stringify(error.toJson(), undefined, 2));
             } else {
-                this.context.outputChannel.log("failed to convert documentation:");
-                this.context.outputChannel.log(`${error}`);
+                this.context.outputChannel.log(baseLogErrorMessage + `${error}`);
             }
             this.postMessage({
                 type: "update-content",
                 content: {
                     type: "error",
-                    errorMessage: errorMessage,
+                    errorMessage: livePreviewErrorMessage,
                 },
             });
         }
