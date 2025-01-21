@@ -126,13 +126,13 @@ export class SwiftBuildStatus implements vscode.Disposable {
             }
             const progress = this.findBuildProgress(line);
             if (progress) {
-                update(`${name} [${progress.completed}/${progress.total}]`);
+                update(`${name}: [${progress.completed}/${progress.total}]`);
                 state.started = true;
                 return false;
             }
             if (this.checkIfFetching(line)) {
                 // this.statusItem.update(task, `Fetching dependencies "${task.name}"`);
-                update(`${name} fetching dependencies`);
+                update(`${name}: Fetching Dependencies`);
                 state.started = true;
                 return false;
             }
@@ -146,7 +146,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
             !state.started &&
             (showBuildStatus === "notification" || showBuildStatus === "progress")
         ) {
-            update(`Preparing ${name}`);
+            update(`${name}: Preparing...`);
         }
         return false;
     }

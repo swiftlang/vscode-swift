@@ -192,9 +192,9 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
 
         // Ignore old stuff
         expect(mockedProgress.report).to.not.have.been.calledWith({
-            message: "My Task fetching dependencies",
+            message: "My Task: Fetching Dependencies",
         });
-        expect(mockedProgress.report).to.not.have.been.calledWith({ message: "My Task [6/7]" });
+        expect(mockedProgress.report).to.not.have.been.calledWith({ message: "My Task: [6/7]" });
     });
 
     test("Build complete", async () => {
