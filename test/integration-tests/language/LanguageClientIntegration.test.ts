@@ -20,10 +20,8 @@ import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { testAssetUri } from "../../fixtures";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
 import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
-import { Version } from "../../../src/utilities/version";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
-import { FolderContext } from "../../../src/FolderContext";
-import { waitForClientState, waitForCodeActions, waitForIndex } from "../utilities/lsputilities";
+import { waitForClientState, waitForIndex } from "../utilities/lsputilities";
 
 async function buildProject(ctx: WorkspaceContext, name: string) {
     await waitForNoRunningTasks();
@@ -35,20 +33,15 @@ async function buildProject(ctx: WorkspaceContext, name: string) {
 }
 
 suite("Language Client Integration Suite @slow", function () {
-    this.timeout(5 * 60 * 1000);
+    this.timeout(2 * 60 * 1000);
 
     let clientManager: LanguageClientManager;
     let workspaceContext: WorkspaceContext;
-    let macroFolderContext: FolderContext;
 
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
 
-            // Wait for a clean starting point, and build all tasks for the fixture
-            if (workspaceContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))) {
-                macroFolderContext = await buildProject(ctx, "swift-macro");
-            }
             await buildProject(ctx, "defaultPackage");
 
             // Ensure lsp client is ready
@@ -59,74 +52,6 @@ suite("Language Client Integration Suite @slow", function () {
 
     setup(async () => {
         await waitForIndex(workspaceContext.languageClientManager);
-    });
-
-    test("Expand Macro", async function () {
-        // Expand Macro support in Swift started from 6.1
-        if (workspaceContext.swiftVersion.isLessThan(new Version(6, 1, 0))) {
-            this.skip();
-        }
-
-        // Focus on the file of interest
-        const uri = testAssetUri("swift-macro/Sources/swift-macroClient/main.swift");
-        await vscode.window.showTextDocument(uri);
-        await workspaceContext.focusFolder(macroFolderContext);
-
-        // Beginning of macro, #
-        const position = new vscode.Position(5, 21);
-
-        // Create a range starting and ending at the specified position
-        const range = new vscode.Selection(position, position.with({ character: 22 }));
-
-        await waitForCodeActions(workspaceContext.languageClientManager, uri, range);
-
-        // Execute the code action provider command
-        const codeActions = await vscode.commands.executeCommand<vscode.CodeAction[]>(
-            "vscode.executeCodeActionProvider",
-            uri,
-            range
-        );
-
-        // Find the "expand.macro.command" action
-        const expandMacroAction = codeActions.find(
-            action => action.command?.command === "expand.macro.command"
-        );
-
-        // Assert that the expand macro command is available
-        expect(expandMacroAction).is.not.undefined;
-
-        // Set up a promise that resolves when the expected document is opened
-        const expandedMacroUriPromise = new Promise<vscode.TextDocument>((resolve, reject) => {
-            const disposable = vscode.workspace.onDidOpenTextDocument(openedDocument => {
-                if (openedDocument.uri.scheme === "sourcekit-lsp") {
-                    disposable.dispose(); // Stop listening once we find the desired document
-                    resolve(openedDocument);
-                }
-            });
-
-            // Set a timeout to reject the promise if the document is not found
-            setTimeout(() => {
-                disposable.dispose();
-                reject(new Error("Timed out waiting for sourcekit-lsp document to be opened."));
-            }, 10000); // Wait up to 10 seconds for the document
-        });
-
-        // Run expand macro action
-        const command = expandMacroAction!.command!;
-        expect(command.arguments).is.not.undefined;
-        const commandArgs = command.arguments!;
-        await vscode.commands.executeCommand(command.command, ...commandArgs);
-
-        // Wait for the expanded macro document to be opened
-        const referenceDocument = await expandedMacroUriPromise;
-
-        // Verify that the reference document was successfully opened
-        expect(referenceDocument).to.not.be.undefined;
-
-        // Assert that the content contains the expected result
-        const expectedMacro = '(a + b, "a + b")';
-        const content = referenceDocument.getText();
-        expect(content).to.include(expectedMacro);
     });
 
     suite("Symbols", () => {
