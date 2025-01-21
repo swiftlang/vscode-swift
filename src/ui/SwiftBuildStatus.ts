@@ -71,10 +71,25 @@ export class SwiftBuildStatus implements vscode.Disposable {
                     disposables.forEach(d => d.dispose());
                     res();
                 };
-                const state = { started: false };
+                let started = false;
                 disposables.push(
                     execution.onDidWrite(data => {
-                        if (this.parseEvents(task, data, showBuildStatus, update, state)) {
+                        const name = new RunningTask(task).name;
+
+                        // If we've found nothing that matches a known state then put up a temporary
+                        // message that we're preparing the build, as there is sometimes a delay before
+                        // building starts while the build system is preparing, especially in large projects.
+                        // The status bar has a message immediately, so only show this when using a
+                        // notification to show progress.
+                        if (
+                            !started &&
+                            (showBuildStatus === "notification" || showBuildStatus === "progress")
+                        ) {
+                            update(`${name}: Preparing...`);
+                        }
+
+                        started = true;
+                        if (this.parseEvents(name, data, update)) {
                             done();
                         }
                     }),
@@ -107,14 +122,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
      * @param data
      * @returns true if done, false otherwise
      */
-    private parseEvents(
-        task: vscode.Task,
-        data: string,
-        showBuildStatus: ShowBuildStatusOptions,
-        update: (message: string) => void,
-        state: { started: boolean }
-    ): boolean {
-        const name = new RunningTask(task).name;
+    private parseEvents(name: string, data: string, update: (message: string) => void): boolean {
         const sanitizedData = stripAnsi(data);
         // We'll process data one line at a time, in reverse order
         // since the latest interesting message is all we need to
@@ -127,26 +135,13 @@ export class SwiftBuildStatus implements vscode.Disposable {
             const progress = this.findBuildProgress(line);
             if (progress) {
                 update(`${name}: [${progress.completed}/${progress.total}]`);
-                state.started = true;
                 return false;
             }
             if (this.checkIfFetching(line)) {
                 // this.statusItem.update(task, `Fetching dependencies "${task.name}"`);
                 update(`${name}: Fetching Dependencies`);
-                state.started = true;
                 return false;
             }
-        }
-        // If we've found nothing that matches a known state then put up a temporary
-        // message that we're preparing the build, as there is sometimes a delay before
-        // building starts while the build system is preparing, especially in large projects.
-        // The status bar has a message immediately, so only show this when using a
-        // notification to show progress.
-        if (
-            !state.started &&
-            (showBuildStatus === "notification" || showBuildStatus === "progress")
-        ) {
-            update(`${name}: Preparing...`);
         }
         return false;
     }
