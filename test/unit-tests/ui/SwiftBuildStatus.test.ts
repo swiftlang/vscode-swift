@@ -164,7 +164,7 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
                 "Fetched https://github.com/apple/swift-testing.git from cache (0.77s)\n"
         );
 
-        const expected = "My Task fetching dependencies";
+        const expected = "My Task: Fetching Dependencies";
         expect(mockedProgress.report).to.have.been.calledWith({ message: expected });
         expect(mockedStatusItem.update).to.have.been.calledWith(mockedTaskExecution.task, expected);
     });
@@ -186,7 +186,7 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
                 "[7/7] Applying MyCLI\n"
         );
 
-        const expected = "My Task [7/7]";
+        const expected = "My Task: [7/7]";
         expect(mockedProgress.report).to.have.been.calledWith({ message: expected });
         expect(mockedStatusItem.update).to.have.been.calledWith(mockedTaskExecution.task, expected);
 
