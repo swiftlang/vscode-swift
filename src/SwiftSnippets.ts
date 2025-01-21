@@ -82,7 +82,6 @@ export async function debugSnippetWithOptions(
             presentationOptions: {
                 reveal: vscode.TaskRevealKind.Always,
             },
-            showBuildStatus: configuration.showBuildStatus,
         },
         ctx.toolchain
     );

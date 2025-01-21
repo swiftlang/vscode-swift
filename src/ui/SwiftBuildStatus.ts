@@ -71,9 +71,10 @@ export class SwiftBuildStatus implements vscode.Disposable {
                     disposables.forEach(d => d.dispose());
                     res();
                 };
+                const state = { started: false };
                 disposables.push(
                     execution.onDidWrite(data => {
-                        if (this.parseEvents(task, data, update)) {
+                        if (this.parseEvents(task, data, showBuildStatus, update, state)) {
                             done();
                         }
                     }),
@@ -109,7 +110,9 @@ export class SwiftBuildStatus implements vscode.Disposable {
     private parseEvents(
         task: vscode.Task,
         data: string,
-        update: (message: string) => void
+        showBuildStatus: ShowBuildStatusOptions,
+        update: (message: string) => void,
+        state: { started: boolean }
     ): boolean {
         const name = new RunningTask(task).name;
         const sanitizedData = stripAnsi(data);
@@ -124,13 +127,26 @@ export class SwiftBuildStatus implements vscode.Disposable {
             const progress = this.findBuildProgress(line);
             if (progress) {
                 update(`${name} [${progress.completed}/${progress.total}]`);
+                state.started = true;
                 return false;
             }
             if (this.checkIfFetching(line)) {
                 // this.statusItem.update(task, `Fetching dependencies "${task.name}"`);
-                update(`${name} fetching dependencies`);
+                update(`${name}: fetching dependencies`);
+                state.started = true;
                 return false;
             }
+        }
+        // If we've found nothing that matches a known state then put up a temporary
+        // message that we're preparing the build, as there is sometimes a delay before
+        // building starts while the build system is preparing, especially in large projects.
+        // The status bar has a message immediately, so only show this when using a
+        // notification to show progress.
+        if (
+            !state.started &&
+            (showBuildStatus === "notification" || showBuildStatus === "progress")
+        ) {
+            update(`Preparing ${name}`);
         }
         return false;
     }
