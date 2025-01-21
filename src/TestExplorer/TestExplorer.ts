@@ -261,6 +261,34 @@ export class TestExplorer {
     async discoverTestsInWorkspaceSPM(token: vscode.CancellationToken) {
         async function runDiscover(explorer: TestExplorer, firstTry: boolean) {
             try {
+                // we depend on sourcekit-lsp to detect swift-testing tests so let the user know
+                // that things won't work properly if sourcekit-lsp has been disabled for some reason
+                // and provide an option to enable sourcekit-lsp again
+                const ok = "OK";
+                const enable = "Enable SourceKit-LSP";
+                if (firstTry && configuration.lsp.disable === true) {
+                    vscode.window
+                        .showInformationMessage(
+                            `swift-testing tests will not be detected since SourceKit-LSP
+                            has been disabled for this workspace.`,
+                            enable,
+                            ok
+                        )
+                        .then(selected => {
+                            if (selected === enable) {
+                                explorer.folderContext.workspaceContext.outputChannel.log(
+                                    `Enabling SourceKit-LSP after swift-testing message`
+                                );
+                                vscode.workspace
+                                    .getConfiguration("swift")
+                                    .update("sourcekit-lsp.disable", false);
+                            } else if (selected === ok) {
+                                explorer.folderContext.workspaceContext.outputChannel.log(
+                                    `User acknowledged that SourceKit-LSP is disabled`
+                                );
+                            }
+                        });
+                }
                 const toolchain = explorer.folderContext.workspaceContext.toolchain;
                 // get build options before build is run so we can be sure they aren't changed
                 // mid-build

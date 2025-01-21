@@ -225,8 +225,8 @@ export class LanguageClientManager implements vscode.Disposable {
                         // Language client is already stopped
                         return;
                     }
-                    message =
-                        "You have disabled the Swift language server, but it is still running. Would you like to stop it now?";
+                    message = `You have disabled the Swift language server, but it is still running. Would you like to stop it now?
+                        This will turn off features such as code completion, error diagnostics, jump-to-definition, and test discovery.`;
                     restartLSPButton = "Stop Language Server";
                 } else {
                     if (this.state !== State.Stopped) {
