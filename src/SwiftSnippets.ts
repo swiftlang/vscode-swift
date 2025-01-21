@@ -19,7 +19,6 @@ import { createSwiftTask } from "./tasks/SwiftTaskProvider";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { createSnippetConfiguration, debugLaunchConfig } from "./debugger/launch";
 import { TaskOperation } from "./tasks/TaskQueue";
-import configuration from "./configuration";
 
 /**
  * Set context key indicating whether current file is a Swift Snippet
@@ -82,7 +81,6 @@ export async function debugSnippetWithOptions(
             presentationOptions: {
                 reveal: vscode.TaskRevealKind.Always,
             },
-            showBuildStatus: configuration.showBuildStatus,
         },
         ctx.toolchain
     );

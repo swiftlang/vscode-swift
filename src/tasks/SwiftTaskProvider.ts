@@ -155,7 +155,6 @@ export function createBuildAllTask(
                 reveal: getBuildRevealOption(),
             },
             disableTaskQueue: true,
-            showBuildStatus: configuration.showBuildStatus,
         },
         folderContext.workspaceContext.toolchain
     );
@@ -239,7 +238,6 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 },
                 disableTaskQueue: true,
                 dontTriggerTestDiscovery: true,
-                showBuildStatus: configuration.showBuildStatus,
             },
             folderContext.workspaceContext.toolchain
         );
@@ -268,7 +266,6 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
                 },
                 disableTaskQueue: true,
                 dontTriggerTestDiscovery: true,
-                showBuildStatus: configuration.showBuildStatus,
             },
             folderContext.workspaceContext.toolchain
         );
@@ -314,9 +311,15 @@ export function createSwiftTask(
             args: args,
             env: env,
             cwd: cwd,
-            showBuildStatus: config.showBuildStatus,
-            disableTaskQueue: config.disableTaskQueue,
-            dontTriggerTestDiscovery: config.dontTriggerTestDiscovery,
+            ...(config.showBuildStatus !== undefined
+                ? { showBuildStatus: config.showBuildStatus }
+                : {}),
+            ...(config.disableTaskQueue !== undefined
+                ? { disableTaskQueue: config.disableTaskQueue }
+                : {}),
+            ...(config.dontTriggerTestDiscovery !== undefined
+                ? { dontTriggerTestDiscovery: config.dontTriggerTestDiscovery }
+                : {}),
         },
         config?.scope ?? vscode.TaskScope.Workspace,
         name,

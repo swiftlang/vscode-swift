@@ -72,11 +72,13 @@ export class SwiftBuildStatus implements vscode.Disposable {
                     res();
                 };
                 disposables.push(
-                    execution.onDidWrite(data => {
-                        if (this.parseEvents(task, data, update)) {
-                            done();
-                        }
-                    }),
+                    this.outputParser(
+                        new RunningTask(task).name,
+                        execution,
+                        showBuildStatus,
+                        update,
+                        done
+                    ),
                     execution.onDidClose(done),
                     vscode.tasks.onDidEndTask(e => {
                         if (e.execution.task === task) {
@@ -102,37 +104,57 @@ export class SwiftBuildStatus implements vscode.Disposable {
         }
     }
 
-    /**
-     * @param data
-     * @returns true if done, false otherwise
-     */
-    private parseEvents(
-        task: vscode.Task,
-        data: string,
-        update: (message: string) => void
-    ): boolean {
-        const name = new RunningTask(task).name;
-        const sanitizedData = stripAnsi(data);
-        // We'll process data one line at a time, in reverse order
-        // since the latest interesting message is all we need to
-        // be concerned with
-        const lines = sanitizedData.split(/\r\n|\n|\r/gm).reverse();
-        for (const line of lines) {
-            if (checkIfBuildComplete(line)) {
-                return true;
+    private outputParser(
+        name: string,
+        execution: SwiftExecution,
+        showBuildStatus: ShowBuildStatusOptions,
+        update: (message: string) => void,
+        done: () => void
+    ): vscode.Disposable {
+        let started = false;
+
+        const parseEvents = (data: string) => {
+            const sanitizedData = stripAnsi(data);
+            // We'll process data one line at a time, in reverse order
+            // since the latest interesting message is all we need to
+            // be concerned with
+            const lines = sanitizedData.split(/\r\n|\n|\r/gm).reverse();
+            for (const line of lines) {
+                if (checkIfBuildComplete(line)) {
+                    return true;
+                }
+                const progress = this.findBuildProgress(line);
+                if (progress) {
+                    update(`${name}: [${progress.completed}/${progress.total}]`);
+                    started = true;
+                    return false;
+                }
+                if (this.checkIfFetching(line)) {
+                    // this.statusItem.update(task, `Fetching dependencies "${task.name}"`);
+                    update(`${name}: Fetching Dependencies`);
+                    started = true;
+                    return false;
+                }
             }
-            const progress = this.findBuildProgress(line);
-            if (progress) {
-                update(`${name} [${progress.completed}/${progress.total}]`);
-                return false;
+            // If we've found nothing that matches a known state then put up a temporary
+            // message that we're preparing the build, as there is sometimes a delay before
+            // building starts while the build system is preparing, especially in large projects.
+            // The status bar has a message immediately, so only show this when using a
+            // notification to show progress.
+            if (
+                !started &&
+                (showBuildStatus === "notification" || showBuildStatus === "progress")
+            ) {
+                update(`${name}: Preparing...`);
             }
-            if (this.checkIfFetching(line)) {
-                // this.statusItem.update(task, `Fetching dependencies "${task.name}"`);
-                update(`${name} fetching dependencies`);
-                return false;
+            return false;
+        };
+
+        return execution.onDidWrite(data => {
+            if (parseEvents(data)) {
+                done();
             }
-        }
-        return false;
+        });
     }
 
     private checkIfFetching(line: string): boolean {
