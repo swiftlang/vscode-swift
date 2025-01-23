@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.0.0 - 2025-01-28
+
+The Swift extension for VS Code has officially moved to the [SwiftLang organization in the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=ms-swiftlang.vscode-swift)!
+The new extension id is `swiftlang.vscode-swift`.
+
+### Added
+
+- Permissions for plugin tasks can now be configured with the `swift.pluginPermissions` setting ([#1297](https://github.com/swiftlang/vscode-swift/pull/1297))
+- Add support for the `--swift-sdk` SwiftPM option ([#1191](https://github.com/swiftlang/vscode-swift/pull/1191))
+- Improve documentation around disabling SourceKit-LSP as to what features it will impact ([#1308](https://github.com/swiftlang/vscode-swift/pull/1308))
+- The extension will now detect when a new Xcode has been selected on macOS ([#1244](https://github.com/swiftlang/vscode-swift/pull/1244))
+- Builds will now show a `Preparing` notification when launched before progress is available ([#1323](https://github.com/swiftlang/vscode-swift/pull/1323))
+
+### Fixed
+
+- Dependencies downloaded from a registry will now display properly in the dependencies view ([#1311](https://github.com/swiftlang/vscode-swift/pull/1311))
+
 ## 1.11.4 - 2024-12-06
 
 ### Added
