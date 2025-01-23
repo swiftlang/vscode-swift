@@ -1386,7 +1386,7 @@
     "coverage": "npm test -- --coverage",
     "compile-tests": "del-cli ./assets/test/**/.build && npm run compile",
     "package": "vsce package",
-    "dev-package": "vsce package --no-update-package-json 2.0.0-dev",
+    "dev-package": "vsce package --no-update-package-json 2.0.1-dev",
     "preview-package": "vsce package --pre-release",
     "tag": "./scripts/tag_release.sh $npm_package_version",
     "contributors": "./scripts/generate_contributors_list.sh"
