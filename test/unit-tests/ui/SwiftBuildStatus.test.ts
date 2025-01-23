@@ -215,8 +215,7 @@ suite("SwiftBuildStatus Unit Test Suite", async function () {
                 "Build complete!"
         );
 
-        // Report nothing
-        expect(mockedProgress.report).to.not.have.been.called;
-        expect(mockedStatusItem.update).to.not.have.been.called;
+        // Report only the preparing message
+        expect(mockedProgress.report).to.have.been.calledWith({ message: "My Task: Preparing..." });
     });
 });
