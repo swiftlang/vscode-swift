@@ -162,7 +162,7 @@ suite("Test Explorer Suite", function () {
                 }
             });
 
-            test("Debugs specified XCTest test", async function () {
+            test("Debugs specified XCTest test @slow", async function () {
                 // CodeLLDB tests stall out on 5.9 and below.
                 if (workspaceContext.swiftVersion.isLessThan(new Version(5, 10, 0))) {
                     this.skip();
