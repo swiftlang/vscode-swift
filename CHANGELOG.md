@@ -2,7 +2,7 @@
 
 ## 2.0.0 - 2025-01-28
 
-The Swift extension for VS Code has officially moved to the [SwiftLang organization in the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=ms-swiftlang.vscode-swift)!
+The Swift extension for VS Code has officially moved to the [SwiftLang organization in the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=swiftlang.vscode-swift)!
 The new extension id is `swiftlang.vscode-swift`.
 
 ### Added
