@@ -13,6 +13,8 @@ repeat {
   print(line ?? "nil")
 } while line != nil;
 
+let dictionary: [String: String] = []
+
 #if canImport(Testing)
 import Testing
 #expect(try myFunc() != 0)

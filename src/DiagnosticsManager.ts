@@ -355,7 +355,7 @@ export class DiagnosticsManager implements vscode.Disposable {
         line: string
     ): ParsedDiagnostic | vscode.DiagnosticRelatedInformation | undefined {
         const diagnosticRegex =
-            /^(?:\S+\s+)?(.*?):(\d+)(?::(\d+))?:\s+(warning|error|note):\s+([^\\[]*)/g;
+            /^(?:\S+\s+)?(.*?):(\d+)(?::(\d+))?:\s+(warning|error|note):\s+(.*)/g;
         const match = diagnosticRegex.exec(line);
         if (!match) {
             return;
