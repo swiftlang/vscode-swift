@@ -141,9 +141,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
 
         // Begin by showing a message that the build is preparing, as there is sometimes
         // a delay before building starts, especially in large projects.
-        // The status bar has a message immediately, so only show this when using a
-        // notification to show progress.
-        if (!started && (showBuildStatus === "notification" || showBuildStatus === "progress")) {
+        if (!started && showBuildStatus !== "never") {
             update(`${name}: Preparing...`);
         }
 
