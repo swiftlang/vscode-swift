@@ -2,12 +2,12 @@
   "object": {
     "pins": [
       {
-        "package": "cmark-gfm",
-        "repositoryURL": "https://github.com/apple/swift-cmark.git",
+        "package": "swift-log",
+        "repositoryURL": "https://github.com/apple/swift-log.git",
         "state": {
-          "branch": "gfm",
-          "revision": "bfdc057b5a02fc65af20771a7ba08f9c944eb117",
-          "version": null
+          "branch": null,
+          "revision": "96a2f8a0fa41e9e09af4585e2724c4e825410b91",
+          "version": "1.6.2"
         }
       }
     ]

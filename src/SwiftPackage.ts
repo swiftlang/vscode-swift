@@ -47,10 +47,18 @@ export interface Target {
 /** Swift Package Manager dependency */
 export interface Dependency {
     identity: string;
-    type?: string; // fileSystem, sourceControl or registry
+    type?: string;
     requirement?: object;
     url?: string;
     path?: string;
+    dependencies: Dependency[];
+}
+
+export interface ResolvedDependency extends Omit<Omit<Dependency, "type">, "path"> {
+    version: string;
+    type: string;
+    path: string;
+    location: string;
 }
 
 /** Swift Package.resolved file */
@@ -187,7 +195,8 @@ export class SwiftPackage implements PackageContents {
     private constructor(
         readonly folder: vscode.Uri,
         private contents: SwiftPackageState,
-        public resolved: PackageResolved | undefined
+        public resolved: PackageResolved | undefined,
+        private workspaceState: WorkspaceState | undefined
     ) {}
 
     /**
@@ -195,10 +204,14 @@ export class SwiftPackage implements PackageContents {
      * @param folder folder package is in
      * @returns new SwiftPackage
      */
-    static async create(folder: vscode.Uri, toolchain: SwiftToolchain): Promise<SwiftPackage> {
+    public static async create(
+        folder: vscode.Uri,
+        toolchain: SwiftToolchain
+    ): Promise<SwiftPackage> {
         const contents = await SwiftPackage.loadPackage(folder, toolchain);
         const resolved = await SwiftPackage.loadPackageResolved(folder);
-        return new SwiftPackage(folder, contents, resolved);
+        const workspaceState = await SwiftPackage.loadWorkspaceState(folder);
+        return new SwiftPackage(folder, contents, resolved, workspaceState);
     }
 
     /**
@@ -211,15 +224,28 @@ export class SwiftPackage implements PackageContents {
         toolchain: SwiftToolchain
     ): Promise<SwiftPackageState> {
         try {
-            let { stdout } = await execSwift(["package", "describe", "--type", "json"], toolchain, {
+            // Use swift package describe to describe the package targets, products, and platforms
+            const describe = await execSwift(["package", "describe", "--type", "json"], toolchain, {
                 cwd: folder.fsPath,
             });
-            // remove lines from `swift package describe` until we find a "{"
-            while (!stdout.startsWith("{")) {
-                const firstNewLine = stdout.indexOf("\n");
-                stdout = stdout.slice(firstNewLine + 1);
-            }
-            return JSON.parse(stdout);
+            const packageState = JSON.parse(
+                SwiftPackage.trimStdout(describe.stdout)
+            ) as PackageContents;
+
+            // Use swift package show-dependencies to get the dependencies in a tree format
+            const dependencies = await execSwift(
+                ["package", "show-dependencies", "--format", "json"],
+                toolchain,
+                {
+                    cwd: folder.fsPath,
+                }
+            );
+
+            packageState.dependencies = JSON.parse(
+                SwiftPackage.trimStdout(dependencies.stdout)
+            ).dependencies;
+
+            return packageState;
         } catch (error) {
             const execError = error as { stderr: string };
             // if caught error and it begins with "error: root manifest" then there is no Package.swift
@@ -237,7 +263,9 @@ export class SwiftPackage implements PackageContents {
         }
     }
 
-    static async loadPackageResolved(folder: vscode.Uri): Promise<PackageResolved | undefined> {
+    private static async loadPackageResolved(
+        folder: vscode.Uri
+    ): Promise<PackageResolved | undefined> {
         try {
             const uri = vscode.Uri.joinPath(folder, "Package.resolved");
             const contents = await fs.readFile(uri.fsPath, "utf8");
@@ -248,7 +276,7 @@ export class SwiftPackage implements PackageContents {
         }
     }
 
-    static async loadPlugins(
+    private static async loadPlugins(
         folder: vscode.Uri,
         toolchain: SwiftToolchain
     ): Promise<PackagePlugin[]> {
@@ -280,12 +308,12 @@ export class SwiftPackage implements PackageContents {
      * Load workspace-state.json file for swift package
      * @returns Workspace state
      */
-    public async loadWorkspaceState(): Promise<WorkspaceState | undefined> {
+    private static async loadWorkspaceState(
+        folder: vscode.Uri
+    ): Promise<WorkspaceState | undefined> {
         try {
             const uri = vscode.Uri.joinPath(
-                vscode.Uri.file(
-                    BuildFlags.buildDirectoryFromWorkspacePath(this.folder.fsPath, true)
-                ),
+                vscode.Uri.file(BuildFlags.buildDirectoryFromWorkspacePath(folder.fsPath, true)),
                 "workspace-state.json"
             );
             const contents = await fs.readFile(uri.fsPath, "utf8");
@@ -306,6 +334,14 @@ export class SwiftPackage implements PackageContents {
         this.resolved = await SwiftPackage.loadPackageResolved(this.folder);
     }
 
+    public async reloadWorkspaceState() {
+        this.workspaceState = await SwiftPackage.loadWorkspaceState(this.folder);
+    }
+
+    public async loadSwiftPlugins(toolchain: SwiftToolchain) {
+        this.plugins = await SwiftPackage.loadPlugins(this.folder, toolchain);
+    }
+
     /** Return if has valid contents */
     public get isValid(): boolean {
         return isPackage(this.contents);
@@ -323,6 +359,88 @@ export class SwiftPackage implements PackageContents {
     /** Did we find a Package.swift */
     public get foundPackage(): boolean {
         return this.contents !== undefined;
+    }
+
+    public rootDependencies(): ResolvedDependency[] {
+        // Correlate the root dependencies found in the Package.swift with their
+        // checked out versions in the workspace-state.json.
+        const result = this.dependencies.map(dependency =>
+            this.resolveDependencyAgainstWorkspaceState(dependency)
+        );
+        return result;
+    }
+
+    private resolveDependencyAgainstWorkspaceState(dependency: Dependency): ResolvedDependency {
+        const workspaceStateDep = this.workspaceState?.object.dependencies.find(
+            dep => dep.packageRef.identity === dependency.identity
+        );
+        return {
+            ...dependency,
+            version: workspaceStateDep?.state.checkoutState?.version ?? "",
+            path: workspaceStateDep
+                ? this.dependencyPackagePath(workspaceStateDep, this.folder.fsPath)
+                : "",
+            type: workspaceStateDep ? this.dependencyType(workspaceStateDep) : "",
+            location: workspaceStateDep ? workspaceStateDep.packageRef.location : "",
+        };
+    }
+
+    public async childDependencies(dependency: Dependency): Promise<ResolvedDependency[]> {
+        return dependency.dependencies.map(dep => this.resolveDependencyAgainstWorkspaceState(dep));
+    }
+
+    /**
+     *  * Get package source path of dependency
+     * `editing`: dependency.state.path ?? workspacePath + Packages/ + dependency.subpath
+     * `local`: dependency.packageRef.location
+     * `remote`: buildDirectory + checkouts + dependency.packageRef.location
+     * @param dependency
+     * @param workspaceFolder
+     * @return the package path based on the type
+     */
+    private dependencyPackagePath(
+        dependency: WorkspaceStateDependency,
+        workspaceFolder: string
+    ): string {
+        const type = this.dependencyType(dependency);
+        if (type === "editing") {
+            return (
+                dependency.state.path ?? path.join(workspaceFolder, "Packages", dependency.subpath)
+            );
+        } else if (type === "local") {
+            return dependency.state.path ?? dependency.packageRef.location;
+        } else {
+            // remote
+            const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(
+                workspaceFolder,
+                true
+            );
+            if (dependency.packageRef.kind === "registry") {
+                return path.join(buildDirectory, "registry", "downloads", dependency.subpath);
+            } else {
+                return path.join(buildDirectory, "checkouts", dependency.subpath);
+            }
+        }
+    }
+
+    /**
+     * Get type of WorkspaceStateDependency for displaying in the tree: real version | edited | local
+     * @param dependency
+     * @return "local" | "remote" | "editing"
+     */
+    private dependencyType(dependency: WorkspaceStateDependency): "local" | "remote" | "editing" {
+        if (dependency.state.name === "edited") {
+            return "editing";
+        } else if (
+            dependency.packageRef.kind === "local" ||
+            dependency.packageRef.kind === "fileSystem"
+        ) {
+            // need to check for both "local" and "fileSystem" as swift 5.5 and earlier
+            // use "local" while 5.6 and later use "fileSystem"
+            return "local";
+        } else {
+            return "remote";
+        }
     }
 
     /** name of Swift Package */
@@ -374,6 +492,15 @@ export class SwiftPackage implements PackageContents {
     getTarget(file: string): Target | undefined {
         const filePath = path.relative(this.folder.fsPath, file);
         return this.targets.find(target => isPathInsidePath(filePath, target.path));
+    }
+
+    private static trimStdout(stdout: string): string {
+        // remove lines from `swift package describe` until we find a "{"
+        while (!stdout.startsWith("{")) {
+            const firstNewLine = stdout.indexOf("\n");
+            stdout = stdout.slice(firstNewLine + 1);
+        }
+        return stdout;
     }
 }
 

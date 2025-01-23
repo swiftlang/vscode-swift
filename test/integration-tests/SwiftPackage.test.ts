@@ -69,6 +69,6 @@ suite("SwiftPackage Test Suite", () => {
         assert.strictEqual(spmPackage.dependencies.length, 1);
         assert(spmPackage.resolved !== undefined);
         assert.strictEqual(spmPackage.resolved.pins.length, 1);
-        assert.strictEqual(spmPackage.resolved.pins[0].identity, "swift-cmark");
+        assert.strictEqual(spmPackage.resolved.pins[0].identity, "swift-log");
     }).timeout(10000);
 });

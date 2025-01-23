@@ -15,6 +15,7 @@
 import * as vscode from "vscode";
 import { FolderContext } from "./FolderContext";
 import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
+import { BuildFlags } from "./toolchain/BuildFlags";
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
@@ -25,6 +26,7 @@ import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
 export class PackageWatcher {
     private packageFileWatcher?: vscode.FileSystemWatcher;
     private resolvedFileWatcher?: vscode.FileSystemWatcher;
+    private workspaceStateFileWatcher?: vscode.FileSystemWatcher;
 
     constructor(
         private folderContext: FolderContext,
@@ -38,6 +40,7 @@ export class PackageWatcher {
     install() {
         this.packageFileWatcher = this.createPackageFileWatcher();
         this.resolvedFileWatcher = this.createResolvedFileWatcher();
+        this.workspaceStateFileWatcher = this.createWorkspaceStateFileWatcher();
     }
 
     /**
@@ -47,6 +50,7 @@ export class PackageWatcher {
     dispose() {
         this.packageFileWatcher?.dispose();
         this.resolvedFileWatcher?.dispose();
+        this.workspaceStateFileWatcher?.dispose();
     }
 
     private createPackageFileWatcher(): vscode.FileSystemWatcher {
@@ -66,6 +70,20 @@ export class PackageWatcher {
         watcher.onDidCreate(async () => await this.handlePackageResolvedChange());
         watcher.onDidChange(async () => await this.handlePackageResolvedChange());
         watcher.onDidDelete(async () => await this.handlePackageResolvedChange());
+        return watcher;
+    }
+
+    private createWorkspaceStateFileWatcher(): vscode.FileSystemWatcher {
+        const uri = vscode.Uri.joinPath(
+            vscode.Uri.file(
+                BuildFlags.buildDirectoryFromWorkspacePath(this.folderContext.folder.fsPath, true)
+            ),
+            "workspace-state.json"
+        );
+        const watcher = vscode.workspace.createFileSystemWatcher(uri.fsPath);
+        watcher.onDidCreate(async () => await this.handleWorkspaceStateChange());
+        watcher.onDidChange(async () => await this.handleWorkspaceStateChange());
+        watcher.onDidDelete(async () => await this.handleWorkspaceStateChange());
         return watcher;
     }
 
@@ -94,5 +112,15 @@ export class PackageWatcher {
         if (this.folderContext.swiftPackage.resolved?.fileHash !== packageResolvedHash) {
             this.workspaceContext.fireEvent(this.folderContext, FolderOperation.resolvedUpdated);
         }
+    }
+
+    /**
+     * Handles a create or change event for **.build/workspace-state.json**.
+     *
+     * This will resolve any changes in the workspace-state.
+     */
+    private async handleWorkspaceStateChange() {
+        await this.folderContext.reloadWorkspaceState();
+        this.workspaceContext.fireEvent(this.folderContext, FolderOperation.workspaceStateUpdated);
     }
 }
