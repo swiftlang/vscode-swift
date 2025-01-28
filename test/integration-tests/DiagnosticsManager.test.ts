@@ -381,9 +381,22 @@ suite("DiagnosticsManager Test Suite", async function () {
                 );
                 expectedDiagnostic2.source = "swiftc";
 
+                // Message should not contain [-Wreturn-mismatch] so it can be merged with
+                // SourceKit diagnostics if required
+                const expectedDiagnostic3 = new vscode.Diagnostic(
+                    new vscode.Range(new vscode.Position(11, 4), new vscode.Position(11, 4)),
+                    "Non-void function 'main' should return a value",
+                    vscode.DiagnosticSeverity.Error
+                );
+                expectedDiagnostic3.source = "swiftc";
+
                 await Promise.all([
                     waitForDiagnostics({
-                        [cppUri.fsPath]: [expectedDiagnostic1, expectedDiagnostic2],
+                        [cppUri.fsPath]: [
+                            expectedDiagnostic1,
+                            expectedDiagnostic2,
+                            expectedDiagnostic3,
+                        ],
                     }),
                     executeTaskAndWaitForResult(createBuildAllTask(cppFolderContext)),
                 ]);

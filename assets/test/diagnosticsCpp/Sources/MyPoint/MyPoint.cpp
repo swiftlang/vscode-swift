@@ -7,3 +7,7 @@ int func() {
     p.z = 2
     return p.x;
 }
+
+int main() {
+    return;
+}
