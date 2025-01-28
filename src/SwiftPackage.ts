@@ -54,7 +54,7 @@ export interface Dependency {
     dependencies: Dependency[];
 }
 
-export interface ResolvedDependency extends Omit<Omit<Dependency, "type">, "path"> {
+export interface ResolvedDependency extends Dependency {
     version: string;
     type: string;
     path: string;
