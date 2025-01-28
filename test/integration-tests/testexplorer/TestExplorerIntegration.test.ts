@@ -563,7 +563,7 @@ suite("Test Explorer Suite", function () {
                         });
                     });
 
-                    test(`Runs failing test (${runProfile})`, async function () {
+                    test(`swift-testing Runs failing test (${runProfile})`, async function () {
                         const testRun = await runTest(
                             testExplorer,
                             runProfile,
@@ -585,7 +585,7 @@ suite("Test Explorer Suite", function () {
                         });
                     });
 
-                    test(`Runs Suite (${runProfile})`, async function () {
+                    test(`swift-testing Runs Suite (${runProfile})`, async function () {
                         const testRun = await runTest(
                             testExplorer,
                             runProfile,
@@ -610,7 +610,7 @@ suite("Test Explorer Suite", function () {
                         });
                     });
 
-                    test(`Runs parameterized test (${runProfile})`, async function () {
+                    test(`swift-testing Runs parameterized test (${runProfile})`, async function () {
                         const testId = "PackageTests.parameterizedTest(_:)";
                         const testRun = await runTest(testExplorer, runProfile, testId);
 
@@ -660,7 +660,7 @@ suite("Test Explorer Suite", function () {
                         assert.deepEqual(unrunnableChildren, [true, true, true]);
                     });
 
-                    test(`Runs Suite (${runProfile})`, async function () {
+                    test(`swift-testing Runs Suite (${runProfile})`, async function () {
                         const testRun = await runTest(
                             testExplorer,
                             runProfile,
@@ -685,7 +685,7 @@ suite("Test Explorer Suite", function () {
                         });
                     });
 
-                    test(`Runs All (${runProfile})`, async function () {
+                    test(`swift-testing Runs All (${runProfile})`, async function () {
                         const testRun = await runTest(
                             testExplorer,
                             runProfile,
@@ -724,7 +724,7 @@ suite("Test Explorer Suite", function () {
                 });
 
                 suite(`XCTests (${runProfile})`, () => {
-                    test("Runs passing test", async function () {
+                    test(`XCTest Runs passing test (${runProfile})`, async function () {
                         const testRun = await runTest(
                             testExplorer,
                             runProfile,
@@ -739,7 +739,7 @@ suite("Test Explorer Suite", function () {
                         });
                     });
 
-                    test("Runs failing test", async function () {
+                    test(`XCTest Runs failing test (${runProfile})`, async function () {
                         const testRun = await runTest(
                             testExplorer,
                             runProfile,
@@ -760,7 +760,7 @@ suite("Test Explorer Suite", function () {
                         });
                     });
 
-                    test("Runs Suite", async function () {
+                    test(`XCTest Runs Suite (${runProfile})`, async function () {
                         const testRun = await runTest(
                             testExplorer,
                             runProfile,

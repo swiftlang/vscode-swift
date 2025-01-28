@@ -92,8 +92,9 @@ export class ParallelXCTestOutputParser implements IXCTestOutputParser {
     public parseResult(output: string, runState: ITestRunState) {
         // From 5.7 to 5.10 running with the --parallel option dumps the test results out
         // to the console with no newlines, so it isn't possible to distinguish where errors
-        // begin and end. Consequently we can't record them, and so we manually mark them
-        // as passed or failed here with a manufactured issue.
+        // begin and end. Consequently we can't record them. For these versions we rely on the
+        // generated xunit XML, which we can parse and mark tests as passed or failed here with
+        // manufactured issues.
         // Don't attempt to parse the console output of parallel tests between 5.7 and 5.10
         // as it doesn't have newlines. You might get lucky and find the output is split
         // in the right spot, but more often than not we wont be able to parse it.
@@ -112,7 +113,41 @@ export class ParallelXCTestOutputParser implements IXCTestOutputParser {
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 class ParallelXCTestRunStateProxy implements ITestRunState {
+    // Note this must remain stateless as its recreated on
+    // every `parseResult` call in `ParallelXCTestOutputParser`
     constructor(private runState: ITestRunState) {}
+
+    get excess(): typeof this.runState.excess {
+        return this.runState.excess;
+    }
+
+    set excess(value: typeof this.runState.excess) {
+        this.runState.excess = value;
+    }
+
+    get activeSuite(): typeof this.runState.activeSuite {
+        return this.runState.activeSuite;
+    }
+
+    set activeSuite(value: typeof this.runState.activeSuite) {
+        this.runState.activeSuite = value;
+    }
+
+    get pendingSuiteOutput(): typeof this.runState.pendingSuiteOutput {
+        return this.runState.pendingSuiteOutput;
+    }
+
+    set pendingSuiteOutput(value: typeof this.runState.pendingSuiteOutput) {
+        this.runState.pendingSuiteOutput = value;
+    }
+
+    get failedTest(): typeof this.runState.failedTest {
+        return this.runState.failedTest;
+    }
+
+    set failedTest(value: typeof this.runState.failedTest) {
+        this.runState.failedTest = value;
+    }
 
     getTestItemIndex(id: string, filename: string | undefined): number {
         return this.runState.getTestItemIndex(id, filename);

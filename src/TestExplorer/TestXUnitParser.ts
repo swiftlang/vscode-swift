@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import * as xml2js from "xml2js";
-import { TestRunnerTestRunState } from "./TestRunner";
-import { OutputChannel } from "vscode";
+import { ITestRunState } from "./TestParsers/TestRunState";
+import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 
 export interface TestResults {
     tests: number;
@@ -49,8 +49,8 @@ export class TestXUnitParser {
 
     async parse(
         buffer: string,
-        runState: TestRunnerTestRunState,
-        outputChannel: OutputChannel
+        runState: ITestRunState,
+        outputChannel: SwiftOutputChannel
     ): Promise<TestResults | undefined> {
         const xml = await xml2js.parseStringPromise(buffer);
         try {
@@ -63,7 +63,8 @@ export class TestXUnitParser {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async parseXUnit(xUnit: XUnit, runState: TestRunnerTestRunState): Promise<TestResults> {
+    async parseXUnit(xUnit: XUnit, runState: ITestRunState): Promise<TestResults> {
+        // eslint-disable-next-line no-console
         let tests = 0;
         let failures = 0;
         let errors = 0;
@@ -77,7 +78,7 @@ export class TestXUnitParser {
             testsuite.testcase.forEach(testcase => {
                 className = testcase.$.classname;
                 const id = `${className}/${testcase.$.name}`;
-                const index = runState.getTestItemIndex(id);
+                const index = runState.getTestItemIndex(id, undefined);
 
                 // From 5.7 to 5.10 running with the --parallel option dumps the test results out
                 // to the console with no newlines, so it isn't possible to distinguish where errors
@@ -86,7 +87,8 @@ export class TestXUnitParser {
                 if (!!testcase.failure && !this.hasMultiLineParallelTestOutput) {
                     runState.recordIssue(
                         index,
-                        testcase.failure.shift()?.$.message ?? "Test Failed"
+                        testcase.failure.shift()?.$.message ?? "Test Failed",
+                        false
                     );
                 }
                 runState.completed(index, { duration: testcase.$.time });
