@@ -96,6 +96,7 @@ suite("WorkspaceContext Test Suite", () => {
 
         suiteTeardown(async () => {
             await swiftConfig.update("buildArguments", undefined);
+            await swiftConfig.update("packageArguments", undefined);
             await swiftConfig.update("path", undefined);
             await swiftConfig.update("diagnosticsStyle", undefined);
         });
@@ -161,6 +162,19 @@ suite("WorkspaceContext Test Suite", () => {
             const execution = buildAllTask.execution as SwiftExecution;
             assertContainsArg(execution, "--sanitize=thread");
             await swiftConfig.update("buildArguments", []);
+        });
+
+        test("Package Arguments Settings", async () => {
+            const folder = workspaceContext.folders.find(
+                f => f.folder.fsPath === packageFolder.fsPath
+            );
+            assert(folder);
+            await swiftConfig.update("diagnosticsStyle", undefined);
+            await swiftConfig.update("packageArguments", ["--replace-scm-with-registry"]);
+            const buildAllTask = createBuildAllTask(folder);
+            const execution = buildAllTask.execution as SwiftExecution;
+            assertContainsArg(execution, "--replace-scm-with-registry");
+            await swiftConfig.update("packageArguments", []);
         });
 
         test("Swift Path", async () => {

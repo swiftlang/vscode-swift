@@ -89,6 +89,8 @@ export function buildOptions(toolchain: SwiftToolchain, debug = true): string[] 
         args.push(...sanitizer.buildFlags);
     }
     args.push(...configuration.buildArguments);
+    // build can also trigger package resolution
+    args.push(...configuration.packageArguments);
     return args;
 }
 
