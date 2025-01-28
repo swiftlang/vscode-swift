@@ -110,6 +110,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         this.activeTextEditor = vscode.window.activeTextEditor;
         this.subscriptions.push(
             this.webviewPanel.webview.onDidReceiveMessage(this.receiveMessage, this),
+            vscode.window.onDidChangeActiveTextEditor(this.handleActiveTextEditorChange, this),
             vscode.window.onDidChangeTextEditorSelection(
                 this.handleTextEditorSelectionChange,
                 this
@@ -164,6 +165,14 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                 this.renderEmitter.fire();
                 break;
         }
+    }
+
+    private handleActiveTextEditorChange(textEditor: vscode.TextEditor | undefined) {
+        if (textEditor === undefined) {
+            return;
+        }
+        this.activeTextEditor = textEditor;
+        this.convertDocumentation(textEditor);
     }
 
     private handleTextEditorSelectionChange(event: vscode.TextEditorSelectionChangeEvent) {
