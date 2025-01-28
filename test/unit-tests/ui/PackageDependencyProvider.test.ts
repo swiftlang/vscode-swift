@@ -67,7 +67,7 @@ suite("PackageDependencyProvider Unit Test Suite", function () {
 
         const fsMock = mockGlobalModule(fs);
 
-        test("enumeates child dependencies and files", async () => {
+        test("enumerates child dependencies and files", async () => {
             fsMock.readdir.resolves(["file1", "file2"] as any);
             fsMock.stat.resolves({ isFile: () => true, isDirectory: () => false } as any);
 
