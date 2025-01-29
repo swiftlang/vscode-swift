@@ -33,6 +33,7 @@ import { SwiftToolchain } from "./toolchain/toolchain";
 import { DiagnosticsManager } from "./DiagnosticsManager";
 import { DocumentationManager } from "./documentation/DocumentationManager";
 import { DocCDocumentationRequest, ReIndexProjectRequest } from "./sourcekit-lsp/extensions";
+import { TestKind } from "./TestExplorer/TestKind";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -52,6 +53,17 @@ export class WorkspaceContext implements vscode.Disposable {
     public documentation: DocumentationManager;
     private lastFocusUri: vscode.Uri | undefined;
     private initialisationFinished = false;
+
+    private readonly testStartEmitter = new vscode.EventEmitter<TestEvent>();
+    private readonly testFinishEmitter = new vscode.EventEmitter<TestEvent>();
+
+    public onDidStartTests = this.testStartEmitter.event;
+    public onDidFinishTests = this.testFinishEmitter.event;
+
+    private readonly buildStartEmitter = new vscode.EventEmitter<BuildEvent>();
+    private readonly buildFinishEmitter = new vscode.EventEmitter<BuildEvent>();
+    public onDidStartBuild = this.buildStartEmitter.event;
+    public onDidFinishBuild = this.buildFinishEmitter.event;
 
     private constructor(
         extensionContext: vscode.ExtensionContext,
@@ -336,6 +348,30 @@ export class WorkspaceContext implements vscode.Disposable {
         await this.fireEvent(folderContext, FolderOperation.focus);
     }
 
+    public testsFinished(folder: FolderContext, kind: TestKind) {
+        this.testFinishEmitter.fire({ kind, folder });
+    }
+
+    public testsStarted(folder: FolderContext, kind: TestKind) {
+        this.testStartEmitter.fire({ kind, folder });
+    }
+
+    public buildStarted(
+        targetName: string,
+        launchConfig: vscode.DebugConfiguration,
+        options: vscode.DebugSessionOptions
+    ) {
+        this.buildStartEmitter.fire({ targetName, launchConfig, options });
+    }
+
+    public buildFinished(
+        targetName: string,
+        launchConfig: vscode.DebugConfiguration,
+        options: vscode.DebugSessionOptions
+    ) {
+        this.buildFinishEmitter.fire({ targetName, launchConfig, options });
+    }
+
     /**
      * catch workspace folder changes and add or remove folders based on those changes
      * @param event workspace folder event
@@ -594,6 +630,19 @@ export class WorkspaceContext implements vscode.Disposable {
     private swiftFileObservers = new Set<(listener: SwiftFileEvent) => unknown>();
 }
 
+/** Test events for test run begin/end */
+interface TestEvent {
+    kind: TestKind;
+    folder: FolderContext;
+}
+
+/** Build events for build + run start/stop */
+interface BuildEvent {
+    targetName: string;
+    launchConfig: vscode.DebugConfiguration;
+    options: vscode.DebugSessionOptions;
+}
+
 /** Workspace Folder Operation types */
 export enum FolderOperation {
     // Package folder has been added
@@ -612,6 +661,8 @@ export enum FolderOperation {
     workspaceStateUpdated = "workspaceStateUpdated",
     // .build/workspace-state.json has been updated
     packageViewUpdated = "packageViewUpdated",
+    // Package plugins list has been updated
+    pluginsUpdated = "pluginsUpdated",
 }
 
 /** Workspace Folder Event */
