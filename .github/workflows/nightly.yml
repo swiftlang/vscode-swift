@@ -7,9 +7,11 @@ on:
 
 jobs:
   package:
-     name: Package Extension
-     runs-on: ubuntu-latest
-     steps:
+    name: Package Extension
+    runs-on: ubuntu-latest
+    container:
+      image: swift:6.0-jammy
+    steps:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Build Extension
