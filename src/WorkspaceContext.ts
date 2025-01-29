@@ -682,6 +682,8 @@ export enum FolderOperation {
     resolvedUpdated = "resolvedUpdated",
     // .build/workspace-state.json has been updated
     workspaceStateUpdated = "workspaceStateUpdated",
+    // .build/workspace-state.json has been updated
+    packageViewUpdated = "packageViewUpdated",
 }
 
 /** Workspace Folder Event */

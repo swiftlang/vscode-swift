@@ -39,6 +39,11 @@ interface ContextKeys {
     packageHasDependencies: boolean;
 
     /**
+     * Whether the dependencies list is displayed in a nested or flat view.
+     */
+    flatDependenciesList: boolean;
+
+    /**
      * Whether the Swift package has any plugins.
      */
     packageHasPlugins: boolean;
@@ -78,6 +83,7 @@ interface ContextKeys {
 function createContextKeys(): ContextKeys {
     let isActivated: boolean = false;
     let hasPackage: boolean = false;
+    let flatDependenciesList: boolean = false;
     let packageHasDependencies: boolean = false;
     let packageHasPlugins: boolean = false;
     let currentTargetType: string | undefined = undefined;
@@ -113,6 +119,15 @@ function createContextKeys(): ContextKeys {
         set packageHasDependencies(value: boolean) {
             packageHasDependencies = value;
             vscode.commands.executeCommand("setContext", "swift.packageHasDependencies", value);
+        },
+
+        get flatDependenciesList() {
+            return flatDependenciesList;
+        },
+
+        set flatDependenciesList(value: boolean) {
+            flatDependenciesList = value;
+            vscode.commands.executeCommand("setContext", "swift.flatDependenciesList", value);
         },
 
         get packageHasPlugins() {

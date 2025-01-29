@@ -385,7 +385,7 @@ export class SwiftPackage implements PackageContents {
         };
     }
 
-    public async childDependencies(dependency: Dependency): Promise<ResolvedDependency[]> {
+    public childDependencies(dependency: Dependency): ResolvedDependency[] {
         return dependency.dependencies.map(dep => this.resolveDependencyAgainstWorkspaceState(dep));
     }
 

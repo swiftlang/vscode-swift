@@ -56,7 +56,7 @@ suite("PackageDependencyProvider Unit Test Suite", function () {
                     version: "1.2.3",
                     type: "remote",
                 },
-                () => Promise.resolve([])
+                () => []
             );
             const item = node.toTreeItem();
 
@@ -80,17 +80,16 @@ suite("PackageDependencyProvider Unit Test Suite", function () {
                     version: "1.2.3",
                     type: "remote",
                 },
-                () =>
-                    Promise.resolve([
-                        {
-                            identity: "SomeChildDependency",
-                            path: "/path/to/.build/child-dependency",
-                            location: "https://github.com/swiftlang/some-child-dependency.git",
-                            dependencies: [],
-                            version: "1.2.4",
-                            type: "remote",
-                        },
-                    ])
+                () => [
+                    {
+                        identity: "SomeChildDependency",
+                        path: "/path/to/.build/child-dependency",
+                        location: "https://github.com/swiftlang/some-child-dependency.git",
+                        dependencies: [],
+                        version: "1.2.4",
+                        type: "remote",
+                    },
+                ]
             );
 
             const children = await node.getChildren();

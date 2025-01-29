@@ -67,7 +67,7 @@ export class PackageNode {
 
     constructor(
         private dependency: ResolvedDependency,
-        private childDependencies: (dependency: Dependency) => Promise<ResolvedDependency[]>,
+        private childDependencies: (dependency: Dependency) => ResolvedDependency[],
         private parentId?: string
     ) {
         this.id =
@@ -207,6 +207,7 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                         break;
                     case FolderOperation.workspaceStateUpdated:
                     case FolderOperation.resolvedUpdated:
+                    case FolderOperation.packageViewUpdated:
                         if (!folder) {
                             return;
                         }
@@ -228,17 +229,39 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             return [];
         }
         if (!element) {
-            return folderContext.swiftPackage
-                .rootDependencies()
-                .map(
-                    dependency =>
-                        new PackageNode(
-                            dependency,
-                            folderContext.swiftPackage.childDependencies.bind(
-                                folderContext.swiftPackage
+            if (contextKeys.flatDependenciesList) {
+                const existenceMap = new Map<string, boolean>();
+                const gatherChildren = (
+                    dependencies: ResolvedDependency[]
+                ): ResolvedDependency[] => {
+                    const result: ResolvedDependency[] = [];
+                    for (const dep of dependencies) {
+                        if (!existenceMap.has(dep.identity)) {
+                            result.push(dep);
+                            existenceMap.set(dep.identity, true);
+                        }
+                        const childDeps = folderContext.swiftPackage.childDependencies(dep);
+                        result.push(...gatherChildren(childDeps));
+                    }
+                    return result;
+                };
+
+                const rootDeps = folderContext.swiftPackage.rootDependencies();
+                const allDeps = gatherChildren(rootDeps);
+                return allDeps.map(dependency => new PackageNode(dependency, () => []));
+            } else {
+                return folderContext.swiftPackage
+                    .rootDependencies()
+                    .map(
+                        dependency =>
+                            new PackageNode(
+                                dependency,
+                                folderContext.swiftPackage.childDependencies.bind(
+                                    folderContext.swiftPackage
+                                )
                             )
-                        )
-                );
+                    );
+            }
         } else {
             return await element.getChildren();
         }

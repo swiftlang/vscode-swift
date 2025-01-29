@@ -39,6 +39,7 @@ import { runPluginTask } from "./commands/runPluginTask";
 import { runTestMultipleTimes } from "./commands/testMultipleTimes";
 import { newSwiftFile } from "./commands/newFile";
 import { runAllTestsParallel } from "./commands/runParallelTests";
+import { updateDependenciesViewList } from "./commands/dependencies/updateDepViewList";
 
 /**
  * References:
@@ -69,6 +70,8 @@ export enum Commands {
     DEBUG = "swift.debug",
     CLEAN_BUILD = "swift.cleanBuild",
     RESOLVE_DEPENDENCIES = "swift.resolveDependencies",
+    SHOW_FLAT_DEPENDENCIES_LIST = "swift.flatDependenciesList",
+    SHOW_NESTED_DEPENDENCIES_LIST = "swift.nestedDependenciesList",
     UPDATE_DEPENDENCIES = "swift.updateDependencies",
     RUN_TESTS_MULTIPLE_TIMES = "swift.runTestsMultipleTimes",
     RESET_PACKAGE = "swift.resetPackage",
@@ -159,6 +162,12 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand(
             Commands.PREVIEW_DOCUMENTATION,
             async () => await ctx.documentation.launchDocumentationPreview()
+        ),
+        vscode.commands.registerCommand(Commands.SHOW_FLAT_DEPENDENCIES_LIST, () =>
+            updateDependenciesViewList(ctx, true)
+        ),
+        vscode.commands.registerCommand(Commands.SHOW_NESTED_DEPENDENCIES_LIST, () =>
+            updateDependenciesViewList(ctx, false)
         ),
     ];
 }
