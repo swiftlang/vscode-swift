@@ -14,6 +14,7 @@
 
 const { defineConfig } = require("@vscode/test-cli");
 const path = require("path");
+const { version } = require("./package.json");
 
 const isCIBuild = process.env["CI"] === "1";
 const isFastTestRun = process.env["FAST_TEST_RUN"] === "1";
@@ -39,6 +40,7 @@ if (dataDir) {
 if (process.platform === "darwin" && process.arch === "x64") {
     launchArgs.push("--disable-gpu");
 }
+const vsixPath = process.env["VSCODE_SWIFT_VSIX"];
 
 module.exports = defineConfig({
     tests: [
@@ -48,6 +50,9 @@ module.exports = defineConfig({
             version: process.env["VSCODE_VERSION"] ?? "stable",
             workspaceFolder: "./assets/test",
             launchArgs,
+            extensionDevelopmentPath: vsixPath
+                ? [`${__dirname}/.vscode-test/extensions/swiftlang.vscode-swift-${version}`]
+                : undefined,
             mocha: {
                 ui: "tdd",
                 color: true,
@@ -64,7 +69,9 @@ module.exports = defineConfig({
                 },
             },
             reuseMachineInstall: !isCIBuild,
-            installExtensions: ["vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap"],
+            installExtensions: ["vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap"].concat(
+                vsixPath ? [vsixPath] : []
+            ),
         },
         {
             label: "unitTests",
