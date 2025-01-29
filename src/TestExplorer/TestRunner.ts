@@ -527,6 +527,8 @@ export class TestRunner {
      * @returns When complete
      */
     async runHandler() {
+        this.workspaceContext.testsStarted(this.folderContext, this.testKind);
+
         const runState = new TestRunnerTestRunState(this.testRun);
 
         const cancellationDisposable = this.testRun.token.onCancellationRequested(() => {
@@ -551,6 +553,8 @@ export class TestRunner {
 
         cancellationDisposable.dispose();
         await this.testRun.end();
+
+        this.workspaceContext.testsFinished(this.folderContext, this.testKind);
     }
 
     /** Run test session without attaching to a debugger */
@@ -977,11 +981,6 @@ export class TestRunner {
                                                 runState
                                             );
                                         }
-
-                                        // show test results pane
-                                        vscode.commands.executeCommand(
-                                            "testing.showMostRecentOutput"
-                                        );
 
                                         const terminateSession =
                                             vscode.debug.onDidTerminateDebugSession(() => {

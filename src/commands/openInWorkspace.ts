@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { PackageNode } from "../ui/PackageDependencyProvider";
+import { PackageNode } from "../ui/ProjectPanelProvider";
 
 /**
  * Open a local package in workspace
