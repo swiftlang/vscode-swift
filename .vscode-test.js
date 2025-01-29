@@ -14,6 +14,7 @@
 
 const { defineConfig } = require("@vscode/test-cli");
 const path = require("path");
+const { version } = require("./package.json");
 
 const isCIBuild = process.env["CI"] === "1";
 const isFastTestRun = process.env["FAST_TEST_RUN"] === "1";
@@ -24,6 +25,8 @@ const isDebugRun = !(process.env["_"] ?? "").endsWith("node_modules/.bin/vscode-
 // so tests don't timeout when a breakpoint is hit
 const timeout = isDebugRun ? Number.MAX_SAFE_INTEGER : 3000;
 
+const vsixPath = process.env["VSCODE_SWIFT_VSIX"];
+
 module.exports = defineConfig({
     tests: [
         {
@@ -31,6 +34,9 @@ module.exports = defineConfig({
             files: ["dist/test/common.js", "dist/test/integration-tests/**/*.test.js"],
             version: process.env["VSCODE_VERSION"] ?? "stable",
             workspaceFolder: "./assets/test",
+            extensionDevelopmentPath: vsixPath
+                ? [`${__dirname}/.vscode-test/extensions/swiftlang.vscode-swift-${version}`]
+                : undefined,
             launchArgs: [
                 "--disable-updates",
                 "--disable-crash-reporter",
@@ -53,7 +59,7 @@ module.exports = defineConfig({
                 },
             },
             reuseMachineInstall: !isCIBuild,
-            installExtensions: ["vadimcn.vscode-lldb"],
+            installExtensions: ["vadimcn.vscode-lldb"].concat(vsixPath ? [vsixPath] : []),
         },
         {
             label: "unitTests",
