@@ -6,6 +6,28 @@ on:
   workflow_dispatch:
 
 jobs:
+  package:
+     name: Package Extension
+     runs-on: ubuntu-latest
+     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Build Extension
+        run: |
+          NODE_VERSION=v18.19.0
+          NODE_PATH=/usr/local/nvm/versions/node/v18.19.0/bin
+          NVM_DIR=/usr/local/nvm
+          . .github/workflows/scripts/setup-linux.sh
+          npm ci
+          npm run compile
+          npm run package
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vscode-swift-extension
+          path: |
+            *.vsix
   tests_release:
     name: Test Release
     uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@main
