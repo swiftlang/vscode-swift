@@ -181,6 +181,13 @@ suite("DiagnosticsManager Test Suite", async function () {
             );
             expectedMainErrorDiagnostic.source = "swiftc";
 
+            const expectedMainDictErrorDiagnostic = new vscode.Diagnostic(
+                new vscode.Range(new vscode.Position(15, 35), new vscode.Position(15, 35)),
+                "Use [:] to get an empty dictionary literal",
+                vscode.DiagnosticSeverity.Error
+            );
+            expectedMainDictErrorDiagnostic.source = "swiftc";
+
             const expectedFuncErrorDiagnostic: vscode.Diagnostic = new vscode.Diagnostic(
                 new vscode.Range(new vscode.Position(1, 4), new vscode.Position(1, 4)),
                 "Cannot find 'baz' in scope",
@@ -189,7 +196,7 @@ suite("DiagnosticsManager Test Suite", async function () {
             expectedFuncErrorDiagnostic.source = "swiftc";
 
             const expectedMacroDiagnostic = new vscode.Diagnostic(
-                new vscode.Range(new vscode.Position(17, 26), new vscode.Position(17, 26)),
+                new vscode.Range(new vscode.Position(19, 26), new vscode.Position(19, 26)),
                 "No calls to throwing functions occur within 'try' expression",
                 vscode.DiagnosticSeverity.Warning
             );
@@ -238,6 +245,7 @@ suite("DiagnosticsManager Test Suite", async function () {
                         [mainUri.fsPath]: [
                             expectedWarningDiagnostic,
                             expectedMainErrorDiagnostic,
+                            expectedMainDictErrorDiagnostic,
                             ...(workspaceContext.swiftVersion.isGreaterThanOrEqual(
                                 new Version(6, 0, 0)
                             )
@@ -269,7 +277,11 @@ suite("DiagnosticsManager Test Suite", async function () {
 
                 await Promise.all([
                     waitForDiagnostics({
-                        [mainUri.fsPath]: [expectedWarningDiagnostic, expectedMainErrorDiagnostic], // Should have parsed correct severity
+                        [mainUri.fsPath]: [
+                            expectedWarningDiagnostic,
+                            expectedMainErrorDiagnostic,
+                            expectedMainDictErrorDiagnostic,
+                        ], // Should have parsed correct severity
                         [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
                     }),
                     executeTaskAndWaitForResult(createBuildAllTask(folderContext)),
@@ -282,7 +294,11 @@ suite("DiagnosticsManager Test Suite", async function () {
 
                 await Promise.all([
                     waitForDiagnostics({
-                        [mainUri.fsPath]: [expectedWarningDiagnostic, expectedMainErrorDiagnostic], // Should have parsed correct severity
+                        [mainUri.fsPath]: [
+                            expectedWarningDiagnostic,
+                            expectedMainErrorDiagnostic,
+                            expectedMainDictErrorDiagnostic,
+                        ], // Should have parsed correct severity
                         [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
                     }),
                     executeTaskAndWaitForResult(createBuildAllTask(folderContext)),
@@ -365,9 +381,22 @@ suite("DiagnosticsManager Test Suite", async function () {
                 );
                 expectedDiagnostic2.source = "swiftc";
 
+                // Message should not contain [-Wreturn-mismatch] so it can be merged with
+                // SourceKit diagnostics if required
+                const expectedDiagnostic3 = new vscode.Diagnostic(
+                    new vscode.Range(new vscode.Position(11, 4), new vscode.Position(11, 4)),
+                    "Non-void function 'main' should return a value",
+                    vscode.DiagnosticSeverity.Error
+                );
+                expectedDiagnostic3.source = "swiftc";
+
                 await Promise.all([
                     waitForDiagnostics({
-                        [cppUri.fsPath]: [expectedDiagnostic1, expectedDiagnostic2],
+                        [cppUri.fsPath]: [
+                            expectedDiagnostic1,
+                            expectedDiagnostic2,
+                            expectedDiagnostic3,
+                        ],
                     }),
                     executeTaskAndWaitForResult(createBuildAllTask(cppFolderContext)),
                 ]);

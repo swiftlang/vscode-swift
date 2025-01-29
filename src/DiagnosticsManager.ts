@@ -355,13 +355,14 @@ export class DiagnosticsManager implements vscode.Disposable {
         line: string
     ): ParsedDiagnostic | vscode.DiagnosticRelatedInformation | undefined {
         const diagnosticRegex =
-            /^(?:\S+\s+)?(.*?):(\d+)(?::(\d+))?:\s+(warning|error|note):\s+([^\\[]*)/g;
+            /^(?:\S+\s+)?(.*?):(\d+)(?::(\d+))?:\s+(warning|error|note):\s+(.*)$/g;
+        const switfcExtraWarningsRegex = /\[-W.*?\]/g;
         const match = diagnosticRegex.exec(line);
         if (!match) {
             return;
         }
         const uri = vscode.Uri.file(match[1]).fsPath;
-        const message = this.capitalize(match[5]).trim();
+        const message = this.capitalize(match[5]).replace(switfcExtraWarningsRegex, "").trim();
         const range = this.range(match[2], match[3]);
         const severity = this.severity(match[4]);
         if (severity === vscode.DiagnosticSeverity.Information) {
