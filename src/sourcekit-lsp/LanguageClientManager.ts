@@ -534,6 +534,20 @@ export class LanguageClientManager implements vscode.Disposable {
             workspaceFolder: workspaceFolder,
             outputChannel: new SwiftOutputChannel("SourceKit Language Server", false),
             middleware: {
+                provideCodeLenses: async (document, token, next) => {
+                    const result = await next(document, token);
+                    return result?.map(codelens => {
+                        switch (codelens.command?.command) {
+                            case "swift.run":
+                                codelens.command.title = `$(play) ${codelens.command.title}`;
+                                break;
+                            case "swift.debug":
+                                codelens.command.title = `$(debug) ${codelens.command.title}`;
+                                break;
+                        }
+                        return codelens;
+                    });
+                },
                 provideDocumentSymbols: async (document, token, next) => {
                     const result = await next(document, token);
                     const documentSymbols = result as vscode.DocumentSymbol[];
