@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: swift:6.0-jammy
+    outputs:
+      artifact-url: ${{ steps.archive.outputs.artifact-url }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,15 +26,23 @@ jobs:
           npm ci
           npm run compile
           npm run package
+          for file in *.vsix; do
+            name="$(basename "$file" .vsix)-${{github.run_number}}.vsix"
+            echo "Created bundle $name"
+            mv "$file" "$name"
+          done
       - name: Archive production artifacts
+        id: archive
         uses: actions/upload-artifact@v4
         if: always()
         with:
+          if-no-files-found: error
           name: vscode-swift-extension
           path: |
             *.vsix
   tests_release:
     name: Test Release
+    needs: package
     uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@main
     with:
       # Linux
@@ -41,18 +51,21 @@ jobs:
         NODE_PATH=/usr/local/nvm/versions/node/v18.19.0/bin
         NVM_DIR=/usr/local/nvm
         CI=1
+        VSCODE_SWIFT_VSIX_URL=${{needs.package.outputs.artifact-url}}
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./scripts/test.sh
       # Windows
       windows_env_vars: |
         CI=1
         VSCODE_TEST=1
+        VSCODE_SWIFT_VSIX_URL=${{needs.package.outputs.artifact-url}}
       windows_pre_build_command: .github\workflows\scripts\windows\install-nodejs.ps1
       windows_build_command: scripts\test_windows.ps1
       enable_windows_docker: false
 
   tests_insiders:
     name: Test Insiders
+    needs: package
     uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@main
     with:
       # Linux
@@ -64,6 +77,7 @@ jobs:
         CI=1
         VSCODE_TEST=1
         VSCODE_VERSION=insiders
+        VSCODE_SWIFT_VSIX_URL=${{needs.package.outputs.artifact-url}}
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./scripts/test.sh
       # Windows
@@ -72,6 +86,7 @@ jobs:
         CI=1
         VSCODE_TEST=1
         VSCODE_VERSION=insiders
+        VSCODE_SWIFT_VSIX_URL=${{needs.package.outputs.artifact-url}}
       windows_pre_build_command: .github\workflows\scripts\windows\install-nodejs.ps1
       windows_build_command: scripts\test_windows.ps1
       enable_windows_docker: false
