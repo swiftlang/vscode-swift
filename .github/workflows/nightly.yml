@@ -12,7 +12,7 @@ jobs:
     container:
       image: swift:6.0-jammy
     outputs:
-      artifact-url: ${{ steps.archive.outputs.artifact-url }}
+      artifact-id: ${{ steps.archive.outputs.artifact-id }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -52,14 +52,20 @@ jobs:
         NODE_PATH=/usr/local/nvm/versions/node/v20.18.2/bin
         NVM_DIR=/usr/local/nvm
         CI=1
-        VSCODE_SWIFT_VSIX_URL=${{needs.package.outputs.artifact-url}}
+        VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
+        VSCODE_SWIFT_VSIX=${{github.workspace}}\vscode-swift.vsix
+        GITHUB_TOKEN=${{github.token}}
+        GITHUB_REPOSITORY=${{github.repository}}
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./scripts/test.sh
       # Windows
       windows_env_vars: |
         CI=1
-        VSCODE_SWIFT_VSIX_URL=${{needs.package.outputs.artifact-url}}
-      windows_pre_build_command: .github\workflows\scripts\windows\install-nodejs.ps1
+        VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
+        VSCODE_SWIFT_VSIX=${{github.workspace}}\vscode-swift.vsix
+        GITHUB_TOKEN=${{github.token}}
+        GITHUB_REPOSITORY=${{github.repository}}
+      windows_pre_build_command: .github\workflows\scripts\windows\setup.ps1
       windows_build_command: scripts\test_windows.ps1
       enable_windows_docker: false
 
@@ -76,7 +82,10 @@ jobs:
         NVM_DIR=/usr/local/nvm
         CI=1
         VSCODE_VERSION=insiders
-        VSCODE_SWIFT_VSIX_URL=${{needs.package.outputs.artifact-url}}
+        VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
+        VSCODE_SWIFT_VSIX=${{github.workspace}}\vscode-swift.vsix
+        GITHUB_TOKEN=${{github.token}}
+        GITHUB_REPOSITORY=${{github.repository}}
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./scripts/test.sh
       # Windows
@@ -84,7 +93,10 @@ jobs:
       windows_env_vars: |
         CI=1
         VSCODE_VERSION=insiders
-        VSCODE_SWIFT_VSIX_URL=${{needs.package.outputs.artifact-url}}
-      windows_pre_build_command: .github\workflows\scripts\windows\install-nodejs.ps1
+        VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
+        VSCODE_SWIFT_VSIX=${{github.workspace}}\vscode-swift.vsix
+        GITHUB_TOKEN=${{github.token}}
+        GITHUB_REPOSITORY=${{github.repository}}
+      windows_pre_build_command: .github\workflows\scripts\windows\setup.ps1
       windows_build_command: scripts\test_windows.ps1
       enable_windows_docker: false
