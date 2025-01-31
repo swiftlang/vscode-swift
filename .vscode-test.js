@@ -25,10 +25,25 @@ const isDebugRun = !(process.env["_"] ?? "").endsWith("node_modules/.bin/vscode-
 // so tests don't timeout when a breakpoint is hit
 const timeout = isDebugRun ? Number.MAX_SAFE_INTEGER : 3000;
 
-const vsixPath = process.env["VSCODE_SWIFT_VSIX"];
+let vsixPath = process.env["VSCODE_SWIFT_VSIX"];
+const install = [];
+if (vsixPath) {
+    if (!path.isAbsolute(vsixPath)) {
+        vsixPath = path.join(__dirname, vsixPath);
+    }
+    console.log("Installing " + vsixPath);
+    install.push({
+        label: "installExtension",
+        installExtensions: vsixPath ? [vsixPath] : [],
+        files: [],
+        version: process.env["VSCODE_VERSION"] ?? "stable",
+        reuseMachineInstall: !isCIBuild,
+    });
+}
 
 module.exports = defineConfig({
     tests: [
+        ...install,
         {
             label: "integrationTests",
             files: ["dist/test/common.js", "dist/test/integration-tests/**/*.test.js"],
@@ -59,7 +74,6 @@ module.exports = defineConfig({
                 },
             },
             reuseMachineInstall: !isCIBuild,
-            installExtensions: ["vadimcn.vscode-lldb"].concat(vsixPath ? [vsixPath] : []),
         },
         {
             label: "unitTests",
