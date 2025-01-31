@@ -14,7 +14,7 @@
 
 const { defineConfig } = require("@vscode/test-cli");
 const path = require("path");
-const { version } = require("./package.json");
+const { version, publisher, name } = require("./package.json");
 
 const isCIBuild = process.env["CI"] === "1";
 const isFastTestRun = process.env["FAST_TEST_RUN"] === "1";
@@ -68,7 +68,7 @@ module.exports = defineConfig({
             workspaceFolder: "./assets/test",
             launchArgs,
             extensionDevelopmentPath: vsixPath
-                ? [`${__dirname}/.vscode-test/extensions/swiftlang.vscode-swift-${version}`]
+                ? [`${__dirname}/.vscode-test/extensions/${publisher}.${name}-${version}`]
                 : undefined,
             mocha: {
                 ui: "tdd",
@@ -105,6 +105,7 @@ module.exports = defineConfig({
                     },
                 },
             },
+            skipExtensionDependencies: true,
             reuseMachineInstall: !isCIBuild,
         },
         // you can specify additional test configurations, too

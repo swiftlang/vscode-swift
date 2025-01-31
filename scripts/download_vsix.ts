@@ -22,7 +22,7 @@ import { Octokit } from "octokit";
 const artifact_id = process.env["VSCODE_SWIFT_VSIX_ID"];
 if (!artifact_id) {
     console.error("No VSCODE_SWIFT_VSIX_ID provided");
-    process.exit(1);
+    process.exit(0);
 }
 const token = process.env["GITHUB_TOKEN"];
 if (!token) {
@@ -30,11 +30,10 @@ if (!token) {
     process.exit(1);
 }
 const repository = process.env["GITHUB_REPOSITORY"] || "swiftlang/vscode-swift";
+const owner = repository.split("/")[0];
+const repo = repository.split("/")[1];
 
 (async function () {
-    const owner = repository.split("/")[0];
-    const repo = repository.split("/")[1];
-
     const octokit = new Octokit({
         auth: token,
     });
@@ -56,6 +55,9 @@ const repository = process.env["GITHUB_REPOSITORY"] || "swiftlang/vscode-swift";
     );
     await pipeline(data, createWriteStream("artifacts.zip", data));
     const files = await decompress("artifacts.zip", process.cwd());
-    await rename(files[0].path, "vscode-swift.vsix");
+    console.log(`Downloaded artifact(s): ${files.map(f => f.path).join(", ")}`);
+    const newName = process.env["VSCODE_SWIFT_VSIX"] || "vscode-swift.vsix";
+    await rename(files[0].path, newName);
+    console.log(`Renamed artifact: ${files[0].path} => ${newName}`);
     await unlink("artifacts.zip");
 })();
