@@ -40,10 +40,27 @@ if (dataDir) {
 if (process.platform === "darwin" && process.arch === "x64") {
     launchArgs.push("--disable-gpu");
 }
-const vsixPath = process.env["VSCODE_SWIFT_VSIX"];
+let vsixPath = process.env["VSCODE_SWIFT_VSIX"];
+const install = [];
+if (vsixPath) {
+    if (!path.isAbsolute(vsixPath)) {
+        vsixPath = path.join(__dirname, vsixPath);
+    }
+    console.log("Installing " + vsixPath);
+    install.push({
+        label: "installExtension",
+        installExtensions: ["vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap"].concat(
+            vsixPath ? [vsixPath] : []
+        ),
+        files: [],
+        version: process.env["VSCODE_VERSION"] ?? "stable",
+        reuseMachineInstall: !isCIBuild,
+    });
+}
 
 module.exports = defineConfig({
     tests: [
+        ...install,
         {
             label: "integrationTests",
             files: ["dist/test/common.js", "dist/test/integration-tests/**/*.test.js"],
@@ -69,9 +86,6 @@ module.exports = defineConfig({
                 },
             },
             reuseMachineInstall: !isCIBuild,
-            installExtensions: ["vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap"].concat(
-                vsixPath ? [vsixPath] : []
-            ),
         },
         {
             label: "unitTests",
