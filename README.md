@@ -24,7 +24,7 @@ To give clarity of what is expected of our members, Swift has adopted the code o
 
 ## Installation
 
-For the extension to work, you must have Swift installed on your system. Please see the [Getting Started Guide on Swift.org](https://www.swift.org/getting-started/) for details on how to install Swift on your system. Install the extension from [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=swiftlang.vscode-swift) and open a Swift package! You'll be prompted to install and configure the CodeLLDB extension, which you should do so.
+For the extension to work, you must have Swift installed on your system. Please see the [Getting Started Guide on Swift.org](https://www.swift.org/getting-started/) for details on how to install Swift on your system. Install the extension from [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=swiftlang.swift) and open a Swift package! You'll be prompted to install and configure the CodeLLDB extension, which you should do so.
 
 ## Features
 

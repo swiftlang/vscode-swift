@@ -33,7 +33,7 @@ suite("Extension Activation/Deactivation Tests", () => {
 
         async function activate(currentTest?: Mocha.Test) {
             assert.ok(await activateExtension(currentTest), "Extension did not return its API");
-            const ext = vscode.extensions.getExtension("swiftlang.vscode-swift");
+            const ext = vscode.extensions.getExtension("swiftlang.swift");
             assert.ok(ext, "Extension is not found");
             assert.strictEqual(ext.isActive, true);
         }
@@ -57,7 +57,7 @@ suite("Extension Activation/Deactivation Tests", () => {
     test("Deactivation", async function () {
         const workspaceContext = await activateExtension(this.test as Mocha.Test);
         await deactivateExtension();
-        const ext = vscode.extensions.getExtension("swiftlang.vscode-swift");
+        const ext = vscode.extensions.getExtension("swiftlang.swift");
         assert(ext);
         assert.equal(workspaceContext.subscriptions.length, 0);
     });
