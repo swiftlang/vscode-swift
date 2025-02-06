@@ -21,7 +21,7 @@ First create the directory. Next, create `devcontainer.json` and insert the foll
     "name": "Swift 5.5",
     "image": "swift:5.5",
     "extensions": [
-      "swiftlang.swift"
+      "swiftlang.swift-vscode"
     ],
     "settings": {
       "lldb.library": "/usr/lib/liblldb.so"
@@ -73,7 +73,7 @@ Your `devcontainer.json` should look something like this
     "service": "app",
     "workspaceFolder": "/workspace",
     "extensions": [
-      "swiftlang.swift",
+      "swiftlang.swift-vscode",
     ],
     "settings": {
       "lldb.library": "/usr/lib/liblldb.so"

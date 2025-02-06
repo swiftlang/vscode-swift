@@ -129,7 +129,7 @@ const extensionBootstrapper = (() => {
                     `Extension is already activated. Last test that activated the extension: ${lastTestName}`
                 );
             }
-            const extensionId = "swiftlang.swift";
+            const extensionId = "swiftlang.swift-vscode";
             const ext = vscode.extensions.getExtension<Api>(extensionId);
             if (!ext) {
                 throw new Error(`Unable to find extension "${extensionId}"`);
@@ -138,7 +138,7 @@ const extensionBootstrapper = (() => {
             let workspaceContext: WorkspaceContext | undefined;
 
             // We can only _really_ call activate through
-            // `vscode.extensions.getExtension<Api>("swiftlang.swift")` once.
+            // `vscode.extensions.getExtension<Api>("swiftlang.swift-vscode")` once.
             // Subsequent activations must be done through the returned API object.
             if (!activator) {
                 activatedAPI = await ext.activate();
