@@ -27,6 +27,7 @@ import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { registerDebugger } from "../../../src/debugger/debugAdapterFactory";
 import { Version } from "../../../src/utilities/version";
+import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 
 suite("attachDebugger Unit Test Suite", () => {
     const lldbMock = mockGlobalModule(lldb);
@@ -42,6 +43,7 @@ suite("attachDebugger Unit Test Suite", () => {
         });
         mockContext = mockObject<WorkspaceContext>({
             toolchain: instance(mockToolchain),
+            outputChannel: instance(mockObject<SwiftOutputChannel>({})),
         });
     });
 

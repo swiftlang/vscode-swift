@@ -21,10 +21,17 @@ import { SwiftToolchain } from "../toolchain/toolchain";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 
 /**
- * The supported {@link vscode.DebugConfiguration.type Debug Configuration Type} for auto-generation of launch configurations
+ * The launch configuration type added by the Swift extension that will delegate to the appropriate
+ * LLDB debug adapter when launched.
+ */
+export const SWIFT_LAUNCH_CONFIG_TYPE = "swift";
+
+/**
+ * The supported {@link vscode.DebugConfiguration.type Debug Configuration Types} that can handle
+ * LLDB launch requests.
  */
 export const enum LaunchConfigType {
-    SWIFT_EXTENSION = "swift-lldb",
+    LLDB_DAP = "swift",
     CODE_LLDB = "lldb",
 }
 
@@ -40,10 +47,12 @@ export class DebugAdapter {
      * @returns the type of launch configuration used by the given Swift toolchain version
      */
     public static getLaunchConfigType(swiftVersion: Version): LaunchConfigType {
-        return swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
-            configuration.debugger.useDebugAdapterFromToolchain
-            ? LaunchConfigType.SWIFT_EXTENSION
-            : LaunchConfigType.CODE_LLDB;
+        const lldbDapIsAvailable = swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0));
+        if (lldbDapIsAvailable && configuration.debugger.debugAdapter === "lldb-dap") {
+            return LaunchConfigType.LLDB_DAP;
+        } else {
+            return LaunchConfigType.CODE_LLDB;
+        }
     }
 
     /**
@@ -60,7 +69,7 @@ export class DebugAdapter {
 
         const debugAdapter = this.getLaunchConfigType(toolchain.swiftVersion);
         switch (debugAdapter) {
-            case LaunchConfigType.SWIFT_EXTENSION:
+            case LaunchConfigType.LLDB_DAP:
                 return toolchain.getLLDBDebugAdapter();
             case LaunchConfigType.CODE_LLDB:
                 return toolchain.getLLDB();

@@ -17,7 +17,7 @@ import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import { BuildFlags } from "../toolchain/BuildFlags";
 import { stringArrayInEnglish, swiftLibraryPathKey, swiftRuntimeEnv } from "../utilities/utilities";
-import { DebugAdapter } from "./debugAdapter";
+import { SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
 import { getFolderAndNameSuffix } from "./buildConfig";
 import configuration from "../configuration";
 import { CI_DISABLE_ASLR } from "./lldb";
@@ -136,7 +136,7 @@ function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfigu
 
     return executableProducts.flatMap(product => {
         const baseConfig = {
-            type: DebugAdapter.getLaunchConfigType(ctx.workspaceContext.swiftVersion),
+            type: SWIFT_LAUNCH_CONFIG_TYPE,
             request: "launch",
             args: [],
             cwd: folder,
@@ -174,7 +174,7 @@ export function createSnippetConfiguration(
     const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
 
     return {
-        type: DebugAdapter.getLaunchConfigType(ctx.workspaceContext.swiftVersion),
+        type: SWIFT_LAUNCH_CONFIG_TYPE,
         request: "launch",
         name: `Run ${snippetName}`,
         program: path.posix.join(buildDirectory, "debug", snippetName),

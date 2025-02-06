@@ -28,115 +28,15 @@ import {
     mockFn,
 } from "../../MockUtils";
 import configuration from "../../../src/configuration";
-import { DebugAdapter, LaunchConfigType } from "../../../src/debugger/debugAdapter";
+import {
+    DebugAdapter,
+    LaunchConfigType,
+    SWIFT_LAUNCH_CONFIG_TYPE,
+} from "../../../src/debugger/debugAdapter";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 
-suite("Debug Adapter Factory Test Suite", () => {
-    const swift6 = new Version(6, 0, 0);
-    const swift510 = new Version(5, 10, 1);
-    const mockDebugConfig = mockGlobalObject(configuration, "debugger");
-
-    suite("LLDBDebugConfigurationProvider Test Suite", () => {
-        setup(() => {
-            mockDebugConfig.useDebugAdapterFromToolchain = true;
-        });
-
-        test("uses lldb-dap for swift versions >=6.0.0", async () => {
-            const configProvider = new LLDBDebugConfigurationProvider("darwin", swift6);
-            const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
-                name: "Test Launch Config",
-                type: LaunchConfigType.SWIFT_EXTENSION,
-                request: "launch",
-                program: "${workspaceFolder}/.build/debug/executable",
-            });
-            expect(launchConfig).to.containSubset({ type: LaunchConfigType.SWIFT_EXTENSION });
-        });
-
-        test("delegates to CodeLLDB for swift versions <6.0.0", async () => {
-            const configProvider = new LLDBDebugConfigurationProvider("darwin", swift510);
-            const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
-                name: "Test Launch Config",
-                type: LaunchConfigType.SWIFT_EXTENSION,
-                request: "launch",
-                program: "${workspaceFolder}/.build/debug/executable",
-            });
-            expect(launchConfig).to.containSubset({
-                type: LaunchConfigType.CODE_LLDB,
-                sourceLanguages: ["swift"],
-            });
-        });
-
-        test("delegates to CodeLLDB on Swift 6.0.0 if setting swift.debugger.useDebugAdapterFromToolchain is explicitly disabled", async () => {
-            mockDebugConfig.useDebugAdapterFromToolchain = false;
-            const configProvider = new LLDBDebugConfigurationProvider("darwin", swift6);
-            const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
-                name: "Test Launch Config",
-                type: LaunchConfigType.SWIFT_EXTENSION,
-                request: "launch",
-                program: "${workspaceFolder}/.build/debug/executable",
-            });
-            expect(launchConfig).to.containSubset({
-                type: LaunchConfigType.CODE_LLDB,
-                sourceLanguages: ["swift"],
-            });
-        });
-
-        test("modifies program to add file extension on Windows", async () => {
-            const configProvider = new LLDBDebugConfigurationProvider("win32", swift6);
-            const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
-                name: "Test Launch Config",
-                type: LaunchConfigType.SWIFT_EXTENSION,
-                request: "launch",
-                program: "${workspaceFolder}/.build/debug/executable",
-            });
-            expect(launchConfig).to.containSubset({
-                program: "${workspaceFolder}/.build/debug/executable.exe",
-            });
-        });
-
-        test("does not modify program on Windows if file extension is already present", async () => {
-            const configProvider = new LLDBDebugConfigurationProvider("win32", swift6);
-            const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
-                name: "Test Launch Config",
-                type: LaunchConfigType.SWIFT_EXTENSION,
-                request: "launch",
-                program: "${workspaceFolder}/.build/debug/executable.exe",
-            });
-            expect(launchConfig).to.containSubset({
-                program: "${workspaceFolder}/.build/debug/executable.exe",
-            });
-        });
-
-        test("does not modify program on macOS", async () => {
-            const configProvider = new LLDBDebugConfigurationProvider("darwin", swift6);
-            const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
-                name: "Test Launch Config",
-                type: LaunchConfigType.SWIFT_EXTENSION,
-                request: "launch",
-                program: "${workspaceFolder}/.build/debug/executable",
-            });
-            expect(launchConfig).to.containSubset({
-                program: "${workspaceFolder}/.build/debug/executable",
-            });
-        });
-
-        test("does not modify program on Linux", async () => {
-            const configProvider = new LLDBDebugConfigurationProvider("linux", swift6);
-            const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
-                name: "Test Launch Config",
-                type: LaunchConfigType.SWIFT_EXTENSION,
-                request: "launch",
-                program: "${workspaceFolder}/.build/debug/executable",
-            });
-            expect(launchConfig).to.containSubset({
-                program: "${workspaceFolder}/.build/debug/executable",
-            });
-        });
-    });
-});
-
-suite("debugAdapterFactory Tests", () => {
+suite("LLDBDebugAdapterExecutableFactory Tests", () => {
     const mockAdapter = mockGlobalModule(DebugAdapter);
     let mockToolchain: MockedObject<SwiftToolchain>;
     let mockOutputChannel: MockedObject<SwiftOutputChannel>;
@@ -206,78 +106,178 @@ suite("debugAdapterFactory Tests", () => {
         expect(mockAdapter.debugAdapterPath).to.have.been.calledOnce;
         expect(mockAdapter.verifyDebugAdapterExists).to.have.been.calledOnce;
     });
+});
 
-    suite("LLDBDebugConfigurationProvider Tests", () => {
-        let provider: LLDBDebugConfigurationProvider;
-        const swift6 = new Version(6, 0, 0);
+suite("LLDBDebugConfigurationProvider Tests", () => {
+    let swift6Toolchain: SwiftToolchain;
+    let swift5Toolchain: SwiftToolchain;
+    const mockDebugConfig = mockGlobalObject(configuration, "debugger");
 
-        setup(() => {
-            provider = new LLDBDebugConfigurationProvider("darwin", swift6);
+    setup(() => {
+        mockDebugConfig.debugAdapter = "auto";
+        swift6Toolchain = instance(
+            mockObject<SwiftToolchain>({
+                swiftVersion: new Version(6, 0, 0),
+            })
+        );
+        swift5Toolchain = instance(
+            mockObject<SwiftToolchain>({
+                swiftVersion: new Version(5, 10, 0),
+            })
+        );
+    });
+
+    test("delegates to CodeLLDB when debugAdapter is set to auto", async () => {
+        mockDebugConfig.debugAdapter = "auto";
+        const configProvider = new LLDBDebugConfigurationProvider("darwin", swift6Toolchain);
+        const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
+            name: "Test Launch Config",
+            type: SWIFT_LAUNCH_CONFIG_TYPE,
+            request: "launch",
+            program: "${workspaceFolder}/.build/debug/executable",
         });
+        expect(launchConfig).to.containSubset({ type: LaunchConfigType.CODE_LLDB });
+    });
 
-        test("should convert environment variables to string[] format", () => {
-            const env = {
+    test("delegates to lldb-dap when debugAdapter is set to lldb-dap and swift version >=6.0.0", async () => {
+        mockDebugConfig.debugAdapter = "lldb-dap";
+        const configProvider = new LLDBDebugConfigurationProvider("darwin", swift6Toolchain);
+        const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
+            name: "Test Launch Config",
+            type: SWIFT_LAUNCH_CONFIG_TYPE,
+            request: "launch",
+            program: "${workspaceFolder}/.build/debug/executable",
+        });
+        expect(launchConfig).to.containSubset({ type: LaunchConfigType.LLDB_DAP });
+    });
+
+    test("delegates to CodeLLDB even though debugAdapter is set to lldb-dap and swift version >=6.0.0", async () => {
+        mockDebugConfig.debugAdapter = "lldb-dap";
+        const configProvider = new LLDBDebugConfigurationProvider("darwin", swift5Toolchain);
+        const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
+            name: "Test Launch Config",
+            type: SWIFT_LAUNCH_CONFIG_TYPE,
+            request: "launch",
+            program: "${workspaceFolder}/.build/debug/executable",
+        });
+        expect(launchConfig).to.containSubset({
+            type: LaunchConfigType.CODE_LLDB,
+            sourceLanguages: ["swift"],
+        });
+    });
+
+    test("modifies program to add file extension on Windows", async () => {
+        const configProvider = new LLDBDebugConfigurationProvider("win32", swift6Toolchain);
+        const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
+            name: "Test Launch Config",
+            type: SWIFT_LAUNCH_CONFIG_TYPE,
+            request: "launch",
+            program: "${workspaceFolder}/.build/debug/executable",
+        });
+        expect(launchConfig).to.containSubset({
+            program: "${workspaceFolder}/.build/debug/executable.exe",
+        });
+    });
+
+    test("does not modify program on Windows if file extension is already present", async () => {
+        const configProvider = new LLDBDebugConfigurationProvider("win32", swift6Toolchain);
+        const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
+            name: "Test Launch Config",
+            type: SWIFT_LAUNCH_CONFIG_TYPE,
+            request: "launch",
+            program: "${workspaceFolder}/.build/debug/executable.exe",
+        });
+        expect(launchConfig).to.containSubset({
+            program: "${workspaceFolder}/.build/debug/executable.exe",
+        });
+    });
+
+    test("does not modify program on macOS", async () => {
+        const configProvider = new LLDBDebugConfigurationProvider("darwin", swift6Toolchain);
+        const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
+            name: "Test Launch Config",
+            type: SWIFT_LAUNCH_CONFIG_TYPE,
+            request: "launch",
+            program: "${workspaceFolder}/.build/debug/executable",
+        });
+        expect(launchConfig).to.containSubset({
+            program: "${workspaceFolder}/.build/debug/executable",
+        });
+    });
+
+    test("does not modify program on Linux", async () => {
+        const configProvider = new LLDBDebugConfigurationProvider("linux", swift6Toolchain);
+        const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
+            name: "Test Launch Config",
+            type: SWIFT_LAUNCH_CONFIG_TYPE,
+            request: "launch",
+            program: "${workspaceFolder}/.build/debug/executable",
+        });
+        expect(launchConfig).to.containSubset({
+            program: "${workspaceFolder}/.build/debug/executable",
+        });
+    });
+
+    test("should convert environment variables to string[] format when using lldb-dap", async () => {
+        mockDebugConfig.debugAdapter = "lldb-dap";
+        const configProvider = new LLDBDebugConfigurationProvider("darwin", swift6Toolchain);
+        const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
+            name: "Test Launch Config",
+            type: SWIFT_LAUNCH_CONFIG_TYPE,
+            request: "launch",
+            program: "${workspaceFolder}/.build/debug/executable",
+            env: {
                 VAR1: "value1",
                 VAR2: "value2",
-            };
+            },
+        });
+        expect(launchConfig)
+            .to.have.property("env")
+            .that.deep.equals(["VAR1=value1", "VAR2=value2"]);
+    });
 
-            const result = provider.convertEnvironmentVariables(env);
+    test("should leave env undefined when environment variables are undefined and using lldb-dap", async () => {
+        mockDebugConfig.debugAdapter = "lldb-dap";
+        const configProvider = new LLDBDebugConfigurationProvider("darwin", swift6Toolchain);
+        const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
+            name: "Test Launch Config",
+            type: SWIFT_LAUNCH_CONFIG_TYPE,
+            request: "launch",
+            program: "${workspaceFolder}/.build/debug/executable",
+        });
+        expect(launchConfig).to.not.have.property("env");
+    });
 
-            expect(result).to.deep.equal(["VAR1=value1", "VAR2=value2"]);
+    test("should convert empty environment variables when using lldb-dap", async () => {
+        mockDebugConfig.debugAdapter = "lldb-dap";
+        const configProvider = new LLDBDebugConfigurationProvider("darwin", swift6Toolchain);
+        const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
+            type: SWIFT_LAUNCH_CONFIG_TYPE,
+            request: "launch",
+            name: "Test Launch",
+            env: {},
         });
 
-        test("should return undefined when environment variables are undefined", () => {
-            const result = provider.convertEnvironmentVariables(undefined);
-            expect(result).to.deep.equal(undefined);
+        expect(launchConfig).to.have.property("env").that.deep.equals([]);
+    });
+
+    test("should handle a large number of environment variables when using lldb-dap", async () => {
+        mockDebugConfig.debugAdapter = "lldb-dap";
+        // Create 1000 environment variables
+        const env: { [key: string]: string } = {};
+        for (let i = 0; i < 1000; i++) {
+            env[`VAR${i}`] = `value${i}`;
+        }
+        const configProvider = new LLDBDebugConfigurationProvider("darwin", swift6Toolchain);
+        const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
+            type: SWIFT_LAUNCH_CONFIG_TYPE,
+            request: "launch",
+            name: "Test Launch",
+            env,
         });
 
-        test("should resolve debug configuration with converted environment variables", async () => {
-            const launchConfig: vscode.DebugConfiguration = {
-                type: LaunchConfigType.SWIFT_EXTENSION,
-                request: "launch",
-                name: "Test Launch",
-                env: {
-                    VAR1: "value1",
-                    VAR2: "value2",
-                },
-            };
-
-            const resolvedConfig = await provider.resolveDebugConfiguration(
-                undefined,
-                launchConfig
-            );
-
-            expect(resolvedConfig.env).to.deep.equal(["VAR1=value1", "VAR2=value2"]);
-        });
-
-        test("should handle one environment variable", () => {
-            const env = {
-                VAR1: "value1",
-            };
-            const result = provider.convertEnvironmentVariables(env);
-
-            expect(result).to.deep.equal(["VAR1=value1"]);
-        });
-
-        test("should handle empty environment variables", () => {
-            const env = {};
-            const result = provider.convertEnvironmentVariables(env);
-
-            expect(result).to.deep.equal([]);
-        });
-
-        test("should handle a large number of environment variables", () => {
-            // Create 1000 environment variables
-            const env: { [key: string]: string } = {};
-            for (let i = 0; i < 1000; i++) {
-                env[`VAR${i}`] = `value${i}`;
-            }
-
-            const result = provider.convertEnvironmentVariables(env);
-
-            // Verify that all 1000 environment variables are properly converted
-            const expected = Array.from({ length: 1000 }, (_, i) => `VAR${i}=value${i}`);
-            expect(result).to.deep.equal(expected);
-        });
+        // Verify that all 1000 environment variables are properly converted
+        const expectedEnv = Array.from({ length: 1000 }, (_, i) => `VAR${i}=value${i}`);
+        expect(launchConfig).to.have.property("env").that.deep.equals(expectedEnv);
     });
 });

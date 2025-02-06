@@ -42,7 +42,7 @@ suite("DebugAdapter Unit Test Suite", () => {
     setup(() => {
         // Mock VS Code settings
         mockDebugConfig = mockObject<(typeof configuration)["debugger"]>({
-            useDebugAdapterFromToolchain: false,
+            debugAdapter: "auto",
             customDebugAdapterPath: "",
         });
         mockConfiguration.debugger = instance(mockDebugConfig);
@@ -65,28 +65,39 @@ suite("DebugAdapter Unit Test Suite", () => {
     });
 
     suite("getLaunchConfigType()", () => {
-        test("returns SWIFT_EXTENSION when Swift version >=6.0.0 and swift.debugger.useDebugAdapterFromToolchain is true", () => {
-            mockDebugConfig.useDebugAdapterFromToolchain = true;
+        test("returns SWIFT_EXTENSION when Swift version >=6.0.0 and swift.debugger.debugAdapter is set to lldb-dap", () => {
+            mockDebugConfig.debugAdapter = "lldb-dap";
             expect(DebugAdapter.getLaunchConfigType(new Version(6, 0, 1))).to.equal(
-                LaunchConfigType.SWIFT_EXTENSION
+                LaunchConfigType.LLDB_DAP
             );
         });
 
-        test("returns CODE_LLDB when Swift version >=6.0.0 and swift.debugger.useDebugAdapterFromToolchain is false", () => {
-            mockDebugConfig.useDebugAdapterFromToolchain = false;
-            expect(DebugAdapter.getLaunchConfigType(new Version(6, 0, 1))).to.equal(
+        test("returns CODE_LLDB when Swift version >=6.0.0 and swift.debugger.debugAdapter is set to auto or CodeLLDB", () => {
+            // Try with the setting set to auto
+            mockDebugConfig.debugAdapter = "auto";
+            expect(DebugAdapter.getLaunchConfigType(new Version(5, 10, 0))).to.equal(
+                LaunchConfigType.CODE_LLDB
+            );
+            // Try with the setting set to CodeLLDB
+            mockDebugConfig.debugAdapter = "CodeLLDB";
+            expect(DebugAdapter.getLaunchConfigType(new Version(5, 10, 0))).to.equal(
                 LaunchConfigType.CODE_LLDB
             );
         });
 
         test("returns CODE_LLDB when Swift version is older than 6.0.0 regardless of setting", () => {
-            // Try with the setting false
-            mockDebugConfig.useDebugAdapterFromToolchain = false;
+            // Try with the setting set to auto
+            mockDebugConfig.debugAdapter = "auto";
             expect(DebugAdapter.getLaunchConfigType(new Version(5, 10, 0))).to.equal(
                 LaunchConfigType.CODE_LLDB
             );
-            // Try with the setting true
-            mockDebugConfig.useDebugAdapterFromToolchain = true;
+            // Try with the setting set to CodeLLDB
+            mockDebugConfig.debugAdapter = "CodeLLDB";
+            expect(DebugAdapter.getLaunchConfigType(new Version(5, 10, 0))).to.equal(
+                LaunchConfigType.CODE_LLDB
+            );
+            // Try with the setting set to lldb-dap
+            mockDebugConfig.debugAdapter = "lldb-dap";
             expect(DebugAdapter.getLaunchConfigType(new Version(5, 10, 0))).to.equal(
                 LaunchConfigType.CODE_LLDB
             );
@@ -97,7 +108,7 @@ suite("DebugAdapter Unit Test Suite", () => {
         suite("Using lldb-dap", () => {
             setup(() => {
                 mockToolchain.swiftVersion = new Version(6, 0, 0);
-                mockDebugConfig.useDebugAdapterFromToolchain = true;
+                mockDebugConfig.debugAdapter = "lldb-dap";
                 // Should be using lldb-dap in this case
                 mockFS({
                     "/toolchains/swift/lldb-dap": mockFS.file({ content: "", mode: 0o770 }),
@@ -144,7 +155,7 @@ suite("DebugAdapter Unit Test Suite", () => {
         suite("Using lldb-dap with custom debug adapter path", () => {
             setup(() => {
                 mockToolchain.swiftVersion = new Version(6, 0, 0);
-                mockDebugConfig.useDebugAdapterFromToolchain = true;
+                mockDebugConfig.debugAdapter = "lldb-dap";
                 mockDebugConfig.customDebugAdapterPath = "/path/to/custom/lldb-dap";
                 // Should be using a custom lldb-dap in this case
                 mockFS({
@@ -158,7 +169,7 @@ suite("DebugAdapter Unit Test Suite", () => {
         suite("Using CodeLLDB", () => {
             setup(() => {
                 mockToolchain.swiftVersion = new Version(6, 0, 0);
-                mockDebugConfig.useDebugAdapterFromToolchain = false;
+                mockDebugConfig.debugAdapter = "CodeLLDB";
                 // Should be using CodeLLDB in this case
                 mockFS({
                     "/toolchains/swift/lldb": mockFS.file({ content: "", mode: 0o770 }),

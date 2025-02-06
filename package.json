@@ -638,9 +638,25 @@
       {
         "title": "Debugger",
         "properties": {
+          "swift.debugger.debugAdapter": {
+            "type": "string",
+            "default": "auto",
+            "enum": [
+              "auto",
+              "lldb-dap",
+              "CodeLLDB"
+            ],
+            "enumDescriptions": [
+              "Automatically select which debug adapter to use based on your Swift toolchain version.",
+              "Use the LLDB debug adapter extension. Requires Swift 6 or later.",
+              "Use the CodeLLDB extension's debug adapter."
+            ],
+            "order": 1
+          },
           "swift.debugger.useDebugAdapterFromToolchain": {
             "type": "boolean",
             "default": false,
+            "markdownDeprecationMessage": "**Deprecated**: Use the `swift.debugger.debugAdapter` setting instead. This will be removed in future versions of the Swift extension.",
             "markdownDescription": "Use the LLDB debug adapter packaged with the Swift toolchain as your debug adapter. Note: this is only available starting with Swift 6. The CodeLLDB extension will be used if your Swift toolchain does not contain lldb-dap.",
             "order": 1
           },
@@ -1158,8 +1174,8 @@
     ],
     "debuggers": [
       {
-        "type": "swift-lldb",
-        "label": "Swift LLDB Debugger",
+        "type": "swift",
+        "label": "Swift Debugger",
         "configurationAttributes": {
           "launch": {
             "required": [

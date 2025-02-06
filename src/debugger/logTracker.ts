@@ -13,8 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { DebugAdapter } from "./debugAdapter";
-import { Version } from "../utilities/version";
+import { LaunchConfigType } from "./debugAdapter";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 
 /**
@@ -44,28 +43,19 @@ interface DebugMessage {
  * Register the LoggingDebugAdapterTrackerFactory with the VS Code debug adapter tracker
  * @returns A disposable to be disposed when the extension is deactivated
  */
-export function registerLoggingDebugAdapterTracker(swiftVersion: Version): vscode.Disposable {
-    const register = () =>
-        vscode.debug.registerDebugAdapterTrackerFactory(
-            DebugAdapter.getLaunchConfigType(swiftVersion),
-            new LoggingDebugAdapterTrackerFactory()
-        );
-
-    // Maintains the disposable for the last registered debug adapter.
-    let debugAdapterDisposable = register();
-    const changeMonitor = vscode.workspace.onDidChangeConfiguration(event => {
-        if (event.affectsConfiguration("swift.debugger.useDebugAdapterFromToolchain")) {
-            // Dispose the old adapter and reconfigure with the new settings.
-            debugAdapterDisposable.dispose();
-            debugAdapterDisposable = register();
-        }
-    });
+export function registerLoggingDebugAdapterTracker(): vscode.Disposable {
+    // Register the factory for both lldb-dap and CodeLLDB since either could be used when
+    // resolving a Swift launch configuration.
+    const trackerFactory = new LoggingDebugAdapterTrackerFactory();
+    const subscriptions: vscode.Disposable[] = [
+        vscode.debug.registerDebugAdapterTrackerFactory(LaunchConfigType.CODE_LLDB, trackerFactory),
+        vscode.debug.registerDebugAdapterTrackerFactory(LaunchConfigType.LLDB_DAP, trackerFactory),
+    ];
 
     // Return a disposable that cleans everything up.
     return {
         dispose() {
-            changeMonitor.dispose();
-            debugAdapterDisposable.dispose();
+            subscriptions.forEach(sub => sub.dispose());
         },
     };
 }
