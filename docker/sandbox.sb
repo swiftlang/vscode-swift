@@ -3,7 +3,7 @@
 (deny default)
 
 ; Get fonts
-; (import "system.sb")
+(import "system.sb")
 
 ; Helpers
 (define (param-regex param-name param-relative-regex)
@@ -28,6 +28,7 @@
     (path "/etc/shells")
     (path "/private/etc/shells")
     (path "/private/etc/ssl/cert.pem")
+    (path "/System/Library/OpenSSL/openssl.cnf")
     (regex #"^/Users/[^/]+/.vscode.*")
     (regex #"^/Users/[^/]+/.gitconfig$")
     (regex #"^/Users/[^/]+/.gitignore$")
@@ -68,15 +69,6 @@
     (regex #".*/Python3.framework/.*")
     (regex #".*/branch-main/.*")
     (regex #".*/usr/lib/swift/.*")
-    ; (regex #".*/Frameworks/.*")
-    ; (regex #".*/PrivateFrameworks/.*")
-
-    ; (subpath "/System/Volumes/Preboot")
-    ; (subpath "/System/Volumes")
-    ; (subpath "/usr/lib")
-    ; (subpath "/Users/ec2-user")
-    ; (subpath "/Library/Developer/CommandLineTool")
-    ; (subpath "/")
 )
 
 (allow mach-lookup)
@@ -134,9 +126,7 @@
 
 ; Open VSCode window
 (allow file-ioctl)
-; (allow file-issue-extension)
 (allow iokit-open-user-client)
-; (allow system-fsctl) ; HFSIOC_SET_HOTFILE_STATE
 
 ; VSCode terminal
 (allow pseudo-tty)
