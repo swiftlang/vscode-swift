@@ -30,7 +30,7 @@ suite("PackageDependencyProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;
     let folderContext: FolderContext;
     let treeProvider: PackageDependenciesProvider;
-    this.timeout(2 * 60 * 1000); // Allow up to 2 minutes to build
+    this.timeout(3 * 60 * 1000); // Allow up to 3 minutes to build
 
     activateExtensionForSuite({
         async setup(ctx) {

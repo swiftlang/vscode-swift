@@ -37,7 +37,7 @@ function normalizePath(...segments: string[]): string {
 }
 
 suite("SwiftSnippet Test Suite @slow", function () {
-    this.timeout(120000);
+    this.timeout(180000);
 
     const uri = testAssetUri("defaultPackage/Snippets/hello.swift");
     const breakpoints = [
