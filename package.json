@@ -699,7 +699,7 @@
           "swift.disableSandox": {
             "type": "boolean",
             "default": false,
-            "markdownDescription": "Disable sandboxing when running SwiftPM commands. You will almost always want this setting disabled.",
+            "markdownDescription": "Disable sandboxing when running SwiftPM commands. In most cases you should keep the sandbox enabled and leave this setting set to `false`",
             "order": 4
           },
           "swift.diagnostics": {
