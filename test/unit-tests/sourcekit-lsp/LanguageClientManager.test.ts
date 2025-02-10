@@ -356,6 +356,72 @@ suite("LanguageClientManager Suite", () => {
         expect(languageClientMock.start).to.have.been.calledOnce;
     });
 
+    test("adds VS Code iconography to CodeLenses", async () => {
+        const codelensesFromSourceKitLSP = async (): Promise<vscode.CodeLens[]> => {
+            return [
+                {
+                    range: new vscode.Range(0, 0, 0, 0),
+                    command: {
+                        title: "Run",
+                        command: "swift.run",
+                    },
+                    isResolved: true,
+                },
+                {
+                    range: new vscode.Range(0, 0, 0, 0),
+                    command: {
+                        title: "Debug",
+                        command: "swift.debug",
+                    },
+                    isResolved: true,
+                },
+                {
+                    range: new vscode.Range(0, 0, 0, 0),
+                    command: {
+                        title: "Run",
+                        command: "some.other.command",
+                    },
+                    isResolved: true,
+                },
+            ];
+        };
+
+        new LanguageClientManager(instance(mockedWorkspace), languageClientFactoryMock);
+        await waitForReturnedPromises(languageClientMock.start);
+
+        expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledOnce;
+        const middleware = languageClientFactoryMock.createLanguageClient.args[0][3].middleware!;
+        expect(middleware).to.have.property("provideCodeLenses");
+        await expect(
+            middleware.provideCodeLenses!({} as any, {} as any, codelensesFromSourceKitLSP)
+        ).to.eventually.deep.equal([
+            {
+                range: new vscode.Range(0, 0, 0, 0),
+                command: {
+                    title: "$(play) Run",
+                    command: "swift.run",
+                },
+                isResolved: true,
+            },
+            {
+                range: new vscode.Range(0, 0, 0, 0),
+                command: {
+                    title: "$(debug) Debug",
+                    command: "swift.debug",
+                },
+                isResolved: true,
+            },
+            {
+                range: new vscode.Range(0, 0, 0, 0),
+                command: {
+                    title: "Run",
+                    command: "some.other.command",
+                },
+                isResolved: true,
+            },
+        ]);
+    });
+
     suite("SourceKit-LSP version doesn't support workspace folders", () => {
         let folder1: MockedObject<FolderContext>;
         let folder2: MockedObject<FolderContext>;
