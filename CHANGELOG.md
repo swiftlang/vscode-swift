@@ -1,6 +1,15 @@
 # Changelog
 
-## 2.0.0 - 2025-01-28
+## 2.0.1 - 2025-02-10
+
+Rename the `displayName` of the extension back to `Swift` now that the old `sswg` extension has been renamed to `Swift (Deprecated)`.
+
+### Added
+
+- Add a new setting (`swift.packageArguments`) to provide arguments to swift commands that can resolve packages ([#1342](https://github.com/swiftlang/vscode-swift/pull/1342))
+- Add VS Code iconography to the Run and Debug code lenses ([#1347](https://github.com/swiftlang/vscode-swift/pull/1347))
+
+## 2.0.0 - 2025-02-09
 
 The Swift extension for VS Code has moved to the [official swiftlang organization in the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=swiftlang.swift-vscode)!
 The new extension id is `swiftlang.swift-vscode`.
