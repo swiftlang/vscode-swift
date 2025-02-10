@@ -648,7 +648,7 @@
             ],
             "enumDescriptions": [
               "Automatically select which debug adapter to use based on your Swift toolchain version.",
-              "Use the LLDB debug adapter extension. Requires Swift 6 or later.",
+              "Use the `lldb-dap` executable from the toolchain. Requires Swift 6 or later.",
               "Use the CodeLLDB extension's debug adapter."
             ],
             "order": 1
