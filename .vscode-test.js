@@ -14,6 +14,7 @@
 
 const { defineConfig } = require("@vscode/test-cli");
 const path = require("path");
+const { version, publisher, name } = require("./package.json");
 
 const isCIBuild = process.env["CI"] === "1";
 const isFastTestRun = process.env["FAST_TEST_RUN"] === "1";
@@ -24,13 +25,33 @@ const isDebugRun = !(process.env["_"] ?? "").endsWith("node_modules/.bin/vscode-
 // so tests don't timeout when a breakpoint is hit
 const timeout = isDebugRun ? Number.MAX_SAFE_INTEGER : 3000;
 
+let vsixPath = process.env["VSCODE_SWIFT_VSIX"];
+const install = [];
+if (vsixPath) {
+    if (!path.isAbsolute(vsixPath)) {
+        vsixPath = path.join(__dirname, vsixPath);
+    }
+    console.log("Installing " + vsixPath);
+    install.push({
+        label: "installExtension",
+        installExtensions: vsixPath ? [vsixPath] : [],
+        files: [],
+        version: process.env["VSCODE_VERSION"] ?? "stable",
+        reuseMachineInstall: !isCIBuild,
+    });
+}
+
 module.exports = defineConfig({
     tests: [
+        ...install,
         {
             label: "integrationTests",
             files: ["dist/test/common.js", "dist/test/integration-tests/**/*.test.js"],
             version: process.env["VSCODE_VERSION"] ?? "stable",
             workspaceFolder: "./assets/test",
+            extensionDevelopmentPath: vsixPath
+                ? [`${__dirname}/.vscode-test/extensions/${publisher}.${name}-${version}`]
+                : undefined,
             launchArgs: [
                 "--disable-updates",
                 "--disable-crash-reporter",
@@ -53,7 +74,6 @@ module.exports = defineConfig({
                 },
             },
             reuseMachineInstall: !isCIBuild,
-            installExtensions: ["vadimcn.vscode-lldb"],
         },
         {
             label: "unitTests",
@@ -79,6 +99,7 @@ module.exports = defineConfig({
                     },
                 },
             },
+            skipExtensionDependencies: true,
             reuseMachineInstall: !isCIBuild,
         },
         // you can specify additional test configurations, too
