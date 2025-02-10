@@ -91,5 +91,4 @@ export GIT_CONFIG_VALUE_0="$PWD/hooks"
 # Need to set proxy to download VS Code
 export npm_config_https_proxy="$HTTPS_PROXY"
 
-# export DEVELOPER_DIR=/Applications/Xcode-beta.app
 VSCODE_DATA_DIR="$USER_DATA" CI=1 FAST_TEST_RUN=1 npm run coverage -- --coverage-output "$PWD/coverage"

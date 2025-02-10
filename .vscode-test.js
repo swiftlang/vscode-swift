@@ -39,6 +39,7 @@ const launchArgs = [
 if (dataDir) {
     launchArgs.push("--user-data-dir", dataDir);
 }
+// GPU hardware acceleration not working on Darwin for intel
 if (process.platform === "darwin" && process.arch === "x64") {
     launchArgs.push("--disable-gpu");
 }
