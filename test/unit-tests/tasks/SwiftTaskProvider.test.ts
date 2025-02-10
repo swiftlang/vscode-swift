@@ -50,6 +50,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
     setup(async () => {
         buildFlags = mockObject<BuildFlags>({
             withSwiftSDKFlags: mockFn(s => s.returns([])),
+            withSwiftPackageFlags: mockFn(s => s.returns(s.args)),
         });
         toolchain = mockObject<SwiftToolchain>({
             swiftVersion: new Version(6, 0, 0),
@@ -186,6 +187,9 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
             buildFlags.withSwiftSDKFlags
                 .withArgs(match(["build"]))
                 .returns(["build", "--sdk", "/path/to/sdk"]);
+            buildFlags.withSwiftPackageFlags
+                .withArgs(match(["build", "--sdk", "/path/to/sdk"]))
+                .returns(["build", "--sdk", "/path/to/sdk", "--replace-scm-with-registry"]);
             const task = createSwiftTask(
                 ["build"],
                 "build",
@@ -193,7 +197,12 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 instance(toolchain)
             );
             const execution = task.execution as SwiftExecution;
-            assert.deepEqual(execution.args, ["build", "--sdk", "/path/to/sdk"]);
+            assert.deepEqual(execution.args, [
+                "build",
+                "--sdk",
+                "/path/to/sdk",
+                "--replace-scm-with-registry",
+            ]);
         });
 
         test("include environment", () => {

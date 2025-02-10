@@ -69,6 +69,20 @@ export class BuildFlags {
         }
     }
 
+    withSwiftPackageFlags(args: string[]): string[] {
+        switch (args[0]) {
+            case "package":
+                if (args[1] === "resolve" || args[1] === "update") {
+                    return [...args, ...configuration.packageArguments];
+                }
+                return args;
+            case "build":
+                return [...args, ...configuration.packageArguments];
+            default:
+                return args;
+        }
+    }
+
     /**
      * Get SDK flags for SwiftPM
      */

@@ -239,6 +239,10 @@ const configuration = {
     get buildArguments(): string[] {
         return vscode.workspace.getConfiguration("swift").get<string[]>("buildArguments", []);
     },
+    /** swift package arguments */
+    get packageArguments(): string[] {
+        return vscode.workspace.getConfiguration("swift").get<string[]>("packageArguments", []);
+    },
     /** thread/address sanitizer */
     get sanitizer(): string {
         return vscode.workspace.getConfiguration("swift").get<string>("sanitizer", "off");
