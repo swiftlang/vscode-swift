@@ -17,7 +17,6 @@ import { FolderContext } from "../../FolderContext";
 import { WorkspaceContext } from "../../WorkspaceContext";
 import { createSwiftTask, SwiftTaskProvider } from "../../tasks/SwiftTaskProvider";
 import { executeTaskWithUI, updateAfterError } from "./../utilities";
-import configuration from "../../configuration";
 
 /**
  * Executes a {@link vscode.Task task} to update this package's dependencies.
