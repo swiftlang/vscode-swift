@@ -77,6 +77,8 @@ export class BuildFlags {
                 }
                 return args;
             case "build":
+            case "run":
+            case "test":
                 return [...args, ...configuration.packageArguments];
             default:
                 return args;
