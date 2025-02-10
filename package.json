@@ -1,6 +1,6 @@
 {
   "name": "swift-vscode",
-  "displayName": "Swift Programming Language",
+  "displayName": "Swift",
   "description": "Swift Language Support for Visual Studio Code.",
   "version": "2.0.0",
   "publisher": "swiftlang",
