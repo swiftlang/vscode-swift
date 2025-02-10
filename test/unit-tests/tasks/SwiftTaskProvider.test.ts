@@ -185,9 +185,6 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
         test("include sdk flags", () => {
             buildFlags.withAdditionalFlags
                 .withArgs(match(["build"]))
-                .returns(["build", "--sdk", "/path/to/sdk"]);
-            buildFlags.withSwiftPackageFlags
-                .withArgs(match(["build", "--sdk", "/path/to/sdk"]))
                 .returns(["build", "--sdk", "/path/to/sdk", "--replace-scm-with-registry"]);
             const task = createSwiftTask(
                 ["build"],
