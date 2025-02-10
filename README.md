@@ -42,11 +42,11 @@ The extension adds the following commands, available via the command palette.
 
 - **Create New Project...**: Create a new Swift project using a template. This opens a dialog to guide you through creating a new project structure.
 - **Create New Swift File...**: Create a new `.swift` file in the current workspace.
-- **Select Toolchain**: Select which locally installed Swift toolchain (including Xcode toolchains on macOS) you want to use Swift tools from.
+- **Select Toolchain**: Select the locally installed Swift toolchain (including Xcode toolchains on macOS) that you want to use Swift tools from.
 
-The following command is only available on macOS
+The following command is only available on macOS:
 
-- **Select Target Platform**: This is an experimental command used to get code completion for iOS, tvOS projects
+- **Select Target Platform**: This is an experimental command that offers code completion for iOS and tvOS projects.
 
 #### Building and Debugging
 
@@ -61,8 +61,8 @@ The following command is only available on macOS
 - **Update Package Dependencies**: Run `swift package update` on packages associated with the open file.
 - **Reset Package Dependencies**: Run `swift package reset` on packages associated with the open file.
 - **Add to Workspace**: Add the current package to the active workspace in VS Code.
-- **Clean Build**: Run `swift package clean` on package associated with open file.
-- **Open Package.swift**: Open Package.swift for package associated with open file.
+- **Clean Build**: Run `swift package clean` on packages associated with the open file.
+- **Open Package.swift**: Open `Package.swift` for the package associated with the open file.
 - **Use Local Version**: Switch the package dependency to use a local version of the package instead of the remote repository version.
 - **Edit Locally**: Make the package dependency editable locally, allowing changes to the dependency to be reflected immediately.
 - **Revert To Original Version**: Revert the package dependency to its original, unedited state after local changes have been made.
@@ -95,17 +95,17 @@ If your workspace contains a package that has dependencies, this extension will 
 
 ![](images/package-dependencies.png)
 
-Additionally, the extension will monitor **Package.swift** and **Package.resolved** for changes, resolve any changes to the dependencies, and update the view as needed.
+Additionally, the extension will monitor `Package.swift` and `Package.resolved` for changes, resolve any changes to the dependencies, and update the view as needed.
 
 ### Debugging
 
 The Swift extension uses the [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb) extension for debugging.
 
-When you open a Swift package (a directory containing a **Package.swift**), the extension automatically generates build tasks and launch configurations for each executable within the package. Additionally, if the package includes tests, the extension creates a configuration specifically designed to run those tests. These configurations all leverage the CodeLLDB extension as the debugger of choice.
+When you open a Swift package (a directory containing a `Package.swift` file), the extension automatically generates build tasks and launch configurations for each executable within the package. Additionally, if the package includes tests, the extension creates a configuration specifically designed to run those tests. These configurations all leverage the CodeLLDB extension as the debugger of choice.
 
 Use the **Run > Start Debugging** menu item to run an executable and start debugging. If you have multiple launch configurations you can choose which launch configuration to use in the debugger view.
 
-CodeLLDB includes a version of `lldb` which it uses by default for debugging, but this version of `lldb` doesn’t support Swift. The Swift extension will automatically identify the required version and offer to update the CodeLLDB configuration as necessary so that debugging is supported. 
+CodeLLDB includes a version of `lldb` that it uses by default for debugging, but this version of `lldb` doesn’t support Swift. The Swift extension will automatically identify the required version and offer to update the CodeLLDB configuration as necessary so that debugging is supported. 
 
 ### Test Explorer
 
