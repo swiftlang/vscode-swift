@@ -37,7 +37,7 @@ export async function updateDependencies(ctx: WorkspaceContext) {
  */
 export async function updateFolderDependencies(folderContext: FolderContext) {
     const task = createSwiftTask(
-        ["package", "update", ...configuration.packageArguments],
+        ["package", "update"],
         SwiftTaskProvider.updatePackageName,
         {
             cwd: folderContext.folder,

@@ -54,7 +54,7 @@ export async function folderResetPackage(folderContext: FolderContext) {
                 return false;
             }
             const resolveTask = createSwiftTask(
-                ["package", "resolve", ...configuration.packageArguments],
+                ["package", "resolve"],
                 SwiftTaskProvider.resolvePackageName,
                 {
                     cwd: folderContext.folder,

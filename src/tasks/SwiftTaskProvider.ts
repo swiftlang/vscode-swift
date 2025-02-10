@@ -89,8 +89,6 @@ export function buildOptions(toolchain: SwiftToolchain, debug = true): string[] 
         args.push(...sanitizer.buildFlags);
     }
     args.push(...configuration.buildArguments);
-    // build can also trigger package resolution
-    args.push(...configuration.packageArguments);
     return args;
 }
 
@@ -288,7 +286,7 @@ export function createSwiftTask(
     cmdEnv: { [key: string]: string } = {}
 ): SwiftTask {
     const swift = toolchain.getToolchainExecutable("swift");
-    args = toolchain.buildFlags.withSwiftSDKFlags(args);
+    args = toolchain.buildFlags.withSwiftPackageFlags(toolchain.buildFlags.withSwiftSDKFlags(args));
 
     // Add relative path current working directory
     const cwd = config.cwd.fsPath;

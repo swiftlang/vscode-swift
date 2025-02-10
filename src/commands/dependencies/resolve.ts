@@ -40,7 +40,7 @@ export async function resolveFolderDependencies(
     checkAlreadyRunning?: boolean
 ) {
     const task = createSwiftTask(
-        ["package", "resolve", ...configuration.packageArguments],
+        ["package", "resolve"],
         SwiftTaskProvider.resolvePackageName,
         {
             cwd: folderContext.folder,
