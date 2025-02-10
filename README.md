@@ -1,6 +1,6 @@
 # Swift for Visual Studio Code
 
-This extension adds language support for Swift to Visual Studio Code. It supports:
+This extension adds language support for Swift to Visual Studio Code, providing a seamless experience for developing Swift applications on all supported platforms. It supports:
 
 * Code completion
 * Jump to definition, peek definition, find all references, symbol search
@@ -10,31 +10,23 @@ This extension adds language support for Swift to Visual Studio Code. It support
 * Package dependency view
 * Test Explorer view
 
-Swift support uses [SourceKit LSP](https://github.com/apple/sourcekit-lsp) for the [language server](https://microsoft.github.io/language-server-protocol/overviews/lsp/overview/) to power code completion and [LLDB](https://github.com/vadimcn/vscode-lldb) to enable debugging.
+This extension uses [SourceKit LSP](https://github.com/apple/sourcekit-lsp) for the [language server](https://microsoft.github.io/language-server-protocol/overviews/lsp/overview/), which powers code completion. It also has a dependency on [CodeLLDB](https://github.com/vadimcn/vscode-lldb) for debugging.
 
-The aim is to provide a first-class, feature complete extension to make developing Swift applications on all platforms a seamless experience.
-
-If you experience any issues or want to propose new features please [create an issue](https://github.com/swiftlang/vscode-swift/issues/new) or post on the [swift.org forums](https://forums.swift.org) in the [VS Code Swift Extension category](https://forums.swift.org/c/related-projects/vscode-swift-extension/).
-
-## Contributing
-
-The Swift for Visual Studio Code extension is a community driven project originally created by the [Swift Server Working Group](https://www.swift.org/sswg/) and now maintained as part of the [swiftlang organization](https://github.com/swiftlang/). Contributions are appreciated, including code, tests and documentation. For more details see [CONTRIBUTING.md](CONTRIBUTING.md).
-
-To give clarity of what is expected of our members, Swift has adopted the code of conduct defined by the Contributor Covenant. This document is used across many open source communities, and we think it articulates our values well. For more, see the [Code of Conduct](https://swift.org/code-of-conduct/).
+To propose new features, you can post on the [swift.org forums](https://forums.swift.org) in the [VS Code Swift Extension category](https://forums.swift.org/c/related-projects/vscode-swift-extension/). If you run into something that doesn't work the way you'd expect, you can [file an issue in the GitHub repository](https://github.com/swiftlang/vscode-swift/issues/new).
 
 ## Installation
 
-For the extension to work, you must have Swift installed on your system. Please see the [Getting Started Guide on Swift.org](https://www.swift.org/getting-started/) for details on how to install Swift on your system. Install the extension from [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=swiftlang.swift-vscode) and open a Swift package! You'll be prompted to install and configure the CodeLLDB extension, which you should do so.
+The Swift extension is supported on macOS, Linux, and Windows. To install, firstly ensure you have [Swift installed on your system](https://www.swift.org/install/). Then [install the Swift extension](https://marketplace.visualstudio.com/items?itemName=swiftlang.swift-vscode). Once your machine is ready, you can get started with the **Swift: Create New Project...** command.
 
 ## Features
 
 ### Language features
 
-The extension provides language features such as code completion and jump to definition via the Apple project [SourceKit-LSP](https://github.com/apple/sourcekit-lsp). For these to work fully it is required that the project has been built at least once. Every time you add a new dependency to your project you should build it so SourceKit-LSP can extract the symbol data for that dependency.
+The extension provides language features such as code completion and jump to definition via [SourceKit-LSP](https://github.com/apple/sourcekit-lsp). To ensure the extension functions correctly, it’s important to first build the project so that SourceKit-LSP has access to all the symbol data. Whenever you add a new dependency to your project, make sure to rebuild it so that SourceKit-LSP can update its information. 
 
 ### Automatic task creation
 
-For workspaces that contain a **Package.swift** file, this extension will create the following tasks:
+For workspaces that contain a **Package.swift** file, this extension will add the following tasks:
 
 - **Build All**: Build all targets in the Package
 - **Build Debug <Executable>**: Each executable in a Package.swift get a task for building a debug build
@@ -50,11 +42,11 @@ The extension adds the following commands, available via the command palette.
 
 - **Create New Project...**: Create a new Swift project using a template. This opens a dialog to guide you through creating a new project structure.
 - **Create New Swift File...**: Create a new `.swift` file in the current workspace.
-- **Select Toolchain**: Select which locally installed Swift toolchain (including Xcode toolchains on macOS) you want to use Swift tools from.
+- **Select Toolchain**: Select the locally installed Swift toolchain (including Xcode toolchains on macOS) that you want to use Swift tools from.
 
-The following command is only available on macOS
+The following command is only available on macOS:
 
-- **Select Target Platform**: This is an experimental command used to get code completion for iOS, tvOS projects
+- **Select Target Platform**: This is an experimental command that offers code completion for iOS and tvOS projects.
 
 #### Building and Debugging
 
@@ -65,12 +57,12 @@ The following command is only available on macOS
 
 #### Dependency Management
 
-- **Resolve Package Dependencies**: Run `swift package resolve` on package associated with open file.
-- **Update Package Dependencies**: Run `swift package update` on package associated with open file.
-- **Reset Package Dependencies**: Run `swift package reset` on package associated with open file.
+- **Resolve Package Dependencies**: Run `swift package resolve` on packages associated with the open file.
+- **Update Package Dependencies**: Run `swift package update` on packages associated with the open file.
+- **Reset Package Dependencies**: Run `swift package reset` on packages associated with the open file.
 - **Add to Workspace**: Add the current package to the active workspace in VS Code.
-- **Clean Build**: Run `swift package clean` on package associated with open file.
-- **Open Package.swift**: Open Package.swift for package associated with open file.
+- **Clean Build**: Run `swift package clean` on packages associated with the open file.
+- **Open Package.swift**: Open `Package.swift` for the package associated with the open file.
 - **Use Local Version**: Switch the package dependency to use a local version of the package instead of the remote repository version.
 - **Edit Locally**: Make the package dependency editable locally, allowing changes to the dependency to be reflected immediately.
 - **Revert To Original Version**: Revert the package dependency to its original, unedited state after local changes have been made.
@@ -103,17 +95,17 @@ If your workspace contains a package that has dependencies, this extension will 
 
 ![](images/package-dependencies.png)
 
-Additionally, the extension will monitor **Package.swift** and **Package.resolved** for changes, resolve any changes to the dependencies, and update the view as needed.
+Additionally, the extension will monitor `Package.swift` and `Package.resolved` for changes, resolve any changes to the dependencies, and update the view as needed.
 
 ### Debugging
 
 The Swift extension uses the [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb) extension for debugging.
 
-When you open a Swift package (a directory containing a **Package.swift**) the extension creates build tasks and launch configurations for each executable. If the package contains tests, the extension creates a configuration to run the tests. These all use the CodeLLDB extension as a debugger.
+When you open a Swift package (a directory containing a `Package.swift` file), the extension automatically generates build tasks and launch configurations for each executable within the package. Additionally, if the package includes tests, the extension creates a configuration specifically designed to run those tests. These configurations all leverage the CodeLLDB extension as the debugger of choice.
 
-Press `F5` to run an executable and start debugging. If you have multiple launch configurations you can choose which launch configuration to use in the debugger view.
+Use the **Run > Start Debugging** menu item to run an executable and start debugging. If you have multiple launch configurations you can choose which launch configuration to use in the debugger view.
 
-CodeLLDB has a version of `lldb` packaged with it and by default this is the version it uses for debugging. However, this version of `lldb` does not work with Swift. Fortunately, CodeLLDB allows you to choose an alternate version. The Swift extension will attempt to ascertain which version is required and give you the option to update the CodeLLDB configuration.
+CodeLLDB includes a version of `lldb` that it uses by default for debugging, but this version of `lldb` doesn’t support Swift. The Swift extension will automatically identify the required version and offer to update the CodeLLDB configuration as necessary so that debugging is supported. 
 
 ### Test Explorer
 
@@ -121,10 +113,16 @@ If your package contains tests then they can be viewed, run and debugged in the 
 
 ![](images/test-explorer.png)
 
-Once your project has been built the Test Explorer will be able to list all your tests. These are grouped by package, then test target and finally XCTestCase class. From the Test Explorer you can initiate a test run, debug a test run and if a file has already been opened you can jump to the source for a test.
+Once your project is built, the Test Explorer will list all your tests. These tests are grouped by package, then test target, and finally, by XCTestCase class. From the Test Explorer, you can initiate a test run, debug a test run, and if a file has already been opened, you can jump to the source code for a test.
 
 ### Documentation
 
 * [Extension Settings](docs/settings.md)
 * [Test Coverage](docs/test-coverage.md)
 * [Visual Studio Code Dev Containers](docs/remote-dev.md)
+
+## Contributing
+
+The Swift for Visual Studio Code extension is based on an extension originally created by the [Swift Server Working Group](https://www.swift.org/sswg/). It is now maintained as part of the [swiftlang organization](https://github.com/swiftlang/), and the original extension is deprecated. Contributions, including code, tests, and documentation, are welcome. For more details, refer to [CONTRIBUTING.md](CONTRIBUTING.md).
+
+To provide clarity on the expectations for our members, Swift has adopted the code of conduct outlined in the [Contributor Covenant](https://www.contributor-covenant.org). This widely recognized document effectively encapsulates our values. For more information, please refer to the [Code of Conduct](https://swift.org/code-of-conduct/).
