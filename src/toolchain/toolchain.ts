@@ -363,8 +363,8 @@ export class SwiftToolchain {
             return [];
         }
 
-        const coolchainSwiftPath = path.join(commandLineToolsPath, "usr", "bin", "swift");
-        if (!(await pathExists(coolchainSwiftPath))) {
+        const toolchainSwiftPath = path.join(commandLineToolsPath, "usr", "bin", "swift");
+        if (!(await pathExists(toolchainSwiftPath))) {
             return [];
         }
         return [commandLineToolsPath];
