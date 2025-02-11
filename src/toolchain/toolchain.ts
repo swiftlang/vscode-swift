@@ -221,6 +221,10 @@ export class SwiftToolchain {
         const { stdout: xcodes } = await execFile("mdfind", [
             `kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'`,
         ]);
+        // An empty string means no Xcodes are installed.
+        if (xcodes.length === 0) {
+            return [];
+        }
         return xcodes.trimEnd().split("\n");
     }
 
@@ -271,6 +275,7 @@ export class SwiftToolchain {
         return Promise.all([
             this.findToolchainsIn("/Library/Developer/Toolchains/"),
             this.findToolchainsIn(path.join(os.homedir(), "Library/Developer/Toolchains/")),
+            this.findCommandLineTools(),
         ]).then(results => results.flatMap(a => a));
     }
 
@@ -347,6 +352,22 @@ export class SwiftToolchain {
             }
         }
         return result;
+    }
+
+    /**
+     * Returns the path to the CommandLineTools toolchain if its installed.
+     */
+    public static async findCommandLineTools(): Promise<string[]> {
+        const commandLineToolsPath = "/Library/Developer/CommandLineTools";
+        if (!(await pathExists(commandLineToolsPath))) {
+            return [];
+        }
+
+        const coolchainSwiftPath = path.join(commandLineToolsPath, "usr", "bin", "swift");
+        if (!(await pathExists(coolchainSwiftPath))) {
+            return [];
+        }
+        return [commandLineToolsPath];
     }
 
     /**
