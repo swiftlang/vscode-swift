@@ -1216,6 +1216,10 @@
                 "description": "Don't retrieve STDIN, STDOUT and STDERR as the program is running.",
                 "default": false
               },
+              "testType": {
+                "type": "string",
+                "description": "If the program is a test, set this to the type of test (`XCTest` or `swift-testing`). This is typically set automatically and is only required when your launch program uses a non standard filename."
+              },
               "shellExpandArguments": {
                 "type": "boolean",
                 "description": "Expand program arguments as a shell would without actually launching the program in a shell.",

@@ -152,7 +152,8 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         if (
             this.platform === "win32" &&
             launchConfig.testType === undefined &&
-            path.extname(launchConfig.program) !== ".exe"
+            path.extname(launchConfig.program) === "" &&
+            path.extname(launchConfig.program) !== ".xctest"
         ) {
             launchConfig.program += ".exe";
         }
