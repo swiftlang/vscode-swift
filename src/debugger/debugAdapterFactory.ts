@@ -15,8 +15,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import { WorkspaceContext } from "../WorkspaceContext";
-import { DebugAdapter, LaunchConfigType } from "./debugAdapter";
-import { Version } from "../utilities/version";
+import { DebugAdapter, LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
 import { registerLoggingDebugAdapterTracker } from "./logTracker";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
@@ -28,14 +27,7 @@ import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
  * @returns A disposable to be disposed when the extension is deactivated
  */
 export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Disposable {
-    let subscriptions: vscode.Disposable[] = [];
-    const register = async () => {
-        subscriptions.map(sub => sub.dispose());
-        subscriptions = [
-            registerLoggingDebugAdapterTracker(workspaceContext.toolchain.swiftVersion),
-            registerLLDBDebugAdapter(workspaceContext.toolchain, workspaceContext.outputChannel),
-        ];
-
+    async function updateDebugAdapter() {
         await workspaceContext.setLLDBVersion();
 
         // Verify that the adapter exists, but only after registration. This async method
@@ -49,20 +41,23 @@ export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Dis
         ).catch(error => {
             workspaceContext.outputChannel.log(error);
         });
-    };
+    }
 
-    const changeMonitor = vscode.workspace.onDidChangeConfiguration(event => {
-        if (event.affectsConfiguration("swift.debugger.useDebugAdapterFromToolchain")) {
-            register();
-        }
-    });
+    const subscriptions: vscode.Disposable[] = [
+        registerLoggingDebugAdapterTracker(),
+        registerLLDBDebugAdapter(workspaceContext.toolchain, workspaceContext.outputChannel),
+        vscode.workspace.onDidChangeConfiguration(event => {
+            if (event.affectsConfiguration("swift.debugger.useDebugAdapterFromToolchain")) {
+                updateDebugAdapter();
+            }
+        }),
+    ];
 
     // Perform the initial registration, then reregister every time the settings change.
-    register();
+    updateDebugAdapter();
 
     return {
         dispose: () => {
-            changeMonitor.dispose();
             subscriptions.map(sub => sub.dispose());
         },
     };
@@ -78,13 +73,13 @@ function registerLLDBDebugAdapter(
     outputChannel: SwiftOutputChannel
 ): vscode.Disposable {
     const debugAdpaterFactory = vscode.debug.registerDebugAdapterDescriptorFactory(
-        LaunchConfigType.SWIFT_EXTENSION,
+        SWIFT_LAUNCH_CONFIG_TYPE,
         new LLDBDebugAdapterExecutableFactory(toolchain, outputChannel)
     );
 
     const debugConfigProvider = vscode.debug.registerDebugConfigurationProvider(
-        LaunchConfigType.SWIFT_EXTENSION,
-        new LLDBDebugConfigurationProvider(process.platform, toolchain.swiftVersion)
+        SWIFT_LAUNCH_CONFIG_TYPE,
+        new LLDBDebugConfigurationProvider(process.platform, toolchain)
     );
 
     return {
@@ -140,14 +135,13 @@ export class LLDBDebugAdapterExecutableFactory implements vscode.DebugAdapterDes
 export class LLDBDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
     constructor(
         private platform: NodeJS.Platform,
-        private swiftVersion: Version
+        private toolchain: SwiftToolchain
     ) {}
 
     async resolveDebugConfiguration(
         _folder: vscode.WorkspaceFolder | undefined,
         launchConfig: vscode.DebugConfiguration
-    ): Promise<vscode.DebugConfiguration> {
-        launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
+    ): Promise<vscode.DebugConfiguration | undefined | null> {
         // Fix the program path on Windows to include the ".exe" extension
         if (
             this.platform === "win32" &&
@@ -157,20 +151,20 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             launchConfig.program += ".exe";
         }
 
-        // Delegate to CodeLLDB if that's the debug adapter we have selected
-        if (DebugAdapter.getLaunchConfigType(this.swiftVersion) === LaunchConfigType.CODE_LLDB) {
-            launchConfig.type = LaunchConfigType.CODE_LLDB;
+        // Delegate to the appropriate debug adapter extension
+        launchConfig.type = DebugAdapter.getLaunchConfigType(this.toolchain.swiftVersion);
+        if (launchConfig.type === LaunchConfigType.CODE_LLDB) {
             launchConfig.sourceLanguages = ["swift"];
+        } else if (launchConfig.type === LaunchConfigType.LLDB_DAP) {
+            if (launchConfig.env) {
+                launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
+            }
         }
+
         return launchConfig;
     }
 
-    convertEnvironmentVariables(
-        map: { [key: string]: string } | undefined
-    ): { [key: string]: string } | string[] | undefined {
-        if (map === undefined) {
-            return undefined;
-        }
+    private convertEnvironmentVariables(map: { [key: string]: string }): string[] {
         return Object.entries(map).map(([key, value]) => `${key}=${value}`);
     }
 }

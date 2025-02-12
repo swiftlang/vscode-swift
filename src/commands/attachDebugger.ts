@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { getLldbProcess } from "../debugger/lldb";
-import { LaunchConfigType } from "../debugger/debugAdapter";
+import { SWIFT_LAUNCH_CONFIG_TYPE } from "../debugger/debugAdapter";
 
 /**
  * Attaches the LLDB debugger to a running process selected by the user.
@@ -37,7 +37,7 @@ export async function attachDebugger(ctx: WorkspaceContext) {
         });
         if (picked) {
             const debugConfig: vscode.DebugConfiguration = {
-                type: LaunchConfigType.SWIFT_EXTENSION,
+                type: SWIFT_LAUNCH_CONFIG_TYPE,
                 request: "attach",
                 name: "Attach",
                 pid: picked.pid,

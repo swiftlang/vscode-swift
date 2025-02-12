@@ -20,7 +20,7 @@ import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
 import { BuildFlags } from "../toolchain/BuildFlags";
 import { regexEscapedString, swiftRuntimeEnv } from "../utilities/utilities";
-import { DebugAdapter } from "./debugAdapter";
+import { SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
 import { TargetType } from "../SwiftPackage";
 import { Version } from "../utilities/version";
 import { TestLibrary } from "../TestExplorer/TestRunner";
@@ -515,7 +515,7 @@ export class TestingConfigurationFactory {
         }).map(([key, value]) => `settings set target.env-vars ${key}="${value}"`);
 
         return {
-            type: DebugAdapter.getLaunchConfigType(this.ctx.workspaceContext.swiftVersion),
+            type: SWIFT_LAUNCH_CONFIG_TYPE,
             request: "custom",
             name: `Test ${this.ctx.swiftPackage.name}`,
             targetCreateCommands: [`file -a ${arch} ${xctestPath}/xctest`],
@@ -738,7 +738,7 @@ export class TestingConfigurationFactory {
 function getBaseConfig(ctx: FolderContext, expandEnvVariables: boolean) {
     const { folder, nameSuffix } = getFolderAndNameSuffix(ctx, expandEnvVariables);
     return {
-        type: DebugAdapter.getLaunchConfigType(ctx.workspaceContext.swiftVersion),
+        type: SWIFT_LAUNCH_CONFIG_TYPE,
         request: "launch",
         sourceLanguages: ["swift"],
         name: `Test ${ctx.swiftPackage.name}`,

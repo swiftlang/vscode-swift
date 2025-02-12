@@ -14,9 +14,10 @@
 
 import * as vscode from "vscode";
 
-type CFamilySupportOptions = "enable" | "disable" | "cpptools-inactive";
-type ActionAfterBuildError = "Focus Problems" | "Focus Terminal" | "Do Nothing";
-type OpenAfterCreateNewProjectOptions =
+export type DebugAdapters = "auto" | "lldb-dap" | "CodeLLDB";
+export type CFamilySupportOptions = "enable" | "disable" | "cpptools-inactive";
+export type ActionAfterBuildError = "Focus Problems" | "Focus Terminal" | "Do Nothing";
+export type OpenAfterCreateNewProjectOptions =
     | "always"
     | "alwaysNewWindow"
     | "whenNoFolderOpen"
@@ -47,8 +48,8 @@ export interface LSPConfiguration {
 
 /** debugger configuration */
 export interface DebuggerConfiguration {
-    /** Whether or not to use CodeLLDB for debugging instead of lldb-dap */
-    readonly useDebugAdapterFromToolchain: boolean;
+    /** Get the underlying debug adapter type requested by the user. */
+    readonly debugAdapter: DebugAdapters;
     /** Return path to debug adapter */
     readonly customDebugAdapterPath: string;
 }
@@ -182,19 +183,31 @@ const configuration = {
     /** debugger configuration */
     get debugger(): DebuggerConfiguration {
         return {
-            get useDebugAdapterFromToolchain(): boolean {
-                // Enabled by default only when we're on Windows arm64 since CodeLLDB does not support
-                // this platform and gives an awful error message.
-                if (process.platform === "win32" && process.arch === "arm64") {
-                    // We need to use inspect to find out if the value is explicitly set.
-                    const inspect = vscode.workspace
-                        .getConfiguration("swift.debugger")
-                        .inspect<boolean>("useDebugAdapterFromToolchain");
-                    return inspect?.workspaceValue ?? inspect?.globalValue ?? true;
-                }
-                return vscode.workspace
+            get debugAdapter(): DebugAdapters {
+                // Use inspect to determine if the user has explicitly set swift.debugger.useDebugAdapterFromToolchain
+                const inspectUseDebugAdapterFromToolchain = vscode.workspace
                     .getConfiguration("swift.debugger")
-                    .get<boolean>("useDebugAdapterFromToolchain", false);
+                    .inspect<boolean>("useDebugAdapterFromToolchain");
+                let useDebugAdapterFromToolchain =
+                    inspectUseDebugAdapterFromToolchain?.workspaceValue ??
+                    inspectUseDebugAdapterFromToolchain?.globalValue;
+                // On Windows arm64 we enable swift.debugger.useDebugAdapterFromToolchain by default since CodeLLDB does
+                // not support this platform and gives an awful error message.
+                if (process.platform === "win32" && process.arch === "arm64") {
+                    useDebugAdapterFromToolchain = useDebugAdapterFromToolchain ?? true;
+                }
+                const selectedAdapter = vscode.workspace
+                    .getConfiguration("swift.debugger")
+                    .get<DebugAdapters>("debugAdapter", "auto");
+                switch (selectedAdapter) {
+                    case "auto":
+                        if (useDebugAdapterFromToolchain !== undefined) {
+                            return useDebugAdapterFromToolchain ? "lldb-dap" : "CodeLLDB";
+                        }
+                        return "auto";
+                    default:
+                        return selectedAdapter;
+                }
             },
             get customDebugAdapterPath(): string {
                 return vscode.workspace.getConfiguration("swift.debugger").get<string>("path", "");
