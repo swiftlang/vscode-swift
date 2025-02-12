@@ -136,13 +136,13 @@
       },
       {
         "command": "swift.run",
-        "title": "Run active Swift file",
+        "title": "Run Swift executable",
         "category": "Swift",
         "icon": "$(play)"
       },
       {
         "command": "swift.debug",
-        "title": "Debug active Swift file",
+        "title": "Debug Swift executable",
         "category": "Swift",
         "icon": "$(debug)"
       },
@@ -868,12 +868,12 @@
         {
           "command": "swift.run",
           "group": "navigation@0",
-          "when": "resourceLangId == swift && !isInDiffEditor && !virtualWorkspace && swift.currentTargetType == 'executable'"
+          "when": "resourceLangId == swift && swift.currentTargetType == 'executable'"
         },
         {
           "command": "swift.debug",
           "group": "navigation@0",
-          "when": "resourceLangId == swift && !isInDiffEditor && !virtualWorkspace && swift.currentTargetType == 'executable'"
+          "when": "resourceLangId == swift && swift.currentTargetType == 'executable'"
         }
       ],
       "swift.editor": [
