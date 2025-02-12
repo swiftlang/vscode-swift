@@ -23,6 +23,7 @@ import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilit
 import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
 import { testAssetPath } from "../../fixtures";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
+import contextKeys from "../../../src/contextKeys";
 
 suite("PackageDependencyProvider Test Suite", function () {
     let treeProvider: PackageDependenciesProvider;
@@ -39,12 +40,14 @@ suite("PackageDependencyProvider Test Suite", function () {
             await workspaceContext.focusFolder(folderContext);
         },
         async teardown() {
+            contextKeys.flatDependenciesList = false;
             treeProvider.dispose();
         },
         testAssets: ["dependencies"],
     });
 
     test("Includes remote dependency", async () => {
+        contextKeys.flatDependenciesList = false;
         const items = await treeProvider.getChildren();
 
         const dep = items.find(n => n.name === "swift-markdown") as PackageNode;
@@ -69,6 +72,7 @@ suite("PackageDependencyProvider Test Suite", function () {
     });
 
     test("Lists local dependency file structure", async () => {
+        contextKeys.flatDependenciesList = false;
         const items = await treeProvider.getChildren();
 
         const dep = items.find(n => n.name === "defaultpackage") as PackageNode;
@@ -103,6 +107,7 @@ suite("PackageDependencyProvider Test Suite", function () {
     });
 
     test("Lists remote dependency file structure", async () => {
+        contextKeys.flatDependenciesList = false;
         const items = await treeProvider.getChildren();
 
         const dep = items.find(n => n.name === "swift-markdown") as PackageNode;
@@ -126,6 +131,23 @@ suite("PackageDependencyProvider Test Suite", function () {
         expect(file).to.not.be.undefined;
 
         assertPathsEqual(file?.path, path.join(depPath, "Sources/CAtomic/CAtomic.c"));
+    });
+
+    test("Shows a flat dependency list", async () => {
+        contextKeys.flatDependenciesList = true;
+        const items = await treeProvider.getChildren();
+        expect(items.length).to.equal(3);
+        expect(items.find(n => n.name === "swift-markdown")).to.not.be.undefined;
+        expect(items.find(n => n.name === "swift-cmark")).to.not.be.undefined;
+        expect(items.find(n => n.name === "defaultpackage")).to.not.be.undefined;
+    });
+
+    test("Shows a nested dependency list", async () => {
+        contextKeys.flatDependenciesList = false;
+        const items = await treeProvider.getChildren();
+        expect(items.length).to.equal(2);
+        expect(items.find(n => n.name === "swift-markdown")).to.not.be.undefined;
+        expect(items.find(n => n.name === "defaultpackage")).to.not.be.undefined;
     });
 
     function assertPathsEqual(path1: string | undefined, path2: string | undefined) {

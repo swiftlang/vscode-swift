@@ -74,6 +74,20 @@ suite("Dependency Commmands Test Suite", function () {
             return items.find(n => n.name === "swift-markdown") as PackageNode;
         }
 
+        // Wait for the dependency to switch to the expected state.
+        // This doesn't happen immediately after the USE_LOCAL_DEPENDENCY
+        // and RESET_PACKAGE commands because the file watcher on
+        // workspace-state.json needs to trigger.
+        async function getDependencyInState(state: "remote" | "editing") {
+            for (let i = 0; i < 10; i++) {
+                const dep = await getDependency();
+                if (dep.type === state) {
+                    return dep;
+                }
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+
         async function useLocalDependencyTest() {
             // spm edit with user supplied local version of dependency
             const item = await getDependency();
@@ -85,12 +99,10 @@ suite("Dependency Commmands Test Suite", function () {
             );
             expect(result).to.be.true;
 
+            const dep = await getDependencyInState("editing");
+            expect(dep).to.not.be.undefined;
             // Make sure using local
-            expect((await getDependency()).type).to.equal("editing");
-        }
-
-        async function assertUsingRemote() {
-            expect((await getDependency()).type).to.equal("remote");
+            expect(dep?.type).to.equal("editing");
         }
 
         test("Swift: Reset Package Dependencies", async function () {
@@ -104,7 +116,9 @@ suite("Dependency Commmands Test Suite", function () {
             const result = await vscode.commands.executeCommand(Commands.RESET_PACKAGE);
             expect(result).to.be.true;
 
-            await assertUsingRemote();
+            const dep = await getDependencyInState("remote");
+            expect(dep).to.not.be.undefined;
+            expect(dep?.type).to.equal("remote");
         });
 
         test("Swift: Revert To Original Version", async () => {
@@ -116,7 +130,9 @@ suite("Dependency Commmands Test Suite", function () {
             );
             expect(result).to.be.true;
 
-            await assertUsingRemote();
+            const dep = await getDependencyInState("remote");
+            expect(dep).to.not.be.undefined;
+            expect(dep?.type).to.equal("remote");
         });
     });
 });

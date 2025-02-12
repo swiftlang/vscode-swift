@@ -18,16 +18,8 @@ import * as path from "path";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderOperation } from "../WorkspaceContext";
-import { FolderContext } from "../FolderContext";
 import contextKeys from "../contextKeys";
-import {
-    Dependency,
-    PackageContents,
-    SwiftPackage,
-    WorkspaceState,
-    WorkspaceStateDependency,
-} from "../SwiftPackage";
-import { BuildFlags } from "../toolchain/BuildFlags";
+import { Dependency, ResolvedDependency } from "../SwiftPackage";
 
 /**
  * References:
@@ -41,28 +33,89 @@ import { BuildFlags } from "../toolchain/BuildFlags";
  */
 
 /**
+ * Returns a {@link FileNode} for every file or subdirectory
+ * in the given directory.
+ */
+async function getChildren(directoryPath: string, parentId?: string): Promise<FileNode[]> {
+    const contents = await fs.readdir(directoryPath);
+    const results: FileNode[] = [];
+    const excludes = configuration.excludePathsFromPackageDependencies;
+    for (const fileName of contents) {
+        if (excludes.includes(fileName)) {
+            continue;
+        }
+        const filePath = path.join(directoryPath, fileName);
+        const stats = await fs.stat(filePath);
+        results.push(new FileNode(fileName, filePath, stats.isDirectory(), parentId));
+    }
+    return results.sort((first, second) => {
+        if (first.isDirectory === second.isDirectory) {
+            // If both nodes are of the same type, sort them by name.
+            return first.name.localeCompare(second.name);
+        } else {
+            // Otherwise, sort directories first.
+            return first.isDirectory ? -1 : 1;
+        }
+    });
+}
+
+/**
  * A package in the Package Dependencies {@link vscode.TreeView TreeView}.
  */
 export class PackageNode {
+    private id: string;
+
     constructor(
-        public name: string,
-        public path: string,
-        public location: string,
-        public version: string,
-        public type: "local" | "remote" | "editing"
-    ) {}
+        private dependency: ResolvedDependency,
+        private childDependencies: (dependency: Dependency) => ResolvedDependency[],
+        private parentId?: string
+    ) {
+        this.id =
+            (this.parentId ? `${this.parentId}->` : "") +
+            `${this.name}-${this.dependency.version ?? ""}`;
+    }
+
+    get name(): string {
+        return this.dependency.identity;
+    }
+
+    get location(): string {
+        return this.dependency.location;
+    }
+
+    get type(): string {
+        return this.dependency.type;
+    }
+
+    get path(): string {
+        return this.dependency.path ?? "";
+    }
 
     toTreeItem(): vscode.TreeItem {
         const item = new vscode.TreeItem(this.name, vscode.TreeItemCollapsibleState.Collapsed);
-        item.id = this.path;
-        item.description = this.version;
+        item.id = this.id;
+        item.description = this.dependency.version;
         item.iconPath =
-            this.type === "editing"
+            this.dependency.type === "editing"
                 ? new vscode.ThemeIcon("edit")
                 : new vscode.ThemeIcon("package");
-        item.contextValue = this.type;
+        item.contextValue = this.dependency.type;
         item.accessibilityInformation = { label: `Package ${this.name}` };
+        item.tooltip = this.path;
         return item;
+    }
+
+    async getChildren(): Promise<TreeNode[]> {
+        const [childDeps, files] = await Promise.all([
+            this.childDependencies(this.dependency),
+            getChildren(this.dependency.path, this.id),
+        ]);
+        const childNodes = childDeps.map(
+            dep => new PackageNode(dep, this.childDependencies, this.id)
+        );
+
+        // Show dependencies first, then files.
+        return [...childNodes, ...files];
     }
 }
 
@@ -70,11 +123,16 @@ export class PackageNode {
  * A file or directory in the Package Dependencies {@link vscode.TreeView TreeView}.
  */
 export class FileNode {
+    private id: string;
+
     constructor(
         public name: string,
         public path: string,
-        public isDirectory: boolean
-    ) {}
+        public isDirectory: boolean,
+        private parentId?: string
+    ) {
+        this.id = (this.parentId ? `${this.parentId}->` : "") + `${this.path}`;
+    }
 
     toTreeItem(): vscode.TreeItem {
         const item = new vscode.TreeItem(
@@ -83,8 +141,9 @@ export class FileNode {
                 ? vscode.TreeItemCollapsibleState.Collapsed
                 : vscode.TreeItemCollapsibleState.None
         );
-        item.id = this.path;
+        item.id = this.id;
         item.resourceUri = vscode.Uri.file(this.path);
+        item.tooltip = this.path;
         if (!this.isDirectory) {
             item.command = {
                 command: "vscode.open",
@@ -96,6 +155,10 @@ export class FileNode {
             item.accessibilityInformation = { label: `Folder ${this.name}` };
         }
         return item;
+    }
+
+    async getChildren(): Promise<FileNode[]> {
+        return await getChildren(this.path, this.id);
     }
 }
 
@@ -142,7 +205,9 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
                         treeView.title = `Package Dependencies`;
                         this.didChangeTreeDataEmitter.fire();
                         break;
+                    case FolderOperation.workspaceStateUpdated:
                     case FolderOperation.resolvedUpdated:
+                    case FolderOperation.packageViewUpdated:
                         if (!folder) {
                             return;
                         }
@@ -164,237 +229,41 @@ export class PackageDependenciesProvider implements vscode.TreeDataProvider<Tree
             return [];
         }
         if (!element) {
-            const workspaceState = await folderContext.swiftPackage.loadWorkspaceState();
-            return await this.getDependencyGraph(workspaceState, folderContext);
-        }
+            if (contextKeys.flatDependenciesList) {
+                const existenceMap = new Map<string, boolean>();
+                const gatherChildren = (
+                    dependencies: ResolvedDependency[]
+                ): ResolvedDependency[] => {
+                    const result: ResolvedDependency[] = [];
+                    for (const dep of dependencies) {
+                        if (!existenceMap.has(dep.identity)) {
+                            result.push(dep);
+                            existenceMap.set(dep.identity, true);
+                        }
+                        const childDeps = folderContext.swiftPackage.childDependencies(dep);
+                        result.push(...gatherChildren(childDeps));
+                    }
+                    return result;
+                };
 
-        return this.getNodesInDirectory(element.path);
-    }
-
-    private async getDependencyGraph(
-        workspaceState: WorkspaceState | undefined,
-        folderContext: FolderContext
-    ): Promise<PackageNode[]> {
-        if (!workspaceState) {
-            return [];
-        }
-        const inUseDependencies = await this.getInUseDependencies(workspaceState, folderContext);
-        return (
-            workspaceState?.object.dependencies
-                .filter(dependency =>
-                    inUseDependencies.has(dependency.packageRef.identity.toLowerCase())
-                )
-                .map(dependency => {
-                    const type = this.dependencyType(dependency);
-                    const version = this.dependencyDisplayVersion(dependency);
-                    const packagePath = this.dependencyPackagePath(
-                        dependency,
-                        folderContext.folder.fsPath
-                    );
-                    const location = dependency.packageRef.location;
-                    return new PackageNode(
-                        dependency.packageRef.identity,
-                        packagePath,
-                        location,
-                        version,
-                        type
-                    );
-                }) ?? []
-        );
-    }
-
-    /**
-     * * Returns a set of all dependencies that are in use in the workspace.
-     * Why tranverse is necessary here?
-     *  * If we have an implicit local dependency of a dependency, you may not be able to see it in either `Package.swift` or `Package.resolved` unless tranversing from root Package.swift.
-     * Why not using `swift package show-dependencies`?
-     *  * it costs more time and it triggers the file change of `workspace-state.json` which is not necessary
-     * Why not using `workspace-state.json` directly?
-     *  * `workspace-state.json` contains all necessary dependencies but it also contains dependencies that are not in use.
-     * Here is the implementation details:
-     * 1. local/remote/edited dependency has remote/edited dependencies, Package.resolved covers them
-     * 2. remote/edited dependency has a local dependency, the local dependency must have been declared in root Package.swift
-     * 3. local dependency has a local dependency, traverse it and find the local dependencies only recursively
-     * 4. pins include all remote and edited packages for 1, 2
-     */
-    private async getInUseDependencies(
-        workspaceState: WorkspaceState,
-        folderContext: FolderContext
-    ): Promise<Set<string>> {
-        const localDependencies = await this.getLocalDependencySet(workspaceState, folderContext);
-        const remoteDependencies = this.getRemoteDependencySet(folderContext);
-        const editedDependencies = this.getEditedDependencySet(workspaceState);
-        return new Set<string>([
-            ...localDependencies,
-            ...remoteDependencies,
-            ...editedDependencies,
-        ]);
-    }
-
-    private getRemoteDependencySet(folderContext: FolderContext | undefined): Set<string> {
-        return new Set<string>(folderContext?.swiftPackage.resolved?.pins.map(pin => pin.identity));
-    }
-
-    private getEditedDependencySet(workspaceState: WorkspaceState): Set<string> {
-        return new Set<string>(
-            workspaceState.object.dependencies
-                .filter(dependency => this.dependencyType(dependency) === "editing")
-                .map(dependency => dependency.packageRef.identity)
-        );
-    }
-
-    /**
-     * @param workspaceState the workspace state read from `Workspace-state.json`
-     * @param folderContext the folder context of the current folder
-     * @returns all local in-use dependencies
-     */
-    private async getLocalDependencySet(
-        workspaceState: WorkspaceState,
-        folderContext: FolderContext
-    ): Promise<Set<string>> {
-        const rootDependencies = folderContext.swiftPackage.dependencies ?? [];
-        const workspaceStateDependencies = workspaceState.object.dependencies ?? [];
-        const workspacePath = folderContext.folder.fsPath;
-
-        const showingDependencies: Set<string> = new Set<string>();
-        const stack: Dependency[] = rootDependencies.slice();
-
-        while (stack.length > 0) {
-            const top = stack.pop();
-            if (!top) {
-                continue;
-            }
-
-            if (showingDependencies.has(top.identity)) {
-                continue;
-            }
-
-            if (top.type !== "local" && top.type !== "fileSystem") {
-                continue;
-            }
-
-            showingDependencies.add(top.identity);
-            const workspaceStateDependency = workspaceStateDependencies.find(
-                workspaceStateDependency =>
-                    workspaceStateDependency.packageRef.identity === top.identity
-            );
-            if (!workspaceStateDependency) {
-                continue;
-            }
-
-            const packagePath = this.dependencyPackagePath(workspaceStateDependency, workspacePath);
-            const childDependencyContents = (await SwiftPackage.loadPackage(
-                vscode.Uri.file(packagePath),
-                folderContext.workspaceContext.toolchain
-            )) as PackageContents;
-
-            stack.push(...childDependencyContents.dependencies);
-        }
-        return showingDependencies;
-    }
-
-    /**
-     * Returns a {@link FileNode} for every file or subdirectory
-     * in the given directory.
-     */
-    private async getNodesInDirectory(directoryPath: string): Promise<FileNode[]> {
-        const contents = await fs.readdir(directoryPath);
-        const results: FileNode[] = [];
-        const excludes = configuration.excludePathsFromPackageDependencies;
-        for (const fileName of contents) {
-            if (excludes.includes(fileName)) {
-                continue;
-            }
-            const filePath = path.join(directoryPath, fileName);
-            const stats = await fs.stat(filePath);
-            results.push(new FileNode(fileName, filePath, stats.isDirectory()));
-        }
-        return results.sort((first, second) => {
-            if (first.isDirectory === second.isDirectory) {
-                // If both nodes are of the same type, sort them by name.
-                return first.name.localeCompare(second.name);
+                const rootDeps = folderContext.swiftPackage.rootDependencies();
+                const allDeps = gatherChildren(rootDeps);
+                return allDeps.map(dependency => new PackageNode(dependency, () => []));
             } else {
-                // Otherwise, sort directories first.
-                return first.isDirectory ? -1 : 1;
+                return folderContext.swiftPackage
+                    .rootDependencies()
+                    .map(
+                        dependency =>
+                            new PackageNode(
+                                dependency,
+                                folderContext.swiftPackage.childDependencies.bind(
+                                    folderContext.swiftPackage
+                                )
+                            )
+                    );
             }
-        });
-    }
-
-    /// - Dependency display helpers
-
-    /**
-     * Get type of WorkspaceStateDependency for displaying in the tree: real version | edited | local
-     * @param dependency
-     * @return "local" | "remote" | "editing"
-     */
-    private dependencyType(dependency: WorkspaceStateDependency): "local" | "remote" | "editing" {
-        if (dependency.state.name === "edited") {
-            return "editing";
-        } else if (
-            dependency.packageRef.kind === "local" ||
-            dependency.packageRef.kind === "fileSystem"
-        ) {
-            // need to check for both "local" and "fileSystem" as swift 5.5 and earlier
-            // use "local" while 5.6 and later use "fileSystem"
-            return "local";
         } else {
-            return "remote";
-        }
-    }
-
-    /**
-     * Get version of WorkspaceStateDependency for displaying in the tree
-     * @param dependency
-     * @return real version | editing | local
-     */
-    private dependencyDisplayVersion(dependency: WorkspaceStateDependency): string {
-        const type = this.dependencyType(dependency);
-        if (type === "editing") {
-            return "editing";
-        } else if (type === "local") {
-            return "local";
-        } else {
-            return (
-                dependency.state.checkoutState?.version ??
-                dependency.state.checkoutState?.branch ??
-                dependency.state.checkoutState?.revision.substring(0, 7) ??
-                dependency.state.version ??
-                "unknown"
-            );
-        }
-    }
-
-    /**
-     *  * Get package source path of dependency
-     * `editing`: dependency.state.path ?? workspacePath + Packages/ + dependency.subpath
-     * `local`: dependency.packageRef.location
-     * `remote`: buildDirectory + checkouts + dependency.packageRef.location
-     * @param dependency
-     * @param workspaceFolder
-     * @return the package path based on the type
-     */
-    private dependencyPackagePath(
-        dependency: WorkspaceStateDependency,
-        workspaceFolder: string
-    ): string {
-        const type = this.dependencyType(dependency);
-        if (type === "editing") {
-            return (
-                dependency.state.path ?? path.join(workspaceFolder, "Packages", dependency.subpath)
-            );
-        } else if (type === "local") {
-            return dependency.state.path ?? dependency.packageRef.location;
-        } else {
-            // remote
-            const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(
-                workspaceFolder,
-                true
-            );
-            if (dependency.packageRef.kind === "registry") {
-                return path.join(buildDirectory, "registry", "downloads", dependency.subpath);
-            } else {
-                return path.join(buildDirectory, "checkouts", dependency.subpath);
-            }
+            return await element.getChildren();
         }
     }
 }

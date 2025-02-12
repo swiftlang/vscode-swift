@@ -130,6 +130,18 @@
         "category": "Swift"
       },
       {
+        "command": "swift.flatDependenciesList",
+        "title": "Flat Dependencies List View",
+        "icon": "$(list-flat)",
+        "category": "Swift"
+      },
+      {
+        "command": "swift.nestedDependenciesList",
+        "title": "Nested Dependencies List View",
+        "icon": "$(list-tree)",
+        "category": "Swift"
+      },
+      {
         "command": "swift.cleanBuild",
         "title": "Clean Build Folder",
         "category": "Swift"
@@ -794,6 +806,14 @@
           "when": "swift.hasPackage"
         },
         {
+          "command": "swift.flatDependenciesList",
+          "when": "false"
+        },
+        {
+          "command": "swift.nestedDependenciesList",
+          "when": "false"
+        },
+        {
           "command": "swift.useLocalDependency",
           "when": "false"
         },
@@ -898,17 +918,27 @@
         {
           "command": "swift.updateDependencies",
           "when": "view == packageDependencies",
-          "group": "navigation"
+          "group": "navigation@1"
         },
         {
           "command": "swift.resolveDependencies",
           "when": "view == packageDependencies",
-          "group": "navigation"
+          "group": "navigation@2"
         },
         {
           "command": "swift.resetPackage",
           "when": "view == packageDependencies",
-          "group": "navigation"
+          "group": "navigation@3"
+        },
+        {
+          "command": "swift.flatDependenciesList",
+          "when": "view == packageDependencies && !swift.flatDependenciesList",
+          "group": "navigation@4"
+        },
+        {
+          "command": "swift.nestedDependenciesList",
+          "when": "view == packageDependencies && swift.flatDependenciesList",
+          "group": "navigation@5"
         }
       ],
       "view/item/context": [
