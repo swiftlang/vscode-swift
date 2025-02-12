@@ -1459,7 +1459,6 @@
     ]
   },
   "extensionDependencies": [
-    "vadimcn.vscode-lldb",
     "llvm-vs-code-extensions.lldb-dap"
   ],
   "scripts": {

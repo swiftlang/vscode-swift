@@ -51,8 +51,11 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         const mockLLDB = mockGlobalModule(lldb);
         const mockDebuggerConfig = mockGlobalObject(configuration, "debugger");
         const mockWorkspace = mockGlobalObject(vscode, "workspace");
+        const mockExtensions = mockGlobalObject(vscode, "extensions");
+        const mockCommands = mockGlobalObject(vscode, "commands");
 
         setup(() => {
+            mockExtensions.getExtension.returns(mockObject<vscode.Extension<unknown>>({}));
             mockLldbConfiguration = mockObject<vscode.WorkspaceConfiguration>({
                 get: mockFn(s => {
                     s.withArgs("library").returns("/path/to/liblldb.dyLib");
@@ -81,6 +84,28 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             expect(launchConfig).to.containSubset({ type: LaunchConfigType.CODE_LLDB });
         });
 
+        test("prompts the user to install CodeLLDB if it isn't found", async () => {
+            mockExtensions.getExtension.returns(undefined);
+            mockWindow.showErrorMessage.resolves("Install CodeLLDB" as any);
+            const configProvider = new LLDBDebugConfigurationProvider(
+                "darwin",
+                instance(mockToolchain),
+                instance(mockOutputChannel)
+            );
+            await expect(
+                configProvider.resolveDebugConfiguration(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "${workspaceFolder}/.build/debug/executable",
+                })
+            ).to.eventually.not.be.undefined;
+            expect(mockCommands.executeCommand).to.have.been.calledWith(
+                "workbench.extensions.installExtension",
+                "vadimcn.vscode-lldb"
+            );
+        });
+
         test("prompts the user to update CodeLLDB settings if they aren't configured yet", async () => {
             mockLldbConfiguration.get.withArgs("library").returns(undefined);
             mockWindow.showInformationMessage.resolves("Global" as any);
@@ -96,7 +121,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                     request: "launch",
                     program: "${workspaceFolder}/.build/debug/executable",
                 })
-            ).to.eventually.be.an("object");
+            ).to.eventually.not.be.undefined;
             expect(mockWindow.showInformationMessage).to.have.been.calledOnce;
             expect(mockLldbConfiguration.update).to.have.been.calledWith(
                 "library",
