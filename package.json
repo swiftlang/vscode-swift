@@ -1459,7 +1459,8 @@
     ]
   },
   "extensionDependencies": [
-    "vadimcn.vscode-lldb"
+    "vadimcn.vscode-lldb",
+    "llvm-vs-code-extensions.lldb-dap"
   ],
   "scripts": {
     "vscode:prepublish": "npm run bundle",
