@@ -1424,7 +1424,7 @@
     "chai-as-promised": "^7.1.2",
     "chai-subset": "^1.6.0",
     "del-cli": "^6.0.0",
-    "esbuild": "^0.24.2",
+    "esbuild": "^0.25.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^10.0.1",
     "mocha": "^10.8.2",
