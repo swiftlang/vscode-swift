@@ -148,13 +148,15 @@
       },
       {
         "command": "swift.run",
-        "title": "Run Build",
-        "category": "Swift"
+        "title": "Run Swift executable",
+        "category": "Swift",
+        "icon": "$(play)"
       },
       {
         "command": "swift.debug",
-        "title": "Debug Build",
-        "category": "Swift"
+        "title": "Debug Swift executable",
+        "category": "Swift",
+        "icon": "$(debug)"
       },
       {
         "command": "swift.resetPackage",
@@ -896,6 +898,18 @@
           "command": "swift.previewDocumentation",
           "when": "swift.supportsDocumentationLivePreview && (editorLangId == markdown || editorLangId == tutorial || editorLangId == swift)",
           "group": "navigation"
+        }
+      ],
+      "editor/title/run": [
+        {
+          "command": "swift.run",
+          "group": "navigation@0",
+          "when": "resourceLangId == swift && swift.currentTargetType == 'executable'"
+        },
+        {
+          "command": "swift.debug",
+          "group": "navigation@0",
+          "when": "resourceLangId == swift && swift.currentTargetType == 'executable'"
         }
       ],
       "swift.editor": [
