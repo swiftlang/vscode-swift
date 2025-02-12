@@ -128,7 +128,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         const workspaceContext = await WorkspaceContext.create(context, outputChannel, toolchain);
         context.subscriptions.push(...commands.register(workspaceContext));
         context.subscriptions.push(workspaceContext);
-        context.subscriptions.push(registerDebugger(workspaceContext));
+        if (!configuration.debugger.disable) {
+            context.subscriptions.push(registerDebugger(workspaceContext));
+        }
         context.subscriptions.push(new SelectedXcodeWatcher(outputChannel));
 
         // listen for workspace folder changes and active text editor changes

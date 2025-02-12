@@ -281,6 +281,11 @@
             },
             "markdownDescription": "Additional arguments to pass to swift commands that do package resolution, such as `swift package resolve`, `swift package update`, `swift build` and `swift test`. Keys and values should be provided as individual entries in the list."
           },
+          "swift.disableSandbox": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Disable sandboxing when running SwiftPM commands."
+          },
           "swift.additionalTestArguments": {
             "type": "array",
             "default": [],
@@ -689,7 +694,12 @@
           "swift.swiftSDK": {
             "type": "string",
             "default": "",
-            "markdownDescription": "The [Swift SDK](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0387-cross-compilation-destinations.md) to compile against (`--swift-sdk` parameter).",
+            "markdownDescription": "The [Swift SDK](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0387-cross-compilation-destinations.md) to compile against (`--swift-sdk` parameter)."
+          },
+          "swift.disableSandox": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Disable sandboxing when running SwiftPM commands. In most cases you should keep the sandbox enabled and leave this setting set to `false`",
             "order": 4
           },
           "swift.diagnostics": {
