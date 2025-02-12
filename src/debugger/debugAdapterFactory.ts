@@ -19,6 +19,9 @@ import { DebugAdapter, LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "./debu
 import { registerLoggingDebugAdapterTracker } from "./logTracker";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
+import { fileExists } from "../utilities/filesystem";
+import { getLLDBLibPath } from "./lldb";
+import { getErrorDescription } from "../utilities/utilities";
 
 /**
  * Registers the active debugger with the extension, and reregisters it
@@ -27,34 +30,10 @@ import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
  * @returns A disposable to be disposed when the extension is deactivated
  */
 export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Disposable {
-    async function updateDebugAdapter() {
-        await workspaceContext.setLLDBVersion();
-
-        // Verify that the adapter exists, but only after registration. This async method
-        // is basically an unstructured task so we don't want to run it before the adapter
-        // registration above as it could cause code executing immediately after register()
-        // to use the incorrect adapter.
-        DebugAdapter.verifyDebugAdapterExists(
-            workspaceContext.toolchain,
-            workspaceContext.outputChannel,
-            true
-        ).catch(error => {
-            workspaceContext.outputChannel.log(error);
-        });
-    }
-
     const subscriptions: vscode.Disposable[] = [
         registerLoggingDebugAdapterTracker(),
         registerLLDBDebugAdapter(workspaceContext.toolchain, workspaceContext.outputChannel),
-        vscode.workspace.onDidChangeConfiguration(event => {
-            if (event.affectsConfiguration("swift.debugger.useDebugAdapterFromToolchain")) {
-                updateDebugAdapter();
-            }
-        }),
     ];
-
-    // Perform the initial registration, then reregister every time the settings change.
-    updateDebugAdapter();
 
     return {
         dispose: () => {
@@ -79,7 +58,7 @@ function registerLLDBDebugAdapter(
 
     const debugConfigProvider = vscode.debug.registerDebugConfigurationProvider(
         SWIFT_LAUNCH_CONFIG_TYPE,
-        new LLDBDebugConfigurationProvider(process.platform, toolchain)
+        new LLDBDebugConfigurationProvider(process.platform, toolchain, outputChannel)
     );
 
     return {
@@ -117,8 +96,7 @@ export class LLDBDebugAdapterExecutableFactory implements vscode.DebugAdapterDes
     }
 
     async createDebugAdapterDescriptor(): Promise<vscode.DebugAdapterDescriptor> {
-        const path = await DebugAdapter.debugAdapterPath(this.toolchain);
-        await DebugAdapter.verifyDebugAdapterExists(this.toolchain, this.outputChannel);
+        const path = await DebugAdapter.getLLDBDebugAdapterPath(this.toolchain);
         return new vscode.DebugAdapterExecutable(path, [], {});
     }
 }
@@ -135,7 +113,8 @@ export class LLDBDebugAdapterExecutableFactory implements vscode.DebugAdapterDes
 export class LLDBDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
     constructor(
         private platform: NodeJS.Platform,
-        private toolchain: SwiftToolchain
+        private toolchain: SwiftToolchain,
+        private outputChannel: SwiftOutputChannel
     ) {}
 
     async resolveDebugConfiguration(
@@ -155,13 +134,77 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         launchConfig.type = DebugAdapter.getLaunchConfigType(this.toolchain.swiftVersion);
         if (launchConfig.type === LaunchConfigType.CODE_LLDB) {
             launchConfig.sourceLanguages = ["swift"];
+            // Prompt the user to update CodeLLDB settings if necessary
+            await this.promptForCodeLldbSettings();
         } else if (launchConfig.type === LaunchConfigType.LLDB_DAP) {
             if (launchConfig.env) {
                 launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
             }
+            const lldbDapPath = await DebugAdapter.getLLDBDebugAdapterPath(this.toolchain);
+            // Verify that the debug adapter exists or bail otherwise
+            if (!(await fileExists(lldbDapPath))) {
+                vscode.window.showErrorMessage(
+                    `Cannot find the LLDB debug adapter in your Swift toolchain: No such file or directory "${lldbDapPath}"`
+                );
+                return undefined;
+            }
         }
 
         return launchConfig;
+    }
+
+    private async promptForCodeLldbSettings(): Promise<void> {
+        const libLldbPathResult = await getLLDBLibPath(this.toolchain);
+        if (!libLldbPathResult.success) {
+            const errorMessage = `Error: ${getErrorDescription(libLldbPathResult.failure)}`;
+            vscode.window.showWarningMessage(
+                `Failed to setup CodeLLDB for debugging of Swift code. Debugging may produce unexpected results. ${errorMessage}`
+            );
+            this.outputChannel.log(`Failed to setup CodeLLDB: ${errorMessage}`);
+            return;
+        }
+        const libLldbPath = libLldbPathResult.success;
+        const lldbConfig = vscode.workspace.getConfiguration("lldb");
+        if (
+            lldbConfig.get<string>("library") === libLldbPath &&
+            lldbConfig.get<string>("launch.expressions") === "native"
+        ) {
+            return;
+        }
+        const userSelection = await vscode.window.showInformationMessage(
+            "The Swift extension needs to update some CodeLLDB settings to enable debugging features. Do you want to set this up in your global settings or workspace settings?",
+            { modal: true },
+            "Global",
+            "Workspace",
+            "Run Anyway"
+        );
+        switch (userSelection) {
+            case "Global":
+                lldbConfig.update("library", libLldbPath, vscode.ConfigurationTarget.Global);
+                lldbConfig.update(
+                    "launch.expressions",
+                    "native",
+                    vscode.ConfigurationTarget.Global
+                );
+                // clear workspace setting
+                lldbConfig.update("library", undefined, vscode.ConfigurationTarget.Workspace);
+                // clear workspace setting
+                lldbConfig.update(
+                    "launch.expressions",
+                    undefined,
+                    vscode.ConfigurationTarget.Workspace
+                );
+                break;
+            case "Workspace":
+                lldbConfig.update("library", libLldbPath, vscode.ConfigurationTarget.Workspace);
+                lldbConfig.update(
+                    "launch.expressions",
+                    "native",
+                    vscode.ConfigurationTarget.Workspace
+                );
+                break;
+        }
+        return;
     }
 
     private convertEnvironmentVariables(map: { [key: string]: string }): string[] {

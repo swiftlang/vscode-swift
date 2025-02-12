@@ -12,13 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as vscode from "vscode";
 import configuration from "../configuration";
-import contextKeys from "../contextKeys";
-import { fileExists } from "../utilities/filesystem";
 import { Version } from "../utilities/version";
 import { SwiftToolchain } from "../toolchain/toolchain";
-import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 
 /**
  * The launch configuration type added by the Swift extension that will delegate to the appropriate
@@ -61,59 +57,11 @@ export class DebugAdapter {
      * @param toolchain The Swift toolchain to use
      * @returns A path to the debug adapter for the user's toolchain and configuration
      **/
-    public static async debugAdapterPath(toolchain: SwiftToolchain): Promise<string> {
+    public static async getLLDBDebugAdapterPath(toolchain: SwiftToolchain): Promise<string> {
         const customDebugAdapterPath = configuration.debugger.customDebugAdapterPath;
         if (customDebugAdapterPath.length > 0) {
             return customDebugAdapterPath;
         }
-
-        const debugAdapter = this.getLaunchConfigType(toolchain.swiftVersion);
-        switch (debugAdapter) {
-            case LaunchConfigType.LLDB_DAP:
-                return toolchain.getLLDBDebugAdapter();
-            case LaunchConfigType.CODE_LLDB:
-                return toolchain.getLLDB();
-        }
-    }
-
-    /**
-     * Verify that the toolchain debug adapter exists and display an error message to the user
-     * if it doesn't.
-     *
-     * Has the side effect of setting the `swift.lldbVSCodeAvailable` context key depending
-     * on the result.
-     *
-     * @param workspace WorkspaceContext
-     * @param quiet Whether or not the dialog should be displayed if the adapter does not exist
-     * @returns Whether or not the debug adapter exists
-     */
-    public static async verifyDebugAdapterExists(
-        toolchain: SwiftToolchain,
-        outputChannel: SwiftOutputChannel,
-        quiet = false
-    ): Promise<boolean> {
-        const lldbDebugAdapterPath = await this.debugAdapterPath(toolchain).catch(error => {
-            outputChannel.log(error);
-            return undefined;
-        });
-
-        if (!lldbDebugAdapterPath || !(await fileExists(lldbDebugAdapterPath))) {
-            if (!quiet) {
-                const debugAdapterName = this.getLaunchConfigType(toolchain.swiftVersion);
-                vscode.window.showErrorMessage(
-                    configuration.debugger.customDebugAdapterPath.length > 0
-                        ? `Cannot find ${debugAdapterName} debug adapter specified in setting Swift.Debugger.Path.`
-                        : `Cannot find ${debugAdapterName} debug adapter in your Swift toolchain.`
-                );
-            }
-            if (lldbDebugAdapterPath) {
-                outputChannel.log(`Failed to find ${lldbDebugAdapterPath}`);
-            }
-            contextKeys.lldbVSCodeAvailable = false;
-            return false;
-        }
-
-        contextKeys.lldbVSCodeAvailable = true;
-        return true;
+        return toolchain.getLLDBDebugAdapter();
     }
 }

@@ -17,9 +17,8 @@ import * as path from "path";
 import { FolderContext } from "./FolderContext";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
-import { swiftLibraryPathKey, getErrorDescription } from "./utilities/utilities";
+import { swiftLibraryPathKey } from "./utilities/utilities";
 import { pathExists, isPathInsidePath } from "./utilities/filesystem";
-import { getLLDBLibPath } from "./debugger/lldb";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 import { TemporaryFolder } from "./utilities/tempFolder";
 import { TaskManager } from "./tasks/TaskManager";
@@ -29,7 +28,6 @@ import configuration from "./configuration";
 import contextKeys from "./contextKeys";
 import { setSnippetContextKey } from "./SwiftSnippets";
 import { CommentCompletionProviders } from "./editor/CommentCompletion";
-import { DebugAdapter, LaunchConfigType } from "./debugger/debugAdapter";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { DiagnosticsManager } from "./DiagnosticsManager";
@@ -442,76 +440,6 @@ export class WorkspaceContext implements vscode.Disposable {
     onDidChangeSwiftFiles(listener: (event: SwiftFileEvent) => unknown): vscode.Disposable {
         this.swiftFileObservers.add(listener);
         return { dispose: () => this.swiftFileObservers.delete(listener) };
-    }
-
-    /** find LLDB version and setup path in CodeLLDB */
-    async setLLDBVersion() {
-        // check we are using CodeLLDB
-        if (DebugAdapter.getLaunchConfigType(this.swiftVersion) !== LaunchConfigType.CODE_LLDB) {
-            return;
-        }
-        const libPathResult = await getLLDBLibPath(this.toolchain);
-        if (!libPathResult.success) {
-            // if failure message is undefined then fail silently
-            if (!libPathResult.failure) {
-                return;
-            }
-            const errorMessage = `Error: ${getErrorDescription(libPathResult.failure)}`;
-            vscode.window.showErrorMessage(
-                `Failed to setup CodeLLDB for debugging of Swift code. Debugging may produce unexpected results. ${errorMessage}`
-            );
-            this.outputChannel.log(`Failed to setup CodeLLDB: ${errorMessage}`);
-            return;
-        }
-
-        const libPath = libPathResult.success;
-        const lldbConfig = vscode.workspace.getConfiguration("lldb");
-        const configLLDBPath = lldbConfig.get<string>("library");
-        const expressions = lldbConfig.get<string>("launch.expressions");
-        if (configLLDBPath === libPath && expressions === "native") {
-            return;
-        }
-
-        // show dialog for setting up LLDB
-        vscode.window
-            .showInformationMessage(
-                "The Swift extension needs to update some CodeLLDB settings to enable debugging features. Do you want to set this up in your global settings or the workspace settings?",
-                "Global",
-                "Workspace",
-                "Cancel"
-            )
-            .then(result => {
-                switch (result) {
-                    case "Global":
-                        lldbConfig.update("library", libPath, vscode.ConfigurationTarget.Global);
-                        lldbConfig.update(
-                            "launch.expressions",
-                            "native",
-                            vscode.ConfigurationTarget.Global
-                        );
-                        // clear workspace setting
-                        lldbConfig.update(
-                            "library",
-                            undefined,
-                            vscode.ConfigurationTarget.Workspace
-                        );
-                        // clear workspace setting
-                        lldbConfig.update(
-                            "launch.expressions",
-                            undefined,
-                            vscode.ConfigurationTarget.Workspace
-                        );
-                        break;
-                    case "Workspace":
-                        lldbConfig.update("library", libPath, vscode.ConfigurationTarget.Workspace);
-                        lldbConfig.update(
-                            "launch.expressions",
-                            "native",
-                            vscode.ConfigurationTarget.Workspace
-                        );
-                        break;
-                }
-            });
     }
 
     /** set focus based on the file a TextEditor is editing */

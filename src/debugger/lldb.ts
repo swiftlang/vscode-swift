@@ -33,8 +33,8 @@ export const CI_DISABLE_ASLR =
         : {};
 
 /**
- * Get LLDB library for given LLDB executable
- * @param executable LLDB executable
+ * Get the path to the LLDB library.
+ *
  * @returns Library path for LLDB
  */
 export async function getLLDBLibPath(toolchain: SwiftToolchain): Promise<Result<string>> {
