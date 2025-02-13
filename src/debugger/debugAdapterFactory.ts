@@ -22,6 +22,7 @@ import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { fileExists } from "../utilities/filesystem";
 import { getLLDBLibPath } from "./lldb";
 import { getErrorDescription } from "../utilities/utilities";
+import configuration from "../configuration";
 
 /**
  * Registers the active debugger with the extension, and reregisters it
@@ -172,13 +173,27 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         ) {
             return;
         }
-        const userSelection = await vscode.window.showInformationMessage(
-            "The Swift extension needs to update some CodeLLDB settings to enable debugging features. Do you want to set this up in your global settings or workspace settings?",
-            { modal: true },
-            "Global",
-            "Workspace",
-            "Run Anyway"
-        );
+        let userSelection: "Global" | "Workspace" | "Run Anyway" | undefined = undefined;
+        switch (configuration.debugger.setupCodeLLDB) {
+            case "prompt":
+                userSelection = await vscode.window.showInformationMessage(
+                    "The Swift extension needs to update some CodeLLDB settings to enable debugging features. Do you want to set this up in your global settings or workspace settings?",
+                    { modal: true },
+                    "Global",
+                    "Workspace",
+                    "Run Anyway"
+                );
+                break;
+            case "alwaysUpdateGlobal":
+                userSelection = "Global";
+                break;
+            case "alwaysUpdateWorkspace":
+                userSelection = "Workspace";
+                break;
+            case "never":
+                userSelection = "Run Anyway";
+                break;
+        }
         switch (userSelection) {
             case "Global":
                 lldbConfig.update("library", libLldbPath, vscode.ConfigurationTarget.Global);

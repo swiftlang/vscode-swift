@@ -1,7 +1,8 @@
 {
     "swift.disableAutoResolve": true,
     "swift.autoGenerateLaunchConfigurations": false,
-    "swift.debugger.useDebugAdapterFromToolchain": true,
+    "swift.debugger.debugAdapter": "lldb-dap",
+    "swift.debugger.setupCodeLLDB": "alwaysUpdateGlobal",
     "swift.additionalTestArguments": [
         "-Xswiftc",
         "-DTEST_ARGUMENT_SET_VIA_TEST_BUILD_ARGUMENTS_SETTING"

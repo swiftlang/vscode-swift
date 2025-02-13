@@ -38,6 +38,7 @@ import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import * as debugAdapter from "../../../src/debugger/debugAdapter";
 import { Result } from "../../../src/utilities/result";
+import configuration from "../../../src/configuration";
 
 suite("LLDBDebugAdapterExecutableFactory Tests", () => {
     const mockDebugAdapter = mockGlobalModule(DebugAdapter);
@@ -83,6 +84,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
     suite("CodeLLDB selected in settings", () => {
         let mockLldbConfiguration: MockedObject<vscode.WorkspaceConfiguration>;
         const mockLLDB = mockGlobalModule(lldb);
+        const mockDebuggerConfig = mockGlobalObject(configuration, "debugger");
         const mockWorkspace = mockGlobalObject(vscode, "workspace");
 
         setup(() => {
@@ -95,6 +97,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             });
             mockWorkspace.getConfiguration.returns(instance(mockLldbConfiguration));
             mockLLDB.getLLDBLibPath.resolves(Result.makeSuccess("/path/to/liblldb.dyLib"));
+            mockDebuggerConfig.setupCodeLLDB = "prompt";
             mockDebugAdapter.getLaunchConfigType.returns(LaunchConfigType.CODE_LLDB);
         });
 
@@ -130,6 +133,29 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 })
             ).to.eventually.be.an("object");
             expect(mockWindow.showInformationMessage).to.have.been.calledOnce;
+            expect(mockLldbConfiguration.update).to.have.been.calledWith(
+                "library",
+                "/path/to/liblldb.dyLib"
+            );
+        });
+
+        test("avoids prompting the user about CodeLLDB if requested in settings", async () => {
+            mockDebuggerConfig.setupCodeLLDB = "alwaysUpdateGlobal";
+            mockLldbConfiguration.get.withArgs("library").returns(undefined);
+            const configProvider = new LLDBDebugConfigurationProvider(
+                "darwin",
+                instance(mockToolchain),
+                instance(mockOutputChannel)
+            );
+            await expect(
+                configProvider.resolveDebugConfiguration(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "${workspaceFolder}/.build/debug/executable",
+                })
+            ).to.eventually.be.an("object");
+            expect(mockWindow.showInformationMessage).to.not.have.been.called;
             expect(mockLldbConfiguration.update).to.have.been.calledWith(
                 "library",
                 "/path/to/liblldb.dyLib"

@@ -46,7 +46,6 @@ import {
     updateSettings,
 } from "../utilities/testutilities";
 import { Commands } from "../../../src/commands";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 
 suite("Test Explorer Suite", function () {
     const MAX_TEST_RUN_TIME_MINUTES = 5;
@@ -129,18 +128,6 @@ suite("Test Explorer Suite", function () {
         });
 
         suite("CodeLLDB", () => {
-            async function getLLDBDebugAdapterPath() {
-                switch (process.platform) {
-                    case "linux":
-                        return "/usr/lib/liblldb.so";
-                    case "darwin":
-                    case "win32":
-                        return await (await SwiftToolchain.create()).getLLDBDebugAdapter();
-                    default:
-                        throw new Error("Please provide the path to lldb for this platform");
-                }
-            }
-
             let resetSettings: (() => Promise<void>) | undefined;
             beforeEach(async function () {
                 // CodeLLDB on windows doesn't print output and so cannot be parsed
@@ -148,17 +135,8 @@ suite("Test Explorer Suite", function () {
                     this.skip();
                 }
 
-                const lldbPath =
-                    process.env["CI"] === "1"
-                        ? {
-                              "lldb.library": await getLLDBDebugAdapterPath(),
-                              "lldb.launch.expressions": "native",
-                          }
-                        : {};
-
                 resetSettings = await updateSettings({
-                    "swift.debugger.useDebugAdapterFromToolchain": false,
-                    ...lldbPath,
+                    "swift.debugger.debugAdapter": "CodeLLDB",
                 });
             });
 
