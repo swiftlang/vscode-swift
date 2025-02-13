@@ -147,7 +147,10 @@ suite("Test Explorer Suite", function () {
 
                 const lldbPath =
                     process.env["CI"] === "1"
-                        ? { "lldb.library": await getLLDBDebugAdapterPath() }
+                        ? {
+                              "lldb.library": await getLLDBDebugAdapterPath(),
+                              "lldb.launch.expressions": "native",
+                          }
                         : {};
 
                 resetSettings = await updateSettings({
