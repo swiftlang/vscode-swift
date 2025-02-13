@@ -1,7 +1,7 @@
 {
     "configurations": [
         {
-            "type": "swift-lldb",
+            "type": "swift",
             "request": "launch",
             "name": "Debug PackageExe (defaultPackage)",
             "program": "${workspaceFolder:test}/defaultPackage/.build/debug/PackageExe",
@@ -12,7 +12,7 @@
             "initCommands": ["settings set target.disable-aslr false"],
         },
         {
-            "type": "swift-lldb",
+            "type": "swift",
             "request": "launch",
             "name": "Release PackageExe (defaultPackage)",
             "program": "${workspaceFolder:test}/defaultPackage/.build/release/PackageExe",
