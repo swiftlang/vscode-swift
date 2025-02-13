@@ -202,14 +202,15 @@ export class BuildFlags {
         if (!configuration.disableSandbox) {
             return args;
         }
+        const disableSandboxFlags = ["--disable-sandbox", "-Xswiftc", "-disable-sandbox"];
         switch (args[0]) {
             case "package": {
-                return [args[0], ...BuildFlags.disableSandboxFlags(), ...args.slice(1)];
+                return [args[0], ...disableSandboxFlags, ...args.slice(1)];
             }
             case "build":
             case "run":
             case "test": {
-                return [...args, ...BuildFlags.disableSandboxFlags()];
+                return [...args, ...disableSandboxFlags];
             }
             default:
                 // Do nothing for other commands
@@ -221,13 +222,6 @@ export class BuildFlags {
         return this.withSwiftPackageFlags(
             this.withDisableSandboxFlags(this.withSwiftSDKFlags(args))
         );
-    }
-
-    /**
-     * Get flags for disabling sandboxing when running SwiftPM
-     */
-    static disableSandboxFlags(): string[] {
-        return ["--disable-sandbox", "-Xswiftc", "-disable-sandbox"];
     }
 
     /**
