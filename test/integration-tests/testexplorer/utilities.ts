@@ -160,7 +160,11 @@ export function assertTestResults(
             skipped: (state.skipped ?? []).sort(),
             errored: (state.errored ?? []).sort(),
             unknown: 0,
-        }
+        },
+        `
+        Build Output:
+        ${testRun.runState.output.join("\n")}
+        `
     );
 }
 
@@ -280,6 +284,9 @@ export async function runTest(
     const testItems = await gatherTests(testExplorer.controller, ...tests);
     const request = new vscode.TestRunRequest(testItems);
 
+    // The first promise is the return value, the second promise builds and runs
+    // the tests, populating the TestRunProxy with results and blocking the return
+    // of that TestRunProxy until the test run is complete.
     return (
         await Promise.all([
             eventPromise(testExplorer.onCreateTestRun),
