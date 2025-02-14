@@ -30,7 +30,7 @@ export class SwiftExecution extends vscode.CustomExecution {
         public readonly command: string,
         public readonly args: string[],
         public readonly options: SwiftExecutionOptions,
-        swiftProcess: SwiftProcess = new SwiftPtyProcess(command, args, options)
+        private readonly swiftProcess: SwiftProcess = new SwiftPtyProcess(command, args, options)
     ) {
         super(async () => {
             return new SwiftPseudoterminal(swiftProcess, options.presentation || {});
@@ -54,4 +54,11 @@ export class SwiftExecution extends vscode.CustomExecution {
      * @see {@link SwiftProcess.onDidClose}
      */
     onDidClose: vscode.Event<number | void>;
+
+    /**
+     * Terminate the underlying executable.
+     */
+    terminate(signal?: NodeJS.Signals) {
+        this.swiftProcess.terminate(signal);
+    }
 }
