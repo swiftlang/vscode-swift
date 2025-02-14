@@ -1,4 +1,6 @@
-import Testing
+import XCTest
 
-@Test func example() async throws {
+class TargetsTests: XCTestCase {
+    func testExample() {
+    }
 }
