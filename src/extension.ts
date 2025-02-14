@@ -102,11 +102,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                     event.affectsConfiguration("swift.SDK") ||
                     event.affectsConfiguration("swift.swiftSDK")
                 ) {
-                    // FIXME: There is a bug stopping us from restarting SourceKit-LSP directly.
-                    // As long as it's fixed we won't need to reload on newer versions.
-                    showReloadExtensionNotification(
-                        "Changing the Swift SDK path requires the project be reloaded."
-                    );
+                    vscode.commands.executeCommand("swift.restartLSPServer");
                 } else if (event.affectsConfiguration("swift.swiftEnvironmentVariables")) {
                     showReloadExtensionNotification(
                         "Changing environment variables requires the project be reloaded."

@@ -125,7 +125,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             }
         }),
         // Note: This is only available on macOS (gated in `package.json`) because its the only OS that has the iOS SDK available.
-        vscode.commands.registerCommand("swift.switchPlatform", () => switchPlatform()),
+        vscode.commands.registerCommand("swift.switchPlatform", () => switchPlatform(ctx)),
         vscode.commands.registerCommand(Commands.RESET_PACKAGE, () => resetPackage(ctx)),
         vscode.commands.registerCommand("swift.runScript", () => runSwiftScript(ctx)),
         vscode.commands.registerCommand("swift.openPackage", () => {

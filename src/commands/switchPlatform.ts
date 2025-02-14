@@ -13,13 +13,19 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { DarwinCompatibleTarget, SwiftToolchain } from "../toolchain/toolchain";
+import {
+    DarwinCompatibleTarget,
+    SwiftToolchain,
+    getDarwinTargetTriple,
+} from "../toolchain/toolchain";
 import configuration from "../configuration";
+import { Version } from "../utilities/version";
+import { WorkspaceContext } from "../WorkspaceContext";
 
 /**
- * Switches the target SDK to the platform selected in a QuickPick UI.
+ * Switches the appropriate SDK setting to the platform selected in a QuickPick UI.
  */
-export async function switchPlatform() {
+export async function switchPlatform(ctx: WorkspaceContext) {
     const picked = await vscode.window.showQuickPick(
         [
             { value: undefined, label: "macOS" },
@@ -29,28 +35,39 @@ export async function switchPlatform() {
             { value: DarwinCompatibleTarget.visionOS, label: "visionOS" },
         ],
         {
-            placeHolder: "Select a new target",
+            placeHolder: "Select a new target platform",
         }
     );
     if (picked) {
+        if (ctx.toolchain.swiftVersion.isLessThan(new Version(6, 1, 0))) {
+            vscode.window.showWarningMessage(
+                "Code editing support for non-macOS platforms is only available starting Swift 6.1"
+            );
+        }
+        // show a status item as getSDKForTarget can sometimes take a long while to xcrun for the SDK
+        const statusItemText = `Setting target platform to ${picked.label}`;
+        ctx.statusItem.start(statusItemText);
         try {
-            const sdkForTarget = picked.value
-                ? await SwiftToolchain.getSDKForTarget(picked.value)
-                : "";
-            if (sdkForTarget !== undefined) {
-                if (sdkForTarget !== "") {
-                    configuration.sdk = sdkForTarget;
-                    vscode.window.showWarningMessage(
-                        `Selecting the ${picked.label} SDK will provide code editing support, but compiling with this SDK will have undefined results.`
-                    );
-                } else {
-                    configuration.sdk = undefined;
-                }
+            if (picked.value) {
+                // verify that the SDK for the platform actually exists
+                await SwiftToolchain.getSDKForTarget(picked.value);
+            }
+            const swiftSDKTriple = picked.value ? getDarwinTargetTriple(picked.value) : "";
+            if (swiftSDKTriple !== "") {
+                // set a swiftSDK for non-macOS Darwin platforms so that SourceKit-LSP can provide syntax highlighting
+                configuration.swiftSDK = swiftSDKTriple;
+                vscode.window.showWarningMessage(
+                    `Selecting the ${picked.label} target platform will provide code editing support, but compiling with a ${picked.label} SDK will have undefined results.`
+                );
             } else {
-                vscode.window.showErrorMessage("Unable to obtain requested SDK path");
+                // set swiftSDK to undefined for macOS and other platforms
+                configuration.swiftSDK = undefined;
             }
         } catch {
-            vscode.window.showErrorMessage("Unable to obtain requested SDK path");
+            vscode.window.showErrorMessage(
+                `Unable set the Swift SDK setting to ${picked.label}, verify that the SDK exists`
+            );
         }
+        ctx.statusItem.end(statusItemText);
     }
 }
