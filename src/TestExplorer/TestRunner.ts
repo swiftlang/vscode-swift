@@ -729,7 +729,14 @@ export class TestRunner {
                 outputStream.write(replaced);
             });
 
+            // If the test run is iterrupted by a cancellation request from VS Code, ensure the task is terminated.
+            const cancellationDisposable = this.testRun.token.onCancellationRequested(() => {
+                task.execution.terminate("SIGINT");
+            });
+
             task.execution.onDidClose(code => {
+                cancellationDisposable.dispose();
+
                 // undefined or 0 are viewed as success
                 if (!code) {
                     resolve();
@@ -925,7 +932,6 @@ export class TestRunner {
                             return;
                         }
 
-                        // add cancelation
                         const startSession = vscode.debug.onDidStartDebugSession(session => {
                             if (config.testType === TestLibrary.xctest) {
                                 this.testRun.testRunStarted();
@@ -945,6 +951,7 @@ export class TestRunner {
                                 }
                             );
 
+                            // add cancellation
                             const cancellation = this.testRun.token.onCancellationRequested(() => {
                                 this.workspaceContext.outputChannel.logDiagnostic(
                                     "Test Debugging Cancelled",
