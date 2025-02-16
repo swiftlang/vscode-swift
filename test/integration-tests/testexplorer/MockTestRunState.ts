@@ -24,8 +24,8 @@ export enum TestStatus {
     skipped = "skipped",
 }
 
-/** TestItem */
-interface TestItem {
+/** TestRunTestItem */
+export interface TestRunTestItem {
     name: string;
     status: TestStatus;
     issues?: {
@@ -40,11 +40,11 @@ interface TestItem {
 
 interface ITestItemFinder {
     getIndex(id: string): number;
-    tests: TestItem[];
+    tests: TestRunTestItem[];
 }
 
 export class DarwinTestItemFinder implements ITestItemFinder {
-    tests: TestItem[] = [];
+    tests: TestRunTestItem[] = [];
     getIndex(id: string): number {
         const index = this.tests.findIndex(item => item.name === id);
         if (index === -1) {
@@ -56,7 +56,7 @@ export class DarwinTestItemFinder implements ITestItemFinder {
 }
 
 export class NonDarwinTestItemFinder implements ITestItemFinder {
-    tests: TestItem[] = [];
+    tests: TestRunTestItem[] = [];
     getIndex(id: string): number {
         const index = this.tests.findIndex(item => item.name.endsWith(id));
         if (index === -1) {
@@ -81,7 +81,7 @@ export class TestRunState implements ITestRunState {
 
     public testItemFinder: ITestItemFinder;
 
-    get tests(): TestItem[] {
+    get tests(): TestRunTestItem[] {
         return this.testItemFinder.tests;
     }
 
