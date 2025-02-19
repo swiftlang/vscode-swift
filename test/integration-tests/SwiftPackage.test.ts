@@ -45,9 +45,16 @@ suite("SwiftPackage Test Suite", () => {
         assert.strictEqual(spmPackage.targets.length, 2);
     }).timeout(10000);
 
-    test("Package resolve v2", async () => {
-        if (toolchain && toolchain.swiftVersion.isLessThan(new Version(5, 6, 0))) {
+    test("Package resolve v2", async function () {
+        if (!toolchain) {
             return;
+        }
+        if (
+            (process.platform === "win32" &&
+                toolchain.swiftVersion.isLessThan(new Version(6, 0, 0))) ||
+            toolchain.swiftVersion.isLessThan(new Version(5, 6, 0))
+        ) {
+            this.skip();
         }
         const spmPackage = await SwiftPackage.create(testAssetUri("package5.6"), toolchain);
         assert.strictEqual(spmPackage.isValid, true);
