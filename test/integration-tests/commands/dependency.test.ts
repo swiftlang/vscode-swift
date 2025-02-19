@@ -106,6 +106,7 @@ suite("Dependency Commmands Test Suite", function () {
         }
 
         test("Swift: Reset Package Dependencies", async function () {
+            this.skip(); // https://github.com/swiftlang/vscode-swift/issues/1316
             // spm reset after using local dependency is broken on windows
             if (process.platform === "win32") {
                 this.skip();
@@ -121,7 +122,8 @@ suite("Dependency Commmands Test Suite", function () {
             expect(dep?.type).to.equal("remote");
         });
 
-        test("Swift: Revert To Original Version", async () => {
+        test("Swift: Revert To Original Version", async function () {
+            this.skip(); // https://github.com/swiftlang/vscode-swift/issues/1316
             await useLocalDependencyTest();
 
             const result = await vscode.commands.executeCommand(
