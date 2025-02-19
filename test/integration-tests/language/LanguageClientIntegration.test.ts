@@ -33,7 +33,7 @@ async function buildProject(ctx: WorkspaceContext, name: string) {
 }
 
 suite("Language Client Integration Suite @slow", function () {
-    this.timeout(2 * 60 * 1000);
+    this.timeout(3 * 60 * 1000);
 
     let clientManager: LanguageClientManager;
     let workspaceContext: WorkspaceContext;

@@ -44,7 +44,12 @@ async function uneditFolderDependency(
 ) {
     try {
         const uneditOperation = new SwiftExecOperation(
-            ["package", "unedit", ...args, identifier],
+            ctx.toolchain.buildFlags.withAdditionalFlags([
+                "package",
+                "unedit",
+                ...args,
+                identifier,
+            ]),
             folder,
             `Finish editing ${identifier}`,
             { showStatusItem: true, checkAlreadyRunning: false, log: "Unedit" },

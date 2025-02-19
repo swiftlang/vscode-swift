@@ -34,6 +34,7 @@ suite("lldb contract test suite", () => {
             }
             workspaceContext = ctx;
         },
+        requiresDebugger: true,
     });
 
     test("getLldbProcess Contract Test, make sure the command returns", async () => {

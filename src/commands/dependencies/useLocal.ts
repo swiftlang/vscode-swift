@@ -50,7 +50,13 @@ export async function useLocalDependency(
         folder = folders[0];
     }
     const task = createSwiftTask(
-        ["package", "edit", "--path", folder.fsPath, identifier],
+        ctx.toolchain.buildFlags.withAdditionalFlags([
+            "package",
+            "edit",
+            "--path",
+            folder.fsPath,
+            identifier,
+        ]),
         "Edit Package Dependency",
         {
             scope: currentFolder.workspaceFolder,

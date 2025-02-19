@@ -52,6 +52,8 @@ export interface DebuggerConfiguration {
     readonly debugAdapter: DebugAdapters;
     /** Return path to debug adapter */
     readonly customDebugAdapterPath: string;
+    /** Whether or not to disable setting up the debugger */
+    readonly disable: boolean;
 }
 
 /** workspace folder configuration */
@@ -211,6 +213,11 @@ const configuration = {
             },
             get customDebugAdapterPath(): string {
                 return vscode.workspace.getConfiguration("swift.debugger").get<string>("path", "");
+            },
+            get disable(): boolean {
+                return vscode.workspace
+                    .getConfiguration("swift.debugger")
+                    .get<boolean>("disable", false);
             },
         };
     },
@@ -374,6 +381,10 @@ const configuration = {
         return vscode.workspace
             .getConfiguration("swift")
             .get<boolean>("enableTerminalEnvironment", true);
+    },
+    /** Whether or not to disable SwiftPM sandboxing */
+    get disableSandbox(): boolean {
+        return vscode.workspace.getConfiguration("swift").get<boolean>("disableSandbox", false);
     },
 };
 

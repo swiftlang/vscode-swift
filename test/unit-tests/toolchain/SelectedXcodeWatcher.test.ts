@@ -16,11 +16,20 @@ import * as vscode from "vscode";
 import { expect } from "chai";
 import { SelectedXcodeWatcher } from "../../../src/toolchain/SelectedXcodeWatcher";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
-import { instance, MockedObject, mockFn, mockGlobalObject, mockObject } from "../../MockUtils";
+import {
+    instance,
+    MockedObject,
+    mockFn,
+    mockGlobalObject,
+    mockGlobalValue,
+    mockObject,
+} from "../../MockUtils";
+import configuration from "../../../src/configuration";
 
 suite("Selected Xcode Watcher", () => {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
     let mockOutputChannel: MockedObject<SwiftOutputChannel>;
+    const pathConfig = mockGlobalValue(configuration, "path");
 
     setup(function () {
         // Xcode only exists on macOS, so the SelectedXcodeWatcher is macOS-only.
@@ -31,6 +40,8 @@ suite("Selected Xcode Watcher", () => {
         mockOutputChannel = mockObject<SwiftOutputChannel>({
             appendLine: mockFn(),
         });
+
+        pathConfig.setValue("");
     });
 
     async function run(symLinksOnCallback: (string | undefined)[]) {
@@ -71,5 +82,13 @@ suite("Selected Xcode Watcher", () => {
             "The Swift Extension has detected a change in the selected Xcode. Please reload the extension to apply the changes.",
             "Reload Extensions"
         );
+    });
+
+    test("Ignores when path is explicitly set", async () => {
+        pathConfig.setValue("/path/to/swift/bin");
+
+        await run(["/foo", "/bar"]);
+
+        expect(mockedVSCodeWindow.showWarningMessage).to.have.not.been.called;
     });
 });

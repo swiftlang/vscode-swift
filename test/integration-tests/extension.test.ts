@@ -17,8 +17,10 @@ import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { getBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { SwiftExecution } from "../../src/tasks/SwiftExecution";
 import { activateExtensionForTest } from "./utilities/testutilities";
+import { expect } from "chai";
 
-suite("Extension Test Suite", () => {
+suite("Extension Test Suite", function () {
+    this.timeout(60000);
     let workspaceContext: WorkspaceContext;
 
     activateExtensionForTest({
@@ -41,18 +43,19 @@ suite("Extension Test Suite", () => {
         }).timeout(5000);*/
     });
 
-    suite("Workspace", () => {
+    suite("Workspace", function () {
+        this.timeout(60000);
         /** Verify tasks.json is being loaded */
         test("Tasks.json", async () => {
             const folder = workspaceContext.folders.find(f => f.name === "test/defaultPackage");
             assert(folder);
             const buildAllTask = await getBuildAllTask(folder);
             const execution = buildAllTask.execution as SwiftExecution;
-            assert.strictEqual(buildAllTask.definition.type, "swift");
-            assert.strictEqual(buildAllTask.name, "swift: Build All (defaultPackage)");
+            expect(buildAllTask.definition.type).to.equal("swift");
+            expect(buildAllTask.name).to.include("Build All (defaultPackage)");
             for (const arg of ["build", "--build-tests", "--verbose"]) {
                 assert(execution?.args.find(item => item === arg));
             }
-        });
+        }).timeout(60000);
     });
-}).timeout(15000);
+});

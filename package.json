@@ -719,7 +719,12 @@
           "swift.swiftSDK": {
             "type": "string",
             "default": "",
-            "markdownDescription": "The [Swift SDK](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0387-cross-compilation-destinations.md) to compile against (`--swift-sdk` parameter).",
+            "markdownDescription": "The [Swift SDK](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0387-cross-compilation-destinations.md) to compile against (`--swift-sdk` parameter)."
+          },
+          "swift.disableSandox": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Disable sandboxing when running SwiftPM commands. In most cases you should keep the sandbox enabled and leave this setting set to `false`",
             "order": 4
           },
           "swift.diagnostics": {
