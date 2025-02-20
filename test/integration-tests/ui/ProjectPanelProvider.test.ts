@@ -13,14 +13,21 @@
 //===----------------------------------------------------------------------===//
 
 import { expect } from "chai";
+import { beforeEach, afterEach } from "mocha";
 import * as vscode from "vscode";
 import * as path from "path";
 import { ProjectPanelProvider, PackageNode, FileNode } from "../../../src/ui/ProjectPanelProvider";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
 import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
 import { testAssetPath } from "../../fixtures";
-import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
+import {
+    activateExtensionForSuite,
+    folderInRootWorkspace,
+    updateSettings,
+} from "../utilities/testutilities";
 import contextKeys from "../../../src/contextKeys";
+import { SwiftToolchain } from "../../../src/toolchain/toolchain";
+import { getLLDBLibPath } from "../../../src/debugger/lldb";
 
 suite("ProjectPanelProvider Test Suite", function () {
     let treeProvider: ProjectPanelProvider;
@@ -30,8 +37,10 @@ suite("ProjectPanelProvider Test Suite", function () {
         async setup(ctx) {
             const workspaceContext = ctx;
             await waitForNoRunningTasks();
-            await folderInRootWorkspace("defaultPackage", workspaceContext);
             const folderContext = await folderInRootWorkspace("targets", workspaceContext);
+            await vscode.workspace.openTextDocument(
+                path.join(folderContext.folder.fsPath, "Package.swift")
+            );
             await executeTaskAndWaitForResult((await getBuildAllTask(folderContext)) as SwiftTask);
             await folderContext.loadSwiftPlugins();
             treeProvider = new ProjectPanelProvider(workspaceContext);
@@ -42,6 +51,36 @@ suite("ProjectPanelProvider Test Suite", function () {
             treeProvider.dispose();
         },
         testAssets: ["targets"],
+    });
+
+    async function getLLDBDebugAdapterPath() {
+        switch (process.platform) {
+            case "linux":
+                return "/usr/lib/liblldb.so";
+            case "win32":
+                return await (await SwiftToolchain.create()).getLLDBDebugAdapter();
+            default:
+                return getLLDBLibPath(await SwiftToolchain.create());
+        }
+    }
+
+    let resetSettings: (() => Promise<void>) | undefined;
+    beforeEach(async function () {
+        const lldbPath = {
+            "lldb.library": await getLLDBDebugAdapterPath(),
+            "lldb.launch.expressions": "native",
+        };
+
+        resetSettings = await updateSettings({
+            "swift.debugger.useDebugAdapterFromToolchain": false,
+            ...lldbPath,
+        });
+    });
+
+    afterEach(async () => {
+        if (resetSettings) {
+            await resetSettings();
+        }
     });
 
     test("Includes top level nodes", async () => {
@@ -79,8 +118,12 @@ suite("ProjectPanelProvider Test Suite", function () {
 
         test("Executes a task", async () => {
             const tasks = await getHeaderChildren("Tasks");
-            const task = tasks.find(n => n.name === "Build All (targets)");
-            expect(task).to.not.be.undefined;
+            const taskName = "Build All (targets)";
+            const task = tasks.find(n => n.name === taskName);
+            expect(
+                task,
+                `Expected to find task called ${taskName}, but instead items were ${tasks.map(n => n.name)}`
+            ).to.not.be.undefined;
             const treeItem = task?.toTreeItem();
             expect(treeItem?.command).to.not.be.undefined;
             expect(treeItem?.command?.arguments).to.not.be.undefined;
