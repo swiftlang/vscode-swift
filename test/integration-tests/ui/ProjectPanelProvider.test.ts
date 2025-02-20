@@ -39,7 +39,9 @@ suite("ProjectPanelProvider Test Suite", function () {
             await vscode.workspace.openTextDocument(
                 path.join(folderContext.folder.fsPath, "Package.swift")
             );
-            await executeTaskAndWaitForResult((await getBuildAllTask(folderContext)) as SwiftTask);
+            const buildAllTask = await getBuildAllTask(folderContext);
+            buildAllTask.definition.dontTriggerTestDiscovery = true;
+            await executeTaskAndWaitForResult(buildAllTask as SwiftTask);
             await folderContext.loadSwiftPlugins();
             treeProvider = new ProjectPanelProvider(workspaceContext);
             await workspaceContext.focusFolder(folderContext);
@@ -56,8 +58,6 @@ suite("ProjectPanelProvider Test Suite", function () {
         resetSettings = await updateSettings({
             "swift.debugger.debugAdapter": "CodeLLDB",
         });
-
-        await waitForNoRunningTasks();
     });
 
     afterEach(async () => {
@@ -96,6 +96,9 @@ suite("ProjectPanelProvider Test Suite", function () {
     });
 
     suite("Tasks", () => {
+        beforeEach(async () => {
+            await waitForNoRunningTasks();
+        });
         test("Includes tasks", async () => {
             const tasks = await getHeaderChildren("Tasks");
             const dep = tasks.find(n => n.name === "Build All (targets)") as PackageNode;
