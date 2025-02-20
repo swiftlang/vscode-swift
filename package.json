@@ -1458,9 +1458,7 @@
       }
     ]
   },
-  "extensionDependencies": [
-    "vadimcn.vscode-lldb"
-  ],
+  "extensionDependencies": [],
   "scripts": {
     "vscode:prepublish": "npm run bundle",
     "bundle": "del-cli ./dist && npm run bundle-extension && npm run bundle-documentation-webview",
