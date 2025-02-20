@@ -36,6 +36,7 @@ export type DiagnosticCollectionOptions =
     | "keepSwiftc"
     | "keepSourceKit"
     | "keepAll";
+export type DiagnosticStyle = "default" | "llvm" | "swift";
 
 /** sourcekit-lsp configuration */
 export interface LSPConfiguration {
@@ -367,8 +368,10 @@ const configuration = {
             .get<DiagnosticCollectionOptions>("diagnosticsCollection", "keepSourceKit");
     },
     /** set the -diagnostic-style option when running `swift` tasks */
-    get diagnosticsStyle(): "default" | "llvm" | "swift" {
-        return vscode.workspace.getConfiguration("swift").get("diagnosticsStyle", "llvm");
+    get diagnosticsStyle(): DiagnosticStyle {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<DiagnosticStyle>("diagnosticsStyle", "llvm");
     },
     /** where to show the build progress for the running task */
     get showBuildStatus(): ShowBuildStatusOptions {
