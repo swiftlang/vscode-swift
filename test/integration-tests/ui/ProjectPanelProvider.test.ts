@@ -26,8 +26,6 @@ import {
     updateSettings,
 } from "../utilities/testutilities";
 import contextKeys from "../../../src/contextKeys";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
-import { getLLDBLibPath } from "../../../src/debugger/lldb";
 
 suite("ProjectPanelProvider Test Suite", function () {
     let treeProvider: ProjectPanelProvider;
@@ -53,27 +51,10 @@ suite("ProjectPanelProvider Test Suite", function () {
         testAssets: ["targets"],
     });
 
-    async function getLLDBDebugAdapterPath() {
-        switch (process.platform) {
-            case "linux":
-                return "/usr/lib/liblldb.so";
-            case "win32":
-                return await (await SwiftToolchain.create()).getLLDBDebugAdapter();
-            default:
-                return (await getLLDBLibPath(await SwiftToolchain.create())).success;
-        }
-    }
-
     let resetSettings: (() => Promise<void>) | undefined;
     beforeEach(async function () {
-        const lldbPath = {
-            "lldb.library": await getLLDBDebugAdapterPath(),
-            "lldb.launch.expressions": "native",
-        };
-
         resetSettings = await updateSettings({
-            "swift.debugger.useDebugAdapterFromToolchain": false,
-            ...lldbPath,
+            "swift.debugger.debugAdapter": "CodeLLDB",
         });
 
         await waitForNoRunningTasks();

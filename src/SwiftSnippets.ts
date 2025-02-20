@@ -119,7 +119,8 @@ export async function debugSnippetWithOptions(
                 ctx.buildFinished(snippetName, snippetDebugConfig, options);
                 return result;
             });
-    } catch {
+    } catch (error) {
+        ctx.outputChannel.appendLine(`Failed to debug snippet: ${error}`);
         // ignore error if task failed to run
         return false;
     }
