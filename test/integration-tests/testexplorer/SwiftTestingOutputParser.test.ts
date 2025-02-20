@@ -41,6 +41,7 @@ class TestEventStream {
 
 suite("SwiftTestingOutputParser Suite", () => {
     let outputParser: SwiftTestingOutputParser;
+    let testRunState: TestRunState;
 
     beforeEach(() => {
         outputParser = new SwiftTestingOutputParser(
@@ -48,6 +49,7 @@ suite("SwiftTestingOutputParser Suite", () => {
             () => {},
             () => {}
         );
+        testRunState = new TestRunState(true);
     });
 
     type ExtractPayload<T> = T extends { payload: infer E } ? E : never;
@@ -76,7 +78,6 @@ suite("SwiftTestingOutputParser Suite", () => {
     }
 
     test("Passed test", async () => {
-        const testRunState = new TestRunState(["MyTests.MyTests/testPass()"], true);
         const events = new TestEventStream([
             testEvent("runStarted"),
             testEvent("testCaseStarted", "MyTests.MyTests/testPass()"),
@@ -97,7 +98,6 @@ suite("SwiftTestingOutputParser Suite", () => {
     });
 
     test("Skipped test", async () => {
-        const testRunState = new TestRunState(["MyTests.MyTests/testSkip()"], true);
         const events = new TestEventStream([
             testEvent("runStarted"),
             testEvent("testSkipped", "MyTests.MyTests/testSkip()"),
@@ -116,7 +116,6 @@ suite("SwiftTestingOutputParser Suite", () => {
     });
 
     async function performTestFailure(messages: EventMessage[]) {
-        const testRunState = new TestRunState(["MyTests.MyTests/testFail()"], true);
         const issueLocation = {
             _filePath: "file:///some/file.swift",
             line: 1,
@@ -174,7 +173,6 @@ suite("SwiftTestingOutputParser Suite", () => {
     });
 
     test("Parameterized test", async () => {
-        const testRunState = new TestRunState(["MyTests.MyTests/testParameterized()"], true);
         const events = new TestEventStream([
             {
                 kind: "test",
@@ -270,10 +268,6 @@ suite("SwiftTestingOutputParser Suite", () => {
     });
 
     test("Output is captured", async () => {
-        const testRunState = new TestRunState(
-            ["MyTests.MyTests/testOutput()", "MyTests.MyTests/testOutput2()"],
-            true
-        );
         const symbol = TestSymbol.pass;
         const makeEvent = (kind: ExtractPayload<EventRecord>["kind"], testId?: string) =>
             testEvent(kind, testId, [{ text: kind, symbol }]);

@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as assert from "assert";
+import { beforeEach } from "mocha";
 import {
     darwinTestRegex,
     nonDarwinTestRegex,
@@ -29,10 +30,14 @@ suite("XCTestOutputParser Suite", () => {
             .map(line => `${line}\r\n`);
 
     suite("Darwin", () => {
-        const outputParser = new XCTestOutputParser(darwinTestRegex);
+        let outputParser: XCTestOutputParser;
+        let testRunState: TestRunState;
+        beforeEach(() => {
+            outputParser = new XCTestOutputParser(darwinTestRegex);
+            testRunState = new TestRunState(true);
+        });
 
         test("Passed Test", () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testPass"], true);
             const input = `Test Case '-[MyTests.MyTests testPass]' started.
 Test Case '-[MyTests.MyTests testPass]' passed (0.001 seconds).
 `;
@@ -49,10 +54,6 @@ Test Case '-[MyTests.MyTests testPass]' passed (0.001 seconds).
         });
 
         test("Multiple Passed Tests", () => {
-            const testRunState = new TestRunState(
-                ["MyTests.MyTests/testPass", "MyTests.MyTests/testPass2"],
-                true
-            );
             const test1Input = `Test Case '-[MyTests.MyTests testPass]' started.
 Test Case '-[MyTests.MyTests testPass]' passed (0.001 seconds).
 `;
@@ -80,89 +81,88 @@ Test Case '-[MyTests.MyTests testPass2]' passed (0.001 seconds).
         });
 
         test("Failed Test", () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testFail"], true);
             const input = `Test Case '-[MyTests.MyTests testFail]' started.
 /Users/user/Developer/MyTests/MyTests.swift:59: error: -[MyTests.MyTests testFail] : XCTAssertEqual failed: ("1") is not equal to ("2")
 Test Case '-[MyTests.MyTests testFail]' failed (0.106 seconds).
 `;
-            const runState = testRunState.tests[0];
             outputParser.parseResult(input, testRunState);
 
-            assert.deepEqual(runState, {
-                name: "MyTests.MyTests/testFail",
-                status: TestStatus.failed,
-                timing: { duration: 0.106 },
-                issues: [
-                    {
-                        message: `XCTAssertEqual failed: ("1") is not equal to ("2")`,
-                        location: sourceLocationToVSCodeLocation(
-                            "/Users/user/Developer/MyTests/MyTests.swift",
-                            59,
-                            0
-                        ),
-                        isKnown: false,
-                        diff: {
-                            expected: '"1"',
-                            actual: '"2"',
+            assert.deepEqual(testRunState.tests, [
+                {
+                    name: "MyTests.MyTests/testFail",
+                    status: TestStatus.failed,
+                    timing: { duration: 0.106 },
+                    issues: [
+                        {
+                            message: `XCTAssertEqual failed: ("1") is not equal to ("2")`,
+                            location: sourceLocationToVSCodeLocation(
+                                "/Users/user/Developer/MyTests/MyTests.swift",
+                                59,
+                                0
+                            ),
+                            isKnown: false,
+                            diff: {
+                                expected: '"1"',
+                                actual: '"2"',
+                            },
                         },
-                    },
-                ],
-                output: inputToTestOutput(input),
-            });
+                    ],
+                    output: inputToTestOutput(input),
+                },
+            ]);
         });
 
         test("Skipped Test", () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testSkip"], true);
             const input = `Test Case '-[MyTests.MyTests testSkip]' started.
 /Users/user/Developer/MyTests/MyTests.swift:90: -[MyTests.MyTests testSkip] : Test skipped
 Test Case '-[MyTests.MyTests testSkip]' skipped (0.002 seconds).
 `;
 
-            const runState = testRunState.tests[0];
             outputParser.parseResult(input, testRunState);
 
-            assert.deepEqual(runState, {
-                name: "MyTests.MyTests/testSkip",
-                status: TestStatus.skipped,
-                output: inputToTestOutput(input),
-            });
+            assert.deepEqual(testRunState.tests, [
+                {
+                    name: "MyTests.MyTests/testSkip",
+                    status: TestStatus.skipped,
+                    output: inputToTestOutput(input),
+                },
+            ]);
         });
 
         test("Multi-line Fail", () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testFail"], true);
             const input = `Test Case '-[MyTests.MyTests testFail]' started.
 /Users/user/Developer/MyTests/MyTests.swift:59: error: -[MyTests.MyTests testFail] : failed - Multiline
 fail
 message
 Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
 `;
-            const runState = testRunState.tests[0];
             outputParser.parseResult(input, testRunState);
 
-            assert.deepEqual(runState, {
-                name: "MyTests.MyTests/testFail",
-                status: TestStatus.failed,
-                timing: { duration: 0.571 },
-                issues: [
-                    {
-                        message: `failed - Multiline
+            assert.deepEqual(testRunState.tests, [
+                {
+                    name: "MyTests.MyTests/testFail",
+                    status: TestStatus.failed,
+                    timing: { duration: 0.571 },
+                    issues: [
+                        {
+                            message: `failed - Multiline
 fail
 message`,
-                        location: sourceLocationToVSCodeLocation(
-                            "/Users/user/Developer/MyTests/MyTests.swift",
-                            59,
-                            0
-                        ),
-                        isKnown: false,
-                        diff: undefined,
-                    },
-                ],
-                output: inputToTestOutput(input),
-            });
+                            location: sourceLocationToVSCodeLocation(
+                                "/Users/user/Developer/MyTests/MyTests.swift",
+                                59,
+                                0
+                            ),
+                            isKnown: false,
+                            diff: undefined,
+                        },
+                    ],
+                    output: inputToTestOutput(input),
+                },
+            ]);
         });
 
         test("Multi-line Fail followed by another error", () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testFail"], true);
             const input = `Test Case '-[MyTests.MyTests testFail]' started.
 /Users/user/Developer/MyTests/MyTests.swift:59: error: -[MyTests.MyTests testFail] : failed - Multiline
 fail
@@ -170,104 +170,101 @@ message
 /Users/user/Developer/MyTests/MyTests.swift:61: error: -[MyTests.MyTests testFail] : failed - Again
 Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
 `;
-            const runState = testRunState.tests[0];
             outputParser.parseResult(input, testRunState);
 
-            assert.deepEqual(runState, {
-                name: "MyTests.MyTests/testFail",
-                status: TestStatus.failed,
-                timing: { duration: 0.571 },
-                issues: [
-                    {
-                        message: `failed - Multiline
+            assert.deepEqual(testRunState.tests, [
+                {
+                    name: "MyTests.MyTests/testFail",
+                    status: TestStatus.failed,
+                    timing: { duration: 0.571 },
+                    issues: [
+                        {
+                            message: `failed - Multiline
 fail
 message`,
-                        location: sourceLocationToVSCodeLocation(
-                            "/Users/user/Developer/MyTests/MyTests.swift",
-                            59,
-                            0
-                        ),
-                        isKnown: false,
-                        diff: undefined,
-                    },
-                    {
-                        message: `failed - Again`,
-                        location: sourceLocationToVSCodeLocation(
-                            "/Users/user/Developer/MyTests/MyTests.swift",
-                            61,
-                            0
-                        ),
-                        isKnown: false,
-                        diff: undefined,
-                    },
-                ],
-                output: inputToTestOutput(input),
-            });
+                            location: sourceLocationToVSCodeLocation(
+                                "/Users/user/Developer/MyTests/MyTests.swift",
+                                59,
+                                0
+                            ),
+                            isKnown: false,
+                            diff: undefined,
+                        },
+                        {
+                            message: `failed - Again`,
+                            location: sourceLocationToVSCodeLocation(
+                                "/Users/user/Developer/MyTests/MyTests.swift",
+                                61,
+                                0
+                            ),
+                            isKnown: false,
+                            diff: undefined,
+                        },
+                    ],
+                    output: inputToTestOutput(input),
+                },
+            ]);
         });
 
         test("Single-line Fail followed by another error", () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testFail"], true);
             const input = `Test Case '-[MyTests.MyTests testFail]' started.
 /Users/user/Developer/MyTests/MyTests.swift:59: error: -[MyTests.MyTests testFail] : failed - Message
 /Users/user/Developer/MyTests/MyTests.swift:61: error: -[MyTests.MyTests testFail] : failed - Again
 Test Case '-[MyTests.MyTests testFail]' failed (0.571 seconds).
 `;
-            const runState = testRunState.tests[0];
             outputParser.parseResult(input, testRunState);
 
-            assert.deepEqual(runState, {
-                name: "MyTests.MyTests/testFail",
-                status: TestStatus.failed,
-                timing: { duration: 0.571 },
-                issues: [
-                    {
-                        message: `failed - Message`,
-                        location: sourceLocationToVSCodeLocation(
-                            "/Users/user/Developer/MyTests/MyTests.swift",
-                            59,
-                            0
-                        ),
-                        isKnown: false,
-                        diff: undefined,
-                    },
-                    {
-                        message: `failed - Again`,
-                        location: sourceLocationToVSCodeLocation(
-                            "/Users/user/Developer/MyTests/MyTests.swift",
-                            61,
-                            0
-                        ),
-                        isKnown: false,
-                        diff: undefined,
-                    },
-                ],
-                output: inputToTestOutput(input),
-            });
+            assert.deepEqual(testRunState.tests, [
+                {
+                    name: "MyTests.MyTests/testFail",
+                    status: TestStatus.failed,
+                    timing: { duration: 0.571 },
+                    issues: [
+                        {
+                            message: `failed - Message`,
+                            location: sourceLocationToVSCodeLocation(
+                                "/Users/user/Developer/MyTests/MyTests.swift",
+                                59,
+                                0
+                            ),
+                            isKnown: false,
+                            diff: undefined,
+                        },
+                        {
+                            message: `failed - Again`,
+                            location: sourceLocationToVSCodeLocation(
+                                "/Users/user/Developer/MyTests/MyTests.swift",
+                                61,
+                                0
+                            ),
+                            isKnown: false,
+                            diff: undefined,
+                        },
+                    ],
+                    output: inputToTestOutput(input),
+                },
+            ]);
         });
 
         test("Split line", () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testPass"], true);
             const input1 = `Test Case '-[MyTests.MyTests testPass]' started.
 Test Case '-[MyTests.MyTests`;
             const input2 = ` testPass]' passed (0.006 seconds).
 `;
-            const runState = testRunState.tests[0];
             outputParser.parseResult(input1, testRunState);
             outputParser.parseResult(input2, testRunState);
 
-            assert.deepEqual(runState, {
-                name: "MyTests.MyTests/testPass",
-                status: TestStatus.passed,
-                timing: { duration: 0.006 },
-                output: inputToTestOutput(input1 + input2),
-            });
+            assert.deepEqual(testRunState.tests, [
+                {
+                    name: "MyTests.MyTests/testPass",
+                    status: TestStatus.passed,
+                    timing: { duration: 0.006 },
+                    output: inputToTestOutput(input1 + input2),
+                },
+            ]);
         });
 
         test("Suite", () => {
-            const testRunState = new TestRunState(
-                ["MyTests.MyTests", "MyTests.MyTests/testPass"],
-                true
-            );
             const input = `Test Suite 'MyTests' started at 2024-08-26 13:19:25.325.
 Test Case '-[MyTests.MyTests testPass]' started.
 Test Case '-[MyTests.MyTests testPass]' passed (0.001 seconds).
@@ -294,7 +291,6 @@ Test Suite 'MyTests' passed at 2024-08-26 13:19:25.328.
         });
 
         test("Empty Suite", () => {
-            const testRunState = new TestRunState([], true);
             const input = `Test Suite 'Selected tests' started at 2024-10-19 15:23:29.594.
 Test Suite 'EmptyAppPackageTests.xctest' started at 2024-10-19 15:23:29.595.
 Test Suite 'EmptyAppPackageTests.xctest' passed at 2024-10-19 15:23:29.595.
@@ -310,15 +306,6 @@ warning: No matching test cases were run`;
         });
 
         test("Multiple Suites", () => {
-            const testRunState = new TestRunState(
-                [
-                    "MyTests.TestSuite1",
-                    "MyTests.TestSuite1/testFirst",
-                    "MyTests.TestSuite2",
-                    "MyTests.TestSuite2/testSecond",
-                ],
-                true
-            );
             const input = `Test Suite 'All tests' started at 2024-10-20 21:54:32.568.
 Test Suite 'EmptyAppPackageTests.xctest' started at 2024-10-20 21:54:32.570.
 Test Suite 'TestSuite1' started at 2024-10-20 21:54:32.570.
@@ -371,15 +358,6 @@ Test Suite 'All tests' passed at 2024-10-20 21:54:32.571.
         });
 
         test("Multiple Suites with Failed Test", () => {
-            const testRunState = new TestRunState(
-                [
-                    "MyTests.TestSuite1",
-                    "MyTests.TestSuite1/testFirst",
-                    "MyTests.TestSuite2",
-                    "MyTests.TestSuite2/testSecond",
-                ],
-                true
-            );
             const input = `Test Suite 'Selected tests' started at 2024-10-20 22:01:46.206.
 Test Suite 'EmptyAppPackageTests.xctest' started at 2024-10-20 22:01:46.207.
 Test Suite 'TestSuite1' started at 2024-10-20 22:01:46.207.
@@ -445,38 +423,38 @@ Test Suite 'Selected tests' failed at 2024-10-20 22:01:46.306.
 
         suite("Diffs", () => {
             const testRun = (message: string, expected?: string, actual?: string) => {
-                const testRunState = new TestRunState(["MyTests.MyTests/testFail"], true);
                 const input = `Test Case '-[MyTests.MyTests testFail]' started.
 /Users/user/Developer/MyTests/MyTests.swift:59: error: -[MyTests.MyTests testFail] : ${message}
 Test Case '-[MyTests.MyTests testFail]' failed (0.106 seconds).
 `;
-                const runState = testRunState.tests[0];
                 outputParser.parseResult(input, testRunState);
 
-                assert.deepEqual(runState, {
-                    name: "MyTests.MyTests/testFail",
-                    status: TestStatus.failed,
-                    timing: { duration: 0.106 },
-                    issues: [
-                        {
-                            message,
-                            location: sourceLocationToVSCodeLocation(
-                                "/Users/user/Developer/MyTests/MyTests.swift",
-                                59,
-                                0
-                            ),
-                            isKnown: false,
-                            diff:
-                                expected && actual
-                                    ? {
-                                          expected,
-                                          actual,
-                                      }
-                                    : undefined,
-                        },
-                    ],
-                    output: inputToTestOutput(input),
-                });
+                assert.deepEqual(testRunState.tests, [
+                    {
+                        name: "MyTests.MyTests/testFail",
+                        status: TestStatus.failed,
+                        timing: { duration: 0.106 },
+                        issues: [
+                            {
+                                message,
+                                location: sourceLocationToVSCodeLocation(
+                                    "/Users/user/Developer/MyTests/MyTests.swift",
+                                    59,
+                                    0
+                                ),
+                                isKnown: false,
+                                diff:
+                                    expected && actual
+                                        ? {
+                                              expected,
+                                              actual,
+                                          }
+                                        : undefined,
+                            },
+                        ],
+                        output: inputToTestOutput(input),
+                    },
+                ]);
             };
 
             test("XCTAssertEqual", () => {
@@ -503,70 +481,75 @@ Test Case '-[MyTests.MyTests testFail]' failed (0.106 seconds).
     });
 
     suite("Linux", () => {
-        const outputParser = new XCTestOutputParser(nonDarwinTestRegex);
+        let outputParser: XCTestOutputParser;
+        let testRunState: TestRunState;
+        beforeEach(() => {
+            outputParser = new XCTestOutputParser(nonDarwinTestRegex);
+            testRunState = new TestRunState(false);
+        });
 
         test("Passed Test", () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testPass"], false);
             const input = `Test Case 'MyTests.testPass' started.
 Test Case 'MyTests.testPass' passed (0.001 seconds).
 `;
-            const runState = testRunState.tests[0];
             outputParser.parseResult(input, testRunState);
 
-            assert.deepEqual(runState, {
-                name: "MyTests.MyTests/testPass",
-                status: TestStatus.passed,
-                timing: { duration: 0.001 },
-                output: inputToTestOutput(input),
-            });
+            assert.deepEqual(testRunState.tests, [
+                {
+                    name: "MyTests/testPass",
+                    status: TestStatus.passed,
+                    timing: { duration: 0.001 },
+                    output: inputToTestOutput(input),
+                },
+            ]);
         });
 
         test("Failed Test", () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testFail"], false);
             const input = `Test Case 'MyTests.testFail' started.
 /Users/user/Developer/MyTests/MyTests.swift:59: error: MyTests.testFail : XCTAssertEqual failed: ("1") is not equal to ("2")
 Test Case 'MyTests.testFail' failed (0.106 seconds).
 `;
-            const runState = testRunState.tests[0];
             outputParser.parseResult(input, testRunState);
 
-            assert.deepEqual(runState, {
-                name: "MyTests.MyTests/testFail",
-                status: TestStatus.failed,
-                timing: { duration: 0.106 },
-                issues: [
-                    {
-                        message: `XCTAssertEqual failed: ("1") is not equal to ("2")`,
-                        location: sourceLocationToVSCodeLocation(
-                            "/Users/user/Developer/MyTests/MyTests.swift",
-                            59,
-                            0
-                        ),
-                        isKnown: false,
-                        diff: {
-                            expected: '"1"',
-                            actual: '"2"',
+            assert.deepEqual(testRunState.tests, [
+                {
+                    name: "MyTests/testFail",
+                    status: TestStatus.failed,
+                    timing: { duration: 0.106 },
+                    issues: [
+                        {
+                            message: `XCTAssertEqual failed: ("1") is not equal to ("2")`,
+                            location: sourceLocationToVSCodeLocation(
+                                "/Users/user/Developer/MyTests/MyTests.swift",
+                                59,
+                                0
+                            ),
+                            isKnown: false,
+                            diff: {
+                                expected: '"1"',
+                                actual: '"2"',
+                            },
                         },
-                    },
-                ],
-                output: inputToTestOutput(input),
-            });
+                    ],
+                    output: inputToTestOutput(input),
+                },
+            ]);
         });
 
         test("Skipped Test", () => {
-            const testRunState = new TestRunState(["MyTests.MyTests/testSkip"], false);
             const input = `Test Case 'MyTests.testSkip' started.
 /Users/user/Developer/MyTests/MyTests.swift:90: MyTests.testSkip : Test skipped
 Test Case 'MyTests.testSkip' skipped (0.002 seconds).
 `;
-            const runState = testRunState.tests[0];
             outputParser.parseResult(input, testRunState);
 
-            assert.deepEqual(runState, {
-                name: "MyTests.MyTests/testSkip",
-                status: TestStatus.skipped,
-                output: inputToTestOutput(input),
-            });
+            assert.deepEqual(testRunState.tests, [
+                {
+                    name: "MyTests/testSkip",
+                    status: TestStatus.skipped,
+                    output: inputToTestOutput(input),
+                },
+            ]);
         });
     });
 });
