@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.2 - 2025-02-20
+
+### Fixed
+
+- Fix debugging of Swift tests when using Xcode 16.1 Beta ([#1396](https://github.com/swiftlang/vscode-swift/pull/1396))
+
 ## 2.0.1 - 2025-02-10
 
 Rename the `displayName` of the extension back to `Swift` now that the old `sswg` extension has been renamed to `Swift (Deprecated)`.
