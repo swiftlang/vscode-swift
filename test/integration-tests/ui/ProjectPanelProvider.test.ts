@@ -75,6 +75,8 @@ suite("ProjectPanelProvider Test Suite", function () {
             "swift.debugger.useDebugAdapterFromToolchain": false,
             ...lldbPath,
         });
+
+        await waitForNoRunningTasks();
     });
 
     afterEach(async () => {
