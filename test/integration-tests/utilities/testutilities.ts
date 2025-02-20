@@ -73,6 +73,7 @@ const extensionBootstrapper = (() => {
     ) {
         let workspaceContext: WorkspaceContext | undefined;
         let autoTeardown: void | (() => Promise<void>);
+        let restoreSettings: (() => Promise<void>) | undefined;
         before(async function () {
             // Always activate the extension. If no test assets are provided,
             // default to adding `defaultPackage` to the workspace.
@@ -91,6 +92,12 @@ const extensionBootstrapper = (() => {
             }
             if (requiresDebugger && configuration.debugger.disable) {
                 this.skip();
+            }
+            // CodeLLDB does not work with libllbd in Swift toolchains prior to 5.10
+            if (workspaceContext.swiftVersion.isLessThan(new Version(5, 10, 0))) {
+                restoreSettings = await updateSettings({
+                    "swift.debugger.setupCodeLLDB": "never",
+                });
             }
             if (!setup) {
                 return;
@@ -120,6 +127,9 @@ const extensionBootstrapper = (() => {
                 }
                 if (autoTeardown) {
                     await autoTeardown();
+                }
+                if (restoreSettings) {
+                    await restoreSettings();
                 }
             } catch (error) {
                 if (workspaceContext) {

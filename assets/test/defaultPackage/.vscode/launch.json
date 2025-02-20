@@ -1,7 +1,7 @@
 {
     "configurations": [
         {
-            "type": "swift-lldb",
+            "type": "swift",
             "request": "launch",
             "name": "Debug package1",
             "program": "${workspaceFolder:defaultPackage}/.build/debug/package1",
@@ -10,7 +10,7 @@
             "preLaunchTask": "swift: Build Debug package1"
         },
         {
-            "type": "swift-lldb",
+            "type": "swift",
             "request": "launch",
             "name": "Release package1",
             "program": "${workspaceFolder:defaultPackage}/.build/release/package1",

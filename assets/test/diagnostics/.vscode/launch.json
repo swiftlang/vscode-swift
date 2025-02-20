@@ -1,7 +1,7 @@
 {
     "configurations": [
         {
-            "type": "swift-lldb",
+            "type": "swift",
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:diagnostics}",
@@ -10,7 +10,7 @@
             "preLaunchTask": "swift: Build Debug diagnostics"
         },
         {
-            "type": "swift-lldb",
+            "type": "swift",
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:diagnostics}",
@@ -19,7 +19,7 @@
             "preLaunchTask": "swift: Build Release diagnostics"
         },
         {
-            "type": "swift-lldb",
+            "type": "swift",
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:diagnostics}",
@@ -28,7 +28,7 @@
             "preLaunchTask": "swift: Build Debug diagnostics"
         },
         {
-            "type": "swift-lldb",
+            "type": "swift",
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:diagnostics}",

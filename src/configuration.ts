@@ -15,6 +15,11 @@
 import * as vscode from "vscode";
 
 export type DebugAdapters = "auto" | "lldb-dap" | "CodeLLDB";
+export type SetupCodeLLDBOptions =
+    | "prompt"
+    | "alwaysUpdateGlobal"
+    | "alwaysUpdateWorkspace"
+    | "never";
 export type CFamilySupportOptions = "enable" | "disable" | "cpptools-inactive";
 export type ActionAfterBuildError = "Focus Problems" | "Focus Terminal" | "Do Nothing";
 export type OpenAfterCreateNewProjectOptions =
@@ -54,6 +59,8 @@ export interface DebuggerConfiguration {
     readonly customDebugAdapterPath: string;
     /** Whether or not to disable setting up the debugger */
     readonly disable: boolean;
+    /** User choices for updating CodeLLDB settings */
+    readonly setupCodeLLDB: SetupCodeLLDBOptions;
 }
 
 /** workspace folder configuration */
@@ -218,6 +225,11 @@ const configuration = {
                 return vscode.workspace
                     .getConfiguration("swift.debugger")
                     .get<boolean>("disable", false);
+            },
+            get setupCodeLLDB(): SetupCodeLLDBOptions {
+                return vscode.workspace
+                    .getConfiguration("swift.debugger")
+                    .get<SetupCodeLLDBOptions>("setupCodeLLDB", "prompt");
             },
         };
     },
