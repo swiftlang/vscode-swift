@@ -27,7 +27,7 @@ export const SWIFT_LAUNCH_CONFIG_TYPE = "swift";
  * LLDB launch requests.
  */
 export const enum LaunchConfigType {
-    LLDB_DAP = "swift",
+    LLDB_DAP = "lldb-dap",
     CODE_LLDB = "lldb",
 }
 

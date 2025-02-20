@@ -14,10 +14,7 @@
 
 import * as vscode from "vscode";
 import { expect } from "chai";
-import {
-    LLDBDebugAdapterExecutableFactory,
-    LLDBDebugConfigurationProvider,
-} from "../../../src/debugger/debugAdapterFactory";
+import { LLDBDebugConfigurationProvider } from "../../../src/debugger/debugAdapterFactory";
 import { Version } from "../../../src/utilities/version";
 import {
     mockGlobalObject,
@@ -28,45 +25,13 @@ import {
     mockFn,
 } from "../../MockUtils";
 import * as mockFS from "mock-fs";
-import {
-    DebugAdapter,
-    LaunchConfigType,
-    SWIFT_LAUNCH_CONFIG_TYPE,
-} from "../../../src/debugger/debugAdapter";
+import { LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "../../../src/debugger/debugAdapter";
 import * as lldb from "../../../src/debugger/lldb";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import * as debugAdapter from "../../../src/debugger/debugAdapter";
 import { Result } from "../../../src/utilities/result";
 import configuration from "../../../src/configuration";
-
-suite("LLDBDebugAdapterExecutableFactory Tests", () => {
-    const mockDebugAdapter = mockGlobalModule(DebugAdapter);
-    let mockToolchain: MockedObject<SwiftToolchain>;
-    let mockOutputChannel: MockedObject<SwiftOutputChannel>;
-
-    setup(() => {
-        mockToolchain = mockObject<SwiftToolchain>({});
-        mockOutputChannel = mockObject<SwiftOutputChannel>({
-            log: mockFn(),
-        });
-    });
-
-    test("should return a DebugAdapterExecutable with the path to lldb-dap", async () => {
-        const toolchainPath = "/path/to/debug/adapter";
-
-        mockDebugAdapter.getLLDBDebugAdapterPath.resolves(toolchainPath);
-
-        const factory = new LLDBDebugAdapterExecutableFactory(
-            instance(mockToolchain),
-            instance(mockOutputChannel)
-        );
-        const result = await factory.createDebugAdapterDescriptor();
-
-        expect(result).to.be.instanceOf(vscode.DebugAdapterExecutable);
-        expect(result).to.have.property("command").that.equals(toolchainPath);
-    });
-});
 
 suite("LLDBDebugConfigurationProvider Tests", () => {
     let mockToolchain: MockedObject<SwiftToolchain>;
@@ -188,7 +153,10 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 request: "launch",
                 program: "${workspaceFolder}/.build/debug/executable",
             });
-            expect(launchConfig).to.containSubset({ type: LaunchConfigType.LLDB_DAP });
+            expect(launchConfig).to.containSubset({
+                type: LaunchConfigType.LLDB_DAP,
+                debugAdapterExecutable: "/path/to/lldb-dap",
+            });
         });
 
         test("fails if the path to lldb-dap could not be found", async () => {
