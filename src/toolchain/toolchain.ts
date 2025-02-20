@@ -462,7 +462,9 @@ export class SwiftToolchain {
         if (!base) {
             return undefined;
         }
-        return path.join(base, "Library/Frameworks");
+        const frameworks = path.join(base, "Library/Frameworks");
+        const privateFrameworks = path.join(base, "Library/PrivateFrameworks");
+        return `${frameworks}:${privateFrameworks}`;
     }
 
     get diagnostics(): string {
