@@ -20,7 +20,7 @@ suite("SwiftOutputChannel", function () {
     const channels: SwiftOutputChannel[] = [];
     setup(function () {
         const channelName = `SwiftOutputChannel Tests ${this.currentTest?.id ?? "<unknown test>"}`;
-        channel = new SwiftOutputChannel(channelName, false, 3);
+        channel = new SwiftOutputChannel(channelName, 3);
         channels.push(channel);
     });
 

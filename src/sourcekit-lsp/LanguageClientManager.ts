@@ -532,7 +532,7 @@ export class LanguageClientManager implements vscode.Disposable {
             documentSelector: LanguageClientManager.documentSelector,
             revealOutputChannelOn: RevealOutputChannelOn.Never,
             workspaceFolder: workspaceFolder,
-            outputChannel: new SwiftOutputChannel("SourceKit Language Server", false),
+            outputChannel: new SwiftOutputChannel("SourceKit Language Server"),
             middleware: {
                 provideCodeLenses: async (document, token, next) => {
                     const result = await next(document, token);

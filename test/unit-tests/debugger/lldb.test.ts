@@ -154,7 +154,7 @@ suite("debugger.lldb Tests", () => {
             });
             mockContext = mockObject<WorkspaceContext>({
                 toolchain: instance(mockToolchain),
-                outputChannel: new SwiftOutputChannel("mockChannel", false),
+                outputChannel: new SwiftOutputChannel("mockChannel"),
             });
         });
 

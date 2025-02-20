@@ -790,7 +790,7 @@ export class SwiftToolchain {
         const plistKey = type === "XCTest" ? "XCTEST_VERSION" : "SWIFT_TESTING_VERSION";
         const version = infoPlist.DefaultProperties[plistKey];
         if (!version) {
-            new SwiftOutputChannel("swift", true).appendLine(
+            new SwiftOutputChannel("swift").appendLine(
                 `Warning: ${platformManifest} is missing the ${plistKey} key.`
             );
             return undefined;
