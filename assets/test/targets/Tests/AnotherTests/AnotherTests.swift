@@ -1,8 +1,8 @@
 import LibraryTarget
 import XCTest
 
-class TargetsTests: XCTestCase {
+class AnotherTests: XCTestCase {
     func testExample() {
-        foo()
+        bar()
     }
 }

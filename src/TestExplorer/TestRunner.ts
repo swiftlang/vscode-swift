@@ -521,13 +521,26 @@ export class TestRunner {
     }
 
     /**
+     * Extracts a list of unique test Targets from the list of test items.
+     */
+    private testTargets(items: vscode.TestItem[]): string[] {
+        const targets = new Set<string>();
+        for (const item of items) {
+            const target = item.id.split(".")[0];
+            targets.add(target);
+        }
+        return Array.from(targets);
+    }
+
+    /**
      * Test run handler. Run a series of tests and extracts the results from the output
      * @param shouldDebug Should we run the debugger
      * @param token Cancellation token
      * @returns When complete
      */
     async runHandler() {
-        this.workspaceContext.testsStarted(this.folderContext, this.testKind);
+        const testTargets = this.testTargets(this.testArgs.testItems);
+        this.workspaceContext.testsStarted(this.folderContext, this.testKind, testTargets);
 
         const runState = new TestRunnerTestRunState(this.testRun);
 
@@ -554,7 +567,7 @@ export class TestRunner {
         cancellationDisposable.dispose();
         await this.testRun.end();
 
-        this.workspaceContext.testsFinished(this.folderContext, this.testKind);
+        this.workspaceContext.testsFinished(this.folderContext, this.testKind, testTargets);
     }
 
     /** Run test session without attaching to a debugger */

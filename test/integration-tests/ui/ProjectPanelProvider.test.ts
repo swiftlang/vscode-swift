@@ -60,7 +60,7 @@ suite("ProjectPanelProvider Test Suite", function () {
             case "win32":
                 return await (await SwiftToolchain.create()).getLLDBDebugAdapter();
             default:
-                return getLLDBLibPath(await SwiftToolchain.create());
+                return (await getLLDBLibPath(await SwiftToolchain.create())).success;
         }
     }
 
@@ -102,7 +102,13 @@ suite("ProjectPanelProvider Test Suite", function () {
             expect(
                 targetNames,
                 `Expected to find dependencies target, but instead items were ${targetNames}`
-            ).to.deep.equal(["ExecutableTarget", "LibraryTarget", "PluginTarget", "TargetsTests"]);
+            ).to.deep.equal([
+                "ExecutableTarget",
+                "LibraryTarget",
+                "PluginTarget",
+                "AnotherTests",
+                "TargetsTests",
+            ]);
         });
     });
 
@@ -130,7 +136,6 @@ suite("ProjectPanelProvider Test Suite", function () {
             if (treeItem && treeItem.command && treeItem.command.arguments) {
                 const command = treeItem.command.command;
                 const args = treeItem.command.arguments;
-                console.log("Executing", command, args);
                 const result = await vscode.commands.executeCommand(command, ...args);
                 expect(result).to.be.true;
             }
@@ -142,30 +147,15 @@ suite("ProjectPanelProvider Test Suite", function () {
             const snippets = await getHeaderChildren("Snippets");
             const snippetNames = snippets.map(n => n.name);
             expect(snippetNames).to.deep.equal(["AnotherSnippet", "Snippet"]);
-
-            for (const snippet of snippets) {
-                const snippetTasks = await snippet.getChildren();
-                expect(snippetTasks.map(n => n.name)).to.deep.equal(["Run", "Debug"]);
-            }
         });
 
         test("Executes a snippet", async () => {
             const snippets = await getHeaderChildren("Snippets");
             const snippet = snippets.find(n => n.name === "Snippet");
             expect(snippet).to.not.be.undefined;
-            const tasks = await snippet?.getChildren();
-            const runTask = tasks?.find(n => n.name === "Run");
-            expect(runTask).to.not.be.undefined;
-            expect(runTask).to.not.be.undefined;
-            const treeItem = runTask?.toTreeItem();
-            expect(treeItem?.command).to.not.be.undefined;
-            expect(treeItem?.command?.arguments).to.not.be.undefined;
-            if (treeItem && treeItem.command && treeItem.command.arguments) {
-                const command = treeItem.command.command;
-                const args = treeItem.command.arguments;
-                const result = await vscode.commands.executeCommand(command, ...args);
-                expect(result).to.be.true;
-            }
+
+            const result = await vscode.commands.executeCommand("swift.runSnippet", snippet?.name);
+            expect(result).to.be.true;
         });
     });
 

@@ -348,12 +348,12 @@ export class WorkspaceContext implements vscode.Disposable {
         await this.fireEvent(folderContext, FolderOperation.focus);
     }
 
-    public testsFinished(folder: FolderContext, kind: TestKind) {
-        this.testFinishEmitter.fire({ kind, folder });
+    public testsFinished(folder: FolderContext, kind: TestKind, targets: string[]) {
+        this.testFinishEmitter.fire({ kind, folder, targets });
     }
 
-    public testsStarted(folder: FolderContext, kind: TestKind) {
-        this.testStartEmitter.fire({ kind, folder });
+    public testsStarted(folder: FolderContext, kind: TestKind, targets: string[]) {
+        this.testStartEmitter.fire({ kind, folder, targets });
     }
 
     public buildStarted(
@@ -634,6 +634,7 @@ export class WorkspaceContext implements vscode.Disposable {
 interface TestEvent {
     kind: TestKind;
     folder: FolderContext;
+    targets: string[];
 }
 
 /** Build events for build + run start/stop */

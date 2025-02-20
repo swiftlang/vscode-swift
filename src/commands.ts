@@ -38,7 +38,7 @@ import { updateDependencies } from "./commands/dependencies/update";
 import { runPluginTask } from "./commands/runPluginTask";
 import { runTestMultipleTimes } from "./commands/testMultipleTimes";
 import { newSwiftFile } from "./commands/newFile";
-import { runAllTests, runAllTestsParallel } from "./commands/runAllTests";
+import { runAllTests } from "./commands/runAllTests";
 import { updateDependenciesViewList } from "./commands/dependencies/updateDepViewList";
 import { runTask } from "./commands/runTask";
 import { TestKind } from "./TestExplorer/TestKind";
@@ -84,6 +84,10 @@ export enum Commands {
     RUN_SNIPPET = "swift.runSnippet",
     DEBUG_SNIPPET = "swift.debugSnippet",
     PREVIEW_DOCUMENTATION = "swift.previewDocumentation",
+    RUN_ALL_TESTS = "swift.runAllTests",
+    RUN_ALL_TESTS_PARALLEL = "swift.runAllTestsParallel",
+    DEBUG_ALL_TESTS = "swift.debugAllTests",
+    COVER_ALL_TESTS = "swift.coverAllTests",
 }
 
 /**
@@ -98,8 +102,12 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand(Commands.UPDATE_DEPENDENCIES, () =>
             updateDependencies(ctx)
         ),
-        vscode.commands.registerCommand(Commands.RUN, target => runBuild(ctx, target)),
-        vscode.commands.registerCommand(Commands.DEBUG, target => debugBuild(ctx, target)),
+        vscode.commands.registerCommand(Commands.RUN, target =>
+            runBuild(ctx, ...unwrapTreeItem(target))
+        ),
+        vscode.commands.registerCommand(Commands.DEBUG, target =>
+            debugBuild(ctx, ...unwrapTreeItem(target))
+        ),
         vscode.commands.registerCommand(Commands.CLEAN_BUILD, () => cleanBuild(ctx)),
         vscode.commands.registerCommand(Commands.RUN_TESTS_MULTIPLE_TIMES, item => {
             if (ctx.currentFolder) {
@@ -120,9 +128,11 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
                 return openPackage(ctx.toolchain.swiftVersion, ctx.currentFolder.folder);
             }
         }),
-        vscode.commands.registerCommand(Commands.RUN_SNIPPET, target => runSnippet(ctx, target)),
+        vscode.commands.registerCommand(Commands.RUN_SNIPPET, target =>
+            runSnippet(ctx, ...unwrapTreeItem(target))
+        ),
         vscode.commands.registerCommand(Commands.DEBUG_SNIPPET, target =>
-            debugSnippet(ctx, target)
+            debugSnippet(ctx, ...unwrapTreeItem(target))
         ),
         vscode.commands.registerCommand(Commands.RUN_PLUGIN_TASK, () => runPluginTask()),
         vscode.commands.registerCommand(Commands.RUN_TASK, name => runTask(ctx, name)),
@@ -164,12 +174,20 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         ),
         vscode.commands.registerCommand("swift.captureDiagnostics", () => captureDiagnostics(ctx)),
         vscode.commands.registerCommand(
-            "swift.runAllTestsParallel",
-            async () => await runAllTestsParallel(ctx)
+            Commands.RUN_ALL_TESTS_PARALLEL,
+            async item => await runAllTests(ctx, TestKind.parallel, ...unwrapTreeItem(item))
         ),
         vscode.commands.registerCommand(
-            "swift.runAllTests",
-            async (testKind: TestKind) => await runAllTests(ctx, testKind)
+            Commands.RUN_ALL_TESTS,
+            async item => await runAllTests(ctx, TestKind.standard, ...unwrapTreeItem(item))
+        ),
+        vscode.commands.registerCommand(
+            Commands.DEBUG_ALL_TESTS,
+            async item => await runAllTests(ctx, TestKind.debug, ...unwrapTreeItem(item))
+        ),
+        vscode.commands.registerCommand(
+            Commands.COVER_ALL_TESTS,
+            async item => await runAllTests(ctx, TestKind.coverage, ...unwrapTreeItem(item))
         ),
         vscode.commands.registerCommand(
             Commands.PREVIEW_DOCUMENTATION,
@@ -182,4 +200,17 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             updateDependenciesViewList(ctx, false)
         ),
     ];
+}
+
+/**
+ * Certain commands can be called via a vscode TreeView, which will pass a {@link CommandNode} object.
+ * If the command is called via a command palette or other means, the target will be a string.
+ */
+function unwrapTreeItem(target?: string | { args: string[] }): string[] {
+    if (typeof target === "object" && target !== null && "args" in target) {
+        return target.args ?? [];
+    } else if (typeof target === "string") {
+        return [target];
+    }
+    return [];
 }

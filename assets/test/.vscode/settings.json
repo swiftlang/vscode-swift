@@ -8,5 +8,9 @@
         "-DTEST_ARGUMENT_SET_VIA_TEST_BUILD_ARGUMENTS_SETTING"
     ],
     "lldb.verboseLogging": true,
-    "swift.backgroundCompilation": false
+    "swift.backgroundCompilation": false,
+    "swift.debugger.useDebugAdapterFromToolchain": false,
+    "lldb.library": "/usr/lib/liblldb.so",
+    "lldb.launch.expressions": "native",
+    "swift.pluginPermissions": {}
 }

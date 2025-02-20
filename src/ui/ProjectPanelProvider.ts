@@ -21,8 +21,8 @@ import { FolderOperation } from "../WorkspaceContext";
 import contextKeys from "../contextKeys";
 import { Dependency, ResolvedDependency, Target } from "../SwiftPackage";
 import { SwiftPluginTaskProvider } from "../tasks/SwiftPluginTaskProvider";
-import { TestKind } from "../TestExplorer/TestKind";
 
+const LOADING_ICON = "loading~spin";
 /**
  * References:
  *
@@ -97,14 +97,21 @@ export class PackageNode {
         const item = new vscode.TreeItem(this.name, vscode.TreeItemCollapsibleState.Collapsed);
         item.id = this.id;
         item.description = this.dependency.version;
-        item.iconPath =
-            this.dependency.type === "editing"
-                ? new vscode.ThemeIcon("edit")
-                : new vscode.ThemeIcon("package");
+        item.iconPath = new vscode.ThemeIcon(this.icon());
         item.contextValue = this.dependency.type;
         item.accessibilityInformation = { label: `Package ${this.name}` };
         item.tooltip = this.path;
         return item;
+    }
+
+    icon() {
+        if (this.dependency.type === "editing") {
+            return "edit";
+        }
+        if (this.dependency.type === "local") {
+            return "notebook-render-output";
+        }
+        return "package";
     }
 
     async getChildren(): Promise<TreeNode[]> {
@@ -174,7 +181,7 @@ class TaskNode {
     toTreeItem(): vscode.TreeItem {
         const item = new vscode.TreeItem(this.name, vscode.TreeItemCollapsibleState.None);
         item.id = `${this.type}-${this.name}`;
-        item.iconPath = new vscode.ThemeIcon(this.active ? "sync~spin" : "play");
+        item.iconPath = new vscode.ThemeIcon(this.active ? LOADING_ICON : "play");
         item.contextValue = "task";
         item.accessibilityInformation = { label: this.name };
         item.command = {
@@ -190,31 +197,17 @@ class TaskNode {
     }
 }
 
-class CommandNode {
-    constructor(
-        public command: string,
-        public name: string,
-        public args: unknown[] | undefined,
-        private active: boolean
-    ) {}
+/*
+ * Prefix a unique string on the test target name to avoid confusing it
+ * with another target that may share the same name. Targets can't start with %
+ * so this is guarenteed to be unique.
+ */
+function testTaskName(name: string): string {
+    return `%test-${name}`;
+}
 
-    toTreeItem(): vscode.TreeItem {
-        const item = new vscode.TreeItem(this.name, vscode.TreeItemCollapsibleState.None);
-        item.id = `${this.name}-${this.command}-${(this.args ?? []).join("-")}`;
-        item.iconPath = new vscode.ThemeIcon(this.active ? "sync~spin" : "play");
-        item.contextValue = "command";
-        item.accessibilityInformation = { label: this.name };
-        item.command = {
-            command: this.command,
-            arguments: this.args,
-            title: this.name,
-        };
-        return item;
-    }
-
-    getChildren(): TreeNode[] {
-        return [];
-    }
+function snippetTaskName(name: string): string {
+    return `%snippet-${name}`;
 }
 
 class TargetNode {
@@ -227,6 +220,10 @@ class TargetNode {
         return this.target.name;
     }
 
+    get args(): string[] {
+        return [this.name];
+    }
+
     toTreeItem(): vscode.TreeItem {
         const name = this.target.name;
         const hasChildren = this.getChildren().length > 0;
@@ -236,77 +233,53 @@ class TargetNode {
                 ? vscode.TreeItemCollapsibleState.Expanded
                 : vscode.TreeItemCollapsibleState.None
         );
-        item.id = name;
+        item.id = `${this.target.type}:${name}`;
         item.iconPath = new vscode.ThemeIcon(this.icon());
-        item.contextValue = "target";
+        item.contextValue = this.contextValue();
         item.accessibilityInformation = { label: name };
         return item;
     }
 
     private icon(): string {
+        if (this.activeTasks.has(this.name)) {
+            return LOADING_ICON;
+        }
+
         switch (this.target.type) {
             case "executable":
                 return "output";
             case "library":
                 return "library";
             case "test":
+                if (this.activeTasks.has(testTaskName(this.name))) {
+                    return LOADING_ICON;
+                }
                 return "test-view-icon";
             case "snippet":
+                if (this.activeTasks.has(snippetTaskName(this.name))) {
+                    return LOADING_ICON;
+                }
                 return "notebook";
             case "plugin":
                 return "plug";
         }
     }
 
-    getChildren(): TreeNode[] {
+    private contextValue(): string | undefined {
         switch (this.target.type) {
             case "executable":
-                return [
-                    new CommandNode(
-                        "swift.run",
-                        "Run",
-                        [this.target.name],
-                        this.activeTasks.has(`${this.target.name} noDebug`)
-                    ),
-                    new CommandNode(
-                        "swift.debug",
-                        "Debug",
-                        [this.target.name],
-                        this.activeTasks.has(this.target.name)
-                    ),
-                ];
-            case "test":
-                return [
-                    new CommandNode(
-                        "swift.runAllTests",
-                        TestKind.standard,
-                        [TestKind.standard],
-                        this.activeTasks.has(TestKind.standard)
-                    ),
-                    new CommandNode(
-                        "swift.runAllTests",
-                        TestKind.debug,
-                        [TestKind.debug],
-                        this.activeTasks.has(TestKind.debug)
-                    ),
-                    new CommandNode(
-                        "swift.runAllTests",
-                        TestKind.parallel,
-                        [TestKind.parallel],
-                        this.activeTasks.has(TestKind.parallel)
-                    ),
-                    new CommandNode(
-                        "swift.runAllTests",
-                        TestKind.coverage,
-                        [TestKind.coverage],
-                        this.activeTasks.has(TestKind.coverage)
-                    ),
-                ];
+                return "runnable";
             case "snippet":
-            case "library":
-            case "plugin":
-                return [];
+                return "snippet_runnable";
+            case "test":
+                return "test_runnable";
+            default:
+                return undefined;
         }
+    }
+
+    getChildren(): TreeNode[] {
+        return [];
     }
 }
 
@@ -341,10 +314,10 @@ class HeaderNode {
  *
  * Can be either a {@link PackageNode}, {@link FileNode}, {@link TargetNode}, {@link TaskNode} or {@link HeaderNode}.
  */
-type TreeNode = PackageNode | FileNode | HeaderNode | TaskNode | TargetNode | CommandNode;
+type TreeNode = PackageNode | FileNode | HeaderNode | TaskNode | TargetNode;
 
 /**
- * A {@link vscode.TreeDataProvider TreeDataProvider} for project dependencies, tasks and commands {@link vscode.TreeView TreeView}.
+ * A {@link vscode.TreeDataProvider<T> TreeDataProvider} for project dependencies, tasks and commands {@link vscode.TreeView TreeView}.
  */
 export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
     private didChangeTreeDataEmitter = new vscode.EventEmitter<
@@ -381,23 +354,31 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                 this.didChangeTreeDataEmitter.fire();
             }),
             ctx.onDidStartBuild(e => {
-                const taskId = e.options.noDebug ? `${e.targetName} noDebug` : e.targetName;
-                this.activeTasks.add(taskId);
+                if (e.launchConfig.runType === "snippet") {
+                    this.activeTasks.add(snippetTaskName(e.targetName));
+                } else {
+                    this.activeTasks.add(e.targetName);
+                }
                 this.didChangeTreeDataEmitter.fire();
             }),
             ctx.onDidFinishBuild(e => {
-                const taskId = e.options.noDebug ? `${e.targetName} noDebug` : e.targetName;
-                this.activeTasks.delete(taskId);
+                if (e.launchConfig.runType === "snippet") {
+                    this.activeTasks.delete(snippetTaskName(e.targetName));
+                } else {
+                    this.activeTasks.delete(e.targetName);
+                }
                 this.didChangeTreeDataEmitter.fire();
             }),
             ctx.onDidStartTests(e => {
-                const taskId = e.kind;
-                this.activeTasks.add(taskId);
+                for (const target of e.targets) {
+                    this.activeTasks.add(testTaskName(target));
+                }
                 this.didChangeTreeDataEmitter.fire();
             }),
             ctx.onDidFinishTests(e => {
-                const taskId = e.kind;
-                this.activeTasks.delete(taskId);
+                for (const target of e.targets) {
+                    this.activeTasks.delete(testTaskName(target));
+                }
                 this.didChangeTreeDataEmitter.fire();
             })
         );
@@ -517,12 +498,13 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         if (!folderContext) {
             return [];
         }
+        const targetSort = (node: TargetNode) => `${node.target.type}-${node.name}`;
         return (
             folderContext.swiftPackage.targets
                 // Snipepts are shown under the Snippets header
                 .filter(target => target.type !== "snippet")
                 .map(target => new TargetNode(target, this.activeTasks))
-                .sort((a, b) => a.name.localeCompare(b.name))
+                .sort((a, b) => targetSort(a).localeCompare(targetSort(b)))
         );
     }
 
@@ -566,25 +548,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         }
         return folderContext.swiftPackage.targets
             .filter(target => target.type === "snippet")
-            .flatMap(
-                target =>
-                    new HeaderNode(`snippet-${target.name}`, target.name, "symbol-snippet", () =>
-                        Promise.resolve([
-                            new CommandNode(
-                                "swift.runSnippet",
-                                "Run",
-                                [target.name],
-                                this.activeTasks.has(`${target.name} noDebug`)
-                            ),
-                            new CommandNode(
-                                "swift.debugSnippet",
-                                "Debug",
-                                [target.name],
-                                this.activeTasks.has(target.name)
-                            ),
-                        ])
-                    )
-            )
+            .flatMap(target => new TargetNode(target, this.activeTasks))
             .sort((a, b) => a.name.localeCompare(b.name));
     }
 
