@@ -26,14 +26,17 @@ import {
     updateSettings,
 } from "../utilities/testutilities";
 import contextKeys from "../../../src/contextKeys";
+import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import { Version } from "../../../src/utilities/version";
 
 suite("ProjectPanelProvider Test Suite", function () {
+    let workspaceContext: WorkspaceContext;
     let treeProvider: ProjectPanelProvider;
     this.timeout(2 * 60 * 1000); // Allow up to 2 minutes to build
 
     activateExtensionForSuite({
         async setup(ctx) {
-            const workspaceContext = ctx;
+            workspaceContext = ctx;
             await waitForNoRunningTasks();
             const folderContext = await folderInRootWorkspace("targets", workspaceContext);
             await vscode.workspace.openTextDocument(
@@ -99,23 +102,34 @@ suite("ProjectPanelProvider Test Suite", function () {
         beforeEach(async () => {
             await waitForNoRunningTasks();
         });
+
+        async function getBuildAllTask() {
+            // In Swift 5.10 and below the build tasks are disabled while other tasks that could modify .build are running.
+            // Typically because the extension has just started up in tests its `swift test list` that runs to gather tests
+            // for the test explorer. If we're running 5.10 or below, poll for the build all task for up to 60 seconds.
+            if (workspaceContext.toolchain.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+                const startTime = Date.now();
+                let task: PackageNode | undefined;
+                while (!task && Date.now() - startTime < 45 * 1000) {
+                    const tasks = await getHeaderChildren("Tasks");
+                    task = tasks.find(n => n.name === "Build All (targets)") as PackageNode;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                return task;
+            } else {
+                const tasks = await getHeaderChildren("Tasks");
+                return tasks.find(n => n.name === "Build All (targets)") as PackageNode;
+            }
+        }
+
         test("Includes tasks", async () => {
-            const tasks = await getHeaderChildren("Tasks");
-            const dep = tasks.find(n => n.name === "Build All (targets)") as PackageNode;
-            expect(
-                dep,
-                `Expected to find dependencies target, but instead items were ${tasks.map(n => n.name)}`
-            ).to.not.be.undefined;
+            const dep = await getBuildAllTask();
+            expect(dep).to.not.be.undefined;
         });
 
         test("Executes a task", async () => {
-            const tasks = await getHeaderChildren("Tasks");
-            const taskName = "Build All (targets)";
-            const task = tasks.find(n => n.name === taskName);
-            expect(
-                task,
-                `Expected to find task called ${taskName}, but instead items were ${tasks.map(n => n.name)}`
-            ).to.not.be.undefined;
+            const task = await getBuildAllTask();
+            expect(task).to.not.be.undefined;
             const treeItem = task?.toTreeItem();
             expect(treeItem?.command).to.not.be.undefined;
             expect(treeItem?.command?.arguments).to.not.be.undefined;

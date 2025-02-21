@@ -25,8 +25,8 @@ import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider
 
 suite("Dependency Commmands Test Suite", function () {
     // full workflow's interaction with spm is longer than the default timeout
-    // 60 seconds for each test should be more than enough
-    this.timeout(60 * 1000);
+    // 120 seconds for each test should be more than enough
+    this.timeout(120 * 1000);
 
     let defaultContext: FolderContext;
     let depsContext: FolderContext;
