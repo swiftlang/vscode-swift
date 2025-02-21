@@ -25,11 +25,9 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
      */
     constructor(
         public name: string,
-        private logToConsole: boolean = true,
         logStoreLinesSize: number = 250_000 // default to capturing 250k log lines
     ) {
         this.name = name;
-        this.logToConsole = process.env["CI"] !== "1" && logToConsole;
         this.channel = vscode.window.createOutputChannel(name, "Swift");
         this.logStore = new RollingLog(logStoreLinesSize);
     }
@@ -37,21 +35,11 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
     append(value: string): void {
         this.channel.append(value);
         this.logStore.append(value);
-
-        if (this.logToConsole) {
-            // eslint-disable-next-line no-console
-            console.log(value);
-        }
     }
 
     appendLine(value: string): void {
         this.channel.appendLine(value);
         this.logStore.appendLine(value);
-
-        if (this.logToConsole) {
-            // eslint-disable-next-line no-console
-            console.log(value);
-        }
     }
 
     replace(value: string): void {

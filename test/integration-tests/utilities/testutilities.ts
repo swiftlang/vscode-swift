@@ -35,27 +35,7 @@ const extensionBootstrapper = (() => {
     let activator: (() => Promise<Api>) | undefined = undefined;
     let activatedAPI: Api | undefined = undefined;
     let lastTestName: string | undefined = undefined;
-    let lastTestLogs: string[] = [];
     const testTitle = (currentTest: Mocha.Test) => currentTest.titlePath().join(" → ");
-
-    mocha.afterEach(function () {
-        if (this.currentTest && this.currentTest.isFailed()) {
-            console.log(`Captured logs during ${testTitle(this.currentTest)}:`);
-            if (lastTestLogs.length === 0) {
-                console.log("No logs captured.");
-            }
-            for (const log of lastTestLogs) {
-                console.log(log);
-            }
-        }
-    });
-
-    mocha.beforeEach(function () {
-        if (this.currentTest && activatedAPI && process.env["VSCODE_TEST"]) {
-            activatedAPI.outputChannel.clear();
-            activatedAPI.outputChannel.appendLine(`Starting test: ${testTitle(this.currentTest)}`);
-        }
-    });
 
     function testRunnerSetup(
         before: Mocha.HookFunction,
@@ -116,6 +96,25 @@ const extensionBootstrapper = (() => {
                     console.error("================ end test logs ================");
                 }
                 throw error;
+            }
+        });
+
+        mocha.beforeEach(function () {
+            if (this.currentTest && activatedAPI) {
+                activatedAPI.outputChannel.clear();
+                activatedAPI.outputChannel.appendLine(
+                    `Starting test: ${testTitle(this.currentTest)}`
+                );
+            }
+        });
+
+        mocha.afterEach(function () {
+            if (this.currentTest && activatedAPI && this.currentTest.isFailed()) {
+                console.log(`Captured logs during ${testTitle(this.currentTest)}:`);
+                for (const log of activatedAPI.outputChannel.logs) {
+                    console.log(log);
+                }
+                console.log("======== END OF LOGS ========\n\n");
             }
         });
 
@@ -196,7 +195,6 @@ const extensionBootstrapper = (() => {
             if (!activatedAPI) {
                 throw new Error("Extension is not activated. Call activateExtension() first.");
             }
-            lastTestLogs = activatedAPI.outputChannel.logs;
 
             // Wait for up to 10 seconds for all tasks to complete before deactivating.
             // Long running tasks should be avoided in tests, but this is a safety net.
