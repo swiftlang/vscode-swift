@@ -41,11 +41,11 @@ jobs:
           name: vscode-swift-extension
           path: |
             *.vsix
-        
+
   tests_release:
     name: Test Release
     needs: package
-    uses: award999/github-workflows/.github/workflows/swift_package_test.yml@token
+    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@main
     with:
       needs_token: true
       # Linux
@@ -71,7 +71,7 @@ jobs:
   tests_insiders:
     name: Test Insiders
     needs: package
-    uses: award999/github-workflows/.github/workflows/swift_package_test.yml@token
+    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@main
     with:
       needs_token: true
       # Linux
