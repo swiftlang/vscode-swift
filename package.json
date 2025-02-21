@@ -934,15 +934,15 @@
         },
         {
           "command": "swift.runAllTests",
-          "when": "false"
+          "when": "swift.isActivated"
         },
         {
           "command": "swift.debugAllTests",
-          "when": "false"
+          "when": "swift.isActivated"
         },
         {
           "command": "swift.coverAllTests",
-          "when": "false"
+          "when": "swift.isActivated"
         }
       ],
       "editor/context": [
