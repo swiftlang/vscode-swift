@@ -715,7 +715,8 @@ export class TestRunner {
                     presentationOptions: { reveal: vscode.TaskRevealKind.Never },
                 },
                 this.folderContext.workspaceContext.toolchain,
-                { ...process.env, ...testBuildConfig.env }
+                { ...process.env, ...testBuildConfig.env },
+                { readOnlyTerminal: process.platform !== "win32" }
             );
 
             task.execution.onDidWrite(str => {

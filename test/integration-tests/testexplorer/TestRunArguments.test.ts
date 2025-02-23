@@ -240,7 +240,7 @@ suite("TestRunArguments Suite", () => {
         const testArgs = new TestRunArguments(runRequestByIds([anotherSwiftTestId]), false);
         assertRunArguments(testArgs, {
             xcTestArgs: [],
-            swiftTestArgs: [`${anotherSwiftTestId}/`],
+            swiftTestArgs: [anotherSwiftTestId],
             testItems: [swiftTestSuiteId, testTargetId, anotherSwiftTestId],
         });
     });
