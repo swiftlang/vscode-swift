@@ -47,7 +47,7 @@ import { activateGetReferenceDocument } from "./getReferenceDocument";
 import { uriConverters } from "./uriConverters";
 import { LanguageClientFactory } from "./LanguageClientFactory";
 import { SourceKitLogMessageNotification, SourceKitLogMessageParams } from "./extensions";
-import { activateDidChangeActiveDocument } from "./didChangeActiveDocument";
+import { LSPActiveDocumentManager } from "./didChangeActiveDocument";
 
 /**
  * Manages the creation and destruction of Language clients as we move between
@@ -153,6 +153,7 @@ export class LanguageClientManager implements vscode.Disposable {
     public subFolderWorkspaces: vscode.Uri[];
     private namedOutputChannels: Map<string, LSPOutputChannel> = new Map();
     private swiftVersion: Version;
+    private activeDocumentManager = new LSPActiveDocumentManager();
 
     /** Get the current state of the underlying LanguageClient */
     public get state(): State {
@@ -536,6 +537,8 @@ export class LanguageClientManager implements vscode.Disposable {
             workspaceFolder: workspaceFolder,
             outputChannel: new SwiftOutputChannel("SourceKit Language Server"),
             middleware: {
+                didOpen: this.activeDocumentManager.didOpen.bind(this.activeDocumentManager),
+                didClose: this.activeDocumentManager.didClose.bind(this.activeDocumentManager),
                 provideCodeLenses: async (document, token, next) => {
                     const result = await next(document, token);
                     return result?.map(codelens => {
@@ -724,7 +727,8 @@ export class LanguageClientManager implements vscode.Disposable {
                 this.peekDocuments = activatePeekDocuments(client);
                 this.getReferenceDocument = activateGetReferenceDocument(client);
                 this.workspaceContext.subscriptions.push(this.getReferenceDocument);
-                this.didChangeActiveDocument = activateDidChangeActiveDocument(client);
+                this.didChangeActiveDocument =
+                    this.activeDocumentManager.activateDidChangeActiveDocument(client);
                 this.workspaceContext.subscriptions.push(this.didChangeActiveDocument);
             })
             .catch(reason => {

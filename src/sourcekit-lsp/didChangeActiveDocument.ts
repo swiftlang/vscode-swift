@@ -17,33 +17,59 @@ import * as langclient from "vscode-languageclient/node";
 import { checkExperimentalCapability } from "./LanguageClientManager";
 import { DidChangeActiveDocumentNotification } from "./extensions/DidChangeActiveDocumentRequest";
 
-export function activateDidChangeActiveDocument(
-    client: langclient.LanguageClient
-): vscode.Disposable {
-    const disposable = vscode.window.onDidChangeActiveTextEditor(event => {
-        if (
-            event &&
-            checkExperimentalCapability(client, DidChangeActiveDocumentNotification.method, 1)
-        ) {
-            client.sendNotification(DidChangeActiveDocumentNotification.method, {
-                textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(
-                    event.document
-                ),
-            });
-        }
-    });
+/**
+ * Monitors the active document and notifies the LSP whenever it changes.
+ * Only sends notifications for documents that produce `textDocument/didOpen`/`textDocument/didClose`
+ * requests to the client.
+ */
+export class LSPActiveDocumentManager {
+    private openDocuments = new Set<vscode.Uri>();
+    private lastActiveDocument: langclient.TextDocumentIdentifier | null = null;
 
-    // Fire an inital notification
-    const activeEditor = vscode.window.activeTextEditor;
-    if (
-        activeEditor &&
-        checkExperimentalCapability(client, DidChangeActiveDocumentNotification.method, 1)
+    // These are LSP middleware functions that listen for document open and close events.
+    public async didOpen(
+        document: vscode.TextDocument,
+        next: (data: vscode.TextDocument) => Promise<void>
     ) {
-        client.sendNotification(DidChangeActiveDocumentNotification.method, {
-            textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(
-                activeEditor.document
-            ),
+        this.openDocuments.add(document.uri);
+        next(document);
+    }
+
+    public async didClose(
+        document: vscode.TextDocument,
+        next: (data: vscode.TextDocument) => Promise<void>
+    ) {
+        this.openDocuments.add(document.uri);
+        next(document);
+    }
+
+    public activateDidChangeActiveDocument(client: langclient.LanguageClient): vscode.Disposable {
+        // Fire an inital notification on startup if there is an open document.
+        this.sendNotification(client, vscode.window.activeTextEditor?.document);
+
+        // Listen for the active editor to change and send a notification.
+        return vscode.window.onDidChangeActiveTextEditor(event => {
+            this.sendNotification(client, event?.document);
         });
     }
-    return disposable;
+
+    private sendNotification(
+        client: langclient.LanguageClient,
+        document: vscode.TextDocument | undefined
+    ) {
+        if (checkExperimentalCapability(client, DidChangeActiveDocumentNotification.method, 1)) {
+            const textDocument =
+                document && this.openDocuments.has(document.uri)
+                    ? client.code2ProtocolConverter.asTextDocumentIdentifier(document)
+                    : null;
+
+            // Avoid sending multiple identical notifications in a row.
+            if (textDocument !== this.lastActiveDocument) {
+                client.sendNotification(DidChangeActiveDocumentNotification.method, {
+                    textDocument: textDocument,
+                });
+            }
+            this.lastActiveDocument = textDocument;
+        }
+    }
 }

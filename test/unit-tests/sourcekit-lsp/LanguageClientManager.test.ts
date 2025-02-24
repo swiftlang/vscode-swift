@@ -43,6 +43,11 @@ import { LanguageClientManager } from "../../../src/sourcekit-lsp/LanguageClient
 import configuration from "../../../src/configuration";
 import { FolderContext } from "../../../src/FolderContext";
 import { LanguageClientFactory } from "../../../src/sourcekit-lsp/LanguageClientFactory";
+import { LSPActiveDocumentManager } from "../../../src/sourcekit-lsp/didChangeActiveDocument";
+import {
+    DidChangeActiveDocumentNotification,
+    DidChangeActiveDocumentParams,
+} from "../../../src/sourcekit-lsp/extensions/DidChangeActiveDocumentRequest";
 
 suite("LanguageClientManager Suite", () => {
     let languageClientFactoryMock: MockedObject<LanguageClientFactory>;
@@ -112,6 +117,7 @@ suite("LanguageClientManager Suite", () => {
         });
         mockedConverter = mockObject<Code2ProtocolConverter>({
             asUri: mockFn(s => s.callsFake(uri => uri.fsPath)),
+            asTextDocumentIdentifier: mockFn(s => s.callsFake(doc => ({ uri: doc.uri.fsPath }))),
         });
         changeStateEmitter = new AsyncEventEmitter();
         languageClientMock = mockObject<LanguageClient>({
@@ -126,7 +132,9 @@ suite("LanguageClientManager Suite", () => {
             initializeResult: {
                 capabilities: {
                     experimental: {
-                        "window/didChangeActiveDocument": true,
+                        "window/didChangeActiveDocument": {
+                            version: 1,
+                        },
                     },
                 },
             },
@@ -427,6 +435,77 @@ suite("LanguageClientManager Suite", () => {
                 isResolved: true,
             },
         ]);
+    });
+
+    suite("active document changes", () => {
+        const mockWindow = mockGlobalObject(vscode, "window");
+
+        setup(() => {
+            mockedWorkspace.swiftVersion = new Version(6, 1, 0);
+        });
+
+        test("Notifies when the active document changes", async () => {
+            const document: vscode.TextDocument = instance(
+                mockObject<vscode.TextDocument>({
+                    uri: vscode.Uri.file("/folder1/file.swift"),
+                })
+            );
+
+            let _listener: ((e: vscode.TextEditor | undefined) => any) | undefined;
+            mockWindow.onDidChangeActiveTextEditor.callsFake((listener, _2, _1) => {
+                _listener = listener;
+                return { dispose: () => {} };
+            });
+
+            new LanguageClientManager(instance(mockedWorkspace), languageClientFactoryMock);
+            await waitForReturnedPromises(languageClientMock.start);
+
+            const activeDocumentManager = new LSPActiveDocumentManager();
+            activeDocumentManager.activateDidChangeActiveDocument(instance(languageClientMock));
+            activeDocumentManager.didOpen(document, async () => {});
+
+            if (_listener) {
+                _listener(instance(mockObject<vscode.TextEditor>({ document })));
+            }
+
+            expect(languageClientMock.sendNotification).to.have.been.calledOnceWith(
+                DidChangeActiveDocumentNotification.method,
+                {
+                    textDocument: {
+                        uri: "/folder1/file.swift",
+                    },
+                } as DidChangeActiveDocumentParams
+            );
+        });
+
+        test("Notifies on startup with the active document", async () => {
+            const document: vscode.TextDocument = instance(
+                mockObject<vscode.TextDocument>({
+                    uri: vscode.Uri.file("/folder1/file.swift"),
+                })
+            );
+            mockWindow.activeTextEditor = instance(
+                mockObject<vscode.TextEditor>({
+                    document,
+                })
+            );
+            new LanguageClientManager(instance(mockedWorkspace), languageClientFactoryMock);
+            await waitForReturnedPromises(languageClientMock.start);
+
+            const activeDocumentManager = new LSPActiveDocumentManager();
+            activeDocumentManager.didOpen(document, async () => {});
+
+            activeDocumentManager.activateDidChangeActiveDocument(instance(languageClientMock));
+
+            expect(languageClientMock.sendNotification).to.have.been.calledOnceWith(
+                DidChangeActiveDocumentNotification.method,
+                {
+                    textDocument: {
+                        uri: "/folder1/file.swift",
+                    },
+                } as DidChangeActiveDocumentParams
+            );
+        });
     });
 
     suite("SourceKit-LSP version doesn't support workspace folders", () => {
