@@ -67,7 +67,7 @@ jobs:
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./scripts/test.sh
       # Windows
-      windows_exclude_swift_versions: '[{"swift_version": "5.9"}, {"swift_version": "nightly-6.0"}, {"swift_version": "nightly"}]'
+      windows_exclude_swift_versions: '[{"swift_version": "5.9"}, {"swift_version": "nightly-6.1"}, {"swift_version": "nightly"}]'
       windows_env_vars: |
         CI=1
         VSCODE_TEST=1
