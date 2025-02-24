@@ -48,6 +48,7 @@ import { uriConverters } from "./uriConverters";
 import { LanguageClientFactory } from "./LanguageClientFactory";
 import { SourceKitLogMessageNotification, SourceKitLogMessageParams } from "./extensions";
 import { LSPActiveDocumentManager } from "./didChangeActiveDocument";
+import { DidChangeActiveDocumentNotification } from "./extensions/DidChangeActiveDocumentRequest";
 
 /**
  * Manages the creation and destruction of Language clients as we move between
@@ -727,9 +728,21 @@ export class LanguageClientManager implements vscode.Disposable {
                 this.peekDocuments = activatePeekDocuments(client);
                 this.getReferenceDocument = activateGetReferenceDocument(client);
                 this.workspaceContext.subscriptions.push(this.getReferenceDocument);
-                this.didChangeActiveDocument =
-                    this.activeDocumentManager.activateDidChangeActiveDocument(client);
-                this.workspaceContext.subscriptions.push(this.didChangeActiveDocument);
+                try {
+                    if (
+                        checkExperimentalCapability(
+                            client,
+                            DidChangeActiveDocumentNotification.method,
+                            1
+                        )
+                    ) {
+                        this.didChangeActiveDocument =
+                            this.activeDocumentManager.activateDidChangeActiveDocument(client);
+                        this.workspaceContext.subscriptions.push(this.didChangeActiveDocument);
+                    }
+                } catch {
+                    // do nothing
+                }
             })
             .catch(reason => {
                 this.workspaceContext.outputChannel.log(`${reason}`);
