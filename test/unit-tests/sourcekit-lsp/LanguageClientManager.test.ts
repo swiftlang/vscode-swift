@@ -123,6 +123,13 @@ suite("LanguageClientManager Suite", () => {
                     dispose: mockFn(),
                 })
             ),
+            initializeResult: {
+                capabilities: {
+                    experimental: {
+                        "window/didChangeActiveDocument": true,
+                    },
+                },
+            },
             start: mockFn(s =>
                 s.callsFake(async () => {
                     const oldState = languageClientMock.state;
