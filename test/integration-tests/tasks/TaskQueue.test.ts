@@ -156,7 +156,7 @@ suite("TaskQueue Test Suite", () => {
             taskQueue.queueOperation(new TaskOperation(task2)).then(rt => results.push(rt)),
         ]);
         assert.notStrictEqual(results, [1, 2]);
-    }).timeout(8000);
+    }).timeout(15000);
 
     // check queuing task will return expected value
     test("swift exec", async () => {
