@@ -55,6 +55,13 @@ const extensionBootstrapper = (() => {
         let autoTeardown: void | (() => Promise<void>);
         let restoreSettings: (() => Promise<void>) | undefined;
         before(async function () {
+            // Make sure that CodeLLDB is installed for debugging related tests
+            if (!vscode.extensions.getExtension("vadimcn.vscode-lldb")) {
+                await vscode.commands.executeCommand(
+                    "workbench.extensions.installExtension",
+                    "vadimcn.vscode-lldb"
+                );
+            }
             // Always activate the extension. If no test assets are provided,
             // default to adding `defaultPackage` to the workspace.
             workspaceContext = await extensionBootstrapper.activateExtension(

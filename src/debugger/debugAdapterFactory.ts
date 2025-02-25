@@ -92,8 +92,14 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         launchConfig.type = DebugAdapter.getLaunchConfigType(this.toolchain.swiftVersion);
         if (launchConfig.type === LaunchConfigType.CODE_LLDB) {
             launchConfig.sourceLanguages = ["swift"];
-            // Prompt the user to update CodeLLDB settings if necessary
-            await this.promptForCodeLldbSettings();
+            if (!vscode.extensions.getExtension("vadimcn.vscode-lldb")) {
+                if (!(await this.promptToInstallCodeLLDB())) {
+                    return undefined;
+                }
+            }
+            if (!(await this.promptForCodeLldbSettings())) {
+                return undefined;
+            }
         } else if (launchConfig.type === LaunchConfigType.LLDB_DAP) {
             if (launchConfig.env) {
                 launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
@@ -112,7 +118,36 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         return launchConfig;
     }
 
-    private async promptForCodeLldbSettings(): Promise<void> {
+    private async promptToInstallCodeLLDB(): Promise<boolean> {
+        const selection = await vscode.window.showErrorMessage(
+            "The CodeLLDB extension is required to debug with Swift toolchains prior to Swift 6.0. Please install the extension to continue.",
+            { modal: true },
+            "Install CodeLLDB",
+            "View Extension"
+        );
+        switch (selection) {
+            case "Install CodeLLDB":
+                await vscode.commands.executeCommand(
+                    "workbench.extensions.installExtension",
+                    "vadimcn.vscode-lldb"
+                );
+                return true;
+            case "View Extension":
+                await vscode.commands.executeCommand(
+                    "workbench.extensions.search",
+                    "@id:vadimcn.vscode-lldb"
+                );
+                await vscode.commands.executeCommand(
+                    "workbench.extensions.action.showReleasedVersion",
+                    "vadimcn.vscode-lldb"
+                );
+                return false;
+            case undefined:
+                return false;
+        }
+    }
+
+    private async promptForCodeLldbSettings(): Promise<boolean> {
         const libLldbPathResult = await getLLDBLibPath(this.toolchain);
         if (!libLldbPathResult.success) {
             const errorMessage = `Error: ${getErrorDescription(libLldbPathResult.failure)}`;
@@ -120,7 +155,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                 `Failed to setup CodeLLDB for debugging of Swift code. Debugging may produce unexpected results. ${errorMessage}`
             );
             this.outputChannel.log(`Failed to setup CodeLLDB: ${errorMessage}`);
-            return;
+            return true;
         }
         const libLldbPath = libLldbPathResult.success;
         const lldbConfig = vscode.workspace.getConfiguration("lldb");
@@ -128,7 +163,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             lldbConfig.get<string>("library") === libLldbPath &&
             lldbConfig.get<string>("launch.expressions") === "native"
         ) {
-            return;
+            return true;
         }
         let userSelection: "Global" | "Workspace" | "Run Anyway" | undefined = undefined;
         switch (configuration.debugger.setupCodeLLDB) {
@@ -177,7 +212,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                 );
                 break;
         }
-        return;
+        return true;
     }
 
     private convertEnvironmentVariables(map: { [key: string]: string }): string[] {
