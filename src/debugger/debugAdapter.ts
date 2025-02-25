@@ -44,7 +44,7 @@ export class DebugAdapter {
      */
     public static getLaunchConfigType(swiftVersion: Version): LaunchConfigType {
         const lldbDapIsAvailable = swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0));
-        if (lldbDapIsAvailable && configuration.debugger.debugAdapter === "lldb-dap") {
+        if (lldbDapIsAvailable && configuration.debugger.debugAdapter !== "CodeLLDB") {
             return LaunchConfigType.LLDB_DAP;
         } else {
             return LaunchConfigType.CODE_LLDB;
