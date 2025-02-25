@@ -40,22 +40,23 @@ suite("DebugAdapter Unit Test Suite", () => {
     });
 
     suite("getLaunchConfigType()", () => {
-        test("returns SWIFT_EXTENSION when Swift version >=6.0.0 and swift.debugger.debugAdapter is set to lldb-dap", () => {
+        test("returns LLDB_DAP when Swift version >=6.0.0 and swift.debugger.debugAdapter is set to lldb-dap", () => {
             mockDebugConfig.debugAdapter = "lldb-dap";
             expect(DebugAdapter.getLaunchConfigType(new Version(6, 0, 1))).to.equal(
                 LaunchConfigType.LLDB_DAP
             );
         });
 
-        test("returns CODE_LLDB when Swift version >=6.0.0 and swift.debugger.debugAdapter is set to auto or CodeLLDB", () => {
-            // Try with the setting set to auto
+        test("returns LLDB_DAP when Swift version >=6.0.0 and swift.debugger.debugAdapter is set to auto", () => {
             mockDebugConfig.debugAdapter = "auto";
-            expect(DebugAdapter.getLaunchConfigType(new Version(5, 10, 0))).to.equal(
-                LaunchConfigType.CODE_LLDB
+            expect(DebugAdapter.getLaunchConfigType(new Version(6, 0, 1))).to.equal(
+                LaunchConfigType.LLDB_DAP
             );
-            // Try with the setting set to CodeLLDB
+        });
+
+        test("returns CODE_LLDB when Swift version >=6.0.0 and swift.debugger.debugAdapter is set to CODE_LLDB", () => {
             mockDebugConfig.debugAdapter = "CodeLLDB";
-            expect(DebugAdapter.getLaunchConfigType(new Version(5, 10, 0))).to.equal(
+            expect(DebugAdapter.getLaunchConfigType(new Version(6, 0, 1))).to.equal(
                 LaunchConfigType.CODE_LLDB
             );
         });
