@@ -20,6 +20,7 @@ import { beforeEach, afterEach } from "mocha";
 import { TestExplorer } from "../../../src/TestExplorer/TestExplorer";
 import {
     assertContains,
+    assertContainsTrimmed,
     assertTestControllerHierarchy,
     assertTestResults,
     eventPromise,
@@ -190,6 +191,7 @@ suite("Test Explorer Suite", function () {
                         ["testPassing()", "testFailing()", "testDisabled()"],
                         "testWithKnownIssue()",
                         "testWithKnownIssueAndUnknownIssue()",
+                        "testLotsOfOutput()",
                         "testAttachment()",
                         "DuplicateSuffixTests",
                         ["testPassing()", "testPassingSuffix()"],
@@ -228,6 +230,29 @@ suite("Test Explorer Suite", function () {
                 ) {
                     this.skip();
                 }
+            });
+
+            test("captures lots of output", async () => {
+                const testRun = await runTest(
+                    testExplorer,
+                    TestKind.standard,
+                    "PackageTests.testLotsOfOutput()"
+                );
+
+                assertTestResults(testRun, {
+                    passed: ["PackageTests.testLotsOfOutput()"],
+                });
+
+                // Right now the swift-testing "test run complete" text is being emitted
+                // in the middle of the print, so the last line is actually end end of our
+                // huge string. If they fix this in future this `find` ensures the test wont break.
+                const needle = "100000";
+                const lastTenLines = testRun.runState.output.slice(-10).join("\n");
+                assertContainsTrimmed(
+                    testRun.runState.output,
+                    needle,
+                    `Expected all test output to be captured, but it was truncated. Last 10 lines of output were: ${lastTenLines}`
+                );
             });
 
             test("attachments", async function () {
@@ -535,9 +560,11 @@ suite("Test Explorer Suite", function () {
                             "PackageTests.topLevelTestPassing()"
                         );
 
-                        assertContains(
+                        // Use assertContainsTrimmed to ignore the line ending differences
+                        // across platforms (windows vs linux/darwin)
+                        assertContainsTrimmed(
                             testRun.runState.output,
-                            "A print statement in a test.\r\r\n"
+                            "A print statement in a test."
                         );
                         assertTestResults(testRun, {
                             passed: ["PackageTests.topLevelTestPassing()"],
