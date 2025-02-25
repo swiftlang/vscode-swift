@@ -21,7 +21,7 @@ export interface DidChangeActiveDocumentParams {
     /**
      * The document that is being displayed in the active editor.
      */
-    textDocument: TextDocumentIdentifier;
+    textDocument?: TextDocumentIdentifier;
 }
 
 /**
