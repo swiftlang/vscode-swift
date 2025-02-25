@@ -52,54 +52,10 @@ function registerLLDBDebugAdapter(
     toolchain: SwiftToolchain,
     outputChannel: SwiftOutputChannel
 ): vscode.Disposable {
-    const debugAdpaterFactory = vscode.debug.registerDebugAdapterDescriptorFactory(
-        SWIFT_LAUNCH_CONFIG_TYPE,
-        new LLDBDebugAdapterExecutableFactory(toolchain, outputChannel)
-    );
-
-    const debugConfigProvider = vscode.debug.registerDebugConfigurationProvider(
+    return vscode.debug.registerDebugConfigurationProvider(
         SWIFT_LAUNCH_CONFIG_TYPE,
         new LLDBDebugConfigurationProvider(process.platform, toolchain, outputChannel)
     );
-
-    return {
-        dispose: () => {
-            debugConfigProvider.dispose();
-            debugAdpaterFactory.dispose();
-        },
-    };
-}
-
-/**
- * A factory class for creating and providing the executable descriptor for the LLDB Debug Adapter.
- * This class implements the vscode.DebugAdapterDescriptorFactory interface and is responsible for
- * determining the path to the LLDB Debug Adapter executable and ensuring it exists before launching
- * a debug session.
- *
- * This class uses the workspace context to:
- *  - Resolve the path to the debug adapter executable.
- *  - Verify that the debug adapter exists in the toolchain.
- *
- * The main method of this class, `createDebugAdapterDescriptor`, is invoked by VS Code to supply
- * the debug adapter executable when a debug session is started. The executable parameter by default
- * will be provided in package.json > contributes > debuggers > program if defined, but since we will
- * determine the executable via the toolchain anyway, this is now redundant and will be ignored.
- *
- * @implements {vscode.DebugAdapterDescriptorFactory}
- */
-export class LLDBDebugAdapterExecutableFactory implements vscode.DebugAdapterDescriptorFactory {
-    private toolchain: SwiftToolchain;
-    private outputChannel: SwiftOutputChannel;
-
-    constructor(toolchain: SwiftToolchain, outputChannel: SwiftOutputChannel) {
-        this.toolchain = toolchain;
-        this.outputChannel = outputChannel;
-    }
-
-    async createDebugAdapterDescriptor(): Promise<vscode.DebugAdapterDescriptor> {
-        const path = await DebugAdapter.getLLDBDebugAdapterPath(this.toolchain);
-        return new vscode.DebugAdapterExecutable(path, [], {});
-    }
 }
 
 /** Provide configurations for lldb-vscode/lldb-dap
@@ -150,6 +106,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                 );
                 return undefined;
             }
+            launchConfig.debugAdapterExecutable = lldbDapPath;
         }
 
         return launchConfig;
