@@ -120,7 +120,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
 
     private async promptToInstallCodeLLDB(): Promise<boolean> {
         const selection = await vscode.window.showErrorMessage(
-            "The CodeLLDB extension is required to debug with Swift toolchains prior to version 6. Please install the extension to continue.",
+            "The CodeLLDB extension is required to debug with Swift toolchains prior to Swift 6.0. Please install the extension to continue.",
             { modal: true },
             "Install CodeLLDB",
             "View Extension"
