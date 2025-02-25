@@ -44,16 +44,26 @@ interface ITestItemFinder {
 }
 
 export class DarwinTestItemFinder implements ITestItemFinder {
-    constructor(public tests: TestItem[]) {}
+    tests: TestItem[] = [];
     getIndex(id: string): number {
-        return this.tests.findIndex(item => item.name === id);
+        const index = this.tests.findIndex(item => item.name === id);
+        if (index === -1) {
+            this.tests.push({ name: id, status: TestStatus.enqueued, output: [] });
+            return this.tests.length - 1;
+        }
+        return index;
     }
 }
 
 export class NonDarwinTestItemFinder implements ITestItemFinder {
-    constructor(public tests: TestItem[]) {}
+    tests: TestItem[] = [];
     getIndex(id: string): number {
-        return this.tests.findIndex(item => item.name.endsWith(id));
+        const index = this.tests.findIndex(item => item.name.endsWith(id));
+        if (index === -1) {
+            this.tests.push({ name: id, status: TestStatus.enqueued, output: [] });
+            return this.tests.length - 1;
+        }
+        return index;
     }
 }
 
@@ -75,14 +85,11 @@ export class TestRunState implements ITestRunState {
         return this.testItemFinder.tests;
     }
 
-    constructor(testNames: string[], darwin: boolean) {
-        const tests = testNames.map(name => {
-            return { name: name, status: TestStatus.enqueued, output: [] };
-        });
+    constructor(darwin: boolean) {
         if (darwin) {
-            this.testItemFinder = new DarwinTestItemFinder(tests);
+            this.testItemFinder = new DarwinTestItemFinder();
         } else {
-            this.testItemFinder = new NonDarwinTestItemFinder(tests);
+            this.testItemFinder = new NonDarwinTestItemFinder();
         }
     }
 
