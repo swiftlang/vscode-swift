@@ -19,7 +19,6 @@ import {
     getDarwinTargetTriple,
 } from "../toolchain/toolchain";
 import configuration from "../configuration";
-import { Version } from "../utilities/version";
 import { WorkspaceContext } from "../WorkspaceContext";
 
 /**
@@ -39,12 +38,7 @@ export async function switchPlatform(ctx: WorkspaceContext) {
         }
     );
     if (picked) {
-        if (ctx.toolchain.swiftVersion.isLessThan(new Version(6, 1, 0))) {
-            vscode.window.showWarningMessage(
-                "Code editing support for non-macOS platforms is only available starting Swift 6.1"
-            );
-        }
-        // show a status item as getSDKForTarget can sometimes take a long while to xcrun for the SDK
+        // show a status item as getSDKForTarget can sometimes take a long while to run xcrun to find the SDK
         const statusItemText = `Setting target platform to ${picked.label}`;
         ctx.statusItem.start(statusItemText);
         try {
@@ -60,8 +54,8 @@ export async function switchPlatform(ctx: WorkspaceContext) {
                     `Selecting the ${picked.label} target platform will provide code editing support, but compiling with a ${picked.label} SDK will have undefined results.`
                 );
             } else {
-                // set swiftSDK to undefined for macOS and other platforms
-                configuration.swiftSDK = undefined;
+                // set swiftSDK to an empty string for macOS and other platforms
+                configuration.swiftSDK = "";
             }
         } catch {
             vscode.window.showErrorMessage(
