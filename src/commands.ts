@@ -124,7 +124,9 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
                 return runTestMultipleTimes(ctx.currentFolder, item, true);
             }
         }),
-        // Note: This is only available on macOS (gated in `package.json`) because its the only OS that has the iOS SDK available.
+        // Note: switchPlatform is only available on macOS and Swift 6.1 or later
+        // (gated in `package.json`) because it's the only OS and toolchain combination that
+        // has Darwin SDKs available and supports code editing with SourceKit-LSP
         vscode.commands.registerCommand("swift.switchPlatform", () => switchPlatform(ctx)),
         vscode.commands.registerCommand(Commands.RESET_PACKAGE, () => resetPackage(ctx)),
         vscode.commands.registerCommand("swift.runScript", () => runSwiftScript(ctx)),

@@ -76,12 +76,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                 contextKeys.createNewProjectAvailable = toolchain.swiftVersion.isGreaterThanOrEqual(
                     new Version(5, 8, 0)
                 );
+                contextKeys.switchPlatformAvailable = toolchain.swiftVersion.isGreaterThanOrEqual(
+                    new Version(6, 1, 0)
+                );
                 return toolchain;
             })
             .catch(error => {
                 outputChannel.log("Failed to discover Swift toolchain");
                 outputChannel.log(error);
                 contextKeys.createNewProjectAvailable = false;
+                contextKeys.switchPlatformAvailable = false;
                 return undefined;
             });
 
