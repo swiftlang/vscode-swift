@@ -110,9 +110,23 @@ export function assertTestControllerHierarchy(
  *
  * @param array The array to check.
  * @param value The value to check for.
+ * @param message An optional message to display if the assertion fails.
  */
-export function assertContains<T>(array: T[], value: T) {
-    assert.ok(array.includes(value), `${value} is not in ${array}`);
+export function assertContains<T>(array: T[], value: T, message?: string) {
+    assert.ok(array.includes(value), message ?? `${value} is not in ${array}`);
+}
+
+/**
+ * Asserts that an array of strings contains the value ignoring
+ * leading/trailing whitespace.
+ *
+ * @param array The array to check.
+ * @param value The value to check for.
+ * @param message An optional message to display if the assertion fails.
+ */
+export function assertContainsTrimmed(array: string[], value: string, message?: string) {
+    const found = array.find(row => row.trim() === value);
+    assert.ok(found, message ?? `${value} is not in ${array}`);
 }
 
 /**

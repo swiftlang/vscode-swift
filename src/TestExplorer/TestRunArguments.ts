@@ -93,11 +93,12 @@ export class TestRunArguments {
                 const terminator = hasChildren ? "/" : "$";
                 // Debugging XCTests requires exact matches, so we don't need a trailing terminator.
                 return isDebug ? arg.id : `${arg.id}${terminator}`;
-            } else {
+            } else if (hasChildren) {
                 // Append a trailing slash to match a suite name exactly.
                 // This prevents TestTarget.MySuite matching TestTarget.MySuite2.
                 return `${arg.id}/`;
             }
+            return arg.id;
         });
     }
 

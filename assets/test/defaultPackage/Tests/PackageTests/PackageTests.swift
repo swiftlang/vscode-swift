@@ -102,6 +102,14 @@ struct MixedSwiftTestingSuite {
   }
   #expect(2 == 3)
 }
+
+@Test func testLotsOfOutput() {
+  var string = ""
+  for i in 1...100_000 {
+    string += "\(i)\n"
+  }
+  print(string)
+}
 #endif
 
 #if swift(>=6.1)
