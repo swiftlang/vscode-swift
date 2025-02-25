@@ -186,13 +186,13 @@ export class SwiftTestingConfigurationSetup {
  * and `xcTestConfig` functions to create
  */
 export class TestingConfigurationFactory {
-    public static async swiftTestingConfig(
+    public static swiftTestingConfig(
         ctx: FolderContext,
         buildArguments: SwiftTestingBuildAguments,
         testKind: TestKind,
         testList: string[],
         expandEnvVariables = false
-    ): Promise<vscode.DebugConfiguration | null> {
+    ): vscode.DebugConfiguration | null {
         return new TestingConfigurationFactory(
             ctx,
             testKind,
@@ -203,12 +203,12 @@ export class TestingConfigurationFactory {
         ).build();
     }
 
-    public static async xcTestConfig(
+    public static xcTestConfig(
         ctx: FolderContext,
         testKind: TestKind,
         testList: string[],
         expandEnvVariables = false
-    ): Promise<vscode.DebugConfiguration | null> {
+    ): vscode.DebugConfiguration | null {
         return new TestingConfigurationFactory(
             ctx,
             testKind,
@@ -219,11 +219,11 @@ export class TestingConfigurationFactory {
         ).build();
     }
 
-    public static async testExecutableOutputPath(
+    public static testExecutableOutputPath(
         ctx: FolderContext,
         testKind: TestKind,
         testLibrary: TestLibrary
-    ): Promise<string> {
+    ): string {
         return new TestingConfigurationFactory(
             ctx,
             testKind,
@@ -251,7 +251,7 @@ export class TestingConfigurationFactory {
      * - Test Kind (coverage, debugging)
      * - Test Library (XCTest, swift-testing)
      */
-    private async build(): Promise<vscode.DebugConfiguration | null> {
+    private build(): vscode.DebugConfiguration | null {
         if (!this.hasTestTarget) {
             return null;
         }
@@ -267,7 +267,7 @@ export class TestingConfigurationFactory {
     }
 
     /* eslint-disable no-case-declarations */
-    private async buildWindowsConfig(): Promise<vscode.DebugConfiguration | null> {
+    private buildWindowsConfig(): vscode.DebugConfiguration | null {
         if (isDebugging(this.testKind)) {
             const testEnv = {
                 ...swiftRuntimeEnv(),
@@ -288,8 +288,8 @@ export class TestingConfigurationFactory {
 
             return {
                 ...this.baseConfig,
-                program: await this.testExecutableOutputPath(),
-                args: await this.debuggingTestExecutableArgs(),
+                program: this.testExecutableOutputPath(),
+                args: this.debuggingTestExecutableArgs(),
                 env: testEnv,
             };
         } else {
@@ -298,12 +298,12 @@ export class TestingConfigurationFactory {
     }
 
     /* eslint-disable no-case-declarations */
-    private async buildLinuxConfig(): Promise<vscode.DebugConfiguration | null> {
+    private buildLinuxConfig(): vscode.DebugConfiguration | null {
         if (isDebugging(this.testKind) && this.testLibrary === TestLibrary.xctest) {
             return {
                 ...this.baseConfig,
-                program: await this.testExecutableOutputPath(),
-                args: await this.debuggingTestExecutableArgs(),
+                program: this.testExecutableOutputPath(),
+                args: this.debuggingTestExecutableArgs(),
                 env: {
                     ...swiftRuntimeEnv(
                         process.env,
@@ -313,11 +313,11 @@ export class TestingConfigurationFactory {
                 },
             };
         } else {
-            return await this.buildDarwinConfig();
+            return this.buildDarwinConfig();
         }
     }
 
-    private async buildDarwinConfig(): Promise<vscode.DebugConfiguration | null> {
+    private buildDarwinConfig(): vscode.DebugConfiguration | null {
         switch (this.testLibrary) {
             case TestLibrary.swiftTesting:
                 switch (this.testKind) {
@@ -362,8 +362,8 @@ export class TestingConfigurationFactory {
 
                         const result = {
                             ...this.baseConfig,
-                            program: await this.testExecutableOutputPath(),
-                            args: await this.debuggingTestExecutableArgs(),
+                            program: this.testExecutableOutputPath(),
+                            args: this.debuggingTestExecutableArgs(),
                             env: {
                                 ...this.testEnv,
                                 ...this.sanitizerRuntimeEnvironment,
@@ -631,45 +631,6 @@ export class TestingConfigurationFactory {
         );
     }
 
-    private swiftTestingOutputPath(): string {
-        return path.join(
-            this.buildDirectory,
-            this.artifactFolderForTestKind,
-            `${this.ctx.swiftPackage.name}PackageTests.swift-testing`
-        );
-    }
-
-    private buildDescriptionPath(): string {
-        return path.join(this.buildDirectory, this.artifactFolderForTestKind, "description.json");
-    }
-
-    private async isUnifiedTestingBinary(): Promise<boolean> {
-        // Toolchains that contain https://github.com/swiftlang/swift-package-manager/commit/844bd137070dcd18d0f46dd95885ef7907ea0697
-        // no longer produce a .swift-testing binary, instead we want to use `unifiedTestingOutputPath`.
-        // In order to determine if we're working with a unified binary we need to check if the .swift-testing
-        // binary was produced by the latest build. If it was then we are not using a unified binary.
-
-        // TODO: When Swift 6 is released and enough time has passed that we're sure no one is building the .swift-testing
-        //       binary anymore this workaround can be removed and `swiftTestingPath` can be returned, and the build config
-        //       generation can be made synchronous again.
-
-        try {
-            const buildDescriptionStr = await fs.readFile(this.buildDescriptionPath(), "utf-8");
-            const buildDescription = JSON.parse(buildDescriptionStr);
-            const testProducts = buildDescription.builtTestProducts as { binaryPath: string }[];
-            if (!testProducts) {
-                return false;
-            }
-            const testBinaryPaths = testProducts.map(({ binaryPath }) => binaryPath);
-            const swiftTestingBinaryRealPath = await fs.realpath(this.swiftTestingOutputPath());
-            return !testBinaryPaths.includes(swiftTestingBinaryRealPath);
-        } catch {
-            // If the .swift-testing binary wasn't produced by the latest build then we assume the
-            // swift-testing tests are in the unified binary.
-            return true;
-        }
-    }
-
     private unifiedTestingOutputPath(): string {
         // The unified binary that contains both swift-testing and XCTests
         // is named the same as the old style .xctest binary. The swiftpm-testing-helper
@@ -686,24 +647,19 @@ export class TestingConfigurationFactory {
         }
     }
 
-    private async testExecutableOutputPath(): Promise<string> {
+    private testExecutableOutputPath(): string {
         switch (this.testLibrary) {
             case TestLibrary.swiftTesting:
-                return (await this.isUnifiedTestingBinary())
-                    ? this.unifiedTestingOutputPath()
-                    : this.swiftTestingOutputPath();
+                return this.unifiedTestingOutputPath();
             case TestLibrary.xctest:
                 return this.xcTestOutputPath();
         }
     }
 
-    private async debuggingTestExecutableArgs(): Promise<string[]> {
+    private debuggingTestExecutableArgs(): string[] {
         switch (this.testLibrary) {
             case TestLibrary.swiftTesting: {
-                const isUnifiedBinary = await this.isUnifiedTestingBinary();
-                const swiftTestingArgs = isUnifiedBinary
-                    ? ["--testing-library", "swift-testing"]
-                    : [];
+                const swiftTestingArgs = ["--testing-library", "swift-testing"];
 
                 return this.addBuildOptionsToArgs(
                     this.addTestsToArgs(this.addSwiftTestingFlagsArgs(swiftTestingArgs))
