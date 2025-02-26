@@ -27,7 +27,7 @@
             "extensions": [
                 "dbaeumer.vscode-eslint",
                 "esbenp.prettier-vscode",
-                "vadimcn.vscode-lldb"
+                "llvm-vs-code-extensions.lldb-dap"
             ]
         }
     },
