@@ -187,6 +187,7 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
                 cwd: this.options.cwd,
                 env: { ...process.env, ...this.options.env },
             });
+            this.spawnEmitter.fire();
 
             this.spawnedProcess.stdout.on("data", data => {
                 this.writeEmitter.fire(data.toString());
