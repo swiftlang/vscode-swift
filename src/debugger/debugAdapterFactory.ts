@@ -74,7 +74,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         private outputChannel: SwiftOutputChannel
     ) {}
 
-    async resolveDebugConfiguration(
+    async resolveDebugConfigurationWithSubstitutedVariables(
         _folder: vscode.WorkspaceFolder | undefined,
         launchConfig: vscode.DebugConfiguration
     ): Promise<vscode.DebugConfiguration | undefined | null> {
