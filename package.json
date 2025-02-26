@@ -1585,7 +1585,7 @@
             "body": {
               "type": "swift",
               "request": "attach",
-              "name": "${2:Attach to Swift Executable}",
+              "name": "${1:Attach to Swift Executable}",
               "pid": "^\"\\${command:PickProcess}\""
             }
           },
