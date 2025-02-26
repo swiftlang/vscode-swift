@@ -64,7 +64,7 @@ module.exports = defineConfig({
                 },
             },
             reuseMachineInstall: !isCIBuild,
-            installExtensions: ["vadimcn.vscode-lldb"],
+            installExtensions: ["vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap"],
         },
         {
             label: "unitTests",
