@@ -1,4 +1,4 @@
 {
     "name": "testing-debug",
-    "extensions": "[{\"identifier\":{\"id\":\"ms-vscode-remote.remote-containers\",\"uuid\":\"93ce222b-5f6f-49b7-9ab1-a0463c6238df\"},\"displayName\":\"Dev Containers\"},{\"identifier\":{\"id\":\"vadimcn.vscode-lldb\",\"uuid\":\"bee31e34-a44b-4a76-9ec2-e9fd1439a0f6\"},\"displayName\":\"CodeLLDB\"}]"
+    "extensions": "[{\"identifier\":{\"id\":\"ms-vscode-remote.remote-containers\",\"uuid\":\"93ce222b-5f6f-49b7-9ab1-a0463c6238df\"},\"displayName\":\"Dev Containers\"},{\"identifier\":{\"id\":\"llvm-vs-code-extensions.lldb-dap\",\"uuid\":\"8f0e51b3-cc69-4cf9-abab-97289d29d6de\"},\"displayName\":\"LLDB DAP\"}]"
 }

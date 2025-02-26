@@ -10,7 +10,7 @@ This extension adds language support for Swift to Visual Studio Code, providing 
 * Package dependency view
 * Test Explorer view
 
-This extension uses [SourceKit LSP](https://github.com/apple/sourcekit-lsp) for the [language server](https://microsoft.github.io/language-server-protocol/overviews/lsp/overview/), which powers code completion. It also has a dependency on [CodeLLDB](https://github.com/vadimcn/vscode-lldb) for debugging.
+This extension uses [SourceKit LSP](https://github.com/apple/sourcekit-lsp) for the [language server](https://microsoft.github.io/language-server-protocol/overviews/lsp/overview/), which powers code completion. It also has a dependency on [LLDB DAP](https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.lldb-dap) for debugging.
 
 To propose new features, you can post on the [swift.org forums](https://forums.swift.org) in the [VS Code Swift Extension category](https://forums.swift.org/c/related-projects/vscode-swift-extension/). If you run into something that doesn't work the way you'd expect, you can [file an issue in the GitHub repository](https://github.com/swiftlang/vscode-swift/issues/new).
 
@@ -22,7 +22,7 @@ The Swift extension is supported on macOS, Linux, and Windows. To install, first
 
 ### Language features
 
-The extension provides language features such as code completion and jump to definition via [SourceKit-LSP](https://github.com/apple/sourcekit-lsp). To ensure the extension functions correctly, it’s important to first build the project so that SourceKit-LSP has access to all the symbol data. Whenever you add a new dependency to your project, make sure to rebuild it so that SourceKit-LSP can update its information. 
+The extension provides language features such as code completion and jump to definition via [SourceKit-LSP](https://github.com/apple/sourcekit-lsp). To ensure the extension functions correctly, it’s important to first build the project so that SourceKit-LSP has access to all the symbol data. Whenever you add a new dependency to your project, make sure to rebuild it so that SourceKit-LSP can update its information.
 
 ### Automatic task creation
 
@@ -99,13 +99,13 @@ Additionally, the extension will monitor `Package.swift` and `Package.resolved` 
 
 ### Debugging
 
-The Swift extension uses the [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb) extension for debugging.
+The Swift extension uses the [LLDB DAP](https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.lldb-dap) extension for debugging.
 
 When you open a Swift package (a directory containing a `Package.swift` file), the extension automatically generates build tasks and launch configurations for each executable within the package. Additionally, if the package includes tests, the extension creates a configuration specifically designed to run those tests. These configurations all leverage the CodeLLDB extension as the debugger of choice.
 
 Use the **Run > Start Debugging** menu item to run an executable and start debugging. If you have multiple launch configurations you can choose which launch configuration to use in the debugger view.
 
-CodeLLDB includes a version of `lldb` that it uses by default for debugging, but this version of `lldb` doesn’t support Swift. The Swift extension will automatically identify the required version and offer to update the CodeLLDB configuration as necessary so that debugging is supported. 
+CodeLLDB includes a version of `lldb` that it uses by default for debugging, but this version of `lldb` doesn’t support Swift. The Swift extension will automatically identify the required version and offer to update the CodeLLDB configuration as necessary so that debugging is supported.
 
 ### Test Explorer
 
