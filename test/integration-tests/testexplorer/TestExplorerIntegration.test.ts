@@ -192,7 +192,6 @@ suite("Test Explorer Suite", function () {
                         "testWithKnownIssue()",
                         "testWithKnownIssueAndUnknownIssue()",
                         "testLotsOfOutput()",
-                        "testAttachment()",
                         "DuplicateSuffixTests",
                         ["testPassing()", "testPassingSuffix()"],
                     ],
@@ -255,7 +254,8 @@ suite("Test Explorer Suite", function () {
                 );
             });
 
-            test("attachments", async function () {
+            // Disabled until Attachments are formalized and released.
+            test.skip("attachments", async function () {
                 // Attachments were introduced in 6.1
                 if (workspaceContext.swiftVersion.isLessThan(new Version(6, 1, 0))) {
                     this.skip();
@@ -624,8 +624,8 @@ suite("Test Explorer Suite", function () {
 
                         assertTestResults(testRun, {
                             passed: [
-                                `${testId}/PackageTests.swift:63:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])`,
-                                `${testId}/PackageTests.swift:63:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [51])])`,
+                                `${testId}/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])`,
+                                `${testId}/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [51])])`,
                             ],
                             failed: [
                                 {
@@ -635,7 +635,7 @@ suite("Test Explorer Suite", function () {
                                             text: "Expectation failed: (arg → 2) != 2",
                                         })}`,
                                     ],
-                                    test: `${testId}/PackageTests.swift:63:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])`,
+                                    test: `${testId}/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])`,
                                 },
                                 {
                                     issues: [],
