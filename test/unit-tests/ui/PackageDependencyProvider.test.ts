@@ -15,7 +15,7 @@
 import { expect } from "chai";
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
-import { FileNode, PackageNode } from "../../../src/ui/PackageDependencyProvider";
+import { FileNode, PackageNode } from "../../../src/ui/ProjectPanelProvider";
 import { mockGlobalModule } from "../../MockUtils";
 
 suite("PackageDependencyProvider Unit Test Suite", function () {

@@ -14,10 +14,7 @@
 
 import { expect } from "chai";
 import * as vscode from "vscode";
-import {
-    PackageDependenciesProvider,
-    PackageNode,
-} from "../../../src/ui/PackageDependencyProvider";
+import { PackageNode, ProjectPanelProvider } from "../../../src/ui/ProjectPanelProvider";
 import { testAssetUri } from "../../fixtures";
 import { FolderContext } from "../../../src/FolderContext";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
@@ -28,8 +25,8 @@ import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider
 
 suite("Dependency Commmands Test Suite", function () {
     // full workflow's interaction with spm is longer than the default timeout
-    // 60 seconds for each test should be more than enough
-    this.timeout(60 * 1000);
+    // 120 seconds for each test should be more than enough
+    this.timeout(120 * 1000);
 
     let defaultContext: FolderContext;
     let depsContext: FolderContext;
@@ -57,12 +54,12 @@ suite("Dependency Commmands Test Suite", function () {
     });
 
     suite("Swift: Use Local Dependency", function () {
-        let treeProvider: PackageDependenciesProvider;
+        let treeProvider: ProjectPanelProvider;
 
         setup(async () => {
             await workspaceContext.focusFolder(depsContext);
             await executeTaskAndWaitForResult((await getBuildAllTask(depsContext)) as SwiftTask);
-            treeProvider = new PackageDependenciesProvider(workspaceContext);
+            treeProvider = new ProjectPanelProvider(workspaceContext);
         });
 
         teardown(() => {
@@ -70,8 +67,11 @@ suite("Dependency Commmands Test Suite", function () {
         });
 
         async function getDependency() {
-            const items = await treeProvider.getChildren();
-            return items.find(n => n.name === "swift-markdown") as PackageNode;
+            const headers = await treeProvider.getChildren();
+            const header = headers.find(n => n.name === "Dependencies") as PackageNode;
+            expect(header).to.not.be.undefined;
+            const children = await header.getChildren();
+            return children.find(n => n.name === "swift-markdown") as PackageNode;
         }
 
         // Wait for the dependency to switch to the expected state.

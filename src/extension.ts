@@ -18,7 +18,7 @@ import "source-map-support/register";
 import * as vscode from "vscode";
 import * as commands from "./commands";
 import * as debug from "./debugger/launch";
-import { PackageDependenciesProvider } from "./ui/PackageDependencyProvider";
+import { ProjectPanelProvider } from "./ui/ProjectPanelProvider";
 import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
 import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
@@ -160,13 +160,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             );
         });
 
-        // dependency view
-        const dependenciesProvider = new PackageDependenciesProvider(workspaceContext);
-        const dependenciesView = vscode.window.createTreeView("packageDependencies", {
-            treeDataProvider: dependenciesProvider,
+        // project panel provider
+        const projectPanelProvider = new ProjectPanelProvider(workspaceContext);
+        const dependenciesView = vscode.window.createTreeView("projectPanel", {
+            treeDataProvider: projectPanelProvider,
             showCollapseAll: true,
         });
-        dependenciesProvider.observeFolders(dependenciesView);
+        projectPanelProvider.observeFolders(dependenciesView);
 
         // observer that will resolve package and build launch configurations
         const resolvePackageObserver = workspaceContext.onDidChangeFolders(
@@ -189,6 +189,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                         } else {
                             await resolveFolderDependencies(folder, true);
                         }
+
                         if (
                             workspace.toolchain.swiftVersion.isGreaterThanOrEqual(
                                 new Version(5, 6, 0)
@@ -201,6 +202,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                                 async () => {
                                     await folder.loadSwiftPlugins();
                                     workspace.updatePluginContextKey();
+                                    folder.fireEvent(FolderOperation.pluginsUpdated);
                                 }
                             );
                         }
@@ -252,7 +254,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             testExplorerObserver,
             swiftModuleDocumentProvider,
             dependenciesView,
-            dependenciesProvider,
+            projectPanelProvider,
             logObserver,
             languageStatusItem,
             pluginTaskProvider,
