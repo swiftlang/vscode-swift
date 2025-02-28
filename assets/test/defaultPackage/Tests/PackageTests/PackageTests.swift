@@ -42,13 +42,9 @@ final class DebugReleaseTestSuite: XCTestCase {
   }
 }
 
-#if swift(>=6.1)
-@_spi(Experimental) import Testing
-#elseif swift(>=6.0)
-import Testing
-#endif
-
 #if swift(>=6.0)
+import Testing
+
 @Test func topLevelTestPassing() {
   print("A print statement in a test.")
   #if !TEST_ARGUMENT_SET_VIA_TEST_BUILD_ARGUMENTS_SETTING
@@ -112,11 +108,12 @@ struct MixedSwiftTestingSuite {
 }
 #endif
 
-#if swift(>=6.1)
-@Test func testAttachment() throws {
-  Attachment("Hello, world!", named: "hello.txt").attach()
-}
-#endif
+// Disabled until Attachments are formalized and released.
+// #if swift(>=6.1)
+// @Test func testAttachment() throws {
+//   Attachment("Hello, world!", named: "hello.txt").attach()
+// }
+// #endif
 
 final class DuplicateSuffixTests: XCTestCase {
   func testPassing() throws {}
