@@ -19,6 +19,8 @@ import { RenderNode, WebviewContent, WebviewMessage } from "./webview/WebviewMes
 import { WorkspaceContext } from "../WorkspaceContext";
 import { DocCDocumentationRequest, DocCDocumentationResponse } from "../sourcekit-lsp/extensions";
 import { LSPErrorCodes, ResponseError } from "vscode-languageclient";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import throttle = require("lodash.throttle");
 
 export enum PreviewEditorConstant {
     VIEW_TYPE = "swift.previewDocumentationEditor",
@@ -94,6 +96,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
     }
 
     private activeTextEditor?: vscode.TextEditor;
+    private activeTextEditorSelection?: vscode.Selection;
     private subscriptions: vscode.Disposable[] = [];
 
     private disposeEmitter = new vscode.EventEmitter<void>();
@@ -108,11 +111,11 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         this.subscriptions.push(
             this.webviewPanel.webview.onDidReceiveMessage(this.receiveMessage, this),
             vscode.window.onDidChangeActiveTextEditor(this.handleActiveTextEditorChange, this),
+            vscode.window.onDidChangeTextEditorSelection(this.handleSelectionChange, this),
             vscode.workspace.onDidChangeTextDocument(this.handleDocumentChange, this),
             this.webviewPanel.onDidDispose(this.dispose, this)
         );
-        // Reveal the editor, but don't change the focus of the active text editor
-        webviewPanel.reveal(undefined, true);
+        this.reveal();
     }
 
     /** An event that is fired when the Documentation Preview Editor is disposed */
@@ -125,7 +128,8 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
     onDidRenderContent = this.renderEmitter.event;
 
     reveal() {
-        this.webviewPanel.reveal();
+        // Reveal the editor, but don't change the focus of the active text editor
+        this.webviewPanel.reveal(undefined, true);
     }
 
     dispose() {
@@ -161,7 +165,19 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
             return;
         }
         this.activeTextEditor = activeTextEditor;
+        this.activeTextEditorSelection = activeTextEditor.selection;
         this.convertDocumentation(activeTextEditor);
+    }
+
+    private handleSelectionChange(event: vscode.TextEditorSelectionChangeEvent) {
+        if (
+            this.activeTextEditor !== event.textEditor ||
+            this.activeTextEditorSelection === event.textEditor.selection
+        ) {
+            return;
+        }
+        this.activeTextEditorSelection = event.textEditor.selection;
+        this.convertDocumentation(event.textEditor);
     }
 
     private handleDocumentChange(event: vscode.TextDocumentChangeEvent) {
@@ -170,73 +186,77 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         }
     }
 
-    private async convertDocumentation(textEditor: vscode.TextEditor): Promise<void> {
-        const document = textEditor.document;
-        if (
-            document.uri.scheme !== "file" ||
-            !["markdown", "tutorial", "swift"].includes(document.languageId)
-        ) {
-            this.postMessage({
-                type: "update-content",
-                content: {
-                    type: "error",
-                    errorMessage: PreviewEditorConstant.UNSUPPORTED_EDITOR_ERROR_MESSAGE,
-                },
-            });
-            return;
-        }
-
-        try {
-            const response = await this.context.languageClientManager.useLanguageClient(
-                async (client): Promise<DocCDocumentationResponse> => {
-                    return await client.sendRequest(DocCDocumentationRequest.type, {
-                        textDocument: {
-                            uri: document.uri.toString(),
-                        },
-                        position: textEditor.selection.start,
-                    });
-                }
-            );
-            this.postMessage({
-                type: "update-content",
-                content: {
-                    type: "render-node",
-                    renderNode: this.parseRenderNode(response.renderNode),
-                },
-            });
-        } catch (error) {
-            // Update the preview editor to reflect what error occurred
-            let livePreviewErrorMessage = "An internal error occurred";
-            const baseLogErrorMessage = `SourceKit-LSP request "${DocCDocumentationRequest.method}" failed: `;
-            if (error instanceof ResponseError) {
-                if (error.code === LSPErrorCodes.RequestCancelled) {
-                    // We can safely ignore cancellations
-                    return undefined;
-                }
-                switch (error.code) {
-                    case LSPErrorCodes.RequestFailed:
-                        // RequestFailed response errors can be shown to the user
-                        livePreviewErrorMessage = error.message;
-                        break;
-                    default:
-                        // We should log additional info for other response errors
-                        this.context.outputChannel.log(
-                            baseLogErrorMessage + JSON.stringify(error.toJson(), undefined, 2)
-                        );
-                        break;
-                }
-            } else {
-                this.context.outputChannel.log(baseLogErrorMessage + `${error}`);
+    private convertDocumentation = throttle(
+        async (textEditor: vscode.TextEditor): Promise<void> => {
+            const document = textEditor.document;
+            if (
+                document.uri.scheme !== "file" ||
+                !["markdown", "tutorial", "swift"].includes(document.languageId)
+            ) {
+                this.postMessage({
+                    type: "update-content",
+                    content: {
+                        type: "error",
+                        errorMessage: PreviewEditorConstant.UNSUPPORTED_EDITOR_ERROR_MESSAGE,
+                    },
+                });
+                return;
             }
-            this.postMessage({
-                type: "update-content",
-                content: {
-                    type: "error",
-                    errorMessage: livePreviewErrorMessage,
-                },
-            });
-        }
-    }
+
+            try {
+                const response = await this.context.languageClientManager.useLanguageClient(
+                    async (client): Promise<DocCDocumentationResponse> => {
+                        return await client.sendRequest(DocCDocumentationRequest.type, {
+                            textDocument: {
+                                uri: document.uri.toString(),
+                            },
+                            position: textEditor.selection.start,
+                        });
+                    }
+                );
+                this.postMessage({
+                    type: "update-content",
+                    content: {
+                        type: "render-node",
+                        renderNode: this.parseRenderNode(response.renderNode),
+                    },
+                });
+            } catch (error) {
+                // Update the preview editor to reflect what error occurred
+                let livePreviewErrorMessage = "An internal error occurred";
+                const baseLogErrorMessage = `SourceKit-LSP request "${DocCDocumentationRequest.method}" failed: `;
+                if (error instanceof ResponseError) {
+                    if (error.code === LSPErrorCodes.RequestCancelled) {
+                        // We can safely ignore cancellations
+                        return undefined;
+                    }
+                    switch (error.code) {
+                        case LSPErrorCodes.RequestFailed:
+                            // RequestFailed response errors can be shown to the user
+                            livePreviewErrorMessage = error.message;
+                            break;
+                        default:
+                            // We should log additional info for other response errors
+                            this.context.outputChannel.log(
+                                baseLogErrorMessage + JSON.stringify(error.toJson(), undefined, 2)
+                            );
+                            break;
+                    }
+                } else {
+                    this.context.outputChannel.log(baseLogErrorMessage + `${error}`);
+                }
+                this.postMessage({
+                    type: "update-content",
+                    content: {
+                        type: "error",
+                        errorMessage: livePreviewErrorMessage,
+                    },
+                });
+            }
+        },
+        100 /* 10 times per second */,
+        { trailing: true }
+    );
 
     private parseRenderNode(content: string): RenderNode {
         const renderNode: RenderNode = JSON.parse(content);
