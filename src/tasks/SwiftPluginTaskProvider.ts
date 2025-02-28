@@ -202,7 +202,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
      * are keyed by either plugin command name (package), or in the form `name:command`.
      * User-configured permissions take precedence over the hardcoded permissions, and the more
      * specific form of `name:command` takes precedence over the more general form of `name`.
-     * @param folderContext The folder context to search for the `swift.pluginPermissions` key.
+     * @param folderContext The folder context to search for the `swift.pluginPermissions` and `swift.pluginArguments` keys.
      * @param taskDefinition The task definition to search for the `disableSandbox` and `allowWritingToPackageDirectory` keys.
      * @param plugin The plugin to generate arguments for.
      * @returns A list of permission related arguments to pass when invoking the plugin.
@@ -213,8 +213,13 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         plugin: PackagePlugin
     ): string[] {
         const config = configuration.folder(folderContext);
+        const globalPackageConfig = config.pluginPermissions();
         const packageConfig = config.pluginPermissions(plugin.package);
         const commandConfig = config.pluginPermissions(`${plugin.package}:${plugin.command}`);
+
+        const globalPackageArgs = config.pluginArguments();
+        const packageArgs = config.pluginArguments(plugin.package);
+        const commandArgs = config.pluginArguments(`${plugin.package}:${plugin.command}`);
 
         const taskDefinitionConfiguration: PluginPermissionConfiguration = {};
         if (taskDefinition.disableSandbox) {
@@ -232,11 +237,17 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
                 taskDefinition.allowNetworkConnections;
         }
 
-        return this.pluginArguments({
-            ...packageConfig,
-            ...commandConfig,
-            ...taskDefinitionConfiguration,
-        });
+        return [
+            ...globalPackageArgs,
+            ...packageArgs,
+            ...commandArgs,
+            ...this.pluginArguments({
+                ...globalPackageConfig,
+                ...packageConfig,
+                ...commandConfig,
+                ...taskDefinitionConfiguration,
+            }),
+        ];
     }
 
     private pluginArguments(config: PluginPermissionConfiguration): string[] {
