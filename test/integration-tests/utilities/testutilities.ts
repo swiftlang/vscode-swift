@@ -318,7 +318,7 @@ export type SettingsMap = { [key: string]: unknown };
 export async function updateSettings(settings: SettingsMap): Promise<() => Promise<void>> {
     const applySettings = async (settings: SettingsMap) => {
         const savedOriginalSettings: SettingsMap = {};
-        for (const setting of Object.keys(settings)) {
+        Object.keys(settings).forEach(async setting => {
             const { section, name } = decomposeSettingName(setting);
             const config = vscode.workspace.getConfiguration(section, { languageId: "swift" });
             savedOriginalSettings[setting] = config.get(name);
@@ -327,7 +327,7 @@ export async function updateSettings(settings: SettingsMap): Promise<() => Promi
                 settings[setting] === "" ? undefined : settings[setting],
                 vscode.ConfigurationTarget.Workspace
             );
-        }
+        });
 
         // There is actually a delay between when the config.update promise resolves and when
         // the setting is actually written. If we exit this function right away the test might

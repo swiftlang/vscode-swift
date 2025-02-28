@@ -18,20 +18,19 @@ import { createSwiftTask, SwiftTaskProvider } from "../tasks/SwiftTaskProvider";
 import { debugLaunchConfig, getLaunchConfiguration } from "../debugger/launch";
 import { executeTaskWithUI } from "./utilities";
 import { FolderContext } from "../FolderContext";
-import { Target } from "../SwiftPackage";
 
 /**
  * Executes a {@link vscode.Task task} to run swift target.
  */
-export async function runBuild(ctx: WorkspaceContext, target?: string) {
-    return await debugBuildWithOptions(ctx, { noDebug: true }, target);
+export async function runBuild(ctx: WorkspaceContext) {
+    return await debugBuildWithOptions(ctx, { noDebug: true });
 }
 
 /**
  * Executes a {@link vscode.Task task} to debug swift target.
  */
-export async function debugBuild(ctx: WorkspaceContext, target?: string) {
-    return await debugBuildWithOptions(ctx, {}, target);
+export async function debugBuild(ctx: WorkspaceContext) {
+    return await debugBuildWithOptions(ctx, {});
 }
 
 /**
@@ -71,8 +70,7 @@ export async function folderCleanBuild(folderContext: FolderContext) {
  */
 export async function debugBuildWithOptions(
     ctx: WorkspaceContext,
-    options: vscode.DebugSessionOptions,
-    targetName?: string
+    options: vscode.DebugSessionOptions
 ) {
     const current = ctx.currentFolder;
     if (!current) {
@@ -82,19 +80,13 @@ export async function debugBuildWithOptions(
         return;
     }
 
-    let target: Target | undefined;
-    if (targetName) {
-        target = current.swiftPackage.targets.find(target => target.name === targetName);
-    } else {
-        const file = vscode.window.activeTextEditor?.document.fileName;
-        if (!file) {
-            ctx.outputChannel.appendLine("debugBuildWithOptions: No active text editor");
-            return;
-        }
-
-        target = current.swiftPackage.getTarget(file);
+    const file = vscode.window.activeTextEditor?.document.fileName;
+    if (!file) {
+        ctx.outputChannel.appendLine("debugBuildWithOptions: No active text editor");
+        return;
     }
 
+    const target = current.swiftPackage.getTarget(file);
     if (!target) {
         ctx.outputChannel.appendLine("debugBuildWithOptions: No active target");
         return;
@@ -109,9 +101,6 @@ export async function debugBuildWithOptions(
 
     const launchConfig = getLaunchConfiguration(target.name, current);
     if (launchConfig) {
-        ctx.buildStarted(target.name, launchConfig, options);
-        const result = await debugLaunchConfig(current.workspaceFolder, launchConfig, options);
-        ctx.buildFinished(target.name, launchConfig, options);
-        return result;
+        return debugLaunchConfig(current.workspaceFolder, launchConfig, options);
     }
 }

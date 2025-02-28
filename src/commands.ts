@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import { WorkspaceContext } from "./WorkspaceContext";
-import { PackageNode } from "./ui/ProjectPanelProvider";
+import { PackageNode } from "./ui/PackageDependencyProvider";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { debugSnippet, runSnippet } from "./SwiftSnippets";
 import { showToolchainSelectionQuickPick } from "./ui/ToolchainSelection";
@@ -38,10 +38,8 @@ import { updateDependencies } from "./commands/dependencies/update";
 import { runPluginTask } from "./commands/runPluginTask";
 import { runTestMultipleTimes } from "./commands/testMultipleTimes";
 import { newSwiftFile } from "./commands/newFile";
-import { runAllTests } from "./commands/runAllTests";
+import { runAllTestsParallel } from "./commands/runParallelTests";
 import { updateDependenciesViewList } from "./commands/dependencies/updateDepViewList";
-import { runTask } from "./commands/runTask";
-import { TestKind } from "./TestExplorer/TestKind";
 
 /**
  * References:
@@ -79,15 +77,8 @@ export enum Commands {
     RESET_PACKAGE = "swift.resetPackage",
     USE_LOCAL_DEPENDENCY = "swift.useLocalDependency",
     UNEDIT_DEPENDENCY = "swift.uneditDependency",
-    RUN_TASK = "swift.runTask",
     RUN_PLUGIN_TASK = "swift.runPluginTask",
-    RUN_SNIPPET = "swift.runSnippet",
-    DEBUG_SNIPPET = "swift.debugSnippet",
     PREVIEW_DOCUMENTATION = "swift.previewDocumentation",
-    RUN_ALL_TESTS = "swift.runAllTests",
-    RUN_ALL_TESTS_PARALLEL = "swift.runAllTestsParallel",
-    DEBUG_ALL_TESTS = "swift.debugAllTests",
-    COVER_ALL_TESTS = "swift.coverAllTests",
 }
 
 /**
@@ -102,12 +93,8 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand(Commands.UPDATE_DEPENDENCIES, () =>
             updateDependencies(ctx)
         ),
-        vscode.commands.registerCommand(Commands.RUN, target =>
-            runBuild(ctx, ...unwrapTreeItem(target))
-        ),
-        vscode.commands.registerCommand(Commands.DEBUG, target =>
-            debugBuild(ctx, ...unwrapTreeItem(target))
-        ),
+        vscode.commands.registerCommand(Commands.RUN, () => runBuild(ctx)),
+        vscode.commands.registerCommand(Commands.DEBUG, () => debugBuild(ctx)),
         vscode.commands.registerCommand(Commands.CLEAN_BUILD, () => cleanBuild(ctx)),
         vscode.commands.registerCommand(Commands.RUN_TESTS_MULTIPLE_TIMES, item => {
             if (ctx.currentFolder) {
@@ -128,14 +115,9 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
                 return openPackage(ctx.toolchain.swiftVersion, ctx.currentFolder.folder);
             }
         }),
-        vscode.commands.registerCommand(Commands.RUN_SNIPPET, target =>
-            runSnippet(ctx, ...unwrapTreeItem(target))
-        ),
-        vscode.commands.registerCommand(Commands.DEBUG_SNIPPET, target =>
-            debugSnippet(ctx, ...unwrapTreeItem(target))
-        ),
+        vscode.commands.registerCommand("swift.runSnippet", () => runSnippet(ctx)),
+        vscode.commands.registerCommand("swift.debugSnippet", () => debugSnippet(ctx)),
         vscode.commands.registerCommand(Commands.RUN_PLUGIN_TASK, () => runPluginTask()),
-        vscode.commands.registerCommand(Commands.RUN_TASK, name => runTask(ctx, name)),
         vscode.commands.registerCommand("swift.restartLSPServer", () =>
             ctx.languageClientManager.restart()
         ),
@@ -174,20 +156,8 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         ),
         vscode.commands.registerCommand("swift.captureDiagnostics", () => captureDiagnostics(ctx)),
         vscode.commands.registerCommand(
-            Commands.RUN_ALL_TESTS_PARALLEL,
-            async item => await runAllTests(ctx, TestKind.parallel, ...unwrapTreeItem(item))
-        ),
-        vscode.commands.registerCommand(
-            Commands.RUN_ALL_TESTS,
-            async item => await runAllTests(ctx, TestKind.standard, ...unwrapTreeItem(item))
-        ),
-        vscode.commands.registerCommand(
-            Commands.DEBUG_ALL_TESTS,
-            async item => await runAllTests(ctx, TestKind.debug, ...unwrapTreeItem(item))
-        ),
-        vscode.commands.registerCommand(
-            Commands.COVER_ALL_TESTS,
-            async item => await runAllTests(ctx, TestKind.coverage, ...unwrapTreeItem(item))
+            "swift.runAllTestsParallel",
+            async () => await runAllTestsParallel(ctx)
         ),
         vscode.commands.registerCommand(
             Commands.PREVIEW_DOCUMENTATION,
@@ -200,17 +170,4 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             updateDependenciesViewList(ctx, false)
         ),
     ];
-}
-
-/**
- * Certain commands can be called via a vscode TreeView, which will pass a {@link CommandNode} object.
- * If the command is called via a command palette or other means, the target will be a string.
- */
-function unwrapTreeItem(target?: string | { args: string[] }): string[] {
-    if (typeof target === "object" && target !== null && "args" in target) {
-        return target.args ?? [];
-    } else if (typeof target === "string") {
-        return [target];
-    }
-    return [];
 }

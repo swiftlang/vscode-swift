@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { PackageNode } from "../ui/ProjectPanelProvider";
+import { PackageNode } from "../ui/PackageDependencyProvider";
 
 /**
  * Opens the supplied `PackageNode` externally using the default application.

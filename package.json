@@ -222,14 +222,12 @@
       {
         "command": "swift.runSnippet",
         "title": "Run Swift Snippet",
-        "category": "Swift",
-        "icon": "$(play)"
+        "category": "Swift"
       },
       {
         "command": "swift.debugSnippet",
         "title": "Debug Swift Snippet",
-        "category": "Swift",
-        "icon": "$(debug)"
+        "category": "Swift"
       },
       {
         "command": "swift.runPluginTask",
@@ -268,27 +266,8 @@
       },
       {
         "command": "swift.runAllTestsParallel",
-        "title": "Run Tests in Parallel",
-        "category": "Test",
-        "icon": "$(testing-run-all-icon)"
-      },
-      {
-        "command": "swift.runAllTests",
-        "title": "Run Tests",
-        "category": "Test",
-        "icon": "$(testing-run-icon)"
-      },
-      {
-        "command": "swift.debugAllTests",
-        "title": "Debug Tests",
-        "category": "Test",
-        "icon": "$(testing-debug-icon)"
-      },
-      {
-        "command": "swift.coverAllTests",
-        "title": "Run Tests with Coverage",
-        "category": "Test",
-        "icon": "$(debug-coverage)"
+        "title": "Run All Tests in Parallel",
+        "category": "Test"
       }
     ],
     "configuration": [
@@ -931,18 +910,6 @@
         {
           "command": "swift.runAllTestsParallel",
           "when": "swift.isActivated"
-        },
-        {
-          "command": "swift.runAllTests",
-          "when": "swift.isActivated"
-        },
-        {
-          "command": "swift.debugAllTests",
-          "when": "swift.isActivated"
-        },
-        {
-          "command": "swift.coverAllTests",
-          "when": "swift.isActivated"
         }
       ],
       "editor/context": [
@@ -1004,90 +971,50 @@
       "view/title": [
         {
           "command": "swift.updateDependencies",
-          "when": "view == projectPanel",
+          "when": "view == packageDependencies",
           "group": "navigation@1"
         },
         {
           "command": "swift.resolveDependencies",
-          "when": "view == projectPanel",
+          "when": "view == packageDependencies",
           "group": "navigation@2"
         },
         {
           "command": "swift.resetPackage",
-          "when": "view == projectPanel",
+          "when": "view == packageDependencies",
           "group": "navigation@3"
         },
         {
           "command": "swift.flatDependenciesList",
-          "when": "view == projectPanel && !swift.flatDependenciesList",
+          "when": "view == packageDependencies && !swift.flatDependenciesList",
           "group": "navigation@4"
         },
         {
           "command": "swift.nestedDependenciesList",
-          "when": "view == projectPanel && swift.flatDependenciesList",
+          "when": "view == packageDependencies && swift.flatDependenciesList",
           "group": "navigation@5"
         }
       ],
       "view/item/context": [
         {
           "command": "swift.useLocalDependency",
-          "when": "view == projectPanel && viewItem == remote"
+          "when": "view == packageDependencies && viewItem == remote"
         },
         {
           "command": "swift.uneditDependency",
-          "when": "view == projectPanel && viewItem == editing"
+          "when": "view == packageDependencies && viewItem == editing"
         },
         {
           "command": "swift.openInWorkspace",
-          "when": "view == projectPanel && viewItem == editing"
+          "when": "view == packageDependencies && viewItem == editing"
         },
         {
           "command": "swift.openInWorkspace",
-          "when": "view == projectPanel && viewItem == local"
+          "when": "view == packageDependencies && viewItem == local"
         },
         {
           "command": "swift.openExternal",
-          "when": "view == projectPanel && (viewItem == 'editing' || viewItem == 'remote')"
-        },
-        {
-          "command": "swift.run",
-          "when": "view == projectPanel && viewItem == 'runnable'",
-          "group": "inline@0"
-        },
-        {
-          "command": "swift.debug",
-          "when": "view == projectPanel && viewItem == 'runnable'",
-          "group": "inline@1"
-        },
-        {
-          "command": "swift.runSnippet",
-          "when": "view == projectPanel && viewItem == 'snippet_runnable'",
-          "group": "inline@0"
-        },
-        {
-          "command": "swift.debugSnippet",
-          "when": "view == projectPanel && viewItem == 'snippet_runnable'",
-          "group": "inline@1"
-        },
-        {
-          "command": "swift.runAllTests",
-          "when": "view == projectPanel && viewItem == 'test_runnable'",
-          "group": "inline@0"
-        },
-        {
-          "command": "swift.debugAllTests",
-          "when": "view == projectPanel && viewItem == 'test_runnable'",
-          "group": "inline@1"
-        },
-        {
-          "command": "swift.runAllTestsParallel",
-          "when": "view == projectPanel && viewItem == 'test_runnable'",
-          "group": "inline@2"
-        },
-        {
-          "command": "swift.coverAllTests",
-          "when": "view == projectPanel && viewItem == 'test_runnable'",
-          "group": "inline@3"
+          "when": "view == packageDependencies && viewItem != local"
         }
       ]
     },
@@ -1284,8 +1211,8 @@
     "views": {
       "explorer": [
         {
-          "id": "projectPanel",
-          "name": "Swift Project",
+          "id": "packageDependencies",
+          "name": "Package Dependencies",
           "icon": "$(archive)",
           "when": "swift.hasPackage"
         }

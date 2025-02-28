@@ -1,1 +1,0 @@
-print("Snippet Hello World")

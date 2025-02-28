@@ -116,9 +116,9 @@ export class StatusItem {
     private showTask(task: RunningTask, message?: string) {
         message = message ?? task.name;
         if (typeof task.task !== "string") {
-            this.show(`$(loading~spin) ${message}`, message, "workbench.action.tasks.showTasks");
+            this.show(`$(sync~spin) ${message}`, message, "workbench.action.tasks.showTasks");
         } else {
-            this.show(`$(loading~spin) ${message}`, message);
+            this.show(`$(sync~spin) ${message}`, message);
         }
     }
 

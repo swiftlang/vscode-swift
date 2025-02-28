@@ -17,29 +17,23 @@ import { TestKind } from "../TestExplorer/TestKind";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { flattenTestItemCollection } from "../TestExplorer/TestUtils";
 
-export async function runAllTests(ctx: WorkspaceContext, testKind: TestKind, target?: string) {
+export async function runAllTestsParallel(ctx: WorkspaceContext) {
     const testExplorer = ctx.currentFolder?.testExplorer;
     if (testExplorer === undefined) {
         return;
     }
 
-    const profile = testExplorer.testRunProfiles.find(profile => profile.label === testKind);
+    const profile = testExplorer.testRunProfiles.find(
+        profile => profile.label === TestKind.parallel
+    );
     if (profile === undefined) {
         return;
     }
 
-    let tests = flattenTestItemCollection(testExplorer.controller.items);
-
-    // If a target is specified, filter the tests to only run those that match the target.
-    if (target) {
-        const targetRegex = new RegExp(`^${target}(\\.|$)`);
-        tests = tests.filter(test => targetRegex.test(test.id));
-    }
+    const tests = flattenTestItemCollection(testExplorer.controller.items);
     const tokenSource = new vscode.CancellationTokenSource();
     await profile.runHandler(
         new vscode.TestRunRequest(tests, undefined, profile),
         tokenSource.token
     );
-
-    await vscode.commands.executeCommand("testing.showMostRecentOutput");
 }

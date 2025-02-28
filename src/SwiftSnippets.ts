@@ -48,44 +48,29 @@ export function setSnippetContextKey(ctx: WorkspaceContext) {
  * If current file is a Swift Snippet run it
  * @param ctx Workspace Context
  */
-export async function runSnippet(
-    ctx: WorkspaceContext,
-    snippet?: string
-): Promise<boolean | undefined> {
-    return await debugSnippetWithOptions(ctx, { noDebug: true }, snippet);
+export async function runSnippet(ctx: WorkspaceContext): Promise<boolean | undefined> {
+    return await debugSnippetWithOptions(ctx, { noDebug: true });
 }
 
 /**
  * If current file is a Swift Snippet run it in the debugger
  * @param ctx Workspace Context
  */
-export async function debugSnippet(
-    ctx: WorkspaceContext,
-    snippet?: string
-): Promise<boolean | undefined> {
-    return await debugSnippetWithOptions(ctx, {}, snippet);
+export async function debugSnippet(ctx: WorkspaceContext): Promise<boolean | undefined> {
+    return await debugSnippetWithOptions(ctx, {});
 }
 
 export async function debugSnippetWithOptions(
     ctx: WorkspaceContext,
-    options: vscode.DebugSessionOptions,
-    snippet?: string
+    options: vscode.DebugSessionOptions
 ): Promise<boolean | undefined> {
-    // create build task
-    let snippetName: string;
-    if (snippet) {
-        snippetName = snippet;
-    } else if (ctx.currentDocument) {
-        snippetName = path.basename(ctx.currentDocument.fsPath, ".swift");
-    } else {
-        return false;
-    }
-
     const folderContext = ctx.currentFolder;
-    if (!folderContext) {
-        return false;
+    if (!ctx.currentDocument || !folderContext) {
+        return;
     }
 
+    // create build task
+    const snippetName = path.basename(ctx.currentDocument.fsPath, ".swift");
     const snippetBuildTask = createSwiftTask(
         ["build", "--product", snippetName],
         `Build ${snippetName}`,
@@ -99,29 +84,26 @@ export async function debugSnippetWithOptions(
         },
         ctx.toolchain
     );
-    const snippetDebugConfig = createSnippetConfiguration(snippetName, folderContext);
-    try {
-        ctx.buildStarted(snippetName, snippetDebugConfig, options);
 
+    try {
         // queue build task and when it is complete run executable in the debugger
         return await folderContext.taskQueue
             .queueOperation(new TaskOperation(snippetBuildTask))
             .then(result => {
                 if (result === 0) {
+                    const snippetDebugConfig = createSnippetConfiguration(
+                        snippetName,
+                        folderContext
+                    );
                     return debugLaunchConfig(
                         folderContext.workspaceFolder,
                         snippetDebugConfig,
                         options
                     );
                 }
-            })
-            .then(result => {
-                ctx.buildFinished(snippetName, snippetDebugConfig, options);
-                return result;
             });
-    } catch (error) {
-        ctx.outputChannel.appendLine(`Failed to debug snippet: ${error}`);
+    } catch {
         // ignore error if task failed to run
-        return false;
+        return;
     }
 }

@@ -27,7 +27,6 @@ export class PackageWatcher {
     private packageFileWatcher?: vscode.FileSystemWatcher;
     private resolvedFileWatcher?: vscode.FileSystemWatcher;
     private workspaceStateFileWatcher?: vscode.FileSystemWatcher;
-    private snippetWatcher?: vscode.FileSystemWatcher;
 
     constructor(
         private folderContext: FolderContext,
@@ -42,7 +41,6 @@ export class PackageWatcher {
         this.packageFileWatcher = this.createPackageFileWatcher();
         this.resolvedFileWatcher = this.createResolvedFileWatcher();
         this.workspaceStateFileWatcher = this.createWorkspaceStateFileWatcher();
-        this.snippetWatcher = this.createSnippetFileWatcher();
     }
 
     /**
@@ -53,7 +51,6 @@ export class PackageWatcher {
         this.packageFileWatcher?.dispose();
         this.resolvedFileWatcher?.dispose();
         this.workspaceStateFileWatcher?.dispose();
-        this.snippetWatcher?.dispose();
     }
 
     private createPackageFileWatcher(): vscode.FileSystemWatcher {
@@ -87,15 +84,6 @@ export class PackageWatcher {
         watcher.onDidCreate(async () => await this.handleWorkspaceStateChange());
         watcher.onDidChange(async () => await this.handleWorkspaceStateChange());
         watcher.onDidDelete(async () => await this.handleWorkspaceStateChange());
-        return watcher;
-    }
-
-    private createSnippetFileWatcher(): vscode.FileSystemWatcher {
-        const watcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(this.folderContext.folder, "Snippets/*.swift")
-        );
-        watcher.onDidCreate(async () => await this.handlePackageSwiftChange());
-        watcher.onDidDelete(async () => await this.handlePackageSwiftChange());
         return watcher;
     }
 

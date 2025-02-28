@@ -181,7 +181,6 @@ export function createSnippetConfiguration(
         args: [],
         cwd: folder,
         env: swiftRuntimeEnv(true),
-        runType: "snippet",
         ...CI_DISABLE_ASLR,
     };
 }
