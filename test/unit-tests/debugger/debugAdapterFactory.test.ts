@@ -75,12 +75,13 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 instance(mockToolchain),
                 instance(mockOutputChannel)
             );
-            const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
-                name: "Test Launch Config",
-                type: SWIFT_LAUNCH_CONFIG_TYPE,
-                request: "launch",
-                program: "${workspaceFolder}/.build/debug/executable",
-            });
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "${workspaceFolder}/.build/debug/executable",
+                });
             expect(launchConfig).to.containSubset({ type: LaunchConfigType.CODE_LLDB });
         });
 
@@ -93,7 +94,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 instance(mockOutputChannel)
             );
             await expect(
-                configProvider.resolveDebugConfiguration(undefined, {
+                configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
                     name: "Test Launch Config",
                     type: SWIFT_LAUNCH_CONFIG_TYPE,
                     request: "launch",
@@ -115,7 +116,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 instance(mockOutputChannel)
             );
             await expect(
-                configProvider.resolveDebugConfiguration(undefined, {
+                configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
                     name: "Test Launch Config",
                     type: SWIFT_LAUNCH_CONFIG_TYPE,
                     request: "launch",
@@ -138,7 +139,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 instance(mockOutputChannel)
             );
             await expect(
-                configProvider.resolveDebugConfiguration(undefined, {
+                configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
                     name: "Test Launch Config",
                     type: SWIFT_LAUNCH_CONFIG_TYPE,
                     request: "launch",
@@ -172,12 +173,13 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 instance(mockToolchain),
                 instance(mockOutputChannel)
             );
-            const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
-                name: "Test Launch Config",
-                type: SWIFT_LAUNCH_CONFIG_TYPE,
-                request: "launch",
-                program: "${workspaceFolder}/.build/debug/executable",
-            });
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "${workspaceFolder}/.build/debug/executable",
+                });
             expect(launchConfig).to.containSubset({
                 type: LaunchConfigType.LLDB_DAP,
                 debugAdapterExecutable: "/path/to/lldb-dap",
@@ -192,7 +194,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 instance(mockOutputChannel)
             );
             await expect(
-                configProvider.resolveDebugConfiguration(undefined, {
+                configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
                     name: "Test Launch Config",
                     type: SWIFT_LAUNCH_CONFIG_TYPE,
                     request: "launch",
@@ -208,12 +210,13 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 instance(mockToolchain),
                 instance(mockOutputChannel)
             );
-            const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
-                name: "Test Launch Config",
-                type: SWIFT_LAUNCH_CONFIG_TYPE,
-                request: "launch",
-                program: "${workspaceFolder}/.build/debug/executable",
-            });
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "${workspaceFolder}/.build/debug/executable",
+                });
             expect(launchConfig).to.containSubset({
                 program: "${workspaceFolder}/.build/debug/executable.exe",
             });
@@ -225,12 +228,13 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 instance(mockToolchain),
                 instance(mockOutputChannel)
             );
-            const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
-                name: "Test Launch Config",
-                type: SWIFT_LAUNCH_CONFIG_TYPE,
-                request: "launch",
-                program: "${workspaceFolder}/.build/debug/executable.exe",
-            });
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "${workspaceFolder}/.build/debug/executable.exe",
+                });
             expect(launchConfig).to.containSubset({
                 program: "${workspaceFolder}/.build/debug/executable.exe",
             });
@@ -242,12 +246,13 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 instance(mockToolchain),
                 instance(mockOutputChannel)
             );
-            const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
-                name: "Test Launch Config",
-                type: SWIFT_LAUNCH_CONFIG_TYPE,
-                request: "launch",
-                program: "${workspaceFolder}/.build/debug/executable",
-            });
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "${workspaceFolder}/.build/debug/executable",
+                });
             expect(launchConfig).to.containSubset({
                 program: "${workspaceFolder}/.build/debug/executable",
             });
@@ -259,12 +264,13 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 instance(mockToolchain),
                 instance(mockOutputChannel)
             );
-            const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
-                name: "Test Launch Config",
-                type: SWIFT_LAUNCH_CONFIG_TYPE,
-                request: "launch",
-                program: "${workspaceFolder}/.build/debug/executable",
-            });
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "${workspaceFolder}/.build/debug/executable",
+                });
             expect(launchConfig).to.containSubset({
                 program: "${workspaceFolder}/.build/debug/executable",
             });
@@ -276,16 +282,17 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 instance(mockToolchain),
                 instance(mockOutputChannel)
             );
-            const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
-                name: "Test Launch Config",
-                type: SWIFT_LAUNCH_CONFIG_TYPE,
-                request: "launch",
-                program: "${workspaceFolder}/.build/debug/executable",
-                env: {
-                    VAR1: "value1",
-                    VAR2: "value2",
-                },
-            });
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "${workspaceFolder}/.build/debug/executable",
+                    env: {
+                        VAR1: "value1",
+                        VAR2: "value2",
+                    },
+                });
             expect(launchConfig)
                 .to.have.property("env")
                 .that.deep.equals(["VAR1=value1", "VAR2=value2"]);
@@ -297,12 +304,13 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 instance(mockToolchain),
                 instance(mockOutputChannel)
             );
-            const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
-                name: "Test Launch Config",
-                type: SWIFT_LAUNCH_CONFIG_TYPE,
-                request: "launch",
-                program: "${workspaceFolder}/.build/debug/executable",
-            });
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "${workspaceFolder}/.build/debug/executable",
+                });
             expect(launchConfig).to.not.have.property("env");
         });
 
@@ -312,12 +320,13 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 instance(mockToolchain),
                 instance(mockOutputChannel)
             );
-            const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
-                type: SWIFT_LAUNCH_CONFIG_TYPE,
-                request: "launch",
-                name: "Test Launch",
-                env: {},
-            });
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    name: "Test Launch",
+                    env: {},
+                });
 
             expect(launchConfig).to.have.property("env").that.deep.equals([]);
         });
@@ -333,12 +342,13 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 instance(mockToolchain),
                 instance(mockOutputChannel)
             );
-            const launchConfig = await configProvider.resolveDebugConfiguration(undefined, {
-                type: SWIFT_LAUNCH_CONFIG_TYPE,
-                request: "launch",
-                name: "Test Launch",
-                env,
-            });
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    name: "Test Launch",
+                    env,
+                });
 
             // Verify that all 1000 environment variables are properly converted
             const expectedEnv = Array.from({ length: 1000 }, (_, i) => `VAR${i}=value${i}`);
