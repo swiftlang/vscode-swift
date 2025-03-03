@@ -77,6 +77,11 @@ interface ContextKeys {
      * Whether the SourceKit-LSP server supports documentation live preview.
      */
     supportsDocumentationLivePreview: boolean;
+
+    /**
+     * Whether the swift.switchPlatform command is available.
+     */
+    switchPlatformAvailable: boolean;
 }
 
 /** Creates the getters and setters for the VS Code Swift extension's context keys. */
@@ -92,6 +97,7 @@ function createContextKeys(): ContextKeys {
     let createNewProjectAvailable: boolean = false;
     let supportsReindexing: boolean = false;
     let supportsDocumentationLivePreview: boolean = false;
+    let switchPlatformAvailable: boolean = false;
 
     return {
         get isActivated() {
@@ -199,6 +205,15 @@ function createContextKeys(): ContextKeys {
                 "swift.supportsDocumentationLivePreview",
                 value
             );
+        },
+
+        get switchPlatformAvailable() {
+            return switchPlatformAvailable;
+        },
+
+        set switchPlatformAvailable(value: boolean) {
+            switchPlatformAvailable = value;
+            vscode.commands.executeCommand("setContext", "swift.switchPlatformAvailable", value);
         },
     };
 }
