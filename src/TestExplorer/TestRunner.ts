@@ -961,6 +961,8 @@ export class TestRunner {
                             );
 
                             const outputHandler = this.testOutputHandler(config.testType, runState);
+                            outputHandler(`> ${config.program} ${config.args.join(" ")}\n\n\r`);
+
                             LoggingDebugAdapterTracker.setDebugSessionCallback(
                                 session,
                                 this.workspaceContext.outputChannel,
