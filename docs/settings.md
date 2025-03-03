@@ -6,9 +6,9 @@ This document outlines useful configuration options not covered by the settings 
 
 ## Command Plugins
 
-Swift packages can define [command plugins](https://github.com/swiftlang/swift-package-manager/blob/main/Documentation/Plugins.md) that can perform arbitrary tasks. For example, the [swift-format](https://github.com/swiftlang/swift-format) package exposes a `format-source-code` command which will use swift-format to format source code in a folder. These plugin commands can be invoked from VS Code using `> Swift: Run Command Plugin`. 
+Swift packages can define [command plugins](https://github.com/swiftlang/swift-package-manager/blob/main/Documentation/Plugins.md) that can perform arbitrary tasks. For example, the [swift-format](https://github.com/swiftlang/swift-format) package exposes a `format-source-code` command which will use swift-format to format source code in a folder. These plugin commands can be invoked from VS Code using `> Swift: Run Command Plugin`.
 
-A plugin may require permissions to perform tasks like writing to the file system or using the network. If a plugin command requires one of these permissions, you will be prompted in the integrated terminal to accept them. If you trust the command and wish to apply permissions on every command execution, you can configure a setting in your `settings.json`.
+A plugin may require permissions to perform tasks like writing to the file system or using the network. If a plugin command requires one of these permissions, you will be prompted in the integrated terminal to accept them. If you trust the command and wish to apply permissions on every command execution, you can configure the [`swift.pluginPermissions`](vscode://settings/swift.pluginPermissions) setting in your `settings.json`.
 
 ```json
 {
@@ -51,17 +51,25 @@ Alternatively, you can define a task in your tasks.json and define permissions d
 
 If you're using a nightly (`main`) or recent `6.0` toolchain you can enable support for background indexing in Sourcekit-LSP. This removes the need to do a build before getting code completion and diagnostics.
 
-To enable support, set the `swift.sourcekit-lsp.backgroundIndexing` setting to `true`.
+To enable support, set the [`swift.sourcekit-lsp.backgroundIndexing`](vscode://settings/swift.sourcekit-lsp.backgroundIndexing) setting to `true`.
 
 ### Support for 'Expand Macro'
 
 If you are using a nightly (`main`) toolchain you can enable support for the "Peek Macro" Quick Action, accessible through the light bulb icon when the cursor is on a macro.
 
-To enable support, set the following Sourcekit-LSP server arguments in your settings.json, or add two new entries to the `Sourcekit-lsp: Server Arguments` entry in the extension settings page.
+To enable support, set the following Sourcekit-LSP server arguments in your settings.json, or add two new entries to the [`swift.sourcekit-lsp.serverArguments`](vscode://settings/swift.sourcekit-lsp.serverArguments) setting.
 
-```
+```json
 "swift.sourcekit-lsp.serverArguments": [
   "--experimental-feature",
   "show-macro-expansions"
 ]
 ```
+
+## Windows Development
+
+### Specifying a Visual Studio installation
+
+Swift depends on a number of developer tools when running on Windows, including the C++ toolchain and the Windows SDK. Typically these are installed with [Visual Studio](https://visualstudio.microsoft.com/).
+
+If there are multiple versions of Visual Studio installed you can specify which one should be used by setting a new the `VCToolsInstallDir` envrionment variable to you desired path using the [`swift.swiftEnvironmentVariables`](vscode://settings/swift.swiftEnvironmentVariables) setting.
