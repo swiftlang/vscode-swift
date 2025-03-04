@@ -530,7 +530,7 @@ export class SymbolRenderer {
                 case TestSymbol.skip:
                 case TestSymbol.passWithKnownIssue:
                 case TestSymbol.fail:
-                    return "\u{00D7}"; // Unicode: MULTIPLICATION SIGN
+                    return "\u{279C}"; // Unicode: HEAVY ROUND-TIPPED RIGHTWARDS ARROW
                 case TestSymbol.pass:
                     return "\u{221A}"; // Unicode: SQUARE ROOT
                 case TestSymbol.difference:
@@ -551,7 +551,7 @@ export class SymbolRenderer {
                 case TestSymbol.skip:
                 case TestSymbol.passWithKnownIssue:
                 case TestSymbol.fail:
-                    return "\u{2718}"; // Unicode: HEAVY BALLOT X
+                    return "\u{279C}"; // Unicode: HEAVY ROUND-TIPPED RIGHTWARDS ARROW
                 case TestSymbol.pass:
                     return "\u{2714}"; // Unicode: HEAVY CHECK MARK
                 case TestSymbol.difference:
