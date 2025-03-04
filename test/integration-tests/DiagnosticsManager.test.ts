@@ -58,7 +58,7 @@ function assertWithoutDiagnostic(uri: vscode.Uri, expected: vscode.Diagnostic) {
     );
 }
 
-suite("DiagnosticsManager Test Suite", async function () {
+suite("DiagnosticsManager Test Suite", function () {
     // Was hitting a timeout in suiteSetup during CI build once in a while
     this.timeout(15000);
 
@@ -164,10 +164,10 @@ suite("DiagnosticsManager Test Suite", async function () {
         }
     });
 
-    suite("Parse diagnostics", async function () {
+    suite("Parse diagnostics", function () {
         this.timeout(60000 * 2);
 
-        suite("Parse from task output", async () => {
+        suite("Parse from task output", () => {
             const expectedWarningDiagnostic = new vscode.Diagnostic(
                 new vscode.Range(new vscode.Position(1, 8), new vscode.Position(1, 8)),
                 "Initialization of variable 'unused' was never used; consider replacing with assignment to '_' or removing it",
@@ -218,7 +218,7 @@ suite("DiagnosticsManager Test Suite", async function () {
             // failure if `swiftc` diagnostic is fixed
             suiteSetup(async function () {
                 this.timeout(3 * 60 * 1000); // Allow 3 minutes to build
-                const task = createBuildAllTask(folderContext);
+                const task = await createBuildAllTask(folderContext);
                 // This return exit code and output for the task but we will omit it here
                 // because the failures are expected and we just want the task to build
                 await executeTaskAndWaitForResult(task);
@@ -255,7 +255,7 @@ suite("DiagnosticsManager Test Suite", async function () {
                         ], // Should have parsed correct severity
                         [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
                     }),
-                    executeTaskAndWaitForResult(createBuildAllTask(folderContext)),
+                    executeTaskAndWaitForResult(await createBuildAllTask(folderContext)),
                 ]);
 
                 await waitForNoRunningTasks();
@@ -285,7 +285,7 @@ suite("DiagnosticsManager Test Suite", async function () {
                         ], // Should have parsed correct severity
                         [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
                     }),
-                    executeTaskAndWaitForResult(createBuildAllTask(folderContext)),
+                    executeTaskAndWaitForResult(await createBuildAllTask(folderContext)),
                 ]);
                 await waitForNoRunningTasks();
             });
@@ -302,7 +302,7 @@ suite("DiagnosticsManager Test Suite", async function () {
                         ], // Should have parsed correct severity
                         [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
                     }),
-                    executeTaskAndWaitForResult(createBuildAllTask(folderContext)),
+                    executeTaskAndWaitForResult(await createBuildAllTask(folderContext)),
                 ]);
                 await waitForNoRunningTasks();
 
@@ -351,7 +351,7 @@ suite("DiagnosticsManager Test Suite", async function () {
                     waitForDiagnostics({
                         [cUri.fsPath]: [expectedDiagnostic1, expectedDiagnostic2],
                     }),
-                    executeTaskAndWaitForResult(createBuildAllTask(cFolderContext)),
+                    executeTaskAndWaitForResult(await createBuildAllTask(cFolderContext)),
                 ]);
                 await waitForNoRunningTasks();
             });
@@ -399,7 +399,7 @@ suite("DiagnosticsManager Test Suite", async function () {
                             expectedDiagnostic3,
                         ],
                     }),
-                    executeTaskAndWaitForResult(createBuildAllTask(cppFolderContext)),
+                    executeTaskAndWaitForResult(await createBuildAllTask(cppFolderContext)),
                 ]);
                 await waitForNoRunningTasks();
 
@@ -1136,7 +1136,7 @@ suite("DiagnosticsManager Test Suite", async function () {
 
         test("Provides swift diagnostics", async () => {
             // Build for indexing
-            const task = createBuildAllTask(folderContext);
+            const task = await createBuildAllTask(folderContext);
             await executeTaskAndWaitForResult(task);
 
             const lspSource = toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))
@@ -1177,7 +1177,7 @@ suite("DiagnosticsManager Test Suite", async function () {
 
         test("Provides clang diagnostics", async () => {
             // Build for indexing
-            const task = createBuildAllTask(cFolderContext);
+            const task = await createBuildAllTask(cFolderContext);
             await executeTaskAndWaitForResult(task);
 
             // No string manipulation

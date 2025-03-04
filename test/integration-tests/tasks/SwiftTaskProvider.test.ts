@@ -171,12 +171,14 @@ suite("SwiftTaskProvider Test Suite", () => {
 
     suite("createBuildAllTask", () => {
         test("should return same task instance", async () => {
-            expect(createBuildAllTask(folderContext)).to.equal(createBuildAllTask(folderContext));
+            expect(await createBuildAllTask(folderContext)).to.equal(
+                await createBuildAllTask(folderContext)
+            );
         });
 
         test("different task returned for release mode", async () => {
-            expect(createBuildAllTask(folderContext)).to.not.equal(
-                createBuildAllTask(folderContext, true)
+            expect(await createBuildAllTask(folderContext)).to.not.equal(
+                await createBuildAllTask(folderContext, true)
             );
         });
     });
@@ -187,7 +189,7 @@ suite("SwiftTaskProvider Test Suite", () => {
         test("creates build all task when it cannot find one", async () => {
             tasksMock.fetchTasks.resolves([]);
             await expect(getBuildAllTask(folderContext)).to.eventually.equal(
-                createBuildAllTask(folderContext)
+                await createBuildAllTask(folderContext)
             );
         });
     });

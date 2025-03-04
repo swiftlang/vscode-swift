@@ -19,11 +19,9 @@ import {
     TextDocumentTestsRequest,
     WorkspaceTestsRequest,
 } from "../sourcekit-lsp/extensions";
-import { SwiftPackage, TargetType } from "../SwiftPackage";
-import {
-    checkExperimentalCapability,
-    LanguageClientManager,
-} from "../sourcekit-lsp/LanguageClientManager";
+import { checkExperimentalCapability } from "../sourcekit-lsp/LanguageClientManager";
+import { SwiftPackage } from "../SwiftPackage";
+import { LanguageClientManager } from "../sourcekit-lsp/LanguageClientManager";
 import { LanguageClient } from "vscode-languageclient/node";
 
 /**
@@ -71,7 +69,7 @@ export class LSPTestDiscovery {
             // workspace/tests method, and is at least version 2.
             if (checkExperimentalCapability(client, WorkspaceTestsRequest.method, 2)) {
                 const tests = await client.sendRequest(WorkspaceTestsRequest.type, token);
-                return this.transformToTestClass(client, swiftPackage, tests);
+                return await this.transformToTestClass(client, swiftPackage, tests);
             } else {
                 throw new Error(`${WorkspaceTestsRequest.method} requests not supported`);
             }
@@ -82,20 +80,25 @@ export class LSPTestDiscovery {
      * Convert from `LSPTestItem[]` to `TestDiscovery.TestClass[]`,
      * updating the format of the location.
      */
-    private transformToTestClass(
+    private async transformToTestClass(
         client: LanguageClient,
         swiftPackage: SwiftPackage,
         input: LSPTestItem[]
-    ): TestDiscovery.TestClass[] {
-        return input.map(item => {
+    ): Promise<TestDiscovery.TestClass[]> {
+        let result: TestDiscovery.TestClass[] = [];
+        for (const item of input) {
             const location = client.protocol2CodeConverter.asLocation(item.location);
-            return {
-                ...item,
-                id: this.transformId(item, location, swiftPackage),
-                children: this.transformToTestClass(client, swiftPackage, item.children),
-                location,
-            };
-        });
+            result = [
+                ...result,
+                {
+                    ...item,
+                    id: await this.transformId(item, location, swiftPackage),
+                    children: await this.transformToTestClass(client, swiftPackage, item.children),
+                    location,
+                },
+            ];
+        }
+        return result;
     }
 
     /**
@@ -103,17 +106,15 @@ export class LSPTestDiscovery {
      * swift-testing style ID to one that XCTest can use. This allows the ID to
      * be used to tell to the test runner (xctest or swift-testing) which tests to run.
      */
-    private transformId(
+    private async transformId(
         item: LSPTestItem,
         location: vscode.Location,
         swiftPackage: SwiftPackage
-    ): string {
+    ): Promise<string> {
         // XCTest: Target.TestClass/testCase
         // swift-testing: TestClass/testCase()
         //                TestClassOrStruct/NestedTestSuite/testCase()
-        const target = swiftPackage
-            .getTargets(TargetType.test)
-            .find(target => swiftPackage.getTarget(location.uri.fsPath) === target);
+        const target = await swiftPackage.getTarget(location.uri.fsPath);
 
         // If we're using an older sourcekit-lsp it doesn't prepend the target name
         // to the test item id.

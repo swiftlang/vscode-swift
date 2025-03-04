@@ -28,7 +28,7 @@ import { TestSwiftProcess } from "../../fixtures";
 import { StatusItem } from "../../../src/ui/StatusItem";
 import { SwiftBuildStatus } from "../../../src/ui/SwiftBuildStatus";
 
-suite("SwiftBuildStatus Unit Test Suite", async function () {
+suite("SwiftBuildStatus Unit Test Suite", function () {
     const windowMock = mockGlobalObject(vscode, "window");
     const didStartTaskMock = mockGlobalEvent(vscode.tasks, "onDidStartTask");
     const configurationMock = mockGlobalValue(configuration, "showBuildStatus");

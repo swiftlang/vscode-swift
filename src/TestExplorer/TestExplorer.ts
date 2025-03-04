@@ -85,17 +85,24 @@ export class TestExplorer {
                 this.testFileEdited
             ) {
                 this.testFileEdited = false;
+
                 // only run discover tests if the library has tests
-                if (this.folderContext.swiftPackage.getTargets(TargetType.test).length > 0) {
-                    this.discoverTestsInWorkspace(this.tokenSource.token);
-                }
+                this.folderContext.swiftPackage.getTargets(TargetType.test).then(targets => {
+                    if (targets.length > 0) {
+                        this.discoverTestsInWorkspace(this.tokenSource.token);
+                    }
+                });
             }
         });
 
         // add file watcher to catch changes to swift test files
         const fileWatcher = this.folderContext.workspaceContext.onDidChangeSwiftFiles(({ uri }) => {
-            if (this.testFileEdited === false && this.folderContext.getTestTarget(uri)) {
-                this.testFileEdited = true;
+            if (this.testFileEdited === false) {
+                this.folderContext.getTestTarget(uri).then(target => {
+                    if (target) {
+                        this.testFileEdited = true;
+                    }
+                });
             }
         });
 
@@ -131,7 +138,11 @@ export class TestExplorer {
                 switch (operation) {
                     case FolderOperation.add:
                         if (folder) {
-                            if (folder.swiftPackage.getTargets(TargetType.test).length > 0) {
+                            folder.swiftPackage.getTargets(TargetType.test).then(targets => {
+                                if (targets.length === 0) {
+                                    return;
+                                }
+
                                 folder.addTestExplorer();
                                 // discover tests in workspace but only if disableAutoResolve is not on.
                                 // discover tests will kick off a resolve if required
@@ -142,29 +153,31 @@ export class TestExplorer {
                                         tokenSource.token
                                     );
                                 }
-                            }
+                            });
                         }
                         break;
                     case FolderOperation.packageUpdated:
                         if (folder) {
-                            const hasTestTargets =
-                                folder.swiftPackage.getTargets(TargetType.test).length > 0;
-                            if (hasTestTargets && !folder.hasTestExplorer()) {
-                                folder.addTestExplorer();
-                                // discover tests in workspace but only if disableAutoResolve is not on.
-                                // discover tests will kick off a resolve if required
-                                if (
-                                    !configuration.folder(folder.workspaceFolder).disableAutoResolve
-                                ) {
-                                    folder.testExplorer?.discoverTestsInWorkspace(
-                                        tokenSource.token
-                                    );
+                            folder.swiftPackage.getTargets(TargetType.test).then(targets => {
+                                const hasTestTargets = targets.length > 0;
+                                if (hasTestTargets && !folder.hasTestExplorer()) {
+                                    folder.addTestExplorer();
+                                    // discover tests in workspace but only if disableAutoResolve is not on.
+                                    // discover tests will kick off a resolve if required
+                                    if (
+                                        !configuration.folder(folder.workspaceFolder)
+                                            .disableAutoResolve
+                                    ) {
+                                        folder.testExplorer?.discoverTestsInWorkspace(
+                                            tokenSource.token
+                                        );
+                                    }
+                                } else if (!hasTestTargets && folder.hasTestExplorer()) {
+                                    folder.removeTestExplorer();
+                                } else if (folder.hasTestExplorer()) {
+                                    folder.refreshTestExplorer();
                                 }
-                            } else if (!hasTestTargets && folder.hasTestExplorer()) {
-                                folder.removeTestExplorer();
-                            } else if (folder.hasTestExplorer()) {
-                                folder.refreshTestExplorer();
-                            }
+                            });
                         }
                         break;
                     case FolderOperation.focus:
@@ -206,24 +219,29 @@ export class TestExplorer {
         const testExplorer = folder?.testExplorer;
         if (testExplorer && symbols && uri && uri.scheme === "file") {
             if (isPathInsidePath(uri.fsPath, folder.folder.fsPath)) {
-                const target = folder.swiftPackage.getTarget(uri.fsPath);
-                if (target && target.type === "test") {
-                    testExplorer.lspTestDiscovery
-                        .getDocumentTests(folder.swiftPackage, uri)
-                        .then(tests =>
-                            TestDiscovery.updateTestsForTarget(
-                                testExplorer.controller,
-                                { id: target.c99name, label: target.name },
-                                tests,
-                                uri
+                folder.swiftPackage.getTarget(uri.fsPath).then(target => {
+                    if (target && target.type === "test") {
+                        testExplorer.lspTestDiscovery
+                            .getDocumentTests(folder.swiftPackage, uri)
+                            .then(tests =>
+                                TestDiscovery.updateTestsForTarget(
+                                    testExplorer.controller,
+                                    { id: target.c99name, label: target.name },
+                                    tests,
+                                    uri
+                                )
                             )
-                        )
-                        // Fallback to parsing document symbols for XCTests only
-                        .catch(() => {
-                            const tests = parseTestsFromDocumentSymbols(target.name, symbols, uri);
-                            testExplorer.updateTests(testExplorer.controller, tests, uri);
-                        });
-                }
+                            // Fallback to parsing document symbols for XCTests only
+                            .catch(() => {
+                                const tests = parseTestsFromDocumentSymbols(
+                                    target.name,
+                                    symbols,
+                                    uri
+                                );
+                                testExplorer.updateTests(testExplorer.controller, tests, uri);
+                            });
+                    }
+                });
             }
         }
     }
@@ -393,7 +411,7 @@ export class TestExplorer {
             return;
         }
 
-        TestDiscovery.updateTestsFromClasses(
+        await TestDiscovery.updateTestsFromClasses(
             this.controller,
             this.folderContext.swiftPackage,
             tests
