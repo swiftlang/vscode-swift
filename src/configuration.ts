@@ -78,7 +78,9 @@ export interface FolderConfiguration {
     /** location to save swift-testing attachments */
     readonly attachmentsPath: string;
     /** look up saved permissions for the supplied plugin */
-    pluginPermissions(pluginId: string): PluginPermissionConfiguration;
+    pluginPermissions(pluginId?: string): PluginPermissionConfiguration;
+    /** look up saved arguments for the supplied plugin, or global plugin arguments if no plugin id is provided */
+    pluginArguments(pluginId?: string): string[];
 }
 
 export interface PluginPermissionConfiguration {
@@ -143,6 +145,42 @@ const configuration = {
     },
 
     folder(workspaceFolder: vscode.WorkspaceFolder): FolderConfiguration {
+        function pluginSetting<T>(
+            setting: string,
+            pluginId?: string,
+            resultIsArray: boolean = false
+        ): T | undefined {
+            if (!pluginId) {
+                // Check for * as a wildcard plugin ID for configurations that want both
+                // global arguments as well as specific additional arguments for a plugin.
+                const wildcardSetting = pluginSetting(setting, "*", resultIsArray) as T | undefined;
+                if (wildcardSetting) {
+                    return wildcardSetting;
+                }
+
+                // Check if there is a global setting like `"swift.pluginArguments": ["-c", "release"]`
+                // that should apply to all plugins.
+                const args = vscode.workspace
+                    .getConfiguration("swift", workspaceFolder)
+                    .get<T>(setting);
+
+                if (resultIsArray && Array.isArray(args)) {
+                    return args;
+                } else if (
+                    !resultIsArray &&
+                    args !== null &&
+                    typeof args === "object" &&
+                    Object.keys(args).length !== 0
+                ) {
+                    return args;
+                }
+                return undefined;
+            }
+
+            return vscode.workspace.getConfiguration("swift", workspaceFolder).get<{
+                [key: string]: T;
+            }>(setting, {})[pluginId];
+        }
         return {
             /** Environment variables to set when running tests */
             get testEnvironmentVariables(): { [key: string]: string } {
@@ -179,12 +217,11 @@ const configuration = {
                     .getConfiguration("swift", workspaceFolder)
                     .get<string>("attachmentsPath", "./.build/attachments");
             },
-            pluginPermissions(pluginId: string): PluginPermissionConfiguration {
-                return (
-                    vscode.workspace.getConfiguration("swift", workspaceFolder).get<{
-                        [key: string]: PluginPermissionConfiguration;
-                    }>("pluginPermissions", {})[pluginId] ?? {}
-                );
+            pluginPermissions(pluginId?: string): PluginPermissionConfiguration {
+                return pluginSetting("pluginPermissions", pluginId, false) ?? {};
+            },
+            pluginArguments(pluginId?: string): string[] {
+                return pluginSetting("pluginArguments", pluginId, true) ?? [];
             },
         };
     },
