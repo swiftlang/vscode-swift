@@ -72,4 +72,4 @@ To enable support, set the following Sourcekit-LSP server arguments in your sett
 
 Swift depends on a number of developer tools when running on Windows, including the C++ toolchain and the Windows SDK. Typically these are installed with [Visual Studio](https://visualstudio.microsoft.com/).
 
-If there are multiple versions of Visual Studio installed you can specify which one should be used by setting a new the `VCToolsInstallDir` envrionment variable to you desired path using the [`swift.swiftEnvironmentVariables`](vscode://settings/swift.swiftEnvironmentVariables) setting.
+If you have multiple versions of Visual Studio installed you can specify the path to the desired version by setting a `VCToolsInstallDir` environment variable using the [`swift.swiftEnvironmentVariables`](vscode://settings/swift.swiftEnvironmentVariables) setting.
