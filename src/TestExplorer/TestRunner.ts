@@ -590,11 +590,11 @@ export class TestRunner {
                     this.folderContext,
                     testRunTime
                 );
-                const swiftTestingArgs = await SwiftTestingBuildAguments.build(
+                const swiftTestingArgs = SwiftTestingBuildAguments.build(
                     fifoPipePath,
                     attachmentFolder
                 );
-                const testBuildConfig = TestingConfigurationFactory.swiftTestingConfig(
+                const testBuildConfig = await TestingConfigurationFactory.swiftTestingConfig(
                     this.folderContext,
                     swiftTestingArgs,
                     this.testKind,
@@ -629,7 +629,7 @@ export class TestRunner {
         }
 
         if (this.testArgs.hasXCTests) {
-            const testBuildConfig = TestingConfigurationFactory.xcTestConfig(
+            const testBuildConfig = await TestingConfigurationFactory.xcTestConfig(
                 this.folderContext,
                 this.testKind,
                 this.testArgs.xcTestArgs,
@@ -844,7 +844,7 @@ export class TestRunner {
                         next();
                     },
                 }),
-                BuildConfigurationFactory.buildAll(
+                await BuildConfigurationFactory.buildAll(
                     this.folderContext,
                     true,
                     isRelease(this.testKind)
@@ -874,12 +874,12 @@ export class TestRunner {
                     this.folderContext,
                     testRunTime
                 );
-                const swiftTestingArgs = await SwiftTestingBuildAguments.build(
+                const swiftTestingArgs = SwiftTestingBuildAguments.build(
                     fifoPipePath,
                     attachmentFolder
                 );
 
-                const swiftTestBuildConfig = TestingConfigurationFactory.swiftTestingConfig(
+                const swiftTestBuildConfig = await TestingConfigurationFactory.swiftTestingConfig(
                     this.folderContext,
                     swiftTestingArgs,
                     this.testKind,
@@ -913,7 +913,7 @@ export class TestRunner {
 
             // create launch config for testing
             if (this.testArgs.hasXCTests) {
-                const xcTestBuildConfig = TestingConfigurationFactory.xcTestConfig(
+                const xcTestBuildConfig = await TestingConfigurationFactory.xcTestConfig(
                     this.folderContext,
                     this.testKind,
                     this.testArgs.xcTestArgs,
@@ -1161,7 +1161,7 @@ class NonDarwinTestItemFinder implements TestItemFinder {
             return false;
         }
         // get target from Package
-        const target = this.folderContext.swiftPackage.targets.find(
+        const target = this.folderContext.swiftPackage.currentTargets.find(
             item => targetTestItem.label === item.name
         );
         if (target) {

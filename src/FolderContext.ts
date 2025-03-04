@@ -69,14 +69,12 @@ export class FolderContext implements vscode.Disposable {
     ): Promise<FolderContext> {
         const statusItemText = `Loading Package (${FolderContext.uriName(folder)})`;
         workspaceContext.statusItem.start(statusItemText);
-
         const { linuxMain, swiftPackage } =
             await workspaceContext.statusItem.showStatusWhileRunning(statusItemText, async () => {
                 const linuxMain = await LinuxMain.create(folder);
                 const swiftPackage = await SwiftPackage.create(folder, workspaceContext.toolchain);
                 return { linuxMain, swiftPackage };
             });
-
         workspaceContext.statusItem.end(statusItemText);
 
         const folderContext = new FolderContext(
@@ -87,7 +85,7 @@ export class FolderContext implements vscode.Disposable {
             workspaceContext
         );
 
-        const error = swiftPackage.error;
+        const error = await swiftPackage.error;
         if (error) {
             vscode.window.showErrorMessage(
                 `Failed to load ${folderContext.name}/Package.swift: ${error.message}`
@@ -97,7 +95,6 @@ export class FolderContext implements vscode.Disposable {
                 folderContext.name
             );
         }
-
         return folderContext;
     }
 
@@ -186,11 +183,11 @@ export class FolderContext implements vscode.Disposable {
      * @param uri URI to find target for
      * @returns Target
      */
-    getTestTarget(uri: vscode.Uri, type?: TargetType): Target | undefined {
+    async getTestTarget(uri: vscode.Uri, type?: TargetType): Promise<Target | undefined> {
         if (!isPathInsidePath(uri.fsPath, this.folder.fsPath)) {
             return undefined;
         }
-        const testTargets = this.swiftPackage.getTargets(type);
+        const testTargets = await this.swiftPackage.getTargets(type);
         const target = testTargets.find(element => {
             const relativeUri = path.relative(
                 path.join(this.folder.fsPath, element.path),

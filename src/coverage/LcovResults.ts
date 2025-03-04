@@ -150,7 +150,8 @@ export class TestCoverage {
                 TestLibrary.xctest
             );
             if (process.platform === "darwin") {
-                xcTestBinary += `/Contents/MacOS/${this.folderContext.swiftPackage.name}PackageTests`;
+                const packageName = await this.folderContext.swiftPackage.name;
+                xcTestBinary += `/Contents/MacOS/${packageName}PackageTests`;
             }
             coveredBinaries.add(xcTestBinary);
         }
@@ -179,7 +180,7 @@ export class TestCoverage {
                 "--format",
                 "lcov",
                 ...coveredBinaries,
-                `--ignore-filename-regex=${this.ignoredFilenamesRegex()}`,
+                `--ignore-filename-regex=${await this.ignoredFilenamesRegex()}`,
                 `--instr-profile=${mergedProfileFile}`,
             ],
             writableStream,
@@ -199,14 +200,14 @@ export class TestCoverage {
      * Constructs a string containing all the paths to exclude from the code coverage report.
      * This should exclude everything in the `.build` folder as well as all the test targets.
      */
-    private ignoredFilenamesRegex(): string {
+    private async ignoredFilenamesRegex(): Promise<string> {
         const basePath = this.folderContext.folder.path;
         const buildFolder = path.join(basePath, ".build");
         const snippetsFolder = path.join(basePath, "Snippets");
         const pluginsFolder = path.join(basePath, "Plugins");
-        const testTargets = this.folderContext.swiftPackage
-            .getTargets(TargetType.test)
-            .map(target => path.join(basePath, target.path));
+        const testTargets = (await this.folderContext.swiftPackage.getTargets(TargetType.test)).map(
+            target => path.join(basePath, target.path)
+        );
 
         const excluded = configuration.excludeFromCodeCoverage.map(target =>
             path.isAbsolute(target) ? target : path.join(basePath, target)

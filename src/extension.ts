@@ -215,7 +215,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                     case FolderOperation.add:
                         // Create launch.json files based on package description.
                         debug.makeDebugConfigurations(folder);
-                        if (folder.swiftPackage.foundPackage) {
+                        if (await folder.swiftPackage.foundPackage) {
                             // do not await for this, let packages resolve in parallel
                             folderAdded(folder, workspace);
                         }
@@ -225,7 +225,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                         // Create launch.json files based on package description.
                         debug.makeDebugConfigurations(folder);
                         if (
-                            folder.swiftPackage.foundPackage &&
+                            (await folder.swiftPackage.foundPackage) &&
                             !configuration.folder(folder.workspaceFolder).disableAutoResolve
                         ) {
                             await resolveFolderDependencies(folder, true);
@@ -234,7 +234,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
 
                     case FolderOperation.resolvedUpdated:
                         if (
-                            folder.swiftPackage.foundPackage &&
+                            (await folder.swiftPackage.foundPackage) &&
                             !configuration.folder(folder.workspaceFolder).disableAutoResolve
                         ) {
                             await resolveFolderDependencies(folder, true);
