@@ -51,7 +51,7 @@ export async function makeDebugConfigurations(
     ];
     const configUpdates: { index: number; config: vscode.DebugConfiguration }[] = [];
 
-    const configs = createExecutableConfigurations(ctx);
+    const configs = await createExecutableConfigurations(ctx);
     let edited = false;
     for (const config of configs) {
         const index = launchConfigs.findIndex(c => c.name === config.name);
@@ -126,8 +126,10 @@ export function getLaunchConfiguration(
 }
 
 // Return array of DebugConfigurations for executables based on what is in Package.swift
-function createExecutableConfigurations(ctx: FolderContext): vscode.DebugConfiguration[] {
-    const executableProducts = ctx.swiftPackage.executableProducts;
+async function createExecutableConfigurations(
+    ctx: FolderContext
+): Promise<vscode.DebugConfiguration[]> {
+    const executableProducts = await ctx.swiftPackage.executableProducts;
 
     // Windows understand the forward slashes, so make the configuration unified as posix path
     // to make it easier for users switching between platforms.

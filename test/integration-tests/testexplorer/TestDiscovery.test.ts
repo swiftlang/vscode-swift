@@ -193,25 +193,25 @@ suite("TestDiscovery Suite", () => {
     });
 
     test("updates tests from classes within a swift package", async () => {
-        const file = vscode.Uri.file("file:///some/file.swift");
-        const swiftPackage = await SwiftPackage.create(file, await SwiftToolchain.create());
+        const targetFolder = vscode.Uri.file("file:///some/");
+        const swiftPackage = await SwiftPackage.create(targetFolder, await SwiftToolchain.create());
         const testTargetName = "TestTarget";
         const target: Target = {
             c99name: testTargetName,
             name: testTargetName,
-            path: file.fsPath,
+            path: targetFolder.fsPath,
             type: TargetType.test,
             sources: [],
         };
-        swiftPackage.getTargets = () => [target];
-        swiftPackage.getTarget = () => target;
+        swiftPackage.getTargets = () => Promise.resolve([target]);
+        swiftPackage.getTarget = () => Promise.resolve(target);
 
         const item = testItem("bar");
         item.location = new vscode.Location(
-            vscode.Uri.file("file:///another/file.swift"),
+            vscode.Uri.file("file:///some/file.swift"),
             new vscode.Range(new vscode.Position(1, 0), new vscode.Position(2, 0))
         );
-        updateTestsFromClasses(testController, swiftPackage, [item]);
+        await updateTestsFromClasses(testController, swiftPackage, [item]);
 
         assert.deepStrictEqual(testControllerChildren(testController.items), [
             {

@@ -84,7 +84,7 @@ export async function debugBuildWithOptions(
 
     let target: Target | undefined;
     if (targetName) {
-        target = current.swiftPackage.targets.find(target => target.name === targetName);
+        target = (await current.swiftPackage.targets).find(target => target.name === targetName);
     } else {
         const file = vscode.window.activeTextEditor?.document.fileName;
         if (!file) {
@@ -92,7 +92,7 @@ export async function debugBuildWithOptions(
             return;
         }
 
-        target = current.swiftPackage.getTarget(file);
+        target = await current.swiftPackage.getTarget(file);
     }
 
     if (!target) {
