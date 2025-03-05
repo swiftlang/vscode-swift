@@ -47,7 +47,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
 
     const platformMock = mockGlobalValue(process, "platform");
 
-    setup(async () => {
+    setup(() => {
         buildFlags = mockObject<BuildFlags>({
             withAdditionalFlags: mockFn(s => s.callsFake(arr => arr)),
         });
@@ -74,7 +74,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
     });
 
     suite("platformDebugBuildOptions", () => {
-        test("windows, before 5.9", async () => {
+        test("windows, before 5.9", () => {
             platformMock.setValue("win32");
             toolchain.swiftVersion = new Version(5, 8, 1);
 
@@ -88,7 +88,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
             ]);
         });
 
-        test("windows, after 5.9", async () => {
+        test("windows, after 5.9", () => {
             platformMock.setValue("win32");
             const expected = ["-Xlinker", "-debug:dwarf"];
 
@@ -99,13 +99,13 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
             assert.deepEqual(platformDebugBuildOptions(instance(toolchain)), expected);
         });
 
-        test("linux", async () => {
+        test("linux", () => {
             platformMock.setValue("linux");
 
             assert.deepEqual(platformDebugBuildOptions(instance(toolchain)), []);
         });
 
-        test("macOS", async () => {
+        test("macOS", () => {
             platformMock.setValue("darwin");
 
             assert.deepEqual(platformDebugBuildOptions(instance(toolchain)), []);
@@ -123,17 +123,17 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
             diagnosticsStyle.setValue("default");
         });
 
-        test("include debug options", async () => {
+        test("include debug options", () => {
             platformMock.setValue("win32");
             assert.deepEqual(buildOptions(instance(toolchain), true), ["-Xlinker", "-debug:dwarf"]);
         });
 
-        test("don't include debug options", async () => {
+        test("don't include debug options", () => {
             platformMock.setValue("win32");
             assert.deepEqual(buildOptions(instance(toolchain), false), []);
         });
 
-        test("include diagnostic style", async () => {
+        test("include diagnostic style", () => {
             diagnosticsStyle.setValue("llvm");
             assert.deepEqual(buildOptions(instance(toolchain), false), [
                 "-Xswiftc",
@@ -141,7 +141,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
             ]);
         });
 
-        test("include sanitizer flags", async () => {
+        test("include sanitizer flags", () => {
             const sanitizer = mockObject<Sanitizer>({
                 buildFlags: ["--sanitize=thread"],
             });
@@ -151,7 +151,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
             assert.deepEqual(buildOptions(instance(toolchain), false), ["--sanitize=thread"]);
         });
 
-        test("include build flags", async () => {
+        test("include build flags", () => {
             buildArgs.setValue(["-DFOO"]);
 
             assert.deepEqual(buildOptions(instance(toolchain), false), ["-DFOO"]);
@@ -161,7 +161,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
     suite("createSwiftTask", () => {
         const envConfig = mockGlobalValue(configuration, "swiftEnvironmentVariables");
 
-        test("uses SwiftExecution", async () => {
+        test("uses SwiftExecution", () => {
             const task = createSwiftTask(
                 ["--help"],
                 "help",
@@ -171,15 +171,14 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
             assert.equal(task.execution instanceof SwiftExecution, true);
         });
 
-        test("uses toolchain swift path", async () => {
+        test("uses toolchain swift path", () => {
             const task = createSwiftTask(
                 ["--help"],
                 "help",
                 { cwd: workspaceFolder.uri, scope: vscode.TaskScope.Workspace },
                 instance(toolchain)
             );
-            const execution = task.execution as SwiftExecution;
-            assert.equal(execution.command, "/path/to/bin/swift");
+            assert.equal(task.execution.command, "/path/to/bin/swift");
         });
 
         test("include sdk flags", () => {
@@ -192,8 +191,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 { cwd: workspaceFolder.uri, scope: vscode.TaskScope.Workspace },
                 instance(toolchain)
             );
-            const execution = task.execution as SwiftExecution;
-            assert.deepEqual(execution.args, [
+            assert.deepEqual(task.execution.args, [
                 "build",
                 "--sdk",
                 "/path/to/sdk",
@@ -210,8 +208,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 instance(toolchain),
                 { BAZ: "2" }
             );
-            const execution = task.execution as SwiftExecution;
-            assert.deepEqual(execution.options.env, { FOO: "1", BAZ: "2" });
+            assert.deepEqual(task.execution.options.env, { FOO: "1", BAZ: "2" });
         });
 
         test("include presentation", () => {
@@ -296,7 +293,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
     });
 
     suite("resolveTask", () => {
-        test("uses SwiftExecution", async () => {
+        test("uses SwiftExecution", () => {
             const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
             const task = new vscode.Task(
                 {
@@ -314,7 +311,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
             assert.equal(resolvedTask.execution instanceof SwiftExecution, true);
         });
 
-        test("uses toolchain swift path", async () => {
+        test("uses toolchain swift path", () => {
             const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
             const task = new vscode.Task(
                 {
@@ -334,7 +331,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
         });
 
         suite("Platform cwd", () => {
-            test("includes macos cwd", async () => {
+            test("includes macos cwd", () => {
                 platformMock.setValue("darwin");
                 const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
                 const task = new vscode.Task(
@@ -358,7 +355,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 assert.equal(swiftExecution.options.cwd, `${workspaceFolder.uri.fsPath}/macos`);
             });
 
-            test("includes linux cwd", async () => {
+            test("includes linux cwd", () => {
                 platformMock.setValue("linux");
                 const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
                 const task = new vscode.Task(
@@ -382,7 +379,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 assert.equal(swiftExecution.options.cwd, `${workspaceFolder.uri.fsPath}/linux`);
             });
 
-            test("includes windows cwd", async () => {
+            test("includes windows cwd", () => {
                 platformMock.setValue("win32");
                 const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
                 const task = new vscode.Task(
@@ -406,7 +403,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 assert.equal(swiftExecution.options.cwd, `${workspaceFolder.uri.fsPath}/windows`);
             });
 
-            test("fallback default cwd", async () => {
+            test("fallback default cwd", () => {
                 platformMock.setValue("darwin");
                 const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
                 const task = new vscode.Task(
@@ -432,7 +429,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
         });
 
         suite("Platform env", () => {
-            test("includes macos env", async () => {
+            test("includes macos env", () => {
                 platformMock.setValue("darwin");
                 const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
                 const task = new vscode.Task(
@@ -460,7 +457,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 assert.equal(swiftExecution.options.env?.FOO, "baz");
             });
 
-            test("includes linux env", async () => {
+            test("includes linux env", () => {
                 platformMock.setValue("linux");
                 const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
                 const task = new vscode.Task(
@@ -488,7 +485,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 assert.equal(swiftExecution.options.env?.FOO, "baz");
             });
 
-            test("includes windows env", async () => {
+            test("includes windows env", () => {
                 platformMock.setValue("win32");
                 const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
                 const task = new vscode.Task(
@@ -516,7 +513,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 assert.equal(swiftExecution.options.env?.FOO, "baz");
             });
 
-            test("fallback default env", async () => {
+            test("fallback default env", () => {
                 platformMock.setValue("darwin");
                 const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
                 const task = new vscode.Task(
@@ -546,7 +543,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
         });
 
         suite("Platform args", () => {
-            test("includes macos args", async () => {
+            test("includes macos args", () => {
                 platformMock.setValue("darwin");
                 const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
                 const task = new vscode.Task(
@@ -569,7 +566,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 assert.deepEqual(swiftExecution.args, ["run", "MacosPackageExe"]);
             });
 
-            test("includes linux args", async () => {
+            test("includes linux args", () => {
                 platformMock.setValue("linux");
                 const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
                 const task = new vscode.Task(
@@ -592,7 +589,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 assert.deepEqual(swiftExecution.args, ["run", "LinuxPackageExe"]);
             });
 
-            test("includes windows args", async () => {
+            test("includes windows args", () => {
                 platformMock.setValue("win32");
                 const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
                 const task = new vscode.Task(
@@ -615,7 +612,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 assert.deepEqual(swiftExecution.args, ["run", "WinPackageExe"]);
             });
 
-            test("fallback default args", async () => {
+            test("fallback default args", () => {
                 platformMock.setValue("darwin");
                 const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
                 const task = new vscode.Task(

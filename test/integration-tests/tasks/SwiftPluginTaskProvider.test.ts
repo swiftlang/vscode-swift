@@ -128,7 +128,7 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
         });
 
         suite("provideTasks", () => {
-            suite("includes command plugin provided by the extension", async () => {
+            suite("includes command plugin provided by the extension", () => {
                 let task: SwiftTask | undefined;
 
                 setup(async () => {
@@ -154,7 +154,7 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
                 });
             });
 
-            suite("includes command plugin provided by tasks.json", async () => {
+            suite("includes command plugin provided by tasks.json", () => {
                 let task: vscode.Task | undefined;
 
                 setup(async () => {
