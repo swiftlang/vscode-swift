@@ -142,6 +142,24 @@ export class DiagnosticsManager implements vscode.Disposable {
                 d1 => isSwiftc(d1) && !!removedDiagnostics.find(d2 => isEqual(d1, d2))
             );
         }
+
+        for (const diagnostic of newDiagnostics) {
+            if (
+                diagnostic.code &&
+                typeof diagnostic.code !== "string" &&
+                typeof diagnostic.code !== "number"
+            ) {
+                if (diagnostic.code.target.fsPath.endsWith(".md")) {
+                    diagnostic.code = {
+                        target: vscode.Uri.parse(
+                            `command:swift.openEducationalNote?${encodeURIComponent(JSON.stringify(diagnostic.code.target))}`
+                        ),
+                        value: "More Information...",
+                    };
+                }
+            }
+        }
+
         // Append the new diagnostics we just received
         allDiagnostics.push(...newDiagnostics);
         this.allDiagnostics.set(uri.fsPath, allDiagnostics);

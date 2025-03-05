@@ -31,6 +31,7 @@ import { openInExternalEditor } from "./commands/openInExternalEditor";
 import { switchPlatform } from "./commands/switchPlatform";
 import { insertFunctionComment } from "./commands/insertFunctionComment";
 import { createNewProject } from "./commands/createNewProject";
+import { openEducationalNote } from "./commands/openEducationalNote";
 import { openPackage } from "./commands/openPackage";
 import { resolveDependencies } from "./commands/dependencies/resolve";
 import { resetPackage } from "./commands/resetPackage";
@@ -198,6 +199,9 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         ),
         vscode.commands.registerCommand(Commands.SHOW_NESTED_DEPENDENCIES_LIST, () =>
             updateDependenciesViewList(ctx, false)
+        ),
+        vscode.commands.registerCommand("swift.openEducationalNote", uri =>
+            openEducationalNote(uri)
         ),
     ];
 }

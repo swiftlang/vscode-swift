@@ -24,6 +24,7 @@ import { FolderContext } from "../../src/FolderContext";
 import { Version } from "../../src/utilities/version";
 import { Workbench } from "../../src/utilities/commands";
 import { activateExtensionForSuite, folderInRootWorkspace } from "./utilities/testutilities";
+import { expect } from "chai";
 
 const isEqual = (d1: vscode.Diagnostic, d2: vscode.Diagnostic) => {
     return (
@@ -553,6 +554,116 @@ suite("DiagnosticsManager Test Suite", async function () {
         suiteTeardown(async () => {
             // So test asset settings.json doesn't changedq
             await swiftConfig.update("diagnosticsCollection", undefined);
+        });
+
+        suite("markdownLinks", () => {
+            let diagnostic: vscode.Diagnostic;
+
+            setup(async () => {
+                workspaceContext.diagnostics.clear();
+                diagnostic = new vscode.Diagnostic(
+                    new vscode.Range(new vscode.Position(1, 8), new vscode.Position(1, 8)), // Note swiftc provides empty range
+                    "Cannot assign to value: 'bar' is a 'let' constant",
+                    vscode.DiagnosticSeverity.Error
+                );
+                diagnostic.source = "SourceKit";
+            });
+
+            test("ignore strings", async () => {
+                diagnostic.code = "string";
+
+                // Now provide identical SourceKit diagnostic
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSourcekit,
+                    [diagnostic]
+                );
+
+                // check diagnostic hasn't changed
+                assertHasDiagnostic(mainUri, diagnostic);
+
+                const diagnostics = vscode.languages.getDiagnostics(mainUri);
+                const matchingDiagnostic = diagnostics.find(findDiagnostic(diagnostic));
+
+                expect(matchingDiagnostic).to.have.property("code", "string");
+            });
+
+            test("ignore numbers", async () => {
+                diagnostic.code = 1;
+
+                // Now provide identical SourceKit diagnostic
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSourcekit,
+                    [diagnostic]
+                );
+
+                // check diagnostic hasn't changed
+                assertHasDiagnostic(mainUri, diagnostic);
+
+                const diagnostics = vscode.languages.getDiagnostics(mainUri);
+                const matchingDiagnostic = diagnostics.find(findDiagnostic(diagnostic));
+
+                expect(matchingDiagnostic).to.have.property("code", 1);
+            });
+
+            test("target without markdown link", async () => {
+                const diagnosticCode = {
+                    value: "string",
+                    target: vscode.Uri.file("/some/path/md/readme.txt"),
+                };
+                diagnostic.code = diagnosticCode;
+
+                // Now provide identical SourceKit diagnostic
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSourcekit,
+                    [diagnostic]
+                );
+
+                // check diagnostic hasn't changed
+                assertHasDiagnostic(mainUri, diagnostic);
+
+                const diagnostics = vscode.languages.getDiagnostics(mainUri);
+                const matchingDiagnostic = diagnostics.find(findDiagnostic(diagnostic));
+
+                expect(matchingDiagnostic).to.have.property("code", diagnostic.code);
+            });
+
+            test("target with markdown link", async () => {
+                const pathToMd = "/some/path/md/readme.md";
+                diagnostic.code = {
+                    value: "string",
+                    target: vscode.Uri.file(pathToMd),
+                };
+
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSourcekit,
+                    [diagnostic]
+                );
+
+                const diagnostics = vscode.languages.getDiagnostics(mainUri);
+                const matchingDiagnostic = diagnostics.find(findDiagnostic(diagnostic));
+
+                expect(matchingDiagnostic).to.have.property("code");
+                expect(matchingDiagnostic?.code).to.have.property("value", "More Information...");
+
+                if (
+                    matchingDiagnostic &&
+                    matchingDiagnostic.code &&
+                    typeof matchingDiagnostic.code !== "string" &&
+                    typeof matchingDiagnostic.code !== "number"
+                ) {
+                    expect(matchingDiagnostic.code.target.scheme).to.equal("command");
+                    expect(matchingDiagnostic.code.target.path).to.equal(
+                        "swift.openEducationalNote"
+                    );
+                    expect(matchingDiagnostic.code.target.query).to.contain(pathToMd);
+                } else {
+                    assert.fail("Diagnostic target not replaced with markdown command");
+                }
+            });
         });
 
         suite("keepAll", () => {
