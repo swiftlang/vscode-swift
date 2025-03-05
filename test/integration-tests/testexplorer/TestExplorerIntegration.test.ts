@@ -303,6 +303,15 @@ suite("Test Explorer Suite", function () {
                 assertTestResults(testRun, {
                     skipped: ["PackageTests.testWithKnownIssue()"],
                 });
+
+                const testItem = testRun.testItems.find(
+                    ({ id }) => id === "PackageTests.testWithKnownIssue()"
+                );
+                assert.ok(testItem, "Unable to find test item for testWithKnownIssue");
+                assert.ok(
+                    testItem.tags.find(tag => tag.id === "skipped"),
+                    "skipped tag was not found on test item"
+                );
             });
 
             test("testWithKnownIssueAndUnknownIssue", async () => {
