@@ -98,6 +98,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
     private activeTextEditor?: vscode.TextEditor;
     private activeTextEditorSelection?: vscode.Selection;
     private subscriptions: vscode.Disposable[] = [];
+    private isDisposed: boolean = false;
 
     private disposeEmitter = new vscode.EventEmitter<void>();
     private renderEmitter = new vscode.EventEmitter<void>();
@@ -133,6 +134,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
     }
 
     dispose() {
+        this.isDisposed = true;
         this.subscriptions.forEach(subscription => subscription.dispose());
         this.subscriptions = [];
         this.webviewPanel.dispose();
@@ -140,6 +142,9 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
     }
 
     private postMessage(message: WebviewMessage) {
+        if (this.isDisposed) {
+            return;
+        }
         if (message.type === "update-content") {
             this.updateContentEmitter.fire(message.content);
         }
