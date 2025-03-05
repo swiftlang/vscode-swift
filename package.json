@@ -850,7 +850,7 @@
         },
         {
           "command": "swift.switchPlatform",
-          "when": "swift.isActivated && isMac"
+          "when": "swift.isActivated && isMac && swift.switchPlatformAvailable"
         },
         {
           "command": "swift.insertFunctionComment",
