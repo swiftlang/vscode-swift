@@ -122,6 +122,8 @@ export class TestRunProxy {
         if (this.runStarted) {
             return;
         }
+
+        this.resetTags(this.controller);
         this.runStarted = true;
 
         // When a test run starts we need to do several things:
@@ -191,6 +193,14 @@ export class TestRunProxy {
         const attachments = this.attachments[testIndex] ?? [];
         attachments.push(attachment);
         this.attachments[testIndex] = attachments;
+
+        const testItem = this.testItems[testIndex];
+        if (testItem) {
+            testItem.tags = [
+                ...testItem.tags,
+                new vscode.TestTag(TestRunProxy.Tags.HAS_ATTACHMENT),
+            ];
+        }
     };
 
     public getTestIndex(id: string, filename?: string): number {
@@ -214,6 +224,8 @@ export class TestRunProxy {
     }
 
     public skipped(test: vscode.TestItem) {
+        test.tags = [...test.tags, new vscode.TestTag(TestRunProxy.Tags.SKIPPED)];
+
         this.runState.skipped.push(test);
         this.testRun?.skipped(test);
     }
@@ -322,6 +334,20 @@ export class TestRunProxy {
 
         // Compute final coverage numbers if any coverage info has been captured during the run.
         await this.coverage.computeCoverage(this.testRun);
+    }
+
+    private static Tags = {
+        SKIPPED: "skipped",
+        HAS_ATTACHMENT: "hasAttachment",
+    };
+
+    // Remove any tags that were added due to test results
+    private resetTags(controller: vscode.TestController) {
+        function removeTestRunTags(_acc: void, test: vscode.TestItem) {
+            const tags = Object.values(TestRunProxy.Tags);
+            test.tags = test.tags.filter(tag => !tags.includes(tag.id));
+        }
+        reduceTestItemChildren(controller.items, removeTestRunTags, void 0);
     }
 }
 
