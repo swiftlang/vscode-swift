@@ -33,7 +33,7 @@ export class BuildConfigurationFactory {
         ctx: FolderContext,
         isTestBuild: boolean,
         isRelease: boolean
-    ): vscode.DebugConfiguration {
+    ): Promise<vscode.DebugConfiguration> {
         return new BuildConfigurationFactory(ctx, isTestBuild, isRelease).build();
     }
 
@@ -43,9 +43,9 @@ export class BuildConfigurationFactory {
         private isRelease: boolean
     ) {}
 
-    private build(): vscode.DebugConfiguration {
+    private async build(): Promise<vscode.DebugConfiguration> {
         let additionalArgs = buildOptions(this.ctx.workspaceContext.toolchain);
-        if (this.ctx.swiftPackage.getTargets(TargetType.test).length > 0) {
+        if ((await this.ctx.swiftPackage.getTargets(TargetType.test)).length > 0) {
             additionalArgs.push(...this.testDiscoveryFlag(this.ctx));
         }
 
@@ -68,7 +68,7 @@ export class BuildConfigurationFactory {
         }
 
         return {
-            ...this.baseConfig,
+            ...(await this.baseConfig),
             program: "swift",
             args: ["build", ...additionalArgs],
             env: {},
@@ -105,10 +105,10 @@ export class SwiftTestingBuildAguments {
         public attachmentPath: string | undefined
     ) {}
 
-    public static async build(
+    public static build(
         fifoPipePath: string,
         attachmentPath: string | undefined
-    ): Promise<SwiftTestingBuildAguments> {
+    ): SwiftTestingBuildAguments {
         return new SwiftTestingBuildAguments(fifoPipePath, attachmentPath);
     }
 }
@@ -192,7 +192,7 @@ export class TestingConfigurationFactory {
         testKind: TestKind,
         testList: string[],
         expandEnvVariables = false
-    ): vscode.DebugConfiguration | null {
+    ): Promise<vscode.DebugConfiguration | null> {
         return new TestingConfigurationFactory(
             ctx,
             testKind,
@@ -208,7 +208,7 @@ export class TestingConfigurationFactory {
         testKind: TestKind,
         testList: string[],
         expandEnvVariables = false
-    ): vscode.DebugConfiguration | null {
+    ): Promise<vscode.DebugConfiguration | null> {
         return new TestingConfigurationFactory(
             ctx,
             testKind,
@@ -223,7 +223,7 @@ export class TestingConfigurationFactory {
         ctx: FolderContext,
         testKind: TestKind,
         testLibrary: TestLibrary
-    ): string {
+    ): Promise<string> {
         return new TestingConfigurationFactory(
             ctx,
             testKind,
@@ -251,8 +251,8 @@ export class TestingConfigurationFactory {
      * - Test Kind (coverage, debugging)
      * - Test Library (XCTest, swift-testing)
      */
-    private build(): vscode.DebugConfiguration | null {
-        if (!this.hasTestTarget) {
+    private async build(): Promise<vscode.DebugConfiguration | null> {
+        if (!(await this.hasTestTarget)) {
             return null;
         }
 
@@ -267,7 +267,7 @@ export class TestingConfigurationFactory {
     }
 
     /* eslint-disable no-case-declarations */
-    private buildWindowsConfig(): vscode.DebugConfiguration | null {
+    private async buildWindowsConfig(): Promise<vscode.DebugConfiguration | null> {
         if (isDebugging(this.testKind)) {
             const testEnv = {
                 ...swiftRuntimeEnv(),
@@ -286,9 +286,10 @@ export class TestingConfigurationFactory {
                 testEnv.Path = `${swiftTestingPath};${testEnv.Path ?? process.env.Path}`;
             }
 
+            const baseConfig = await this.baseConfig();
             return {
-                ...this.baseConfig,
-                program: this.testExecutableOutputPath(),
+                ...baseConfig,
+                program: await this.testExecutableOutputPath(),
                 args: this.debuggingTestExecutableArgs(),
                 env: testEnv,
             };
@@ -298,11 +299,12 @@ export class TestingConfigurationFactory {
     }
 
     /* eslint-disable no-case-declarations */
-    private buildLinuxConfig(): vscode.DebugConfiguration | null {
+    private async buildLinuxConfig(): Promise<vscode.DebugConfiguration | null> {
         if (isDebugging(this.testKind) && this.testLibrary === TestLibrary.xctest) {
+            const baseConfig = await this.baseConfig();
             return {
-                ...this.baseConfig,
-                program: this.testExecutableOutputPath(),
+                ...baseConfig,
+                program: await this.testExecutableOutputPath(),
                 args: this.debuggingTestExecutableArgs(),
                 env: {
                     ...swiftRuntimeEnv(
@@ -317,7 +319,8 @@ export class TestingConfigurationFactory {
         }
     }
 
-    private buildDarwinConfig(): vscode.DebugConfiguration | null {
+    private async buildDarwinConfig(): Promise<vscode.DebugConfiguration | null> {
+        const baseConfig = await this.baseConfig();
         switch (this.testLibrary) {
             case TestLibrary.swiftTesting:
                 switch (this.testKind) {
@@ -337,13 +340,13 @@ export class TestingConfigurationFactory {
                         // then we know we're working with a unified binary.
                         if (swiftPMTestingHelperPath) {
                             const result = {
-                                ...this.baseConfig,
+                                ...baseConfig,
                                 program: swiftPMTestingHelperPath,
                                 args: this.addBuildOptionsToArgs(
                                     this.addTestsToArgs(
                                         this.addSwiftTestingFlagsArgs([
                                             "--test-bundle-path",
-                                            this.unifiedTestingOutputPath(),
+                                            await this.unifiedTestingOutputPath(),
                                             "--testing-library",
                                             "swift-testing",
                                         ])
@@ -361,8 +364,8 @@ export class TestingConfigurationFactory {
                         }
 
                         const result = {
-                            ...this.baseConfig,
-                            program: this.testExecutableOutputPath(),
+                            ...baseConfig,
+                            program: await this.testExecutableOutputPath(),
                             args: this.debuggingTestExecutableArgs(),
                             env: {
                                 ...this.testEnv,
@@ -386,7 +389,7 @@ export class TestingConfigurationFactory {
                         }
 
                         return {
-                            ...this.baseConfig,
+                            ...baseConfig,
                             program: this.swiftProgramPath,
                             args: this.addBuildOptionsToArgs(this.addTestsToArgs(args)),
                             env: {
@@ -399,7 +402,7 @@ export class TestingConfigurationFactory {
                             preLaunchTask:
                                 this.testKind === TestKind.coverage
                                     ? undefined
-                                    : this.baseConfig.preLaunchTask,
+                                    : baseConfig.preLaunchTask,
                         };
                 }
             case TestLibrary.xctest:
@@ -413,9 +416,11 @@ export class TestingConfigurationFactory {
                             return null;
                         }
                         return {
-                            ...this.baseConfig,
+                            ...baseConfig,
                             program: path.join(xcTestPath, "xctest"),
-                            args: this.addXCTestExecutableTestsToArgs([this.xcTestOutputPath()]),
+                            args: this.addXCTestExecutableTestsToArgs([
+                                await this.xcTestOutputPath(),
+                            ]),
                             env: {
                                 ...this.testEnv,
                                 ...this.sanitizerRuntimeEnvironment,
@@ -431,7 +436,7 @@ export class TestingConfigurationFactory {
                         ) {
                             // if debugging on macOS with Swift 5.6 we need to create a custom launch
                             // configuration so we can set the system architecture
-                            return this.createDarwin56TestConfiguration();
+                            return await this.createDarwin56TestConfiguration();
                         }
 
                         let xcTestArgs = [
@@ -453,7 +458,7 @@ export class TestingConfigurationFactory {
                         }
 
                         return {
-                            ...this.baseConfig,
+                            ...baseConfig,
                             program: this.swiftProgramPath,
                             args: this.addBuildOptionsToArgs(this.addTestsToArgs(xcTestArgs)),
                             env: {
@@ -466,7 +471,7 @@ export class TestingConfigurationFactory {
                             preLaunchTask:
                                 this.testKind === TestKind.coverage
                                     ? undefined
-                                    : this.baseConfig.preLaunchTask,
+                                    : baseConfig.preLaunchTask,
                         };
                 }
         }
@@ -476,8 +481,8 @@ export class TestingConfigurationFactory {
     /**
      * Return custom Darwin test configuration that works with Swift 5.6
      **/
-    private createDarwin56TestConfiguration(): vscode.DebugConfiguration | null {
-        if (this.ctx.swiftPackage.getTargets(TargetType.test).length === 0) {
+    private async createDarwin56TestConfiguration(): Promise<vscode.DebugConfiguration | null> {
+        if ((await this.ctx.swiftPackage.getTargets(TargetType.test)).length === 0) {
             return null;
         }
 
@@ -517,7 +522,7 @@ export class TestingConfigurationFactory {
         return {
             type: SWIFT_LAUNCH_CONFIG_TYPE,
             request: "custom",
-            name: `Test ${this.ctx.swiftPackage.name}`,
+            name: `Test ${await this.ctx.swiftPackage.name}`,
             targetCreateCommands: [`file -a ${arch} ${xctestPath}/xctest`],
             processCreateCommands: [
                 ...envCommands,
@@ -623,31 +628,33 @@ export class TestingConfigurationFactory {
         return triple ? path.join(triple, mode) : mode;
     }
 
-    private xcTestOutputPath(): string {
+    private async xcTestOutputPath(): Promise<string> {
+        const packageName = await this.ctx.swiftPackage.name;
         return path.join(
             this.buildDirectory,
             this.artifactFolderForTestKind,
-            `${this.ctx.swiftPackage.name}PackageTests.xctest`
+            `${packageName}PackageTests.xctest`
         );
     }
 
-    private unifiedTestingOutputPath(): string {
+    private async unifiedTestingOutputPath(): Promise<string> {
         // The unified binary that contains both swift-testing and XCTests
         // is named the same as the old style .xctest binary. The swiftpm-testing-helper
         // requires the full path to the binary.
         if (process.platform === "darwin") {
+            const packageName = await this.ctx.swiftPackage.name;
             return path.join(
-                this.xcTestOutputPath(),
+                await this.xcTestOutputPath(),
                 "Contents",
                 "MacOS",
-                `${this.ctx.swiftPackage.name}PackageTests`
+                `${packageName}PackageTests`
             );
         } else {
             return this.xcTestOutputPath();
         }
     }
 
-    private testExecutableOutputPath(): string {
+    private async testExecutableOutputPath(): Promise<string> {
         switch (this.testLibrary) {
             case TestLibrary.swiftTesting:
                 return this.unifiedTestingOutputPath();
@@ -682,22 +689,25 @@ export class TestingConfigurationFactory {
         };
     }
 
-    private get baseConfig() {
+    private async baseConfig(): Promise<ReturnType<typeof getBaseConfig>> {
         return getBaseConfig(this.ctx, this.expandEnvVariables);
     }
 
-    private get hasTestTarget(): boolean {
-        return this.ctx.swiftPackage.getTargets(TargetType.test).length > 0;
+    private get hasTestTarget(): Promise<boolean> {
+        return this.ctx.swiftPackage
+            .getTargets(TargetType.test)
+            .then(targets => targets.length > 0);
     }
 }
 
-function getBaseConfig(ctx: FolderContext, expandEnvVariables: boolean) {
+async function getBaseConfig(ctx: FolderContext, expandEnvVariables: boolean) {
     const { folder, nameSuffix } = getFolderAndNameSuffix(ctx, expandEnvVariables);
+    const packageName = await ctx.swiftPackage.name;
     return {
         type: SWIFT_LAUNCH_CONFIG_TYPE,
         request: "launch",
         sourceLanguages: ["swift"],
-        name: `Test ${ctx.swiftPackage.name}`,
+        name: `Test ${packageName}`,
         cwd: folder,
         args: [],
         preLaunchTask: `swift: Build All${nameSuffix}`,
