@@ -112,6 +112,11 @@
         "category": "Swift"
       },
       {
+        "command": "swift.openEducationalNote",
+        "title": "Open Educational Note...",
+        "category": "Swift"
+      },
+      {
         "command": "swift.newFile",
         "title": "Create New Swift File...",
         "shortTitle": "Swift File",
@@ -943,6 +948,10 @@
         {
           "command": "swift.coverAllTests",
           "when": "swift.isActivated"
+        },
+        {
+          "command": "swift.openEducationalNote",
+          "when": "false"
         }
       ],
       "editor/context": [
