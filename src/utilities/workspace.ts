@@ -26,7 +26,6 @@ export async function searchForPackages(
         // add folder if Package.swift/compile_commands.json/compile_flags.txt/buildServer.json exists
         if (await isValidWorkspaceFolder(folder.fsPath, disableSwiftPMIntegration)) {
             folders.push(folder);
-            return;
         }
         // should I search sub-folders for more Swift Packages
         if (!searchSubfoldersForPackages) {

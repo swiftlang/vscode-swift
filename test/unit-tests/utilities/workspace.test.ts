@@ -29,7 +29,7 @@ suite("Workspace Utilities Unit Test Suite", () => {
             expect(folders.map(folder => folder.fsPath)).eql([packageFolder.fsPath]);
         });
 
-        test("returns sub packages when search for subpackages enabled", async () => {
+        test("returns subpackages when search for subpackages enabled", async () => {
             const folders = await searchForPackages(packageFolder, false, true);
 
             expect(folders.map(folder => folder.fsPath).sort()).deep.equal([
