@@ -18,7 +18,7 @@ import { FolderContext } from "./FolderContext";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
 import { swiftLibraryPathKey } from "./utilities/utilities";
-import { pathExists, isPathInsidePath } from "./utilities/filesystem";
+import { isPathInsidePath } from "./utilities/filesystem";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 import { TemporaryFolder } from "./utilities/tempFolder";
 import { TaskManager } from "./tasks/TaskManager";
@@ -34,6 +34,7 @@ import { DiagnosticsManager } from "./DiagnosticsManager";
 import { DocumentationManager } from "./documentation/DocumentationManager";
 import { DocCDocumentationRequest, ReIndexProjectRequest } from "./sourcekit-lsp/extensions";
 import { TestKind } from "./TestExplorer/TestKind";
+import { isValidWorkspaceFolder, searchForPackages } from "./utilities/workspace";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -391,38 +392,19 @@ export class WorkspaceContext implements vscode.Disposable {
      * @param folder folder being added
      */
     async addWorkspaceFolder(workspaceFolder: vscode.WorkspaceFolder) {
-        await this.searchForPackages(workspaceFolder.uri, workspaceFolder);
+        const folders = await searchForPackages(
+            workspaceFolder.uri,
+            configuration.disableSwiftPMIntegration,
+            configuration.folder(workspaceFolder).searchSubfoldersForPackages
+        );
+
+        for (const folder of folders) {
+            await this.addPackageFolder(folder, workspaceFolder);
+        }
 
         if (this.getActiveWorkspaceFolder(vscode.window.activeTextEditor) === workspaceFolder) {
             await this.focusTextEditor(vscode.window.activeTextEditor);
         }
-    }
-
-    async searchForPackages(folder: vscode.Uri, workspaceFolder: vscode.WorkspaceFolder) {
-        // add folder if Package.swift/compile_commands.json/compile_flags.txt/buildServer.json exists
-        if (await this.isValidWorkspaceFolder(folder.fsPath)) {
-            await this.addPackageFolder(folder, workspaceFolder);
-            return;
-        }
-        // should I search sub-folders for more Swift Packages
-        if (!configuration.folder(workspaceFolder).searchSubfoldersForPackages) {
-            return;
-        }
-
-        await vscode.workspace.fs.readDirectory(folder).then(async entries => {
-            for (const entry of entries) {
-                if (
-                    entry[1] === vscode.FileType.Directory &&
-                    entry[0][0] !== "." &&
-                    entry[0] !== "Packages"
-                ) {
-                    await this.searchForPackages(
-                        vscode.Uri.joinPath(folder, entry[0]),
-                        workspaceFolder
-                    );
-                }
-            }
-        });
     }
 
     public async addPackageFolder(
@@ -597,13 +579,7 @@ export class WorkspaceContext implements vscode.Disposable {
      * Package.swift or a CMake compile_commands.json, compile_flags.txt, or a BSP buildServer.json.
      */
     async isValidWorkspaceFolder(folder: string): Promise<boolean> {
-        return (
-            ((await pathExists(folder, "Package.swift")) &&
-                !configuration.disableSwiftPMIntegration) ||
-            (await pathExists(folder, "compile_commands.json")) ||
-            (await pathExists(folder, "compile_flags.txt")) ||
-            (await pathExists(folder, "buildServer.json"))
-        );
+        return await isValidWorkspaceFolder(folder, configuration.disableSwiftPMIntegration);
     }
 
     /** send unfocus event to current focussed folder and clear current folder */
