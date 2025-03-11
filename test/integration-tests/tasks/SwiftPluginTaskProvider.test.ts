@@ -14,6 +14,7 @@
 
 import * as vscode from "vscode";
 import * as assert from "assert";
+import { beforeEach, afterEach } from "mocha";
 import { expect } from "chai";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftPluginTaskProvider } from "../../../src/tasks/SwiftPluginTaskProvider";
@@ -38,57 +39,155 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
 
     this.timeout(60000); // Mostly only when running suite with .only
 
-    suite("settings plugin arguments", () => {
-        activateExtensionForSuite({
-            async setup(ctx) {
-                workspaceContext = ctx;
-                folderContext = await folderInRootWorkspace("command-plugin", workspaceContext);
-                await folderContext.loadSwiftPlugins();
-                expect(workspaceContext.folders).to.not.have.lengthOf(0);
-                return await updateSettings({
-                    "swift.pluginPermissions": {
-                        "command-plugin:command_plugin": {
-                            disableSandbox: true,
-                            allowWritingToPackageDirectory: true,
-                            allowWritingToDirectory: ["/foo", "/bar"],
-                            allowNetworkConnections: "all",
-                        },
-                    },
-                });
-            },
-        });
+    activateExtensionForSuite({
+        async setup(ctx) {
+            workspaceContext = ctx;
+            folderContext = await folderInRootWorkspace("command-plugin", workspaceContext);
+            await folderContext.loadSwiftPlugins();
+            expect(workspaceContext.folders).to.not.have.lengthOf(0);
+        },
+    });
 
-        test("provides a task with permissions set via settings", async () => {
-            const tasks = await vscode.tasks.fetchTasks({ type: "swift-plugin" });
-            const task = tasks.find(t => t.name === "command-plugin");
-            const swiftExecution = task?.execution as SwiftExecution;
-            assert.deepEqual(
-                swiftExecution.args,
-                workspaceContext.toolchain.buildFlags.withAdditionalFlags([
-                    "package",
-                    "--disable-sandbox",
-                    "--allow-writing-to-package-directory",
-                    "--allow-writing-to-directory",
-                    "/foo",
-                    "/bar",
-                    "--allow-network-connections",
-                    "all",
-                    "command_plugin",
-                ])
-            );
+    const expectedPluginPermissions = [
+        "--disable-sandbox",
+        "--allow-writing-to-package-directory",
+        "--allow-writing-to-directory",
+        "/foo",
+        "/bar",
+        "--allow-network-connections",
+        "all",
+    ];
+
+    [
+        {
+            name: "global plugin permissions",
+            settings: {
+                "swift.pluginPermissions": {
+                    disableSandbox: true,
+                    allowWritingToPackageDirectory: true,
+                    allowWritingToDirectory: ["/foo", "/bar"],
+                    allowNetworkConnections: "all",
+                },
+            },
+            expected: expectedPluginPermissions,
+        },
+        {
+            name: "plugin scoped plugin permissions",
+            settings: {
+                "swift.pluginPermissions": {
+                    "command-plugin": {
+                        disableSandbox: true,
+                        allowWritingToPackageDirectory: true,
+                        allowWritingToDirectory: ["/foo", "/bar"],
+                        allowNetworkConnections: "all",
+                    },
+                },
+            },
+            expected: expectedPluginPermissions,
+        },
+        {
+            name: "command scoped plugin permissions",
+            settings: {
+                "swift.pluginPermissions": {
+                    "command-plugin:command_plugin": {
+                        disableSandbox: true,
+                        allowWritingToPackageDirectory: true,
+                        allowWritingToDirectory: ["/foo", "/bar"],
+                        allowNetworkConnections: "all",
+                    },
+                },
+            },
+            expected: expectedPluginPermissions,
+        },
+        {
+            name: "wildcard scoped plugin permissions",
+            settings: {
+                "swift.pluginPermissions": {
+                    "*": {
+                        disableSandbox: true,
+                        allowWritingToPackageDirectory: true,
+                        allowWritingToDirectory: ["/foo", "/bar"],
+                        allowNetworkConnections: "all",
+                    },
+                },
+            },
+            expected: expectedPluginPermissions,
+        },
+        {
+            name: "global plugin arguments",
+            settings: {
+                "swift.pluginArguments": ["-c", "release"],
+            },
+            expected: ["-c", "release"],
+        },
+        {
+            name: "plugin scoped plugin arguments",
+            settings: {
+                "swift.pluginArguments": {
+                    "command-plugin": ["-c", "release"],
+                },
+            },
+            expected: ["-c", "release"],
+        },
+        {
+            name: "command scoped plugin arguments",
+            settings: {
+                "swift.pluginArguments": {
+                    "command-plugin:command_plugin": ["-c", "release"],
+                },
+            },
+            expected: ["-c", "release"],
+        },
+        {
+            name: "wildcard scoped plugin arguments",
+            settings: {
+                "swift.pluginArguments": {
+                    "*": ["-c", "release"],
+                },
+            },
+            expected: ["-c", "release"],
+        },
+        {
+            name: "overlays settings",
+            settings: {
+                "swift.pluginArguments": {
+                    "*": ["-a"],
+                    "command-plugin": ["-b"],
+                    "command-plugin:command_plugin": ["-c"],
+                },
+            },
+            expected: ["-a", "-b", "-c"],
+        },
+    ].forEach(({ name, settings, expected }) => {
+        suite(name, () => {
+            let resetSettings: (() => Promise<void>) | undefined;
+            beforeEach(async function () {
+                resetSettings = await updateSettings(settings);
+            });
+
+            afterEach(async () => {
+                if (resetSettings) {
+                    await resetSettings();
+                }
+            });
+
+            test("sets arguments", async () => {
+                const tasks = await vscode.tasks.fetchTasks({ type: "swift-plugin" });
+                const task = tasks.find(t => t.name === "command-plugin");
+                const swiftExecution = task?.execution as SwiftExecution;
+                assert.deepEqual(
+                    swiftExecution.args,
+                    workspaceContext.toolchain.buildFlags.withAdditionalFlags([
+                        "package",
+                        ...expected,
+                        "command_plugin",
+                    ])
+                );
+            });
         });
     });
 
     suite("execution", () => {
-        activateExtensionForSuite({
-            async setup(ctx) {
-                workspaceContext = ctx;
-                folderContext = await folderInRootWorkspace("command-plugin", workspaceContext);
-                await folderContext.loadSwiftPlugins();
-                expect(workspaceContext.folders).to.not.have.lengthOf(0);
-            },
-        });
-
         suite("createSwiftPluginTask", () => {
             let taskProvider: SwiftPluginTaskProvider;
 

@@ -444,6 +444,30 @@
             "default": true,
             "markdownDescription": "Controls whether or not the extension will contribute environment variables defined in `Swift: Environment Variables` to the integrated terminal. If this is set to `true` and a custom `Swift: Path` is also set then the swift path is appended to the terminal's `PATH`."
           },
+          "swift.pluginArguments": {
+            "default": [],
+            "markdownDescription": "Configure a list of arguments to pass to command invocations. This can either be an array of arguments, which will apply to all command invocations, or an object with command names as the key where the value is an array of arguments.",
+            "scope": "machine-overridable",
+            "oneOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "patternProperties": {
+                  "^([a-zA-Z0-9_-]+(:[a-zA-Z0-9_-]+)?)$": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            ]
+          },
           "swift.pluginPermissions": {
             "type": "object",
             "default": {},

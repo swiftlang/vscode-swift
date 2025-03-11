@@ -23,7 +23,7 @@ A plugin may require permissions to perform tasks like writing to the file syste
 }
 ```
 
-A key of `PluginName:command` will set permissions for a specific command. A key of `PluginName` will set permissions for all commands in the plugin.
+A key of `PluginName:command` will set permissions for a specific command. A key of `PluginName` will set permissions for all commands in the plugin. If you'd like the same permissions to be applied to all plugins use `*` as the plugin name. Precedence order is determined by specificity, where more specific names take priority. The name `*` is the least specific and `PluginName:command` is the most specific.
 
 Alternatively, you can define a task in your tasks.json and define permissions directly on the task. This will create a new entry in the list shown by `> Swift: Run Command Plugin`.
 
@@ -40,6 +40,24 @@ Alternatively, you can define a task in your tasks.json and define permissions d
   "allowWritingToDirectory": "/some/path/",
   "allowNetworkConnections": "all",
   "disableSandbox": true
+}
+```
+
+If you'd like to provide specific arguments to your plugin command invocation you can  use the `swift.pluginArguments` setting. Defining an array for this setting applies the same arguments to all plugin command invocations.
+
+```json
+{
+  "swift.pluginArguments": ["-c", "release"]
+}
+```
+
+Alternatively you can specfiy which specific command the arguments should apply to using `PluginName:command`. A key of `PluginName` will use the arguments for all commands in the plugin. If you'd like the same arguments to be used for all plugins use `*` as the plugin name.
+
+```json
+{
+  "swift.pluginArguments": {
+    "PluginName:command": ["-c", "release"]
+  }
 }
 ```
 
