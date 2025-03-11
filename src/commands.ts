@@ -43,6 +43,7 @@ import { runAllTests } from "./commands/runAllTests";
 import { updateDependenciesViewList } from "./commands/dependencies/updateDepViewList";
 import { runTask } from "./commands/runTask";
 import { TestKind } from "./TestExplorer/TestKind";
+import { pickProcess } from "./commands/pickProcess";
 
 /**
  * References:
@@ -64,6 +65,9 @@ export function registerToolchainCommands(
         ),
         vscode.commands.registerCommand("swift.selectToolchain", () =>
             showToolchainSelectionQuickPick(toolchain)
+        ),
+        vscode.commands.registerCommand("swift.pickProcess", configuration =>
+            pickProcess(configuration)
         ),
     ];
 }

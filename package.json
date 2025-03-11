@@ -272,6 +272,11 @@
         "category": "Swift"
       },
       {
+        "command": "swift.pickProcess",
+        "title": "Pick Process...",
+        "category": "Swift"
+      },
+      {
         "command": "swift.runAllTestsParallel",
         "title": "Run Tests in Parallel",
         "category": "Test",
@@ -958,6 +963,10 @@
           "when": "swift.supportsReindexing"
         },
         {
+          "command": "swift.pickProcess",
+          "when": "false"
+        },
+        {
           "command": "swift.runAllTestsParallel",
           "when": "swift.isActivated"
         },
@@ -1359,7 +1368,7 @@
         "type": "swift",
         "label": "Swift Debugger",
         "variables": {
-          "PickProcess": "lldb-dap.pickProcess"
+          "pickProcess": "swift.pickProcess"
         },
         "configurationAttributes": {
           "launch": {
@@ -1586,7 +1595,7 @@
               "type": "swift",
               "request": "attach",
               "name": "${1:Attach to Swift Executable}",
-              "pid": "^\"\\${command:PickProcess}\""
+              "pid": "^\"\\${command:pickProcess}\""
             }
           },
           {
