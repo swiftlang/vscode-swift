@@ -420,7 +420,7 @@
           },
           "swift.pluginArguments": {
             "default": [],
-            "markdownDescription": "Configure a list of arguments to pass to command invocations. This can either be an array of arguments, which will apply to all command invocations, or an object with an with command names as the key where the value is an array of arguments.",
+            "markdownDescription": "Configure a list of arguments to pass to command invocations. This can either be an array of arguments, which will apply to all command invocations, or an object with command names as the key where the value is an array of arguments.",
             "scope": "machine-overridable",
             "oneOf": [
               {
