@@ -173,7 +173,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
                 return openInExternalEditor(item);
             }
         }),
-        vscode.commands.registerCommand("swift.attachDebugger", () => attachDebugger(ctx)),
+        vscode.commands.registerCommand("swift.attachDebugger", attachDebugger),
         vscode.commands.registerCommand("swift.clearDiagnosticsCollection", () =>
             ctx.diagnostics.clear()
         ),

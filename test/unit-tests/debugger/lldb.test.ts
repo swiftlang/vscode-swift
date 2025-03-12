@@ -22,7 +22,6 @@ import {
     MockedObject,
     mockFn,
     mockGlobalModule,
-    mockGlobalObject,
     mockObject,
     MockedFunction,
     mockGlobalValue,

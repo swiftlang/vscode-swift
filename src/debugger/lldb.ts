@@ -17,9 +17,7 @@
 
 import * as path from "path";
 import * as fs from "fs/promises";
-import * as vscode from "vscode";
-import { WorkspaceContext } from "../WorkspaceContext";
-import { execFile, getErrorDescription } from "../utilities/utilities";
+import { execFile } from "../utilities/utilities";
 import { Result } from "../utilities/result";
 import { SwiftToolchain } from "../toolchain/toolchain";
 
