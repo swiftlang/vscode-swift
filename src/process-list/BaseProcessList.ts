@@ -14,17 +14,17 @@
 
 import * as util from "util";
 import * as child_process from "child_process";
-import { Process, ProcessTree } from ".";
+import { Process, ProcessList } from ".";
 
 const exec = util.promisify(child_process.execFile);
 
 /** Parses process information from a given line of process output. */
-export type ProcessTreeParser = (line: string) => Process | undefined;
+export type ProcessListParser = (line: string) => Process | undefined;
 
 /**
- * Implements common behavior between the different {@link ProcessTree} implementations.
+ * Implements common behavior between the different {@link ProcessList} implementations.
  */
-export abstract class BaseProcessTree implements ProcessTree {
+export abstract class BaseProcessList implements ProcessList {
     /**
      * Get the command responsible for collecting all processes on the system.
      */
@@ -39,7 +39,7 @@ export abstract class BaseProcessTree implements ProcessTree {
      * Create a new parser that can read the process information from stdout of the process
      * spawned by {@link spawnProcess spawnProcess()}.
      */
-    protected abstract createParser(): ProcessTreeParser;
+    protected abstract createParser(): ProcessListParser;
 
     async listAllProcesses(): Promise<Process[]> {
         const execCommand = exec(this.getCommand(), this.getCommandArguments());

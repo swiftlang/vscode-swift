@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import { LinuxProcessTree } from "./LinuxProcessTree";
+import { LinuxProcessList } from "./LinuxProcessList";
 
-export class DarwinProcessTree extends LinuxProcessTree {
+export class DarwinProcessList extends LinuxProcessList {
     protected override getCommandArguments(): string[] {
         return [
             "-axo",

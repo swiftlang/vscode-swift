@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import { DarwinProcessTree } from "./platforms/DarwinProcessTree";
-import { LinuxProcessTree } from "./platforms/LinuxProcessTree";
-import { WindowsProcessTree } from "./platforms/WindowsProcessTree";
+import { DarwinProcessList } from "./platforms/DarwinProcessList";
+import { LinuxProcessList } from "./platforms/LinuxProcessList";
+import { WindowsProcessList } from "./platforms/WindowsProcessList";
 
 /**
  * Represents a single process running on the system.
@@ -33,18 +33,18 @@ export interface Process {
     start: number;
 }
 
-export interface ProcessTree {
+export interface ProcessList {
     listAllProcesses(): Promise<Process[]>;
 }
 
-/** Returns a {@link ProcessTree} based on the current platform. */
-export function createProcessTree(): ProcessTree {
+/** Returns a {@link ProcessList} based on the current platform. */
+export function createProcessList(): ProcessList {
     switch (process.platform) {
         case "darwin":
-            return new DarwinProcessTree();
+            return new DarwinProcessList();
         case "win32":
-            return new WindowsProcessTree();
+            return new WindowsProcessList();
         default:
-            return new LinuxProcessTree();
+            return new LinuxProcessList();
     }
 }

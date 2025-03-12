@@ -14,7 +14,7 @@
 
 import * as path from "path";
 import * as vscode from "vscode";
-import { createProcessTree } from "../process-tree";
+import { createProcessList } from "../process-list";
 
 interface ProcessQuickPick extends vscode.QuickPickItem {
     processId?: number;
@@ -33,9 +33,9 @@ interface ProcessQuickPick extends vscode.QuickPickItem {
 export async function pickProcess(
     configuration?: vscode.DebugConfiguration
 ): Promise<string | undefined> {
-    const processTree = createProcessTree();
+    const processList = createProcessList();
     const selectedProcess = await vscode.window.showQuickPick<ProcessQuickPick>(
-        processTree.listAllProcesses().then((processes): ProcessQuickPick[] => {
+        processList.listAllProcesses().then((processes): ProcessQuickPick[] => {
             // Sort by start date in descending order
             processes.sort((a, b) => b.start - a.start);
             // Filter by program if requested

@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import { BaseProcessTree, ProcessTreeParser } from "../BaseProcessTree";
+import { BaseProcessList, ProcessListParser } from "../BaseProcessList";
 
-export class WindowsProcessTree extends BaseProcessTree {
+export class WindowsProcessList extends BaseProcessList {
     protected override getCommand(): string {
         return "PowerShell";
     }
@@ -26,7 +26,7 @@ export class WindowsProcessTree extends BaseProcessTree {
         ];
     }
 
-    protected override createParser(): ProcessTreeParser {
+    protected override createParser(): ProcessListParser {
         const lineRegex = /^([0-9]+)\s+([0-9]+)\s+(.*)$/;
 
         return line => {

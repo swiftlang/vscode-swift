@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import { BaseProcessTree, ProcessTreeParser } from "../BaseProcessTree";
+import { BaseProcessList, ProcessListParser } from "../BaseProcessList";
 
-export class LinuxProcessTree extends BaseProcessTree {
+export class LinuxProcessList extends BaseProcessList {
     protected override getCommand(): string {
         return "ps";
     }
@@ -27,7 +27,7 @@ export class LinuxProcessTree extends BaseProcessTree {
         ];
     }
 
-    protected override createParser(): ProcessTreeParser {
+    protected override createParser(): ProcessListParser {
         let commandOffset: number | undefined;
         let argumentsOffset: number | undefined;
         return line => {
