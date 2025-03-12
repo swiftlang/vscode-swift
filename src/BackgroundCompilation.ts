@@ -13,63 +13,57 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as path from "path";
-import { isPathInsidePath } from "./utilities/filesystem";
 import { getBuildAllTask } from "./tasks/SwiftTaskProvider";
 import configuration from "./configuration";
 import { FolderContext } from "./FolderContext";
-import { WorkspaceContext } from "./WorkspaceContext";
 import { TaskOperation } from "./tasks/TaskQueue";
 
-export class BackgroundCompilation {
-    private waitingToRun = false;
+export class BackgroundCompilation implements vscode.Disposable {
+    private workspaceFileWatcher?: vscode.FileSystemWatcher;
+    private configurationEventDisposable?: vscode.Disposable;
+    private validFileTypes = ["swift", "c", "cpp", "h", "hpp", "m", "mm"];
+    private disposables: vscode.Disposable[] = [];
 
-    constructor(private folderContext: FolderContext) {}
-
-    /**
-     * Start onDidSave handler which will kick off compilation tasks
-     *
-     * The task works out which folder the saved file is in and then
-     * will call `runTask` on the background compilation attached to
-     * that folder.
-     * */
-    static start(workspaceContext: WorkspaceContext): vscode.Disposable {
-        const onDidSaveDocument = vscode.workspace.onDidSaveTextDocument(event => {
-            if (configuration.backgroundCompilation === false) {
-                return;
-            }
-
-            // is document a valid type for rebuild
-            const languages = ["swift", "c", "cpp", "objective-c", "objective-cpp"];
-            let foundLanguage = false;
-            languages.forEach(lang => {
-                if (event.languageId === lang) {
-                    foundLanguage = true;
+    constructor(private folderContext: FolderContext) {
+        // We only want to configure the file watcher if background compilation is enabled.
+        this.configurationEventDisposable = vscode.workspace.onDidChangeConfiguration(event => {
+            if (event.affectsConfiguration("swift.backgroundCompilation", folderContext.folder)) {
+                if (configuration.backgroundCompilation) {
+                    this.setupFileWatching();
+                } else {
+                    this.stopFileWatching();
                 }
-            });
-            if (foundLanguage === false) {
-                return;
             }
-
-            // is editor document in any of the current FolderContexts
-            const folderContext = workspaceContext.folders.find(context => {
-                return isPathInsidePath(event.uri.fsPath, context.folder.fsPath);
-            });
-
-            if (!folderContext) {
-                return;
-            }
-
-            // don't run auto-build if saving Package.swift as it clashes with the resolve
-            // that is run after the Package.swift is saved
-            if (path.join(folderContext.folder.fsPath, "Package.swift") === event.uri.fsPath) {
-                return;
-            }
-
-            // run background compilation task
-            folderContext.backgroundCompilation.runTask();
         });
-        return { dispose: () => onDidSaveDocument.dispose() };
+
+        if (configuration.backgroundCompilation) {
+            this.setupFileWatching();
+        }
+    }
+
+    private setupFileWatching() {
+        const fileTypes = this.validFileTypes.join(",");
+        const rootFolders = ["Sources", "Tests", "Snippets", "Plugins"].join(",");
+        this.disposables.push(
+            (this.workspaceFileWatcher = vscode.workspace.createFileSystemWatcher(
+                `**/{${rootFolders}}/**/*.{${fileTypes}}`
+            ))
+        );
+
+        this.disposables.push(
+            this.workspaceFileWatcher.onDidChange(() => {
+                this.runTask();
+            })
+        );
+    }
+
+    private stopFileWatching() {
+        this.disposables.forEach(disposable => disposable.dispose());
+    }
+
+    dispose() {
+        this.configurationEventDisposable?.dispose();
+        this.disposables.forEach(disposable => disposable.dispose());
     }
 
     /**
