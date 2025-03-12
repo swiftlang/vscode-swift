@@ -14,7 +14,6 @@
 
 import * as vscode from "vscode";
 import { WorkspaceContext } from "../WorkspaceContext";
-import { getLldbProcess } from "../debugger/lldb";
 import { SWIFT_LAUNCH_CONFIG_TYPE } from "../debugger/debugAdapter";
 
 /**
@@ -30,19 +29,10 @@ import { SWIFT_LAUNCH_CONFIG_TYPE } from "../debugger/debugAdapter";
  * @throws Will display an error message if no processes are available, or if the debugger fails to attach to the selected process.
  */
 export async function attachDebugger(ctx: WorkspaceContext) {
-    const processPickItems = await getLldbProcess(ctx);
-    if (processPickItems !== undefined) {
-        const picked = await vscode.window.showQuickPick(processPickItems, {
-            placeHolder: "Select Process",
-        });
-        if (picked) {
-            const debugConfig: vscode.DebugConfiguration = {
-                type: SWIFT_LAUNCH_CONFIG_TYPE,
-                request: "attach",
-                name: "Attach",
-                pid: picked.pid,
-            };
-            await vscode.debug.startDebugging(undefined, debugConfig);
-        }
-    }
+    await vscode.debug.startDebugging(undefined, {
+        type: SWIFT_LAUNCH_CONFIG_TYPE,
+        request: "attach",
+        name: "Attach",
+        pid: "${command:pickProcess}",
+    });
 }
