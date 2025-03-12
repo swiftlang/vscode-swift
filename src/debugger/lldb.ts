@@ -17,9 +17,7 @@
 
 import * as path from "path";
 import * as fs from "fs/promises";
-import * as vscode from "vscode";
-import { WorkspaceContext } from "../WorkspaceContext";
-import { execFile, getErrorDescription } from "../utilities/utilities";
+import { execFile } from "../utilities/utilities";
 import { Result } from "../utilities/result";
 import { SwiftToolchain } from "../toolchain/toolchain";
 
@@ -113,47 +111,4 @@ export async function findFileByPattern(path: string, pattern: RegExp): Promise<
         // Ignore missing directories and such...
     }
     return null;
-}
-
-/**
- * Retrieves a list of LLDB processes from the system using LLDB.
- *
- * This function executes an LLDB command to list all processes on the system,
- * including their arguments, and returns them in an array of objects where each
- * object contains the `pid` and a `label` describing the process.
- *
- * @param {WorkspaceContext} ctx - The workspace context, which includes the toolchain needed to run LLDB.
- * @returns {Promise<Array<{ pid: number; label: string }> | undefined>}
- * A promise that resolves to an array of processes, where each process is represented by an object with a `pid` and a `label`.
- * If an error occurs or no processes are found, it returns `undefined`.
- *
- * @throws Will display an error message in VS Code if the LLDB command fails.
- */
-export async function getLldbProcess(
-    ctx: WorkspaceContext
-): Promise<Array<{ pid: number; label: string }> | undefined> {
-    try {
-        // use LLDB to get list of processes
-        const lldb = await ctx.toolchain.getLLDB();
-        const { stdout } = await execFile(lldb, [
-            "--batch",
-            "--no-lldbinit",
-            "--one-line",
-            "platform process list --show-args --all-users",
-        ]);
-        const entries = stdout.split("\n");
-        const processes = entries.flatMap(line => {
-            const match = /^(\d+)\s+\d+\s+\S+\s+\S+\s+(.+)$/.exec(line);
-            if (match) {
-                return [{ pid: parseInt(match[1]), label: `${match[1]}: ${match[2]}` }];
-            } else {
-                return [];
-            }
-        });
-        return processes;
-    } catch (error) {
-        const errorMessage = `Failed to run LLDB: ${getErrorDescription(error)}`;
-        ctx.outputChannel.log(errorMessage);
-        vscode.window.showErrorMessage(errorMessage);
-    }
 }

@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import { expect } from "chai";
-import { getLLDBLibPath, getLldbProcess } from "../../../src/debugger/lldb";
+import { getLLDBLibPath } from "../../../src/debugger/lldb";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { activateExtensionForTest } from "../utilities/testutilities";
 import { Version } from "../../../src/utilities/version";
@@ -35,19 +35,6 @@ suite("lldb contract test suite", () => {
             workspaceContext = ctx;
         },
         requiresDebugger: true,
-    });
-
-    test("getLldbProcess Contract Test, make sure the command returns", async () => {
-        const result = await getLldbProcess(workspaceContext);
-
-        // Assumption: machine will always return some process
-        expect(result).to.be.an("array");
-
-        // If result is an array, assert that each element has a pid and label
-        result?.forEach(item => {
-            expect(item).to.have.property("pid").that.is.a("number");
-            expect(item).to.have.property("label").that.is.a("string");
-        });
     });
 
     test("getLLDBLibPath Contract Test, make sure we can find lib LLDB", async () => {

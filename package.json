@@ -272,6 +272,11 @@
         "category": "Swift"
       },
       {
+        "command": "swift.pickProcess",
+        "title": "Pick Process...",
+        "category": "Swift"
+      },
+      {
         "command": "swift.runAllTestsParallel",
         "title": "Run Tests in Parallel",
         "category": "Test",
@@ -958,6 +963,10 @@
           "when": "swift.supportsReindexing"
         },
         {
+          "command": "swift.pickProcess",
+          "when": "false"
+        },
+        {
           "command": "swift.runAllTestsParallel",
           "when": "swift.isActivated"
         },
@@ -1358,6 +1367,9 @@
       {
         "type": "swift",
         "label": "Swift Debugger",
+        "variables": {
+          "pickProcess": "swift.pickProcess"
+        },
         "configurationAttributes": {
           "launch": {
             "required": [
@@ -1490,6 +1502,7 @@
               },
               "pid": {
                 "type": [
+                  "string",
                   "number"
                 ],
                 "description": "System process ID to attach to."
@@ -1560,7 +1573,42 @@
               }
             }
           }
-        }
+        },
+        "configurationSnippets": [
+          {
+            "label": "Swift: Launch",
+            "description": "",
+            "body": {
+              "type": "swift",
+              "request": "launch",
+              "name": "${2:Launch Swift Executable}",
+              "program": "^\"\\${workspaceRoot}/.build/debug/${1:<program>}\"",
+              "args": [],
+              "env": {},
+              "cwd": "^\"\\${workspaceRoot}\""
+            }
+          },
+          {
+            "label": "Swift: Attach to Process",
+            "description": "",
+            "body": {
+              "type": "swift",
+              "request": "attach",
+              "name": "${1:Attach to Swift Executable}",
+              "pid": "^\"\\${command:pickProcess}\""
+            }
+          },
+          {
+            "label": "Swift: Attach",
+            "description": "",
+            "body": {
+              "type": "swift",
+              "request": "attach",
+              "name": "${2:Attach to Swift Executable}",
+              "program": "^\"\\${workspaceRoot}/.build/debug/${1:<program>}\""
+            }
+          }
+        ]
       }
     ]
   },
