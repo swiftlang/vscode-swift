@@ -1600,6 +1600,7 @@
     "@types/glob": "^7.1.6",
     "@types/lcov-parse": "^1.0.2",
     "@types/lodash.throttle": "^4.1.9",
+    "@types/lodash.debounce": "^4.0.9",
     "@types/mocha": "^10.0.10",
     "@types/mock-fs": "^4.13.4",
     "@types/node": "^18.19.80",
