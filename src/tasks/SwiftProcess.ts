@@ -95,6 +95,7 @@ export class SwiftPtyProcess implements SwiftProcess {
 
     spawn(): void {
         try {
+            console.log(">>> SwiftPtyProcess Spawn:", this.command, this.args);
             const isWindows = process.platform === "win32";
             // The pty process hangs on Windows when debugging the extension if we use conpty
             // See https://github.com/microsoft/node-pty/issues/640
@@ -183,6 +184,7 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
 
     spawn(): void {
         try {
+            console.log(">>> ReadOnlySwiftProcess Spawn:", this.command, this.args);
             this.spawnedProcess = child_process.spawn(this.command, this.args, {
                 cwd: this.options.cwd,
                 env: { ...process.env, ...this.options.env },

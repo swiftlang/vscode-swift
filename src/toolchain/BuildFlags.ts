@@ -72,10 +72,10 @@ export class BuildFlags {
     withSwiftPackageFlags(args: string[]): string[] {
         switch (args[0]) {
             case "package":
-                if (args[1] === "resolve" || args[1] === "update") {
-                    return [...args, ...configuration.packageArguments];
-                }
-                return args;
+                // eslint-disable-next-line no-case-declarations
+                const newArgs = [...args];
+                newArgs.splice(2, 0, ...configuration.packageArguments);
+                return newArgs;
             case "build":
             case "run":
             case "test":
