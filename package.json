@@ -1623,6 +1623,7 @@
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^10.1.1",
     "lodash.throttle": "^4.1.1",
+    "lodash.debounce": "^4.0.8",
     "mocha": "^10.8.2",
     "mock-fs": "^5.5.0",
     "node-pty": "^1.0.0",

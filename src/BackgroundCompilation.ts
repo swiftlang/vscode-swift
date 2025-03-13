@@ -18,7 +18,7 @@ import configuration from "./configuration";
 import { FolderContext } from "./FolderContext";
 import { TaskOperation } from "./tasks/TaskQueue";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-import throttle = require("lodash.throttle");
+import debounce = require("lodash.debounce");
 
 export class BackgroundCompilation implements vscode.Disposable {
     private workspaceFileWatcher?: vscode.FileSystemWatcher;
@@ -56,7 +56,7 @@ export class BackgroundCompilation implements vscode.Disposable {
         // does a "Save All" or a process writes several files in quick succession.
         this.disposables.push(
             this.workspaceFileWatcher.onDidChange(
-                throttle(
+                debounce(
                     () => {
                         this.runTask();
                     },
