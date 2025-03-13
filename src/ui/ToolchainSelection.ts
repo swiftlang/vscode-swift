@@ -63,7 +63,7 @@ export async function selectToolchainFolder() {
     if (!selected || selected.length !== 1) {
         return;
     }
-    await setToolchainPath(selected[0].fsPath, "public");
+    await setToolchainPath(selected[0].fsPath);
 }
 
 /**
@@ -275,15 +275,25 @@ export async function showToolchainSelectionQuickPick(activeToolchain: SwiftTool
     }
     if (selected?.type === "toolchain") {
         // Select an Xcode to build with
-        let developerDir: string | undefined;
-        if (selected.category === "xcode") {
-            developerDir = selected.xcodePath;
-        } else if (xcodePaths.length === 1) {
-            developerDir = xcodePaths[0];
-        } else if (process.platform === "darwin" && xcodePaths.length > 1) {
-            developerDir = await showDeveloperDirQuickPick(xcodePaths);
-            if (!developerDir) {
-                return;
+        let developerDir: string | undefined = undefined;
+        if (process.platform === "darwin") {
+            let selectedXcodePath: string | undefined = undefined;
+            if (selected.category === "xcode") {
+                selectedXcodePath = selected.xcodePath;
+            } else if (xcodePaths.length === 1) {
+                selectedXcodePath = xcodePaths[0];
+            } else if (xcodePaths.length > 1) {
+                selectedXcodePath = await showDeveloperDirQuickPick(xcodePaths);
+                if (!selectedXcodePath) {
+                    return;
+                }
+            }
+            // Find the actual DEVELOPER_DIR based on the selected Xcode app
+            if (selectedXcodePath) {
+                developerDir = await SwiftToolchain.getXcodeDeveloperDir({
+                    ...process.env,
+                    DEVELOPER_DIR: selectedXcodePath,
+                });
             }
         }
         // Update the toolchain path
@@ -376,7 +386,7 @@ async function removeToolchainPath() {
  */
 async function setToolchainPath(
     swiftFolderPath: string | undefined,
-    developerDir: string | undefined
+    developerDir?: string
 ): Promise<boolean> {
     let target: vscode.ConfigurationTarget | undefined;
     const items: (vscode.QuickPickItem & {
@@ -410,17 +420,15 @@ async function setToolchainPath(
     }
     const swiftConfiguration = vscode.workspace.getConfiguration("swift");
     await swiftConfiguration.update("path", swiftFolderPath, target);
-    if (developerDir) {
-        const swiftEnv = configuration.swiftEnvironmentVariables;
-        await swiftConfiguration.update(
-            "swiftEnvironmentVariables",
-            {
-                ...swiftEnv,
-                DEVELOPER_DIR: developerDir,
-            },
-            target
-        );
-    }
+    const swiftEnv = configuration.swiftEnvironmentVariables;
+    await swiftConfiguration.update(
+        "swiftEnvironmentVariables",
+        {
+            ...swiftEnv,
+            DEVELOPER_DIR: developerDir,
+        },
+        target
+    );
     await checkAndRemoveWorkspaceSetting(target);
     return true;
 }
