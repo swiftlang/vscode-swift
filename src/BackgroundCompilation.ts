@@ -17,6 +17,8 @@ import { getBuildAllTask } from "./tasks/SwiftTaskProvider";
 import configuration from "./configuration";
 import { FolderContext } from "./FolderContext";
 import { TaskOperation } from "./tasks/TaskQueue";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import throttle = require("lodash.throttle");
 
 export class BackgroundCompilation implements vscode.Disposable {
     private workspaceFileWatcher?: vscode.FileSystemWatcher;
@@ -50,10 +52,18 @@ export class BackgroundCompilation implements vscode.Disposable {
             ))
         );
 
+        // Throttle events since many change events can be recieved in a short time if the user
+        // does a "Save All" or a process writes several files in quick succession.
         this.disposables.push(
-            this.workspaceFileWatcher.onDidChange(() => {
-                this.runTask();
-            })
+            this.workspaceFileWatcher.onDidChange(
+                throttle(
+                    () => {
+                        this.runTask();
+                    },
+                    100 /* 10 times per second */,
+                    { trailing: true }
+                )
+            )
         );
     }
 
