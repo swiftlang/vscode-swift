@@ -97,9 +97,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                     showReloadExtensionNotification(
                         "Changing the Swift path requires Visual Studio Code be reloaded."
                     );
-                }
-                // on sdk config change, restart sourcekit-lsp
-                if (
+                } else if (
+                    // on sdk config change, restart sourcekit-lsp
                     event.affectsConfiguration("swift.SDK") ||
                     event.affectsConfiguration("swift.swiftSDK")
                 ) {
@@ -107,6 +106,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                     // As long as it's fixed we won't need to reload on newer versions.
                     showReloadExtensionNotification(
                         "Changing the Swift SDK path requires the project be reloaded."
+                    );
+                } else if (event.affectsConfiguration("swift.swiftEnvironmentVariables")) {
+                    showReloadExtensionNotification(
+                        "Changing environment variables requires the project be reloaded."
                     );
                 }
             })
