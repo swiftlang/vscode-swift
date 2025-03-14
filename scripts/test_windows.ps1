@@ -14,6 +14,21 @@
 
 $env:CI = "1"
 $env:FAST_TEST_RUN = "1"
+
+Get-ChildItem -Path "C:\Program Files\"
+Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio"
+Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio\2022\"
+Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio\2022\Enterprise"
+Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\"
+Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\"
+Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\"
+Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.43.34808"
+
+$env:VCToolsVersion = "14.43.34808"
+$env:VCToolsInstallDir = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.43.34808"
+
+Get-ChildItem Env:
+
 npm ci -ignore-script node-pty
 npm run lint
 npm run format
