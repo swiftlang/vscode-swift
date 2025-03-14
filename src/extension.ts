@@ -76,12 +76,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                 contextKeys.createNewProjectAvailable = toolchain.swiftVersion.isGreaterThanOrEqual(
                     new Version(5, 8, 0)
                 );
+                contextKeys.switchPlatformAvailable = toolchain.swiftVersion.isGreaterThanOrEqual(
+                    new Version(6, 1, 0)
+                );
                 return toolchain;
             })
             .catch(error => {
                 outputChannel.log("Failed to discover Swift toolchain");
                 outputChannel.log(error);
                 contextKeys.createNewProjectAvailable = false;
+                contextKeys.switchPlatformAvailable = false;
                 return undefined;
             });
 
@@ -102,11 +106,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                     event.affectsConfiguration("swift.SDK") ||
                     event.affectsConfiguration("swift.swiftSDK")
                 ) {
-                    // FIXME: There is a bug stopping us from restarting SourceKit-LSP directly.
-                    // As long as it's fixed we won't need to reload on newer versions.
-                    showReloadExtensionNotification(
-                        "Changing the Swift SDK path requires the project be reloaded."
-                    );
+                    vscode.commands.executeCommand("swift.restartLSPServer");
                 } else if (event.affectsConfiguration("swift.swiftEnvironmentVariables")) {
                     showReloadExtensionNotification(
                         "Changing environment variables requires the project be reloaded."

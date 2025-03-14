@@ -46,7 +46,7 @@ The extension adds the following commands, available via the command palette.
 
 The following command is only available on macOS:
 
-- **Select Target Platform**: This is an experimental command that offers code completion for iOS and tvOS projects.
+- **Select Target Platform**: This is an experimental command that offers code editing support for iOS, tvOS, watchOS and visionOS projects.
 
 #### Building and Debugging
 
