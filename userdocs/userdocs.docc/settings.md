@@ -1,5 +1,7 @@
 # Extension Settings
 
+vscode-swift provides various settings to configure its behaviour.
+
 The Visual Studio Code Swift extension comes with a number of settings you can use to control how it works. Detailed descriptions of each setting is provided in the extension settings page.
 
 This document outlines useful configuration options not covered by the settings descriptions in the extension settings page.

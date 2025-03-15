@@ -44,6 +44,7 @@ import { updateDependenciesViewList } from "./commands/dependencies/updateDepVie
 import { runTask } from "./commands/runTask";
 import { TestKind } from "./TestExplorer/TestKind";
 import { pickProcess } from "./commands/pickProcess";
+import { openDocumentation } from "./commands/openDocumentation";
 
 /**
  * References:
@@ -209,6 +210,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand("swift.openEducationalNote", uri =>
             openEducationalNote(uri)
         ),
+        vscode.commands.registerCommand("swift.openDocumentation", () => openDocumentation()),
     ];
 }
 
