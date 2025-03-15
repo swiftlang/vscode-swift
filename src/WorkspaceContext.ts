@@ -22,7 +22,6 @@ import { isPathInsidePath } from "./utilities/filesystem";
 import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
 import { TemporaryFolder } from "./utilities/tempFolder";
 import { TaskManager } from "./tasks/TaskManager";
-import { BackgroundCompilation } from "./BackgroundCompilation";
 import { makeDebugConfigurations } from "./debugger/launch";
 import configuration from "./configuration";
 import contextKeys from "./contextKeys";
@@ -121,7 +120,6 @@ export class WorkspaceContext implements vscode.Disposable {
                     });
             }
         });
-        const backgroundCompilationOnDidSave = BackgroundCompilation.start(this);
         const contextKeysUpdate = this.onDidChangeFolders(event => {
             switch (event.operation) {
                 case FolderOperation.remove:
@@ -174,7 +172,6 @@ export class WorkspaceContext implements vscode.Disposable {
             swiftFileWatcher,
             onDidEndTask,
             this.commentCompletionProvider,
-            backgroundCompilationOnDidSave,
             contextKeysUpdate,
             onChangeConfig,
             this.tasks,
