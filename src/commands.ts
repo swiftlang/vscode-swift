@@ -45,6 +45,7 @@ import { updateDependenciesViewList } from "./commands/dependencies/updateDepVie
 import { runTask } from "./commands/runTask";
 import { TestKind } from "./TestExplorer/TestKind";
 import { pickProcess } from "./commands/pickProcess";
+import { openDocumentation } from "./commands/openDocumentation";
 
 /**
  * References:
@@ -215,6 +216,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             const packagePath = path.join(uri.fsPath, "Package.swift");
             vscode.commands.executeCommand("vscode.open", vscode.Uri.file(packagePath));
         }),
+        vscode.commands.registerCommand("swift.openDocumentation", () => openDocumentation()),
     ];
 }
 
