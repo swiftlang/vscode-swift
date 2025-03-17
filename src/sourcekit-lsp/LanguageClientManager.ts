@@ -47,6 +47,8 @@ import { activateGetReferenceDocument } from "./getReferenceDocument";
 import { uriConverters } from "./uriConverters";
 import { LanguageClientFactory } from "./LanguageClientFactory";
 import { SourceKitLogMessageNotification, SourceKitLogMessageParams } from "./extensions";
+import { LSPActiveDocumentManager } from "./didChangeActiveDocument";
+import { DidChangeActiveDocumentNotification } from "./extensions/DidChangeActiveDocumentRequest";
 
 /**
  * Manages the creation and destruction of Language clients as we move between
@@ -136,6 +138,7 @@ export class LanguageClientManager implements vscode.Disposable {
     private legacyInlayHints?: vscode.Disposable;
     private peekDocuments?: vscode.Disposable;
     private getReferenceDocument?: vscode.Disposable;
+    private didChangeActiveDocument?: vscode.Disposable;
     private restartedPromise?: Promise<void>;
     private currentWorkspaceFolder?: vscode.Uri;
     private waitingOnRestartCount: number;
@@ -151,6 +154,7 @@ export class LanguageClientManager implements vscode.Disposable {
     public subFolderWorkspaces: vscode.Uri[];
     private namedOutputChannels: Map<string, LSPOutputChannel> = new Map();
     private swiftVersion: Version;
+    private activeDocumentManager = new LSPActiveDocumentManager();
 
     /** Get the current state of the underlying LanguageClient */
     public get state(): State {
@@ -534,6 +538,8 @@ export class LanguageClientManager implements vscode.Disposable {
             workspaceFolder: workspaceFolder,
             outputChannel: new SwiftOutputChannel("SourceKit Language Server"),
             middleware: {
+                didOpen: this.activeDocumentManager.didOpen.bind(this.activeDocumentManager),
+                didClose: this.activeDocumentManager.didClose.bind(this.activeDocumentManager),
                 provideCodeLenses: async (document, token, next) => {
                     const result = await next(document, token);
                     return result?.map(codelens => {
@@ -666,6 +672,13 @@ export class LanguageClientManager implements vscode.Disposable {
             };
         }
 
+        if (this.swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))) {
+            options = {
+                ...options,
+                "window/didChangeActiveDocument": true, // the client can send `window/didChangeActiveDocument` notifications
+            };
+        }
+
         if (configuration.swiftSDK !== "") {
             options = {
                 ...options,
@@ -715,6 +728,21 @@ export class LanguageClientManager implements vscode.Disposable {
                 this.peekDocuments = activatePeekDocuments(client);
                 this.getReferenceDocument = activateGetReferenceDocument(client);
                 this.workspaceContext.subscriptions.push(this.getReferenceDocument);
+                try {
+                    if (
+                        checkExperimentalCapability(
+                            client,
+                            DidChangeActiveDocumentNotification.method,
+                            1
+                        )
+                    ) {
+                        this.didChangeActiveDocument =
+                            this.activeDocumentManager.activateDidChangeActiveDocument(client);
+                        this.workspaceContext.subscriptions.push(this.didChangeActiveDocument);
+                    }
+                } catch {
+                    // do nothing
+                }
             })
             .catch(reason => {
                 this.workspaceContext.outputChannel.log(`${reason}`);
@@ -846,3 +874,20 @@ type SourceKitDocumentSelector = {
     scheme: string;
     language: string;
 }[];
+
+/**
+ * Returns `true` if the LSP supports the supplied `method` at or
+ * above the supplied `minVersion`.
+ */
+export function checkExperimentalCapability(
+    client: LanguageClient,
+    method: string,
+    minVersion: number
+) {
+    const experimentalCapability = client.initializeResult?.capabilities.experimental;
+    if (!experimentalCapability) {
+        throw new Error(`${method} requests not supported`);
+    }
+    const targetCapability = experimentalCapability[method];
+    return (targetCapability?.version ?? -1) >= minVersion;
+}

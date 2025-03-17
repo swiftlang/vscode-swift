@@ -20,7 +20,10 @@ import {
     WorkspaceTestsRequest,
 } from "../sourcekit-lsp/extensions";
 import { SwiftPackage, TargetType } from "../SwiftPackage";
-import { LanguageClientManager } from "../sourcekit-lsp/LanguageClientManager";
+import {
+    checkExperimentalCapability,
+    LanguageClientManager,
+} from "../sourcekit-lsp/LanguageClientManager";
 import { LanguageClient } from "vscode-languageclient/node";
 
 /**
@@ -45,7 +48,7 @@ export class LSPTestDiscovery {
         return await this.languageClient.useLanguageClient(async (client, token) => {
             // Only use the lsp for this request if it supports the
             // textDocument/tests method, and is at least version 2.
-            if (this.checkExperimentalCapability(client, TextDocumentTestsRequest.method, 2)) {
+            if (checkExperimentalCapability(client, TextDocumentTestsRequest.method, 2)) {
                 const testsInDocument = await client.sendRequest(
                     TextDocumentTestsRequest.type,
                     { textDocument: { uri: document.toString() } },
@@ -66,30 +69,13 @@ export class LSPTestDiscovery {
         return await this.languageClient.useLanguageClient(async (client, token) => {
             // Only use the lsp for this request if it supports the
             // workspace/tests method, and is at least version 2.
-            if (this.checkExperimentalCapability(client, WorkspaceTestsRequest.method, 2)) {
+            if (checkExperimentalCapability(client, WorkspaceTestsRequest.method, 2)) {
                 const tests = await client.sendRequest(WorkspaceTestsRequest.type, token);
                 return this.transformToTestClass(client, swiftPackage, tests);
             } else {
                 throw new Error(`${WorkspaceTestsRequest.method} requests not supported`);
             }
         });
-    }
-
-    /**
-     * Returns `true` if the LSP supports the supplied `method` at or
-     * above the supplied `minVersion`.
-     */
-    private checkExperimentalCapability(
-        client: LanguageClient,
-        method: string,
-        minVersion: number
-    ) {
-        const experimentalCapability = client.initializeResult?.capabilities.experimental;
-        if (!experimentalCapability) {
-            throw new Error(`${method} requests not supported`);
-        }
-        const targetCapability = experimentalCapability[method];
-        return (targetCapability?.version ?? -1) >= minVersion;
     }
 
     /**
