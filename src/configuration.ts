@@ -13,6 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import * as os from "os";
+import * as path from "path";
 
 export type DebugAdapters = "auto" | "lldb-dap" | "CodeLLDB";
 export type SetupCodeLLDBOptions =
@@ -106,14 +108,17 @@ const configuration = {
     get lsp(): LSPConfiguration {
         return {
             get serverPath(): string {
-                return vscode.workspace
-                    .getConfiguration("swift.sourcekit-lsp")
-                    .get<string>("serverPath", "");
+                return substituteVariablesInString(
+                    vscode.workspace
+                        .getConfiguration("swift.sourcekit-lsp")
+                        .get<string>("serverPath", "")
+                );
             },
             get serverArguments(): string[] {
                 return vscode.workspace
                     .getConfiguration("swift.sourcekit-lsp")
-                    .get<string[]>("serverArguments", []);
+                    .get<string[]>("serverArguments", [])
+                    .map(substituteVariablesInString);
             },
             get inlayHintsEnabled(): boolean {
                 return vscode.workspace
@@ -192,7 +197,8 @@ const configuration = {
             get additionalTestArguments(): string[] {
                 return vscode.workspace
                     .getConfiguration("swift", workspaceFolder)
-                    .get<string[]>("additionalTestArguments", []);
+                    .get<string[]>("additionalTestArguments", [])
+                    .map(substituteVariablesInString);
             },
             /** auto-generate launch.json configurations */
             get autoGenerateLaunchConfigurations(): boolean {
@@ -213,9 +219,11 @@ const configuration = {
                     .get<boolean>("searchSubfoldersForPackages", false);
             },
             get attachmentsPath(): string {
-                return vscode.workspace
-                    .getConfiguration("swift", workspaceFolder)
-                    .get<string>("attachmentsPath", "./.build/attachments");
+                return substituteVariablesInString(
+                    vscode.workspace
+                        .getConfiguration("swift", workspaceFolder)
+                        .get<string>("attachmentsPath", "./.build/attachments")
+                );
             },
             pluginPermissions(pluginId?: string): PluginPermissionConfiguration {
                 return pluginSetting("pluginPermissions", pluginId, false) ?? {};
@@ -256,7 +264,9 @@ const configuration = {
                 }
             },
             get customDebugAdapterPath(): string {
-                return vscode.workspace.getConfiguration("swift.debugger").get<string>("path", "");
+                return substituteVariablesInString(
+                    vscode.workspace.getConfiguration("swift.debugger").get<string>("path", "")
+                );
             },
             get disable(): boolean {
                 return vscode.workspace
@@ -274,7 +284,8 @@ const configuration = {
     get excludeFromCodeCoverage(): string[] {
         return vscode.workspace
             .getConfiguration("swift")
-            .get<string[]>("excludeFromCodeCoverage", []);
+            .get<string[]>("excludeFromCodeCoverage", [])
+            .map(substituteVariablesInString);
     },
     /** Files and directories to exclude from the Package Dependencies view. */
     get excludePathsFromPackageDependencies(): string[] {
@@ -284,15 +295,21 @@ const configuration = {
     },
     /** Path to folder that include swift executable */
     get path(): string {
-        return vscode.workspace.getConfiguration("swift").get<string>("path", "");
+        return substituteVariablesInString(
+            vscode.workspace.getConfiguration("swift").get<string>("path", "")
+        );
     },
     /** Path to folder that include swift runtime */
     get runtimePath(): string {
-        return vscode.workspace.getConfiguration("swift").get<string>("runtimePath", "");
+        return substituteVariablesInString(
+            vscode.workspace.getConfiguration("swift").get<string>("runtimePath", "")
+        );
     },
     /** Path to custom --sdk */
     get sdk(): string {
-        return vscode.workspace.getConfiguration("swift").get<string>("SDK", "");
+        return substituteVariablesInString(
+            vscode.workspace.getConfiguration("swift").get<string>("SDK", "")
+        );
     },
     set sdk(value: string | undefined) {
         vscode.workspace.getConfiguration("swift").update("SDK", value);
@@ -306,18 +323,26 @@ const configuration = {
     },
     /** swift build arguments */
     get buildArguments(): string[] {
-        return vscode.workspace.getConfiguration("swift").get<string[]>("buildArguments", []);
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<string[]>("buildArguments", [])
+            .map(substituteVariablesInString);
     },
     /** swift package arguments */
     get packageArguments(): string[] {
-        return vscode.workspace.getConfiguration("swift").get<string[]>("packageArguments", []);
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<string[]>("packageArguments", [])
+            .map(substituteVariablesInString);
     },
     /** thread/address sanitizer */
     get sanitizer(): string {
         return vscode.workspace.getConfiguration("swift").get<string>("sanitizer", "off");
     },
     get buildPath(): string {
-        return vscode.workspace.getConfiguration("swift").get<string>("buildPath", "");
+        return substituteVariablesInString(
+            vscode.workspace.getConfiguration("swift").get<string>("buildPath", "")
+        );
     },
     get disableSwiftPMIntegration(): boolean {
         return vscode.workspace
@@ -436,5 +461,40 @@ const configuration = {
         return vscode.workspace.getConfiguration("swift").get<boolean>("disableSandbox", false);
     },
 };
+
+const vsCodeVariableRegex = new RegExp(/\$\{(.+?)\}/g);
+function substituteVariablesInString(val: string): string {
+    return val.replace(vsCodeVariableRegex, (substring: string, varName: string) =>
+        typeof varName === "string" ? computeVscodeVar(varName) || substring : substring
+    );
+}
+
+function computeVscodeVar(varName: string): string | null {
+    const workspaceFolder = () => {
+        const activeEditor = vscode.window.activeTextEditor;
+        if (activeEditor) {
+            const documentUri = activeEditor.document.uri;
+            const folder = vscode.workspace.getWorkspaceFolder(documentUri);
+            if (folder) {
+                return folder.uri.fsPath;
+            }
+        }
+
+        // If there is no active editor then return the first workspace folder
+        return vscode.workspace.workspaceFolders?.at(0)?.uri.fsPath ?? "";
+    };
+
+    // https://code.visualstudio.com/docs/editor/variables-reference
+    // Variables to be substituted should be added here.
+    const supportedVariables: { [k: string]: () => string } = {
+        workspaceFolder,
+        workspaceFolderBasename: () => path.basename(workspaceFolder()),
+        cwd: () => process.cwd(),
+        userHome: () => os.homedir(),
+        pathSeparator: () => path.sep,
+    };
+
+    return varName in supportedVariables ? supportedVariables[varName]() : null;
+}
 
 export default configuration;
