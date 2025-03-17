@@ -27,9 +27,9 @@ function checkNodeVersion() {
             "Unable to determine the version of NodeJS that this script is running under."
         );
     }
-    if (!semver.satisfies(nodeVersion, "18")) {
+    if (!semver.satisfies(nodeVersion, "20")) {
         throw new Error(
-            `Cannot build swift-docc-render with NodeJS v${nodeVersion.raw}. Please install and use NodeJS v18.`
+            `Cannot build swift-docc-render with NodeJS v${nodeVersion.raw}. Please install and use NodeJS v20.`
         );
     }
 }
