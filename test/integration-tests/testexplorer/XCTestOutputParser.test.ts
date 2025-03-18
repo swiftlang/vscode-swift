@@ -165,8 +165,8 @@ Test Case '-[MyTests.MyTests testFail]' failed (0.106 seconds).
                                     ),
                                     isKnown: false,
                                     diff: {
-                                        expected: '"1"',
-                                        actual: '"2"',
+                                        actual: '"1"',
+                                        expected: '"2"',
                                     },
                                 },
                             ],
@@ -485,7 +485,7 @@ Test Suite 'Selected tests' failed at 2024-10-20 22:01:46.306.
                 });
 
                 suite("Diffs", () => {
-                    const testRun = (message: string, expected?: string, actual?: string) => {
+                    const testRun = (message: string, actual?: string, expected?: string) => {
                         const input = `Test Case '-[MyTests.MyTests testFail]' started.
 /Users/user/Developer/MyTests/MyTests.swift:59: error: -[MyTests.MyTests testFail] : ${message}
 Test Case '-[MyTests.MyTests testFail]' failed (0.106 seconds).
@@ -589,8 +589,8 @@ Test Case 'MyTests.testFail' failed (0.106 seconds).
                                     ),
                                     isKnown: false,
                                     diff: {
-                                        expected: '"1"',
-                                        actual: '"2"',
+                                        actual: '"1"',
+                                        expected: '"2"',
                                     },
                                 },
                             ],
