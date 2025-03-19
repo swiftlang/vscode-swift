@@ -169,6 +169,7 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
             afterEach(async () => {
                 if (resetSettings) {
                     await resetSettings();
+                    resetSettings = undefined;
                 }
             });
 

@@ -77,7 +77,7 @@ export class BuildFlags {
                 }
                 // eslint-disable-next-line no-case-declarations
                 const newArgs = [...args];
-                newArgs.splice(2, 0, ...configuration.packageArguments);
+                newArgs.splice(1, 0, ...configuration.packageArguments);
                 return newArgs;
             case "build":
             case "run":
