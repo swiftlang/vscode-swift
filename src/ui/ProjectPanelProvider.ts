@@ -314,7 +314,7 @@ class HeaderNode {
  *
  * Can be either a {@link PackageNode}, {@link FileNode}, {@link TargetNode}, {@link TaskNode} or {@link HeaderNode}.
  */
-type TreeNode = PackageNode | FileNode | HeaderNode | TaskNode | TargetNode;
+export type TreeNode = PackageNode | FileNode | HeaderNode | TaskNode | TargetNode;
 
 /**
  * A {@link vscode.TreeDataProvider<T> TreeDataProvider} for project dependencies, tasks and commands {@link vscode.TreeView TreeView}.
