@@ -21,6 +21,7 @@ import { FolderOperation } from "../WorkspaceContext";
 import contextKeys from "../contextKeys";
 import { Dependency, ResolvedDependency, Target } from "../SwiftPackage";
 import { SwiftPluginTaskProvider } from "../tasks/SwiftPluginTaskProvider";
+import { FolderContext } from "../FolderContext";
 
 const LOADING_ICON = "loading~spin";
 /**
@@ -446,7 +447,12 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                   ]
                 : []),
             new HeaderNode("targets", "Targets", "book", this.wrapInAsync(this.targets.bind(this))),
-            new HeaderNode("tasks", "Tasks", "debug-continue-small", this.tasks.bind(this)),
+            new HeaderNode(
+                "tasks",
+                "Tasks",
+                "debug-continue-small",
+                this.tasks.bind(this, folderContext)
+            ),
             ...(snippets.length > 0
                 ? [
                       new HeaderNode("snippets", "Snippets", "notebook", () =>
@@ -509,12 +515,18 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         );
     }
 
-    private async tasks(): Promise<TreeNode[]> {
+    private async tasks(folderContext: FolderContext): Promise<TreeNode[]> {
         const tasks = await vscode.tasks.fetchTasks();
+
         return (
             tasks
                 // Plugin tasks are shown under the Commands header
-                .filter(task => task.definition.type === "swift" && task.source !== "swift-plugin")
+                .filter(
+                    task =>
+                        task.definition.type === "swift" &&
+                        task.definition.cwd === folderContext.folder.fsPath &&
+                        task.source !== "swift-plugin"
+                )
                 .map(
                     (task, i) =>
                         new TaskNode(
