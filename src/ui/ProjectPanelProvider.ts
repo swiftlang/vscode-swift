@@ -174,13 +174,14 @@ export class FileNode {
 class TaskNode {
     constructor(
         public type: string,
+        public id: string,
         public name: string,
         private active: boolean
     ) {}
 
     toTreeItem(): vscode.TreeItem {
         const item = new vscode.TreeItem(this.name, vscode.TreeItemCollapsibleState.None);
-        item.id = `${this.type}-${this.name}`;
+        item.id = `${this.type}-${this.id}`;
         item.iconPath = new vscode.ThemeIcon(this.active ? LOADING_ICON : "play");
         item.contextValue = "task";
         item.accessibilityInformation = { label: this.name };
@@ -513,11 +514,12 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         return (
             tasks
                 // Plugin tasks are shown under the Commands header
-                .filter(task => task.source !== "swift-plugin")
+                .filter(task => task.definition.type === "swift" && task.source !== "swift-plugin")
                 .map(
-                    task =>
+                    (task, i) =>
                         new TaskNode(
                             "task",
+                            `${task.definition.cwd}-${task.name}-${task.detail ?? ""}-${i}`,
                             task.name,
                             this.activeTasks.has(task.detail ?? task.name)
                         )
@@ -531,9 +533,10 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         const tasks = await provider.provideTasks(new vscode.CancellationTokenSource().token);
         return tasks
             .map(
-                task =>
+                (task, i) =>
                     new TaskNode(
                         "command",
+                        `${task.definition.cwd}-${task.name}-${task.detail ?? ""}-${i}`,
                         task.name,
                         this.activeTasks.has(task.detail ?? task.name)
                     )
