@@ -21,6 +21,7 @@ import { FolderOperation } from "../WorkspaceContext";
 import contextKeys from "../contextKeys";
 import { Dependency, ResolvedDependency, Target } from "../SwiftPackage";
 import { SwiftPluginTaskProvider } from "../tasks/SwiftPluginTaskProvider";
+import { FolderContext } from "../FolderContext";
 
 const LOADING_ICON = "loading~spin";
 /**
@@ -174,13 +175,14 @@ export class FileNode {
 class TaskNode {
     constructor(
         public type: string,
+        public id: string,
         public name: string,
         private active: boolean
     ) {}
 
     toTreeItem(): vscode.TreeItem {
         const item = new vscode.TreeItem(this.name, vscode.TreeItemCollapsibleState.None);
-        item.id = `${this.type}-${this.name}`;
+        item.id = `${this.type}-${this.id}`;
         item.iconPath = new vscode.ThemeIcon(this.active ? LOADING_ICON : "play");
         item.contextValue = "task";
         item.accessibilityInformation = { label: this.name };
@@ -445,7 +447,12 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                   ]
                 : []),
             new HeaderNode("targets", "Targets", "book", this.wrapInAsync(this.targets.bind(this))),
-            new HeaderNode("tasks", "Tasks", "debug-continue-small", this.tasks.bind(this)),
+            new HeaderNode(
+                "tasks",
+                "Tasks",
+                "debug-continue-small",
+                this.tasks.bind(this, folderContext)
+            ),
             ...(snippets.length > 0
                 ? [
                       new HeaderNode("snippets", "Snippets", "notebook", () =>
@@ -508,16 +515,23 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         );
     }
 
-    private async tasks(): Promise<TreeNode[]> {
+    private async tasks(folderContext: FolderContext): Promise<TreeNode[]> {
         const tasks = await vscode.tasks.fetchTasks();
+
         return (
             tasks
                 // Plugin tasks are shown under the Commands header
-                .filter(task => task.source !== "swift-plugin")
-                .map(
+                .filter(
                     task =>
+                        task.definition.type === "swift" &&
+                        task.definition.cwd === folderContext.folder.fsPath &&
+                        task.source !== "swift-plugin"
+                )
+                .map(
+                    (task, i) =>
                         new TaskNode(
                             "task",
+                            `${task.definition.cwd}-${task.name}-${task.detail ?? ""}-${i}`,
                             task.name,
                             this.activeTasks.has(task.detail ?? task.name)
                         )
@@ -531,9 +545,10 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         const tasks = await provider.provideTasks(new vscode.CancellationTokenSource().token);
         return tasks
             .map(
-                task =>
+                (task, i) =>
                     new TaskNode(
                         "command",
+                        `${task.definition.cwd}-${task.name}-${task.detail ?? ""}-${i}`,
                         task.name,
                         this.activeTasks.has(task.detail ?? task.name)
                     )
