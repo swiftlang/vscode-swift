@@ -77,17 +77,17 @@ suite("ProjectPanelProvider Test Suite", function () {
     });
 
     test("Includes top level nodes", async () => {
+        const expectedCommands =
+            process.platform === "win32" &&
+            workspaceContext.toolchain.swiftVersion.isLessThanOrEqual(new Version(6, 0, 0))
+                ? ["Dependencies", "Targets", "Tasks", "Snippets"]
+                : ["Dependencies", "Targets", "Tasks", "Snippets", "Commands"];
+
         await waitForChildren(
             () => treeProvider.getChildren(),
             commands => {
                 const commandNames = commands.map(n => n.name);
-                expect(commandNames).to.deep.equal([
-                    "Dependencies",
-                    "Targets",
-                    "Tasks",
-                    "Snippets",
-                    "Commands",
-                ]);
+                expect(commandNames).to.deep.equal(expectedCommands);
             }
         );
     });
@@ -183,7 +183,14 @@ suite("ProjectPanelProvider Test Suite", function () {
     });
 
     suite("Commands", () => {
-        test("Includes commands", async () => {
+        test("Includes commands", async function () {
+            if (
+                process.platform === "win32" &&
+                workspaceContext.toolchain.swiftVersion.isLessThanOrEqual(new Version(6, 0, 0))
+            ) {
+                this.skip();
+            }
+
             await waitForChildren(
                 () => getHeaderChildren("Commands"),
                 commands => {
@@ -193,7 +200,14 @@ suite("ProjectPanelProvider Test Suite", function () {
             );
         });
 
-        test("Executes a command", async () => {
+        test("Executes a command", async function () {
+            if (
+                process.platform === "win32" &&
+                workspaceContext.toolchain.swiftVersion.isLessThanOrEqual(new Version(6, 0, 0))
+            ) {
+                this.skip();
+            }
+
             const command = await waitForChildren(
                 () => getHeaderChildren("Commands"),
                 commands => {

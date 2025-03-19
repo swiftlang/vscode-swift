@@ -46,7 +46,6 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
             await folderContext.loadSwiftPlugins();
             expect(workspaceContext.folders).to.not.have.lengthOf(0);
         },
-        testAssets: ["command-plugin"],
     });
 
     const expectedPluginPermissions = [
