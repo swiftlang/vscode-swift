@@ -46,6 +46,7 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
             await folderContext.loadSwiftPlugins();
             expect(workspaceContext.folders).to.not.have.lengthOf(0);
         },
+        testAssets: ["command-plugin"],
     });
 
     const expectedPluginPermissions = [
@@ -173,7 +174,7 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
 
             test("sets arguments", async () => {
                 const tasks = await vscode.tasks.fetchTasks({ type: "swift-plugin" });
-                const task = tasks.find(t => t.name === "command-plugin");
+                const task = tasks.find(t => t.name.indexOf("command-plugin") !== -1);
                 const swiftExecution = task?.execution as SwiftExecution;
                 assert.deepEqual(
                     swiftExecution.args,
