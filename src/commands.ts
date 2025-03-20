@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import * as path from "path";
 import * as vscode from "vscode";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { PackageNode } from "./ui/ProjectPanelProvider";
@@ -93,6 +94,7 @@ export enum Commands {
     RUN_ALL_TESTS_PARALLEL = "swift.runAllTestsParallel",
     DEBUG_ALL_TESTS = "swift.debugAllTests",
     COVER_ALL_TESTS = "swift.coverAllTests",
+    OPEN_MANIFEST = "swift.openManifest",
 }
 
 /**
@@ -209,6 +211,10 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand("swift.openEducationalNote", uri =>
             openEducationalNote(uri)
         ),
+        vscode.commands.registerCommand(Commands.OPEN_MANIFEST, (uri: vscode.Uri) => {
+            const packagePath = path.join(uri.fsPath, "Package.swift");
+            vscode.commands.executeCommand("vscode.open", vscode.Uri.file(packagePath));
+        }),
     ];
 }
 

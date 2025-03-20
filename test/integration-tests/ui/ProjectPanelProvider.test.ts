@@ -282,6 +282,15 @@ suite("ProjectPanelProvider Test Suite", function () {
             expect(items.find(n => n.name === "swift-markdown")).to.not.be.undefined;
             expect(items.find(n => n.name === "defaultpackage")).to.not.be.undefined;
         });
+
+        test("Shows an error node when there is a problem compiling Package.swift", async () => {
+            workspaceContext.folders[0].hasResolveErrors = true;
+            workspaceContext.currentFolder = workspaceContext.folders[0];
+            const treeProvider = new ProjectPanelProvider(workspaceContext);
+            const children = await treeProvider.getChildren();
+            const errorNode = children.find(n => n.name === "Error Parsing Package.swift");
+            expect(errorNode).to.not.be.undefined;
+        });
     });
 
     async function getHeaderChildren(headerName: string) {
