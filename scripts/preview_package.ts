@@ -37,6 +37,14 @@ main(async () => {
     const minor = version.minor + 1;
     const patch = formatDate(new Date());
     const previewVersion = `${version.major}.${minor}.${patch}`;
+    // Make sure that the new minor version is odd
+    if (minor % 2 !== 1) {
+        throw new Error(
+            `The minor version for the pre-release extension is even (${previewVersion}).` +
+                " The version in the package.json has probably been incorrectly set to an odd minor version."
+        );
+    }
+    // Use VSCE to package the extension
     await exec(
         "npx",
         ["vsce", "package", "--pre-release", "--no-update-package-json", previewVersion],
