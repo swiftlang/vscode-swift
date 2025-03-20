@@ -14,6 +14,9 @@
 /* eslint-disable no-console */
 
 import * as child_process from "child_process";
+import { readFile } from "fs/promises";
+import * as path from "path";
+import * as semver from "semver";
 
 /**
  * Executes the provided main function for the script while logging any errors.
@@ -29,6 +32,30 @@ export async function main(mainFn: () => Promise<void>): Promise<void> {
         console.error(error);
         process.exit(1);
     }
+}
+
+/**
+ * Returns the root directory of the repository.
+ */
+export function getRootDirectory(): string {
+    return path.join(__dirname, "..", "..");
+}
+
+/**
+ * Retrieves the version number from the package.json.
+ */
+export async function getExtensionVersion(): Promise<semver.SemVer> {
+    const packageJSON = JSON.parse(
+        await readFile(path.join(getRootDirectory(), "package.json"), "utf-8")
+    );
+    if (typeof packageJSON.version !== "string") {
+        throw new Error("Version number in package.json is not a string");
+    }
+    const version = semver.parse(packageJSON.version);
+    if (version === null) {
+        throw new Error("Unable to parse version number in package.json");
+    }
+    return version;
 }
 
 /**

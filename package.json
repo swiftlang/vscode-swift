@@ -1630,6 +1630,7 @@
     "postinstall": "npm run update-swift-docc-render",
     "pretest": "npm run compile-tests",
     "soundness": "scripts/soundness.sh",
+    "check-package-json": "tsx ./scripts/check_package_json.ts",
     "test": "vscode-test",
     "integration-test": "npm test -- --label integrationTests",
     "unit-test": "npm test -- --label unitTests",

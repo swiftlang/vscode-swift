@@ -13,10 +13,7 @@
 //===----------------------------------------------------------------------===//
 /* eslint-disable no-console */
 
-import * as path from "path";
-import * as semver from "semver";
-import { readFile } from "fs/promises";
-import { exec, main } from "./lib/utilities";
+import { exec, getExtensionVersion, getRootDirectory, main } from "./lib/utilities";
 
 /**
  * Formats the given date as a string in the form "YYYYMMddhhmm".
@@ -34,18 +31,8 @@ function formatDate(date: Date): string {
 }
 
 main(async () => {
-    const rootDirectory = path.join(__dirname, "..");
-    // Grab the existing version number from the package.json
-    const packageJSON = JSON.parse(
-        await readFile(path.join(rootDirectory, "package.json"), "utf-8")
-    );
-    if (typeof packageJSON.version !== "string") {
-        throw new Error("Version number in package.json is not a string");
-    }
-    const version = semver.parse(packageJSON.version);
-    if (version === null) {
-        throw new Error("Unable to parse version number in package.json");
-    }
+    const rootDirectory = getRootDirectory();
+    const version = await getExtensionVersion();
     // Increment the minor version and set the patch version to today's date
     const minor = version.minor + 1;
     const patch = formatDate(new Date());
