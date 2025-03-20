@@ -18,7 +18,7 @@ import { stat, mkdtemp, mkdir, rm, readdir } from "fs/promises";
 import * as path from "path";
 import { tmpdir } from "os";
 import * as semver from "semver";
-import { exec } from "./lib/utilities";
+import { exec, main } from "./lib/utilities";
 
 function checkNodeVersion() {
     const nodeVersion = semver.parse(process.versions.node);
@@ -57,7 +57,7 @@ async function cloneSwiftDocCRender(buildDirectory: string): Promise<string> {
     return swiftDocCRenderDirectory;
 }
 
-(async () => {
+main(async () => {
     const outputDirectory = path.join(__dirname, "..", "assets", "swift-docc-render");
     if (process.argv.includes("postinstall")) {
         try {
@@ -88,7 +88,4 @@ async function cloneSwiftDocCRender(buildDirectory: string): Promise<string> {
             console.error(error);
         });
     }
-})().catch(error => {
-    console.error(error);
-    process.exit(1);
 });

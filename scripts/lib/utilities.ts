@@ -2,7 +2,7 @@
 //
 // This source file is part of the VS Code Swift open source project
 //
-// Copyright (c) 2024 the VS Code Swift project authors
+// Copyright (c) 2025 the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -15,6 +15,29 @@
 
 import * as child_process from "child_process";
 
+/**
+ * Executes the provided main function for the script while logging any errors.
+ *
+ * If an error is caught then the process will exit with code 1.
+ *
+ * @param mainFn The main function of the script that will be run.
+ */
+export async function main(mainFn: () => Promise<void>): Promise<void> {
+    try {
+        await mainFn();
+    } catch (error) {
+        console.error(error);
+        process.exit(1);
+    }
+}
+
+/**
+ * Executes the given command, inheriting the current process' stdio.
+ *
+ * @param command The command to execute.
+ * @param args The arguments to provide to the command.
+ * @param options The options for executing the command.
+ */
 export async function exec(
     command: string,
     args: string[],

@@ -2,7 +2,7 @@
 //
 // This source file is part of the VS Code Swift open source project
 //
-// Copyright (c) 2024 the VS Code Swift project authors
+// Copyright (c) 2025 the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -16,7 +16,7 @@
 import * as path from "path";
 import * as semver from "semver";
 import { readFile } from "fs/promises";
-import { exec } from "./lib/utilities";
+import { exec, main } from "./lib/utilities";
 
 /**
  * Formats the given date as a string in the form "YYYYMMddhhmm".
@@ -33,7 +33,7 @@ function formatDate(date: Date): string {
     return year + month + day + hour + minutes;
 }
 
-(async () => {
+main(async () => {
     const rootDirectory = path.join(__dirname, "..");
     // Grab the existing version number from the package.json
     const packageJSON = JSON.parse(
@@ -55,7 +55,4 @@ function formatDate(date: Date): string {
         ["vsce", "package", "--pre-release", "--no-update-package-json", previewVersion],
         { cwd: rootDirectory }
     );
-})().catch(error => {
-    console.error(error);
-    process.exit(1);
 });
