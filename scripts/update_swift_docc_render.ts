@@ -14,11 +14,11 @@
 /* eslint-disable no-console */
 
 import simpleGit, { ResetMode } from "simple-git";
-import { spawn } from "child_process";
 import { stat, mkdtemp, mkdir, rm, readdir } from "fs/promises";
 import * as path from "path";
 import { tmpdir } from "os";
 import * as semver from "semver";
+import { exec, getRootDirectory, main } from "./lib/utilities";
 
 function checkNodeVersion() {
     const nodeVersion = semver.parse(process.versions.node);
@@ -57,34 +57,8 @@ async function cloneSwiftDocCRender(buildDirectory: string): Promise<string> {
     return swiftDocCRenderDirectory;
 }
 
-async function exec(
-    command: string,
-    args: string[],
-    options: { cwd?: string; env?: { [key: string]: string } } = {}
-): Promise<void> {
-    let logMessage = "> " + command;
-    if (args.length > 0) {
-        logMessage += " " + args.join(" ");
-    }
-    console.log(logMessage + "\n");
-    return new Promise<void>((resolve, reject) => {
-        const childProcess = spawn(command, args, { stdio: "inherit", ...options });
-        childProcess.once("error", reject);
-        childProcess.once("close", (code, signal) => {
-            if (signal !== null) {
-                reject(new Error(`Process exited due to signal '${signal}'`));
-            } else if (code !== 0) {
-                reject(new Error(`Process exited with code ${code}`));
-            } else {
-                resolve();
-            }
-            console.log("");
-        });
-    });
-}
-
-(async () => {
-    const outputDirectory = path.join(__dirname, "..", "assets", "swift-docc-render");
+main(async () => {
+    const outputDirectory = path.join(getRootDirectory(), "assets", "swift-docc-render");
     if (process.argv.includes("postinstall")) {
         try {
             await stat(outputDirectory);
@@ -114,7 +88,4 @@ async function exec(
             console.error(error);
         });
     }
-})().catch(error => {
-    console.error(error);
-    process.exit(1);
 });
