@@ -15,31 +15,21 @@
 $env:CI = "1"
 $env:FAST_TEST_RUN = "1"
 
-Get-ChildItem -Path "C:\Program Files\"
-Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio"
-Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio\2022\"
-Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio\2022\Enterprise"
-Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\"
-Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\"
-Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\"
-Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.43.34808"
+# In newer Visual C++ Tools they've added compiler intrinsics headers in wchar.h
+# that end up creating a cyclic dependency between the `ucrt` and compiler intrinsics modules.
+# Newer versions of swift (6.2) have a fixed modulemap that resolves the issue: https://github.com/swiftlang/swift/pull/79751
+$windowsSdkVersion = "10.0.22000.0"
+$vcToolsVersion = "14.43.34808"
 
-Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin"
+$env:VCToolsVersion = $vcToolsVersion
+$env:VCToolsInstallDir = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\$vcToolsVersion"
 
-# There are two versions of Visual C++ tools installed on the machine running the GH action:
-# - 14.29.30133
-# - 14.43.34808
-# Use the 14.43.34808 version.
-
-$env:VCToolsVersion = "14.43.34808"
-$env:VCToolsInstallDir = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.43.34808"
-
-Get-ChildItem Env:
-
+# As a workaround we can pin the tools/SDK versions to older versions that are present in the GH Actions Windows image.
+# In the future we may only want to apply this workaround to older versions of Swift that don't have the fixed module map.
 $jsonFilePath = "./assets/test/.vscode/settings.json"
 $jsonContent = Get-Content -Raw -Path $jsonFilePath | ConvertFrom-Json
-$jsonContent | Add-Member -MemberType NoteProperty -Name "swift.buildArguments" -Value @("-Xbuild-tools-swiftc", "-windows-sdk-root", "-Xbuild-tools-swiftc", "C:\Program Files (x86)\Windows Kits\10\", "-Xbuild-tools-swiftc", "-windows-sdk-version", "-Xbuild-tools-swiftc", "10.0.22000.0", "-Xbuild-tools-swiftc", "-visualc-tools-version", "-Xbuild-tools-swiftc", "14.43.34808", "-Xswiftc", "-windows-sdk-root", "-Xswiftc", "C:\Program Files (x86)\Windows Kits\10\", "-Xswiftc", "-windows-sdk-version", "-Xswiftc", "10.0.22000.0", "-Xswiftc", "-visualc-tools-version", "-Xswiftc", "14.43.34808")
-$jsonContent | Add-Member -MemberType NoteProperty -Name "swift.packageArguments" -Value @("-Xbuild-tools-swiftc", "-windows-sdk-root", "-Xbuild-tools-swiftc", "C:\Program Files (x86)\Windows Kits\10\", "-Xbuild-tools-swiftc", "-windows-sdk-version", "-Xbuild-tools-swiftc", "10.0.22000.0", "-Xbuild-tools-swiftc", "-visualc-tools-version", "-Xbuild-tools-swiftc", "14.43.34808", "-Xswiftc", "-windows-sdk-root", "-Xswiftc", "C:\Program Files (x86)\Windows Kits\10\", "-Xswiftc", "-windows-sdk-version", "-Xswiftc", "10.0.22000.0", "-Xswiftc", "-visualc-tools-version", "-Xswiftc", "14.43.34808")
+$jsonContent | Add-Member -MemberType NoteProperty -Name "swift.buildArguments" -Value @("-Xbuild-tools-swiftc", "-windows-sdk-root", "-Xbuild-tools-swiftc", "C:\Program Files (x86)\Windows Kits\10\", "-Xbuild-tools-swiftc", "-windows-sdk-version", "-Xbuild-tools-swiftc", $windowsSdkVersion, "-Xbuild-tools-swiftc", "-visualc-tools-version", "-Xbuild-tools-swiftc", $vcToolsVersion, "-Xswiftc", "-windows-sdk-root", "-Xswiftc", "C:\Program Files (x86)\Windows Kits\10\", "-Xswiftc", "-windows-sdk-version", "-Xswiftc", $windowsSdkVersion, "-Xswiftc", "-visualc-tools-version", "-Xswiftc", $vcToolsVersion)
+$jsonContent | Add-Member -MemberType NoteProperty -Name "swift.packageArguments" -Value @("-Xbuild-tools-swiftc", "-windows-sdk-root", "-Xbuild-tools-swiftc", "C:\Program Files (x86)\Windows Kits\10\", "-Xbuild-tools-swiftc", "-windows-sdk-version", "-Xbuild-tools-swiftc", $windowsSdkVersion, "-Xbuild-tools-swiftc", "-visualc-tools-version", "-Xbuild-tools-swiftc", $vcToolsVersion, "-Xswiftc", "-windows-sdk-root", "-Xswiftc", "C:\Program Files (x86)\Windows Kits\10\", "-Xswiftc", "-windows-sdk-version", "-Xswiftc", $windowsSdkVersion, "-Xswiftc", "-visualc-tools-version", "-Xswiftc", $vcToolsVersion)
 $jsonContent | ConvertTo-Json -Depth 32 | Set-Content -Path $jsonFilePath
 
 Write-Host "Contents of ${jsonFilePath}:"
