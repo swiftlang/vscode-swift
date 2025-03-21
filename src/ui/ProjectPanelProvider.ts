@@ -574,7 +574,6 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                 // Plugin tasks are shown under the Commands header
                 .filter(
                     task =>
-                        task.definition.type === "swift" &&
                         task.definition.cwd === folderContext.folder.fsPath &&
                         task.source !== "swift-plugin"
                 )
