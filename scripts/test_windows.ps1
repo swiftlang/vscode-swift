@@ -18,6 +18,14 @@ npm ci -ignore-script node-pty
 npm run lint
 npm run format
 npm run package
+$User_Directory=".vscode-test\user-data\User"
+New-Item $User_Directory -type directory -force
+$Settings = @'
+{
+    "swift.buildArguments": ["-Xswiftc", "-visualc-tools-version", "-Xswiftc", "14.42.34433", "-Xswiftc", "-windows-sdk-version", "-Xswiftc", "10.0.22000.0"]
+}
+'@
+$Settings | Set-Content "$User_Directory\settings.json"
 $Process = Start-Process npm "run integration-test" -Wait -PassThru -NoNewWindow
 if ($Process.ExitCode -eq 0) {
     Write-Host 'SUCCESS'
