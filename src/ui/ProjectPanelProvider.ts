@@ -21,6 +21,7 @@ import { FolderOperation } from "../WorkspaceContext";
 import contextKeys from "../contextKeys";
 import { Dependency, ResolvedDependency, Target } from "../SwiftPackage";
 import { SwiftPluginTaskProvider } from "../tasks/SwiftPluginTaskProvider";
+import { FolderContext } from "../FolderContext";
 
 const LOADING_ICON = "loading~spin";
 /**
@@ -174,13 +175,14 @@ export class FileNode {
 class TaskNode {
     constructor(
         public type: string,
+        public id: string,
         public name: string,
         private active: boolean
     ) {}
 
     toTreeItem(): vscode.TreeItem {
         const item = new vscode.TreeItem(this.name, vscode.TreeItemCollapsibleState.None);
-        item.id = `${this.type}-${this.name}`;
+        item.id = `${this.type}-${this.id}`;
         item.iconPath = new vscode.ThemeIcon(this.active ? LOADING_ICON : "play");
         item.contextValue = "task";
         item.accessibilityInformation = { label: this.name };
@@ -309,12 +311,44 @@ class HeaderNode {
     }
 }
 
+class ErrorNode {
+    constructor(
+        public name: string,
+        private folder: vscode.Uri
+    ) {}
+
+    get path(): string {
+        return "";
+    }
+
+    toTreeItem(): vscode.TreeItem {
+        const item = new vscode.TreeItem(this.name, vscode.TreeItemCollapsibleState.None);
+        item.id = `error-${this.folder.fsPath}`;
+        item.iconPath = new vscode.ThemeIcon("error", new vscode.ThemeColor("errorForeground"));
+        item.contextValue = "error";
+        item.accessibilityInformation = { label: this.name };
+        item.tooltip =
+            "Could not build the Package.swift, fix the error to refresh the project panel";
+
+        item.command = {
+            command: "swift.openManifest",
+            arguments: [this.folder],
+            title: "Open Manifest",
+        };
+        return item;
+    }
+
+    getChildren(): Promise<TreeNode[]> {
+        return Promise.resolve([]);
+    }
+}
+
 /**
  * A node in the Package Dependencies {@link vscode.TreeView TreeView}.
  *
- * Can be either a {@link PackageNode}, {@link FileNode}, {@link TargetNode}, {@link TaskNode} or {@link HeaderNode}.
+ * Can be either a {@link PackageNode}, {@link FileNode}, {@link TargetNode}, {@link TaskNode}, {@link ErrorNode} or {@link HeaderNode}.
  */
-export type TreeNode = PackageNode | FileNode | HeaderNode | TaskNode | TargetNode;
+export type TreeNode = PackageNode | FileNode | HeaderNode | TaskNode | TargetNode | ErrorNode;
 
 /**
  * A {@link vscode.TreeDataProvider<T> TreeDataProvider} for project dependencies, tasks and commands {@link vscode.TreeView TreeView}.
@@ -326,6 +360,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
     private workspaceObserver?: vscode.Disposable;
     private disposables: vscode.Disposable[] = [];
     private activeTasks: Set<string> = new Set();
+    private lastComputedNodes: TreeNode[] = [];
 
     onDidChangeTreeData = this.didChangeTreeDataEmitter.event;
 
@@ -424,6 +459,24 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
             return [];
         }
 
+        if (!element && folderContext.hasResolveErrors) {
+            return [
+                new ErrorNode("Error Parsing Package.swift", folderContext.folder),
+                ...this.lastComputedNodes,
+            ];
+        }
+
+        const nodes = await this.computeChildren(folderContext, element);
+
+        // If we're fetching the root nodes then save them in case we have an error later,
+        // in which case we show the ErrorNode along with the last known good nodes.
+        if (!element) {
+            this.lastComputedNodes = nodes;
+        }
+        return nodes;
+    }
+
+    async computeChildren(folderContext: FolderContext, element?: TreeNode): Promise<TreeNode[]> {
         if (element) {
             return element.getChildren();
         }
@@ -445,7 +498,12 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                   ]
                 : []),
             new HeaderNode("targets", "Targets", "book", this.wrapInAsync(this.targets.bind(this))),
-            new HeaderNode("tasks", "Tasks", "debug-continue-small", this.tasks.bind(this)),
+            new HeaderNode(
+                "tasks",
+                "Tasks",
+                "debug-continue-small",
+                this.tasks.bind(this, folderContext)
+            ),
             ...(snippets.length > 0
                 ? [
                       new HeaderNode("snippets", "Snippets", "notebook", () =>
@@ -508,16 +566,23 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         );
     }
 
-    private async tasks(): Promise<TreeNode[]> {
+    private async tasks(folderContext: FolderContext): Promise<TaskNode[]> {
         const tasks = await vscode.tasks.fetchTasks();
+
         return (
             tasks
                 // Plugin tasks are shown under the Commands header
-                .filter(task => task.source !== "swift-plugin")
-                .map(
+                .filter(
                     task =>
+                        task.definition.type === "swift" &&
+                        task.definition.cwd === folderContext.folder.fsPath &&
+                        task.source !== "swift-plugin"
+                )
+                .map(
+                    (task, i) =>
                         new TaskNode(
                             "task",
+                            `${task.definition.cwd}-${task.name}-${task.detail ?? ""}-${i}`,
                             task.name,
                             this.activeTasks.has(task.detail ?? task.name)
                         )
@@ -531,9 +596,10 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         const tasks = await provider.provideTasks(new vscode.CancellationTokenSource().token);
         return tasks
             .map(
-                task =>
+                (task, i) =>
                     new TaskNode(
                         "command",
+                        `${task.definition.cwd}-${task.name}-${task.detail ?? ""}-${i}`,
                         task.name,
                         this.activeTasks.has(task.detail ?? task.name)
                     )

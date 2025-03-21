@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import * as path from "path";
 import * as vscode from "vscode";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { PackageNode } from "./ui/ProjectPanelProvider";
@@ -93,6 +94,7 @@ export enum Commands {
     RUN_ALL_TESTS_PARALLEL = "swift.runAllTestsParallel",
     DEBUG_ALL_TESTS = "swift.debugAllTests",
     COVER_ALL_TESTS = "swift.coverAllTests",
+    OPEN_MANIFEST = "swift.openManifest",
 }
 
 /**
@@ -124,8 +126,10 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
                 return runTestMultipleTimes(ctx.currentFolder, item, true);
             }
         }),
-        // Note: This is only available on macOS (gated in `package.json`) because its the only OS that has the iOS SDK available.
-        vscode.commands.registerCommand("swift.switchPlatform", () => switchPlatform()),
+        // Note: switchPlatform is only available on macOS and Swift 6.1 or later
+        // (gated in `package.json`) because it's the only OS and toolchain combination that
+        // has Darwin SDKs available and supports code editing with SourceKit-LSP
+        vscode.commands.registerCommand("swift.switchPlatform", () => switchPlatform(ctx)),
         vscode.commands.registerCommand(Commands.RESET_PACKAGE, () => resetPackage(ctx)),
         vscode.commands.registerCommand("swift.runScript", () => runSwiftScript(ctx)),
         vscode.commands.registerCommand("swift.openPackage", () => {
@@ -207,6 +211,10 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand("swift.openEducationalNote", uri =>
             openEducationalNote(uri)
         ),
+        vscode.commands.registerCommand(Commands.OPEN_MANIFEST, (uri: vscode.Uri) => {
+            const packagePath = path.join(uri.fsPath, "Package.swift");
+            vscode.commands.executeCommand("vscode.open", vscode.Uri.file(packagePath));
+        }),
     ];
 }
 

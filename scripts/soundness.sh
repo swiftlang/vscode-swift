@@ -36,6 +36,9 @@ function replace_acceptable_years() {
     sed -e 's/20[12][0123456789]-20[12][0123456789]/YEARS/' -e 's/20[12][0123456789]/YEARS/'
 }
 
+printf "=> Checking package.json..."
+npm run check-package-json
+
 printf "=> Checking license headers... "
 tmp=$(mktemp /tmp/.vscode-swift-soundness_XXXXXX)
 

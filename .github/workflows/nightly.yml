@@ -16,14 +16,15 @@ jobs:
         uses: actions/checkout@v4
       - name: Build Extension
         run: |
-          export NODE_VERSION=v18.19.0
-          export NODE_PATH=/usr/local/nvm/versions/node/v18.19.0/bin
+          export NODE_VERSION=v20.18.2
+          export NODE_PATH=/usr/local/nvm/versions/node/v20.18.2/bin
           export NVM_DIR=/usr/local/nvm
           . .github/workflows/scripts/setup-linux.sh
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
           npm ci
           npm run compile
           npm run package
+          npm run preview-package
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
         if: always()
@@ -37,8 +38,8 @@ jobs:
     with:
       # Linux
       linux_env_vars: |
-        NODE_VERSION=v18.19.0
-        NODE_PATH=/usr/local/nvm/versions/node/v18.19.0/bin
+        NODE_VERSION=v20.18.2
+        NODE_PATH=/usr/local/nvm/versions/node/v20.18.2/bin
         NVM_DIR=/usr/local/nvm
         CI=1
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
@@ -57,8 +58,8 @@ jobs:
       # Linux
       linux_exclude_swift_versions: '[{"swift_version": "5.8"}, {"swift_version": "5.9"}, {"swift_version": "5.10"}, {"swift_version": "nightly-6.1"}, {"swift_version": "nightly-main"}]'
       linux_env_vars: |
-        NODE_VERSION=v18.19.0
-        NODE_PATH=/usr/local/nvm/versions/node/v18.19.0/bin
+        NODE_VERSION=v20.18.2
+        NODE_PATH=/usr/local/nvm/versions/node/v20.18.2/bin
         NVM_DIR=/usr/local/nvm
         CI=1
         VSCODE_VERSION=insiders

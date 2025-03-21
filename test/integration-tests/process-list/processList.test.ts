@@ -27,18 +27,26 @@ suite("ProcessList Tests", () => {
     test("retreives the list of available processes", async function () {
         // We can guarantee that certain VS Code processes will be present during tests
         const processes = await createProcessList().listAllProcesses();
+        let processNameDarwin: string = "Code";
+        let processNameWin32: string = "Code";
+        let processNameLinux: string = "code";
+        if (process.env["VSCODE_VERSION"] === "insiders") {
+            processNameDarwin = "Code - Insiders";
+            processNameWin32 = "Code - Insiders";
+            processNameLinux = "code-insiders";
+        }
         switch (process.platform) {
             case "darwin":
-                expectProcessName(processes, "Code Helper");
-                expectProcessName(processes, "Code Helper (GPU)");
-                expectProcessName(processes, "Code Helper (Plugin)");
-                expectProcessName(processes, "Code Helper (Renderer)");
+                expectProcessName(processes, `${processNameDarwin} Helper`);
+                expectProcessName(processes, `${processNameDarwin} Helper (GPU)`);
+                expectProcessName(processes, `${processNameDarwin} Helper (Plugin)`);
+                expectProcessName(processes, `${processNameDarwin} Helper (Renderer)`);
                 break;
             case "win32":
-                expectProcessName(processes, "Code.exe");
+                expectProcessName(processes, `${processNameWin32}.exe`);
                 break;
             case "linux":
-                expectProcessName(processes, "code");
+                expectProcessName(processes, `${processNameLinux}`);
                 break;
             default:
                 this.skip();

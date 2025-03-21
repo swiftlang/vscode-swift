@@ -462,8 +462,8 @@ export class XCTestOutputParser implements IXCTestOutputParser {
         const match = message.match(regex);
         if (match && match[1] !== match[2]) {
             return {
-                expected: match[1],
-                actual: match[2],
+                actual: match[1],
+                expected: match[2],
             };
         }
 

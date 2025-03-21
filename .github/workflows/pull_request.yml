@@ -12,8 +12,8 @@ jobs:
       # Linux
       linux_exclude_swift_versions: '[{"swift_version": "nightly-6.1"},{"swift_version": "nightly-main"}]'
       linux_env_vars: |
-        NODE_VERSION=v18.19.0
-        NODE_PATH=/usr/local/nvm/versions/node/v18.19.0/bin
+        NODE_VERSION=v20.18.2
+        NODE_PATH=/usr/local/nvm/versions/node/v20.18.2/bin
         NVM_DIR=/usr/local/nvm
         CI=1
         FAST_TEST_RUN=${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && '0' || '1'}}

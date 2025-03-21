@@ -439,6 +439,11 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         const args = platform?.args ?? task.definition.args;
         const env = platform?.env ?? task.definition.env;
         const fullCwd = resolveTaskCwd(task, platform?.cwd ?? task.definition.cwd);
+        const fullEnv = {
+            ...configuration.swiftEnvironmentVariables,
+            ...swiftRuntimeEnv(),
+            ...env,
+        };
 
         const presentation = task.definition.presentation ?? task.presentationOptions ?? {};
         const newTask = new vscode.Task(
@@ -448,7 +453,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             "swift",
             new SwiftExecution(swift, args, {
                 cwd: fullCwd,
-                env: { ...env, ...swiftRuntimeEnv() },
+                env: fullEnv,
                 presentation,
             }),
             task.problemMatchers
