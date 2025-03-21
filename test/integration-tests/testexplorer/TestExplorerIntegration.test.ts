@@ -119,6 +119,7 @@ suite("Test Explorer Suite", function () {
             afterEach(async () => {
                 if (resetSettings) {
                     await resetSettings();
+                    resetSettings = undefined;
                 }
             });
 
@@ -144,6 +145,7 @@ suite("Test Explorer Suite", function () {
             afterEach(async () => {
                 if (resetSettings) {
                     await resetSettings();
+                    resetSettings = undefined;
                 }
             });
 

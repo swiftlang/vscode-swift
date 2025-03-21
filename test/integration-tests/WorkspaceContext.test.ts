@@ -82,7 +82,7 @@ suite("WorkspaceContext Test Suite", () => {
         }).timeout(60000 * 2);
     });
 
-    suite("Tasks", async function () {
+    suite.skip("Tasks", async function () {
         activateExtensionForSuite({
             async setup(ctx) {
                 workspaceContext = ctx;

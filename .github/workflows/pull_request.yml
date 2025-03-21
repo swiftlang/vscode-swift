@@ -16,7 +16,6 @@ jobs:
         NODE_PATH=/usr/local/nvm/versions/node/v20.18.2/bin
         NVM_DIR=/usr/local/nvm
         CI=1
-        VSCODE_TEST=1
         FAST_TEST_RUN=${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && '0' || '1'}}
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./scripts/test.sh
@@ -24,7 +23,6 @@ jobs:
       windows_exclude_swift_versions: '[{"swift_version": "nightly-6.1"},{"swift_version": "nightly"}]'
       windows_env_vars: |
         CI=1
-        VSCODE_TEST=1
         FAST_TEST_RUN=${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && '0' || '1'}}
       windows_pre_build_command: .github\workflows\scripts\windows\install-nodejs.ps1
       windows_build_command: scripts\test_windows.ps1
