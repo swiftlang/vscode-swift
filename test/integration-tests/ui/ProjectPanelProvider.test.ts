@@ -34,6 +34,7 @@ import contextKeys from "../../../src/contextKeys";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Version } from "../../../src/utilities/version";
 import { wait } from "../../../src/utilities/utilities";
+import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 
 suite("ProjectPanelProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;
@@ -51,7 +52,9 @@ suite("ProjectPanelProvider Test Suite", function () {
             const buildAllTask = await getBuildAllTask(folderContext);
             buildAllTask.definition.dontTriggerTestDiscovery = true;
             await executeTaskAndWaitForResult(buildAllTask as SwiftTask);
-            await folderContext.loadSwiftPlugins();
+            const outputChannel = new SwiftOutputChannel("ProjectPanelProvider.tests");
+            await folderContext.loadSwiftPlugins(outputChannel);
+            expect(outputChannel.logs.length).to.equal(0, `Expected no output channel logs`);
             treeProvider = new ProjectPanelProvider(workspaceContext);
             await workspaceContext.focusFolder(folderContext);
         },

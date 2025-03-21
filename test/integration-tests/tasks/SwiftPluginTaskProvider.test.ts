@@ -32,6 +32,7 @@ import {
 import { mutable } from "../../utilities/types";
 import { SwiftExecution } from "../../../src/tasks/SwiftExecution";
 import { SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
+import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 
 suite("SwiftPluginTaskProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;
@@ -42,8 +43,10 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
+            const outputChannel = new SwiftOutputChannel("SwiftPluginTaskProvider.tests");
             folderContext = await folderInRootWorkspace("command-plugin", workspaceContext);
-            await folderContext.loadSwiftPlugins();
+            await folderContext.loadSwiftPlugins(outputChannel);
+            expect(outputChannel.logs.length).to.equal(0, `Expected no output channel logs`);
             expect(workspaceContext.folders).to.not.have.lengthOf(0);
         },
     });
@@ -174,8 +177,11 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
 
             test("sets arguments", async () => {
                 const tasks = await vscode.tasks.fetchTasks({ type: "swift-plugin" });
-                const task = tasks.find(t => t.name.indexOf("command-plugin") !== -1);
+                const task = tasks.find(t => t.name === "command-plugin");
+                expect(task).to.not.be.undefined;
+
                 const swiftExecution = task?.execution as SwiftExecution;
+                expect(swiftExecution).to.not.be.undefined;
                 assert.deepEqual(
                     swiftExecution.args,
                     workspaceContext.toolchain.buildFlags.withAdditionalFlags([

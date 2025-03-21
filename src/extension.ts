@@ -200,7 +200,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                                     folder.workspaceFolder.uri
                                 )})`,
                                 async () => {
-                                    await folder.loadSwiftPlugins();
+                                    await folder.loadSwiftPlugins(outputChannel);
                                     workspace.updatePluginContextKey();
                                     folder.fireEvent(FolderOperation.pluginsUpdated);
                                 }
