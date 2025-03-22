@@ -72,6 +72,9 @@ export class BuildFlags {
     withSwiftPackageFlags(args: string[]): string[] {
         switch (args[0]) {
             case "package":
+                if (args[1] === "init") {
+                    return args;
+                }
                 // eslint-disable-next-line no-case-declarations
                 const newArgs = [...args];
                 newArgs.splice(1, 0, ...configuration.packageArguments);

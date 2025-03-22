@@ -335,10 +335,17 @@ export async function updateSettings(settings: SettingsMap): Promise<() => Promi
         // to their new value before continuing.
         for (const setting of Object.keys(settings)) {
             const { section, name } = decomposeSettingName(setting);
+            // If the setting is being unset then its possible the setting will evaluate to the
+            // default value, and so we should be checking to see if its switched to that instead.
+            const expected = !settings[setting]
+                ? (vscode.workspace.getConfiguration(section, { languageId: "swift" }).inspect(name)
+                      ?.defaultValue ?? settings[setting])
+                : settings[setting];
+
             while (
                 isDeepStrictEqual(
                     vscode.workspace.getConfiguration(section, { languageId: "swift" }).get(name),
-                    settings[setting]
+                    expected
                 ) === false
             ) {
                 // Not yet, wait a bit and try again.

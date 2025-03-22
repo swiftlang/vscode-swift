@@ -14,12 +14,13 @@
 
 import * as vscode from "vscode";
 import * as assert from "assert";
+import { afterEach } from "mocha";
 import { testAssetUri } from "../fixtures";
 import { FolderOperation, WorkspaceContext } from "../../src/WorkspaceContext";
 import { createBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { Version } from "../../src/utilities/version";
 import { SwiftExecution } from "../../src/tasks/SwiftExecution";
-import { activateExtensionForSuite } from "./utilities/testutilities";
+import { activateExtensionForSuite, updateSettings } from "./utilities/testutilities";
 import { FolderContext } from "../../src/FolderContext";
 import { assertContains } from "./testexplorer/utilities";
 
@@ -82,31 +83,32 @@ suite("WorkspaceContext Test Suite", () => {
         }).timeout(60000 * 2);
     });
 
-    suite.skip("Tasks", async function () {
+    suite("Tasks", function () {
         activateExtensionForSuite({
             async setup(ctx) {
                 workspaceContext = ctx;
             },
         });
 
+        let resetSettings: (() => Promise<void>) | undefined;
+        afterEach(async () => {
+            if (resetSettings) {
+                await resetSettings();
+                resetSettings = undefined;
+            }
+        });
+
         // Was hitting a timeout in suiteSetup during CI build once in a while
         this.timeout(5000);
-
-        const swiftConfig = vscode.workspace.getConfiguration("swift");
-
-        suiteTeardown(async () => {
-            await swiftConfig.update("buildArguments", undefined);
-            await swiftConfig.update("packageArguments", undefined);
-            await swiftConfig.update("path", undefined);
-            await swiftConfig.update("diagnosticsStyle", undefined);
-        });
 
         test("Default Task values", async () => {
             const folder = workspaceContext.folders.find(
                 f => f.folder.fsPath === packageFolder.fsPath
             );
             assert(folder);
-            await swiftConfig.update("diagnosticsStyle", undefined);
+            resetSettings = await updateSettings({
+                "swift.diagnosticsStyle": "",
+            });
             const buildAllTask = createBuildAllTask(folder);
             const execution = buildAllTask.execution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
@@ -123,7 +125,9 @@ suite("WorkspaceContext Test Suite", () => {
                 f => f.folder.fsPath === packageFolder.fsPath
             );
             assert(folder);
-            await swiftConfig.update("diagnosticsStyle", "default");
+            resetSettings = await updateSettings({
+                "swift.diagnosticsStyle": "default",
+            });
             const buildAllTask = createBuildAllTask(folder);
             const execution = buildAllTask.execution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
@@ -139,7 +143,9 @@ suite("WorkspaceContext Test Suite", () => {
                 f => f.folder.fsPath === packageFolder.fsPath
             );
             assert(folder);
-            await swiftConfig.update("diagnosticsStyle", "swift");
+            resetSettings = await updateSettings({
+                "swift.diagnosticsStyle": "swift",
+            });
             const buildAllTask = createBuildAllTask(folder);
             const execution = buildAllTask.execution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
@@ -156,12 +162,13 @@ suite("WorkspaceContext Test Suite", () => {
                 f => f.folder.fsPath === packageFolder.fsPath
             );
             assert(folder);
-            await swiftConfig.update("diagnosticsStyle", undefined);
-            await swiftConfig.update("buildArguments", ["--sanitize=thread"]);
+            resetSettings = await updateSettings({
+                "swift.diagnosticsStyle": "",
+                "swift.buildArguments": ["--sanitize=thread"],
+            });
             const buildAllTask = createBuildAllTask(folder);
             const execution = buildAllTask.execution as SwiftExecution;
             assertContainsArg(execution, "--sanitize=thread");
-            await swiftConfig.update("buildArguments", []);
         });
 
         test("Package Arguments Settings", async () => {
@@ -169,12 +176,13 @@ suite("WorkspaceContext Test Suite", () => {
                 f => f.folder.fsPath === packageFolder.fsPath
             );
             assert(folder);
-            await swiftConfig.update("diagnosticsStyle", undefined);
-            await swiftConfig.update("packageArguments", ["--replace-scm-with-registry"]);
+            resetSettings = await updateSettings({
+                "swift.diagnosticsStyle": "",
+                "swift.packageArguments": ["--replace-scm-with-registry"],
+            });
             const buildAllTask = createBuildAllTask(folder);
             const execution = buildAllTask.execution as SwiftExecution;
             assertContainsArg(execution, "--replace-scm-with-registry");
-            await swiftConfig.update("packageArguments", []);
         });
 
         test("Swift Path", async () => {
