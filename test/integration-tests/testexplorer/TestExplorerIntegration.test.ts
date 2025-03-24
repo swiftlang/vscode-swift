@@ -48,7 +48,7 @@ import {
 } from "../utilities/testutilities";
 import { Commands } from "../../../src/commands";
 
-suite.only("Test Explorer Suite", function () {
+suite("Test Explorer Suite", function () {
     const MAX_TEST_RUN_TIME_MINUTES = 5;
 
     this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES);
@@ -167,7 +167,7 @@ suite.only("Test Explorer Suite", function () {
     });
 
     suite("Standard", () => {
-        test("Finds Tests", async function () {
+        test.only("Finds Tests", async function () {
             if (workspaceContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
                 // 6.0 uses the LSP which returns tests in the order they're declared.
                 // Includes swift-testing tests.
@@ -198,7 +198,7 @@ suite.only("Test Explorer Suite", function () {
                         ["testPassing()", "testPassingSuffix()"],
                     ],
                 ]);
-            } else if (workspaceContext.swiftVersion.isLessThanOrEqual(new Version(5, 10, 0))) {
+            } else if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
                 // 5.10 uses `swift test list` which returns test alphabetically, without the round brackets.
                 // Does not include swift-testing tests.
                 assertTestControllerHierarchy(testExplorer.controller, [
