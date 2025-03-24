@@ -173,7 +173,14 @@ suite("ProjectPanelProvider Test Suite", function () {
             );
         });
 
-        test("Executes a snippet", async () => {
+        test("Executes a snippet", async function () {
+            if (
+                process.platform === "win32" &&
+                workspaceContext.toolchain.swiftVersion.isLessThanOrEqual(new Version(5, 9, 0))
+            ) {
+                this.skip();
+            }
+
             const snippet = await waitForChildren(
                 () => getHeaderChildren("Snippets"),
                 snippets => {

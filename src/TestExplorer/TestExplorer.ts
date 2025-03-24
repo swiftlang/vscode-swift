@@ -364,7 +364,7 @@ export class TestExplorer {
                             errorDescription.match(/No such file or directory/))
                     ) {
                         explorer.setErrorTestItem(
-                            `Build the project to enable test discovery. >>>>>> ${errorDescription}`
+                            `Build the project to enable test discovery. >>>>>> ${errorDescription} <<<<<<<<`
                         );
                     } else if (errorDescription.startsWith("error: no tests found")) {
                         explorer.setErrorTestItem(
