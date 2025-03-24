@@ -110,9 +110,7 @@ export async function execFile(
         }
     }
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-        // console.log(">>> execFile Spawn:", executable, args.join(" "), options);
-        // console.log(">>> execFile Env:", options.env);
-        // const child = cp.execFile(executable, args, options, (error, stdout, stderr) => {
+        console.log(">>> execFile Spawn:", executable, args.join(" "), options);
         cp.execFile(executable, args, options, (error, stdout, stderr) => {
             if (error) {
                 reject(new ExecFileError(error, stdout, stderr));
@@ -120,18 +118,6 @@ export async function execFile(
                 resolve({ stdout, stderr });
             }
         });
-
-        // if (child.stdout) {
-        //     child.stdout.on("data", data => {
-        //         console.log(">>> STDOUT:::", data.toString());
-        //     });
-        // }
-
-        // if (child.stderr) {
-        //     child.stderr.on("data", data => {
-        //         console.log(">>> STDERR:::", data.toString());
-        //     });
-        // }
     });
 }
 
