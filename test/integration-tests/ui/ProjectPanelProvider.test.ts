@@ -80,9 +80,11 @@ suite("ProjectPanelProvider Test Suite", function () {
     });
 
     test("Includes top level nodes", async () => {
+        // 6.0 fails to recognize commands on Windows.
         const expectedCommands =
             process.platform === "win32" &&
-            workspaceContext.toolchain.swiftVersion.isLessThanOrEqual(new Version(6, 0, 0))
+            workspaceContext.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
+            workspaceContext.toolchain.swiftVersion.isLessThan(new Version(6, 1, 0))
                 ? ["Dependencies", "Targets", "Tasks", "Snippets"]
                 : ["Dependencies", "Targets", "Tasks", "Snippets", "Commands"];
 
