@@ -363,7 +363,9 @@ export class TestExplorer {
                         (!["darwin", "win32"].includes(process.platform) &&
                             errorDescription.match(/No such file or directory/))
                     ) {
-                        explorer.setErrorTestItem("Build the project to enable test discovery.");
+                        explorer.setErrorTestItem(
+                            `Build the project to enable test discovery. >>>>>> ${errorDescription}`
+                        );
                     } else if (errorDescription.startsWith("error: no tests found")) {
                         explorer.setErrorTestItem(
                             "Add a test target to your Package.",

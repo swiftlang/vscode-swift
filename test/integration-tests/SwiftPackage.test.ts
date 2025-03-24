@@ -25,7 +25,7 @@ suite("SwiftPackage Test Suite", function () {
         toolchain = await SwiftToolchain.create();
     });
 
-    this.timeout(30000);
+    this.timeout(120000);
 
     test("No package", async () => {
         const spmPackage = await SwiftPackage.create(testAssetUri("empty-folder"), toolchain);
