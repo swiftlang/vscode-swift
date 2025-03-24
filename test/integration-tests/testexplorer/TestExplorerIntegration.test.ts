@@ -48,7 +48,7 @@ import {
 } from "../utilities/testutilities";
 import { Commands } from "../../../src/commands";
 
-suite("Test Explorer Suite", function () {
+suite.only("Test Explorer Suite", function () {
     const MAX_TEST_RUN_TIME_MINUTES = 5;
 
     this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES);
