@@ -42,8 +42,7 @@ $jsonContent | Add-Member -MemberType NoteProperty -Name "swift.buildArguments" 
     "-Xbuild-tools-swiftc", "-visualc-tools-version", "-Xbuild-tools-swiftc", $vcToolsVersion,
     "-Xswiftc", "-windows-sdk-root", "-Xswiftc", $windowsSdkRoot,
     "-Xswiftc", "-windows-sdk-version", "-Xswiftc", $windowsSdkVersion,
-    "-Xswiftc", "-visualc-tools-version", "-Xswiftc", $vcToolsVersion,
-    "--very-verbose"
+    "-Xswiftc", "-visualc-tools-version", "-Xswiftc", $vcToolsVersion
 )
 
 if ($jsonContent.PSObject.Properties['swift.packageArguments']) {
@@ -56,8 +55,7 @@ $jsonContent | Add-Member -MemberType NoteProperty -Name "swift.packageArguments
     "-Xbuild-tools-swiftc", "-visualc-tools-version", "-Xbuild-tools-swiftc", $vcToolsVersion,
     "-Xswiftc", "-windows-sdk-root", "-Xswiftc", $windowsSdkRoot,
     "-Xswiftc", "-windows-sdk-version", "-Xswiftc", $windowsSdkVersion,
-    "-Xswiftc", "-visualc-tools-version", "-Xswiftc", $vcToolsVersion,
-    "--very-verbose"
+    "-Xswiftc", "-visualc-tools-version", "-Xswiftc", $vcToolsVersion
 )
 
 $jsonContent | ConvertTo-Json -Depth 32 | Set-Content -Path $jsonFilePath
