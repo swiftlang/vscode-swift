@@ -335,13 +335,9 @@ export class TestExplorer {
                 );
                 await explorer.folderContext.taskQueue.queueOperation(listTestsOperation, token);
             } catch (error) {
-                console.log("Test Discovery Failed, first try? " + firstTry);
-                console.log(`Error Output >>>>>> ${getErrorDescription(error)} <<<<<<<<`);
-
                 // If a test list fails its possible the tests have not been built.
                 // Build them and try again, and if we still fail then notify the user.
                 if (firstTry) {
-                    console.log("first try rebuilding!" + firstTry);
                     const backgroundTask = await getBuildAllTask(explorer.folderContext);
                     if (!backgroundTask) {
                         return;
@@ -355,7 +351,6 @@ export class TestExplorer {
                         // can ignore if running task fails
                     }
 
-                    console.log(">>> RUN DISCOVER AGAIN!!! <<< ");
                     // Retry test discovery after performing a build.
                     await runDiscover(explorer, false);
                 } else {
@@ -368,9 +363,7 @@ export class TestExplorer {
                         (!["darwin", "win32"].includes(process.platform) &&
                             errorDescription.match(/No such file or directory/))
                     ) {
-                        explorer.setErrorTestItem(
-                            `Build the project to enable test discovery. >>>>>> ${errorDescription} <<<<<<<<`
-                        );
+                        explorer.setErrorTestItem("Build the project to enable test discovery.");
                     } else if (errorDescription.startsWith("error: no tests found")) {
                         explorer.setErrorTestItem(
                             "Add a test target to your Package.",

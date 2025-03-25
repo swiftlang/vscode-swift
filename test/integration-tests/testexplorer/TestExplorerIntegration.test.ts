@@ -171,7 +171,7 @@ suite("Test Explorer Suite", function () {
     });
 
     suite("Standard", () => {
-        test.only("Finds Tests", async function () {
+        test("Finds Tests", async function () {
             if (workspaceContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
                 // 6.0 uses the LSP which returns tests in the order they're declared.
                 // Includes swift-testing tests.
