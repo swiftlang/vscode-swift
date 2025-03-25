@@ -38,7 +38,7 @@ suite("SwiftPackage Test Suite", function () {
         assert.strictEqual(spmPackage.isValid, false);
     });
 
-    test("Library package", async () => {
+    test.only("Library package", async () => {
         const spmPackage = await SwiftPackage.create(testAssetUri("package2"), toolchain);
         assert.strictEqual(spmPackage.isValid, true);
         assert.strictEqual(spmPackage.libraryProducts.length, 1);
