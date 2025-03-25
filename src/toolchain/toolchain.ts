@@ -125,29 +125,33 @@ export class SwiftToolchain {
         const targetInfo = await this.getSwiftTargetInfo();
         console.log(">>>TargetInfo: " + targetInfo);
         const swiftVersion = this.getSwiftVersion(targetInfo);
-        console.log(">>>SwiftVersion: " + swiftVersion);
-        const runtimePath = await this.getRuntimePath(targetInfo);
-        console.log(">>>RuntimePath: " + runtimePath);
-        const defaultSDK = await this.getDefaultSDK();
-        console.log(">>>DefaultSDK: " + defaultSDK);
+        const [runtimePath, defaultSDK] = await Promise.all([
+            this.getRuntimePath(targetInfo),
+            this.getDefaultSDK(),
+        ]);
         const customSDK = this.getCustomSDK();
+        const [xcTestPath, swiftTestingPath, swiftPMTestingHelperPath] = await Promise.all([
+            this.getXCTestPath(
+                targetInfo,
+                swiftFolderPath,
+                swiftVersion,
+                runtimePath,
+                customSDK ?? defaultSDK
+            ),
+            this.getSwiftTestingPath(
+                targetInfo,
+                swiftVersion,
+                runtimePath,
+                customSDK ?? defaultSDK
+            ),
+            this.getSwiftPMTestingHelperPath(toolchainPath),
+        ]);
+        console.log(">>>SwiftVersion: " + swiftVersion);
+        console.log(">>>RuntimePath: " + runtimePath);
+        console.log(">>>DefaultSDK: " + defaultSDK);
         console.log(">>>CustomSDK: " + customSDK);
-        const xcTestPath = await this.getXCTestPath(
-            targetInfo,
-            swiftFolderPath,
-            swiftVersion,
-            runtimePath,
-            customSDK ?? defaultSDK
-        );
         console.log(">>>XCTestPath: " + xcTestPath);
-        const swiftTestingPath = await this.getSwiftTestingPath(
-            targetInfo,
-            swiftVersion,
-            runtimePath,
-            customSDK ?? defaultSDK
-        );
         console.log(">>>SwiftTestingPath: " + swiftTestingPath);
-        const swiftPMTestingHelperPath = await this.getSwiftPMTestingHelperPath(toolchainPath);
 
         return new SwiftToolchain(
             swiftFolderPath,
