@@ -631,11 +631,26 @@ suite("Test Explorer Suite", function () {
                         const testId = "PackageTests.parameterizedTest(_:)";
                         const testRun = await runTest(testExplorer, runProfile, testId);
 
-                        assertTestResults(testRun, {
-                            passed: [
+                        let passed: string[];
+                        let failedId: string;
+                        if (
+                            workspaceContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 2, 0))
+                        ) {
+                            passed = [
+                                `${testId}/PackageTests.swift:59:2/Parameterized test case ID: argumentIDs: [Testing.Test.Case.Argument.ID(bytes: [49])], discriminator: 0, isStable: true`,
+                                `${testId}/PackageTests.swift:59:2/Parameterized test case ID: argumentIDs: [Testing.Test.Case.Argument.ID(bytes: [51])], discriminator: 0, isStable: true`,
+                            ];
+                            failedId = `${testId}/PackageTests.swift:59:2/Parameterized test case ID: argumentIDs: [Testing.Test.Case.Argument.ID(bytes: [50])], discriminator: 0, isStable: true`;
+                        } else {
+                            passed = [
                                 `${testId}/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [49])])`,
                                 `${testId}/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [51])])`,
-                            ],
+                            ];
+                            failedId = `${testId}/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])`;
+                        }
+
+                        assertTestResults(testRun, {
+                            passed,
                             failed: [
                                 {
                                     issues: [
@@ -644,7 +659,7 @@ suite("Test Explorer Suite", function () {
                                             text: "Expectation failed: (arg → 2) != 2",
                                         })}`,
                                     ],
-                                    test: `${testId}/PackageTests.swift:59:2/argumentIDs: Optional([Testing.Test.Case.Argument.ID(bytes: [50])])`,
+                                    test: failedId,
                                 },
                                 {
                                     issues: [],
