@@ -80,19 +80,17 @@ suite("ProjectPanelProvider Test Suite", function () {
     });
 
     test("Includes top level nodes", async () => {
-        // 6.0 fails to recognize commands on Windows.
-        const expectedCommands =
-            process.platform === "win32" &&
-            workspaceContext.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
-            workspaceContext.toolchain.swiftVersion.isLessThan(new Version(6, 1, 0))
-                ? ["Dependencies", "Targets", "Tasks", "Snippets"]
-                : ["Dependencies", "Targets", "Tasks", "Snippets", "Commands"];
-
         await waitForChildren(
             () => treeProvider.getChildren(),
             commands => {
                 const commandNames = commands.map(n => n.name);
-                expect(commandNames).to.deep.equal(expectedCommands);
+                expect(commandNames).to.deep.equal([
+                    "Dependencies",
+                    "Targets",
+                    "Tasks",
+                    "Snippets",
+                    "Commands",
+                ]);
             }
         );
     });
