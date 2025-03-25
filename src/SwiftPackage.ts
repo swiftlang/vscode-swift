@@ -209,9 +209,15 @@ export class SwiftPackage implements PackageContents {
         folder: vscode.Uri,
         toolchain: SwiftToolchain
     ): Promise<SwiftPackage> {
+        console.log(">>>>>>>>>> Swift Package CREATE");
         const contents = await SwiftPackage.loadPackage(folder, toolchain);
+        console.log(">>>>>>>>>> Swift Package CREATE COMPLETE");
+        console.log(">>>>>>>>>> Swift Package RESOLVED");
         const resolved = await SwiftPackage.loadPackageResolved(folder);
+        console.log(">>>>>>>>>> Swift Package RESOLVED COMPLETE");
+        console.log(">>>>>>>>>> Swift Package LOAD WORKSPACE STATE");
         const workspaceState = await SwiftPackage.loadWorkspaceState(folder);
+        console.log(">>>>>>>>>> Swift Package LOAD WORKSPACE STATE COMPLETE");
         return new SwiftPackage(folder, contents, resolved, workspaceState);
     }
 
@@ -248,6 +254,8 @@ export class SwiftPackage implements PackageContents {
 
             return packageState;
         } catch (error) {
+            console.log(">>>>>>>>>>>> ERROR LOADING PACKAGE", error);
+
             const execError = error as { stderr: string };
             // if caught error and it begins with "error: root manifest" then there is no Package.swift
             if (
