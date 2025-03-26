@@ -20,11 +20,7 @@ import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { testAssetUri } from "../../fixtures";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
 import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
-import {
-    activateExtensionForSuite,
-    folderInRootWorkspace,
-    updateSettings,
-} from "../utilities/testutilities";
+import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import { waitForClientState, waitForIndex } from "../utilities/lsputilities";
 
 async function buildProject(ctx: WorkspaceContext, name: string) {
@@ -46,22 +42,11 @@ suite("Language Client Integration Suite @slow", function () {
         async setup(ctx) {
             workspaceContext = ctx;
 
-            const resetSettings = await updateSettings({
-                "swift.sourcekit-lsp.serverArguments": [
-                    "--experimental-feature",
-                    "synchronize-request",
-                ],
-            });
-
-            // Restart the LSP after changing its settings
-            await ctx.languageClientManager.restart();
-
             await buildProject(ctx, "defaultPackage");
 
             // Ensure lsp client is ready
             clientManager = ctx.languageClientManager;
             await waitForClientState(clientManager, langclient.State.Running);
-            return resetSettings;
         },
     });
 

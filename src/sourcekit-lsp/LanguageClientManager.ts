@@ -679,6 +679,13 @@ export class LanguageClientManager implements vscode.Disposable {
             };
         }
 
+        if (this.swiftVersion.isGreaterThanOrEqual(new Version(6, 2, 0))) {
+            options = {
+                ...options,
+                experimentalFeatures: ["synchronize-request"],
+            };
+        }
+
         if (configuration.swiftSDK !== "") {
             options = {
                 ...options,
