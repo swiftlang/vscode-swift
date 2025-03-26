@@ -88,6 +88,29 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             launchConfig.program += ".exe";
         }
 
+        // Convert "pid" property from a string to a number to make the process picker work.
+        if ("pid" in launchConfig) {
+            const pid = Number.parseInt(launchConfig.pid, 10);
+            if (isNaN(pid)) {
+                return await vscode.window
+                    .showErrorMessage(
+                        "Failed to launch debug session",
+                        {
+                            modal: true,
+                            detail: `Invalid process ID: "${launchConfig.pid}" is not a valid integer. Please update your launch configuration`,
+                        },
+                        "Configure"
+                    )
+                    .then(userSelection => {
+                        if (userSelection === "Configure") {
+                            return null; // Opens the launch configuration when returned from a DebugConfigurationProvider
+                        }
+                        return undefined; // Only stops the debug session from starting
+                    });
+            }
+            launchConfig.pid = pid;
+        }
+
         // Delegate to the appropriate debug adapter extension
         launchConfig.type = DebugAdapter.getLaunchConfigType(this.toolchain.swiftVersion);
         if (launchConfig.type === LaunchConfigType.CODE_LLDB) {
