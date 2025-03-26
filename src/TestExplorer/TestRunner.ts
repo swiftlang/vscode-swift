@@ -776,6 +776,7 @@ export class TestRunner {
             // If the test run is iterrupted by a cancellation request from VS Code, ensure the task is terminated.
             const cancellationDisposable = this.testRun.token.onCancellationRequested(() => {
                 task.execution.terminate("SIGINT");
+                reject("Test run cancelled");
             });
 
             task.execution.onDidClose(code => {
