@@ -46,6 +46,84 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         });
     });
 
+    test("allows specifying a 'pid' in the launch configuration", async () => {
+        const configProvider = new LLDBDebugConfigurationProvider(
+            "darwin",
+            instance(mockToolchain),
+            instance(mockOutputChannel)
+        );
+        const launchConfig = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(
+            undefined,
+            {
+                name: "Test Launch Config",
+                type: SWIFT_LAUNCH_CONFIG_TYPE,
+                request: "attach",
+                pid: 41038,
+            }
+        );
+        expect(launchConfig).to.containSubset({ pid: 41038 });
+    });
+
+    test("converts 'pid' property from a string to a number", async () => {
+        const configProvider = new LLDBDebugConfigurationProvider(
+            "darwin",
+            instance(mockToolchain),
+            instance(mockOutputChannel)
+        );
+        const launchConfig = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(
+            undefined,
+            {
+                name: "Test Launch Config",
+                type: SWIFT_LAUNCH_CONFIG_TYPE,
+                request: "attach",
+                pid: "41038",
+            }
+        );
+        expect(launchConfig).to.containSubset({ pid: 41038 });
+    });
+
+    test("shows an error when the 'pid' property is a string that isn't a number", async () => {
+        // Simulate the user clicking the "Configure" button
+        mockWindow.showErrorMessage.resolves("Configure" as any);
+
+        const configProvider = new LLDBDebugConfigurationProvider(
+            "darwin",
+            instance(mockToolchain),
+            instance(mockOutputChannel)
+        );
+        const launchConfig = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(
+            undefined,
+            {
+                name: "Test Launch Config",
+                type: SWIFT_LAUNCH_CONFIG_TYPE,
+                request: "attach",
+                pid: "not-a-number",
+            }
+        );
+        expect(launchConfig).to.be.null;
+    });
+
+    test("shows an error when the 'pid' property isn't a number or string", async () => {
+        // Simulate the user clicking the "Configure" button
+        mockWindow.showErrorMessage.resolves("Configure" as any);
+
+        const configProvider = new LLDBDebugConfigurationProvider(
+            "darwin",
+            instance(mockToolchain),
+            instance(mockOutputChannel)
+        );
+        const launchConfig = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(
+            undefined,
+            {
+                name: "Test Launch Config",
+                type: SWIFT_LAUNCH_CONFIG_TYPE,
+                request: "attach",
+                pid: {},
+            }
+        );
+        expect(launchConfig).to.be.null;
+    });
+
     suite("CodeLLDB selected in settings", () => {
         let mockLldbConfiguration: MockedObject<vscode.WorkspaceConfiguration>;
         const mockLLDB = mockGlobalModule(lldb);
