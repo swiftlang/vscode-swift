@@ -19,6 +19,7 @@ import { execSwift, getErrorDescription, hashString } from "./utilities/utilitie
 import { isPathInsidePath } from "./utilities/filesystem";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { BuildFlags } from "./toolchain/BuildFlags";
+import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
 
 /** Swift Package Manager contents */
 export interface PackageContents {
@@ -208,9 +209,15 @@ export class SwiftPackage implements PackageContents {
         folder: vscode.Uri,
         toolchain: SwiftToolchain
     ): Promise<SwiftPackage> {
+        console.log(">>>>>>>>>> Swift Package CREATE");
         const contents = await SwiftPackage.loadPackage(folder, toolchain);
+        console.log(">>>>>>>>>> Swift Package CREATE COMPLETE");
+        console.log(">>>>>>>>>> Swift Package RESOLVED");
         const resolved = await SwiftPackage.loadPackageResolved(folder);
+        console.log(">>>>>>>>>> Swift Package RESOLVED COMPLETE");
+        console.log(">>>>>>>>>> Swift Package LOAD WORKSPACE STATE");
         const workspaceState = await SwiftPackage.loadWorkspaceState(folder);
+        console.log(">>>>>>>>>> Swift Package LOAD WORKSPACE STATE COMPLETE");
         return new SwiftPackage(folder, contents, resolved, workspaceState);
     }
 
@@ -247,6 +254,8 @@ export class SwiftPackage implements PackageContents {
 
             return packageState;
         } catch (error) {
+            console.log(">>>>>>>>>>>> ERROR LOADING PACKAGE", error);
+
             const execError = error as { stderr: string };
             // if caught error and it begins with "error: root manifest" then there is no Package.swift
             if (
@@ -278,7 +287,8 @@ export class SwiftPackage implements PackageContents {
 
     private static async loadPlugins(
         folder: vscode.Uri,
-        toolchain: SwiftToolchain
+        toolchain: SwiftToolchain,
+        outputChannel: SwiftOutputChannel
     ): Promise<PackagePlugin[]> {
         try {
             const { stdout } = await execSwift(["package", "plugin", "--list"], toolchain, {
@@ -298,7 +308,8 @@ export class SwiftPackage implements PackageContents {
                 }
             }
             return plugins;
-        } catch {
+        } catch (error) {
+            outputChannel.appendLine(`Failed to laod plugins: ${error}`);
             // failed to load resolved file return undefined
             return [];
         }
@@ -338,8 +349,8 @@ export class SwiftPackage implements PackageContents {
         this.workspaceState = await SwiftPackage.loadWorkspaceState(this.folder);
     }
 
-    public async loadSwiftPlugins(toolchain: SwiftToolchain) {
-        this.plugins = await SwiftPackage.loadPlugins(this.folder, toolchain);
+    public async loadSwiftPlugins(toolchain: SwiftToolchain, outputChannel: SwiftOutputChannel) {
+        this.plugins = await SwiftPackage.loadPlugins(this.folder, toolchain, outputChannel);
     }
 
     /** Return if has valid contents */

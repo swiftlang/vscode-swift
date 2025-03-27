@@ -22,6 +22,7 @@ import { WorkspaceContext, FolderOperation } from "./WorkspaceContext";
 import { BackgroundCompilation } from "./BackgroundCompilation";
 import { TaskQueue } from "./tasks/TaskQueue";
 import { isPathInsidePath } from "./utilities/filesystem";
+import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
 
 export class FolderContext implements vscode.Disposable {
     private packageWatcher: PackageWatcher;
@@ -135,8 +136,8 @@ export class FolderContext implements vscode.Disposable {
     }
 
     /** Load Swift Plugins and store in Package */
-    async loadSwiftPlugins() {
-        await this.swiftPackage.loadSwiftPlugins(this.workspaceContext.toolchain);
+    async loadSwiftPlugins(outputChannel: SwiftOutputChannel) {
+        await this.swiftPackage.loadSwiftPlugins(this.workspaceContext.toolchain, outputChannel);
     }
 
     /**

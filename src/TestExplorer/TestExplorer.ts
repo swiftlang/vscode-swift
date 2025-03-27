@@ -412,6 +412,9 @@ export class TestExplorer {
      * @param errorDescription Error description to display
      */
     private setErrorTestItem(errorDescription: string | undefined, title = "Test Discovery Error") {
+        this.folderContext.workspaceContext.outputChannel.log(
+            `Test Discovery Error: ${errorDescription}`
+        );
         this.controller.items.forEach(item => {
             this.controller.items.delete(item.id);
         });

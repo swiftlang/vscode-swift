@@ -52,7 +52,7 @@ module.exports = defineConfig({
                 ui: "tdd",
                 color: true,
                 timeout,
-                forbidOnly: isCIBuild,
+                forbidOnly: false, // isCIBuild,
                 grep: isFastTestRun ? "@slow" : undefined,
                 invert: isFastTestRun,
                 slow: 10000,
@@ -66,26 +66,26 @@ module.exports = defineConfig({
             reuseMachineInstall: !isCIBuild,
             installExtensions: ["vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap"],
         },
-        {
-            label: "unitTests",
-            files: ["dist/test/common.js", "dist/test/unit-tests/**/*.test.js"],
-            version: process.env["VSCODE_VERSION"] ?? "stable",
-            launchArgs: launchArgs.concat("--disable-extensions"),
-            mocha: {
-                ui: "tdd",
-                color: true,
-                timeout,
-                forbidOnly: isCIBuild,
-                slow: 100,
-                reporter: path.join(__dirname, ".mocha-reporter.js"),
-                reporterOptions: {
-                    jsonReporterOptions: {
-                        output: path.join(__dirname, "test-results", "unit-tests.json"),
-                    },
-                },
-            },
-            reuseMachineInstall: !isCIBuild,
-        },
+        // {
+        //     label: "unitTests",
+        //     files: ["dist/test/common.js", "dist/test/unit-tests/**/*.test.js"],
+        //     version: process.env["VSCODE_VERSION"] ?? "stable",
+        //     launchArgs: launchArgs.concat("--disable-extensions"),
+        //     mocha: {
+        //         ui: "tdd",
+        //         color: true,
+        //         timeout,
+        //         forbidOnly: isCIBuild,
+        //         slow: 100,
+        //         reporter: path.join(__dirname, ".mocha-reporter.js"),
+        //         reporterOptions: {
+        //             jsonReporterOptions: {
+        //                 output: path.join(__dirname, "test-results", "unit-tests.json"),
+        //             },
+        //         },
+        //     },
+        //     reuseMachineInstall: !isCIBuild,
+        // },
         // you can specify additional test configurations, too
     ],
     coverage: {

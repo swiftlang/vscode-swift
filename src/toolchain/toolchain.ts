@@ -117,27 +117,41 @@ export class SwiftToolchain {
     }
 
     static async create(): Promise<SwiftToolchain> {
+        console.log(">>>Create SwiftToolchain");
         const swiftFolderPath = await this.getSwiftFolderPath();
+        console.log(">>>>>>  SwiftFolderPath: " + swiftFolderPath);
         const toolchainPath = await this.getToolchainPath(swiftFolderPath);
+        console.log(">>>ToolchainPath: " + toolchainPath);
         const targetInfo = await this.getSwiftTargetInfo();
-        const swiftVersion = await this.getSwiftVersion(targetInfo);
-        const runtimePath = await this.getRuntimePath(targetInfo);
-        const defaultSDK = await this.getDefaultSDK();
+        console.log(">>>TargetInfo: " + targetInfo);
+        const swiftVersion = this.getSwiftVersion(targetInfo);
+        const [runtimePath, defaultSDK] = await Promise.all([
+            this.getRuntimePath(targetInfo),
+            this.getDefaultSDK(),
+        ]);
         const customSDK = this.getCustomSDK();
-        const xcTestPath = await this.getXCTestPath(
-            targetInfo,
-            swiftFolderPath,
-            swiftVersion,
-            runtimePath,
-            customSDK ?? defaultSDK
-        );
-        const swiftTestingPath = await this.getSwiftTestingPath(
-            targetInfo,
-            swiftVersion,
-            runtimePath,
-            customSDK ?? defaultSDK
-        );
-        const swiftPMTestingHelperPath = await this.getSwiftPMTestingHelperPath(toolchainPath);
+        const [xcTestPath, swiftTestingPath, swiftPMTestingHelperPath] = await Promise.all([
+            this.getXCTestPath(
+                targetInfo,
+                swiftFolderPath,
+                swiftVersion,
+                runtimePath,
+                customSDK ?? defaultSDK
+            ),
+            this.getSwiftTestingPath(
+                targetInfo,
+                swiftVersion,
+                runtimePath,
+                customSDK ?? defaultSDK
+            ),
+            this.getSwiftPMTestingHelperPath(toolchainPath),
+        ]);
+        console.log(">>>SwiftVersion: " + swiftVersion);
+        console.log(">>>RuntimePath: " + runtimePath);
+        console.log(">>>DefaultSDK: " + defaultSDK);
+        console.log(">>>CustomSDK: " + customSDK);
+        console.log(">>>XCTestPath: " + xcTestPath);
+        console.log(">>>SwiftTestingPath: " + swiftTestingPath);
 
         return new SwiftToolchain(
             swiftFolderPath,
