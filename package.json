@@ -299,6 +299,12 @@
         "title": "Run Tests with Coverage",
         "category": "Test",
         "icon": "$(debug-coverage)"
+      },
+      {
+        "command": "swift.openDocumentation",
+        "title": "Open Documentation",
+        "category": "Swift",
+        "icon": "$(book)"
       }
     ],
     "configuration": [
@@ -1068,6 +1074,11 @@
           "command": "swift.nestedDependenciesList",
           "when": "view == projectPanel && swift.flatDependenciesList",
           "group": "navigation@5"
+        },
+        {
+          "command": "swift.openDocumentation",
+          "when": "view == projectPanel",
+          "group": "navigation@6"
         }
       ],
       "view/item/context": [
