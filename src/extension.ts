@@ -39,6 +39,7 @@ import { checkAndWarnAboutWindowsSymlinks } from "./ui/win32";
 import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "./terminal";
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 import { SelectedXcodeWatcher } from "./toolchain/SelectedXcodeWatcher";
+import { SwiftTutorial } from "./tutorial/swiftTutorial";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -92,7 +93,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         context.subscriptions.push(...commands.registerToolchainCommands(toolchain));
 
         context.subscriptions.push(
-            vscode.workspace.onDidChangeConfiguration(event => {
+            vscode.workspace.onDidChangeConfiguration((event: vscode.ConfigurationChangeEvent) => {
                 // on toolchain config change, reload window
                 if (
                     event.affectsConfiguration("swift.path") &&
@@ -265,6 +266,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             workspaceContext
         );
 
+        // Register tutorial commands
+        const tutorial = SwiftTutorial.getInstance(context);
+        context.subscriptions.push(
+            vscode.commands.registerCommand("swift.startTutorial", () => {
+                tutorial.showTutorial();
+            })
+        );
+        context.subscriptions.push(
+            vscode.commands.registerCommand("swift.createTutorialProject", () => {
+                tutorial.createSampleProject();
+            })
+        );
+
         // Mark the extension as activated.
         contextKeys.isActivated = true;
 
@@ -288,6 +302,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
 
 async function deactivate(context: vscode.ExtensionContext): Promise<void> {
     contextKeys.isActivated = false;
-    context.subscriptions.forEach(subscription => subscription.dispose());
+    context.subscriptions.forEach((subscription: vscode.Disposable) => subscription.dispose());
     context.subscriptions.length = 0;
 }
