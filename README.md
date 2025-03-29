@@ -22,7 +22,7 @@ The Swift extension is supported on macOS, Linux, and Windows. To install, first
 
 ### Language features
 
-The extension provides language features such as code completion and jump to definition via [SourceKit-LSP](https://github.com/apple/sourcekit-lsp). To ensure the extension functions correctly, it’s important to first build the project so that SourceKit-LSP has access to all the symbol data. Whenever you add a new dependency to your project, make sure to rebuild it so that SourceKit-LSP can update its information.
+The extension provides language features such as code completion and jump to definition via [SourceKit-LSP](https://github.com/apple/sourcekit-lsp). To ensure the extension functions correctly, it's important to first build the project so that SourceKit-LSP has access to all the symbol data. Whenever you add a new dependency to your project, make sure to rebuild it so that SourceKit-LSP can update its information.
 
 ### Automatic task creation
 
@@ -107,7 +107,7 @@ Use the **Run > Start Debugging** menu item to run an executable and start debug
 
 LLDB DAP is only available starting in Swift 6.0. On older versions of Swift the [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb) extension will be used for debugging instead. You will be prompted to install the CodeLLDB extension in this case.
 
-CodeLLDB includes a version of `lldb` that it uses by default for debugging, but this version of `lldb` doesn’t support Swift. The Swift extension will automatically identify the required version and offer to update the CodeLLDB configuration as necessary so that debugging is supported.
+CodeLLDB includes a version of `lldb` that it uses by default for debugging, but this version of `lldb` doesn't support Swift. The Swift extension will automatically identify the required version and offer to update the CodeLLDB configuration as necessary so that debugging is supported.
 
 ### Test Explorer
 
@@ -122,6 +122,25 @@ Once your project is built, the Test Explorer will list all your tests. These te
 * [Extension Settings](docs/settings.md)
 * [Test Coverage](docs/test-coverage.md)
 * [Visual Studio Code Dev Containers](docs/remote-dev.md)
+
+## Tutorial Mode
+
+The Swift extension includes an interactive tutorial to help you get started with Swift development in VS Code. The tutorial covers:
+
+- Installing and configuring the Swift toolchain
+- Creating your first Swift project
+- Building and running Swift code
+- Debugging Swift applications
+- Writing and running tests
+- Using Swift Package Manager
+
+To start the tutorial:
+
+1. Open the Command Palette (Cmd+Shift+P on macOS, Ctrl+Shift+P on Windows/Linux)
+2. Type "Swift: Start Tutorial" and press Enter
+3. Follow the interactive steps in the tutorial panel
+
+The tutorial will guide you through each step with visual aids and hands-on exercises. You can create a sample project at any time using the "Swift: Create Tutorial Project" command.
 
 ## Contributing
 

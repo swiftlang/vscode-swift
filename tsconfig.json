@@ -1,8 +1,9 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./src" },
-    { "path": "./src/documentation/webview" },
-    { "path": "./test" }
-  ]
+  "extends": "./tsconfig-base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": ".",
+    "types": ["node", "vscode"]
+  },
+  "include": ["src/**/*", "test/**/*"]
 }
