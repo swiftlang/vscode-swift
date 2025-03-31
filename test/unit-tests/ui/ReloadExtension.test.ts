@@ -11,15 +11,24 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import { beforeEach } from "mocha";
 import { expect } from "chai";
 import { mockGlobalObject } from "../../MockUtils";
 import * as vscode from "vscode";
-import { showReloadExtensionNotification } from "../../../src/ui/ReloadExtension";
+import { showReloadExtensionNotificationInstance } from "../../../src/ui/ReloadExtension";
 import { Workbench } from "../../../src/utilities/commands";
 
 suite("showReloadExtensionNotification()", async function () {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
     const mockedVSCodeCommands = mockGlobalObject(vscode, "commands");
+    let showReloadExtensionNotification: (
+        message: string,
+        ...items: string[]
+    ) => Promise<string | undefined>;
+
+    beforeEach(() => {
+        showReloadExtensionNotification = showReloadExtensionNotificationInstance();
+    });
 
     test("displays a warning message asking the user if they would like to reload the window", async () => {
         mockedVSCodeWindow.showWarningMessage.resolves(undefined);
@@ -56,5 +65,19 @@ suite("showReloadExtensionNotification()", async function () {
             "Ignore"
         );
         expect(mockedVSCodeCommands.executeCommand).to.not.have.been.called;
+    });
+
+    test("only shows one dialog at a time", async () => {
+        mockedVSCodeWindow.showWarningMessage.resolves(undefined);
+
+        await Promise.all([
+            showReloadExtensionNotification("Want to reload?"),
+            showReloadExtensionNotification("Want to reload?"),
+        ]);
+
+        expect(mockedVSCodeWindow.showWarningMessage).to.have.been.calledOnceWithExactly(
+            "Want to reload?",
+            "Reload Extensions"
+        );
     });
 });
