@@ -24,6 +24,7 @@ import { expandFilePathTilde, pathExists } from "../utilities/filesystem";
 import { Version } from "../utilities/version";
 import { BuildFlags } from "./BuildFlags";
 import { Sanitizer } from "./Sanitizer";
+import { SwiftlyConfig, ToolchainVersion } from "./ToolchainVersion";
 
 /**
  * Contents of **Info.plist** on Windows.
@@ -229,12 +230,13 @@ export class SwiftToolchain {
     }
 
     /**
-     * Reads the swiftly configuration file to find a list of installed toolchains.
+     * Finds the list of toolchains managed by Swiftly.
      *
      * @returns an array of toolchain paths
      */
     public static async getSwiftlyToolchainInstalls(): Promise<string[]> {
         // Swiftly is only available on Linux right now
+        // TODO: Add support for macOS
         if (process.platform !== "linux") {
             return [];
         }
@@ -243,12 +245,8 @@ export class SwiftToolchain {
             if (!swiftlyHomeDir) {
                 return [];
             }
-            const swiftlyConfigRaw = await fs.readFile(
-                path.join(swiftlyHomeDir, "config.json"),
-                "utf-8"
-            );
-            const swiftlyConfig: unknown = JSON.parse(swiftlyConfigRaw);
-            if (!(swiftlyConfig instanceof Object) || !("installedToolchains" in swiftlyConfig)) {
+            const swiftlyConfig = await SwiftToolchain.getSwiftlyConfig();
+            if (!swiftlyConfig || !("installedToolchains" in swiftlyConfig)) {
                 return [];
             }
             const installedToolchains = swiftlyConfig.installedToolchains;
@@ -264,6 +262,23 @@ export class SwiftToolchain {
     }
 
     /**
+     * Reads the Swiftly configuration file, if it exists.
+     *
+     * @returns A parsed Swiftly configuration.
+     */
+    private static async getSwiftlyConfig(): Promise<SwiftlyConfig | undefined> {
+        const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
+        if (!swiftlyHomeDir) {
+            return;
+        }
+        const swiftlyConfigRaw = await fs.readFile(
+            path.join(swiftlyHomeDir, "config.json"),
+            "utf-8"
+        );
+        return JSON.parse(swiftlyConfigRaw);
+    }
+
+    /**
      * Checks common directories for available swift toolchain installations.
      *
      * @returns an array of toolchain paths
@@ -272,6 +287,7 @@ export class SwiftToolchain {
         if (process.platform !== "darwin") {
             return [];
         }
+        // TODO: If Swiftly is managing these toolchains then omit them
         return Promise.all([
             this.findToolchainsIn("/Library/Developer/Toolchains/"),
             this.findToolchainsIn(path.join(os.homedir(), "Library/Developer/Toolchains/")),
@@ -602,6 +618,12 @@ export class SwiftToolchain {
                     if (configuration.path !== "") {
                         return path.dirname(configuration.path);
                     }
+
+                    const swiftlyToolchainLocation = await this.swiftlyToolchainLocation();
+                    if (swiftlyToolchainLocation) {
+                        return swiftlyToolchainLocation;
+                    }
+
                     const { stdout } = await execFile("xcrun", ["--find", "swift"], {
                         env: configuration.swiftEnvironmentVariables,
                     });
@@ -615,6 +637,31 @@ export class SwiftToolchain {
         } catch {
             throw Error("Failed to find swift toolchain");
         }
+    }
+
+    /**
+     * Determine if Swiftly is being used to manage the active toolchain and if so, return
+     * the path to the active toolchain.
+     * @returns The location of the active toolchain if swiftly is being used to manage it.
+     */
+    private static async swiftlyToolchainLocation(): Promise<string | undefined> {
+        const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
+        if (swiftlyHomeDir) {
+            const { stdout: swiftLocation } = await execFile("which", ["swift"]);
+            if (swiftLocation.indexOf(swiftlyHomeDir) === 0) {
+                const swiftlyConfig = await SwiftToolchain.getSwiftlyConfig();
+                if (swiftlyConfig) {
+                    const version = ToolchainVersion.parse(swiftlyConfig.inUse);
+                    return path.join(
+                        os.homedir(),
+                        "Library/Developer/Toolchains/",
+                        `${version.identifier}.xctoolchain`,
+                        "usr"
+                    );
+                }
+            }
+        }
+        return undefined;
     }
 
     /**
