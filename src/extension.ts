@@ -193,9 +193,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                         }
 
                         if (
-                            workspace.toolchain.swiftVersion.isGreaterThanOrEqual(
-                                new Version(5, 6, 0)
-                            )
+                            folder.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))
                         ) {
                             workspace.statusItem.showStatusWhileRunning(
                                 `Loading Swift Plugins (${FolderContext.uriName(
@@ -241,6 +239,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                         ) {
                             await resolveFolderDependencies(folder, true);
                         }
+                        break;
+                    case FolderOperation.swiftVersionUpdated:
+                        showReloadExtensionNotification(
+                            "Changing the Swift version requires the project be reloaded."
+                        );
+                        break;
                 }
             }
         );
