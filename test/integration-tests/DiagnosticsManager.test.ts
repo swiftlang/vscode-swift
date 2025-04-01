@@ -129,7 +129,7 @@ suite("DiagnosticsManager Test Suite", function () {
             this.timeout(60000 * 5);
 
             workspaceContext = ctx;
-            toolchain = workspaceContext.toolchain;
+            toolchain = workspaceContext.globalToolchain;
             workspaceFolder = testAssetWorkspaceFolder("diagnostics");
             cWorkspaceFolder = testAssetWorkspaceFolder("diagnosticsC");
             cppWorkspaceFolder = testAssetWorkspaceFolder("diagnosticsCpp");
@@ -231,7 +231,7 @@ suite("DiagnosticsManager Test Suite", function () {
             test("default diagnosticsStyle", async function () {
                 // Swift 5.10 and 6.0 on Windows have a bug where the
                 // diagnostics are not emitted on their own line.
-                const swiftVersion = workspaceContext.toolchain.swiftVersion;
+                const swiftVersion = workspaceContext.globalToolchain.swiftVersion;
                 if (
                     process.platform === "win32" &&
                     swiftVersion.isGreaterThanOrEqual(new Version(5, 10, 0)) &&
@@ -247,9 +247,7 @@ suite("DiagnosticsManager Test Suite", function () {
                             expectedWarningDiagnostic,
                             expectedMainErrorDiagnostic,
                             expectedMainDictErrorDiagnostic,
-                            ...(workspaceContext.swiftVersion.isGreaterThanOrEqual(
-                                new Version(6, 0, 0)
-                            )
+                            ...(swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))
                                 ? [expectedMacroDiagnostic]
                                 : []),
                         ], // Should have parsed correct severity
@@ -265,7 +263,7 @@ suite("DiagnosticsManager Test Suite", function () {
                 // This is only supported in swift versions >=5.10.0.
                 // Swift 5.10 and 6.0 on Windows have a bug where the
                 // diagnostics are not emitted on their own line.
-                const swiftVersion = workspaceContext.toolchain.swiftVersion;
+                const swiftVersion = workspaceContext.globalToolchain.swiftVersion;
                 if (
                     swiftVersion.isLessThan(new Version(5, 10, 0)) ||
                     (process.platform === "win32" &&
@@ -324,7 +322,7 @@ suite("DiagnosticsManager Test Suite", function () {
             });
 
             test("Parses C diagnostics", async function () {
-                const swiftVersion = workspaceContext.toolchain.swiftVersion;
+                const swiftVersion = workspaceContext.globalToolchain.swiftVersion;
                 // SPM will sometimes improperly clear diagnostics from the terminal, leading
                 // to a flakey test.
                 if (swiftVersion.isLessThan(new Version(5, 7, 0))) {
@@ -357,7 +355,7 @@ suite("DiagnosticsManager Test Suite", function () {
             });
 
             test("Parses C++ diagnostics", async function () {
-                const swiftVersion = workspaceContext.toolchain.swiftVersion;
+                const swiftVersion = workspaceContext.globalToolchain.swiftVersion;
                 // SPM will sometimes improperly clear diagnostics from the terminal, leading
                 // to a flakey test.
                 if (swiftVersion.isLessThan(new Version(5, 7, 0))) {
@@ -1117,7 +1115,7 @@ suite("DiagnosticsManager Test Suite", function () {
     // Skipped until we enable it in a nightly build
     suite("SourceKit-LSP diagnostics @slow", () => {
         suiteSetup(async function () {
-            if (workspaceContext.swiftVersion.isLessThan(new Version(5, 7, 0))) {
+            if (workspaceContext.globalToolchainSwiftVersion.isLessThan(new Version(5, 7, 0))) {
                 this.skip();
                 return;
             }

@@ -36,7 +36,7 @@ export async function editDependency(identifier: string, ctx: WorkspaceContext) 
             cwd: currentFolder.folder,
             prefix: currentFolder.name,
         },
-        ctx.toolchain
+        currentFolder.toolchain
     );
 
     const success = await executeTaskWithUI(

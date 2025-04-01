@@ -44,7 +44,7 @@ export class BuildConfigurationFactory {
     ) {}
 
     private async build(): Promise<vscode.DebugConfiguration> {
-        let additionalArgs = buildOptions(this.ctx.workspaceContext.toolchain);
+        let additionalArgs = buildOptions(this.ctx.toolchain);
         if ((await this.ctx.swiftPackage.getTargets(TargetType.test)).length > 0) {
             additionalArgs.push(...this.testDiscoveryFlag(this.ctx));
         }
@@ -54,7 +54,7 @@ export class BuildConfigurationFactory {
         }
 
         // don't build tests for iOS etc as they don't compile
-        if (this.ctx.workspaceContext.toolchain.buildFlags.getDarwinTarget() === undefined) {
+        if (this.ctx.toolchain.buildFlags.getDarwinTarget() === undefined) {
             additionalArgs = ["--build-tests", ...additionalArgs];
             if (this.isRelease) {
                 additionalArgs = [...additionalArgs, "-Xswiftc", "-enable-testing"];
@@ -78,13 +78,13 @@ export class BuildConfigurationFactory {
     /** flag for enabling test discovery */
     private testDiscoveryFlag(ctx: FolderContext): string[] {
         // Test discovery is only available in SwiftPM 5.1 and later.
-        if (ctx.workspaceContext.swiftVersion.isLessThan(new Version(5, 1, 0))) {
+        if (ctx.swiftVersion.isLessThan(new Version(5, 1, 0))) {
             return [];
         }
         // Test discovery is always enabled on Darwin.
         if (process.platform !== "darwin") {
             const hasLinuxMain = ctx.linuxMain.exists;
-            const testDiscoveryByDefault = ctx.workspaceContext.swiftVersion.isGreaterThanOrEqual(
+            const testDiscoveryByDefault = ctx.swiftVersion.isGreaterThanOrEqual(
                 new Version(5, 4, 0)
             );
             if (hasLinuxMain || !testDiscoveryByDefault) {
@@ -275,13 +275,13 @@ export class TestingConfigurationFactory {
             };
             // On Windows, add XCTest.dll/Testing.dll to the Path
             // and run the .xctest executable from the .build directory.
-            const runtimePath = this.ctx.workspaceContext.toolchain.runtimePath;
-            const xcTestPath = this.ctx.workspaceContext.toolchain.xcTestPath;
+            const runtimePath = this.ctx.toolchain.runtimePath;
+            const xcTestPath = this.ctx.toolchain.xcTestPath;
             if (xcTestPath && xcTestPath !== runtimePath) {
                 testEnv.Path = `${xcTestPath};${testEnv.Path ?? process.env.Path}`;
             }
 
-            const swiftTestingPath = this.ctx.workspaceContext.toolchain.swiftTestingPath;
+            const swiftTestingPath = this.ctx.toolchain.swiftTestingPath;
             if (swiftTestingPath && swiftTestingPath !== runtimePath) {
                 testEnv.Path = `${swiftTestingPath};${testEnv.Path ?? process.env.Path}`;
             }
@@ -309,7 +309,7 @@ export class TestingConfigurationFactory {
                 env: {
                     ...swiftRuntimeEnv(
                         process.env,
-                        this.ctx.workspaceContext.toolchain.runtimePath ?? configuration.runtimePath
+                        this.ctx.toolchain.runtimePath ?? configuration.runtimePath
                     ),
                     ...configuration.folder(this.ctx.workspaceFolder).testEnvironmentVariables,
                 },
@@ -328,7 +328,7 @@ export class TestingConfigurationFactory {
                     case TestKind.debug:
                         // In the debug case we need to build the testing executable and then
                         // launch it with LLDB instead of going through `swift test`.
-                        const toolchain = this.ctx.workspaceContext.toolchain;
+                        const toolchain = this.ctx.toolchain;
                         const libraryPath = toolchain.swiftTestingLibraryPath();
                         const frameworkPath = toolchain.swiftTestingFrameworkPath();
                         const swiftPMTestingHelperPath = toolchain.swiftPMTestingHelperPath;
@@ -409,7 +409,7 @@ export class TestingConfigurationFactory {
                 switch (this.testKind) {
                     case TestKind.debugRelease:
                     case TestKind.debug:
-                        const xcTestPath = this.ctx.workspaceContext.toolchain.xcTestPath;
+                        const xcTestPath = this.ctx.toolchain.xcTestPath;
                         // On macOS, find the path to xctest
                         // and point it at the .xctest bundle from the configured build directory.
                         if (xcTestPath === undefined) {
@@ -428,7 +428,7 @@ export class TestingConfigurationFactory {
                             },
                         };
                     default:
-                        const swiftVersion = this.ctx.workspaceContext.toolchain.swiftVersion;
+                        const swiftVersion = this.ctx.toolchain.swiftVersion;
                         if (
                             swiftVersion.isLessThan(new Version(5, 7, 0)) &&
                             swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0)) &&
@@ -497,7 +497,7 @@ export class TestingConfigurationFactory {
         const { folder, nameSuffix } = getFolderAndNameSuffix(this.ctx, true);
         // On macOS, find the path to xctest
         // and point it at the .xctest bundle from the configured build directory.
-        const xctestPath = this.ctx.workspaceContext.toolchain.xcTestPath;
+        const xctestPath = this.ctx.toolchain.xcTestPath;
         if (xctestPath === undefined) {
             return null;
         }
@@ -512,7 +512,7 @@ export class TestingConfigurationFactory {
             default:
                 return null;
         }
-        const sanitizer = this.ctx.workspaceContext.toolchain.sanitizer(configuration.sanitizer);
+        const sanitizer = this.ctx.toolchain.sanitizer(configuration.sanitizer);
         const envCommands = Object.entries({
             ...swiftRuntimeEnv(),
             ...configuration.folder(this.ctx.workspaceFolder).testEnvironmentVariables,
@@ -540,7 +540,7 @@ export class TestingConfigurationFactory {
         }
 
         const swiftTestingArgs = [
-            ...this.ctx.workspaceContext.toolchain.buildFlags.withAdditionalFlags(args),
+            ...this.ctx.toolchain.buildFlags.withAdditionalFlags(args),
             "--enable-swift-testing",
             "--event-stream-version",
             "0",
@@ -576,10 +576,7 @@ export class TestingConfigurationFactory {
     }
 
     private addBuildOptionsToArgs(args: string[]): string[] {
-        let result = [
-            ...args,
-            ...buildOptions(this.ctx.workspaceContext.toolchain, isDebugging(this.testKind)),
-        ];
+        let result = [...args, ...buildOptions(this.ctx.toolchain, isDebugging(this.testKind))];
         if (isRelease(this.testKind)) {
             result = [...result, "-c", "release", "-Xswiftc", "-enable-testing"];
         }
@@ -608,13 +605,11 @@ export class TestingConfigurationFactory {
     }
 
     private swiftVersionGreaterOrEqual(major: number, minor: number, patch: number): boolean {
-        return this.ctx.workspaceContext.swiftVersion.isGreaterThanOrEqual(
-            new Version(major, minor, patch)
-        );
+        return this.ctx.swiftVersion.isGreaterThanOrEqual(new Version(major, minor, patch));
     }
 
     private get swiftProgramPath(): string {
-        return this.ctx.workspaceContext.toolchain.getToolchainExecutable("swift");
+        return this.ctx.toolchain.getToolchainExecutable("swift");
     }
 
     private get buildDirectory(): string {
@@ -624,7 +619,7 @@ export class TestingConfigurationFactory {
 
     private get artifactFolderForTestKind(): string {
         const mode = isRelease(this.testKind) ? "release" : "debug";
-        const triple = this.ctx.workspaceContext.toolchain.unversionedTriple;
+        const triple = this.ctx.toolchain.unversionedTriple;
         return triple ? path.join(triple, mode) : mode;
     }
 
@@ -678,8 +673,7 @@ export class TestingConfigurationFactory {
     }
 
     private get sanitizerRuntimeEnvironment() {
-        return this.ctx.workspaceContext.toolchain.sanitizer(configuration.sanitizer)
-            ?.runtimeEnvironment;
+        return this.ctx.toolchain.sanitizer(configuration.sanitizer)?.runtimeEnvironment;
     }
 
     private get testEnv() {
