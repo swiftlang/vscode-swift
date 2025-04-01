@@ -79,7 +79,7 @@ const extensionBootstrapper = (() => {
             // https://github.com/swiftlang/sourcekit-lsp/commit/7e2d12a7a0d184cc820ae6af5ddbb8aa18b1501c
             if (
                 process.platform === "darwin" &&
-                workspaceContext.toolchain.swiftVersion.isLessThan(new Version(6, 1, 0)) &&
+                workspaceContext.globalToolchain.swiftVersion.isLessThan(new Version(6, 1, 0)) &&
                 requiresLSP
             ) {
                 this.skip();
@@ -88,7 +88,7 @@ const extensionBootstrapper = (() => {
                 this.skip();
             }
             // CodeLLDB does not work with libllbd in Swift toolchains prior to 5.10
-            if (workspaceContext.swiftVersion.isLessThan(new Version(5, 10, 0))) {
+            if (workspaceContext.globalToolchainSwiftVersion.isLessThan(new Version(5, 10, 0))) {
                 restoreSettings = await updateSettings({
                     "swift.debugger.setupCodeLLDB": "never",
                 });

@@ -12,10 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
+import * as path from "path";
+import * as fs from "fs/promises";
 import * as vscode from "vscode";
 import { FolderContext } from "./FolderContext";
 import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
 import { BuildFlags } from "./toolchain/BuildFlags";
+import { Version } from "./utilities/version";
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
@@ -28,6 +31,8 @@ export class PackageWatcher {
     private resolvedFileWatcher?: vscode.FileSystemWatcher;
     private workspaceStateFileWatcher?: vscode.FileSystemWatcher;
     private snippetWatcher?: vscode.FileSystemWatcher;
+    private swiftVersionFileWatcher?: vscode.FileSystemWatcher;
+    private currentVersion?: Version;
 
     constructor(
         private folderContext: FolderContext,
@@ -38,11 +43,12 @@ export class PackageWatcher {
      * Creates and installs {@link vscode.FileSystemWatcher file system watchers} for
      * **Package.swift** and **Package.resolved**.
      */
-    install() {
+    async install() {
         this.packageFileWatcher = this.createPackageFileWatcher();
         this.resolvedFileWatcher = this.createResolvedFileWatcher();
         this.workspaceStateFileWatcher = this.createWorkspaceStateFileWatcher();
         this.snippetWatcher = this.createSnippetFileWatcher();
+        this.swiftVersionFileWatcher = await this.createSwiftVersionFileWatcher();
     }
 
     /**
@@ -54,6 +60,7 @@ export class PackageWatcher {
         this.resolvedFileWatcher?.dispose();
         this.workspaceStateFileWatcher?.dispose();
         this.snippetWatcher?.dispose();
+        this.swiftVersionFileWatcher?.dispose();
     }
 
     private createPackageFileWatcher(): vscode.FileSystemWatcher {
@@ -97,6 +104,43 @@ export class PackageWatcher {
         watcher.onDidCreate(async () => await this.handlePackageSwiftChange());
         watcher.onDidDelete(async () => await this.handlePackageSwiftChange());
         return watcher;
+    }
+
+    private async createSwiftVersionFileWatcher(): Promise<vscode.FileSystemWatcher> {
+        const watcher = vscode.workspace.createFileSystemWatcher(
+            new vscode.RelativePattern(this.folderContext.folder, ".swift-version")
+        );
+        watcher.onDidCreate(async () => await this.handleSwiftVersionFileChange());
+        watcher.onDidChange(async () => await this.handleSwiftVersionFileChange());
+        watcher.onDidDelete(async () => await this.handleSwiftVersionFileChange());
+        this.currentVersion =
+            (await this.readSwiftVersionFile()) ?? this.folderContext.toolchain.swiftVersion;
+        return watcher;
+    }
+
+    async handleSwiftVersionFileChange() {
+        try {
+            const version = await this.readSwiftVersionFile();
+            if (version && version.toString() !== this.currentVersion?.toString()) {
+                this.workspaceContext.fireEvent(
+                    this.folderContext,
+                    FolderOperation.swiftVersionUpdated
+                );
+            }
+            this.currentVersion = version ?? this.folderContext.toolchain.swiftVersion;
+        } catch {
+            // do nothing
+        }
+    }
+
+    private async readSwiftVersionFile() {
+        const versionFile = path.join(this.folderContext.folder.fsPath, ".swift-version");
+        try {
+            const contents = await fs.readFile(versionFile);
+            return Version.fromString(contents.toString().trim());
+        } catch {
+            return undefined;
+        }
     }
 
     /**

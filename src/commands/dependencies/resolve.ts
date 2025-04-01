@@ -47,7 +47,7 @@ export async function resolveFolderDependencies(
             prefix: folderContext.name,
             presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
         },
-        folderContext.workspaceContext.toolchain
+        folderContext.toolchain
     );
 
     const success = await executeTaskWithUI(

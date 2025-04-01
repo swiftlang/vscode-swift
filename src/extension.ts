@@ -180,7 +180,7 @@ function handleFolderEvent(
                 await resolveFolderDependencies(folder, true);
             }
 
-            if (workspace.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))) {
+            if (folder.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))) {
                 workspace.statusItem.showStatusWhileRunning(
                     `Loading Swift Plugins (${FolderContext.uriName(folder.workspaceFolder.uri)})`,
                     async () => {

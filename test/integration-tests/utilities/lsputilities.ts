@@ -49,8 +49,10 @@ export namespace WorkspaceSynchronizeRequest {
         langclient.MessageDirection.clientToServer;
     export const type = new langclient.RequestType<object, object, never>(method);
 }
-export async function waitForIndex(languageClientManager: LanguageClientManager): Promise<void> {
-    const swiftVersion = languageClientManager.workspaceContext.swiftVersion;
+export async function waitForIndex(
+    languageClientManager: LanguageClientManager,
+    swiftVersion: Version
+): Promise<void> {
     const requestType = swiftVersion.isGreaterThanOrEqual(new Version(6, 2, 0))
         ? WorkspaceSynchronizeRequest.type
         : PollIndexRequest.type;

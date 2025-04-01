@@ -19,12 +19,12 @@ import * as plist from "plist";
 import * as vscode from "vscode";
 import configuration from "../configuration";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
-import { execFile, execSwift } from "../utilities/utilities";
+import { execFile, ExecFileError, execSwift } from "../utilities/utilities";
 import { expandFilePathTilde, pathExists } from "../utilities/filesystem";
 import { Version } from "../utilities/version";
 import { BuildFlags } from "./BuildFlags";
 import { Sanitizer } from "./Sanitizer";
-import { SwiftlyConfig, ToolchainVersion } from "./ToolchainVersion";
+import { SwiftlyConfig } from "./ToolchainVersion";
 
 /**
  * Contents of **Info.plist** on Windows.
@@ -117,11 +117,13 @@ export class SwiftToolchain {
         this.swiftVersionString = targetInfo.compilerVersion;
     }
 
-    static async create(): Promise<SwiftToolchain> {
+    static async create(folder?: vscode.Uri): Promise<SwiftToolchain> {
         const swiftFolderPath = await this.getSwiftFolderPath();
-        const toolchainPath = await this.getToolchainPath(swiftFolderPath);
-        const targetInfo = await this.getSwiftTargetInfo();
-        const swiftVersion = this.getSwiftVersion(targetInfo);
+        const toolchainPath = await this.getToolchainPath(swiftFolderPath, folder);
+        const targetInfo = await this.getSwiftTargetInfo(
+            this._getToolchainExecutable(toolchainPath, "swift")
+        );
+        const swiftVersion = await this.getSwiftVersion(targetInfo);
         const [runtimePath, defaultSDK] = await Promise.all([
             this.getRuntimePath(targetInfo),
             this.getDefaultSDK(),
@@ -394,9 +396,13 @@ export class SwiftToolchain {
      * Return fullpath for toolchain executable
      */
     public getToolchainExecutable(executable: string): string {
+        return SwiftToolchain._getToolchainExecutable(this.toolchainPath, executable);
+    }
+
+    private static _getToolchainExecutable(toolchainPath: string, executable: string): string {
         // should we add `.exe` at the end of the executable name
         const executableSuffix = process.platform === "win32" ? ".exe" : "";
-        return path.join(this.toolchainPath, "bin", executable + executableSuffix);
+        return path.join(toolchainPath, "bin", executable + executableSuffix);
     }
 
     private static getXcodeDirectory(toolchainPath: string): string | undefined {
@@ -615,7 +621,7 @@ export class SwiftToolchain {
     /**
      * @returns path to Toolchain folder
      */
-    private static async getToolchainPath(swiftPath: string): Promise<string> {
+    private static async getToolchainPath(swiftPath: string, cwd?: vscode.Uri): Promise<string> {
         try {
             switch (process.platform) {
                 case "darwin": {
@@ -623,7 +629,7 @@ export class SwiftToolchain {
                         return path.dirname(configuration.path);
                     }
 
-                    const swiftlyToolchainLocation = await this.swiftlyToolchainLocation();
+                    const swiftlyToolchainLocation = await this.swiftlyToolchainLocation(cwd);
                     if (swiftlyToolchainLocation) {
                         return swiftlyToolchainLocation;
                     }
@@ -648,20 +654,31 @@ export class SwiftToolchain {
      * the path to the active toolchain.
      * @returns The location of the active toolchain if swiftly is being used to manage it.
      */
-    private static async swiftlyToolchainLocation(): Promise<string | undefined> {
+    private static async swiftlyToolchainLocation(cwd?: vscode.Uri): Promise<string | undefined> {
         const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
         if (swiftlyHomeDir) {
             const { stdout: swiftLocation } = await execFile("which", ["swift"]);
             if (swiftLocation.indexOf(swiftlyHomeDir) === 0) {
-                const swiftlyConfig = await SwiftToolchain.getSwiftlyConfig();
-                if (swiftlyConfig) {
-                    const version = ToolchainVersion.parse(swiftlyConfig.inUse);
-                    return path.join(
-                        os.homedir(),
-                        "Library/Developer/Toolchains/",
-                        `${version.identifier}.xctoolchain`,
-                        "usr"
+                // Print the location of the toolchain that swiftly is using. If there
+                // is no cwd specified then it returns the global "inUse" toolchain otherwise
+                // it respects the .swift-version file in the cwd and resolves using that.
+                try {
+                    const { stdout: swiftlyLocation } = await execFile(
+                        "swiftly",
+                        ["use", "--print-location"],
+                        {
+                            cwd: cwd?.fsPath,
+                        }
                     );
+
+                    const trimmedLocation = swiftlyLocation.trimEnd();
+                    if (trimmedLocation.length > 0) {
+                        return path.join(trimmedLocation, "usr");
+                    }
+                } catch (err: unknown) {
+                    const error = err as ExecFileError;
+                    // Its possible the toolchain in .swift-version is misconfigured or doesn't exist.
+                    vscode.window.showErrorMessage(`${error.stderr}`);
                 }
             }
         }
@@ -884,10 +901,10 @@ export class SwiftToolchain {
     }
 
     /** @returns swift target info */
-    private static async getSwiftTargetInfo(): Promise<SwiftTargetInfo> {
+    private static async getSwiftTargetInfo(swiftExecutable: string): Promise<SwiftTargetInfo> {
         try {
             try {
-                const { stdout } = await execSwift(["-print-target-info"], "default");
+                const { stdout } = await execSwift(["-print-target-info"], { swiftExecutable });
                 const targetInfo = JSON.parse(stdout.trimEnd()) as SwiftTargetInfo;
                 if (targetInfo.compilerVersion) {
                     return targetInfo;
@@ -896,7 +913,7 @@ export class SwiftToolchain {
                 // hit error while running `swift -print-target-info`. We are possibly running
                 // a version of swift 5.3 or older
             }
-            const { stdout } = await execSwift(["--version"], "default");
+            const { stdout } = await execSwift(["--version"], { swiftExecutable });
             return {
                 compilerVersion: stdout.split("\n", 1)[0],
                 paths: { runtimeLibraryPaths: [""] },

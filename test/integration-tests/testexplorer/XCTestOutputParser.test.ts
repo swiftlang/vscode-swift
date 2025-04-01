@@ -73,7 +73,7 @@ ${tests.map(
     let hasMultiLineParallelTestOutput: boolean;
     activateExtensionForSuite({
         async setup(ctx) {
-            hasMultiLineParallelTestOutput = ctx.toolchain.hasMultiLineParallelTestOutput;
+            hasMultiLineParallelTestOutput = ctx.globalToolchain.hasMultiLineParallelTestOutput;
         },
     });
 

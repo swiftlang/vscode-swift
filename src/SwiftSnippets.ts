@@ -26,9 +26,9 @@ import { TaskOperation } from "./tasks/TaskQueue";
  */
 export function setSnippetContextKey(ctx: WorkspaceContext) {
     if (
-        ctx.swiftVersion.isLessThan({ major: 5, minor: 7, patch: 0 }) ||
         !ctx.currentFolder ||
-        !ctx.currentDocument
+        !ctx.currentDocument ||
+        ctx.currentFolder.swiftVersion.isLessThan({ major: 5, minor: 7, patch: 0 })
     ) {
         contextKeys.fileIsSnippet = false;
         return;
@@ -97,7 +97,7 @@ export async function debugSnippetWithOptions(
                 reveal: vscode.TaskRevealKind.Always,
             },
         },
-        ctx.toolchain
+        folderContext.toolchain
     );
     const snippetDebugConfig = createSnippetConfiguration(snippetName, folderContext);
     try {
