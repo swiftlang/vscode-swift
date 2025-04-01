@@ -35,10 +35,7 @@ export async function resetPackage(ctx: WorkspaceContext) {
  */
 export async function folderResetPackage(folderContext: FolderContext) {
     const task = createSwiftTask(
-        folderContext.workspaceContext.toolchain.buildFlags.withAdditionalFlags([
-            "package",
-            "reset",
-        ]),
+        folderContext.toolchain.buildFlags.withAdditionalFlags(["package", "reset"]),
         "Reset Package Dependencies",
         {
             cwd: folderContext.folder,
@@ -47,7 +44,7 @@ export async function folderResetPackage(folderContext: FolderContext) {
             presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
             group: vscode.TaskGroup.Clean,
         },
-        folderContext.workspaceContext.toolchain
+        folderContext.toolchain
     );
 
     return await executeTaskWithUI(task, "Reset Package", folderContext).then(
@@ -64,7 +61,7 @@ export async function folderResetPackage(folderContext: FolderContext) {
                     prefix: folderContext.name,
                     presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
                 },
-                folderContext.workspaceContext.toolchain
+                folderContext.toolchain
             );
 
             const result = await executeTaskWithUI(

@@ -27,8 +27,8 @@ suite("lldb contract test suite", () => {
             if (
                 process.env["CI"] &&
                 process.platform === "win32" &&
-                ctx.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
-                ctx.swiftVersion.isLessThan(new Version(6, 0, 2))
+                ctx.globalToolchainSwiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
+                ctx.globalToolchainSwiftVersion.isLessThan(new Version(6, 0, 2))
             ) {
                 this.skip();
             }
@@ -38,7 +38,7 @@ suite("lldb contract test suite", () => {
     });
 
     test("getLLDBLibPath Contract Test, make sure we can find lib LLDB", async () => {
-        const libPath = await getLLDBLibPath(workspaceContext.toolchain);
+        const libPath = await getLLDBLibPath(workspaceContext.globalToolchain);
 
         // Check the result for various platforms
         if (process.platform === "linux") {

@@ -44,7 +44,7 @@ async function uneditFolderDependency(
 ) {
     try {
         const uneditOperation = new SwiftExecOperation(
-            ctx.toolchain.buildFlags.withAdditionalFlags([
+            folder.toolchain.buildFlags.withAdditionalFlags([
                 "package",
                 "unedit",
                 ...args,
