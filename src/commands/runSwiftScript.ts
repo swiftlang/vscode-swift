@@ -40,33 +40,50 @@ export async function runSwiftScript(ctx: WorkspaceContext) {
         return;
     }
 
-    let filename = document.fileName;
-    let isTempFile = false;
-    if (document.isUntitled) {
-        // if document hasn't been saved, save it to a temporary file
-        isTempFile = true;
-        filename = ctx.tempFolder.filename(document.fileName, "swift");
-        const text = document.getText();
-        await fs.writeFile(filename, text);
-    } else {
-        // otherwise save document
-        await document.save();
+    const picked = await vscode.window.showQuickPick(
+        [
+            // Potnetially add more versions here
+            { value: 5, label: "Swift 5" },
+            { value: 6, label: "Swift 6" },
+        ],
+        {
+            placeHolder: "Select a target Swift version",
+        }
+    );
+
+    if (!picked) {
+        return;
     }
 
-    const runTask = createSwiftTask(
-        [filename],
-        `Run ${filename}`,
-        {
-            scope: vscode.TaskScope.Global,
-            cwd: vscode.Uri.file(path.dirname(filename)),
-            presentationOptions: { reveal: vscode.TaskRevealKind.Always, clear: true },
-        },
-        ctx.toolchain
-    );
-    await ctx.tasks.executeTaskAndWait(runTask);
+    if (picked) {
+        const target = picked.value;
+        let filename = document.fileName;
+        let isTempFile = false;
+        if (document.isUntitled) {
+            // if document hasn't been saved, save it to a temporary file
+            isTempFile = true;
+            filename = ctx.tempFolder.filename(document.fileName, "swift");
+            const text = document.getText();
+            await fs.writeFile(filename, text);
+        } else {
+            // otherwise save document
+            await document.save();
+        }
+        const runTask = createSwiftTask(
+            ["-swift-version", target.toString(), filename],
+            `Run ${filename}`,
+            {
+                scope: vscode.TaskScope.Global,
+                cwd: vscode.Uri.file(path.dirname(filename)),
+                presentationOptions: { reveal: vscode.TaskRevealKind.Always, clear: true },
+            },
+            ctx.toolchain
+        );
+        await ctx.tasks.executeTaskAndWait(runTask);
 
-    // delete file after running swift
-    if (isTempFile) {
-        await fs.rm(filename);
+        // delete file after running swift
+        if (isTempFile) {
+            await fs.rm(filename);
+        }
     }
 }
