@@ -68,7 +68,7 @@ class SwiftLegacyInlayHintsProvider implements vscode.InlayHintsProvider {
 /** activate the inlay hints */
 export function activateLegacyInlayHints(client: langclient.LanguageClient): vscode.Disposable {
     const inlayHint = vscode.languages.registerInlayHintsProvider(
-        LanguagerClientDocumentSelectors.allHandledDocumentTypes(),
+        LanguagerClientDocumentSelectors.sourcekitLSPDocumentTypes(),
         new SwiftLegacyInlayHintsProvider(client)
     );
 
