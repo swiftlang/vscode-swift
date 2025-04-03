@@ -329,7 +329,7 @@ const configuration = {
             .map(substituteVariablesInString);
     },
     get defaultSwiftVersion(): number | undefined {
-        return vscode.workspace.getConfiguration("swift").get<number>("script.defaultSwiftVersion");
+        return vscode.workspace.getConfiguration("swift").get<number>("defaultSwiftVersion");
     },
     /** swift package arguments */
     get packageArguments(): string[] {
