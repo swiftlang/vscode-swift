@@ -110,14 +110,18 @@ export class SwiftPtyProcess implements SwiftProcess {
             });
             this.spawnEmitter.fire();
             this.spawnedProcess.onData(data => {
+                console.log(data);
                 this.writeEmitter.fire(data);
             });
             this.spawnedProcess.onExit(event => {
                 if (event.signal) {
                     this.closeEmitter.fire(event.signal);
+                    console.log(`>>> SwiftPtyProcess exited due to signal ${event.signal}`);
                 } else if (typeof event.exitCode === "number") {
+                    console.log(`>>> SwiftPtyProcess exited with code ${event.exitCode}`);
                     this.closeEmitter.fire(event.exitCode);
                 } else {
+                    console.log(`>>> SwiftPtyProcess exited`);
                     this.closeEmitter.fire();
                 }
             });
