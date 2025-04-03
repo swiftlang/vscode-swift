@@ -325,17 +325,13 @@
             "markdownDescription": "Additional arguments to pass to `swift build` and `swift test`. Keys and values should be provided as individual entries in the list. If you have created a copy of the build task in `tasks.json` then these build arguments will not be propagated to that task."
           },
           "swift.defaultSwiftVersion": {
-            "type": "number",
+            "type": [
+              "number",
+              null
+            ],
             "default": null,
             "markdownDescription": "The default Swift version to use when running Swift scripts. If set, skips the version selection dialog.",
-            "enum": [
-              5,
-              6
-            ],
-            "enumDescriptions": [
-              "Swift 5",
-              "Swift 6"
-            ]
+            "scope": "machine-overridable"
           },
           "swift.packageArguments": {
             "type": "array",

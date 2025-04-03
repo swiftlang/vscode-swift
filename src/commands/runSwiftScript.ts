@@ -44,7 +44,7 @@ export async function runSwiftScript(ctx: WorkspaceContext) {
     let target: number;
 
     const defaultVersion = configuration.defaultSwiftVersion;
-    if (defaultVersion !== undefined) {
+    if (defaultVersion !== undefined && defaultVersion !== null) {
         target = defaultVersion;
     } else {
         const picked = await vscode.window.showQuickPick(
