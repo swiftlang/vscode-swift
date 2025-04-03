@@ -97,10 +97,9 @@ const extensionBootstrapper = (() => {
             } catch (error: any) {
                 // Mocha will throw an error to break out of a test if `.skip` is used.
                 if (error.message?.indexOf("sync skip;") === -1) {
-                    console.error(`Error during test/suite setup: ${JSON.stringify(error)}`);
-                    console.error("Captured logs are:");
+                    console.error(`Error during test/suite setup, captured logs are:`);
                     workspaceContext.outputChannel.logs.map(log => console.error(log));
-                    console.error("================ end test logs ================");
+                    console.log("======== END OF LOGS ========\n\n");
                 }
                 throw error;
             }
@@ -141,6 +140,7 @@ const extensionBootstrapper = (() => {
                 if (workspaceContext) {
                     console.error(`Error during test/suite teardown, captured logs are:`);
                     workspaceContext.outputChannel.logs.map(log => console.log(log));
+                    console.log("======== END OF LOGS ========\n\n");
                 }
                 throw error;
             }

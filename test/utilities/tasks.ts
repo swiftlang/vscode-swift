@@ -109,7 +109,9 @@ export function waitForNoRunningTasks(options?: { timeout: number }): Promise<vo
                 disposable.dispose();
                 const runningTasks = vscode.tasks.taskExecutions.map(e => e.task.name);
                 reject(
-                    `Timed out waiting for tasks to complete. The following ${runningTasks.length} tasks are still running: ${runningTasks}.`
+                    new Error(
+                        `Timed out waiting for tasks to complete. The following ${runningTasks.length} tasks are still running: ${runningTasks}.`
+                    )
                 );
             }, options.timeout);
         }
