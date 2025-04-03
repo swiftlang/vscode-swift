@@ -39,7 +39,7 @@ import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 suite("ProjectPanelProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;
     let treeProvider: ProjectPanelProvider;
-    this.timeout(2 * 60 * 1000); // Allow up to 2 minutes to build
+    this.timeout(5 * 60 * 1000); // Allow up to 5 minutes to build
 
     activateExtensionForSuite({
         async setup(ctx) {
