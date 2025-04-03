@@ -125,6 +125,7 @@ const extensionBootstrapper = (() => {
         });
 
         after(async function () {
+            let userTeardownError: unknown | undefined;
             try {
                 // First run the users supplied teardown, then await the autoTeardown if it exists.
                 if (teardown) {
@@ -133,19 +134,29 @@ const extensionBootstrapper = (() => {
                 if (autoTeardown) {
                     await autoTeardown();
                 }
-                if (restoreSettings) {
-                    await restoreSettings();
-                }
             } catch (error) {
                 if (workspaceContext) {
                     console.error(`Error during test/suite teardown, captured logs are:`);
                     workspaceContext.outputChannel.logs.map(log => console.log(log));
                     console.log("======== END OF LOGS ========\n\n");
                 }
-                throw error;
+                // We always want to restore settings and deactivate the extension even if the
+                // user supplied teardown fails. That way we have the best chance at not causing
+                // issues with the next test.
+                //
+                // Store the error and re-throw it after extension deactivation.
+                userTeardownError = error;
             }
 
+            if (restoreSettings) {
+                await restoreSettings();
+            }
             await extensionBootstrapper.deactivateExtension();
+
+            // Re-throw the user supplied teardown error
+            if (userTeardownError) {
+                throw userTeardownError;
+            }
         });
     }
 
