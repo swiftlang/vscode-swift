@@ -16,7 +16,7 @@
 import { exec, getExtensionVersion, getRootDirectory, main } from "./lib/utilities";
 
 /**
- * Formats the given date as a string in the form "YYYYMMddhhmm".
+ * Formats the given date as a string in the form "YYYYMMdd".
  *
  * @param date The date to format as a string.
  * @returns The formatted date.
@@ -25,9 +25,7 @@ function formatDate(date: Date): string {
     const year = date.getUTCFullYear().toString().padStart(4, "0");
     const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
     const day = date.getUTCDate().toString().padStart(2, "0");
-    const hour = date.getUTCHours().toString().padStart(2, "0");
-    const minutes = date.getUTCMinutes().toString().padStart(2, "0");
-    return year + month + day + hour + minutes;
+    return year + month + day;
 }
 
 main(async () => {

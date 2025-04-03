@@ -32,7 +32,7 @@ When you first open the project in VS Code you will be recommended to also insta
 
 To run your version of the Swift extension while in VS Code, press `F5`. This will open up another instance of VS Code with it running. You can use the original version of VS Code to debug it.
 
-### Installing a pre-released version
+### Installing Pre-Release Builds
 
 If you'd like to try out a change during your day to day work that has not yet been released to the VS Code Marketplace you can build and install your own `.vsix` package from this repository.
 
@@ -53,6 +53,18 @@ code --install-extension swift-vscode-[version]-dev.vsix
 Alternatively you can install the extension from the Extensions panel by clicking the `...` button at the top of the panel and choosing `Install from VSIX...`.
 
 If you'd like to return to using the released version of the extension you can uninstall then reinstall Swift for VS Code from the Extensions panel.
+
+#### Pre-Release Builds on the Marketplace
+
+Occasionally, pre-release builds will be published to the VS Code Marketplace. You can switch to the pre-release version by clicking on the `Switch to Pre-Release Version` button in the Extensions View:
+
+![](docs/images/install-pre-release.png)
+
+Switching back to the release version can be done by clicking on the `Switch to Release Version` button.
+
+Release builds for the extension will always have an even minor version number (e.g. `2.0.2`). Pre-release versions will always be one minor version above the latest release version with a patch version set to the day that the VSIX was built (e.g. `2.1.20250327`). These rules are enforced by CI.
+
+The version number in the [package.json](package.json) should always match the most recently published build on the VS Code Marketplace.
 
 ## Submitting a bug or issue
 
