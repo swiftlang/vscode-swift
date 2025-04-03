@@ -211,24 +211,28 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         }
         switch (userSelection) {
             case "Global":
-                lldbConfig.update("library", libLldbPath, vscode.ConfigurationTarget.Global);
-                lldbConfig.update(
+                await lldbConfig.update("library", libLldbPath, vscode.ConfigurationTarget.Global);
+                await lldbConfig.update(
                     "launch.expressions",
                     "native",
                     vscode.ConfigurationTarget.Global
                 );
                 // clear workspace setting
-                lldbConfig.update("library", undefined, vscode.ConfigurationTarget.Workspace);
+                await lldbConfig.update("library", undefined, vscode.ConfigurationTarget.Workspace);
                 // clear workspace setting
-                lldbConfig.update(
+                await lldbConfig.update(
                     "launch.expressions",
                     undefined,
                     vscode.ConfigurationTarget.Workspace
                 );
                 break;
             case "Workspace":
-                lldbConfig.update("library", libLldbPath, vscode.ConfigurationTarget.Workspace);
-                lldbConfig.update(
+                await lldbConfig.update(
+                    "library",
+                    libLldbPath,
+                    vscode.ConfigurationTarget.Workspace
+                );
+                await lldbConfig.update(
                     "launch.expressions",
                     "native",
                     vscode.ConfigurationTarget.Workspace
