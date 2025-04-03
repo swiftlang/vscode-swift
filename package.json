@@ -327,7 +327,7 @@
           "swift.defaultSwiftVersion": {
             "type": "number",
             "default": null,
-            "description": "The default Swift version to use when running Swift scripts. If set, skips the version selection dialog.",
+            "markdownDescription": "The default Swift version to use when running Swift scripts. If set, skips the version selection dialog.",
             "enum": [
               5,
               6
