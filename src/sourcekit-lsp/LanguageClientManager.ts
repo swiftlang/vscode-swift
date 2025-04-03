@@ -409,7 +409,7 @@ export class LanguageClientManager implements vscode.Disposable {
 
         const serverOptions: ServerOptions = sourcekit;
         let workspaceFolder = undefined;
-        if (folder) {
+        if (folder && !this.singleServerSupport) {
             workspaceFolder = {
                 uri: folder.folder,
                 name: FolderContext.uriName(folder.folder),
