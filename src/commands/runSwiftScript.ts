@@ -42,7 +42,7 @@ export async function runSwiftScript(ctx: WorkspaceContext) {
 
     const picked = await vscode.window.showQuickPick(
         [
-            // Potnetially add more versions here
+            // Potentially add more versions here
             { value: 5, label: "Swift 5" },
             { value: 6, label: "Swift 6" },
         ],
