@@ -112,7 +112,7 @@ export class LanguagerClientDocumentSelectors {
         { scheme: "file", language: "plaintext", pattern: "**/.swift-version" },
     ];
 
-    static allHandledDocumentTypes(): DocumentSelector {
+    static sourcekitLSPDocumentTypes(): DocumentSelector {
         let documentSelector: SourceKitDocumentSelector;
         switch (configuration.lsp.supportCFamily) {
             case "enable":
@@ -142,8 +142,14 @@ export class LanguagerClientDocumentSelectors {
             return configuration.lsp.supportedLanguages.includes(doc.language);
         });
         documentSelector.push(...LanguagerClientDocumentSelectors.documentationDocumentSelector);
-        documentSelector.push(...LanguagerClientDocumentSelectors.miscelaneousDocumentSelector);
         return documentSelector;
+    }
+
+    static allHandledDocumentTypes(): DocumentSelector {
+        return [
+            ...this.sourcekitLSPDocumentTypes(),
+            ...LanguagerClientDocumentSelectors.miscelaneousDocumentSelector,
+        ];
     }
 }
 
@@ -159,7 +165,7 @@ export function lspClientOptions(
     ) => void
 ): LanguageClientOptions {
     return {
-        documentSelector: LanguagerClientDocumentSelectors.allHandledDocumentTypes(),
+        documentSelector: LanguagerClientDocumentSelectors.sourcekitLSPDocumentTypes(),
         revealOutputChannelOn: RevealOutputChannelOn.Never,
         workspaceFolder: workspaceFolder,
         outputChannel: new SwiftOutputChannel("SourceKit Language Server"),
