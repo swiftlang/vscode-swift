@@ -18,6 +18,7 @@ import * as fs from "fs/promises";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { Version } from "../utilities/version";
+import configuration from "../configuration";
 
 /**
  * Run the active document through the Swift REPL
@@ -40,50 +41,55 @@ export async function runSwiftScript(ctx: WorkspaceContext) {
         return;
     }
 
-    const picked = await vscode.window.showQuickPick(
-        [
-            // Potentially add more versions here
-            { value: 5, label: "Swift 5" },
-            { value: 6, label: "Swift 6" },
-        ],
-        {
-            placeHolder: "Select a target Swift version",
-        }
-    );
+    let target: number;
 
-    if (!picked) {
-        return;
+    const defaultVersion = configuration.defaultSwiftVersion;
+    if (defaultVersion !== undefined) {
+        target = defaultVersion;
+    } else {
+        const picked = await vscode.window.showQuickPick(
+            [
+                // Potentially add more versions here
+                { value: 5, label: "Swift 5" },
+                { value: 6, label: "Swift 6" },
+            ],
+            {
+                placeHolder: "Select a target Swift version",
+            }
+        );
+
+        if (!picked) {
+            return;
+        }
+        target = picked.value;
     }
 
-    if (picked) {
-        const target = picked.value;
-        let filename = document.fileName;
-        let isTempFile = false;
-        if (document.isUntitled) {
-            // if document hasn't been saved, save it to a temporary file
-            isTempFile = true;
-            filename = ctx.tempFolder.filename(document.fileName, "swift");
-            const text = document.getText();
-            await fs.writeFile(filename, text);
-        } else {
-            // otherwise save document
-            await document.save();
-        }
-        const runTask = createSwiftTask(
-            ["-swift-version", target.toString(), filename],
-            `Run ${filename}`,
-            {
-                scope: vscode.TaskScope.Global,
-                cwd: vscode.Uri.file(path.dirname(filename)),
-                presentationOptions: { reveal: vscode.TaskRevealKind.Always, clear: true },
-            },
-            ctx.toolchain
-        );
-        await ctx.tasks.executeTaskAndWait(runTask);
+    let filename = document.fileName;
+    let isTempFile = false;
+    if (document.isUntitled) {
+        // if document hasn't been saved, save it to a temporary file
+        isTempFile = true;
+        filename = ctx.tempFolder.filename(document.fileName, "swift");
+        const text = document.getText();
+        await fs.writeFile(filename, text);
+    } else {
+        // otherwise save document
+        await document.save();
+    }
+    const runTask = createSwiftTask(
+        ["-swift-version", target.toString(), filename],
+        `Run ${filename}`,
+        {
+            scope: vscode.TaskScope.Global,
+            cwd: vscode.Uri.file(path.dirname(filename)),
+            presentationOptions: { reveal: vscode.TaskRevealKind.Always, clear: true },
+        },
+        ctx.toolchain
+    );
+    await ctx.tasks.executeTaskAndWait(runTask);
 
-        // delete file after running swift
-        if (isTempFile) {
-            await fs.rm(filename);
-        }
+    // delete file after running swift
+    if (isTempFile) {
+        await fs.rm(filename);
     }
 }
