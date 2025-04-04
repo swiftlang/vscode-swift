@@ -337,7 +337,7 @@
               "Prompt to select the Swift version each time a script is run."
             ],
             "default": "6",
-            "markdownDescription": "The default Swift version to use when running Swift scripts. If set, skips the version selection dialog.",
+            "markdownDescription": "The default Swift version to use when running Swift scripts.",
             "scope": "machine-overridable"
           },
           "swift.packageArguments": {
