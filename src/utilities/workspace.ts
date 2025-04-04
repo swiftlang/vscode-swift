@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import * as path from "path";
 import * as vscode from "vscode";
 import { pathExists } from "./filesystem";
 
@@ -54,9 +55,26 @@ export async function isValidWorkspaceFolder(
     folder: string,
     disableSwiftPMIntegration: boolean
 ): Promise<boolean> {
+    async function findInSubdirectories(folder: string, fileName: string): Promise<boolean> {
+        const entries = await vscode.workspace.fs.readDirectory(vscode.Uri.file(folder));
+        for (const [entryName, entryType] of entries) {
+            if (entryType === vscode.FileType.File && entryName === fileName) {
+                return true;
+            }
+            if (entryType === vscode.FileType.Directory && entryName[0] !== ".") {
+                const found = await findInSubdirectories(path.join(folder, entryName), fileName);
+                if (found) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     return (
         (!disableSwiftPMIntegration && (await pathExists(folder, "Package.swift"))) ||
         (await pathExists(folder, "compile_commands.json")) ||
+        (await findInSubdirectories(folder, "compile_commands.json")) ||
         (await pathExists(folder, "compile_flags.txt")) ||
         (await pathExists(folder, "buildServer.json"))
     );
