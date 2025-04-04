@@ -44,9 +44,7 @@ export async function runSwiftScript(ctx: WorkspaceContext) {
     let target: string;
 
     const defaultVersion = configuration.scriptSwiftLanguageVersion;
-    if (defaultVersion !== "") {
-        target = defaultVersion;
-    } else {
+    if (defaultVersion === "Ask Every Run") {
         const picked = await vscode.window.showQuickPick(
             [
                 // Potentially add more versions here
@@ -62,6 +60,8 @@ export async function runSwiftScript(ctx: WorkspaceContext) {
             return;
         }
         target = picked.value;
+    } else {
+        target = defaultVersion;
     }
 
     let filename = document.fileName;
