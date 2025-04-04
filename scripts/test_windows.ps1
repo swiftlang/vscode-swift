@@ -12,9 +12,6 @@
 ##
 ##===----------------------------------------------------------------------===##
 
-$env:CI = "1"
-$env:FAST_TEST_RUN = "1"
-
 # In newer Visual C++ Tools they've added compiler intrinsics headers in wchar.h
 # that end up creating a cyclic dependency between the `ucrt` and compiler intrinsics modules.
 # Newer versions of swift (6.2) have a fixed modulemap that resolves the issue: https://github.com/swiftlang/swift/pull/79751
