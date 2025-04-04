@@ -481,8 +481,8 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
             return element.getChildren();
         }
 
-        const dependencies = this.dependencies();
-        const snippets = this.snippets();
+        const dependencies = await this.dependencies();
+        const snippets = await this.snippets();
         const commands = await this.commands();
 
         // TODO: Control ordering
@@ -493,11 +493,11 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                           "dependencies",
                           "Dependencies",
                           "circuit-board",
-                          this.wrapInAsync(this.dependencies.bind(this))
+                          this.dependencies.bind(this)
                       ),
                   ]
                 : []),
-            new HeaderNode("targets", "Targets", "book", this.wrapInAsync(this.targets.bind(this))),
+            new HeaderNode("targets", "Targets", "book", this.targets.bind(this)),
             new HeaderNode(
                 "tasks",
                 "Tasks",
@@ -521,12 +521,13 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         ];
     }
 
-    private dependencies(): TreeNode[] {
+    private async dependencies(): Promise<TreeNode[]> {
         const folderContext = this.workspaceContext.currentFolder;
         if (!folderContext) {
             return [];
         }
         const pkg = folderContext.swiftPackage;
+        const rootDeps = await pkg.rootDependencies;
         if (contextKeys.flatDependenciesList) {
             const existenceMap = new Map<string, boolean>();
             const gatherChildren = (dependencies: ResolvedDependency[]): ResolvedDependency[] => {
@@ -542,28 +543,26 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                 return result;
             };
 
-            const rootDeps = pkg.rootDependencies();
             const allDeps = gatherChildren(rootDeps);
             return allDeps.map(dependency => new PackageNode(dependency, () => []));
         } else {
             const childDeps = pkg.childDependencies.bind(pkg);
-            return pkg.rootDependencies().map(dep => new PackageNode(dep, childDeps));
+            return rootDeps.map(dep => new PackageNode(dep, childDeps));
         }
     }
 
-    private targets(): TreeNode[] {
+    private async targets(): Promise<TreeNode[]> {
         const folderContext = this.workspaceContext.currentFolder;
         if (!folderContext) {
             return [];
         }
         const targetSort = (node: TargetNode) => `${node.target.type}-${node.name}`;
-        return (
-            folderContext.swiftPackage.targets
-                // Snipepts are shown under the Snippets header
-                .filter(target => target.type !== "snippet")
-                .map(target => new TargetNode(target, this.activeTasks))
-                .sort((a, b) => targetSort(a).localeCompare(targetSort(b)))
-        );
+        const targets = await folderContext.swiftPackage.targets;
+        // Snipepts are shown under the Snippets header
+        return targets
+            .filter(target => target.type !== "snippet")
+            .map(target => new TargetNode(target, this.activeTasks))
+            .sort((a, b) => targetSort(a).localeCompare(targetSort(b)));
     }
 
     private async tasks(folderContext: FolderContext): Promise<TaskNode[]> {
@@ -606,18 +605,15 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
             .sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    private snippets(): TreeNode[] {
+    private async snippets(): Promise<TreeNode[]> {
         const folderContext = this.workspaceContext.currentFolder;
         if (!folderContext) {
             return [];
         }
-        return folderContext.swiftPackage.targets
+        const targets = await folderContext.swiftPackage.targets;
+        return targets
             .filter(target => target.type === "snippet")
             .flatMap(target => new TargetNode(target, this.activeTasks))
             .sort((a, b) => a.name.localeCompare(b.name));
-    }
-
-    private wrapInAsync<T>(fn: () => T): () => Promise<T> {
-        return async () => fn();
     }
 }

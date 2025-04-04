@@ -69,7 +69,7 @@ suite("Test Explorer Suite", function () {
 
             testExplorer = targetFolder.addTestExplorer();
 
-            await executeTaskAndWaitForResult(createBuildAllTask(targetFolder));
+            await executeTaskAndWaitForResult(await createBuildAllTask(targetFolder));
 
             // Set up the listener before bringing the text explorer in to focus,
             // which starts searching the workspace for tests.

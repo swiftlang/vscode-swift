@@ -43,17 +43,24 @@ const defaultTags = [runnableTag.id, "test-target", "XCTest", "swift-testing"];
  * @param swiftPackage A swift package containing test targets
  * @param testClasses Array of test classes
  */
-export function updateTestsFromClasses(
+export async function updateTestsFromClasses(
     testController: vscode.TestController,
     swiftPackage: SwiftPackage,
     testItems: TestClass[]
 ) {
-    const targets = swiftPackage.getTargets(TargetType.test).map(target => {
-        const filteredItems = testItems.filter(
-            testItem =>
-                testItem.location && swiftPackage.getTarget(testItem.location.uri.fsPath) === target
-        );
-        return {
+    const targets = await swiftPackage.getTargets(TargetType.test);
+    const results: TestClass[] = [];
+    for (const target of targets) {
+        const filteredItems: TestClass[] = [];
+        for (const testItem of testItems) {
+            if (
+                testItem.location &&
+                (await swiftPackage.getTarget(testItem.location.uri.fsPath)) === target
+            ) {
+                filteredItems.push(testItem);
+            }
+        }
+        results.push({
             id: target.c99name,
             label: target.name,
             children: filteredItems,
@@ -61,9 +68,9 @@ export function updateTestsFromClasses(
             disabled: false,
             style: "test-target",
             tags: [],
-        } as TestClass;
-    });
-    updateTests(testController, targets);
+        });
+    }
+    updateTests(testController, results);
 }
 
 export function updateTestsForTarget(
