@@ -15,8 +15,8 @@
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 import configuration from "../configuration";
-import { LanguageClientManager } from "./LanguageClientManager";
 import { LegacyInlayHintRequest } from "./extensions";
+import { LanguagerClientDocumentSelectors } from "./LanguageClientConfiguration";
 
 /** Provide Inlay Hints using sourcekit-lsp */
 class SwiftLegacyInlayHintsProvider implements vscode.InlayHintsProvider {
@@ -68,7 +68,7 @@ class SwiftLegacyInlayHintsProvider implements vscode.InlayHintsProvider {
 /** activate the inlay hints */
 export function activateLegacyInlayHints(client: langclient.LanguageClient): vscode.Disposable {
     const inlayHint = vscode.languages.registerInlayHintsProvider(
-        LanguageClientManager.documentSelector,
+        LanguagerClientDocumentSelectors.sourcekitLSPDocumentTypes(),
         new SwiftLegacyInlayHintsProvider(client)
     );
 

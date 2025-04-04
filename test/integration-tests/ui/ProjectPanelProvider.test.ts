@@ -125,7 +125,7 @@ suite("ProjectPanelProvider Test Suite", function () {
             // In Swift 5.10 and below the build tasks are disabled while other tasks that could modify .build are running.
             // Typically because the extension has just started up in tests its `swift test list` that runs to gather tests
             // for the test explorer. If we're running 5.10 or below, poll for the build all task for up to 60 seconds.
-            if (workspaceContext.toolchain.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+            if (workspaceContext.globalToolchain.swiftVersion.isLessThan(new Version(6, 0, 0))) {
                 const startTime = Date.now();
                 let task: PackageNode | undefined;
                 while (!task && Date.now() - startTime < 45 * 1000) {
@@ -174,7 +174,9 @@ suite("ProjectPanelProvider Test Suite", function () {
         test("Executes a snippet", async function () {
             if (
                 process.platform === "win32" &&
-                workspaceContext.toolchain.swiftVersion.isLessThanOrEqual(new Version(5, 9, 0))
+                workspaceContext.globalToolchain.swiftVersion.isLessThanOrEqual(
+                    new Version(5, 9, 0)
+                )
             ) {
                 this.skip();
             }
@@ -196,7 +198,9 @@ suite("ProjectPanelProvider Test Suite", function () {
         test("Includes commands", async function () {
             if (
                 process.platform === "win32" &&
-                workspaceContext.toolchain.swiftVersion.isLessThanOrEqual(new Version(6, 0, 0))
+                workspaceContext.globalToolchain.swiftVersion.isLessThanOrEqual(
+                    new Version(6, 0, 0)
+                )
             ) {
                 this.skip();
             }
@@ -213,7 +217,9 @@ suite("ProjectPanelProvider Test Suite", function () {
         test("Executes a command", async function () {
             if (
                 process.platform === "win32" &&
-                workspaceContext.toolchain.swiftVersion.isLessThanOrEqual(new Version(6, 0, 0))
+                workspaceContext.globalToolchain.swiftVersion.isLessThanOrEqual(
+                    new Version(6, 0, 0)
+                )
             ) {
                 this.skip();
             }

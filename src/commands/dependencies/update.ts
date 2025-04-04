@@ -44,7 +44,7 @@ export async function updateFolderDependencies(folderContext: FolderContext) {
             prefix: folderContext.name,
             presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
         },
-        folderContext.workspaceContext.toolchain
+        folderContext.toolchain
     );
 
     const result = await executeTaskWithUI(task, "Updating Dependencies", folderContext);

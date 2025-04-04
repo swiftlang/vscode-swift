@@ -111,16 +111,20 @@ suite("Extension Activation/Deactivation Tests", () => {
         });
 
         test("compile_commands.json", async () => {
-            const lspWorkspaces = workspaceContext.languageClientManager.subFolderWorkspaces.map(
-                ({ fsPath }) => fsPath
-            );
+            const folder = workspaceContext.folders[0];
+            assert(folder);
+
+            const languageClient = workspaceContext.languageClientManager.get(folder);
+            const lspWorkspaces = languageClient.subFolderWorkspaces.map(({ fsPath }) => fsPath);
             assertContains(lspWorkspaces, testAssetUri("cmake").fsPath);
         });
 
         test("compile_flags.txt", async () => {
-            const lspWorkspaces = workspaceContext.languageClientManager.subFolderWorkspaces.map(
-                ({ fsPath }) => fsPath
-            );
+            const folder = workspaceContext.folders[0];
+            assert(folder);
+
+            const languageClient = workspaceContext.languageClientManager.get(folder);
+            const lspWorkspaces = languageClient.subFolderWorkspaces.map(({ fsPath }) => fsPath);
             assertContains(lspWorkspaces, testAssetUri("cmake-compile-flags").fsPath);
         });
     });
