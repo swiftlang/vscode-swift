@@ -118,13 +118,9 @@ export class SwiftToolchain {
     }
 
     static async create(): Promise<SwiftToolchain> {
-        console.log(">>>Create SwiftToolchain");
         const swiftFolderPath = await this.getSwiftFolderPath();
-        console.log(">>>>>>  SwiftFolderPath: " + swiftFolderPath);
         const toolchainPath = await this.getToolchainPath(swiftFolderPath);
-        console.log(">>>ToolchainPath: " + toolchainPath);
         const targetInfo = await this.getSwiftTargetInfo();
-        console.log(">>>TargetInfo: " + targetInfo);
         const swiftVersion = this.getSwiftVersion(targetInfo);
         const [runtimePath, defaultSDK] = await Promise.all([
             this.getRuntimePath(targetInfo),
@@ -147,12 +143,6 @@ export class SwiftToolchain {
             ),
             this.getSwiftPMTestingHelperPath(toolchainPath),
         ]);
-        console.log(">>>SwiftVersion: " + swiftVersion);
-        console.log(">>>RuntimePath: " + runtimePath);
-        console.log(">>>DefaultSDK: " + defaultSDK);
-        console.log(">>>CustomSDK: " + customSDK);
-        console.log(">>>XCTestPath: " + xcTestPath);
-        console.log(">>>SwiftTestingPath: " + swiftTestingPath);
 
         return new SwiftToolchain(
             swiftFolderPath,
