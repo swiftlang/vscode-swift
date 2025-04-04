@@ -60,7 +60,7 @@ function assertWithoutDiagnostic(uri: vscode.Uri, expected: vscode.Diagnostic) {
 
 suite("DiagnosticsManager Test Suite", async function () {
     // Was hitting a timeout in suiteSetup during CI build once in a while
-    this.timeout(5000);
+    this.timeout(15000);
 
     const swiftConfig = vscode.workspace.getConfiguration("swift");
 

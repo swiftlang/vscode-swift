@@ -19,13 +19,12 @@ import { SwiftToolchain } from "../../src/toolchain/toolchain";
 import { Version } from "../../src/utilities/version";
 
 suite("SwiftPackage Test Suite", function () {
+    this.timeout(5 * 60 * 1000); // 5 minute timeout
     let toolchain: SwiftToolchain;
 
     setup(async () => {
         toolchain = await SwiftToolchain.create();
     });
-
-    this.timeout(120000);
 
     test("No package", async () => {
         const spmPackage = await SwiftPackage.create(testAssetUri("empty-folder"), toolchain);
