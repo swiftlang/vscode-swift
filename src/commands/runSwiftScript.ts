@@ -41,17 +41,17 @@ export async function runSwiftScript(ctx: WorkspaceContext) {
         return;
     }
 
-    let target: number;
+    let target: string;
 
     const defaultVersion = configuration.scriptSwiftLanguageVersion;
-    if (defaultVersion !== undefined && defaultVersion !== null) {
+    if (defaultVersion !== "") {
         target = defaultVersion;
     } else {
         const picked = await vscode.window.showQuickPick(
             [
                 // Potentially add more versions here
-                { value: 5, label: "Swift 5" },
-                { value: 6, label: "Swift 6" },
+                { value: "5", label: "Swift 5" },
+                { value: "6", label: "Swift 6" },
             ],
             {
                 placeHolder: "Select a target Swift version",
@@ -77,7 +77,7 @@ export async function runSwiftScript(ctx: WorkspaceContext) {
         await document.save();
     }
     const runTask = createSwiftTask(
-        ["-swift-version", target.toString(), filename],
+        ["-swift-version", target, filename],
         `Run ${filename}`,
         {
             scope: vscode.TaskScope.Global,
