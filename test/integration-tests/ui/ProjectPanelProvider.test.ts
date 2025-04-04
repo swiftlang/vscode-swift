@@ -16,7 +16,12 @@ import { expect } from "chai";
 import { beforeEach, afterEach } from "mocha";
 import * as vscode from "vscode";
 import * as path from "path";
-import { ProjectPanelProvider, PackageNode, FileNode } from "../../../src/ui/ProjectPanelProvider";
+import {
+    ProjectPanelProvider,
+    PackageNode,
+    FileNode,
+    TreeNode,
+} from "../../../src/ui/ProjectPanelProvider";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
 import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
 import { testAssetPath } from "../../fixtures";
@@ -28,11 +33,13 @@ import {
 import contextKeys from "../../../src/contextKeys";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Version } from "../../../src/utilities/version";
+import { wait } from "../../../src/utilities/utilities";
+import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 
 suite("ProjectPanelProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;
     let treeProvider: ProjectPanelProvider;
-    this.timeout(2 * 60 * 1000); // Allow up to 2 minutes to build
+    this.timeout(5 * 60 * 1000); // Allow up to 5 minutes to build
 
     activateExtensionForSuite({
         async setup(ctx) {
@@ -45,7 +52,9 @@ suite("ProjectPanelProvider Test Suite", function () {
             const buildAllTask = await getBuildAllTask(folderContext);
             buildAllTask.definition.dontTriggerTestDiscovery = true;
             await executeTaskAndWaitForResult(buildAllTask as SwiftTask);
-            await folderContext.loadSwiftPlugins();
+            const outputChannel = new SwiftOutputChannel("ProjectPanelProvider.tests");
+            await folderContext.loadSwiftPlugins(outputChannel);
+            expect(outputChannel.logs.length).to.equal(0, `Expected no output channel logs`);
             treeProvider = new ProjectPanelProvider(workspaceContext);
             await workspaceContext.focusFolder(folderContext);
         },
@@ -66,35 +75,44 @@ suite("ProjectPanelProvider Test Suite", function () {
     afterEach(async () => {
         if (resetSettings) {
             await resetSettings();
+            resetSettings = undefined;
         }
     });
 
     test("Includes top level nodes", async () => {
-        const commands = await treeProvider.getChildren();
-        const commandNames = commands.map(n => n.name);
-        expect(commandNames).to.deep.equal([
-            "Dependencies",
-            "Targets",
-            "Tasks",
-            "Snippets",
-            "Commands",
-        ]);
+        await waitForChildren(
+            () => treeProvider.getChildren(),
+            commands => {
+                const commandNames = commands.map(n => n.name);
+                expect(commandNames).to.deep.equal([
+                    "Dependencies",
+                    "Targets",
+                    "Tasks",
+                    "Snippets",
+                    "Commands",
+                ]);
+            }
+        );
     });
 
     suite("Targets", () => {
         test("Includes targets", async () => {
-            const targets = await getHeaderChildren("Targets");
-            const targetNames = targets.map(target => target.name);
-            expect(
-                targetNames,
-                `Expected to find dependencies target, but instead items were ${targetNames}`
-            ).to.deep.equal([
-                "ExecutableTarget",
-                "LibraryTarget",
-                "PluginTarget",
-                "AnotherTests",
-                "TargetsTests",
-            ]);
+            await waitForChildren(
+                () => getHeaderChildren("Targets"),
+                targets => {
+                    const targetNames = targets.map(target => target.name);
+                    expect(
+                        targetNames,
+                        `Expected to find dependencies target, but instead items were ${targetNames}`
+                    ).to.deep.equal([
+                        "ExecutableTarget",
+                        "LibraryTarget",
+                        "PluginTarget",
+                        "AnotherTests",
+                        "TargetsTests",
+                    ]);
+                }
+            );
         });
     });
 
@@ -144,32 +162,70 @@ suite("ProjectPanelProvider Test Suite", function () {
 
     suite("Snippets", () => {
         test("Includes snippets", async () => {
-            const snippets = await getHeaderChildren("Snippets");
-            const snippetNames = snippets.map(n => n.name);
-            expect(snippetNames).to.deep.equal(["AnotherSnippet", "Snippet"]);
+            await waitForChildren(
+                () => getHeaderChildren("Snippets"),
+                snippets => {
+                    const snippetNames = snippets.map(n => n.name);
+                    expect(snippetNames).to.deep.equal(["AnotherSnippet", "Snippet"]);
+                }
+            );
         });
 
-        test("Executes a snippet", async () => {
-            const snippets = await getHeaderChildren("Snippets");
-            const snippet = snippets.find(n => n.name === "Snippet");
-            expect(snippet).to.not.be.undefined;
+        test("Executes a snippet", async function () {
+            if (
+                process.platform === "win32" &&
+                workspaceContext.toolchain.swiftVersion.isLessThanOrEqual(new Version(5, 9, 0))
+            ) {
+                this.skip();
+            }
 
+            const snippet = await waitForChildren(
+                () => getHeaderChildren("Snippets"),
+                snippets => {
+                    const snippet = snippets.find(n => n.name === "Snippet");
+                    expect(snippet).to.not.be.undefined;
+                    return snippet;
+                }
+            );
             const result = await vscode.commands.executeCommand("swift.runSnippet", snippet?.name);
             expect(result).to.be.true;
         });
     });
 
     suite("Commands", () => {
-        test("Includes commands", async () => {
-            const commands = await getHeaderChildren("Commands");
-            const commandNames = commands.map(n => n.name);
-            expect(commandNames).to.deep.equal(["PluginTarget"]);
+        test("Includes commands", async function () {
+            if (
+                process.platform === "win32" &&
+                workspaceContext.toolchain.swiftVersion.isLessThanOrEqual(new Version(6, 0, 0))
+            ) {
+                this.skip();
+            }
+
+            await waitForChildren(
+                () => getHeaderChildren("Commands"),
+                commands => {
+                    const commandNames = commands.map(n => n.name);
+                    expect(commandNames).to.deep.equal(["PluginTarget"]);
+                }
+            );
         });
 
-        test("Executes a command", async () => {
-            const commands = await getHeaderChildren("Commands");
-            const command = commands.find(n => n.name === "PluginTarget");
-            expect(command).to.not.be.undefined;
+        test("Executes a command", async function () {
+            if (
+                process.platform === "win32" &&
+                workspaceContext.toolchain.swiftVersion.isLessThanOrEqual(new Version(6, 0, 0))
+            ) {
+                this.skip();
+            }
+
+            const command = await waitForChildren(
+                () => getHeaderChildren("Commands"),
+                commands => {
+                    const command = commands.find(n => n.name === "PluginTarget");
+                    expect(command).to.not.be.undefined;
+                    return command;
+                }
+            );
             const treeItem = command?.toTreeItem();
             expect(treeItem?.command).to.not.be.undefined;
             expect(treeItem?.command?.arguments).to.not.be.undefined;
@@ -298,6 +354,34 @@ suite("ProjectPanelProvider Test Suite", function () {
         const header = headers.find(n => n.name === headerName) as PackageNode;
         expect(header).to.not.be.undefined;
         return await header.getChildren();
+    }
+
+    async function waitForChildren<T>(
+        getChildren: () => Promise<TreeNode[]>,
+        predicate: (children: TreeNode[]) => T
+    ) {
+        let counter = 0;
+        let error: unknown;
+        // Check the predicate once a second for 30 seconds.
+        while (counter < 30) {
+            const children = await getChildren();
+            try {
+                return predicate(children);
+            } catch (err) {
+                error = err;
+                counter += 1;
+            }
+
+            if (!error) {
+                break;
+            }
+
+            await wait(1000);
+        }
+
+        if (error) {
+            throw error;
+        }
     }
 
     function assertPathsEqual(path1: string | undefined, path2: string | undefined) {

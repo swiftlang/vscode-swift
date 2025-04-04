@@ -47,6 +47,8 @@ import {
     updateSettings,
 } from "../utilities/testutilities";
 import { Commands } from "../../../src/commands";
+import { executeTaskAndWaitForResult } from "../../utilities/tasks";
+import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
 
 suite("Test Explorer Suite", function () {
     const MAX_TEST_RUN_TIME_MINUTES = 5;
@@ -66,6 +68,8 @@ suite("Test Explorer Suite", function () {
             }
 
             testExplorer = targetFolder.addTestExplorer();
+
+            await executeTaskAndWaitForResult(createBuildAllTask(targetFolder));
 
             // Set up the listener before bringing the text explorer in to focus,
             // which starts searching the workspace for tests.
@@ -119,6 +123,7 @@ suite("Test Explorer Suite", function () {
             afterEach(async () => {
                 if (resetSettings) {
                     await resetSettings();
+                    resetSettings = undefined;
                 }
             });
 
@@ -144,6 +149,7 @@ suite("Test Explorer Suite", function () {
             afterEach(async () => {
                 if (resetSettings) {
                     await resetSettings();
+                    resetSettings = undefined;
                 }
             });
 
@@ -196,7 +202,7 @@ suite("Test Explorer Suite", function () {
                         ["testPassing()", "testPassingSuffix()"],
                     ],
                 ]);
-            } else if (workspaceContext.swiftVersion.isLessThanOrEqual(new Version(5, 10, 0))) {
+            } else if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
                 // 5.10 uses `swift test list` which returns test alphabetically, without the round brackets.
                 // Does not include swift-testing tests.
                 assertTestControllerHierarchy(testExplorer.controller, [

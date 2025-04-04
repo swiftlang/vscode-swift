@@ -25,8 +25,7 @@
       "args": ["--profile=testing-debug"],
       "outFiles": ["${workspaceFolder}/dist/**/*.js"],
       "env": {
-        "VSCODE_DEBUG": "1",
-        "VSCODE_TEST": "1"
+        "VSCODE_DEBUG": "1"
       },
       "preLaunchTask": "compile-tests"
     },

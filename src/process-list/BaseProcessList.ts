@@ -42,7 +42,9 @@ export abstract class BaseProcessList implements ProcessList {
     protected abstract createParser(): ProcessListParser;
 
     async listAllProcesses(): Promise<Process[]> {
-        const execCommand = exec(this.getCommand(), this.getCommandArguments());
+        const execCommand = exec(this.getCommand(), this.getCommandArguments(), {
+            maxBuffer: 10 * 1024 * 1024, // Increase the max buffer size to 10Mb
+        });
         const parser = this.createParser();
         return (await execCommand).stdout.split("\n").flatMap(line => {
             const process = parser(line.toString());

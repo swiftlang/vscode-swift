@@ -97,10 +97,9 @@ const extensionBootstrapper = (() => {
             } catch (error: any) {
                 // Mocha will throw an error to break out of a test if `.skip` is used.
                 if (error.message?.indexOf("sync skip;") === -1) {
-                    console.error(`Error during test/suite setup: ${JSON.stringify(error)}`);
-                    console.error("Captured logs are:");
+                    console.error(`Error during test/suite setup, captured logs are:`);
                     workspaceContext.outputChannel.logs.map(log => console.error(log));
-                    console.error("================ end test logs ================");
+                    console.log("======== END OF LOGS ========\n\n");
                 }
                 throw error;
             }
@@ -126,6 +125,7 @@ const extensionBootstrapper = (() => {
         });
 
         after(async function () {
+            let userTeardownError: unknown | undefined;
             try {
                 // First run the users supplied teardown, then await the autoTeardown if it exists.
                 if (teardown) {
@@ -134,18 +134,29 @@ const extensionBootstrapper = (() => {
                 if (autoTeardown) {
                     await autoTeardown();
                 }
-                if (restoreSettings) {
-                    await restoreSettings();
-                }
             } catch (error) {
                 if (workspaceContext) {
                     console.error(`Error during test/suite teardown, captured logs are:`);
                     workspaceContext.outputChannel.logs.map(log => console.log(log));
+                    console.log("======== END OF LOGS ========\n\n");
                 }
-                throw error;
+                // We always want to restore settings and deactivate the extension even if the
+                // user supplied teardown fails. That way we have the best chance at not causing
+                // issues with the next test.
+                //
+                // Store the error and re-throw it after extension deactivation.
+                userTeardownError = error;
             }
 
+            if (restoreSettings) {
+                await restoreSettings();
+            }
             await extensionBootstrapper.deactivateExtension();
+
+            // Re-throw the user supplied teardown error
+            if (userTeardownError) {
+                throw userTeardownError;
+            }
         });
     }
 
@@ -335,10 +346,17 @@ export async function updateSettings(settings: SettingsMap): Promise<() => Promi
         // to their new value before continuing.
         for (const setting of Object.keys(settings)) {
             const { section, name } = decomposeSettingName(setting);
+            // If the setting is being unset then its possible the setting will evaluate to the
+            // default value, and so we should be checking to see if its switched to that instead.
+            const expected = !settings[setting]
+                ? (vscode.workspace.getConfiguration(section, { languageId: "swift" }).inspect(name)
+                      ?.defaultValue ?? settings[setting])
+                : settings[setting];
+
             while (
                 isDeepStrictEqual(
                     vscode.workspace.getConfiguration(section, { languageId: "swift" }).get(name),
-                    settings[setting]
+                    expected
                 ) === false
             ) {
                 // Not yet, wait a bit and try again.
