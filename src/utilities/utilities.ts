@@ -113,8 +113,9 @@ export async function execFile(
         cp.execFile(executable, args, options, (error, stdout, stderr) => {
             if (error) {
                 reject(new ExecFileError(error, stdout, stderr));
+            } else {
+                resolve({ stdout, stderr });
             }
-            resolve({ stdout, stderr });
         });
     });
 }

@@ -71,11 +71,14 @@ export class BuildFlags {
 
     withSwiftPackageFlags(args: string[]): string[] {
         switch (args[0]) {
-            case "package":
-                if (args[1] === "resolve" || args[1] === "update") {
-                    return [...args, ...configuration.packageArguments];
+            case "package": {
+                if (args[1] === "init") {
+                    return args;
                 }
-                return args;
+                const newArgs = [...args];
+                newArgs.splice(1, 0, ...configuration.packageArguments);
+                return newArgs;
+            }
             case "build":
             case "run":
             case "test":
