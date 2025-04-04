@@ -331,7 +331,7 @@ const configuration = {
     get scriptSwiftLanguageVersion(): string {
         return vscode.workspace
             .getConfiguration("swift")
-            .get<string>("scriptSwiftLanguageVersion", "");
+            .get<string>("scriptSwiftLanguageVersion", "6");
     },
     /** swift package arguments */
     get packageArguments(): string[] {
