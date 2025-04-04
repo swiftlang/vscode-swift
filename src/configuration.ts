@@ -328,8 +328,8 @@ const configuration = {
             .get<string[]>("buildArguments", [])
             .map(substituteVariablesInString);
     },
-    get defaultSwiftVersion(): number | undefined {
-        return vscode.workspace.getConfiguration("swift").get<number>("defaultSwiftVersion");
+    get scriptSwiftLanguageVersion(): number | undefined {
+        return vscode.workspace.getConfiguration("swift").get<number>("scriptSwiftLanguageVersion");
     },
     /** swift package arguments */
     get packageArguments(): string[] {

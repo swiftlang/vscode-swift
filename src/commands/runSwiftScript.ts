@@ -43,7 +43,7 @@ export async function runSwiftScript(ctx: WorkspaceContext) {
 
     let target: number;
 
-    const defaultVersion = configuration.defaultSwiftVersion;
+    const defaultVersion = configuration.scriptSwiftLanguageVersion;
     if (defaultVersion !== undefined && defaultVersion !== null) {
         target = defaultVersion;
     } else {
