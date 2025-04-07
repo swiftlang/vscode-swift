@@ -23,12 +23,19 @@ import { waitForNoRunningTasks } from "../../utilities/tasks";
 import { closeAllEditors } from "../../utilities/commands";
 import { isDeepStrictEqual } from "util";
 import { Version } from "../../../src/utilities/version";
+import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import configuration from "../../../src/configuration";
 
 function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);
     assert(result, "No workspace folders were opened for the tests to use");
     return result;
+}
+
+function printLogs(outputChannel: SwiftOutputChannel, message: string) {
+    console.error(`${message}, captured logs are:`);
+    outputChannel.logs.map(log => console.log(log));
+    console.log("======== END OF LOGS ========\n\n");
 }
 
 const extensionBootstrapper = (() => {
@@ -116,11 +123,10 @@ const extensionBootstrapper = (() => {
 
         mocha.afterEach(function () {
             if (this.currentTest && activatedAPI && this.currentTest.isFailed()) {
-                console.log(`Captured logs during ${testTitle(this.currentTest)}:`);
-                for (const log of activatedAPI.outputChannel.logs) {
-                    console.log(log);
-                }
-                console.log("======== END OF LOGS ========\n\n");
+                printLogs(
+                    activatedAPI.outputChannel,
+                    `Test failed: ${testTitle(this.currentTest)}`
+                );
             }
         });
 
@@ -136,9 +142,7 @@ const extensionBootstrapper = (() => {
                 }
             } catch (error) {
                 if (workspaceContext) {
-                    console.error(`Error during test/suite teardown, captured logs are:`);
-                    workspaceContext.outputChannel.logs.map(log => console.log(log));
-                    console.log("======== END OF LOGS ========\n\n");
+                    printLogs(workspaceContext.outputChannel, "Error during test/suite teardown");
                 }
                 // We always want to restore settings and deactivate the extension even if the
                 // user supplied teardown fails. That way we have the best chance at not causing
@@ -197,6 +201,10 @@ const extensionBootstrapper = (() => {
             }
 
             if (!workspaceContext) {
+                printLogs(
+                    activatedAPI.outputChannel,
+                    "Error during test/suite setup, workspace context could not be created"
+                );
                 throw new Error("Extension did not activate. Workspace context is not available.");
             }
 
