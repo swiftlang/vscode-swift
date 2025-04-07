@@ -464,4 +464,13 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
 
         return newTask;
     }
+
+    /**
+     * Registers the Swift task provider with VS Code.
+     * @param ctx The workspace context.
+     * @returns A disposable that unregisters the provider when disposed.
+     */
+    public static register(ctx: WorkspaceContext): vscode.Disposable {
+        return vscode.tasks.registerTaskProvider("swift", new SwiftTaskProvider(ctx));
+    }
 }

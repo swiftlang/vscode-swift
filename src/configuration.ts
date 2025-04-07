@@ -15,6 +15,8 @@
 import * as vscode from "vscode";
 import * as os from "os";
 import * as path from "path";
+import { showReloadExtensionNotification } from "./ui/ReloadExtension";
+import { WorkspaceContext } from "./WorkspaceContext";
 
 export type DebugAdapters = "auto" | "lldb-dap" | "CodeLLDB";
 export type SetupCodeLLDBOptions =
@@ -500,6 +502,38 @@ function computeVscodeVar(varName: string): string | null {
     };
 
     return varName in supportedVariables ? supportedVariables[varName]() : null;
+}
+
+/**
+ * Handler for configuration change events that triggers a reload of the extension
+ * if the setting changed requires one.
+ * @param ctx The workspace context.
+ * @returns A disposable that unregisters the provider when disposed.
+ */
+export function handleConfigurationChangeEvent(
+    ctx: WorkspaceContext
+): (event: vscode.ConfigurationChangeEvent) => void {
+    return (event: vscode.ConfigurationChangeEvent) => {
+        // on toolchain config change, reload window
+        if (
+            event.affectsConfiguration("swift.path") &&
+            configuration.path !== ctx.toolchain?.swiftFolderPath
+        ) {
+            showReloadExtensionNotification(
+                "Changing the Swift path requires Visual Studio Code be reloaded."
+            );
+        } else if (
+            // on sdk config change, restart sourcekit-lsp
+            event.affectsConfiguration("swift.SDK") ||
+            event.affectsConfiguration("swift.swiftSDK")
+        ) {
+            vscode.commands.executeCommand("swift.restartLSPServer");
+        } else if (event.affectsConfiguration("swift.swiftEnvironmentVariables")) {
+            showReloadExtensionNotification(
+                "Changing environment variables requires the project be reloaded."
+            );
+        }
+    };
 }
 
 export default configuration;

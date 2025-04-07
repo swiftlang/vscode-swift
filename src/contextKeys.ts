@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import { Version } from "./utilities/version";
 
 /**
  * References:
@@ -82,6 +83,11 @@ interface ContextKeys {
      * Whether the swift.switchPlatform command is available.
      */
     switchPlatformAvailable: boolean;
+
+    /**
+     * Sets values for context keys that are enabled/disabled based on the toolchain version in use.
+     */
+    updateKeysBasedOnActiveVersion(toolchainVersion: Version): void;
 }
 
 /** Creates the getters and setters for the VS Code Swift extension's context keys. */
@@ -100,6 +106,15 @@ function createContextKeys(): ContextKeys {
     let switchPlatformAvailable: boolean = false;
 
     return {
+        updateKeysBasedOnActiveVersion(toolchainVersion: Version) {
+            this.createNewProjectAvailable = toolchainVersion.isGreaterThanOrEqual(
+                new Version(5, 8, 0)
+            );
+            this.switchPlatformAvailable = toolchainVersion.isGreaterThanOrEqual(
+                new Version(6, 1, 0)
+            );
+        },
+
         get isActivated() {
             return isActivated;
         },

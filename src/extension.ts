@@ -20,25 +20,24 @@ import * as commands from "./commands";
 import * as debug from "./debugger/launch";
 import { ProjectPanelProvider } from "./ui/ProjectPanelProvider";
 import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
-import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
+import { FolderEvent, FolderOperation, WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { LanguageStatusItems } from "./ui/LanguageStatusItems";
 import { getErrorDescription } from "./utilities/utilities";
 import { SwiftPluginTaskProvider } from "./tasks/SwiftPluginTaskProvider";
-import configuration from "./configuration";
 import { Version } from "./utilities/version";
 import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
 import { registerDebugger } from "./debugger/debugAdapterFactory";
-import contextKeys from "./contextKeys";
 import { showToolchainError } from "./ui/ToolchainSelection";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
-import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 import { checkAndWarnAboutWindowsSymlinks } from "./ui/win32";
 import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "./terminal";
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 import { SelectedXcodeWatcher } from "./toolchain/SelectedXcodeWatcher";
+import configuration, { handleConfigurationChangeEvent } from "./configuration";
+import contextKeys from "./contextKeys";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -57,64 +56,16 @@ export interface Api {
 export async function activate(context: vscode.ExtensionContext): Promise<Api> {
     try {
         const outputChannel = new SwiftOutputChannel("Swift");
+        context.subscriptions.push(outputChannel);
         outputChannel.log("Activating Swift for Visual Studio Code...");
 
         checkAndWarnAboutWindowsSymlinks(outputChannel);
 
-        context.subscriptions.push(outputChannel);
-        context.subscriptions.push(new SwiftEnvironmentVariablesManager(context));
-        context.subscriptions.push(
-            vscode.window.registerTerminalProfileProvider(
-                "swift.terminalProfile",
-                new SwiftTerminalProfileProvider()
-            )
-        );
+        const toolchain = await createActiveToolchain(outputChannel);
 
-        const toolchain: SwiftToolchain | undefined = await SwiftToolchain.create()
-            .then(toolchain => {
-                toolchain.logDiagnostics(outputChannel);
-                contextKeys.createNewProjectAvailable = toolchain.swiftVersion.isGreaterThanOrEqual(
-                    new Version(5, 8, 0)
-                );
-                contextKeys.switchPlatformAvailable = toolchain.swiftVersion.isGreaterThanOrEqual(
-                    new Version(6, 1, 0)
-                );
-                return toolchain;
-            })
-            .catch(error => {
-                outputChannel.log("Failed to discover Swift toolchain");
-                outputChannel.log(error);
-                contextKeys.createNewProjectAvailable = false;
-                contextKeys.switchPlatformAvailable = false;
-                return undefined;
-            });
-
-        context.subscriptions.push(...commands.registerToolchainCommands(toolchain));
-
-        context.subscriptions.push(
-            vscode.workspace.onDidChangeConfiguration(event => {
-                // on toolchain config change, reload window
-                if (
-                    event.affectsConfiguration("swift.path") &&
-                    configuration.path !== toolchain?.swiftFolderPath
-                ) {
-                    showReloadExtensionNotification(
-                        "Changing the Swift path requires Visual Studio Code be reloaded."
-                    );
-                } else if (
-                    // on sdk config change, restart sourcekit-lsp
-                    event.affectsConfiguration("swift.SDK") ||
-                    event.affectsConfiguration("swift.swiftSDK")
-                ) {
-                    vscode.commands.executeCommand("swift.restartLSPServer");
-                } else if (event.affectsConfiguration("swift.swiftEnvironmentVariables")) {
-                    showReloadExtensionNotification(
-                        "Changing environment variables requires the project be reloaded."
-                    );
-                }
-            })
-        );
-
+        // If we don't have a toolchain, show an error and stop initializing the extension.
+        // This can happen if the user has not installed Swift or if the toolchain is not
+        // properly configured.
         if (!toolchain) {
             showToolchainError();
             return {
@@ -128,39 +79,44 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         }
 
         const workspaceContext = await WorkspaceContext.create(context, outputChannel, toolchain);
-        context.subscriptions.push(...commands.register(workspaceContext));
         context.subscriptions.push(workspaceContext);
-        if (!configuration.debugger.disable) {
-            context.subscriptions.push(registerDebugger(workspaceContext));
-        }
+
+        context.subscriptions.push(new SwiftEnvironmentVariablesManager(context));
+        context.subscriptions.push(SwiftTerminalProfileProvider.register());
+        context.subscriptions.push(...commands.registerToolchainCommands(toolchain));
+
+        // Watch for configuration changes the trigger a reload of the extension if necessary.
+        context.subscriptions.push(
+            vscode.workspace.onDidChangeConfiguration(
+                handleConfigurationChangeEvent(workspaceContext)
+            )
+        );
+
+        context.subscriptions.push(...commands.register(workspaceContext));
+        context.subscriptions.push(registerDebugger(workspaceContext));
         context.subscriptions.push(new SelectedXcodeWatcher(outputChannel));
 
-        // listen for workspace folder changes and active text editor changes
-        workspaceContext.setupEventListeners();
-
         // Register task provider.
-        const taskProvider = vscode.tasks.registerTaskProvider(
-            "swift",
-            new SwiftTaskProvider(workspaceContext)
-        );
-        // Register swift plugin task provider.
-        const pluginTaskProvider = vscode.tasks.registerTaskProvider(
-            "swift-plugin",
-            new SwiftPluginTaskProvider(workspaceContext)
-        );
+        context.subscriptions.push(SwiftTaskProvider.register(workspaceContext));
 
-        const languageStatusItem = new LanguageStatusItems(workspaceContext);
+        // Register swift plugin task provider.
+        context.subscriptions.push(SwiftPluginTaskProvider.register(workspaceContext));
+
+        // Register the language status bar items.
+        context.subscriptions.push(new LanguageStatusItems(workspaceContext));
 
         // swift module document provider
-        const swiftModuleDocumentProvider = getReadOnlyDocumentProvider();
+        context.subscriptions.push(getReadOnlyDocumentProvider());
 
         // observer for logging workspace folder addition/removal
-        const logObserver = workspaceContext.onDidChangeFolders(({ folder, operation }) => {
-            workspaceContext.outputChannel.log(
-                `${operation}: ${folder?.folder.fsPath}`,
-                folder?.name
-            );
-        });
+        context.subscriptions.push(
+            workspaceContext.onDidChangeFolders(({ folder, operation }) => {
+                workspaceContext.outputChannel.log(
+                    `${operation}: ${folder?.folder.fsPath}`,
+                    folder?.name
+                );
+            })
+        );
 
         // project panel provider
         const projectPanelProvider = new ProjectPanelProvider(workspaceContext);
@@ -170,99 +126,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         });
         projectPanelProvider.observeFolders(dependenciesView);
 
+        context.subscriptions.push(dependenciesView, projectPanelProvider);
+
         // observer that will resolve package and build launch configurations
-        const resolvePackageObserver = workspaceContext.onDidChangeFolders(
-            async ({ folder, operation, workspace }) => {
-                // function called when a folder is added. I broke this out so we can trigger it
-                // without having to await for it.
-                async function folderAdded(folder: FolderContext, workspace: WorkspaceContext) {
-                    if (
-                        !configuration.folder(folder.workspaceFolder).disableAutoResolve ||
-                        configuration.backgroundCompilation
-                    ) {
-                        // if background compilation is set then run compile at startup unless
-                        // this folder is a sub-folder of the workspace folder. This is to avoid
-                        // kicking off compile for multiple projects at the same time
-                        if (
-                            configuration.backgroundCompilation &&
-                            folder.workspaceFolder.uri === folder.folder
-                        ) {
-                            await folder.backgroundCompilation.runTask();
-                        } else {
-                            await resolveFolderDependencies(folder, true);
-                        }
-
-                        if (
-                            workspace.toolchain.swiftVersion.isGreaterThanOrEqual(
-                                new Version(5, 6, 0)
-                            )
-                        ) {
-                            workspace.statusItem.showStatusWhileRunning(
-                                `Loading Swift Plugins (${FolderContext.uriName(
-                                    folder.workspaceFolder.uri
-                                )})`,
-                                async () => {
-                                    await folder.loadSwiftPlugins(outputChannel);
-                                    workspace.updatePluginContextKey();
-                                    folder.fireEvent(FolderOperation.pluginsUpdated);
-                                }
-                            );
-                        }
-                    }
-                }
-                if (!folder) {
-                    return;
-                }
-                switch (operation) {
-                    case FolderOperation.add:
-                        // Create launch.json files based on package description.
-                        debug.makeDebugConfigurations(folder);
-                        if (await folder.swiftPackage.foundPackage) {
-                            // do not await for this, let packages resolve in parallel
-                            folderAdded(folder, workspace);
-                        }
-                        break;
-
-                    case FolderOperation.packageUpdated:
-                        // Create launch.json files based on package description.
-                        debug.makeDebugConfigurations(folder);
-                        if (
-                            (await folder.swiftPackage.foundPackage) &&
-                            !configuration.folder(folder.workspaceFolder).disableAutoResolve
-                        ) {
-                            await resolveFolderDependencies(folder, true);
-                        }
-                        break;
-
-                    case FolderOperation.resolvedUpdated:
-                        if (
-                            (await folder.swiftPackage.foundPackage) &&
-                            !configuration.folder(folder.workspaceFolder).disableAutoResolve
-                        ) {
-                            await resolveFolderDependencies(folder, true);
-                        }
-                }
-            }
+        context.subscriptions.push(
+            workspaceContext.onDidChangeFolders(handleFolderEvent(outputChannel))
         );
-
-        const testExplorerObserver = TestExplorer.observeFolders(workspaceContext);
+        context.subscriptions.push(TestExplorer.observeFolders(workspaceContext));
 
         // setup workspace context with initial workspace folders
         workspaceContext.addWorkspaceFolders();
-
-        // Register any disposables for cleanup when the extension deactivates.
-        context.subscriptions.push(
-            resolvePackageObserver,
-            testExplorerObserver,
-            swiftModuleDocumentProvider,
-            dependenciesView,
-            projectPanelProvider,
-            logObserver,
-            languageStatusItem,
-            pluginTaskProvider,
-            taskProvider,
-            workspaceContext
-        );
 
         // Mark the extension as activated.
         contextKeys.isActivated = true;
@@ -282,6 +155,95 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         // the extension through the debugger
         vscode.window.showErrorMessage(`Activating Swift extension failed: ${errorMessage}`);
         throw error;
+    }
+}
+
+function handleFolderEvent(
+    outputChannel: SwiftOutputChannel
+): (event: FolderEvent) => Promise<void> {
+    // function called when a folder is added. I broke this out so we can trigger it
+    // without having to await for it.
+    async function folderAdded(folder: FolderContext, workspace: WorkspaceContext) {
+        if (
+            !configuration.folder(folder.workspaceFolder).disableAutoResolve ||
+            configuration.backgroundCompilation
+        ) {
+            // if background compilation is set then run compile at startup unless
+            // this folder is a sub-folder of the workspace folder. This is to avoid
+            // kicking off compile for multiple projects at the same time
+            if (
+                configuration.backgroundCompilation &&
+                folder.workspaceFolder.uri === folder.folder
+            ) {
+                await folder.backgroundCompilation.runTask();
+            } else {
+                await resolveFolderDependencies(folder, true);
+            }
+
+            if (workspace.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))) {
+                workspace.statusItem.showStatusWhileRunning(
+                    `Loading Swift Plugins (${FolderContext.uriName(folder.workspaceFolder.uri)})`,
+                    async () => {
+                        await folder.loadSwiftPlugins(outputChannel);
+                        workspace.updatePluginContextKey();
+                        folder.fireEvent(FolderOperation.pluginsUpdated);
+                    }
+                );
+            }
+        }
+    }
+
+    return async ({ folder, operation, workspace }) => {
+        if (!folder) {
+            return;
+        }
+
+        switch (operation) {
+            case FolderOperation.add:
+                // Create launch.json files based on package description.
+                debug.makeDebugConfigurations(folder);
+                if (await folder.swiftPackage.foundPackage) {
+                    // do not await for this, let packages resolve in parallel
+                    folderAdded(folder, workspace);
+                }
+                break;
+
+            case FolderOperation.packageUpdated:
+                // Create launch.json files based on package description.
+                debug.makeDebugConfigurations(folder);
+                if (
+                    (await folder.swiftPackage.foundPackage) &&
+                    !configuration.folder(folder.workspaceFolder).disableAutoResolve
+                ) {
+                    await resolveFolderDependencies(folder, true);
+                }
+                break;
+
+            case FolderOperation.resolvedUpdated:
+                if (
+                    (await folder.swiftPackage.foundPackage) &&
+                    !configuration.folder(folder.workspaceFolder).disableAutoResolve
+                ) {
+                    await resolveFolderDependencies(folder, true);
+                }
+        }
+    };
+}
+
+async function createActiveToolchain(
+    outputChannel: SwiftOutputChannel
+): Promise<SwiftToolchain | undefined> {
+    try {
+        const toolchain = await SwiftToolchain.create();
+        toolchain.logDiagnostics(outputChannel);
+        contextKeys.updateKeysBasedOnActiveVersion(toolchain.swiftVersion);
+        return toolchain;
+    } catch (error) {
+        outputChannel.log("Failed to discover Swift toolchain");
+        outputChannel.log(`${error}`);
+        contextKeys.createNewProjectAvailable = false;
+        contextKeys.switchPlatformAvailable = false;
+        return undefined;
     }
 }
 

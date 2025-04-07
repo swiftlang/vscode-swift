@@ -31,13 +31,34 @@ import configuration from "../configuration";
  * @returns A disposable to be disposed when the extension is deactivated
  */
 export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Disposable {
-    const subscriptions: vscode.Disposable[] = [
-        registerLoggingDebugAdapterTracker(),
-        registerLLDBDebugAdapter(workspaceContext.toolchain, workspaceContext.outputChannel),
-    ];
+    let subscriptions: vscode.Disposable[] = [];
+
+    // Monitor the swift.debugger.disable setting and register automatically
+    // when the setting is changed to enable.
+    const configurationEvent = vscode.workspace.onDidChangeConfiguration(event => {
+        if (event.affectsConfiguration("swift.debugger.disable")) {
+            subscriptions.map(sub => sub.dispose());
+            subscriptions = [];
+            if (!configuration.debugger.disable) {
+                register();
+            }
+        }
+    });
+
+    function register() {
+        subscriptions.push(registerLoggingDebugAdapterTracker());
+        subscriptions.push(
+            registerLLDBDebugAdapter(workspaceContext.toolchain, workspaceContext.outputChannel)
+        );
+    }
+
+    if (!configuration.debugger.disable) {
+        register();
+    }
 
     return {
         dispose: () => {
+            configurationEvent.dispose();
             subscriptions.map(sub => sub.dispose());
         },
     };
