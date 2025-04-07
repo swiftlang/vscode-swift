@@ -10,6 +10,7 @@
 - Educational notes from compiler diagnostics can be viewed directly in VS Code ([#1423](https://github.com/swiftlang/vscode-swift/pull/1423))
 - Swift settings now support variable substitutions ([#1439](https://github.com/swiftlang/vscode-swift/pull/1439))
 - SwiftPM plugin tasks are now configurable via settings ([#1409](https://github.com/swiftlang/vscode-swift/pull/1409))
+- Added the `swift.scriptSwiftLanguageVersion` setting to choose Swift language mode when running scripts (thanks @louisunlimited) ([#1476](https://github.com/swiftlang/vscode-swift/pull/1476))
 
 ### Fixed
 
