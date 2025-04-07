@@ -329,8 +329,8 @@
             "enum": [
               "6",
               "5",
-              "4",
               "4.2",
+              "4",
               "Ask Every Run"
             ],
             "enumDescriptions": [
