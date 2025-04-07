@@ -122,7 +122,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
                 outputChannel,
                 activate: () => activate(context),
                 deactivate: async () => {
-                    await workspaceContext.stop();
                     await deactivate(context);
                 },
             };
