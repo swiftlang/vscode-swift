@@ -18,6 +18,7 @@ import * as fs from "fs/promises";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { Version } from "../utilities/version";
+import configuration from "../configuration";
 
 /**
  * Run the active document through the Swift REPL
@@ -40,6 +41,29 @@ export async function runSwiftScript(ctx: WorkspaceContext) {
         return;
     }
 
+    let target: string;
+
+    const defaultVersion = configuration.scriptSwiftLanguageVersion;
+    if (defaultVersion === "Ask Every Run") {
+        const picked = await vscode.window.showQuickPick(
+            [
+                // Potentially add more versions here
+                { value: "5", label: "Swift 5" },
+                { value: "6", label: "Swift 6" },
+            ],
+            {
+                placeHolder: "Select a target Swift version",
+            }
+        );
+
+        if (!picked) {
+            return;
+        }
+        target = picked.value;
+    } else {
+        target = defaultVersion;
+    }
+
     let filename = document.fileName;
     let isTempFile = false;
     if (document.isUntitled) {
@@ -52,9 +76,8 @@ export async function runSwiftScript(ctx: WorkspaceContext) {
         // otherwise save document
         await document.save();
     }
-
     const runTask = createSwiftTask(
-        [filename],
+        ["-swift-version", target, filename],
         `Run ${filename}`,
         {
             scope: vscode.TaskScope.Global,
