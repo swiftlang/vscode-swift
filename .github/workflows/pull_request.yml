@@ -27,6 +27,17 @@ jobs:
       windows_pre_build_command: .github\workflows\scripts\windows\install-nodejs.ps1
       windows_build_command: scripts\test_windows.ps1
       enable_windows_docker: false
+  
+  archive:
+    name: Archive Coverage Artifacts
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: ./coverage
 
   soundness:
     name: Soundness
