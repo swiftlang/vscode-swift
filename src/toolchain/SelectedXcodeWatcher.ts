@@ -76,10 +76,10 @@ export class SelectedXcodeWatcher implements vscode.Disposable {
                 this.outputChannel.appendLine(
                     `Selected Xcode changed from ${this.xcodePath} to ${newXcodePath}`
                 );
-                showReloadExtensionNotification(
+                this.xcodePath = newXcodePath;
+                await showReloadExtensionNotification(
                     "The Swift Extension has detected a change in the selected Xcode. Please reload the extension to apply the changes."
                 );
-                this.xcodePath = newXcodePath;
             }
         }, this.checkIntervalMs);
     }

@@ -66,7 +66,10 @@ suite("WorkspaceContext Test Suite", () => {
 
                 await workspaceContext.addPackageFolder(testAssetUri("package2"), workspaceFolder);
 
-                const foldersNames = recordedFolders.map(({ folder }) => folder?.swiftPackage.name);
+                const foldersNamePromises = recordedFolders
+                    .map(({ folder }) => folder?.swiftPackage.name)
+                    .filter(f => !!f);
+                const foldersNames = await Promise.all(foldersNamePromises);
                 assertContains(foldersNames, "package2");
 
                 const addedCount = recordedFolders.filter(
@@ -109,7 +112,7 @@ suite("WorkspaceContext Test Suite", () => {
             resetSettings = await updateSettings({
                 "swift.diagnosticsStyle": "",
             });
-            const buildAllTask = createBuildAllTask(folder);
+            const buildAllTask = await createBuildAllTask(folder);
             const execution = buildAllTask.execution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
             assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
@@ -128,7 +131,7 @@ suite("WorkspaceContext Test Suite", () => {
             resetSettings = await updateSettings({
                 "swift.diagnosticsStyle": "default",
             });
-            const buildAllTask = createBuildAllTask(folder);
+            const buildAllTask = await createBuildAllTask(folder);
             const execution = buildAllTask.execution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
             assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
@@ -146,7 +149,7 @@ suite("WorkspaceContext Test Suite", () => {
             resetSettings = await updateSettings({
                 "swift.diagnosticsStyle": "swift",
             });
-            const buildAllTask = createBuildAllTask(folder);
+            const buildAllTask = await createBuildAllTask(folder);
             const execution = buildAllTask.execution;
             assert.strictEqual(buildAllTask.definition.type, "swift");
             assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
@@ -166,7 +169,7 @@ suite("WorkspaceContext Test Suite", () => {
                 "swift.diagnosticsStyle": "",
                 "swift.buildArguments": ["--sanitize=thread"],
             });
-            const buildAllTask = createBuildAllTask(folder);
+            const buildAllTask = await createBuildAllTask(folder);
             const execution = buildAllTask.execution as SwiftExecution;
             assertContainsArg(execution, "--sanitize=thread");
         });
@@ -180,7 +183,7 @@ suite("WorkspaceContext Test Suite", () => {
                 "swift.diagnosticsStyle": "",
                 "swift.packageArguments": ["--replace-scm-with-registry"],
             });
-            const buildAllTask = createBuildAllTask(folder);
+            const buildAllTask = await createBuildAllTask(folder);
             const execution = buildAllTask.execution as SwiftExecution;
             assertContainsArg(execution, "--replace-scm-with-registry");
         });

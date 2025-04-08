@@ -83,7 +83,7 @@ export class WorkspaceContext implements vscode.Disposable {
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(async event => {
             // on runtime path config change, regenerate launch.json
             if (event.affectsConfiguration("swift.runtimePath")) {
-                if (!this.needToAutoGenerateLaunchConfig()) {
+                if (!(await this.needToAutoGenerateLaunchConfig())) {
                     return;
                 }
                 vscode.window
@@ -94,15 +94,15 @@ export class WorkspaceContext implements vscode.Disposable {
                     )
                     .then(async selected => {
                         if (selected === "Update") {
-                            this.folders.forEach(
-                                async ctx => await makeDebugConfigurations(ctx, undefined, true)
+                            this.folders.forEach(ctx =>
+                                makeDebugConfigurations(ctx, undefined, true)
                             );
                         }
                     });
             }
             // on change of swift build path, regenerate launch.json
             if (event.affectsConfiguration("swift.buildPath")) {
-                if (!this.needToAutoGenerateLaunchConfig()) {
+                if (!(await this.needToAutoGenerateLaunchConfig())) {
                     return;
                 }
                 vscode.window
@@ -111,10 +111,10 @@ export class WorkspaceContext implements vscode.Disposable {
                         "Update",
                         "Cancel"
                     )
-                    .then(async selected => {
+                    .then(selected => {
                         if (selected === "Update") {
-                            this.folders.forEach(
-                                async ctx => await makeDebugConfigurations(ctx, undefined, true)
+                            this.folders.forEach(ctx =>
+                                makeDebugConfigurations(ctx, undefined, true)
                             );
                         }
                     });
@@ -218,23 +218,30 @@ export class WorkspaceContext implements vscode.Disposable {
      * Update context keys based on package contents
      */
     updateContextKeys(folderContext: FolderContext | null) {
-        if (!folderContext || !folderContext.swiftPackage.foundPackage) {
+        if (!folderContext) {
             contextKeys.hasPackage = false;
             contextKeys.packageHasDependencies = false;
             return;
         }
-        contextKeys.hasPackage = true;
-        contextKeys.packageHasDependencies = folderContext.swiftPackage.dependencies.length > 0;
+
+        Promise.all([
+            folderContext.swiftPackage.foundPackage,
+            folderContext.swiftPackage.dependencies,
+        ]).then(([foundPackage, dependencies]) => {
+            contextKeys.hasPackage = foundPackage;
+            contextKeys.packageHasDependencies = dependencies.length > 0;
+        });
     }
 
     /**
      * Update context keys based on package contents
      */
-    updateContextKeysForFile() {
+    async updateContextKeysForFile() {
         if (this.currentDocument) {
-            contextKeys.currentTargetType = this.currentFolder?.swiftPackage.getTarget(
+            const target = await this.currentFolder?.swiftPackage.getTarget(
                 this.currentDocument?.fsPath
-            )?.type;
+            );
+            contextKeys.currentTargetType = target?.type;
         } else {
             contextKeys.currentTargetType = undefined;
         }
@@ -418,7 +425,6 @@ export class WorkspaceContext implements vscode.Disposable {
         this.folders.push(folderContext);
 
         await this.fireEvent(folderContext, FolderOperation.add);
-
         return folderContext;
     }
 
@@ -464,7 +470,7 @@ export class WorkspaceContext implements vscode.Disposable {
 
     async focusUri(uri?: vscode.Uri) {
         this.currentDocument = uri ?? null;
-        this.updateContextKeysForFile();
+        await this.updateContextKeysForFile();
         if (
             this.currentDocument?.scheme === "file" ||
             this.currentDocument?.scheme === "sourcekit-lsp"
@@ -588,14 +594,14 @@ export class WorkspaceContext implements vscode.Disposable {
         this.currentFolder = undefined;
     }
 
-    private needToAutoGenerateLaunchConfig() {
+    private async needToAutoGenerateLaunchConfig() {
         let autoGenerate = false;
-        this.folders.forEach(folder => {
+        for (const folder of this.folders) {
             const requiresAutoGenerate =
                 configuration.folder(folder.workspaceFolder).autoGenerateLaunchConfigurations &&
-                folder.swiftPackage.executableProducts.length > 0;
+                (await folder.swiftPackage.executableProducts).length > 0;
             autoGenerate = autoGenerate || requiresAutoGenerate;
-        });
+        }
         return autoGenerate;
     }
 

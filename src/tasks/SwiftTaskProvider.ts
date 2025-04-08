@@ -134,11 +134,11 @@ function buildAllTaskName(folderContext: FolderContext, release: boolean): strin
 /**
  * Creates a {@link vscode.Task Task} to build all targets in this package.
  */
-export function createBuildAllTask(
+export async function createBuildAllTask(
     folderContext: FolderContext,
     release: boolean = false
-): SwiftTask {
-    const args = BuildConfigurationFactory.buildAll(folderContext, false, release).args;
+): Promise<SwiftTask> {
+    const args = (await BuildConfigurationFactory.buildAll(folderContext, false, release)).args;
     const buildTaskName = buildAllTaskName(folderContext, release);
     const task = createSwiftTask(
         args,
@@ -206,7 +206,7 @@ export async function getBuildAllTask(
             task.source === "swift"
     );
     if (!task) {
-        task = createBuildAllTask(folderContext, release);
+        task = await createBuildAllTask(folderContext, release);
     }
 
     return task;
@@ -362,7 +362,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         const tasks = [];
 
         for (const folderContext of this.workspaceContext.folders) {
-            if (!folderContext.swiftPackage.foundPackage) {
+            if (!(await folderContext.swiftPackage.foundPackage)) {
                 continue;
             }
             const activeOperation = folderContext.taskQueue.activeOperation;
@@ -404,9 +404,9 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             }
 
             // Create debug Build All task.
-            tasks.push(createBuildAllTask(folderContext, false));
+            tasks.push(await createBuildAllTask(folderContext, false));
 
-            const executables = folderContext.swiftPackage.executableProducts;
+            const executables = await folderContext.swiftPackage.executableProducts;
             for (const executable of executables) {
                 tasks.push(...createBuildTasks(executable, folderContext));
             }

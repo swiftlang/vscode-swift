@@ -42,7 +42,7 @@ suite("Configuration Test Suite", function () {
             "swift.buildPath": "${workspaceFolder}/somepath",
         });
 
-        const task = createBuildAllTask(workspaceContext.folders[0], false);
+        const task = await createBuildAllTask(workspaceContext.folders[0], false);
         expect(task).to.not.be.undefined;
         expect(task.definition.args).to.not.be.undefined;
         const index = task.definition.args.indexOf("--scratch-path");
