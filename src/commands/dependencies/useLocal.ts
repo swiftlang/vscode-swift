@@ -50,7 +50,7 @@ export async function useLocalDependency(
         folder = folders[0];
     }
     const task = createSwiftTask(
-        ctx.toolchain.buildFlags.withAdditionalFlags([
+        currentFolder.toolchain.buildFlags.withAdditionalFlags([
             "package",
             "edit",
             "--path",
@@ -63,7 +63,7 @@ export async function useLocalDependency(
             cwd: currentFolder.folder,
             prefix: currentFolder.name,
         },
-        ctx.toolchain
+        currentFolder.toolchain
     );
 
     const success = await executeTaskWithUI(
