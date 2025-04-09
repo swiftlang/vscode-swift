@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import * as path from "path";
 import { expect } from "chai";
 import { DarwinCompatibleTarget, SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { ArgumentFilter, BuildFlags } from "../../../src/toolchain/BuildFlags";
@@ -204,35 +205,41 @@ suite("BuildFlags Test Suite", () => {
 
             expect(
                 BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
-            ).to.equal(".build");
+            ).to.equal(path.normalize(".build"));
 
             expect(
                 BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
-            ).to.equal("/some/full/workspace/test/path/.build");
+            ).to.equal(path.normalize("/some/full/workspace/test/path/.build"));
         });
 
         test("absolute configuration provided", () => {
-            buildPathConfig.setValue("/some/other/full/test/path");
+            buildPathConfig.setValue(path.normalize("/some/other/full/test/path"));
 
             expect(
-                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
-            ).to.equal("/some/other/full/test/path");
+                BuildFlags.buildDirectoryFromWorkspacePath(
+                    path.normalize("/some/full/workspace/test/path"),
+                    false
+                )
+            ).to.equal(path.normalize("/some/other/full/test/path"));
 
             expect(
-                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
-            ).to.equal("/some/other/full/test/path");
+                BuildFlags.buildDirectoryFromWorkspacePath(
+                    path.normalize("/some/full/workspace/test/path"),
+                    true
+                )
+            ).to.equal(path.normalize("/some/other/full/test/path"));
         });
 
         test("relative configuration provided", () => {
-            buildPathConfig.setValue("some/relative/test/path");
+            buildPathConfig.setValue(path.normalize("some/relative/test/path"));
 
             expect(
                 BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
-            ).to.equal("some/relative/test/path");
+            ).to.equal(path.normalize("some/relative/test/path"));
 
             expect(
                 BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
-            ).to.equal("/some/full/workspace/test/path/some/relative/test/path");
+            ).to.equal(path.normalize("/some/full/workspace/test/path/some/relative/test/path"));
         });
     });
 

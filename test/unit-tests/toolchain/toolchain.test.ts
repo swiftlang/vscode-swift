@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import { expect } from "chai";
+import * as path from "path";
 import * as mockFS from "mock-fs";
 import * as utilities from "../../../src/utilities/utilities";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
@@ -78,7 +79,9 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 });
 
                 await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
-                    "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/lldb-dap"
+                    path.normalize(
+                        "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/lldb-dap"
+                    )
                 );
             });
 
@@ -174,7 +177,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 });
 
                 await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
-                    "/toolchains/swift-6.0.0/usr/bin/lldb-dap"
+                    path.normalize("/toolchains/swift-6.0.0/usr/bin/lldb-dap")
                 );
             });
 
@@ -213,7 +216,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 });
 
                 await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
-                    "/toolchains/swift-6.0.0/usr/bin/lldb-dap.exe"
+                    path.normalize("/toolchains/swift-6.0.0/usr/bin/lldb-dap.exe")
                 );
             });
 

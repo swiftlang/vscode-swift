@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import * as path from "path";
 import { isPathInsidePath, expandFilePathTilde } from "../../../src/utilities/filesystem";
 import { expect } from "chai";
 
@@ -30,7 +31,7 @@ suite("File System Utilities Unit Test Suite", () => {
     suite("expandFilePathTilde", () => {
         test("expands tilde", () => {
             expect(expandFilePathTilde("~/Test", "/Users/John", "darwin")).to.equal(
-                "/Users/John/Test"
+                path.normalize("/Users/John/Test")
             );
         });
 
