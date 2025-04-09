@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import { expect } from "chai";
+import * as path from "path";
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import { FileNode, PackageNode } from "../../../src/ui/ProjectPanelProvider";
@@ -100,13 +101,13 @@ suite("PackageDependencyProvider Unit Test Suite", function () {
             expect(childFiles).to.deep.equal([
                 new FileNode(
                     "file1",
-                    "/path/to/.build/swift-markdown/file1",
+                    path.normalize("/path/to/.build/swift-markdown/file1"),
                     false,
                     "SwiftMarkdown-1.2.3"
                 ),
                 new FileNode(
                     "file2",
-                    "/path/to/.build/swift-markdown/file2",
+                    path.normalize("/path/to/.build/swift-markdown/file2"),
                     false,
                     "SwiftMarkdown-1.2.3"
                 ),

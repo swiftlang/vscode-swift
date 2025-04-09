@@ -64,7 +64,7 @@ npm ci -ignore-script node-pty
 npm run lint
 npm run format
 npm run package
-npm run integration-test
+npm run test
 if ($LASTEXITCODE -eq 0) {
     Write-Host 'SUCCESS'
 } else {

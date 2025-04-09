@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
+import * as path from "path";
 import { expect } from "chai";
 import { match } from "sinon";
 import { FolderEvent, FolderOperation, WorkspaceContext } from "../../../src/WorkspaceContext";
@@ -301,7 +302,7 @@ suite("LanguageClientManager Suite", () => {
             DidChangeWorkspaceFoldersNotification.type,
             {
                 event: {
-                    added: [{ name: "folder1", uri: "/folder1" }],
+                    added: [{ name: "folder1", uri: path.normalize("/folder1") }],
                     removed: [],
                 },
             } as DidChangeWorkspaceFoldersParams
@@ -320,7 +321,7 @@ suite("LanguageClientManager Suite", () => {
             DidChangeWorkspaceFoldersNotification.type,
             {
                 event: {
-                    added: [{ name: "folder2", uri: "/folder2" }],
+                    added: [{ name: "folder2", uri: path.normalize("/folder2") }],
                     removed: [],
                 },
             } as DidChangeWorkspaceFoldersParams
@@ -340,7 +341,7 @@ suite("LanguageClientManager Suite", () => {
             {
                 event: {
                     added: [],
-                    removed: [{ name: "folder1", uri: "/folder1" }],
+                    removed: [{ name: "folder1", uri: path.normalize("/folder1") }],
                 },
             } as DidChangeWorkspaceFoldersParams
         );
@@ -472,7 +473,7 @@ suite("LanguageClientManager Suite", () => {
                 DidChangeActiveDocumentNotification.method,
                 {
                     textDocument: {
-                        uri: "/folder1/file.swift",
+                        uri: path.normalize("/folder1/file.swift"),
                     },
                 } as DidChangeActiveDocumentParams
             );
@@ -501,7 +502,7 @@ suite("LanguageClientManager Suite", () => {
                 DidChangeActiveDocumentNotification.method,
                 {
                     textDocument: {
-                        uri: "/folder1/file.swift",
+                        uri: path.normalize("/folder1/file.swift"),
                     },
                 } as DidChangeActiveDocumentParams
             );
