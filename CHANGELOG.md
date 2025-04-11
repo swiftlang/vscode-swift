@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.2.0 - 2025-04-07
+
+### Added
+
+- Convert the Dependencies View into the Project Panel to view all aspects of your Swift project ([#1382](https://github.com/swiftlang/vscode-swift/pull/1382))
+- Use the LLDB DAP extension to debug when using a Swift 6 toolchain ([#1384](https://github.com/swiftlang/vscode-swift/pull/1384))
+- Added run and debug buttons to Swift editors ([#1378](https://github.com/swiftlang/vscode-swift/pull/1378))
+- Educational notes from compiler diagnostics can be viewed directly in VS Code ([#1423](https://github.com/swiftlang/vscode-swift/pull/1423))
+- Swift settings now support variable substitutions ([#1439](https://github.com/swiftlang/vscode-swift/pull/1439))
+- SwiftPM plugin tasks are now configurable via settings ([#1409](https://github.com/swiftlang/vscode-swift/pull/1409))
+- Added the `swift.scriptSwiftLanguageVersion` setting to choose Swift language mode when running scripts (thanks @louisunlimited) ([#1476](https://github.com/swiftlang/vscode-swift/pull/1476))
+
+### Fixed
+
+- Prevent duplicate reload extension notifications from appearing ([#1473](https://github.com/swiftlang/vscode-swift/pull/1473))
+- "Actual" and "Expected" values are shown in the right order on test failure ([#1444](https://github.com/swiftlang/vscode-swift/issues/1444))
+- Correctly set the `DEVELOPER_DIR` environment variable when selecting between two Xcode installs ([#1433](https://github.com/swiftlang/vscode-swift/pull/1433))
+- Prompt to reload the extension when swiftEnvironmentVariables is changed ([#1430](https://github.com/swiftlang/vscode-swift/pull/1430))
+- Search for Swift packages in sub-folders of the workspace ([#1425](https://github.com/swiftlang/vscode-swift/pull/1425))
+- Fix missing test result output on Linux when using print ([#1401](https://github.com/swiftlang/vscode-swift/pull/1401))
+- Stop all actively running tests when stop button is pressed ([#1391](https://github.com/swiftlang/vscode-swift/pull/1391))
+- Properly set `--swift-sdk` when using `Swift: Select Target Platform` on Swift 6.1 ([#1390](https://github.com/swiftlang/vscode-swift/pull/1390))
+
 ## 2.0.2 - 2025-02-20
 
 ### Fixed
