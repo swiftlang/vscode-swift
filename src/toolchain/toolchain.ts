@@ -830,12 +830,24 @@ export class SwiftToolchain {
             );
             return undefined;
         }
-        const data = await fs.readFile(platformManifest, "utf8");
-        let infoPlist;
-        try {
-            infoPlist = plist.parse(data) as unknown as InfoPlist;
-        } catch (error) {
+
+        async function loadPlist(): Promise<InfoPlist | undefined> {
+            let error: unknown;
+            // Some toolchains have the Info.plist encoded in UTF-16LE
+            const encodings: BufferEncoding[] = ["utf8", "utf16le"];
+            for (const encoding of encodings) {
+                try {
+                    const data = await fs.readFile(platformManifest, encoding);
+                    return plist.parse(data) as unknown as InfoPlist;
+                } catch (err) {
+                    error = err;
+                }
+            }
             vscode.window.showWarningMessage(`Unable to parse ${platformManifest}: ${error}`);
+        }
+
+        const infoPlist = await loadPlist();
+        if (!infoPlist) {
             return undefined;
         }
         const plistKey = type === "XCTest" ? "XCTEST_VERSION" : "SWIFT_TESTING_VERSION";
