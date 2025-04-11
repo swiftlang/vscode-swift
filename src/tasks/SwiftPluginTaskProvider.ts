@@ -271,4 +271,13 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         }
         return args;
     }
+
+    /**
+     * Registers the Swift plugin task provider with VS Code.
+     * @param ctx The workspace context.
+     * @returns A disposable that unregisters the provider when disposed.
+     */
+    public static register(ctx: WorkspaceContext): vscode.Disposable {
+        return vscode.tasks.registerTaskProvider("swift-plugin", new SwiftPluginTaskProvider(ctx));
+    }
 }
