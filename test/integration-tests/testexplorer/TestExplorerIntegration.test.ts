@@ -198,8 +198,11 @@ suite("Test Explorer Suite", function () {
                         "testWithKnownIssue()",
                         "testWithKnownIssueAndUnknownIssue()",
                         "testLotsOfOutput()",
+                        "testCrashing()",
                         "DuplicateSuffixTests",
                         ["testPassing()", "testPassingSuffix()"],
+                        "CrashingXCTests",
+                        ["testCrashing()"],
                     ],
                 ]);
             } else if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
@@ -208,6 +211,8 @@ suite("Test Explorer Suite", function () {
                 assertTestControllerHierarchy(testExplorer.controller, [
                     "PackageTests",
                     [
+                        "CrashingXCTests",
+                        ["testCrashing"],
                         "DebugReleaseTestSuite",
                         ["testDebug", "testRelease"],
                         "DuplicateSuffixTests",
@@ -342,6 +347,23 @@ suite("Test Explorer Suite", function () {
                 });
             });
 
+            test("crashing", async () => {
+                const testRun = await runTest(
+                    testExplorer,
+                    TestKind.standard,
+                    "PackageTests.testCrashing()"
+                );
+
+                assertTestResults(testRun, {
+                    failed: [
+                        {
+                            test: "PackageTests.testCrashing()",
+                            issues: ["Test did not complete."],
+                        },
+                    ],
+                });
+            });
+
             test("tests run in debug mode @slow", async function () {
                 const testRun = await runTest(
                     testExplorer,
@@ -437,6 +459,23 @@ suite("Test Explorer Suite", function () {
                     passed: [
                         "PackageTests.DuplicateSuffixTests",
                         "PackageTests.DuplicateSuffixTests/testPassing",
+                    ],
+                });
+            });
+
+            test("Crashing XCTest", async function () {
+                const crashingRun = await runTest(
+                    testExplorer,
+                    TestKind.standard,
+                    "PackageTests.CrashingXCTests/testCrashing"
+                );
+
+                assertTestResults(crashingRun, {
+                    failed: [
+                        {
+                            test: "PackageTests.CrashingXCTests/testCrashing",
+                            issues: ["Test did not complete."],
+                        },
                     ],
                 });
             });

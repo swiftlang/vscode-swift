@@ -58,6 +58,7 @@ export enum TestLibrary {
 }
 
 export interface TestRunState {
+    pending: vscode.TestItem[];
     failed: {
         test: vscode.TestItem;
         message: vscode.TestMessage | readonly vscode.TestMessage[];
@@ -88,6 +89,7 @@ export class TestRunProxy {
 
     public static initialTestRunState(): TestRunState {
         return {
+            pending: [],
             failed: [],
             passed: [],
             skipped: [],
@@ -220,18 +222,25 @@ export class TestRunProxy {
     }
 
     public started(test: vscode.TestItem) {
+        this.runState.pending.push(test);
         this.testRun?.started(test);
+    }
+
+    private clearPendingTest(test: vscode.TestItem) {
+        this.runState.pending = this.runState.pending.filter(t => t !== test);
     }
 
     public skipped(test: vscode.TestItem) {
         test.tags = [...test.tags, new vscode.TestTag(TestRunProxy.Tags.SKIPPED)];
 
         this.runState.skipped.push(test);
+        this.clearPendingTest(test);
         this.testRun?.skipped(test);
     }
 
     public passed(test: vscode.TestItem, duration?: number) {
         this.runState.passed.push(test);
+        this.clearPendingTest(test);
         this.testRun?.passed(test, duration);
     }
 
@@ -241,6 +250,7 @@ export class TestRunProxy {
         duration?: number
     ) {
         this.runState.failed.push({ test, message });
+        this.clearPendingTest(test);
         this.testRun?.failed(test, message, duration);
     }
 
@@ -250,6 +260,7 @@ export class TestRunProxy {
         duration?: number
     ) {
         this.runState.errored.push(test);
+        this.clearPendingTest(test);
         this.testRun?.errored(test, message, duration);
     }
 
@@ -259,6 +270,12 @@ export class TestRunProxy {
         if (!this.runStarted) {
             this.testRunStarted();
         }
+
+        // Any tests still in the pending state are considered failed. This
+        // can happen if a test causes a crash and aborts the test run.
+        this.runState.pending.forEach(test => {
+            this.failed(test, new vscode.TestMessage("Test did not complete."));
+        });
 
         this.reportAttachments();
         this.testRun?.end();
