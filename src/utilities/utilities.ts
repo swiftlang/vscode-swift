@@ -109,6 +109,10 @@ export async function execFile(
             options.env = { ...(options.env ?? process.env), ...runtimeEnv };
         }
     }
+    options = {
+        ...options,
+        maxBuffer: options.maxBuffer ?? 1024 * 1024 * 64, // 64MB
+    };
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
         cp.execFile(executable, args, options, (error, stdout, stderr) => {
             if (error) {
@@ -198,6 +202,10 @@ export async function execSwift(
             ...configuration.swiftEnvironmentVariables,
         };
     }
+    options = {
+        ...options,
+        maxBuffer: options.maxBuffer ?? 1024 * 1024 * 64, // 64MB
+    };
     return await execFile(swift, args, options, folderContext);
 }
 
