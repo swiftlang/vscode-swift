@@ -28,22 +28,22 @@ suite("SwiftPackage Test Suite", function () {
 
     test("No package", async () => {
         const spmPackage = await SwiftPackage.create(testAssetUri("empty-folder"), toolchain);
-        assert.strictEqual(spmPackage.foundPackage, false);
+        assert.strictEqual(await spmPackage.foundPackage, false);
     });
 
     test("Invalid package", async () => {
         const spmPackage = await SwiftPackage.create(testAssetUri("invalid-package"), toolchain);
-        assert.strictEqual(spmPackage.foundPackage, true);
-        assert.strictEqual(spmPackage.isValid, false);
+        assert.strictEqual(await spmPackage.foundPackage, true);
+        assert.strictEqual(await spmPackage.isValid, false);
     });
 
     test("Library package", async () => {
         const spmPackage = await SwiftPackage.create(testAssetUri("package2"), toolchain);
-        assert.strictEqual(spmPackage.isValid, true);
-        assert.strictEqual(spmPackage.libraryProducts.length, 1);
-        assert.strictEqual(spmPackage.libraryProducts[0].name, "package2");
-        assert.strictEqual(spmPackage.dependencies.length, 0);
-        assert.strictEqual(spmPackage.targets.length, 2);
+        assert.strictEqual(await spmPackage.isValid, true);
+        assert.strictEqual((await spmPackage.libraryProducts).length, 1);
+        assert.strictEqual((await spmPackage.libraryProducts)[0].name, "package2");
+        assert.strictEqual((await spmPackage.dependencies).length, 0);
+        assert.strictEqual((await spmPackage.targets).length, 2);
     });
 
     test("Package resolve v2", async function () {
@@ -58,14 +58,14 @@ suite("SwiftPackage Test Suite", function () {
             this.skip();
         }
         const spmPackage = await SwiftPackage.create(testAssetUri("package5.6"), toolchain);
-        assert.strictEqual(spmPackage.isValid, true);
+        assert.strictEqual(await spmPackage.isValid, true);
         assert(spmPackage.resolved !== undefined);
     });
 
     test("Identity case-insensitivity", async () => {
         const spmPackage = await SwiftPackage.create(testAssetUri("identity-case"), toolchain);
-        assert.strictEqual(spmPackage.isValid, true);
-        assert.strictEqual(spmPackage.dependencies.length, 1);
+        assert.strictEqual(await spmPackage.isValid, true);
+        assert.strictEqual((await spmPackage.dependencies).length, 1);
         assert(spmPackage.resolved !== undefined);
         assert.strictEqual(spmPackage.resolved.pins.length, 1);
         assert.strictEqual(spmPackage.resolved.pins[0].identity, "yams");
@@ -73,8 +73,8 @@ suite("SwiftPackage Test Suite", function () {
 
     test("Identity different from name", async () => {
         const spmPackage = await SwiftPackage.create(testAssetUri("identity-different"), toolchain);
-        assert.strictEqual(spmPackage.isValid, true);
-        assert.strictEqual(spmPackage.dependencies.length, 1);
+        assert.strictEqual(await spmPackage.isValid, true);
+        assert.strictEqual((await spmPackage.dependencies).length, 1);
         assert(spmPackage.resolved !== undefined);
         assert.strictEqual(spmPackage.resolved.pins.length, 1);
         assert.strictEqual(spmPackage.resolved.pins[0].identity, "swift-log");

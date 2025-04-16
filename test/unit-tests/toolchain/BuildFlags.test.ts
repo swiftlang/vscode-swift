@@ -27,7 +27,7 @@ suite("BuildFlags Test Suite", () => {
 
     const sandboxConfig = mockGlobalValue(configuration, "disableSandbox");
 
-    suiteSetup(async () => {
+    suiteSetup(() => {
         mockedToolchain = mockObject<SwiftToolchain>({
             swiftVersion: new Version(6, 0, 0),
         });
@@ -84,7 +84,7 @@ suite("BuildFlags Test Suite", () => {
         const sdkConfig = mockGlobalValue(configuration, "sdk");
         const swiftSDKConfig = mockGlobalValue(configuration, "swiftSDK");
 
-        test("no configuration provided", async () => {
+        test("no configuration provided", () => {
             sdkConfig.setValue("");
             swiftSDKConfig.setValue("");
             expect(buildFlags.swiftpmSDKFlags()).to.be.an("array").that.is.empty;
@@ -174,7 +174,7 @@ suite("BuildFlags Test Suite", () => {
     suite("buildPathFlags", () => {
         const buildPathConfig = mockGlobalValue(configuration, "buildPath");
 
-        test("no configuration provided", async () => {
+        test("no configuration provided", () => {
             buildPathConfig.setValue("");
             expect(buildFlags.buildPathFlags()).to.be.an("array").that.is.empty;
         });
@@ -197,7 +197,7 @@ suite("BuildFlags Test Suite", () => {
         });
     });
 
-    suite("buildDirectoryFromWorkspacePath", async () => {
+    suite("buildDirectoryFromWorkspacePath", () => {
         const buildPathConfig = mockGlobalValue(configuration, "buildPath");
 
         test("no configuration provided", () => {

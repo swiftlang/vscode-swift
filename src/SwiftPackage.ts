@@ -22,7 +22,7 @@ import { BuildFlags } from "./toolchain/BuildFlags";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
 
 /** Swift Package Manager contents */
-export interface PackageContents {
+interface PackageContents {
     name: string;
     products: Product[];
     dependencies: Dependency[];
@@ -185,8 +185,10 @@ function isError(state: SwiftPackageState): state is Error {
 /**
  * Class holding Swift Package Manager Package
  */
-export class SwiftPackage implements PackageContents {
+export class SwiftPackage {
     public plugins: PackagePlugin[] = [];
+    private _contents: SwiftPackageState | undefined;
+
     /**
      * SwiftPackage Constructor
      * @param folder folder package is in
@@ -195,7 +197,7 @@ export class SwiftPackage implements PackageContents {
      */
     private constructor(
         readonly folder: vscode.Uri,
-        private contents: SwiftPackageState,
+        private contentsPromise: Promise<SwiftPackageState>,
         public resolved: PackageResolved | undefined,
         private workspaceState: WorkspaceState | undefined
     ) {}
@@ -209,10 +211,34 @@ export class SwiftPackage implements PackageContents {
         folder: vscode.Uri,
         toolchain: SwiftToolchain
     ): Promise<SwiftPackage> {
-        const contents = await SwiftPackage.loadPackage(folder, toolchain);
-        const resolved = await SwiftPackage.loadPackageResolved(folder);
-        const workspaceState = await SwiftPackage.loadWorkspaceState(folder);
-        return new SwiftPackage(folder, contents, resolved, workspaceState);
+        const [resolved, workspaceState] = await Promise.all([
+            SwiftPackage.loadPackageResolved(folder),
+            SwiftPackage.loadWorkspaceState(folder),
+        ]);
+        return new SwiftPackage(
+            folder,
+            SwiftPackage.loadPackage(folder, toolchain),
+            resolved,
+            workspaceState
+        );
+    }
+
+    /**
+     * Returns the package state once it has loaded.
+     * A snapshot of the state is stored in `_contents` after initial resolution.
+     */
+    private get contents(): Promise<SwiftPackageState> {
+        return this.contentsPromise.then(contents => {
+            // If `reload` is called immediately its possible for it to resolve
+            // before the initial contentsPromise resolution. In that case return
+            // the newer loaded `_contents`.
+            if (this._contents === undefined) {
+                this._contents = contents;
+                return contents;
+            } else {
+                return this._contents;
+            }
+        });
     }
 
     /**
@@ -329,7 +355,9 @@ export class SwiftPackage implements PackageContents {
 
     /** Reload swift package */
     public async reload(toolchain: SwiftToolchain) {
-        this.contents = await SwiftPackage.loadPackage(this.folder, toolchain);
+        const loadedContents = await SwiftPackage.loadPackage(this.folder, toolchain);
+        this._contents = loadedContents;
+        this.contentsPromise = Promise.resolve(loadedContents);
     }
 
     /** Reload Package.resolved file */
@@ -346,31 +374,26 @@ export class SwiftPackage implements PackageContents {
     }
 
     /** Return if has valid contents */
-    public get isValid(): boolean {
-        return isPackage(this.contents);
+    public get isValid(): Promise<boolean> {
+        return this.contents.then(contents => isPackage(contents));
     }
 
     /** Load error */
-    public get error(): Error | undefined {
-        if (isError(this.contents)) {
-            return this.contents;
-        } else {
-            return undefined;
-        }
+    public get error(): Promise<Error | undefined> {
+        return this.contents.then(contents => (isError(contents) ? contents : undefined));
     }
 
     /** Did we find a Package.swift */
-    public get foundPackage(): boolean {
-        return this.contents !== undefined;
+    public get foundPackage(): Promise<boolean> {
+        return this.contents.then(contents => contents !== undefined);
     }
 
-    public rootDependencies(): ResolvedDependency[] {
+    public get rootDependencies(): Promise<ResolvedDependency[]> {
         // Correlate the root dependencies found in the Package.swift with their
         // checked out versions in the workspace-state.json.
-        const result = this.dependencies.map(dependency =>
-            this.resolveDependencyAgainstWorkspaceState(dependency)
+        return this.dependencies.then(dependencies =>
+            dependencies.map(dependency => this.resolveDependencyAgainstWorkspaceState(dependency))
         );
-        return result;
     }
 
     private resolveDependencyAgainstWorkspaceState(dependency: Dependency): ResolvedDependency {
@@ -446,34 +469,47 @@ export class SwiftPackage implements PackageContents {
         }
     }
 
-    /** name of Swift Package */
-    get name(): string {
-        return (this.contents as PackageContents)?.name ?? "";
+    /** getName of Swift Package */
+    get name(): Promise<string> {
+        return this.contents.then(contents => (contents as PackageContents)?.name ?? "");
     }
 
     /** array of products in Swift Package */
-    get products(): Product[] {
-        return (this.contents as PackageContents)?.products ?? [];
+    private get products(): Promise<Product[]> {
+        return this.contents.then(contents => (contents as PackageContents)?.products ?? []);
     }
 
     /** array of dependencies in Swift Package */
-    get dependencies(): Dependency[] {
-        return (this.contents as PackageContents)?.dependencies ?? [];
+    get dependencies(): Promise<Dependency[]> {
+        return this.contents.then(contents => (contents as PackageContents)?.dependencies ?? []);
     }
 
     /** array of targets in Swift Package */
-    get targets(): Target[] {
-        return (this.contents as PackageContents)?.targets ?? [];
+    get targets(): Promise<Target[]> {
+        return this.contents.then(contents => (contents as PackageContents)?.targets ?? []);
     }
 
     /** array of executable products in Swift Package */
-    get executableProducts(): Product[] {
-        return this.products.filter(product => product.type.executable !== undefined);
+    get executableProducts(): Promise<Product[]> {
+        return this.products.then(products =>
+            products.filter(product => product.type.executable !== undefined)
+        );
     }
 
     /** array of library products in Swift Package */
-    get libraryProducts(): Product[] {
-        return this.products.filter(product => product.type.library !== undefined);
+    get libraryProducts(): Promise<Product[]> {
+        return this.products.then(products =>
+            products.filter(product => product.type.library !== undefined)
+        );
+    }
+
+    /**
+     * Array of targets in Swift Package. The targets may not be loaded yet.
+     * It is preferable to use the `targets` property that returns a promise that
+     * returns the targets when they're guarenteed to be resolved.
+     **/
+    get currentTargets(): Target[] {
+        return (this._contents as unknown as { targets: Target[] })?.targets ?? [];
     }
 
     /**
@@ -481,20 +517,22 @@ export class SwiftPackage implements PackageContents {
      * @param type Type of target
      * @returns Array of targets
      */
-    getTargets(type?: TargetType): Target[] {
+    async getTargets(type?: TargetType): Promise<Target[]> {
         if (type === undefined) {
             return this.targets;
         } else {
-            return this.targets.filter(target => target.type === type);
+            return this.targets.then(targets => targets.filter(target => target.type === type));
         }
     }
 
     /**
      * Get target for file
      */
-    getTarget(file: string): Target | undefined {
+    async getTarget(file: string): Promise<Target | undefined> {
         const filePath = path.relative(this.folder.fsPath, file);
-        return this.targets.find(target => isPathInsidePath(filePath, target.path));
+        return this.targets.then(targets =>
+            targets.find(target => isPathInsidePath(filePath, target.path))
+        );
     }
 
     private static trimStdout(stdout: string): string {

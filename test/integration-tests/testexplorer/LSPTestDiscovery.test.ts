@@ -180,12 +180,29 @@ suite("LSPTestDiscovery Suite", () => {
             }));
         });
 
+        function assertEqual(items: TestClass[], expected: TestClass[]) {
+            // There is an issue comparing vscode.Uris directly.
+            // The internal `_fsPath` is not initialized immediately, and so
+            // could be undefined, or maybe not.
+            const convertedItems = items.map(item => ({
+                ...item,
+                location: item.location?.uri.path,
+                range: item.location?.range,
+            }));
+            const convertedExpected = expected.map(item => ({
+                ...item,
+                location: item.location?.uri.path,
+                range: item.location?.range,
+            }));
+            assert.deepStrictEqual(convertedItems, convertedExpected);
+        }
+
         test(TextDocumentTestsRequest.method, async () => {
             client.setResponse(TextDocumentTestsRequest.type, items);
 
             const testClasses = await discoverer.getDocumentTests(pkg, file);
 
-            assert.deepStrictEqual(testClasses, expected);
+            assertEqual(testClasses, expected);
         });
 
         test(WorkspaceTestsRequest.method, async () => {
@@ -193,7 +210,7 @@ suite("LSPTestDiscovery Suite", () => {
 
             const testClasses = await discoverer.getWorkspaceTests(pkg);
 
-            assert.deepStrictEqual(testClasses, expected);
+            assertEqual(testClasses, expected);
         });
 
         test("converts LSP XCTest IDs", async () => {
@@ -207,8 +224,7 @@ suite("LSPTestDiscovery Suite", () => {
             client.setResponse(WorkspaceTestsRequest.type, items);
 
             const testClasses = await discoverer.getWorkspaceTests(pkg);
-
-            assert.deepStrictEqual(testClasses, expected);
+            assertEqual(testClasses, expected);
         });
 
         test("Prepends test target to ID", async () => {
@@ -227,15 +243,12 @@ suite("LSPTestDiscovery Suite", () => {
                 type: TargetType.test,
                 sources: [],
             };
-            pkg.getTargets = () => [target];
-            pkg.getTarget = () => target;
+            pkg.getTargets = () => Promise.resolve([target]);
+            pkg.getTarget = () => Promise.resolve(target);
 
             const testClasses = await discoverer.getWorkspaceTests(pkg);
 
-            assert.deepStrictEqual(
-                testClasses.map(({ id }) => id),
-                expected.map(({ id }) => id)
-            );
+            assertEqual(testClasses, expected);
         });
     });
 });

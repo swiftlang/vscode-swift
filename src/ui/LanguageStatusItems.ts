@@ -43,7 +43,7 @@ export class LanguageStatusItems implements vscode.Disposable {
         const onFocus = workspaceContext.onDidChangeFolders(async ({ folder, operation }) => {
             switch (operation) {
                 case FolderOperation.focus:
-                    if (folder && folder.swiftPackage.foundPackage) {
+                    if (folder && (await folder.swiftPackage.foundPackage)) {
                         this.packageSwiftItem.text = "Package.swift";
                         this.packageSwiftItem.command = Command.create(
                             "Open Package",

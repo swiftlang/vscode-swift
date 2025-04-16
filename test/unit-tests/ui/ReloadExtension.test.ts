@@ -18,7 +18,7 @@ import * as vscode from "vscode";
 import { showReloadExtensionNotificationInstance } from "../../../src/ui/ReloadExtension";
 import { Workbench } from "../../../src/utilities/commands";
 
-suite("showReloadExtensionNotification()", async function () {
+suite("showReloadExtensionNotification()", function () {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
     const mockedVSCodeCommands = mockGlobalObject(vscode, "commands");
     let showReloadExtensionNotification: (

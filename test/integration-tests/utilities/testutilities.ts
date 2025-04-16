@@ -227,7 +227,7 @@ const extensionBootstrapper = (() => {
             await waitForNoRunningTasks({ timeout: 10000 });
 
             // Close all editors before deactivating the extension.
-            closeAllEditors();
+            await closeAllEditors();
 
             await activatedAPI.workspaceContext?.removeWorkspaceFolder(getRootWorkspaceFolder());
             await activatedAPI.deactivate();
