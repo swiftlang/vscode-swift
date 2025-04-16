@@ -106,16 +106,25 @@ struct MixedSwiftTestingSuite {
   }
   print(string)
 }
-#endif
+
+@Test func testCrashing() throws {
+  print([1,2][3])
+}
 
 // Disabled until Attachments are formalized and released.
 // #if swift(>=6.1)
 // @Test func testAttachment() throws {
 //   Attachment("Hello, world!", named: "hello.txt").attach()
 // }
-// #endif
+#endif
 
 final class DuplicateSuffixTests: XCTestCase {
   func testPassing() throws {}
   func testPassingSuffix() throws {}
+}
+
+final class CrashingXCTests: XCTestCase {
+  func testCrashing() throws {
+    print([1,2][3])
+  }
 }
