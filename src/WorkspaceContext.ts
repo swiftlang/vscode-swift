@@ -183,6 +183,8 @@ export class WorkspaceContext implements vscode.Disposable {
             this.buildStatus,
         ];
         this.lastFocusUri = vscode.window.activeTextEditor?.document.uri;
+
+        this.setupEventListeners();
     }
 
     async stop() {
@@ -278,7 +280,7 @@ export class WorkspaceContext implements vscode.Disposable {
     }
 
     /** Setup the vscode event listeners to catch folder changes and active window changes */
-    setupEventListeners() {
+    private setupEventListeners() {
         // add event listener for when a workspace folder is added/removed
         const onWorkspaceChange = vscode.workspace.onDidChangeWorkspaceFolders(event => {
             if (this === undefined) {

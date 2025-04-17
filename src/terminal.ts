@@ -92,4 +92,15 @@ export class SwiftTerminalProfileProvider implements vscode.TerminalProfileProvi
             env,
         });
     }
+
+    /**
+     * Registers the Swift terminal profile provider with VS Code.
+     * @returns A disposable that unregisters the provider when disposed.
+     */
+    public static register(): vscode.Disposable {
+        return vscode.window.registerTerminalProfileProvider(
+            "swift.terminalProfile",
+            new SwiftTerminalProfileProvider()
+        );
+    }
 }
