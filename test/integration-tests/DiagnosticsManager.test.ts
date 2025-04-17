@@ -231,9 +231,10 @@ suite("DiagnosticsManager Test Suite", function () {
                         // diagnostics are not emitted on their own line.
                         const swiftVersion = workspaceContext.toolchain.swiftVersion;
                         if (
-                            process.platform === "win32" &&
-                            swiftVersion.isGreaterThanOrEqual(new Version(5, 10, 0)) &&
-                            swiftVersion.isLessThanOrEqual(new Version(6, 0, 999))
+                            swiftVersion.isLessThan(new Version(5, 10, 0)) ||
+                            (process.platform === "win32" &&
+                                swiftVersion.isGreaterThanOrEqual(new Version(5, 10, 0)) &&
+                                swiftVersion.isLessThanOrEqual(new Version(6, 0, 999)))
                         ) {
                             this.skip();
                         }
