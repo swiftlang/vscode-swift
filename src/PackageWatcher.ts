@@ -46,7 +46,7 @@ export class PackageWatcher {
     async install() {
         this.packageFileWatcher = this.createPackageFileWatcher();
         this.resolvedFileWatcher = this.createResolvedFileWatcher();
-        this.workspaceStateFileWatcher = this.createWorkspaceStateFileWatcher();
+        this.workspaceStateFileWatcher = await this.createWorkspaceStateFileWatcher();
         this.snippetWatcher = this.createSnippetFileWatcher();
         this.swiftVersionFileWatcher = await this.createSwiftVersionFileWatcher();
     }
@@ -83,7 +83,7 @@ export class PackageWatcher {
         return watcher;
     }
 
-    private createWorkspaceStateFileWatcher(): vscode.FileSystemWatcher {
+    private async createWorkspaceStateFileWatcher(): Promise<vscode.FileSystemWatcher> {
         const uri = vscode.Uri.joinPath(
             vscode.Uri.file(
                 BuildFlags.buildDirectoryFromWorkspacePath(this.folderContext.folder.fsPath, true)
@@ -94,6 +94,16 @@ export class PackageWatcher {
         watcher.onDidCreate(async () => await this.handleWorkspaceStateChange());
         watcher.onDidChange(async () => await this.handleWorkspaceStateChange());
         watcher.onDidDelete(async () => await this.handleWorkspaceStateChange());
+
+        const fileExists = await fs
+            .access(uri.fsPath)
+            .then(() => true)
+            .catch(() => false);
+
+        if (fileExists) {
+            await this.handleWorkspaceStateChange();
+        }
+
         return watcher;
     }
 
