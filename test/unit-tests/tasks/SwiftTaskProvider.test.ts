@@ -57,14 +57,14 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
             sanitizer: mockFn(),
             getToolchainExecutable: mockFn(s => s.withArgs("swift").returns("/path/to/bin/swift")),
         });
-        workspaceContext = mockObject<WorkspaceContext>({
+        const folderContext = mockObject<FolderContext>({
+            workspaceContext: instance(workspaceContext),
+            workspaceFolder,
             toolchain: instance(toolchain),
-            get swiftVersion() {
-                return toolchain.swiftVersion;
-            },
-            set swiftVersion(value) {
-                toolchain.swiftVersion = value;
-            },
+        });
+        workspaceContext = mockObject<WorkspaceContext>({
+            globalToolchain: instance(toolchain),
+            currentFolder: instance(folderContext),
         });
         workspaceFolder = {
             uri: vscode.Uri.file("/path/to/workspace"),

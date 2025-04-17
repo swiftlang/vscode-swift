@@ -184,7 +184,7 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
                 expect(swiftExecution).to.not.be.undefined;
                 assert.deepEqual(
                     swiftExecution.args,
-                    workspaceContext.toolchain.buildFlags.withAdditionalFlags([
+                    workspaceContext.globalToolchain.buildFlags.withAdditionalFlags([
                         "package",
                         ...expected,
                         "command_plugin",
@@ -205,6 +205,7 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
             test("Exit code on success", async () => {
                 const task = taskProvider.createSwiftPluginTask(
                     folderContext.swiftPackage.plugins[0],
+                    folderContext.toolchain,
                     {
                         cwd: folderContext.folder,
                         scope: folderContext.workspaceFolder,
@@ -222,6 +223,7 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
                         name: "not_a_command",
                         package: "command-plugin",
                     },
+                    folderContext.toolchain,
                     {
                         cwd: folderContext.folder,
                         scope: folderContext.workspaceFolder,
@@ -244,7 +246,7 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
 
                 test("provides", () => {
                     expect(task?.execution.args).to.deep.equal(
-                        workspaceContext.toolchain.buildFlags.withAdditionalFlags([
+                        folderContext.toolchain.buildFlags.withAdditionalFlags([
                             "package",
                             "command_plugin",
                         ])

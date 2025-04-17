@@ -181,17 +181,17 @@ export async function execFileStreamOutput(
  */
 export async function execSwift(
     args: string[],
-    toolchain: SwiftToolchain | "default",
+    toolchain: SwiftToolchain | "default" | { swiftExecutable: string },
     options: cp.ExecFileOptions = {},
     folderContext?: FolderContext
 ): Promise<{ stdout: string; stderr: string }> {
     let swift: string;
-    if (toolchain === "default") {
+    if (typeof toolchain === "object" && "swiftExecutable" in toolchain) {
+        swift = toolchain.swiftExecutable;
+    } else if (toolchain === "default") {
         swift = getSwiftExecutable();
     } else {
         swift = toolchain.getToolchainExecutable("swift");
-    }
-    if (toolchain !== "default") {
         args = toolchain.buildFlags.withAdditionalFlags(args);
     }
     if (Object.keys(configuration.swiftEnvironmentVariables).length > 0) {

@@ -396,7 +396,7 @@ export class TestRunner {
         this.xcTestOutputParser =
             testKind === TestKind.parallel
                 ? new ParallelXCTestOutputParser(
-                      this.folderContext.workspaceContext.toolchain.hasMultiLineParallelTestOutput
+                      this.folderContext.toolchain.hasMultiLineParallelTestOutput
                   )
                 : new XCTestOutputParser();
         this.swiftTestOutputParser = new SwiftTestingOutputParser(
@@ -774,7 +774,7 @@ export class TestRunner {
                     prefix: this.folderContext.name,
                     presentationOptions: { reveal: vscode.TaskRevealKind.Never },
                 },
-                this.folderContext.workspaceContext.toolchain,
+                this.folderContext.toolchain,
                 { ...process.env, ...testBuildConfig.env },
                 { readOnlyTerminal: process.platform !== "win32" }
             );
@@ -859,7 +859,7 @@ export class TestRunner {
 
             const buffer = await asyncfs.readFile(filename, "utf8");
             const xUnitParser = new TestXUnitParser(
-                this.folderContext.workspaceContext.toolchain.hasMultiLineParallelTestOutput
+                this.folderContext.toolchain.hasMultiLineParallelTestOutput
             );
             const results = await xUnitParser.parse(
                 buffer,

@@ -33,7 +33,7 @@ import configuration from "../configuration";
 export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Disposable {
     const subscriptions: vscode.Disposable[] = [
         registerLoggingDebugAdapterTracker(),
-        registerLLDBDebugAdapter(workspaceContext.toolchain, workspaceContext.outputChannel),
+        registerLLDBDebugAdapter(workspaceContext, workspaceContext.outputChannel),
     ];
 
     return {
@@ -49,12 +49,12 @@ export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Dis
  * @returns A disposable to be disposed when the extension is deactivated
  */
 function registerLLDBDebugAdapter(
-    toolchain: SwiftToolchain,
+    workspaceContext: WorkspaceContext,
     outputChannel: SwiftOutputChannel
 ): vscode.Disposable {
     return vscode.debug.registerDebugConfigurationProvider(
         SWIFT_LAUNCH_CONFIG_TYPE,
-        new LLDBDebugConfigurationProvider(process.platform, toolchain, outputChannel)
+        new LLDBDebugConfigurationProvider(process.platform, workspaceContext, outputChannel)
     );
 }
 
@@ -70,7 +70,7 @@ function registerLLDBDebugAdapter(
 export class LLDBDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
     constructor(
         private platform: NodeJS.Platform,
-        private toolchain: SwiftToolchain,
+        private workspaceContext: WorkspaceContext,
         private outputChannel: SwiftOutputChannel
     ) {}
 
@@ -78,6 +78,11 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         _folder: vscode.WorkspaceFolder | undefined,
         launchConfig: vscode.DebugConfiguration
     ): Promise<vscode.DebugConfiguration | undefined | null> {
+        const folder = this.workspaceContext.folders.find(
+            folder => folder.workspaceFolder.uri.fsPath === _folder?.uri.fsPath
+        );
+        const toolchain = folder?.toolchain ?? this.workspaceContext.globalToolchain;
+
         // Fix the program path on Windows to include the ".exe" extension
         if (
             this.platform === "win32" &&
@@ -112,7 +117,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         }
 
         // Delegate to the appropriate debug adapter extension
-        launchConfig.type = DebugAdapter.getLaunchConfigType(this.toolchain.swiftVersion);
+        launchConfig.type = DebugAdapter.getLaunchConfigType(toolchain.swiftVersion);
         if (launchConfig.type === LaunchConfigType.CODE_LLDB) {
             launchConfig.sourceLanguages = ["swift"];
             if (!vscode.extensions.getExtension("vadimcn.vscode-lldb")) {
@@ -120,14 +125,14 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                     return undefined;
                 }
             }
-            if (!(await this.promptForCodeLldbSettings())) {
+            if (!(await this.promptForCodeLldbSettings(toolchain))) {
                 return undefined;
             }
         } else if (launchConfig.type === LaunchConfigType.LLDB_DAP) {
             if (launchConfig.env) {
                 launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
             }
-            const lldbDapPath = await DebugAdapter.getLLDBDebugAdapterPath(this.toolchain);
+            const lldbDapPath = await DebugAdapter.getLLDBDebugAdapterPath(toolchain);
             // Verify that the debug adapter exists or bail otherwise
             if (!(await fileExists(lldbDapPath))) {
                 vscode.window.showErrorMessage(
@@ -170,8 +175,8 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         }
     }
 
-    private async promptForCodeLldbSettings(): Promise<boolean> {
-        const libLldbPathResult = await getLLDBLibPath(this.toolchain);
+    private async promptForCodeLldbSettings(toolchain: SwiftToolchain): Promise<boolean> {
+        const libLldbPathResult = await getLLDBLibPath(toolchain);
         if (!libLldbPathResult.success) {
             const errorMessage = `Error: ${getErrorDescription(libLldbPathResult.failure)}`;
             vscode.window.showWarningMessage(

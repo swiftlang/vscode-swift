@@ -67,9 +67,9 @@ export class TestExplorer {
             this.onDidCreateTestRunEmitter
         );
 
-        this.lspTestDiscovery = new LSPTestDiscovery(
-            folderContext.workspaceContext.languageClientManager
-        );
+        const workspaceContext = folderContext.workspaceContext;
+        const languageClientManager = workspaceContext.languageClientManager.get(folderContext);
+        this.lspTestDiscovery = new LSPTestDiscovery(languageClientManager);
 
         // add end of task handler to be called whenever a build task has finished. If
         // it is the build task for this folder then update the tests
@@ -182,10 +182,10 @@ export class TestExplorer {
                         break;
                     case FolderOperation.focus:
                         if (folder) {
-                            workspace.languageClientManager.documentSymbolWatcher = (
-                                document,
-                                symbols
-                            ) => TestExplorer.onDocumentSymbols(folder, document, symbols);
+                            const languageClientManager =
+                                workspace.languageClientManager.get(folder);
+                            languageClientManager.documentSymbolWatcher = (document, symbols) =>
+                                TestExplorer.onDocumentSymbols(folder, document, symbols);
                         }
                 }
             }
@@ -307,7 +307,7 @@ export class TestExplorer {
                             }
                         });
                 }
-                const toolchain = explorer.folderContext.workspaceContext.toolchain;
+                const toolchain = explorer.folderContext.toolchain;
                 // get build options before build is run so we can be sure they aren't changed
                 // mid-build
                 const testBuildOptions = buildOptions(toolchain);

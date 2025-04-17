@@ -14,54 +14,64 @@
 
 import * as vscode from "vscode";
 import { Command } from "vscode-languageclient";
-import { LanguageClientManager } from "../sourcekit-lsp/LanguageClientManager";
 import { WorkspaceContext, FolderOperation } from "../WorkspaceContext";
+import { LanguagerClientDocumentSelectors } from "../sourcekit-lsp/LanguageClientConfiguration";
 
 export class LanguageStatusItems implements vscode.Disposable {
-    private packageSwiftItem: vscode.LanguageStatusItem;
-
     constructor(workspaceContext: WorkspaceContext) {
         // Swift language version item
         const swiftVersionItem = vscode.languages.createLanguageStatusItem(
             "swiftlang-version",
-            LanguageClientManager.documentSelector
+            LanguagerClientDocumentSelectors.allHandledDocumentTypes()
         );
-        swiftVersionItem.text = workspaceContext.toolchain.swiftVersionString;
+        const toolchain =
+            workspaceContext.currentFolder?.toolchain ?? workspaceContext.globalToolchain;
+        swiftVersionItem.text = toolchain.swiftVersionString;
         swiftVersionItem.accessibilityInformation = {
-            label: `Swift Version ${workspaceContext.toolchain.swiftVersion.toString()}`,
+            label: `Swift Version ${toolchain.swiftVersion.toString()}`,
         };
 
         // Package.swift item
-        this.packageSwiftItem = vscode.languages.createLanguageStatusItem("swiftlang-package", [
-            ...LanguageClientManager.appleLangDocumentSelector,
-            ...LanguageClientManager.cFamilyDocumentSelector,
+        const packageSwiftItem = vscode.languages.createLanguageStatusItem("swiftlang-package", [
+            ...LanguagerClientDocumentSelectors.appleLangDocumentSelector,
+            ...LanguagerClientDocumentSelectors.cFamilyDocumentSelector,
         ]);
-        this.packageSwiftItem.text = "No Package.swift";
-        this.packageSwiftItem.accessibilityInformation = { label: "There is no Package.swift" };
+        packageSwiftItem.text = "No Package.swift";
+        packageSwiftItem.accessibilityInformation = { label: "There is no Package.swift" };
 
         // Update Package.swift item based on current focus
         const onFocus = workspaceContext.onDidChangeFolders(async ({ folder, operation }) => {
             switch (operation) {
                 case FolderOperation.focus:
                     if (folder && (await folder.swiftPackage.foundPackage)) {
-                        this.packageSwiftItem.text = "Package.swift";
-                        this.packageSwiftItem.command = Command.create(
+                        packageSwiftItem.text = "Package.swift";
+                        packageSwiftItem.command = Command.create(
                             "Open Package",
                             "swift.openPackage"
                         );
-                        this.packageSwiftItem.accessibilityInformation = {
+                        packageSwiftItem.accessibilityInformation = {
                             label: "Open Package.swift",
                         };
+
+                        swiftVersionItem.text = folder.toolchain.swiftVersionString;
+                        swiftVersionItem.accessibilityInformation = {
+                            label: `Swift Version ${folder.toolchain.swiftVersion.toString()}`,
+                        };
                     } else {
-                        this.packageSwiftItem.text = "No Package.swift";
-                        this.packageSwiftItem.accessibilityInformation = {
+                        packageSwiftItem.text = "No Package.swift";
+                        packageSwiftItem.accessibilityInformation = {
                             label: "There is no Package.swift",
                         };
-                        this.packageSwiftItem.command = undefined;
+                        packageSwiftItem.command = undefined;
+
+                        swiftVersionItem.text = workspaceContext.globalToolchain.swiftVersionString;
+                        swiftVersionItem.accessibilityInformation = {
+                            label: `Swift Version ${workspaceContext.globalToolchain.swiftVersion.toString()}`,
+                        };
                     }
             }
         });
-        this.subscriptions = [onFocus, swiftVersionItem, this.packageSwiftItem];
+        this.subscriptions = [onFocus, swiftVersionItem, packageSwiftItem];
     }
 
     dispose() {
