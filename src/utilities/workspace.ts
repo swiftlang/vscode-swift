@@ -58,6 +58,8 @@ export async function isValidWorkspaceFolder(
         (!disableSwiftPMIntegration && (await pathExists(folder, "Package.swift"))) ||
         (await pathExists(folder, "compile_commands.json")) ||
         (await pathExists(folder, "compile_flags.txt")) ||
-        (await pathExists(folder, "buildServer.json"))
+        (await pathExists(folder, "buildServer.json")) ||
+        (await pathExists(folder, "build")) ||
+        (await pathExists(folder, "out"))
     );
 }
