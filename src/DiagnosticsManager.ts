@@ -59,7 +59,7 @@ export class DiagnosticsManager implements vscode.Disposable {
 
     private diagnosticCollection: vscode.DiagnosticCollection =
         vscode.languages.createDiagnosticCollection("swift");
-    private allDiagnostics: Map<string, vscode.Diagnostic[]> = new Map();
+    allDiagnostics: Map<string, vscode.Diagnostic[]> = new Map();
     private disposed = false;
 
     constructor(context: WorkspaceContext) {
