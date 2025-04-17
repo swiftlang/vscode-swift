@@ -849,19 +849,12 @@ suite("DiagnosticsManager Test Suite", function () {
             });
 
             test("clean old swiftc diagnostics", async () => {
-                const swiftConfig = vscode.workspace.getConfiguration("swift");
-                // Add initial swiftc diagnostics
-                await swiftConfig.update("diagnosticsCollection", "keepAll");
-                workspaceContext.diagnostics.handleDiagnostics(
-                    mainUri,
-                    DiagnosticsManager.isSwiftc,
-                    [swiftcErrorDiagnostic, swiftcWarningDiagnostic]
-                );
-                assertHasDiagnostic(mainUri, swiftcErrorDiagnostic);
-                assertHasDiagnostic(mainUri, swiftcWarningDiagnostic);
+                workspaceContext.diagnostics.allDiagnostics.set(mainUri.fsPath, [
+                    swiftcErrorDiagnostic,
+                    swiftcWarningDiagnostic,
+                ]);
 
                 // Now change to onlySourceKit and provide identical SourceKit diagnostic
-                await swiftConfig.update("diagnosticsCollection", "onlySourceKit");
                 workspaceContext.diagnostics.handleDiagnostics(
                     mainUri,
                     DiagnosticsManager.isSourcekit,
@@ -919,19 +912,13 @@ suite("DiagnosticsManager Test Suite", function () {
             });
 
             test("clean old SourceKit diagnostics", async () => {
-                const swiftConfig = vscode.workspace.getConfiguration("swift");
                 // Add initial SourceKit diagnostics
-                await swiftConfig.update("diagnosticsCollection", "keepAll");
-                workspaceContext.diagnostics.handleDiagnostics(
-                    mainUri,
-                    DiagnosticsManager.isSourcekit,
-                    [sourcekitErrorDiagnostic, sourcekitWarningDiagnostic]
-                );
-                assertHasDiagnostic(mainUri, sourcekitErrorDiagnostic);
-                assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
+                workspaceContext.diagnostics.allDiagnostics.set(mainUri.fsPath, [
+                    sourcekitErrorDiagnostic,
+                    sourcekitWarningDiagnostic,
+                ]);
 
                 // Now change to onlySwiftc and provide identical swiftc diagnostic
-                await swiftConfig.update("diagnosticsCollection", "onlySwiftc");
                 workspaceContext.diagnostics.handleDiagnostics(
                     mainUri,
                     DiagnosticsManager.isSwiftc,
@@ -946,69 +933,82 @@ suite("DiagnosticsManager Test Suite", function () {
             });
         });
 
-        test("SourceKit removes swiftc diagnostic (SourceKit shows first)", async () => {
-            // Add initial diagnostics
-            workspaceContext.diagnostics.handleDiagnostics(
-                mainUri,
-                DiagnosticsManager.isSourcekit,
-                [sourcekitErrorDiagnostic, sourcekitWarningDiagnostic]
-            );
-            workspaceContext.diagnostics.handleDiagnostics(mainUri, DiagnosticsManager.isSwiftc, [
-                swiftcErrorDiagnostic,
-            ]);
+        suite("cleanup", () => {
+            suiteSetup(async function () {
+                return await updateSettings({
+                    "swift.diagnosticsCollection": undefined,
+                });
+            });
 
-            // Have SourceKit indicate some have been fixed
-            workspaceContext.diagnostics.handleDiagnostics(
-                mainUri,
-                DiagnosticsManager.isSourcekit,
-                [sourcekitWarningDiagnostic]
-            );
+            test("SourceKit removes swiftc diagnostic (SourceKit shows first)", async () => {
+                // Add initial diagnostics
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSourcekit,
+                    [sourcekitErrorDiagnostic, sourcekitWarningDiagnostic]
+                );
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSwiftc,
+                    [swiftcErrorDiagnostic]
+                );
 
-            // check cleaned up stale error
-            assertWithoutDiagnostic(mainUri, swiftcErrorDiagnostic);
-            assertWithoutDiagnostic(mainUri, sourcekitErrorDiagnostic);
-            assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
-        });
+                // Have SourceKit indicate some have been fixed
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSourcekit,
+                    [sourcekitWarningDiagnostic]
+                );
 
-        test("SourceKit removes swiftc diagnostic (swiftc shows first)", async () => {
-            // Add initial diagnostics
-            workspaceContext.diagnostics.handleDiagnostics(mainUri, DiagnosticsManager.isSwiftc, [
-                swiftcErrorDiagnostic,
-                swiftcWarningDiagnostic,
-            ]);
-            workspaceContext.diagnostics.handleDiagnostics(
-                mainUri,
-                DiagnosticsManager.isSourcekit,
-                [sourcekitErrorDiagnostic]
-            );
+                // check cleaned up stale error
+                assertWithoutDiagnostic(mainUri, swiftcErrorDiagnostic);
+                assertWithoutDiagnostic(mainUri, sourcekitErrorDiagnostic);
+                assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
+            });
 
-            // Have SourceKit indicate has been fixed
-            workspaceContext.diagnostics.handleDiagnostics(
-                mainUri,
-                DiagnosticsManager.isSourcekit,
-                []
-            );
+            test("SourceKit removes swiftc diagnostic (swiftc shows first)", async () => {
+                // Add initial diagnostics
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSwiftc,
+                    [swiftcErrorDiagnostic, swiftcWarningDiagnostic]
+                );
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSourcekit,
+                    [sourcekitErrorDiagnostic]
+                );
 
-            // check cleaned up stale error
-            assertWithoutDiagnostic(mainUri, swiftcErrorDiagnostic);
-            assertWithoutDiagnostic(mainUri, sourcekitErrorDiagnostic);
-            assertHasDiagnostic(mainUri, swiftcWarningDiagnostic);
-        });
+                // Have SourceKit indicate has been fixed
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSourcekit,
+                    []
+                );
 
-        test("don't remove swiftc diagnostics when SourceKit never matched", async () => {
-            workspaceContext.diagnostics.handleDiagnostics(mainUri, DiagnosticsManager.isSwiftc, [
-                swiftcErrorDiagnostic,
-            ]);
+                // check cleaned up stale error
+                assertWithoutDiagnostic(mainUri, swiftcErrorDiagnostic);
+                assertWithoutDiagnostic(mainUri, sourcekitErrorDiagnostic);
+                assertHasDiagnostic(mainUri, swiftcWarningDiagnostic);
+            });
 
-            workspaceContext.diagnostics.handleDiagnostics(
-                mainUri,
-                DiagnosticsManager.isSourcekit,
-                [sourcekitWarningDiagnostic]
-            );
+            test("don't remove swiftc diagnostics when SourceKit never matched", async () => {
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSwiftc,
+                    [swiftcErrorDiagnostic]
+                );
 
-            // Should not have cleaned up swiftc error
-            assertHasDiagnostic(mainUri, swiftcErrorDiagnostic);
-            assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSourcekit,
+                    [sourcekitWarningDiagnostic]
+                );
+
+                // Should not have cleaned up swiftc error
+                assertHasDiagnostic(mainUri, swiftcErrorDiagnostic);
+                assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
+            });
         });
     });
 
@@ -1022,7 +1022,7 @@ suite("DiagnosticsManager Test Suite", function () {
             workspaceContext.diagnostics.clear();
             workspaceContext.focusFolder(null);
             return await updateSettings({
-                diagnosticsCollection: "onlySourceKit", // So waitForDiagnostics only resolves from LSP
+                "swift.diagnosticsCollection": "onlySourceKit", // So waitForDiagnostics only resolves from LSP
             });
         });
 
