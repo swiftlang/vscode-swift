@@ -42,7 +42,7 @@ export interface Target {
     c99name: string;
     path: string;
     sources: string[];
-    type: "executable" | "test" | "library" | "snippet" | "plugin";
+    type: "executable" | "test" | "library" | "snippet" | "plugin" | "binary" | "system-target";
 }
 
 /** Swift Package Manager dependency */
