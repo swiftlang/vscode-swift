@@ -23,8 +23,8 @@ import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
  * Manages the creation of LanguageClient instances for workspace folders.
  *
  * A LanguageClient will be created for each unique toolchain version. If two
- * folders share the same toolchain version then they will share the same LanaugeClient.
- * This ensures that a folder always uses the LanaugeClient bundled with its desired toolchain.
+ * folders share the same toolchain version then they will share the same LanguageClient.
+ * This ensures that a folder always uses the LanguageClient bundled with its desired toolchain.
  */
 export class LanguageClientToolchainCoordinator implements vscode.Disposable {
     private subscriptions: vscode.Disposable[] = [];
@@ -98,7 +98,7 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
 
     /**
      * Stops all LanguageClient instances.
-     * This should b called when the extension is deactivated.
+     * This should be called when the extension is deactivated.
      */
     public async stop() {
         for (const client of this.clients.values()) {

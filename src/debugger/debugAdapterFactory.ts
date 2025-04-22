@@ -96,13 +96,13 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
     ) {}
 
     async resolveDebugConfigurationWithSubstitutedVariables(
-        _folder: vscode.WorkspaceFolder | undefined,
+        folder: vscode.WorkspaceFolder | undefined,
         launchConfig: vscode.DebugConfiguration
     ): Promise<vscode.DebugConfiguration | undefined | null> {
-        const folder = this.workspaceContext.folders.find(
-            folder => folder.workspaceFolder.uri.fsPath === _folder?.uri.fsPath
+        const workspaceFolder = this.workspaceContext.folders.find(
+            f => f.workspaceFolder.uri.fsPath === folder?.uri.fsPath
         );
-        const toolchain = folder?.toolchain ?? this.workspaceContext.globalToolchain;
+        const toolchain = workspaceFolder?.toolchain ?? this.workspaceContext.globalToolchain;
 
         // Fix the program path on Windows to include the ".exe" extension
         if (

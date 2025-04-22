@@ -19,6 +19,7 @@ import { FolderContext } from "./FolderContext";
 import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
 import { BuildFlags } from "./toolchain/BuildFlags";
 import { Version } from "./utilities/version";
+import { fileExists } from "./utilities/filesystem";
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
@@ -95,12 +96,7 @@ export class PackageWatcher {
         watcher.onDidChange(async () => await this.handleWorkspaceStateChange());
         watcher.onDidDelete(async () => await this.handleWorkspaceStateChange());
 
-        const fileExists = await fs
-            .access(uri.fsPath)
-            .then(() => true)
-            .catch(() => false);
-
-        if (fileExists) {
+        if (await fileExists(uri.fsPath)) {
             await this.handleWorkspaceStateChange();
         }
 
@@ -129,18 +125,14 @@ export class PackageWatcher {
     }
 
     async handleSwiftVersionFileChange() {
-        try {
-            const version = await this.readSwiftVersionFile();
-            if (version && version.toString() !== this.currentVersion?.toString()) {
-                this.workspaceContext.fireEvent(
-                    this.folderContext,
-                    FolderOperation.swiftVersionUpdated
-                );
-            }
-            this.currentVersion = version ?? this.folderContext.toolchain.swiftVersion;
-        } catch {
-            // do nothing
+        const version = await this.readSwiftVersionFile();
+        if (version && version.toString() !== this.currentVersion?.toString()) {
+            this.workspaceContext.fireEvent(
+                this.folderContext,
+                FolderOperation.swiftVersionUpdated
+            );
         }
+        this.currentVersion = version ?? this.folderContext.toolchain.swiftVersion;
     }
 
     private async readSwiftVersionFile() {
@@ -148,7 +140,10 @@ export class PackageWatcher {
         try {
             const contents = await fs.readFile(versionFile);
             return Version.fromString(contents.toString().trim());
-        } catch {
+        } catch (error) {
+            this.workspaceContext.outputChannel.appendLine(
+                `Failed to read .swift-version file at ${versionFile}: ${error}`
+            );
             return undefined;
         }
     }
