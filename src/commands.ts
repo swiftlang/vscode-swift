@@ -46,6 +46,7 @@ import { runTask } from "./commands/runTask";
 import { TestKind } from "./TestExplorer/TestKind";
 import { pickProcess } from "./commands/pickProcess";
 import { openDocumentation } from "./commands/openDocumentation";
+import showFolderSelectionQuickPick from "./utilities/folderQuickPick";
 
 /**
  * References:
@@ -147,10 +148,16 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand(Commands.RUN_PLUGIN_TASK, () => runPluginTask()),
         vscode.commands.registerCommand(Commands.RUN_TASK, name => runTask(ctx, name)),
         vscode.commands.registerCommand("swift.restartLSPServer", async () => {
-            if (!ctx.currentFolder) {
+            const folder =
+                ctx.currentFolder ??
+                (await showFolderSelectionQuickPick(
+                    ctx,
+                    "Select a folder to restart the LSP server for"
+                ));
+            if (!folder) {
                 return;
             }
-            const languageClientManager = ctx.languageClientManager.get(ctx.currentFolder);
+            const languageClientManager = ctx.languageClientManager.get(folder);
             await languageClientManager.restart();
         }),
         vscode.commands.registerCommand("swift.reindexProject", () => reindexProject(ctx)),
