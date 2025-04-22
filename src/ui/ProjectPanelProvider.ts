@@ -239,6 +239,7 @@ class TargetNode {
         item.iconPath = new vscode.ThemeIcon(this.icon());
         item.contextValue = this.contextValue();
         item.accessibilityInformation = { label: name };
+        item.tooltip = `${name} (${this.target.type})`;
         return item;
     }
 
@@ -252,6 +253,12 @@ class TargetNode {
                 return "output";
             case "library":
                 return "library";
+            case "system-target":
+                return "server";
+            case "binary":
+                return "file-binary";
+            case "plugin":
+                return "plug";
             case "test":
                 if (this.activeTasks.has(testTaskName(this.name))) {
                     return LOADING_ICON;
@@ -262,8 +269,6 @@ class TargetNode {
                     return LOADING_ICON;
                 }
                 return "notebook";
-            case "plugin":
-                return "plug";
         }
     }
 
