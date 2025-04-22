@@ -87,7 +87,16 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
      * @returns
      */
     public get(folder: FolderContext): LanguageClientManager {
-        const client = this.clients.get(folder.swiftVersion.toString());
+        return this.getByVersion(folder.swiftVersion.toString());
+    }
+
+    /**
+     * Returns the LanguageClientManager for the supplied toolchain version.
+     * @param folder
+     * @returns
+     */
+    public getByVersion(version: string): LanguageClientManager {
+        const client = this.clients.get(version);
         if (!client) {
             throw new Error(
                 "LanguageClientManager has not yet been created. This is a bug, please file an issue at https://github.com/swiftlang/vscode-swift/issues"

@@ -17,15 +17,12 @@ import { FolderContext } from "../../FolderContext";
 import { createSwiftTask, SwiftTaskProvider } from "../../tasks/SwiftTaskProvider";
 import { WorkspaceContext } from "../../WorkspaceContext";
 import { executeTaskWithUI, updateAfterError } from "../utilities";
-import showFolderSelectionQuickPick from "../../utilities/folderQuickPick";
 
 /**
  * Executes a {@link vscode.Task task} to resolve this package's dependencies.
  */
 export async function resolveDependencies(ctx: WorkspaceContext) {
-    const current =
-        ctx.currentFolder ??
-        (await showFolderSelectionQuickPick(ctx, "Select a folder to resolve dependencies for"));
+    const current = ctx.currentFolder;
     if (!current) {
         return false;
     }
