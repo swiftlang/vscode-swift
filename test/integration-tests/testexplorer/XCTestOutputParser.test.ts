@@ -484,6 +484,37 @@ Test Suite 'Selected tests' failed at 2024-10-20 22:01:46.306.
                     assert.deepEqual(inputToTestOutput(input), testRunState.allOutput);
                 });
 
+                test("Interleaved user and XCTest output", () => {
+                    const input = `Test Suite 'Selected tests' started at 2024-10-20 22:01:46.206.
+Test Suite 'EmptyAppPackageTests.xctest' started at 2024-10-20 22:01:46.207.
+Test Suite 'TestSuite1' started at 2024-10-20 22:01:46.207.
+Test Case '-[MyTests.TestSuite1 testFirst]' started.
+[debug]: evaluating manifest for 'pkg' v. unknown
+[debug]: loading manifeTest Case '-[MyTests.TestSuite1 testFirst]' passed (0.001 seconds).
+Test Suite 'TestSuite1' passed at 2024-10-20 22:01:46.208.
+    Executed 1 test, with 0 failures (0 unexpected) in 0.000 (0.000) seconds`;
+
+                    outputParser.parseResult(input, testRunState);
+
+                    const testOutput = inputToTestOutput(input);
+                    assertTestRunState(testRunState, [
+                        {
+                            name: "MyTests.TestSuite1",
+                            output: [testOutput[2], testOutput[6]],
+                            status: TestStatus.passed,
+                        },
+                        {
+                            name: "MyTests.TestSuite1/testFirst",
+                            output: [testOutput[3], testOutput[5]],
+                            status: TestStatus.passed,
+                            timing: {
+                                duration: 0.001,
+                            },
+                        },
+                    ]);
+                    assert.deepEqual(inputToTestOutput(input), testRunState.allOutput);
+                });
+
                 suite("Diffs", () => {
                     const testRun = (message: string, actual?: string, expected?: string) => {
                         const input = `Test Case '-[MyTests.MyTests testFail]' started.
