@@ -83,6 +83,28 @@
         "filenamePatterns": [
           "*.tutorial"
         ]
+      },
+      {
+        "id": "swift-gyb",
+        "aliases": [
+          "Swift GYB"
+        ],
+        "extensions": [
+          ".swift.gyb"
+        ],
+        "configuration": "./swift-gyb.language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "swift-gyb",
+        "scopeName": "source.swift.gyb",
+        "path": "./syntaxes/swift-gyb.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.gyb": "python",
+          "meta.embedded.control.begin.gyb": "python",
+          "meta.embedded.expression.gyb": "python"
+        }
       }
     ],
     "snippets": [
