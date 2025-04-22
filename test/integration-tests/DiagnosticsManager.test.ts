@@ -23,7 +23,12 @@ import { DiagnosticsManager } from "../../src/DiagnosticsManager";
 import { FolderContext } from "../../src/FolderContext";
 import { Version } from "../../src/utilities/version";
 import { Workbench } from "../../src/utilities/commands";
-import { activateExtensionForSuite, folderInRootWorkspace } from "./utilities/testutilities";
+import {
+    activateExtensionForSuite,
+    folderInRootWorkspace,
+    updateSettings,
+} from "./utilities/testutilities";
+import { DiagnosticStyle } from "../../src/configuration";
 import { expect } from "chai";
 
 const isEqual = (d1: vscode.Diagnostic, d2: vscode.Diagnostic) => {
@@ -62,8 +67,6 @@ suite("DiagnosticsManager Test Suite", function () {
     // Was hitting a timeout in suiteSetup during CI build once in a while
     this.timeout(15000);
 
-    const swiftConfig = vscode.workspace.getConfiguration("swift");
-
     let workspaceContext: WorkspaceContext;
     let folderContext: FolderContext;
     let cFolderContext: FolderContext;
@@ -86,7 +89,8 @@ suite("DiagnosticsManager Test Suite", function () {
         | undefined;
 
     // Wait for all the expected diagnostics to be recieved. This may happen over several `onChangeDiagnostics` events.
-    const waitForDiagnostics = (expectedDiagnostics: { [uri: string]: vscode.Diagnostic[] }) => {
+    type ExpectedDiagnostics = { [uri: string]: vscode.Diagnostic[] };
+    const waitForDiagnostics = (expectedDiagnostics: ExpectedDiagnostics) => {
         return new Promise<void>(resolve => {
             if (diagnosticWaiterDisposable) {
                 console.warn(
@@ -213,208 +217,207 @@ suite("DiagnosticsManager Test Suite", function () {
                 },
             ];
 
-            // SourceKit-LSP sometimes sends diagnostics
-            // after first build and can cause intermittent
-            // failure if `swiftc` diagnostic is fixed
-            suiteSetup(async function () {
-                this.timeout(3 * 60 * 1000); // Allow 3 minutes to build
-                const task = await createBuildAllTask(folderContext);
-                // This return exit code and output for the task but we will omit it here
-                // because the failures are expected and we just want the task to build
-                await executeTaskAndWaitForResult(task);
-            });
+            function runTestDiagnosticStyle(
+                style: DiagnosticStyle,
+                expected: () => ExpectedDiagnostics,
+                callback?: () => void
+            ) {
+                suite(`${style} diagnosticsStyle`, async function () {
+                    // SourceKit-LSP sometimes sends diagnostics
+                    // after first build and can cause intermittent
+                    // failure if `swiftc` diagnostic is fixed
+                    suiteSetup(async function () {
+                        // Swift 5.10 and 6.0 on Windows have a bug where the
+                        // diagnostics are not emitted on their own line.
+                        const swiftVersion = workspaceContext.toolchain.swiftVersion;
+                        if (
+                            swiftVersion.isLessThan(new Version(5, 10, 0)) ||
+                            (process.platform === "win32" &&
+                                swiftVersion.isGreaterThanOrEqual(new Version(5, 10, 0)) &&
+                                swiftVersion.isLessThanOrEqual(new Version(6, 0, 999)))
+                        ) {
+                            this.skip();
+                        }
+                        this.timeout(3 * 60 * 1000); // Allow 3 minutes to build
 
-            suiteTeardown(async () => {
-                await swiftConfig.update("diagnosticsStyle", undefined);
-            });
+                        // Clean up any lingering diagnostics
+                        workspaceContext.diagnostics.clear();
+                        workspaceContext.focusFolder(null);
 
-            test("default diagnosticsStyle", async function () {
-                // Swift 5.10 and 6.0 on Windows have a bug where the
-                // diagnostics are not emitted on their own line.
-                const swiftVersion = workspaceContext.toolchain.swiftVersion;
-                if (
-                    process.platform === "win32" &&
-                    swiftVersion.isGreaterThanOrEqual(new Version(5, 10, 0)) &&
-                    swiftVersion.isLessThanOrEqual(new Version(6, 0, 999))
-                ) {
-                    this.skip();
+                        const teardown = await updateSettings({ "swift.diagnosticsStyle": style });
+                        const task = await createBuildAllTask(folderContext);
+                        // This return exit code and output for the task but we will omit it here
+                        // because the failures are expected and we just want the task to build
+                        await executeTaskAndWaitForResult(task).catch(() => {
+                            /* Ignore */
+                        });
+                        return teardown;
+                    });
+
+                    test("succeeds", async function () {
+                        await Promise.all([
+                            waitForDiagnostics(expected()),
+                            createBuildAllTask(folderContext).then(task =>
+                                executeTaskAndWaitForResult(task)
+                            ),
+                        ]);
+                        await waitForNoRunningTasks();
+                    });
+
+                    callback && callback();
+                });
+            }
+
+            runTestDiagnosticStyle("default", () => ({
+                [mainUri.fsPath]: [
+                    expectedWarningDiagnostic,
+                    expectedMainErrorDiagnostic,
+                    expectedMainDictErrorDiagnostic,
+                    ...(workspaceContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))
+                        ? [expectedMacroDiagnostic]
+                        : []),
+                ], // Should have parsed correct severity
+                [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
+            }));
+
+            runTestDiagnosticStyle("swift", () => ({
+                [mainUri.fsPath]: [
+                    expectedWarningDiagnostic,
+                    expectedMainErrorDiagnostic,
+                    expectedMainDictErrorDiagnostic,
+                ], // Should have parsed correct severity
+                [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
+            }));
+
+            runTestDiagnosticStyle(
+                "llvm",
+                () => ({
+                    [mainUri.fsPath]: [
+                        expectedWarningDiagnostic,
+                        expectedMainErrorDiagnostic,
+                        expectedMainDictErrorDiagnostic,
+                    ], // Should have parsed correct severity
+                    [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
+                }),
+                () => {
+                    test("Parses related information", async () => {
+                        const diagnostic = assertHasDiagnostic(
+                            mainUri,
+                            expectedMainErrorDiagnostic
+                        );
+                        // Should have parsed related note
+                        assert.equal(diagnostic.relatedInformation?.length, 1);
+                        assert.equal(
+                            diagnostic.relatedInformation![0].message,
+                            "Change 'let' to 'var' to make it mutable"
+                        );
+                        assert.equal(
+                            diagnostic.relatedInformation![0].location.uri.fsPath,
+                            mainUri.fsPath
+                        );
+                        assert.equal(
+                            diagnostic.relatedInformation![0].location.range.isEqual(
+                                new vscode.Range(
+                                    new vscode.Position(6, 0),
+                                    new vscode.Position(6, 0)
+                                )
+                            ),
+                            true
+                        );
+                    });
+
+                    test("Parses C diagnostics", async function () {
+                        // Should have parsed severity
+                        const expectedDiagnostic1 = new vscode.Diagnostic(
+                            new vscode.Range(
+                                new vscode.Position(5, 10),
+                                new vscode.Position(5, 10)
+                            ),
+                            "Use of undeclared identifier 'bar'",
+                            vscode.DiagnosticSeverity.Error
+                        );
+                        expectedDiagnostic1.source = "swiftc";
+                        const expectedDiagnostic2 = new vscode.Diagnostic(
+                            new vscode.Range(new vscode.Position(6, 6), new vscode.Position(6, 6)),
+                            "No member named 'z' in 'struct MyPoint'",
+                            vscode.DiagnosticSeverity.Error
+                        );
+                        expectedDiagnostic2.source = "swiftc";
+
+                        await Promise.all([
+                            waitForDiagnostics({
+                                [cUri.fsPath]: [expectedDiagnostic1, expectedDiagnostic2],
+                            }),
+                            createBuildAllTask(cFolderContext).then(task =>
+                                executeTaskAndWaitForResult(task)
+                            ),
+                        ]);
+                        await waitForNoRunningTasks();
+                    });
+
+                    test("Parses C++ diagnostics", async function () {
+                        // Should have parsed severity
+                        const expectedDiagnostic1 = new vscode.Diagnostic(
+                            new vscode.Range(new vscode.Position(6, 5), new vscode.Position(6, 5)),
+                            "Member reference type 'MyPoint *' is a pointer; did you mean to use '->'?",
+                            vscode.DiagnosticSeverity.Error
+                        );
+                        expectedDiagnostic1.source = "swiftc";
+
+                        // Should have parsed releated information
+                        const expectedDiagnostic2 = new vscode.Diagnostic(
+                            new vscode.Range(
+                                new vscode.Position(3, 21),
+                                new vscode.Position(3, 21)
+                            ),
+                            "Unknown type name 'MyPoint2'; did you mean 'MyPoint'?",
+                            vscode.DiagnosticSeverity.Error
+                        );
+                        expectedDiagnostic2.source = "swiftc";
+
+                        // Message should not contain [-Wreturn-mismatch] so it can be merged with
+                        // SourceKit diagnostics if required
+                        const expectedDiagnostic3 = new vscode.Diagnostic(
+                            new vscode.Range(
+                                new vscode.Position(11, 4),
+                                new vscode.Position(11, 4)
+                            ),
+                            "Non-void function 'main' should return a value",
+                            vscode.DiagnosticSeverity.Error
+                        );
+                        expectedDiagnostic3.source = "swiftc";
+
+                        await Promise.all([
+                            waitForDiagnostics({
+                                [cppUri.fsPath]: [
+                                    expectedDiagnostic1,
+                                    expectedDiagnostic2,
+                                    expectedDiagnostic3,
+                                ],
+                            }),
+                            createBuildAllTask(cppFolderContext).then(task =>
+                                executeTaskAndWaitForResult(task)
+                            ),
+                        ]);
+                        await waitForNoRunningTasks();
+
+                        const diagnostic = assertHasDiagnostic(cppUri, expectedDiagnostic2);
+                        assert.equal(
+                            diagnostic.relatedInformation![0].location.uri.fsPath,
+                            cppHeaderUri.fsPath
+                        );
+                        assert.equal(
+                            diagnostic.relatedInformation![0].location.range.isEqual(
+                                new vscode.Range(
+                                    new vscode.Position(0, 6),
+                                    new vscode.Position(0, 6)
+                                )
+                            ),
+                            true
+                        );
+                    });
                 }
-                await swiftConfig.update("diagnosticsStyle", "default");
-
-                await Promise.all([
-                    waitForDiagnostics({
-                        [mainUri.fsPath]: [
-                            expectedWarningDiagnostic,
-                            expectedMainErrorDiagnostic,
-                            expectedMainDictErrorDiagnostic,
-                            ...(workspaceContext.swiftVersion.isGreaterThanOrEqual(
-                                new Version(6, 0, 0)
-                            )
-                                ? [expectedMacroDiagnostic]
-                                : []),
-                        ], // Should have parsed correct severity
-                        [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
-                    }),
-                    executeTaskAndWaitForResult(await createBuildAllTask(folderContext)),
-                ]);
-
-                await waitForNoRunningTasks();
-            });
-
-            test("swift diagnosticsStyle", async function () {
-                // This is only supported in swift versions >=5.10.0.
-                // Swift 5.10 and 6.0 on Windows have a bug where the
-                // diagnostics are not emitted on their own line.
-                const swiftVersion = workspaceContext.toolchain.swiftVersion;
-                if (
-                    swiftVersion.isLessThan(new Version(5, 10, 0)) ||
-                    (process.platform === "win32" &&
-                        swiftVersion.isGreaterThanOrEqual(new Version(5, 10, 0)) &&
-                        swiftVersion.isLessThanOrEqual(new Version(6, 0, 999)))
-                ) {
-                    this.skip();
-                }
-                await swiftConfig.update("diagnosticsStyle", "swift");
-
-                await Promise.all([
-                    waitForDiagnostics({
-                        [mainUri.fsPath]: [
-                            expectedWarningDiagnostic,
-                            expectedMainErrorDiagnostic,
-                            expectedMainDictErrorDiagnostic,
-                        ], // Should have parsed correct severity
-                        [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
-                    }),
-                    executeTaskAndWaitForResult(await createBuildAllTask(folderContext)),
-                ]);
-                await waitForNoRunningTasks();
-            });
-
-            test("llvm diagnosticsStyle", async () => {
-                await swiftConfig.update("diagnosticsStyle", "llvm");
-
-                await Promise.all([
-                    waitForDiagnostics({
-                        [mainUri.fsPath]: [
-                            expectedWarningDiagnostic,
-                            expectedMainErrorDiagnostic,
-                            expectedMainDictErrorDiagnostic,
-                        ], // Should have parsed correct severity
-                        [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
-                    }),
-                    executeTaskAndWaitForResult(await createBuildAllTask(folderContext)),
-                ]);
-                await waitForNoRunningTasks();
-
-                // Should have parsed severity
-                const diagnostic = assertHasDiagnostic(mainUri, expectedMainErrorDiagnostic);
-                // Should have parsed related note
-                assert.equal(diagnostic.relatedInformation?.length, 1);
-                assert.equal(
-                    diagnostic.relatedInformation![0].message,
-                    "Change 'let' to 'var' to make it mutable"
-                );
-                assert.equal(diagnostic.relatedInformation![0].location.uri.fsPath, mainUri.fsPath);
-                assert.equal(
-                    diagnostic.relatedInformation![0].location.range.isEqual(
-                        new vscode.Range(new vscode.Position(6, 0), new vscode.Position(6, 0))
-                    ),
-                    true
-                );
-            });
-
-            test("Parses C diagnostics", async function () {
-                const swiftVersion = workspaceContext.toolchain.swiftVersion;
-                // SPM will sometimes improperly clear diagnostics from the terminal, leading
-                // to a flakey test.
-                if (swiftVersion.isLessThan(new Version(5, 7, 0))) {
-                    this.skip();
-                }
-
-                await swiftConfig.update("diagnosticsStyle", "llvm");
-
-                // Should have parsed severity
-                const expectedDiagnostic1 = new vscode.Diagnostic(
-                    new vscode.Range(new vscode.Position(5, 10), new vscode.Position(5, 10)),
-                    "Use of undeclared identifier 'bar'",
-                    vscode.DiagnosticSeverity.Error
-                );
-                expectedDiagnostic1.source = "swiftc";
-                const expectedDiagnostic2 = new vscode.Diagnostic(
-                    new vscode.Range(new vscode.Position(6, 6), new vscode.Position(6, 6)),
-                    "No member named 'z' in 'struct MyPoint'",
-                    vscode.DiagnosticSeverity.Error
-                );
-                expectedDiagnostic2.source = "swiftc";
-
-                await Promise.all([
-                    waitForDiagnostics({
-                        [cUri.fsPath]: [expectedDiagnostic1, expectedDiagnostic2],
-                    }),
-                    executeTaskAndWaitForResult(await createBuildAllTask(cFolderContext)),
-                ]);
-                await waitForNoRunningTasks();
-            });
-
-            test("Parses C++ diagnostics", async function () {
-                const swiftVersion = workspaceContext.toolchain.swiftVersion;
-                // SPM will sometimes improperly clear diagnostics from the terminal, leading
-                // to a flakey test.
-                if (swiftVersion.isLessThan(new Version(5, 7, 0))) {
-                    this.skip();
-                }
-
-                await swiftConfig.update("diagnosticsStyle", "llvm");
-
-                // Should have parsed severity
-                const expectedDiagnostic1 = new vscode.Diagnostic(
-                    new vscode.Range(new vscode.Position(6, 5), new vscode.Position(6, 5)),
-                    "Member reference type 'MyPoint *' is a pointer; did you mean to use '->'?",
-                    vscode.DiagnosticSeverity.Error
-                );
-                expectedDiagnostic1.source = "swiftc";
-
-                // Should have parsed releated information
-                const expectedDiagnostic2 = new vscode.Diagnostic(
-                    new vscode.Range(new vscode.Position(3, 21), new vscode.Position(3, 21)),
-                    "Unknown type name 'MyPoint2'; did you mean 'MyPoint'?",
-                    vscode.DiagnosticSeverity.Error
-                );
-                expectedDiagnostic2.source = "swiftc";
-
-                // Message should not contain [-Wreturn-mismatch] so it can be merged with
-                // SourceKit diagnostics if required
-                const expectedDiagnostic3 = new vscode.Diagnostic(
-                    new vscode.Range(new vscode.Position(11, 4), new vscode.Position(11, 4)),
-                    "Non-void function 'main' should return a value",
-                    vscode.DiagnosticSeverity.Error
-                );
-                expectedDiagnostic3.source = "swiftc";
-
-                await Promise.all([
-                    waitForDiagnostics({
-                        [cppUri.fsPath]: [
-                            expectedDiagnostic1,
-                            expectedDiagnostic2,
-                            expectedDiagnostic3,
-                        ],
-                    }),
-                    executeTaskAndWaitForResult(await createBuildAllTask(cppFolderContext)),
-                ]);
-                await waitForNoRunningTasks();
-
-                const diagnostic = assertHasDiagnostic(cppUri, expectedDiagnostic2);
-                assert.equal(
-                    diagnostic.relatedInformation![0].location.uri.fsPath,
-                    cppHeaderUri.fsPath
-                );
-                assert.equal(
-                    diagnostic.relatedInformation![0].location.range.isEqual(
-                        new vscode.Range(new vscode.Position(0, 6), new vscode.Position(0, 6))
-                    ),
-                    true
-                );
-            });
+            );
         });
 
         suite("Controlled output", () => {
@@ -551,11 +554,6 @@ suite("DiagnosticsManager Test Suite", function () {
             sourcekitWarningDiagnostic.source = "SourceKit";
         });
 
-        suiteTeardown(async () => {
-            // So test asset settings.json doesn't changedq
-            await swiftConfig.update("diagnosticsCollection", undefined);
-        });
-
         suite("markdownLinks", () => {
             let diagnostic: vscode.Diagnostic;
 
@@ -667,8 +665,10 @@ suite("DiagnosticsManager Test Suite", function () {
         });
 
         suite("keepAll", () => {
-            setup(async () => {
-                await swiftConfig.update("diagnosticsCollection", "keepAll");
+            suiteSetup(async function () {
+                return await updateSettings({
+                    "swift.diagnosticsCollection": "keepAll",
+                });
             });
 
             test("merge in SourceKit diagnostics", async () => {
@@ -715,8 +715,10 @@ suite("DiagnosticsManager Test Suite", function () {
         });
 
         suite("keepSourceKit", () => {
-            setup(async () => {
-                await swiftConfig.update("diagnosticsCollection", "keepSourceKit");
+            suiteSetup(async function () {
+                return await updateSettings({
+                    "swift.diagnosticsCollection": "keepSourceKit",
+                });
             });
 
             test("merge in SourceKit diagnostics", async () => {
@@ -827,8 +829,10 @@ suite("DiagnosticsManager Test Suite", function () {
         });
 
         suite("keepSwiftc", () => {
-            setup(async () => {
-                await swiftConfig.update("diagnosticsCollection", "keepSwiftc");
+            suiteSetup(async function () {
+                return await updateSettings({
+                    "swift.diagnosticsCollection": "keepSwiftc",
+                });
             });
 
             test("merge in swiftc diagnostics", async () => {
@@ -915,8 +919,10 @@ suite("DiagnosticsManager Test Suite", function () {
         });
 
         suite("onlySourceKit", () => {
-            setup(async () => {
-                await swiftConfig.update("diagnosticsCollection", "onlySourceKit");
+            suiteSetup(async function () {
+                return await updateSettings({
+                    "swift.diagnosticsCollection": "onlySourceKit",
+                });
             });
 
             test("merge in SourceKit diagnostics", async () => {
@@ -955,18 +961,12 @@ suite("DiagnosticsManager Test Suite", function () {
             });
 
             test("clean old swiftc diagnostics", async () => {
-                // Add initial swiftc diagnostics
-                await swiftConfig.update("diagnosticsCollection", "keepAll");
-                workspaceContext.diagnostics.handleDiagnostics(
-                    mainUri,
-                    DiagnosticsManager.isSwiftc,
-                    [swiftcErrorDiagnostic, swiftcWarningDiagnostic]
-                );
-                assertHasDiagnostic(mainUri, swiftcErrorDiagnostic);
-                assertHasDiagnostic(mainUri, swiftcWarningDiagnostic);
+                workspaceContext.diagnostics.allDiagnostics.set(mainUri.fsPath, [
+                    swiftcErrorDiagnostic,
+                    swiftcWarningDiagnostic,
+                ]);
 
                 // Now change to onlySourceKit and provide identical SourceKit diagnostic
-                await swiftConfig.update("diagnosticsCollection", "onlySourceKit");
                 workspaceContext.diagnostics.handleDiagnostics(
                     mainUri,
                     DiagnosticsManager.isSourcekit,
@@ -982,8 +982,10 @@ suite("DiagnosticsManager Test Suite", function () {
         });
 
         suite("onlySwiftc", () => {
-            setup(async () => {
-                await swiftConfig.update("diagnosticsCollection", "onlySwiftc");
+            suiteSetup(async function () {
+                return await updateSettings({
+                    "swift.diagnosticsCollection": "onlySwiftc",
+                });
             });
 
             test("merge in swiftc diagnostics", async () => {
@@ -1023,17 +1025,12 @@ suite("DiagnosticsManager Test Suite", function () {
 
             test("clean old SourceKit diagnostics", async () => {
                 // Add initial SourceKit diagnostics
-                await swiftConfig.update("diagnosticsCollection", "keepAll");
-                workspaceContext.diagnostics.handleDiagnostics(
-                    mainUri,
-                    DiagnosticsManager.isSourcekit,
-                    [sourcekitErrorDiagnostic, sourcekitWarningDiagnostic]
-                );
-                assertHasDiagnostic(mainUri, sourcekitErrorDiagnostic);
-                assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
+                workspaceContext.diagnostics.allDiagnostics.set(mainUri.fsPath, [
+                    sourcekitErrorDiagnostic,
+                    sourcekitWarningDiagnostic,
+                ]);
 
                 // Now change to onlySwiftc and provide identical swiftc diagnostic
-                await swiftConfig.update("diagnosticsCollection", "onlySwiftc");
                 workspaceContext.diagnostics.handleDiagnostics(
                     mainUri,
                     DiagnosticsManager.isSwiftc,
@@ -1048,69 +1045,82 @@ suite("DiagnosticsManager Test Suite", function () {
             });
         });
 
-        test("SourceKit removes swiftc diagnostic (SourceKit shows first)", async () => {
-            // Add initial diagnostics
-            workspaceContext.diagnostics.handleDiagnostics(
-                mainUri,
-                DiagnosticsManager.isSourcekit,
-                [sourcekitErrorDiagnostic, sourcekitWarningDiagnostic]
-            );
-            workspaceContext.diagnostics.handleDiagnostics(mainUri, DiagnosticsManager.isSwiftc, [
-                swiftcErrorDiagnostic,
-            ]);
+        suite("cleanup", () => {
+            suiteSetup(async function () {
+                return await updateSettings({
+                    "swift.diagnosticsCollection": undefined,
+                });
+            });
 
-            // Have SourceKit indicate some have been fixed
-            workspaceContext.diagnostics.handleDiagnostics(
-                mainUri,
-                DiagnosticsManager.isSourcekit,
-                [sourcekitWarningDiagnostic]
-            );
+            test("SourceKit removes swiftc diagnostic (SourceKit shows first)", async () => {
+                // Add initial diagnostics
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSourcekit,
+                    [sourcekitErrorDiagnostic, sourcekitWarningDiagnostic]
+                );
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSwiftc,
+                    [swiftcErrorDiagnostic]
+                );
 
-            // check cleaned up stale error
-            assertWithoutDiagnostic(mainUri, swiftcErrorDiagnostic);
-            assertWithoutDiagnostic(mainUri, sourcekitErrorDiagnostic);
-            assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
-        });
+                // Have SourceKit indicate some have been fixed
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSourcekit,
+                    [sourcekitWarningDiagnostic]
+                );
 
-        test("SourceKit removes swiftc diagnostic (swiftc shows first)", async () => {
-            // Add initial diagnostics
-            workspaceContext.diagnostics.handleDiagnostics(mainUri, DiagnosticsManager.isSwiftc, [
-                swiftcErrorDiagnostic,
-                swiftcWarningDiagnostic,
-            ]);
-            workspaceContext.diagnostics.handleDiagnostics(
-                mainUri,
-                DiagnosticsManager.isSourcekit,
-                [sourcekitErrorDiagnostic]
-            );
+                // check cleaned up stale error
+                assertWithoutDiagnostic(mainUri, swiftcErrorDiagnostic);
+                assertWithoutDiagnostic(mainUri, sourcekitErrorDiagnostic);
+                assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
+            });
 
-            // Have SourceKit indicate has been fixed
-            workspaceContext.diagnostics.handleDiagnostics(
-                mainUri,
-                DiagnosticsManager.isSourcekit,
-                []
-            );
+            test("SourceKit removes swiftc diagnostic (swiftc shows first)", async () => {
+                // Add initial diagnostics
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSwiftc,
+                    [swiftcErrorDiagnostic, swiftcWarningDiagnostic]
+                );
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSourcekit,
+                    [sourcekitErrorDiagnostic]
+                );
 
-            // check cleaned up stale error
-            assertWithoutDiagnostic(mainUri, swiftcErrorDiagnostic);
-            assertWithoutDiagnostic(mainUri, sourcekitErrorDiagnostic);
-            assertHasDiagnostic(mainUri, swiftcWarningDiagnostic);
-        });
+                // Have SourceKit indicate has been fixed
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSourcekit,
+                    []
+                );
 
-        test("don't remove swiftc diagnostics when SourceKit never matched", async () => {
-            workspaceContext.diagnostics.handleDiagnostics(mainUri, DiagnosticsManager.isSwiftc, [
-                swiftcErrorDiagnostic,
-            ]);
+                // check cleaned up stale error
+                assertWithoutDiagnostic(mainUri, swiftcErrorDiagnostic);
+                assertWithoutDiagnostic(mainUri, sourcekitErrorDiagnostic);
+                assertHasDiagnostic(mainUri, swiftcWarningDiagnostic);
+            });
 
-            workspaceContext.diagnostics.handleDiagnostics(
-                mainUri,
-                DiagnosticsManager.isSourcekit,
-                [sourcekitWarningDiagnostic]
-            );
+            test("don't remove swiftc diagnostics when SourceKit never matched", async () => {
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSwiftc,
+                    [swiftcErrorDiagnostic]
+                );
 
-            // Should not have cleaned up swiftc error
-            assertHasDiagnostic(mainUri, swiftcErrorDiagnostic);
-            assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSourcekit,
+                    [sourcekitWarningDiagnostic]
+                );
+
+                // Should not have cleaned up swiftc error
+                assertHasDiagnostic(mainUri, swiftcErrorDiagnostic);
+                assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
+            });
         });
     });
 
@@ -1123,11 +1133,9 @@ suite("DiagnosticsManager Test Suite", function () {
             }
             workspaceContext.diagnostics.clear();
             workspaceContext.focusFolder(null);
-            await swiftConfig.update("diagnosticsCollection", "onlySourceKit"); // So waitForDiagnostics only resolves from LSP
-        });
-
-        suiteTeardown(async () => {
-            await swiftConfig.update("diagnosticsCollection", undefined);
+            return await updateSettings({
+                "swift.diagnosticsCollection": "onlySourceKit", // So waitForDiagnostics only resolves from LSP
+            });
         });
 
         teardown(async () => {
