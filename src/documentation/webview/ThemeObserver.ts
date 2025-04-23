@@ -47,7 +47,11 @@ export class ThemeObserver {
 
     /** Begin listening for theme updates. */
     start() {
-        this.observer.observe(this.body, { attributes: true, attributeFilter: ["class"] });
+        this.observer.observe(this.body, {
+            attributes: true,
+            subtree: false,
+            attributeFilter: ["class"],
+        });
     }
 
     /** Stop listening for theme updates. */
