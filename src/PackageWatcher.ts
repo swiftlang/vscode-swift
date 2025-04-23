@@ -20,6 +20,7 @@ import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
 import { BuildFlags } from "./toolchain/BuildFlags";
 import { Version } from "./utilities/version";
 import { fileExists } from "./utilities/filesystem";
+import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
@@ -130,6 +131,9 @@ export class PackageWatcher {
             this.workspaceContext.fireEvent(
                 this.folderContext,
                 FolderOperation.swiftVersionUpdated
+            );
+            await showReloadExtensionNotification(
+                "Changing the swift toolchain version requires the extension to be reloaded"
             );
         }
         this.currentVersion = version ?? this.folderContext.toolchain.swiftVersion;

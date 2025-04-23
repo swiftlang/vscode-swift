@@ -37,7 +37,7 @@ export async function downloadToolchain() {
  * Open the installation page for Swiftly
  */
 export async function installSwiftly() {
-    if (await vscode.env.openExternal(vscode.Uri.parse("https://swiftlang.github.io/swiftly"))) {
+    if (await vscode.env.openExternal(vscode.Uri.parse("https://www.swift.org/install/"))) {
         const selected = await showReloadExtensionNotification(
             "The Swift extension must be reloaded once you have downloaded and installed the new toolchain.",
             "Select Toolchain"
