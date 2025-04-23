@@ -25,6 +25,13 @@ const themeObserver = new ThemeObserver();
 themeObserver.updateTheme();
 themeObserver.start();
 
+// Disable clicking on links as they do not work
+const disableLinks = document.createElement("style");
+disableLinks.textContent = `a {
+    pointer-events: none;
+}`;
+document.head.appendChild(disableLinks);
+
 // Set up the communication bridges to VS Code and swift-docc-render
 createCommunicationBridge().then(async bridge => {
     const vscode = acquireVsCodeApi();
