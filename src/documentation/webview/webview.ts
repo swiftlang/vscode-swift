@@ -15,7 +15,17 @@
 import { RenderNode, WebviewContent, WebviewMessage } from "./WebviewMessage";
 import { createCommunicationBridge } from "./CommunicationBridge";
 import { ErrorMessage } from "./ErrorMessage";
+import { ThemeObserver } from "./ThemeObserver";
 
+// Remove VS Code's default styles as they conflict with swift-docc-render
+document.getElementById("_defaultStyles")?.remove();
+
+// Hook up the automatic theme switching
+const themeObserver = new ThemeObserver();
+themeObserver.updateTheme();
+themeObserver.start();
+
+// Set up the communication bridges to VS Code and swift-docc-render
 createCommunicationBridge().then(async bridge => {
     const vscode = acquireVsCodeApi();
     let activeDocumentationPath: string | undefined;
