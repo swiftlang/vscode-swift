@@ -18,7 +18,6 @@ export NODE_PATH=/usr/local/nvm/versions/node/v20.18.2/bin
 export NVM_DIR=/usr/local/nvm
 
 apt-get update && apt-get install -y rsync curl gpg libasound2 libgbm1 libgtk-3-0 libnss3 xvfb build-essential
-
 mkdir -p $NVM_DIR
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 # shellcheck disable=SC1091
