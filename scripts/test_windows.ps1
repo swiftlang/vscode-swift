@@ -96,7 +96,6 @@ npm ci -ignore-script node-pty
 npm run lint
 npm run format
 npm run package
-npm test -- --label installExtension
 npm run test
 if ($LASTEXITCODE -eq 0) {
     Write-Host 'SUCCESS'

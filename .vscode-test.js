@@ -42,6 +42,7 @@ if (process.platform === "darwin" && process.arch === "x64") {
 }
 let vsixPath = process.env["VSCODE_SWIFT_VSIX"];
 const install = [];
+const installExtensions = ["vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap"];
 if (vsixPath) {
     if (!path.isAbsolute(vsixPath)) {
         vsixPath = path.join(__dirname, vsixPath);
@@ -49,9 +50,8 @@ if (vsixPath) {
     console.log("Installing " + vsixPath);
     install.push({
         label: "installExtension",
-        installExtensions: ["vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap"].concat(
-            vsixPath ? [vsixPath] : []
-        ),
+        installExtensions: installExtensions.concat(vsixPath ? [vsixPath] : []),
+        launchArgs,
         files: [],
         version: process.env["VSCODE_VERSION"] ?? "stable",
         reuseMachineInstall: !isCIBuild,
@@ -86,6 +86,7 @@ module.exports = defineConfig({
                 },
             },
             reuseMachineInstall: !isCIBuild,
+            installExtensions,
         },
         {
             label: "unitTests",
