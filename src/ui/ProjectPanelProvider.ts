@@ -382,6 +382,8 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
     }
 
     observeTasks(ctx: WorkspaceContext) {
+        this.disposables.push(new TaskPoller(() => this.didChangeTreeDataEmitter.fire()));
+
         this.disposables.push(
             vscode.tasks.onDidStartTask(e => {
                 const taskId = e.execution.task.detail ?? e.execution.task.name;
@@ -578,7 +580,8 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                 // Plugin tasks are shown under the Commands header
                 .filter(
                     task =>
-                        task.definition.cwd === folderContext.folder.fsPath &&
+                        (!task.definition.cwd ||
+                            task.definition.cwd === folderContext.folder.fsPath) &&
                         task.source !== "swift-plugin"
                 )
                 .map(
@@ -620,5 +623,55 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
             .filter(target => target.type === "snippet")
             .flatMap(target => new TargetNode(target, this.activeTasks))
             .sort((a, b) => a.name.localeCompare(b.name));
+    }
+}
+
+/*
+ * A simple task poller that checks for changes in the tasks every 5 seconds.
+ * This is a workaround for the lack of an event when tasks are added or removed.
+ */
+class TaskPoller implements vscode.Disposable {
+    private previousTasks: vscode.Task[] = [];
+    private timeout?: NodeJS.Timeout;
+    private static POLL_INTERVAL = 5000;
+
+    constructor(private onTasksChanged: () => void) {
+        this.pollTasks();
+    }
+
+    private async pollTasks() {
+        try {
+            const tasks = await vscode.tasks.fetchTasks();
+            const tasksChanged =
+                tasks.length !== this.previousTasks.length ||
+                tasks.some((task, i) => {
+                    const prev = this.previousTasks[i];
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const c1 = (task.execution as any).command;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const c2 = (prev.execution as any).command;
+                    return (
+                        !prev ||
+                        task.name !== prev.name ||
+                        task.source !== prev.source ||
+                        task.definition.cwd !== prev.definition.cwd ||
+                        task.detail !== prev.detail ||
+                        c1 !== c2
+                    );
+                });
+            if (tasksChanged) {
+                this.previousTasks = tasks;
+                this.onTasksChanged();
+            }
+        } catch {
+            // ignore errors
+        }
+        this.timeout = setTimeout(() => this.pollTasks(), TaskPoller.POLL_INTERVAL);
+    }
+
+    dispose() {
+        if (this.timeout) {
+            clearTimeout(this.timeout);
+        }
     }
 }
