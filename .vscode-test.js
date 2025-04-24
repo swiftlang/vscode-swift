@@ -14,6 +14,7 @@
 
 const { defineConfig } = require("@vscode/test-cli");
 const path = require("path");
+const { version, publisher, name } = require("./package.json");
 
 const isCIBuild = process.env["CI"] === "1";
 const isFastTestRun = process.env["FAST_TEST_RUN"] === "1";
@@ -39,15 +40,36 @@ if (dataDir) {
 if (process.platform === "darwin" && process.arch === "x64") {
     launchArgs.push("--disable-gpu");
 }
+let vsixPath = process.env["VSCODE_SWIFT_VSIX"];
+const install = [];
+const installExtensions = ["vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap"];
+if (vsixPath) {
+    if (!path.isAbsolute(vsixPath)) {
+        vsixPath = path.join(__dirname, vsixPath);
+    }
+    console.log("Installing " + vsixPath);
+    install.push({
+        label: "installExtension",
+        installExtensions: installExtensions.concat(vsixPath ? [vsixPath] : []),
+        launchArgs,
+        files: [],
+        version: process.env["VSCODE_VERSION"] ?? "stable",
+        reuseMachineInstall: !isCIBuild,
+    });
+}
 
 module.exports = defineConfig({
     tests: [
+        ...install,
         {
             label: "integrationTests",
             files: ["dist/test/common.js", "dist/test/integration-tests/**/*.test.js"],
             version: process.env["VSCODE_VERSION"] ?? "stable",
             workspaceFolder: "./assets/test",
             launchArgs,
+            extensionDevelopmentPath: vsixPath
+                ? [`${__dirname}/.vscode-test/extensions/${publisher}.${name}-${version}`]
+                : undefined,
             mocha: {
                 ui: "tdd",
                 color: true,
@@ -64,7 +86,7 @@ module.exports = defineConfig({
                 },
             },
             reuseMachineInstall: !isCIBuild,
-            installExtensions: ["vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap"],
+            installExtensions,
         },
         {
             label: "unitTests",
@@ -84,6 +106,7 @@ module.exports = defineConfig({
                     },
                 },
             },
+            skipExtensionDependencies: true,
             reuseMachineInstall: !isCIBuild,
         },
         // you can specify additional test configurations, too
