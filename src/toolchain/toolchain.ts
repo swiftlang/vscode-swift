@@ -488,11 +488,12 @@ export class SwiftToolchain {
      * Library path for swift-testing executables
      */
     public swiftTestingLibraryPath(): string | undefined {
+        let result = "";
         const base = this.basePlatformDeveloperPath();
-        if (!base) {
-            return undefined;
+        if (base) {
+            result = `${path.join(base, "usr/lib")}:`;
         }
-        return `${path.join(base, "usr/lib")}:${path.join(base, "usr/lib/swift/macosx/testing")}`;
+        return `${result}${path.join(this.toolchainPath, "lib/swift/macosx/testing")}`;
     }
 
     /**
