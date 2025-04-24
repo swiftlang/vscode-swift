@@ -492,7 +492,7 @@ export class SwiftToolchain {
         if (!base) {
             return undefined;
         }
-        return path.join(base, "usr/lib");
+        return `${path.join(base, "usr/lib")}:${path.join(base, "usr/lib/swift/macosx/testing")}`;
     }
 
     /**
