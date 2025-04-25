@@ -51,6 +51,13 @@
       "request": "launch",
       "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
       "runtimeArgs": ["${workspaceFolder}/scripts/preview_package.ts"]
+    },
+    {
+      "name": "Compile Icons",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+      "runtimeArgs": ["${workspaceFolder}/scripts/compile_icons.ts"]
     }
   ]
 }

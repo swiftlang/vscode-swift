@@ -14,11 +14,10 @@
 /* eslint-disable no-console */
 
 import simpleGit, { ResetMode } from "simple-git";
-import { stat, mkdtemp, mkdir, rm, readdir } from "fs/promises";
+import { stat, mkdir, rm, readdir } from "fs/promises";
 import * as path from "path";
-import { tmpdir } from "os";
 import * as semver from "semver";
-import { exec, getRootDirectory, main } from "./lib/utilities";
+import { exec, getRootDirectory, main, withTemporaryDirectory } from "./lib/utilities";
 
 function checkNodeVersion() {
     const nodeVersion = semver.parse(process.versions.node);
@@ -71,8 +70,7 @@ main(async () => {
     checkNodeVersion();
     await rm(outputDirectory, { force: true, recursive: true });
     await mkdir(outputDirectory, { recursive: true });
-    const buildDirectory = await mkdtemp(path.join(tmpdir(), "update_swift_docc_render"));
-    try {
+    await withTemporaryDirectory("update-swift-docc-render_", async buildDirectory => {
         const swiftDocCRenderDirectory = await cloneSwiftDocCRender(buildDirectory);
         await exec("npm", ["install"], { cwd: swiftDocCRenderDirectory });
         await exec("npx", ["vue-cli-service", "build", "--dest", outputDirectory], {
@@ -82,10 +80,5 @@ main(async () => {
                 VUE_APP_TARGET: "ide",
             },
         });
-    } finally {
-        await rm(buildDirectory, { force: true, recursive: true }).catch(error => {
-            console.error(`Failed to remove temporary directory '${buildDirectory}'`);
-            console.error(error);
-        });
-    }
+    });
 });
