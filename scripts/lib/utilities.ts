@@ -14,8 +14,9 @@
 /* eslint-disable no-console */
 
 import * as child_process from "child_process";
-import { readFile } from "fs/promises";
+import { mkdtemp, readFile, rm } from "fs/promises";
 import * as path from "path";
+import * as os from "os";
 import * as semver from "semver";
 
 /**
@@ -89,4 +90,25 @@ export async function exec(
             console.log("");
         });
     });
+}
+
+/**
+ * Creates a temporary directory for the lifetime of the provided task.
+ *
+ * @param prefix The prefix of the generated directory name.
+ * @param task The task that will use the temporary directory.
+ */
+export async function withTemporaryDirectory<T>(
+    prefix: string,
+    task: (directory: string) => Promise<T>
+): Promise<T> {
+    const directory = await mkdtemp(path.join(os.tmpdir(), prefix));
+    try {
+        return await task(directory);
+    } finally {
+        await rm(directory, { force: true, recursive: true }).catch(error => {
+            console.error(`Failed to remove temporary directory '${directory}'`);
+            console.error(error);
+        });
+    }
 }
