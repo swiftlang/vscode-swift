@@ -36,6 +36,7 @@ import { checkAndWarnAboutWindowsSymlinks } from "./ui/win32";
 import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "./terminal";
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 import { SelectedXcodeWatcher } from "./toolchain/SelectedXcodeWatcher";
+import { toggleInlayHints } from "./commands/toggleInlayHints";
 import configuration, { handleConfigurationChangeEvent } from "./configuration";
 import contextKeys from "./contextKeys";
 
@@ -139,6 +140,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
 
         // Mark the extension as activated.
         contextKeys.isActivated = true;
+
+        // toggle inlay hints based on swift.inlayHints.enabled settings
+        toggleInlayHints();
 
         return {
             workspaceContext,

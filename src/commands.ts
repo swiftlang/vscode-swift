@@ -46,6 +46,7 @@ import { runTask } from "./commands/runTask";
 import { TestKind } from "./TestExplorer/TestKind";
 import { pickProcess } from "./commands/pickProcess";
 import { openDocumentation } from "./commands/openDocumentation";
+import { toggleInlayHints } from "./commands/toggleInlayHints";
 
 /**
  * References:
@@ -217,6 +218,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             vscode.commands.executeCommand("vscode.open", vscode.Uri.file(packagePath));
         }),
         vscode.commands.registerCommand("swift.openDocumentation", () => openDocumentation()),
+        vscode.commands.registerCommand("swift.toggleInlayHints", () => toggleInlayHints()),
     ];
 }
 
