@@ -21,6 +21,8 @@ updates:
       - dependency-name: "@types/vscode"
       - dependency-name: "mocha"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "octokit"
+        update-types: ["version-update:semver-major"]
     groups:
       all-dependencies:
         patterns:
