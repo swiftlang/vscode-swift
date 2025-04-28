@@ -1,19 +1,17 @@
 {
-    "brackets": [
-        ["{", "}"]
-    ],
-    "autoClosingPairs": [
-        ["%{", "}%"],
-        ["${", "}"]
-    ],
-    "surroundingPairs": [
-        ["%{", "}%"],
-        ["${", "}"]
-    ],
-    "folding": {
-        "markers": {
-            "start": "^\\s*(?:%\\{|%[^\\{].*?:)",
-            "end": "^\\s*(?:\\}%|%\\s*end\\b)"
-        }
+  "brackets": [["{", "}"]],
+  "autoClosingPairs": [
+    ["%{", "}%"],
+    ["${", "}"]
+  ],
+  "surroundingPairs": [
+    ["%{", "}%"],
+    ["${", "}"]
+  ],
+  "folding": {
+    "markers": {
+      "start": "^\\s*(?:%\\{|%[^\\{].*?:)",
+      "end": "^\\s*(?:\\}%|%\\s*end\\b)"
     }
+  }
 }

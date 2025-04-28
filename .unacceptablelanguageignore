@@ -1,3 +1,4 @@
 assets/swift-docc-render
 src/utilities/utilities.ts
 src/tasks/SwiftProcess.ts
+syntaxes/swift-gyb.tmLanguage.json
