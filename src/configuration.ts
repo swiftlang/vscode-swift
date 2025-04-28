@@ -17,6 +17,7 @@ import * as os from "os";
 import * as path from "path";
 import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 import { WorkspaceContext } from "./WorkspaceContext";
+import { toggleInlayHints } from "./commands/toggleInlayHints";
 
 export type DebugAdapters = "auto" | "lldb-dap" | "CodeLLDB";
 export type SetupCodeLLDBOptions =
@@ -410,6 +411,10 @@ const configuration = {
     get diagnostics(): boolean {
         return vscode.workspace.getConfiguration("swift").get<boolean>("diagnostics", false);
     },
+    /** enable inlay hints from SourceKit LSP by setting editor.inlayHints.enabled */
+    get inlayHintsEnabled(): boolean {
+        return vscode.workspace.getConfiguration("swift.inlayHints").get<boolean>("enabled", false);
+    },
     /**
      *  Test coverage settings
      */
@@ -535,6 +540,8 @@ export function handleConfigurationChangeEvent(
             showReloadExtensionNotification(
                 "Changing environment variables requires the project be reloaded."
             );
+        } else if (event.affectsConfiguration("swift.inlayHints.enabled")) {
+            toggleInlayHints();
         }
     };
 }

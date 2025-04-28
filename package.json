@@ -311,6 +311,11 @@
       {
         "title": "Swift",
         "properties": {
+          "swift.inlayHints.enabled": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Display inlay hints. Inlay hints are variable annotations indicating their inferred type."
+          },
           "swift.path": {
             "type": "string",
             "default": "",
@@ -683,9 +688,9 @@
           },
           "sourcekit-lsp.inlayHints.enabled": {
             "type": "boolean",
-            "default": true,
+            "default": false,
             "markdownDescription": "Display Inlay Hints. Inlay Hints are variable annotations indicating their inferred type. They are only available if you are using Swift 5.6 or later.",
-            "markdownDeprecationMessage": "**Deprecated**: Please use `#editor.inlayHints.enabled#` instead."
+            "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.inlayHints.enabled#` instead."
           },
           "sourcekit-lsp.support-c-cpp": {
             "type": "string",
