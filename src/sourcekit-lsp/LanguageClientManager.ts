@@ -430,7 +430,7 @@ export class LanguageClientManager implements vscode.Disposable {
         return {
             client: this.languageClientFactory.createLanguageClient(
                 "swift.sourcekit-lsp",
-                "SourceKit Language Server",
+                `SourceKit Language Server (${this.folderContext.toolchain.swiftVersion.toString()})`,
                 serverOptions,
                 clientOptions
             ),

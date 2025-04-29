@@ -168,7 +168,9 @@ export function lspClientOptions(
         documentSelector: LanguagerClientDocumentSelectors.sourcekitLSPDocumentTypes(),
         revealOutputChannelOn: RevealOutputChannelOn.Never,
         workspaceFolder: workspaceFolder,
-        outputChannel: new SwiftOutputChannel("SourceKit Language Server"),
+        outputChannel: new SwiftOutputChannel(
+            `SourceKit Language Server (${swiftVersion.toString()})`
+        ),
         middleware: {
             didOpen: activeDocumentManager.didOpen.bind(activeDocumentManager),
             didClose: activeDocumentManager.didClose.bind(activeDocumentManager),
