@@ -23,6 +23,7 @@ import { SwiftExecution } from "../../../src/tasks/SwiftExecution";
 import { Version } from "../../../src/utilities/version";
 import { BuildFlags } from "../../../src/toolchain/BuildFlags";
 import { instance, MockedObject, mockFn, mockObject } from "../../MockUtils";
+import { FolderContext } from "../../../src/FolderContext";
 
 suite("SwiftPluginTaskProvider Unit Test Suite", () => {
     let workspaceContext: MockedObject<WorkspaceContext>;
@@ -39,14 +40,14 @@ suite("SwiftPluginTaskProvider Unit Test Suite", () => {
             buildFlags: instance(buildFlags),
             getToolchainExecutable: mockFn(s => s.withArgs("swift").returns("/path/to/bin/swift")),
         });
-        workspaceContext = mockObject<WorkspaceContext>({
+        const folderContext = mockObject<FolderContext>({
+            workspaceContext: instance(workspaceContext),
+            workspaceFolder,
             toolchain: instance(toolchain),
-            get swiftVersion() {
-                return toolchain.swiftVersion;
-            },
-            set swiftVersion(version) {
-                toolchain.swiftVersion = version;
-            },
+        });
+        workspaceContext = mockObject<WorkspaceContext>({
+            globalToolchain: instance(toolchain),
+            currentFolder: instance(folderContext),
         });
         workspaceFolder = {
             uri: vscode.Uri.file("/path/to/workspace"),

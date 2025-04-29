@@ -42,12 +42,12 @@ suite("SwiftTaskProvider Test Suite", () => {
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
-            toolchain = workspaceContext.toolchain;
             expect(workspaceContext.folders).to.not.have.lengthOf(0);
             workspaceFolder = workspaceContext.folders[0].workspaceFolder;
 
             // Make sure have another folder
             folderContext = await folderInRootWorkspace("diagnostics", workspaceContext);
+            toolchain = folderContext.toolchain;
         },
     });
 

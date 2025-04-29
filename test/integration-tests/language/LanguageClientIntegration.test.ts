@@ -22,6 +22,7 @@ import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilit
 import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import { waitForClientState, waitForIndex } from "../utilities/lsputilities";
+import { FolderContext } from "../../../src/FolderContext";
 
 async function buildProject(ctx: WorkspaceContext, name: string) {
     await waitForNoRunningTasks();
@@ -36,22 +37,20 @@ suite("Language Client Integration Suite @slow", function () {
     this.timeout(3 * 60 * 1000);
 
     let clientManager: LanguageClientManager;
-    let workspaceContext: WorkspaceContext;
+    let folderContext: FolderContext;
 
     activateExtensionForSuite({
         async setup(ctx) {
-            workspaceContext = ctx;
-
-            await buildProject(ctx, "defaultPackage");
+            folderContext = await buildProject(ctx, "defaultPackage");
 
             // Ensure lsp client is ready
-            clientManager = ctx.languageClientManager;
+            clientManager = ctx.languageClientManager.get(folderContext);
             await waitForClientState(clientManager, langclient.State.Running);
         },
     });
 
     setup(async () => {
-        await waitForIndex(workspaceContext.languageClientManager);
+        await waitForIndex(clientManager, folderContext.swiftVersion);
     });
 
     suite("Symbols", () => {

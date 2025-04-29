@@ -104,7 +104,7 @@ function getBuildRevealOption(): vscode.TaskRevealKind {
 const buildAllTaskCache = (() => {
     const cache = new Map<string, SwiftTask>();
     const key = (name: string, folderContext: FolderContext, task: SwiftTask) => {
-        return `${name}:${folderContext.folder}:${buildOptions(folderContext.workspaceContext.toolchain).join(",")}:${task.definition.args.join(",")}`;
+        return `${name}:${folderContext.folder}:${buildOptions(folderContext.toolchain).join(",")}:${task.definition.args.join(",")}`;
     };
 
     return {
@@ -152,7 +152,7 @@ export async function createBuildAllTask(
             },
             disableTaskQueue: true,
         },
-        folderContext.workspaceContext.toolchain
+        folderContext.toolchain
     );
 
     // Ensures there is one Build All task per folder context, since this can be called multiple
@@ -173,7 +173,8 @@ export async function getBuildAllTask(
     const buildTaskName = buildAllTaskName(folderContext, release);
     const folderWorkingDir = folderContext.workspaceFolder.uri.fsPath;
     // search for build all task in task.json first, that are valid for folder
-    const workspaceTasks = (await vscode.tasks.fetchTasks()).filter(task => {
+    const tasks = await vscode.tasks.fetchTasks();
+    const workspaceTasks = tasks.filter(task => {
         if (task.source !== "Workspace" || task.scope !== folderContext.workspaceFolder) {
             return false;
         }
@@ -216,7 +217,7 @@ export async function getBuildAllTask(
  * Creates a {@link vscode.Task Task} to run an executable target.
  */
 function createBuildTasks(product: Product, folderContext: FolderContext): vscode.Task[] {
-    const toolchain = folderContext.workspaceContext.toolchain;
+    const toolchain = folderContext.toolchain;
     let buildTaskNameSuffix = "";
     if (folderContext.relativePath.length > 0) {
         buildTaskNameSuffix = ` (${folderContext.relativePath})`;
@@ -236,7 +237,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
             disableTaskQueue: true,
             dontTriggerTestDiscovery: true,
         },
-        folderContext.workspaceContext.toolchain
+        folderContext.toolchain
     );
     const buildDebug = buildAllTaskCache.get(buildDebugName, folderContext, buildDebugTask);
 
@@ -254,7 +255,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
             disableTaskQueue: true,
             dontTriggerTestDiscovery: true,
         },
-        folderContext.workspaceContext.toolchain
+        folderContext.toolchain
     );
     const buildRelease = buildAllTaskCache.get(buildReleaseName, folderContext, buildReleaseTask);
     return [buildDebug, buildRelease];
@@ -376,7 +377,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             // This is only required in Swift toolchains before v6 as SwiftPM in newer toolchains
             // will block multiple processes accessing the .build folder at the same time
             if (
-                this.workspaceContext.toolchain.swiftVersion.isLessThan(new Version(6, 0, 0)) &&
+                folderContext.toolchain.swiftVersion.isLessThan(new Version(6, 0, 0)) &&
                 activeOperation &&
                 !activeOperation.operation.isBuildOperation
             ) {
@@ -422,9 +423,14 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     resolveTask(task: vscode.Task, token: vscode.CancellationToken): vscode.Task {
+        const currentFolder =
+            this.workspaceContext.currentFolder ?? this.workspaceContext.folders[0];
+        if (!currentFolder) {
+            return task;
+        }
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
-        const toolchain = this.workspaceContext.toolchain;
+        const toolchain = currentFolder.toolchain;
         const swift = toolchain.getToolchainExecutable("swift");
         // platform specific
         let platform: TaskPlatformSpecificConfig | undefined;

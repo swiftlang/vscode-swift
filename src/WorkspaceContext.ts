@@ -19,7 +19,7 @@ import { StatusItem } from "./ui/StatusItem";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
 import { swiftLibraryPathKey } from "./utilities/utilities";
 import { isPathInsidePath } from "./utilities/filesystem";
-import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
+import { LanguageClientToolchainCoordinator } from "./sourcekit-lsp/LanguageClientToolchainCoordinator";
 import { TemporaryFolder } from "./utilities/tempFolder";
 import { TaskManager } from "./tasks/TaskManager";
 import { makeDebugConfigurations } from "./debugger/launch";
@@ -45,7 +45,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public currentDocument: vscode.Uri | null;
     public statusItem: StatusItem;
     public buildStatus: SwiftBuildStatus;
-    public languageClientManager: LanguageClientManager;
+    public languageClientManager: LanguageClientToolchainCoordinator;
     public tasks: TaskManager;
     public diagnostics: DiagnosticsManager;
     public subscriptions: vscode.Disposable[];
@@ -69,11 +69,11 @@ export class WorkspaceContext implements vscode.Disposable {
         extensionContext: vscode.ExtensionContext,
         public tempFolder: TemporaryFolder,
         public outputChannel: SwiftOutputChannel,
-        public toolchain: SwiftToolchain
+        public globalToolchain: SwiftToolchain
     ) {
         this.statusItem = new StatusItem();
         this.buildStatus = new SwiftBuildStatus(this.statusItem);
-        this.languageClientManager = new LanguageClientManager(this);
+        this.languageClientManager = new LanguageClientToolchainCoordinator(this);
         this.tasks = new TaskManager(this);
         this.diagnostics = new DiagnosticsManager(this);
         this.documentation = new DocumentationManager(extensionContext, this);
@@ -202,8 +202,8 @@ export class WorkspaceContext implements vscode.Disposable {
         this.subscriptions.length = 0;
     }
 
-    get swiftVersion() {
-        return this.toolchain.swiftVersion;
+    get globalToolchainSwiftVersion() {
+        return this.globalToolchain.swiftVersion;
     }
 
     /** Get swift version and create WorkspaceContext */
@@ -248,19 +248,21 @@ export class WorkspaceContext implements vscode.Disposable {
             contextKeys.currentTargetType = undefined;
         }
 
-        // Set context keys that depend on features from SourceKit-LSP
-        this.languageClientManager.useLanguageClient(async client => {
-            const experimentalCaps = client.initializeResult?.capabilities.experimental;
-            if (!experimentalCaps) {
-                contextKeys.supportsReindexing = false;
-                contextKeys.supportsDocumentationLivePreview = false;
-                return;
-            }
-            contextKeys.supportsReindexing =
-                experimentalCaps[ReIndexProjectRequest.method] !== undefined;
-            contextKeys.supportsDocumentationLivePreview =
-                experimentalCaps[DocCDocumentationRequest.method] !== undefined;
-        });
+        if (this.currentFolder) {
+            const languageClient = this.languageClientManager.get(this.currentFolder);
+            languageClient.useLanguageClient(async client => {
+                const experimentalCaps = client.initializeResult?.capabilities.experimental;
+                if (!experimentalCaps) {
+                    contextKeys.supportsReindexing = false;
+                    contextKeys.supportsDocumentationLivePreview = false;
+                    return;
+                }
+                contextKeys.supportsReindexing =
+                    experimentalCaps[ReIndexProjectRequest.method] !== undefined;
+                contextKeys.supportsDocumentationLivePreview =
+                    experimentalCaps[DocCDocumentationRequest.method] !== undefined;
+            });
+        }
 
         setSnippetContextKey(this);
     }
@@ -645,6 +647,8 @@ export enum FolderOperation {
     packageViewUpdated = "packageViewUpdated",
     // Package plugins list has been updated
     pluginsUpdated = "pluginsUpdated",
+    // The folder's swift toolchain version has been updated
+    swiftVersionUpdated = "swiftVersionUpdated",
 }
 
 /** Workspace Folder Event */

@@ -60,7 +60,7 @@ export async function folderCleanBuild(folderContext: FolderContext) {
             presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
             group: vscode.TaskGroup.Clean,
         },
-        folderContext.workspaceContext.toolchain
+        folderContext.toolchain
     );
 
     return await executeTaskWithUI(task, "Clean Build", folderContext);

@@ -203,8 +203,17 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                 return;
             }
 
+            const folderContext = this.context.folders.find(folderContext =>
+                document.uri.fsPath.startsWith(folderContext.folder.fsPath)
+            );
+
+            if (!folderContext) {
+                return;
+            }
+
+            const languageClientManager = this.context.languageClientManager.get(folderContext);
             try {
-                const response = await this.context.languageClientManager.useLanguageClient(
+                const response = await languageClientManager.useLanguageClient(
                     async (client): Promise<DocCDocumentationResponse> => {
                         return await client.sendRequest(DocCDocumentationRequest.type, {
                             textDocument: {

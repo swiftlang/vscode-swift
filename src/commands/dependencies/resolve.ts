@@ -24,7 +24,6 @@ import { executeTaskWithUI, updateAfterError } from "../utilities";
 export async function resolveDependencies(ctx: WorkspaceContext) {
     const current = ctx.currentFolder;
     if (!current) {
-        ctx.outputChannel.log("currentFolder is not set.");
         return false;
     }
     return await resolveFolderDependencies(current);
@@ -47,7 +46,7 @@ export async function resolveFolderDependencies(
             prefix: folderContext.name,
             presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
         },
-        folderContext.workspaceContext.toolchain
+        folderContext.toolchain
     );
 
     const success = await executeTaskWithUI(

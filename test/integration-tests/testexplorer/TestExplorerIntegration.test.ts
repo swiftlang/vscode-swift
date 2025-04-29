@@ -49,6 +49,7 @@ import {
 import { Commands } from "../../../src/commands";
 import { executeTaskAndWaitForResult } from "../../utilities/tasks";
 import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
+import { FolderContext } from "../../../src/FolderContext";
 
 suite("Test Explorer Suite", function () {
     const MAX_TEST_RUN_TIME_MINUTES = 5;
@@ -56,20 +57,21 @@ suite("Test Explorer Suite", function () {
     this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES);
 
     let workspaceContext: WorkspaceContext;
+    let folderContext: FolderContext;
     let testExplorer: TestExplorer;
 
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
-            const targetFolder = await folderInRootWorkspace("defaultPackage", workspaceContext);
+            folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
 
-            if (!targetFolder) {
+            if (!folderContext) {
                 throw new Error("Unable to find test explorer");
             }
 
-            testExplorer = targetFolder.addTestExplorer();
+            testExplorer = folderContext.addTestExplorer();
 
-            await executeTaskAndWaitForResult(await createBuildAllTask(targetFolder));
+            await executeTaskAndWaitForResult(await createBuildAllTask(folderContext));
 
             // Set up the listener before bringing the text explorer in to focus,
             // which starts searching the workspace for tests.
@@ -94,7 +96,7 @@ suite("Test Explorer Suite", function () {
             if (
                 // swift-testing was not able to produce JSON events until 6.0.2 on Windows.
                 process.platform === "win32" &&
-                workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 2))
+                workspaceContext.globalToolchainSwiftVersion.isLessThan(new Version(6, 0, 2))
             ) {
                 this.skip();
             }
@@ -111,7 +113,7 @@ suite("Test Explorer Suite", function () {
             let resetSettings: (() => Promise<void>) | undefined;
             beforeEach(async function () {
                 // lldb-dap is only present/functional in the toolchain in 6.0.2 and up.
-                if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 2))) {
+                if (folderContext.swiftVersion.isLessThan(new Version(6, 0, 2))) {
                     this.skip();
                 }
 
@@ -155,14 +157,14 @@ suite("Test Explorer Suite", function () {
 
             test("Debugs specified XCTest test @slow", async function () {
                 // CodeLLDB tests stall out on 5.9 and below.
-                if (workspaceContext.swiftVersion.isLessThan(new Version(5, 10, 0))) {
+                if (folderContext.swiftVersion.isLessThan(new Version(5, 10, 0))) {
                     this.skip();
                 }
                 await runXCTest();
             });
 
             test("Debugs specified swift-testing test", async function () {
-                if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+                if (folderContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
                     this.skip();
                 }
                 await runSwiftTesting.call(this);
@@ -172,7 +174,7 @@ suite("Test Explorer Suite", function () {
 
     suite("Standard", () => {
         test("Finds Tests", async function () {
-            if (workspaceContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
+            if (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
                 // 6.0 uses the LSP which returns tests in the order they're declared.
                 // Includes swift-testing tests.
                 assertTestControllerHierarchy(testExplorer.controller, [
@@ -205,7 +207,7 @@ suite("Test Explorer Suite", function () {
                         ["testCrashing()"],
                     ],
                 ]);
-            } else if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+            } else if (folderContext.swiftVersion.isLessThanOrEqual(new Version(6, 0, 0))) {
                 // 5.10 uses `swift test list` which returns test alphabetically, without the round brackets.
                 // Does not include swift-testing tests.
                 assertTestControllerHierarchy(testExplorer.controller, [
@@ -233,10 +235,10 @@ suite("Test Explorer Suite", function () {
         suite("swift-testing", () => {
             suiteSetup(function () {
                 if (
-                    workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0)) ||
+                    folderContext.swiftVersion.isLessThan(new Version(6, 0, 0)) ||
                     // swift-testing was not able to produce JSON events until 6.0.2 on Windows.
                     (process.platform === "win32" &&
-                        workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 2)))
+                        folderContext.swiftVersion.isLessThan(new Version(6, 0, 2)))
                 ) {
                     this.skip();
                 }
@@ -268,7 +270,7 @@ suite("Test Explorer Suite", function () {
             // Disabled until Attachments are formalized and released.
             test.skip("attachments", async function () {
                 // Attachments were introduced in 6.1
-                if (workspaceContext.swiftVersion.isLessThan(new Version(6, 1, 0))) {
+                if (folderContext.swiftVersion.isLessThan(new Version(6, 1, 0))) {
                     this.skip();
                 }
 
@@ -590,7 +592,7 @@ suite("Test Explorer Suite", function () {
                 // as passed or failed with the message from the xunit xml.
                 xcTestFailureMessage =
                     runProfile === TestKind.parallel &&
-                    !workspaceContext.toolchain.hasMultiLineParallelTestOutput
+                    !folderContext.toolchain.hasMultiLineParallelTestOutput
                         ? "failed"
                         : `failed - oh no`;
             });
@@ -599,9 +601,9 @@ suite("Test Explorer Suite", function () {
                 suite(`swift-testing (${runProfile})`, function () {
                     suiteSetup(function () {
                         if (
-                            workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0)) ||
+                            folderContext.swiftVersion.isLessThan(new Version(6, 0, 0)) ||
                             (process.platform === "win32" &&
-                                workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 2)))
+                                folderContext.swiftVersion.isLessThan(new Version(6, 0, 2)))
                         ) {
                             this.skip();
                         }
@@ -678,9 +680,7 @@ suite("Test Explorer Suite", function () {
 
                         let passed: string[];
                         let failedId: string;
-                        if (
-                            workspaceContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 2, 0))
-                        ) {
+                        if (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 2, 0))) {
                             passed = [
                                 `${testId}/PackageTests.swift:59:2/Parameterized test case ID: argumentIDs: [Testing.Test.Case.Argument.ID(bytes: [49])], discriminator: 0, isStable: true`,
                                 `${testId}/PackageTests.swift:59:2/Parameterized test case ID: argumentIDs: [Testing.Test.Case.Argument.ID(bytes: [51])], discriminator: 0, isStable: true`,

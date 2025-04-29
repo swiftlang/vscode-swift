@@ -19,8 +19,17 @@ import { ReIndexProjectRequest } from "../sourcekit-lsp/extensions";
 /**
  * Request that the SourceKit-LSP server reindexes the workspace.
  */
-export function reindexProject(workspaceContext: WorkspaceContext): Promise<unknown> {
-    return workspaceContext.languageClientManager.useLanguageClient(async (client, token) => {
+export async function reindexProject(
+    workspaceContext: WorkspaceContext
+): Promise<void | undefined> {
+    if (!workspaceContext.currentFolder) {
+        return;
+    }
+
+    const languageClientManager = workspaceContext.languageClientManager.get(
+        workspaceContext.currentFolder
+    );
+    return languageClientManager.useLanguageClient(async (client, token) => {
         try {
             await client.sendRequest(ReIndexProjectRequest.type, token);
             const result = await vscode.window.showWarningMessage(

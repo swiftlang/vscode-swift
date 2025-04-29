@@ -520,7 +520,7 @@ export function handleConfigurationChangeEvent(
         // on toolchain config change, reload window
         if (
             event.affectsConfiguration("swift.path") &&
-            configuration.path !== ctx.toolchain?.swiftFolderPath
+            configuration.path !== ctx.currentFolder?.toolchain.swiftFolderPath
         ) {
             showReloadExtensionNotification(
                 "Changing the Swift path requires Visual Studio Code be reloaded."

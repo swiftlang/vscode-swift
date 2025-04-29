@@ -211,14 +211,14 @@ suite("WorkspaceContext Test Suite", () => {
 
         test("get project templates", async () => {
             // This is only supported in swift versions >=5.8.0
-            const swiftVersion = workspaceContext.toolchain.swiftVersion;
+            const swiftVersion = workspaceContext.globalToolchain.swiftVersion;
             if (swiftVersion.isLessThan(new Version(5, 8, 0))) {
-                assert.deepEqual(await workspaceContext.toolchain.getProjectTemplates(), []);
+                assert.deepEqual(await workspaceContext.globalToolchain.getProjectTemplates(), []);
                 return;
             }
             // The output of `swift package init --help` will probably change at some point.
             // Just make sure that the most complex portions of the output are parsed correctly.
-            const projectTemplates = await workspaceContext.toolchain.getProjectTemplates();
+            const projectTemplates = await workspaceContext.globalToolchain.getProjectTemplates();
             // Contains multi-line description
             const toolTemplate = projectTemplates.find(template => template.id === "tool");
             assert(toolTemplate);
