@@ -59,5 +59,9 @@ const repo = repository.split("/")[1];
     const newName = process.env["VSCODE_SWIFT_VSIX"] || "vscode-swift.vsix";
     await rename(files[0].path, newName);
     console.log(`Renamed artifact: ${files[0].path} => ${newName}`);
+    const preNewName =
+        process.env["VSCODE_SWIFT_PRERELEASE_VSIX"] || "vscode-swift-prerelease.vsix";
+    await rename(files[1].path, preNewName);
+    console.log(`Renamed artifact: ${files[1].path} => ${preNewName}`);
     await unlink("artifacts.zip");
 })();
