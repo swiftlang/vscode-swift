@@ -218,21 +218,32 @@ export class SwiftToolchain {
     }
 
     /**
-     * Get list of Xcode versions intalled on mac
-     * @returns Folders for each Xcode install
+     * Get the list of Xcode applications installed on macOS.
+     *
+     * Note: this uses a combination of xcode-select and the Spotlight index and may not contain
+     * all Xcode installations depending on the user's macOS settings.
+     *
+     * @returns an array of Xcode installations in no particular order.
      */
-    public static async getXcodeInstalls(): Promise<string[]> {
+    public static async findXcodeInstalls(): Promise<string[]> {
         if (process.platform !== "darwin") {
             return [];
         }
-        const { stdout: xcodes } = await execFile("mdfind", [
-            `kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'`,
+
+        // Use the Spotlight index and xcode-select to find available Xcode installations
+        const [{ stdout: mdfindOutput }, xcodeDeveloperDir] = await Promise.all([
+            execFile("mdfind", [`kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'`]),
+            this.getXcodeDeveloperDir(),
         ]);
-        // An empty string means no Xcodes are installed.
-        if (xcodes.length === 0) {
-            return [];
+        const spotlightXcodes = mdfindOutput.length > 0 ? mdfindOutput.trimEnd().split("\n") : [];
+        const selectedXcode = this.getXcodeDirectory(xcodeDeveloperDir);
+
+        // Combine the results from both commands
+        const result = spotlightXcodes;
+        if (selectedXcode && spotlightXcodes.find(xcode => xcode === selectedXcode) === undefined) {
+            result.push(selectedXcode);
         }
-        return xcodes.trimEnd().split("\n");
+        return result;
     }
 
     /**
@@ -405,13 +416,19 @@ export class SwiftToolchain {
         return path.join(toolchainPath, "bin", executable + executableSuffix);
     }
 
+    /**
+     * Returns the path to the Xcode application given a toolchain path. Returns undefined
+     * if no application could be found.
+     * @param toolchainPath The toolchain path.
+     * @returns The path to the Xcode application or undefined if none.
+     */
     private static getXcodeDirectory(toolchainPath: string): string | undefined {
         let xcodeDirectory = toolchainPath;
         while (path.extname(xcodeDirectory) !== ".app") {
-            xcodeDirectory = path.dirname(xcodeDirectory);
             if (path.parse(xcodeDirectory).base === "") {
                 return undefined;
             }
+            xcodeDirectory = path.dirname(xcodeDirectory);
         }
         return xcodeDirectory;
     }

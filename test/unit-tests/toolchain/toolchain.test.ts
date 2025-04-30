@@ -235,4 +235,65 @@ suite("SwiftToolchain Unit Test Suite", () => {
             });
         });
     });
+
+    suite("findXcodeInstalls()", () => {
+        test("returns the list of Xcode installations found in the Spotlight index on macOS", async () => {
+            mockedPlatform.setValue("darwin");
+            mockedUtilities.execFile.withArgs("mdfind").resolves({
+                stdout: "/Applications/Xcode.app\n/Applications/Xcode-beta.app\n",
+                stderr: "",
+            });
+            mockedUtilities.execFile
+                .withArgs("xcode-select", ["-p"])
+                .resolves({ stdout: "", stderr: "" });
+
+            const sortedXcodeInstalls = (await SwiftToolchain.findXcodeInstalls()).sort();
+            expect(sortedXcodeInstalls).to.deep.equal([
+                "/Applications/Xcode-beta.app",
+                "/Applications/Xcode.app",
+            ]);
+        });
+
+        test("includes the currently selected Xcode installation on macOS", async () => {
+            mockedPlatform.setValue("darwin");
+            mockedUtilities.execFile.withArgs("mdfind").resolves({
+                stdout: "/Applications/Xcode-beta.app\n",
+                stderr: "",
+            });
+            mockedUtilities.execFile
+                .withArgs("xcode-select", ["-p"])
+                .resolves({ stdout: "/Applications/Xcode.app\n", stderr: "" });
+
+            const sortedXcodeInstalls = (await SwiftToolchain.findXcodeInstalls()).sort();
+            expect(sortedXcodeInstalls).to.deep.equal([
+                "/Applications/Xcode-beta.app",
+                "/Applications/Xcode.app",
+            ]);
+        });
+
+        test("does not duplicate the currently selected Xcode installation on macOS", async () => {
+            mockedPlatform.setValue("darwin");
+            mockedUtilities.execFile.withArgs("mdfind").resolves({
+                stdout: "/Applications/Xcode.app\n/Applications/Xcode-beta.app\n",
+                stderr: "",
+            });
+            mockedUtilities.execFile
+                .withArgs("xcode-select", ["-p"])
+                .resolves({ stdout: "/Applications/Xcode.app\n", stderr: "" });
+
+            const sortedXcodeInstalls = (await SwiftToolchain.findXcodeInstalls()).sort();
+            expect(sortedXcodeInstalls).to.deep.equal([
+                "/Applications/Xcode-beta.app",
+                "/Applications/Xcode.app",
+            ]);
+        });
+
+        test("returns an empty array on non-macOS platforms", async () => {
+            mockedPlatform.setValue("linux");
+            await expect(SwiftToolchain.findXcodeInstalls()).to.eventually.be.empty;
+
+            mockedPlatform.setValue("win32");
+            await expect(SwiftToolchain.findXcodeInstalls()).to.eventually.be.empty;
+        });
+    });
 });
