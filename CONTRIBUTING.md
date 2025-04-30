@@ -58,7 +58,7 @@ If you'd like to return to using the released version of the extension you can u
 
 Occasionally, pre-release builds will be published to the VS Code Marketplace. You can switch to the pre-release version by clicking on the `Switch to Pre-Release Version` button in the Extensions View:
 
-![](docs/images/install-pre-release.png)
+![](userdocs/userdocs.docc/install-pre-release.png)
 
 Switching back to the release version can be done by clicking on the `Switch to Release Version` button.
 
@@ -101,7 +101,7 @@ Now you can run tests locally using either of the following methods:
 - Using `npm run test` from your terminal
   - You can also use `npm run unit-test` or `npm run integration-test` to specifically run the Unit Tests or Integration Tests respectively.
 
-Tests can also be launched from the terminal with the `--coverage` flag to display converage information. For example:
+Tests can also be launched from the terminal with the `--coverage` flag to display coverage information. For example:
 
 ```bash
 npm run unit-test -- --coverage
