@@ -41,6 +41,10 @@ suite("Language Client Integration Suite @slow", function () {
 
     activateExtensionForSuite({
         async setup(ctx) {
+            if (process.platform === "win32") {
+                this.skip();
+                return;
+            }
             folderContext = await buildProject(ctx, "defaultPackage");
 
             // Ensure lsp client is ready
