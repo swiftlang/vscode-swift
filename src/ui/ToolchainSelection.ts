@@ -143,7 +143,7 @@ async function getQuickPickItems(
     activeToolchain: SwiftToolchain | undefined
 ): Promise<SelectToolchainItem[]> {
     // Find any Xcode installations on the system
-    const xcodes = (await SwiftToolchain.getXcodeInstalls())
+    const xcodes = (await SwiftToolchain.findXcodeInstalls())
         .reverse()
         .map<SwiftToolchainItem>(xcodePath => {
             const toolchainPath = path.join(
