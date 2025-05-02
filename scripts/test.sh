@@ -31,7 +31,6 @@ cd /tmp/code
 npm ci
 npm run lint
 npm run format
-npm run package
 npm run soundness -- --force-run
 
 xvfb-run -a npm run coverage 2>&1 | grep -Ev "Failed to connect to the bus|GPU stall due to ReadPixels"
