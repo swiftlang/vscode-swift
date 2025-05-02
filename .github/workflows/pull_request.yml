@@ -5,9 +5,48 @@ on:
     types: [opened, reopened, synchronize]
 
 jobs:
+  package:
+    name: Package Extension
+    runs-on: ubuntu-latest
+    container:
+      image: swift:6.0-jammy
+    outputs:
+      artifact-id: ${{ steps.archive.outputs.artifact-id }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Build Extension
+        run: |
+          export NODE_VERSION=v20.18.2
+          export NODE_PATH=/usr/local/nvm/versions/node/v20.18.2/bin
+          export NVM_DIR=/usr/local/nvm
+          . .github/workflows/scripts/setup-linux.sh
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          npm ci
+          npm run compile
+          npm run package
+          npm run preview-package
+          for file in *.vsix; do
+            name="$(basename "$file" .vsix)-${{github.run_number}}.vsix"
+            echo "Created bundle $name"
+            mv "$file" "$name"
+          done
+          git rev-parse HEAD > vscode-swift-sha.txt
+      - name: Archive production artifacts
+        id: archive
+        uses: actions/upload-artifact@v4
+        if: ${{ env.ACT != 'true' }}
+        with:
+          if-no-files-found: error
+          name: vscode-swift-extension
+          path: |
+            *.vsix
+            vscode-swift-sha.txt
+
   tests:
     name: ${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && 'Full Test Run' || 'Test'}}
     uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@main
+    needs: package
     with:
       # Linux
       linux_exclude_swift_versions: '[{"swift_version": "nightly-6.1"},{"swift_version": "nightly-main"}]'
@@ -17,6 +56,8 @@ jobs:
         NVM_DIR=/usr/local/nvm
         CI=1
         FAST_TEST_RUN=${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && '0' || '1'}}
+        VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
+        GITHUB_REPOSITORY=${{github.repository}}
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./scripts/test.sh
       # Windows
@@ -24,6 +65,9 @@ jobs:
       windows_env_vars: |
         CI=1
         FAST_TEST_RUN=${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && '0' || '1'}}
+        VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
+        VSCODE_SWIFT_VSIX=vscode-swift.vsix
+        GITHUB_REPOSITORY=${{github.repository}}
       windows_pre_build_command: .github\workflows\scripts\windows\install-nodejs.ps1
       windows_build_command: scripts\test_windows.ps1
       enable_windows_docker: false
