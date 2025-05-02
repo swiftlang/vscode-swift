@@ -49,7 +49,9 @@ suite("Language Client Integration Suite @slow", function () {
 
             // Ensure lsp client is ready
             clientManager = ctx.languageClientManager.get(folderContext);
+            await clientManager.restart();
             await waitForClientState(clientManager, langclient.State.Running);
+            await waitForIndex(clientManager, folderContext.swiftVersion);
         },
     });
 
