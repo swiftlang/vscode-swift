@@ -38,17 +38,15 @@ export async function executeTaskAndWaitForResult(
 ): Promise<{ exitCode?: number; output: string }> {
     const task = "task" in fixture ? fixture.task : fixture;
     const exitPromise = waitForEndTaskProcess(task);
-    return await vscode.tasks.executeTask(task).then(async execution => {
-        let output = "";
-        const runningTask = execution.task as SwiftTask;
-        const disposables = [runningTask.execution.onDidWrite(e => (output += e))];
-        const exitCode = await exitPromise;
-        disposables.forEach(d => d.dispose());
-        return {
-            output,
-            exitCode,
-        };
-    });
+    let output = "";
+    const disposables = [task.execution.onDidWrite(e => (output += e))];
+    await vscode.tasks.executeTask(task);
+    const exitCode = await exitPromise;
+    disposables.forEach(d => d.dispose());
+    return {
+        output,
+        exitCode,
+    };
 }
 
 /**
