@@ -38,9 +38,11 @@ export async function executeTaskAndWaitForResult(
 ): Promise<{ exitCode?: number; output: string }> {
     const task = "task" in fixture ? fixture.task : fixture;
     const exitPromise = waitForEndTaskProcess(task);
+    const writePromise = waitForWrite(task.execution);
     let output = "";
     const disposables = [task.execution.onDidWrite(e => (output += e))];
     await vscode.tasks.executeTask(task);
+    await writePromise;
     const exitCode = await exitPromise;
     disposables.forEach(d => d.dispose());
     return {
