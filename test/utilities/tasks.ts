@@ -38,17 +38,23 @@ export async function executeTaskAndWaitForResult(
 ): Promise<{ exitCode?: number; output: string }> {
     const task = "task" in fixture ? fixture.task : fixture;
     const exitPromise = waitForEndTaskProcess(task);
-    return await vscode.tasks.executeTask(task).then(async execution => {
-        let output = "";
-        const runningTask = execution.task as SwiftTask;
-        const disposables = [runningTask.execution.onDidWrite(e => (output += e))];
-        const exitCode = await exitPromise;
-        disposables.forEach(d => d.dispose());
-        return {
-            output,
-            exitCode,
-        };
-    });
+    const endPromise = waitForEndTask(task);
+    vscode.tasks.executeTask(task);
+    return await new Promise(res =>
+        vscode.tasks.onDidStartTask(async ({ execution }) => {
+            let output = "";
+            const runningTask = execution.task as SwiftTask;
+            const disposables = [runningTask.execution.onDidWrite(e => (output += e))];
+            const exitCode = await exitPromise;
+            await endPromise;
+            await new Promise(r => setTimeout(r, 500));
+            disposables.forEach(d => d.dispose());
+            res({
+                output,
+                exitCode,
+            });
+        })
+    );
 }
 
 /**
@@ -137,6 +143,29 @@ export function waitForEndTaskProcess(task: vscode.Task): Promise<number | undef
                 }
                 disposables.forEach(d => d.dispose());
                 res(e.exitCode);
+            })
+        );
+    });
+}
+
+/**
+ * Ideally we would want to use {@link executeTaskAndWaitForResult} but that
+ * requires the tests creating the task through some means. If the
+ * {@link vscode.Task Task}, was provided by the extension under test, the
+ * {@link SwiftTask.execution} event emitters never seem to fire.
+ *
+ * @param task task to listen for exit event
+ */
+export function waitForEndTask(task: vscode.Task): Promise<void> {
+    return new Promise<void>(res => {
+        const disposables: vscode.Disposable[] = [];
+        disposables.push(
+            vscode.tasks.onDidEndTask(e => {
+                if (task.detail !== e.execution.task.detail) {
+                    return;
+                }
+                disposables.forEach(d => d.dispose());
+                res();
             })
         );
     });
