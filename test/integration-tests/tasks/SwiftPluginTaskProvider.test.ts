@@ -199,7 +199,7 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
             let taskProvider: SwiftPluginTaskProvider;
 
             setup(() => {
-                taskProvider = new SwiftPluginTaskProvider(workspaceContext);
+                taskProvider = workspaceContext.pluginProvider;
             });
 
             test("Exit code on success", async () => {

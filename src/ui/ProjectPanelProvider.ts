@@ -20,7 +20,6 @@ import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderOperation } from "../WorkspaceContext";
 import contextKeys from "../contextKeys";
 import { Dependency, ResolvedDependency, Target } from "../SwiftPackage";
-import { SwiftPluginTaskProvider } from "../tasks/SwiftPluginTaskProvider";
 import { FolderContext } from "../FolderContext";
 
 const LOADING_ICON = "loading~spin";
@@ -598,7 +597,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
     }
 
     private async commands(): Promise<TreeNode[]> {
-        const provider = new SwiftPluginTaskProvider(this.workspaceContext);
+        const provider = this.workspaceContext.pluginProvider;
         const tasks = await provider.provideTasks(new vscode.CancellationTokenSource().token);
         return tasks
             .map(
