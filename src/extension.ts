@@ -19,7 +19,6 @@ import * as vscode from "vscode";
 import * as commands from "./commands";
 import * as debug from "./debugger/launch";
 import { ProjectPanelProvider } from "./ui/ProjectPanelProvider";
-import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
 import { FolderEvent, FolderOperation, WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
@@ -96,7 +95,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         context.subscriptions.push(new SelectedXcodeWatcher(outputChannel));
 
         // Register task provider.
-        context.subscriptions.push(SwiftTaskProvider.register(workspaceContext));
+        context.subscriptions.push(
+            vscode.tasks.registerTaskProvider("swift", workspaceContext.taskProvider)
+        );
 
         // Register swift plugin task provider.
         context.subscriptions.push(

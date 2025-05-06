@@ -51,6 +51,7 @@ suite("Build Commands @slow", function () {
             await waitForNoRunningTasks();
             folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
             await workspaceContext.focusFolder(folderContext);
+            await vscode.tasks.fetchTasks({ type: "swift" });
             await vscode.window.showTextDocument(uri);
         },
         async teardown() {
