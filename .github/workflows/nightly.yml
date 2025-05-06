@@ -32,6 +32,8 @@ jobs:
             echo "Created bundle $name"
             mv "$file" "$name"
           done
+          git config --global --add safe.directory $PWD
+          git rev-parse HEAD > vscode-swift-sha.txt
       - name: Archive production artifacts
         id: archive
         uses: actions/upload-artifact@v4
@@ -41,6 +43,7 @@ jobs:
           name: vscode-swift-extension
           path: |
             *.vsix
+            vscode-swift-sha.txt
 
   tests_release:
     name: Test Release

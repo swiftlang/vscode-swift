@@ -57,11 +57,21 @@ const repo = repository.split("/")[1];
     const files = await decompress("artifacts.zip", process.cwd());
     console.log(`Downloaded artifact(s): ${files.map(f => f.path).join(", ")}`);
     const newName = process.env["VSCODE_SWIFT_VSIX"] || "vscode-swift.vsix";
-    await rename(files[0].path, newName);
-    console.log(`Renamed artifact: ${files[0].path} => ${newName}`);
+    const releaseVSIX = files.find(f => /swift-vscode-\d.\d.\d-\d+.vsix/m.test(f.path));
+    if (!releaseVSIX) {
+        console.error("Cound not find vscode-swift release VSIX in artifact bundle");
+        process.exit(1);
+    }
+    await rename(releaseVSIX.path, newName);
+    const prereleaseVSIX = files.find(f => /swift-vscode-\d.\d.\d{8}-\d+.vsix/m.test(f.path));
+    if (!prereleaseVSIX) {
+        console.error("Cound not find vscode-swift pre-release VSIX in artifact bundle");
+        process.exit(1);
+    }
+    console.log(`Renamed artifact: ${releaseVSIX.path} => ${newName}`);
     const preNewName =
         process.env["VSCODE_SWIFT_PRERELEASE_VSIX"] || "vscode-swift-prerelease.vsix";
-    await rename(files[1].path, preNewName);
-    console.log(`Renamed artifact: ${files[1].path} => ${preNewName}`);
+    await rename(prereleaseVSIX.path, preNewName);
+    console.log(`Renamed artifact: ${prereleaseVSIX.path} => ${preNewName}`);
     await unlink("artifacts.zip");
 })();
