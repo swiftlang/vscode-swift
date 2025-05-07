@@ -482,13 +482,18 @@ export class SwiftTestingOutputParser {
 
 export class MessageRenderer {
     /**
-     * Converts a swift-testing `EventMessage` to a colorized symbol and message text.
+     * Converts a swift-testing `EventMessage` to a printable string.
      *
      * @param message An event message, typically found on an `EventRecordPayload`.
-     * @returns A string colorized with ANSI escape codes.
+     * @returns A string representing the message.
      */
     static render(message: EventMessage): string {
-        return `${SymbolRenderer.eventMessageSymbol(message.symbol)} ${MessageRenderer.colorize(message.symbol, message.text)}`;
+        return message.text;
+
+        // Currently VS Code doesn't support colorizing the output of issues
+        // shown inline in the editor. Until this is supported we just return
+        // the message text. Once it is supported we can use the following code:
+        // return `${SymbolRenderer.eventMessageSymbol(message.symbol)} ${MessageRenderer.colorize(message.symbol, message.text)}`;
     }
 
     private static colorize(symbolType: TestSymbol, message: string): string {
