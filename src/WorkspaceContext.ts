@@ -34,6 +34,7 @@ import { DocumentationManager } from "./documentation/DocumentationManager";
 import { DocCDocumentationRequest, ReIndexProjectRequest } from "./sourcekit-lsp/extensions";
 import { TestKind } from "./TestExplorer/TestKind";
 import { isValidWorkspaceFolder, searchForPackages } from "./utilities/workspace";
+import { SwiftPluginTaskProvider } from "./tasks/SwiftPluginTaskProvider";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -48,6 +49,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public languageClientManager: LanguageClientToolchainCoordinator;
     public tasks: TaskManager;
     public diagnostics: DiagnosticsManager;
+    public pluginProvider: SwiftPluginTaskProvider;
     public subscriptions: vscode.Disposable[];
     public commentCompletionProvider: CommentCompletionProviders;
     public documentation: DocumentationManager;
@@ -76,6 +78,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.languageClientManager = new LanguageClientToolchainCoordinator(this);
         this.tasks = new TaskManager(this);
         this.diagnostics = new DiagnosticsManager(this);
+        this.pluginProvider = new SwiftPluginTaskProvider(this);
         this.documentation = new DocumentationManager(extensionContext, this);
         this.currentDocument = null;
         this.commentCompletionProvider = new CommentCompletionProviders();

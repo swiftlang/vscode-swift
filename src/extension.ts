@@ -25,7 +25,6 @@ import { FolderContext } from "./FolderContext";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { LanguageStatusItems } from "./ui/LanguageStatusItems";
 import { getErrorDescription } from "./utilities/utilities";
-import { SwiftPluginTaskProvider } from "./tasks/SwiftPluginTaskProvider";
 import { Version } from "./utilities/version";
 import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
 import { registerDebugger } from "./debugger/debugAdapterFactory";
@@ -100,7 +99,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         context.subscriptions.push(SwiftTaskProvider.register(workspaceContext));
 
         // Register swift plugin task provider.
-        context.subscriptions.push(SwiftPluginTaskProvider.register(workspaceContext));
+        context.subscriptions.push(
+            vscode.tasks.registerTaskProvider("swift-plugin", workspaceContext.pluginProvider)
+        );
 
         // Register the language status bar items.
         context.subscriptions.push(new LanguageStatusItems(workspaceContext));
