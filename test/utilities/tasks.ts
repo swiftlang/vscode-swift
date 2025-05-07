@@ -37,14 +37,20 @@ export async function executeTaskAndWaitForResult(
     fixture: SwiftTaskFixture | SwiftTask
 ): Promise<{ exitCode?: number; output: string }> {
     const task = "task" in fixture ? fixture.task : fixture;
-    const exitPromise = waitForEndTaskProcess(task);
     const endPromise = waitForEndTask(task);
-    vscode.tasks.executeTask(task);
-    return await new Promise(res =>
+    const promise = new Promise<{ exitCode?: number; output: string }>(res =>
         vscode.tasks.onDidStartTask(async ({ execution }) => {
-            let output = "";
             const runningTask = execution.task as SwiftTask;
+            if (task.detail !== runningTask.detail) {
+                return;
+            }
+            let output = "";
             const disposables = [runningTask.execution.onDidWrite(e => (output += e))];
+            const exitPromise = new Promise<number>(res => {
+                disposables.push(
+                    runningTask.execution.onDidClose(e => res(typeof e === "number" ? e : -1))
+                );
+            });
             const exitCode = await exitPromise;
             await endPromise;
             await new Promise(r => setTimeout(r, 500));
@@ -55,7 +61,57 @@ export async function executeTaskAndWaitForResult(
             });
         })
     );
+    await vscode.tasks.executeTask(task);
+    return await promise;
 }
+// export async function executeTaskAndWaitForResult(
+//     fixture: SwiftTaskFixture | SwiftTask,
+//     expectOutput: boolean = true
+// ): Promise<{ exitCode?: number; output: string }> {
+//     const task = "task" in fixture ? fixture.task : fixture;
+//     // const exitPromise = waitForEndTaskProcess(task);
+//     const writePromise = expectOutput ? waitForWrite(task.execution) : Promise.resolve();
+//     writePromise;
+//     const promise: Promise<{ exitCode?: number; output: string }> = new Promise(
+//         res =>
+//             vscode.tasks.onDidEndTaskProcess(async e => {
+//                 const runningTask = e.execution.task as SwiftTask;
+//                 if (runningTask.detail !== task.detail) {
+//                     return;
+//                 }
+//                 res({
+//                     output: runningTask.execution.swiftProcess.getOutput(),
+//                     exitCode: e.exitCode,
+//                 });
+//             })
+//         // vscode.tasks.onDidStartTask(async ({ execution }) => {
+//         // let output = "";
+//         // const runningTask = execution.task as SwiftTask;
+//         // if (runningTask.detail !== task.detail) {
+//         //     return;
+//         // }
+//         // const runningWritePromise = expectOutput
+//         //     ? waitForWrite(runningTask.execution)
+//         //     : Promise.resolve();
+//         // const runningExitPromise = waitForEndTaskProcess(runningTask);
+//         // const disposables = [
+//         //     runningTask.execution.onDidWrite(e => {
+//         //         output += e;
+//         //         console.log("onDidWrite: " + e);
+//         //     }),
+//         // ];
+//         // const exitCode = await Promise.race([exitPromise, runningExitPromise]);
+//         // await Promise.race([writePromise, runningWritePromise]);
+//         //     disposables.forEach(d => d.dispose());
+//         //     res({
+//         //         output,
+//         //         exitCode,
+//         //     });
+//         // })
+//     );
+//     await vscode.tasks.executeTask(task);
+//     return await promise;
+// }
 
 /**
  * Wait for the writeable fixture to write some output
@@ -65,8 +121,9 @@ export async function executeTaskAndWaitForResult(
  */
 export async function waitForWrite(fixture: { onDidWrite: vscode.Event<string> }): Promise<string> {
     return new Promise<string>(res => {
-        const disposable = fixture.onDidWrite(e => {
-            disposable.dispose();
+        let disposable: vscode.Disposable | undefined = undefined;
+        disposable = fixture.onDidWrite(e => {
+            disposable?.dispose();
             res(e);
         });
     });

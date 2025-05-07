@@ -244,19 +244,15 @@ suite("DiagnosticsManager Test Suite", function () {
                         workspaceContext.focusFolder(null);
 
                         resetSettings = await updateSettings({ "swift.diagnosticsStyle": style });
-                        const task = await createBuildAllTask(folderContext);
-                        // This return exit code and output for the task but we will omit it here
-                        // because the failures are expected and we just want the task to build
-                        await executeTaskAndWaitForResult(task).catch(() => {
-                            /* Ignore */
-                        });
                     });
 
                     test("succeeds", async function () {
                         await Promise.all([
                             waitForDiagnostics(expected()),
                             createBuildAllTask(folderContext).then(task =>
-                                executeTaskAndWaitForResult(task)
+                                executeTaskAndWaitForResult(task).catch(() => {
+                                    /* Ignore */
+                                })
                             ),
                         ]);
                         await waitForNoRunningTasks();

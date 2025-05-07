@@ -140,6 +140,7 @@ const extensionBootstrapper = (() => {
                 if (autoTeardown) {
                     await autoTeardown();
                 }
+                await waitForNoRunningTasks();
             } catch (error) {
                 if (workspaceContext) {
                     printLogs(workspaceContext.outputChannel, "Error during test/suite teardown");

@@ -23,7 +23,6 @@ jobs:
           . .github/workflows/scripts/setup-linux.sh
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
           npm ci
-          npm run compile
           npm run package
           npm run preview-package
           for file in *.vsix; do
@@ -47,9 +46,7 @@ jobs:
   tests:
     name: ${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && 'Full Test Run' || 'Test'}}
     uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@main
-    needs: package
     with:
-      needs_token: true
       # Linux
       linux_exclude_swift_versions: '[{"swift_version": "nightly-6.1"},{"swift_version": "nightly-main"}]'
       linux_env_vars: |
@@ -64,6 +61,7 @@ jobs:
       windows_exclude_swift_versions: '[{"swift_version": "nightly-6.1"},{"swift_version": "nightly"}]'
       windows_env_vars: |
         CI=1
+        VSCODE_DEBUG=1
         FAST_TEST_RUN=${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && '0' || '1'}}
       windows_pre_build_command: .github\workflows\scripts\windows\setup.ps1
       windows_build_command: scripts\test_windows.ps1
