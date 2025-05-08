@@ -14,6 +14,7 @@
 
 import * as vscode from "vscode";
 import * as assert from "assert";
+import * as os from "os";
 import { match } from "sinon";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import {
@@ -328,6 +329,31 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
             );
             const swiftExecution = resolvedTask.execution as SwiftExecution;
             assert.equal(swiftExecution.command, "/path/to/bin/swift");
+        });
+
+        test("substitutes variables", () => {
+            const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
+            const task = new vscode.Task(
+                {
+                    type: "swift",
+                    args: ["run", "PackageExe", "--", "${cwd}", "${userHome}"],
+                },
+                workspaceFolder,
+                "run PackageExe",
+                "swift"
+            );
+            const resolvedTask = taskProvider.resolveTask(
+                task,
+                new vscode.CancellationTokenSource().token
+            );
+            const swiftExecution = resolvedTask.execution as SwiftExecution;
+            assert.deepEqual(swiftExecution.args, [
+                "run",
+                "PackageExe",
+                "--",
+                process.cwd(),
+                os.homedir(),
+            ]);
         });
 
         suite("Platform cwd", () => {

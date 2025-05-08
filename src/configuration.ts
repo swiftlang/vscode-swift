@@ -473,7 +473,7 @@ const configuration = {
 };
 
 const vsCodeVariableRegex = new RegExp(/\$\{(.+?)\}/g);
-function substituteVariablesInString(val: string): string {
+export function substituteVariablesInString(val: string): string {
     return val.replace(vsCodeVariableRegex, (substring: string, varName: string) =>
         typeof varName === "string" ? computeVscodeVar(varName) || substring : substring
     );
@@ -494,14 +494,24 @@ function computeVscodeVar(varName: string): string | null {
         return vscode.workspace.workspaceFolders?.at(0)?.uri.fsPath ?? "";
     };
 
+    const file = () => vscode.window.activeTextEditor?.document?.uri?.fsPath || "";
+
     // https://code.visualstudio.com/docs/editor/variables-reference
     // Variables to be substituted should be added here.
     const supportedVariables: { [k: string]: () => string } = {
         workspaceFolder,
+        fileWorkspaceFolder: workspaceFolder,
         workspaceFolderBasename: () => path.basename(workspaceFolder()),
         cwd: () => process.cwd(),
         userHome: () => os.homedir(),
         pathSeparator: () => path.sep,
+        file,
+        relativeFile: () => path.relative(workspaceFolder(), file()),
+        relativeFileDirname: () => path.dirname(path.relative(workspaceFolder(), file())),
+        fileBasename: () => path.basename(file()),
+        fileExtname: () => path.extname(file()),
+        fileDirname: () => path.dirname(file()),
+        fileDirnameBasename: () => path.basename(path.dirname(file())),
     };
 
     return varName in supportedVariables ? supportedVariables[varName]() : null;

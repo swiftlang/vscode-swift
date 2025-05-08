@@ -16,7 +16,10 @@ import * as vscode from "vscode";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderContext } from "../FolderContext";
 import { Product } from "../SwiftPackage";
-import configuration, { ShowBuildStatusOptions } from "../configuration";
+import configuration, {
+    ShowBuildStatusOptions,
+    substituteVariablesInString,
+} from "../configuration";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { SwiftToolchain } from "../toolchain/toolchain";
@@ -442,7 +445,9 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             platform = task.definition.macos;
         }
         // get args and cwd values from either platform specific block or base
-        const args = platform?.args ?? task.definition.args;
+        const args = (platform?.args ?? task.definition.args ?? []).map(
+            substituteVariablesInString
+        );
         const env = platform?.env ?? task.definition.env;
         const fullCwd = resolveTaskCwd(task, platform?.cwd ?? task.definition.cwd);
         const fullEnv = {
