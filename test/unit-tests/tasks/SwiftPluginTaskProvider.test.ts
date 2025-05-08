@@ -14,6 +14,7 @@
 
 import * as vscode from "vscode";
 import * as assert from "assert";
+import * as os from "os";
 import * as path from "path";
 import { match } from "sinon";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
@@ -267,6 +268,31 @@ suite("SwiftPluginTaskProvider Unit Test Suite", () => {
                 "package",
                 "--allow-writing-to-package-directory",
                 "my-plugin",
+            ]);
+        });
+
+        test("substitutes variables", async () => {
+            const taskProvider = new SwiftPluginTaskProvider(instance(workspaceContext));
+            const task = new vscode.Task(
+                {
+                    type: "swift-plugin",
+                    args: ["${cwd}", "${userHome}"],
+                    command: "my-plugin",
+                },
+                workspaceFolder,
+                "MyPlugin",
+                "swift"
+            );
+            const resolvedTask = taskProvider.resolveTask(
+                task,
+                new vscode.CancellationTokenSource().token
+            );
+            const swiftExecution = resolvedTask.execution as SwiftExecution;
+            assert.deepEqual(swiftExecution.args, [
+                "package",
+                "my-plugin",
+                process.cwd(),
+                os.homedir(),
             ]);
         });
     });

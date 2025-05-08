@@ -19,7 +19,10 @@ import { PackagePlugin } from "../SwiftPackage";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { SwiftExecution } from "../tasks/SwiftExecution";
 import { resolveTaskCwd } from "../utilities/tasks";
-import configuration, { PluginPermissionConfiguration } from "../configuration";
+import configuration, {
+    PluginPermissionConfiguration,
+    substituteVariablesInString,
+} from "../configuration";
 import { SwiftTask } from "./SwiftTaskProvider";
 import { SwiftToolchain } from "../toolchain/toolchain";
 
@@ -86,7 +89,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             "package",
             ...this.pluginArguments(task.definition as PluginPermissionConfiguration),
             task.definition.command,
-            ...task.definition.args,
+            ...(task.definition.args ?? []).map(substituteVariablesInString),
         ];
         swiftArgs = currentFolder.toolchain.buildFlags.withAdditionalFlags(swiftArgs);
 
