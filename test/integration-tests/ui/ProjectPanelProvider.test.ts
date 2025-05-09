@@ -35,6 +35,7 @@ import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Version } from "../../../src/utilities/version";
 import { wait } from "../../../src/utilities/utilities";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
+import { Commands } from "../../../src/commands";
 
 suite("ProjectPanelProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;
@@ -189,7 +190,10 @@ suite("ProjectPanelProvider Test Suite", function () {
                     return snippet;
                 }
             );
-            const result = await vscode.commands.executeCommand("swift.runSnippet", snippet?.name);
+            const result = await vscode.commands.executeCommand(
+                Commands.RUN_SNIPPET,
+                snippet?.name
+            );
             expect(result).to.be.true;
         });
     });

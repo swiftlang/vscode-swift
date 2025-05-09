@@ -99,10 +99,11 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             task.scope ?? vscode.TaskScope.Workspace,
             task.name,
             "swift-plugin",
-            new SwiftExecution(swift, swiftArgs, {
-                cwd,
-                presentation: task.presentationOptions,
-            }),
+            task.execution ??
+                new SwiftExecution(swift, swiftArgs, {
+                    cwd,
+                    presentation: task.presentationOptions,
+                }),
             task.problemMatchers
         );
         newTask.detail = task.detail ?? `swift ${swiftArgs.join(" ")}`;

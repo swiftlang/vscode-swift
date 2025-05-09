@@ -28,6 +28,7 @@ import {
     cleanOutput,
     executeTaskAndWaitForResult,
     waitForEndTaskProcess,
+    waitForNoRunningTasks,
 } from "../../utilities/tasks";
 import { mutable } from "../../utilities/types";
 import { SwiftExecution } from "../../../src/tasks/SwiftExecution";
@@ -165,6 +166,7 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
         suite(name, () => {
             let resetSettings: (() => Promise<void>) | undefined;
             beforeEach(async function () {
+                await waitForNoRunningTasks();
                 resetSettings = await updateSettings(settings);
             });
 
@@ -198,21 +200,18 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
         suite("createSwiftPluginTask", () => {
             let taskProvider: SwiftPluginTaskProvider;
 
-            setup(() => {
+            beforeEach(async () => {
                 taskProvider = workspaceContext.pluginProvider;
+                await waitForNoRunningTasks();
             });
 
             test("Exit code on success", async () => {
-                const task = taskProvider.createSwiftPluginTask(
-                    folderContext.swiftPackage.plugins[0],
-                    folderContext.toolchain,
-                    {
-                        cwd: folderContext.folder,
-                        scope: folderContext.workspaceFolder,
-                    }
-                );
+                const task = (
+                    await vscode.tasks.fetchTasks({ type: "swift-plugin " })
+                )[0] as SwiftTask;
                 const { exitCode, output } = await executeTaskAndWaitForResult(task);
-                expect(exitCode).to.equal(0);
+                expect(exitCode, output).to.equal(0);
+                console.log("output: " + output);
                 expect(cleanOutput(output)).to.include("Hello, World!");
             });
 

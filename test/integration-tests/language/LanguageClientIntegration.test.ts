@@ -19,7 +19,7 @@ import { LanguageClientManager } from "../../../src/sourcekit-lsp/LanguageClient
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { testAssetUri } from "../../fixtures";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
-import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
+import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import { waitForClientState, waitForIndex } from "../utilities/lsputilities";
 import { FolderContext } from "../../../src/FolderContext";
@@ -27,7 +27,7 @@ import { FolderContext } from "../../../src/FolderContext";
 async function buildProject(ctx: WorkspaceContext, name: string) {
     await waitForNoRunningTasks();
     const folderContext = await folderInRootWorkspace(name, ctx);
-    const task = (await getBuildAllTask(folderContext)) as SwiftTask;
+    const task = await createBuildAllTask(folderContext);
     const { exitCode, output } = await executeTaskAndWaitForResult(task);
     expect(exitCode, `${output}`).to.equal(0);
     return folderContext;
@@ -41,11 +41,17 @@ suite("Language Client Integration Suite @slow", function () {
 
     activateExtensionForSuite({
         async setup(ctx) {
+            if (process.platform === "win32") {
+                this.skip();
+                return;
+            }
             folderContext = await buildProject(ctx, "defaultPackage");
 
             // Ensure lsp client is ready
             clientManager = ctx.languageClientManager.get(folderContext);
+            await clientManager.restart();
             await waitForClientState(clientManager, langclient.State.Running);
+            await waitForIndex(clientManager, folderContext.swiftVersion);
         },
     });
 
