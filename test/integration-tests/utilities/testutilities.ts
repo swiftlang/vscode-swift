@@ -25,6 +25,7 @@ import { isDeepStrictEqual } from "util";
 import { Version } from "../../../src/utilities/version";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import configuration from "../../../src/configuration";
+import { resetBuildAllTaskCache } from "../../../src/tasks/SwiftTaskProvider";
 
 function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);
@@ -141,6 +142,7 @@ const extensionBootstrapper = (() => {
                     await autoTeardown();
                 }
                 await waitForNoRunningTasks();
+                resetBuildAllTaskCache();
             } catch (error) {
                 if (workspaceContext) {
                     printLogs(workspaceContext.outputChannel, "Error during test/suite teardown");

@@ -121,8 +121,19 @@ const buildAllTaskCache = (() => {
         set(name: string, folderContext: FolderContext, task: SwiftTask) {
             cache.set(key(name, folderContext, task), task);
         },
+        reset() {
+            cache.clear();
+        },
     };
 })();
+
+/**
+ * Should only be used for tests purposes
+ */
+export function resetBuildAllTaskCache() {
+    // Don't want to expose the whole cache, just the reset
+    buildAllTaskCache.reset();
+}
 
 function buildAllTaskName(folderContext: FolderContext, release: boolean): string {
     let buildTaskName = release

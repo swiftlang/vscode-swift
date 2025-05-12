@@ -21,7 +21,7 @@ import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Commands } from "../../../src/commands";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
-import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
+import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
 
 suite("Dependency Commmands Test Suite", function () {
     // full workflow's interaction with spm is longer than the default timeout
@@ -58,7 +58,7 @@ suite("Dependency Commmands Test Suite", function () {
 
         setup(async () => {
             await workspaceContext.focusFolder(depsContext);
-            await executeTaskAndWaitForResult((await getBuildAllTask(depsContext)) as SwiftTask);
+            await executeTaskAndWaitForResult(await createBuildAllTask(depsContext));
             treeProvider = new ProjectPanelProvider(workspaceContext);
         });
 
