@@ -17,12 +17,11 @@ import * as vscode from "vscode";
 import { SwiftToolchain } from "../../src/toolchain/toolchain";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../utilities/tasks";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
-import { testAssetWorkspaceFolder, testSwiftTask } from "../fixtures";
+import { testAssetUri, testSwiftTask } from "../fixtures";
 import { createBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { DiagnosticsManager } from "../../src/DiagnosticsManager";
 import { FolderContext } from "../../src/FolderContext";
 import { Version } from "../../src/utilities/version";
-import { Workbench } from "../../src/utilities/commands";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
@@ -72,9 +71,6 @@ suite("DiagnosticsManager Test Suite", function () {
     let cFolderContext: FolderContext;
     let cppFolderContext: FolderContext;
     let toolchain: SwiftToolchain;
-    let workspaceFolder: vscode.WorkspaceFolder;
-    let cWorkspaceFolder: vscode.WorkspaceFolder;
-    let cppWorkspaceFolder: vscode.WorkspaceFolder;
 
     let mainUri: vscode.Uri;
     let funcUri: vscode.Uri;
@@ -134,19 +130,14 @@ suite("DiagnosticsManager Test Suite", function () {
 
             workspaceContext = ctx;
             toolchain = workspaceContext.globalToolchain;
-            workspaceFolder = testAssetWorkspaceFolder("diagnostics");
-            cWorkspaceFolder = testAssetWorkspaceFolder("diagnosticsC");
-            cppWorkspaceFolder = testAssetWorkspaceFolder("diagnosticsCpp");
             folderContext = await folderInRootWorkspace("diagnostics", workspaceContext);
             cFolderContext = await folderInRootWorkspace("diagnosticsC", workspaceContext);
             cppFolderContext = await folderInRootWorkspace("diagnosticsCpp", workspaceContext);
-            mainUri = vscode.Uri.file(`${workspaceFolder.uri.path}/Sources/main.swift`);
-            funcUri = vscode.Uri.file(`${workspaceFolder.uri.path}/Sources/func.swift`);
-            cUri = vscode.Uri.file(`${cWorkspaceFolder.uri.path}/Sources/MyPoint/MyPoint.c`);
-            cppUri = vscode.Uri.file(`${cppWorkspaceFolder.uri.path}/Sources/MyPoint/MyPoint.cpp`);
-            cppHeaderUri = vscode.Uri.file(
-                `${cppWorkspaceFolder.uri.path}/Sources/MyPoint/include/MyPoint.h`
-            );
+            mainUri = testAssetUri("diagnostics/Sources/main.swift");
+            funcUri = testAssetUri("diagnostics/Sources/func.swift");
+            cUri = testAssetUri("diagnosticsC/Sources/MyPoint/MyPoint.c");
+            cppUri = testAssetUri("diagnosticsCpp/Sources/MyPoint/MyPoint.cpp");
+            cppHeaderUri = testAssetUri("diagnosticsCpp/Sources/MyPoint/include/MyPoint.h");
         },
     });
 
@@ -223,6 +214,14 @@ suite("DiagnosticsManager Test Suite", function () {
                 callback?: () => void
             ) {
                 suite(`${style} diagnosticsStyle`, async function () {
+                    let resetSettings: (() => Promise<void>) | undefined;
+                    suiteTeardown(async () => {
+                        if (resetSettings) {
+                            await resetSettings();
+                            resetSettings = undefined;
+                        }
+                    });
+
                     // SourceKit-LSP sometimes sends diagnostics
                     // after first build and can cause intermittent
                     // failure if `swiftc` diagnostic is fixed
@@ -238,27 +237,22 @@ suite("DiagnosticsManager Test Suite", function () {
                         ) {
                             this.skip();
                         }
-                        this.timeout(3 * 60 * 1000); // Allow 3 minutes to build
+                        this.timeout(5 * 60 * 1000); // Allow 5 minutes to build
 
                         // Clean up any lingering diagnostics
                         workspaceContext.diagnostics.clear();
                         workspaceContext.focusFolder(null);
 
-                        const teardown = await updateSettings({ "swift.diagnosticsStyle": style });
-                        const task = await createBuildAllTask(folderContext);
-                        // This return exit code and output for the task but we will omit it here
-                        // because the failures are expected and we just want the task to build
-                        await executeTaskAndWaitForResult(task).catch(() => {
-                            /* Ignore */
-                        });
-                        return teardown;
+                        resetSettings = await updateSettings({ "swift.diagnosticsStyle": style });
                     });
 
                     test("succeeds", async function () {
                         await Promise.all([
                             waitForDiagnostics(expected()),
                             createBuildAllTask(folderContext).then(task =>
-                                executeTaskAndWaitForResult(task)
+                                executeTaskAndWaitForResult(task).catch(() => {
+                                    /* Ignore */
+                                })
                             ),
                         ]);
                         await waitForNoRunningTasks();
@@ -429,10 +423,12 @@ suite("DiagnosticsManager Test Suite", function () {
                 vscode.DiagnosticSeverity.Error
             );
             outputDiagnostic.source = "swiftc";
+            let workspaceFolder: vscode.WorkspaceFolder;
 
             setup(async () => {
                 await waitForNoRunningTasks();
                 workspaceContext.diagnostics.clear();
+                workspaceFolder = folderContext.workspaceFolder;
             });
 
             test("Parse partial line", async () => {
@@ -489,9 +485,7 @@ suite("DiagnosticsManager Test Suite", function () {
 
             // https://github.com/apple/swift/issues/73973
             test("Ignore XCTest failures", async () => {
-                const testUri = vscode.Uri.file(
-                    `${workspaceFolder.uri.path}/Tests/MyCLITests/MyCLIXCTests.swift`
-                );
+                const testUri = testAssetUri("diagnostics/Tests/MyCLITests/MyCLIXCTests.swift");
                 const fixture = testSwiftTask("swift", ["test"], workspaceFolder, toolchain);
                 await vscode.tasks.executeTask(fixture.task);
                 // Wait to spawn before writing
@@ -515,6 +509,8 @@ suite("DiagnosticsManager Test Suite", function () {
         let sourcekitErrorDiagnostic: vscode.Diagnostic;
         let sourcekitWarningDiagnostic: vscode.Diagnostic;
         let sourcekitLowercaseDiagnostic: vscode.Diagnostic;
+        let clangErrorDiagnostic: vscode.Diagnostic;
+        let swiftcClangErrorDiagnostic: vscode.Diagnostic;
 
         setup(async () => {
             workspaceContext.diagnostics.clear();
@@ -554,6 +550,19 @@ suite("DiagnosticsManager Test Suite", function () {
                 vscode.DiagnosticSeverity.Warning
             );
             sourcekitWarningDiagnostic.source = "SourceKit";
+
+            clangErrorDiagnostic = new vscode.Diagnostic(
+                new vscode.Range(new vscode.Position(5, 10), new vscode.Position(5, 13)),
+                "Use of undeclared identifier 'bar'",
+                vscode.DiagnosticSeverity.Error
+            );
+            clangErrorDiagnostic.source = "clang"; // Set by LSP
+            swiftcClangErrorDiagnostic = new vscode.Diagnostic(
+                new vscode.Range(new vscode.Position(5, 10), new vscode.Position(5, 13)),
+                "Use of undeclared identifier 'bar'",
+                vscode.DiagnosticSeverity.Error
+            );
+            swiftcClangErrorDiagnostic.source = "swiftc";
         });
 
         suite("markdownLinks", () => {
@@ -667,8 +676,16 @@ suite("DiagnosticsManager Test Suite", function () {
         });
 
         suite("keepAll", () => {
+            let resetSettings: (() => Promise<void>) | undefined;
+            suiteTeardown(async () => {
+                if (resetSettings) {
+                    await resetSettings();
+                    resetSettings = undefined;
+                }
+            });
+
             suiteSetup(async function () {
-                return await updateSettings({
+                resetSettings = await updateSettings({
                     "swift.diagnosticsCollection": "keepAll",
                 });
             });
@@ -694,6 +711,25 @@ suite("DiagnosticsManager Test Suite", function () {
                 assertHasDiagnostic(mainUri, swiftcWarningDiagnostic);
             });
 
+            test("merge in clangd diagnostics", async () => {
+                // Add initial swiftc diagnostics
+                workspaceContext.diagnostics.handleDiagnostics(cUri, DiagnosticsManager.isSwiftc, [
+                    swiftcClangErrorDiagnostic,
+                ]);
+
+                // Now provide identical clangd diagnostic
+                workspaceContext.diagnostics.handleDiagnostics(
+                    cUri,
+                    DiagnosticsManager.isSourcekit,
+                    [clangErrorDiagnostic]
+                );
+
+                // check clangd merged in
+                assertHasDiagnostic(cUri, clangErrorDiagnostic);
+                // check swiftc merged in
+                assertHasDiagnostic(cUri, swiftcClangErrorDiagnostic);
+            });
+
             test("merge in swiftc diagnostics", async () => {
                 // Add initial SourceKit diagnostics
                 workspaceContext.diagnostics.handleDiagnostics(
@@ -717,8 +753,16 @@ suite("DiagnosticsManager Test Suite", function () {
         });
 
         suite("keepSourceKit", () => {
+            let resetSettings: (() => Promise<void>) | undefined;
+            suiteTeardown(async () => {
+                if (resetSettings) {
+                    await resetSettings();
+                    resetSettings = undefined;
+                }
+            });
+
             suiteSetup(async function () {
-                return await updateSettings({
+                resetSettings = await updateSettings({
                     "swift.diagnosticsCollection": "keepSourceKit",
                 });
             });
@@ -768,6 +812,25 @@ suite("DiagnosticsManager Test Suite", function () {
                 assertWithoutDiagnostic(mainUri, swiftcErrorDiagnostic);
                 // kept unique swiftc diagnostic
                 assertHasDiagnostic(mainUri, swiftcWarningDiagnostic);
+            });
+
+            test("merge in clangd diagnostics", async () => {
+                // Add initial swiftc diagnostics
+                workspaceContext.diagnostics.handleDiagnostics(cUri, DiagnosticsManager.isSwiftc, [
+                    swiftcClangErrorDiagnostic,
+                ]);
+
+                // Now provide identical clangd diagnostic
+                workspaceContext.diagnostics.handleDiagnostics(
+                    cUri,
+                    DiagnosticsManager.isSourcekit,
+                    [clangErrorDiagnostic]
+                );
+
+                // check clangd merged in
+                assertHasDiagnostic(cUri, clangErrorDiagnostic);
+                // swiftc deduplicated
+                assertWithoutDiagnostic(cUri, swiftcClangErrorDiagnostic);
             });
 
             test("merge in swiftc diagnostics", async () => {
@@ -831,8 +894,16 @@ suite("DiagnosticsManager Test Suite", function () {
         });
 
         suite("keepSwiftc", () => {
+            let resetSettings: (() => Promise<void>) | undefined;
+            suiteTeardown(async () => {
+                if (resetSettings) {
+                    await resetSettings();
+                    resetSettings = undefined;
+                }
+            });
+
             suiteSetup(async function () {
-                return await updateSettings({
+                resetSettings = await updateSettings({
                     "swift.diagnosticsCollection": "keepSwiftc",
                 });
             });
@@ -858,6 +929,25 @@ suite("DiagnosticsManager Test Suite", function () {
                 assertWithoutDiagnostic(mainUri, sourcekitErrorDiagnostic);
                 // kept unique SourceKit diagnostic
                 assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
+            });
+
+            test("merge in clangd diagnostics", async () => {
+                // Add initial swiftc diagnostics
+                workspaceContext.diagnostics.handleDiagnostics(cUri, DiagnosticsManager.isSwiftc, [
+                    swiftcClangErrorDiagnostic,
+                ]);
+
+                // Now provide identical clangd diagnostic
+                workspaceContext.diagnostics.handleDiagnostics(
+                    cUri,
+                    DiagnosticsManager.isSourcekit,
+                    [clangErrorDiagnostic]
+                );
+
+                // check swiftc stayed in
+                assertHasDiagnostic(cUri, swiftcClangErrorDiagnostic);
+                // clangd ignored
+                assertWithoutDiagnostic(cUri, clangErrorDiagnostic);
             });
 
             test("merge in SourceKit diagnostics", async () => {
@@ -921,8 +1011,16 @@ suite("DiagnosticsManager Test Suite", function () {
         });
 
         suite("onlySourceKit", () => {
+            let resetSettings: (() => Promise<void>) | undefined;
+            suiteTeardown(async () => {
+                if (resetSettings) {
+                    await resetSettings();
+                    resetSettings = undefined;
+                }
+            });
+
             suiteSetup(async function () {
-                return await updateSettings({
+                resetSettings = await updateSettings({
                     "swift.diagnosticsCollection": "onlySourceKit",
                 });
             });
@@ -947,6 +1045,25 @@ suite("DiagnosticsManager Test Suite", function () {
                 // ignored swiftc
                 assertWithoutDiagnostic(mainUri, swiftcErrorDiagnostic);
                 assertWithoutDiagnostic(mainUri, swiftcWarningDiagnostic);
+            });
+
+            test("merge in clangd diagnostics", async () => {
+                // Provide clangd diagnostic
+                workspaceContext.diagnostics.handleDiagnostics(
+                    cUri,
+                    DiagnosticsManager.isSourcekit,
+                    [clangErrorDiagnostic]
+                );
+
+                // Add identical swiftc diagnostic
+                workspaceContext.diagnostics.handleDiagnostics(cUri, DiagnosticsManager.isSwiftc, [
+                    swiftcClangErrorDiagnostic,
+                ]);
+
+                // check clangd merged in
+                assertHasDiagnostic(cUri, clangErrorDiagnostic);
+                // swiftc ignored
+                assertWithoutDiagnostic(cUri, swiftcClangErrorDiagnostic);
             });
 
             test("ignore swiftc diagnostics", async () => {
@@ -984,8 +1101,16 @@ suite("DiagnosticsManager Test Suite", function () {
         });
 
         suite("onlySwiftc", () => {
+            let resetSettings: (() => Promise<void>) | undefined;
+            suiteTeardown(async () => {
+                if (resetSettings) {
+                    await resetSettings();
+                    resetSettings = undefined;
+                }
+            });
+
             suiteSetup(async function () {
-                return await updateSettings({
+                resetSettings = await updateSettings({
                     "swift.diagnosticsCollection": "onlySwiftc",
                 });
             });
@@ -1025,6 +1150,25 @@ suite("DiagnosticsManager Test Suite", function () {
                 assertWithoutDiagnostic(mainUri, sourcekitWarningDiagnostic);
             });
 
+            test("ignore clangd diagnostics", async () => {
+                // Add initial swiftc diagnostics
+                workspaceContext.diagnostics.handleDiagnostics(cUri, DiagnosticsManager.isSwiftc, [
+                    swiftcClangErrorDiagnostic,
+                ]);
+
+                // Now provide identical clangd diagnostic
+                workspaceContext.diagnostics.handleDiagnostics(
+                    cUri,
+                    DiagnosticsManager.isSourcekit,
+                    [clangErrorDiagnostic]
+                );
+
+                // check swiftc stayed in
+                assertHasDiagnostic(cUri, swiftcClangErrorDiagnostic);
+                // clangd ignored
+                assertWithoutDiagnostic(cUri, clangErrorDiagnostic);
+            });
+
             test("clean old SourceKit diagnostics", async () => {
                 // Add initial SourceKit diagnostics
                 workspaceContext.diagnostics.allDiagnostics.set(mainUri.fsPath, [
@@ -1048,8 +1192,16 @@ suite("DiagnosticsManager Test Suite", function () {
         });
 
         suite("cleanup", () => {
+            let resetSettings: (() => Promise<void>) | undefined;
+            suiteTeardown(async () => {
+                if (resetSettings) {
+                    await resetSettings();
+                    resetSettings = undefined;
+                }
+            });
+
             suiteSetup(async function () {
-                return await updateSettings({
+                resetSettings = await updateSettings({
                     "swift.diagnosticsCollection": undefined,
                 });
             });
@@ -1106,6 +1258,29 @@ suite("DiagnosticsManager Test Suite", function () {
                 assertHasDiagnostic(mainUri, swiftcWarningDiagnostic);
             });
 
+            test("clangd removes swiftc diagnostic (swiftc shows first)", async () => {
+                // Add initial diagnostics
+                workspaceContext.diagnostics.handleDiagnostics(cUri, DiagnosticsManager.isSwiftc, [
+                    swiftcClangErrorDiagnostic,
+                ]);
+                workspaceContext.diagnostics.handleDiagnostics(
+                    cUri,
+                    DiagnosticsManager.isSourcekit,
+                    [clangErrorDiagnostic]
+                );
+
+                // Have clangd indicate has been fixed
+                workspaceContext.diagnostics.handleDiagnostics(
+                    cUri,
+                    DiagnosticsManager.isSourcekit,
+                    []
+                );
+
+                // check cleaned up stale error
+                assertWithoutDiagnostic(cUri, clangErrorDiagnostic);
+                assertWithoutDiagnostic(cUri, swiftcClangErrorDiagnostic);
+            });
+
             test("don't remove swiftc diagnostics when SourceKit never matched", async () => {
                 workspaceContext.diagnostics.handleDiagnostics(
                     mainUri,
@@ -1124,102 +1299,5 @@ suite("DiagnosticsManager Test Suite", function () {
                 assertHasDiagnostic(mainUri, sourcekitWarningDiagnostic);
             });
         });
-    });
-
-    // Skipped until we enable it in a nightly build
-    suite("SourceKit-LSP diagnostics @slow", () => {
-        suiteSetup(async function () {
-            if (workspaceContext.globalToolchainSwiftVersion.isLessThan(new Version(5, 7, 0))) {
-                this.skip();
-                return;
-            }
-            workspaceContext.diagnostics.clear();
-            workspaceContext.focusFolder(null);
-            return await updateSettings({
-                "swift.diagnosticsCollection": "onlySourceKit", // So waitForDiagnostics only resolves from LSP
-            });
-        });
-
-        teardown(async () => {
-            await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
-        });
-
-        test("Provides swift diagnostics", async () => {
-            // Build for indexing
-            const task = await createBuildAllTask(folderContext);
-            await executeTaskAndWaitForResult(task);
-
-            const lspSource = toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))
-                ? "SourceKit"
-                : "sourcekitd";
-
-            // Include warning
-            const expectedDiagnostic1 = new vscode.Diagnostic(
-                new vscode.Range(new vscode.Position(1, 8), new vscode.Position(1, 8)),
-                "Initialization of variable 'unused' was never used; consider replacing with assignment to '_' or removing it",
-                vscode.DiagnosticSeverity.Warning
-            );
-            expectedDiagnostic1.source = lspSource; // Set by LSP
-
-            // Include error
-            const expectedDiagnostic2 = new vscode.Diagnostic(
-                new vscode.Range(new vscode.Position(7, 0), new vscode.Position(7, 3)),
-                "Cannot assign to value: 'bar' is a 'let' constant",
-                vscode.DiagnosticSeverity.Error
-            );
-            expectedDiagnostic2.source = lspSource; // Set by LSP
-
-            // Open file
-            const promise = waitForDiagnostics({
-                [mainUri.fsPath]: [expectedDiagnostic1, expectedDiagnostic2],
-            });
-            const document = await vscode.workspace.openTextDocument(mainUri);
-            await vscode.languages.setTextDocumentLanguage(document, "swift");
-            await vscode.window.showTextDocument(document);
-
-            // Retrigger diagnostics
-            await workspaceContext.focusFolder(folderContext);
-            await promise;
-
-            assertHasDiagnostic(mainUri, expectedDiagnostic1);
-            assertHasDiagnostic(mainUri, expectedDiagnostic2);
-        }).timeout(3 * 60 * 1000); // Allow 3 minutes to build
-
-        test("Provides clang diagnostics", async () => {
-            // Build for indexing
-            const task = await createBuildAllTask(cFolderContext);
-            await executeTaskAndWaitForResult(task);
-
-            // No string manipulation
-            const expectedDiagnostic1 = new vscode.Diagnostic(
-                new vscode.Range(new vscode.Position(5, 10), new vscode.Position(5, 13)),
-                "Use of undeclared identifier 'bar'",
-                vscode.DiagnosticSeverity.Error
-            );
-            expectedDiagnostic1.source = "clang"; // Set by LSP
-
-            // Remove "(fix available)" from string from SourceKit
-            const expectedDiagnostic2 = new vscode.Diagnostic(
-                new vscode.Range(new vscode.Position(7, 4), new vscode.Position(7, 10)),
-                "Expected ';' after expression",
-                vscode.DiagnosticSeverity.Error
-            );
-            expectedDiagnostic2.source = "clang"; // Set by LSP
-
-            // Open file
-            const promise = waitForDiagnostics({
-                [cUri.fsPath]: [expectedDiagnostic1, expectedDiagnostic2],
-            });
-            const document = await vscode.workspace.openTextDocument(cUri);
-            await vscode.languages.setTextDocumentLanguage(document, "c");
-            await vscode.window.showTextDocument(document);
-
-            // Retrigger diagnostics
-            await workspaceContext.focusFolder(cFolderContext);
-            await promise;
-
-            assertHasDiagnostic(cUri, expectedDiagnostic1);
-            assertHasDiagnostic(cUri, expectedDiagnostic2);
-        }).timeout(3 * 60 * 1000); // Allow 3 minutes to build
     });
 });
