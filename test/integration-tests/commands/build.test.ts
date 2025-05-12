@@ -21,7 +21,6 @@ import { testAssetUri } from "../../fixtures";
 import { FolderContext } from "../../../src/FolderContext";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Commands } from "../../../src/commands";
-import { Workbench } from "../../../src/utilities/commands";
 import { continueSession, waitForDebugAdapterRequest } from "../../utilities/debug";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import { Version } from "../../../src/utilities/version";
@@ -42,35 +41,57 @@ suite("Build Commands @slow", function () {
             // The description of this package is crashing on Windows with Swift 5.9.x and below
             if (
                 process.platform === "win32" &&
-                ctx.globalToolchain.swiftVersion.isLessThanOrEqual(new Version(5, 9, 0))
+                ctx.globalToolchain.swiftVersion.isLessThan(new Version(5, 10, 0))
             ) {
                 this.skip();
             }
+            // A breakpoint will have not effect on the Run command.
+            vscode.debug.addBreakpoints(breakpoints);
 
             workspaceContext = ctx;
             await waitForNoRunningTasks();
             folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
             await workspaceContext.focusFolder(folderContext);
-            await vscode.window.showTextDocument(uri);
-        },
-        async teardown() {
-            await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
         },
         requiresDebugger: true,
     });
 
-    test("Swift: Run Build", async () => {
-        // A breakpoint will have not effect on the Run command.
-        vscode.debug.addBreakpoints(breakpoints);
-
-        const result = await vscode.commands.executeCommand(Commands.RUN);
-        expect(result).to.be.true;
-
+    suiteTeardown(async () => {
         vscode.debug.removeBreakpoints(breakpoints);
     });
 
+    test("Swift: Run Build", async () => {
+        const result = await vscode.commands.executeCommand(Commands.RUN, "PackageExe");
+        expect(result).to.be.true;
+    });
+
+    test("Swift: Debug Build", async () => {
+        // Promise used to indicate we hit the break point.
+        // NB: "stopped" is the exact command when debuggee has stopped due to break point,
+        // but "stackTrace" is the deterministic sync point we will use to make sure we can execute continue
+        const bpPromise = waitForDebugAdapterRequest(
+            "Debug PackageExe (defaultPackage)",
+            workspaceContext.globalToolchain.swiftVersion,
+            "stackTrace"
+        );
+
+        const resultPromise: Thenable<boolean> = vscode.commands.executeCommand(
+            Commands.DEBUG,
+            "PackageExe"
+        );
+
+        await bpPromise;
+        let succeeded = false;
+        resultPromise.then(s => (succeeded = s));
+        while (!succeeded) {
+            await continueSession();
+            await new Promise(r => setTimeout(r, 500));
+        }
+        await expect(resultPromise).to.eventually.be.true;
+    });
+
     test("Swift: Clean Build", async () => {
-        let result = await vscode.commands.executeCommand(Commands.RUN);
+        let result = await vscode.commands.executeCommand(Commands.RUN, "PackageExe");
         expect(result).to.be.true;
 
         const buildPath = path.join(folderContext.folder.fsPath, ".build");
@@ -83,25 +104,5 @@ suite("Build Commands @slow", function () {
         // .build folder is going to be filled with built artifacts after Commands.RUN command
         // After executing the clean command the build directory is guranteed to have less entry.
         expect(afterItemCount).to.be.lessThan(beforeItemCount);
-    });
-
-    test("Swift: Debug Build", async () => {
-        vscode.debug.addBreakpoints(breakpoints);
-        // Promise used to indicate we hit the break point.
-        // NB: "stopped" is the exact command when debuggee has stopped due to break point,
-        // but "stackTrace" is the deterministic sync point we will use to make sure we can execute continue
-        const bpPromise = waitForDebugAdapterRequest(
-            "Debug PackageExe (defaultPackage)",
-            workspaceContext.globalToolchain.swiftVersion,
-            "stackTrace"
-        );
-
-        const result = vscode.commands.executeCommand(Commands.DEBUG);
-        expect(result).to.eventually.be.true;
-
-        await bpPromise;
-        await continueSession();
-
-        vscode.debug.removeBreakpoints(breakpoints);
     });
 });
