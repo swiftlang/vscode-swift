@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { testAssetPath, testAssetUri } from "../fixtures";
+import { testAssetUri } from "../fixtures";
 import { waitForNoRunningTasks } from "../utilities/tasks";
 import { expect } from "chai";
 import {
@@ -22,19 +22,14 @@ import {
     waitUntilDebugSessionTerminates,
 } from "../utilities/debug";
 import { Version } from "../../src/utilities/version";
-import { activateExtensionForSuite, folderInRootWorkspace } from "./utilities/testutilities";
+import {
+    activateExtensionForSuite,
+    folderInRootWorkspace,
+    updateSettings,
+} from "./utilities/testutilities";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
-import { join } from "path";
 import { closeAllEditors } from "../utilities/commands";
-
-function normalizePath(...segments: string[]): string {
-    let path = join(...segments);
-    if (process.platform === "win32") {
-        path = path.endsWith(".exe") ? path : path + ".exe";
-        path = path.replace(/\//g, "\\");
-    }
-    return path.toLocaleLowerCase(); // Windows may use d:\ or D:\
-}
+import { Commands } from "../../src/commands";
 
 suite("SwiftSnippet Test Suite @slow", function () {
     this.timeout(180000);
@@ -44,20 +39,24 @@ suite("SwiftSnippet Test Suite @slow", function () {
         new vscode.SourceBreakpoint(new vscode.Location(uri, new vscode.Position(2, 0))),
     ];
     let workspaceContext: WorkspaceContext;
+    let resetSettings: (() => Promise<void>) | undefined;
 
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
 
             const folder = await folderInRootWorkspace("defaultPackage", workspaceContext);
-            if (folder.toolchain.swiftVersion.isLessThan(new Version(5, 9, 0))) {
+            if (folder.toolchain.swiftVersion.isLessThan(new Version(5, 10, 0))) {
                 this.skip();
             }
+            resetSettings = await updateSettings({
+                "swift.debugger.debugAdapter": "lldb-dap",
+            });
             await waitForNoRunningTasks();
 
             // File needs to be open for command to be enabled
-            const doc = await vscode.workspace.openTextDocument(uri.fsPath);
-            await vscode.window.showTextDocument(doc);
+            await workspaceContext.focusFolder(folder);
+            await vscode.window.showTextDocument(uri);
 
             // Set a breakpoint
             vscode.debug.addBreakpoints(breakpoints);
@@ -66,19 +65,24 @@ suite("SwiftSnippet Test Suite @slow", function () {
     });
 
     suiteTeardown(async () => {
-        closeAllEditors();
+        await closeAllEditors();
         vscode.debug.removeBreakpoints(breakpoints);
+        if (resetSettings) {
+            await resetSettings();
+        }
     });
 
     test("Run `Swift: Run Swift Snippet` command for snippet file", async () => {
         const sessionPromise = waitUntilDebugSessionTerminates("Run hello");
 
-        const succeeded = await vscode.commands.executeCommand("swift.runSnippet");
+        const succeeded = await vscode.commands.executeCommand(Commands.RUN_SNIPPET, "hello");
 
         expect(succeeded).to.be.true;
         const session = await sessionPromise;
-        expect(normalizePath(session.configuration.program)).to.equal(
-            normalizePath(testAssetPath("defaultPackage"), ".build", "debug", "hello")
+        expect(vscode.Uri.file(session.configuration.program).fsPath).to.equal(
+            testAssetUri(
+                "defaultPackage/.build/debug/hello" + (process.platform === "win32" ? ".exe" : "")
+            ).fsPath
         );
         expect(session.configuration).to.have.property("noDebug", true);
     });
@@ -91,16 +95,31 @@ suite("SwiftSnippet Test Suite @slow", function () {
         );
         const sessionPromise = waitUntilDebugSessionTerminates("Run hello");
 
-        const succeeded = vscode.commands.executeCommand("swift.debugSnippet");
+        const succeededPromise: Thenable<boolean> = vscode.commands.executeCommand(
+            Commands.DEBUG_SNIPPET,
+            "hello"
+        );
 
         // Once bp is hit, continue
-        await bpPromise.then(() => continueSession());
+        await bpPromise;
+        let succeeded = false;
+        succeededPromise.then(s => (succeeded = s));
+        while (!succeeded) {
+            try {
+                await continueSession();
+            } catch {
+                // Ignore
+            }
+            await new Promise(r => setTimeout(r, 500));
+        }
 
-        await expect(succeeded).to.eventually.be.true;
+        expect(succeeded).to.be.true;
 
         const session = await sessionPromise;
-        expect(normalizePath(session.configuration.program)).to.equal(
-            normalizePath(testAssetPath("defaultPackage"), ".build", "debug", "hello")
+        expect(vscode.Uri.file(session.configuration.program).fsPath).to.equal(
+            testAssetUri(
+                "defaultPackage/.build/debug/hello" + (process.platform === "win32" ? ".exe" : "")
+            ).fsPath
         );
         expect(session.configuration).to.not.have.property("noDebug");
     });
