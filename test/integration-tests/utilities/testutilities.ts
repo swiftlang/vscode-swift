@@ -140,6 +140,7 @@ const extensionBootstrapper = (() => {
                 if (autoTeardown) {
                     await autoTeardown();
                 }
+                await waitForNoRunningTasks();
             } catch (error) {
                 if (workspaceContext) {
                     printLogs(workspaceContext.outputChannel, "Error during test/suite teardown");
@@ -340,10 +341,13 @@ export async function updateSettings(settings: SettingsMap): Promise<() => Promi
         for (const setting of Object.keys(settings)) {
             const { section, name } = decomposeSettingName(setting);
             const config = vscode.workspace.getConfiguration(section, { languageId: "swift" });
-            savedOriginalSettings[setting] = config.get(name);
+            const inspectedSetting = vscode.workspace
+                .getConfiguration(section, { languageId: "swift" })
+                .inspect(name);
+            savedOriginalSettings[setting] = inspectedSetting?.workspaceValue;
             await config.update(
                 name,
-                settings[setting] === "" ? undefined : settings[setting],
+                !settings[setting] ? undefined : settings[setting],
                 vscode.ConfigurationTarget.Workspace
             );
         }
