@@ -17,7 +17,6 @@ import * as vscode from "vscode";
 import * as assert from "assert";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import {
-    SwiftTaskProvider,
     createSwiftTask,
     createBuildAllTask,
     getBuildAllTask,
@@ -154,7 +153,7 @@ suite("SwiftTaskProvider Test Suite", () => {
         });
 
         test("includes product release task", async () => {
-            const taskProvider = new SwiftTaskProvider(workspaceContext);
+            const taskProvider = workspaceContext.taskProvider;
             const tasks = await taskProvider.provideTasks(
                 new vscode.CancellationTokenSource().token
             );
