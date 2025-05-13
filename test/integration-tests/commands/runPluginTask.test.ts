@@ -17,6 +17,7 @@ import { mockGlobalObject } from "../../MockUtils";
 import { expect } from "chai";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import { Commands } from "../../../src/commands";
+import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 
 suite("runPluginTask Test Suite", () => {
     const executeCommand = vscode.commands.executeCommand;
@@ -24,12 +25,14 @@ suite("runPluginTask Test Suite", () => {
 
     activateExtensionForSuite({
         async setup(ctx) {
-            await folderInRootWorkspace("command-plugin", ctx);
+            const folder = await folderInRootWorkspace("command-plugin", ctx);
+            const outputChannel = new SwiftOutputChannel("runPluginTask.tests");
+            await folder.loadSwiftPlugins(outputChannel);
         },
     });
 
     test("Executes runTask command", async () => {
-        executeCommand(Commands.RUN_PLUGIN_TASK);
+        await executeCommand(Commands.RUN_PLUGIN_TASK);
 
         expect(commandsMock.executeCommand).to.have.been.calledOnceWith(
             "workbench.action.tasks.runTask",
