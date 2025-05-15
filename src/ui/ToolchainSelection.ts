@@ -17,6 +17,7 @@ import * as path from "path";
 import { showReloadExtensionNotification } from "./ReloadExtension";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import configuration from "../configuration";
+import { Commands } from "../commands";
 
 /**
  * Open the installation page on Swift.org
@@ -28,7 +29,7 @@ export async function downloadToolchain() {
             "Select Toolchain"
         );
         if (selected === "Select Toolchain") {
-            await vscode.commands.executeCommand("swift.selectToolchain");
+            await selectToolchain();
         }
     }
 }
@@ -43,7 +44,7 @@ export async function installSwiftly() {
             "Select Toolchain"
         );
         if (selected === "Select Toolchain") {
-            await vscode.commands.executeCommand("swift.selectToolchain");
+            await selectToolchain();
         }
     }
 }
@@ -87,8 +88,12 @@ export async function showToolchainError(): Promise<void> {
     if (selected === "Remove From Settings") {
         await removeToolchainPath();
     } else if (selected === "Select Toolchain") {
-        await vscode.commands.executeCommand("swift.selectToolchain");
+        await selectToolchain();
     }
+}
+
+export async function selectToolchain() {
+    await vscode.commands.executeCommand(Commands.SELECT_TOOLCHAIN);
 }
 
 /** A {@link vscode.QuickPickItem} that contains the path to an installed Swift toolchain */
@@ -351,7 +356,7 @@ async function showDeveloperDirQuickPick(xcodePaths: string[]): Promise<string |
 /**
  * Delete all set Swift path settings.
  */
-async function removeToolchainPath() {
+export async function removeToolchainPath() {
     const swiftSettings = vscode.workspace.getConfiguration("swift");
     const swiftEnvironmentSettings = swiftSettings.inspect("swiftEnvironmentVariables");
     if (swiftEnvironmentSettings?.globalValue) {

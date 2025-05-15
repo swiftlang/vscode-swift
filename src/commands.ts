@@ -99,6 +99,7 @@ export enum Commands {
     COVER_ALL_TESTS = "swift.coverAllTests",
     OPEN_MANIFEST = "swift.openManifest",
     RESTART_LSP = "swift.restartLSPServer",
+    SELECT_TOOLCHAIN = "swift.selectToolchain",
 }
 
 /**
