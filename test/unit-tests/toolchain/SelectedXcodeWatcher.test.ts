@@ -26,7 +26,6 @@ import {
 } from "../../MockUtils";
 import configuration from "../../../src/configuration";
 import { Commands } from "../../../src/commands";
-import { match } from "sinon";
 
 suite("Selected Xcode Watcher", () => {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
