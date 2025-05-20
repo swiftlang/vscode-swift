@@ -243,8 +243,6 @@ async function createActiveToolchain(
     } catch (error) {
         outputChannel.log("Failed to discover Swift toolchain");
         outputChannel.log(`${error}`);
-        contextKeys.createNewProjectAvailable = false;
-        contextKeys.switchPlatformAvailable = false;
         return undefined;
     }
 }
