@@ -245,6 +245,7 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
                 });
 
                 test("provides", () => {
+                    expect(task?.detail).to.equal("swift package command_plugin");
                     expect(task?.execution.args).to.deep.equal(
                         folderContext.toolchain.buildFlags.withAdditionalFlags([
                             "package",

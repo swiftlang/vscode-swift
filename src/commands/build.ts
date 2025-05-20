@@ -19,6 +19,7 @@ import { debugLaunchConfig, getLaunchConfiguration } from "../debugger/launch";
 import { executeTaskWithUI } from "./utilities";
 import { FolderContext } from "../FolderContext";
 import { Target } from "../SwiftPackage";
+import { packageName } from "../utilities/tasks";
 
 /**
  * Executes a {@link vscode.Task task} to run swift target.
@@ -56,7 +57,7 @@ export async function folderCleanBuild(folderContext: FolderContext) {
         {
             cwd: folderContext.folder,
             scope: folderContext.workspaceFolder,
-            prefix: folderContext.name,
+            packageName: packageName(folderContext),
             presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
             group: vscode.TaskGroup.Clean,
         },

@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 import * as path from "path";
 import * as vscode from "vscode";
+import { FolderContext } from "../FolderContext";
 
 export const lineBreakRegex = /\r\n|\n|\r/gm;
 
@@ -52,4 +53,12 @@ export function checkIfBuildComplete(line: string): boolean {
         return true;
     }
     return false;
+}
+
+export function packageName(folderContext: FolderContext): string | undefined {
+    if (vscode.workspace.workspaceFile) {
+        return folderContext.name;
+    } else if (folderContext.relativePath.length > 0) {
+        return folderContext.relativePath;
+    }
 }
