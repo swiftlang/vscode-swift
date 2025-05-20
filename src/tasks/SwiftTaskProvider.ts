@@ -24,7 +24,7 @@ import { swiftRuntimeEnv } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { SwiftExecution } from "../tasks/SwiftExecution";
-import { resolveTaskCwd } from "../utilities/tasks";
+import { packageName, resolveTaskCwd } from "../utilities/tasks";
 import { BuildConfigurationFactory } from "../debugger/buildConfig";
 
 /**
@@ -44,7 +44,7 @@ interface TaskConfig {
     scope: vscode.TaskScope | vscode.WorkspaceFolder;
     group?: vscode.TaskGroup;
     presentationOptions?: vscode.TaskPresentationOptions;
-    prefix?: string;
+    packageName?: string;
     disableTaskQueue?: boolean;
     dontTriggerTestDiscovery?: boolean;
     showBuildStatus?: ShowBuildStatusOptions;
@@ -139,8 +139,9 @@ function buildAllTaskName(folderContext: FolderContext, release: boolean): strin
     let buildTaskName = release
         ? `${SwiftTaskProvider.buildAllName} - Release`
         : SwiftTaskProvider.buildAllName;
-    if (folderContext.relativePath.length > 0) {
-        buildTaskName += ` (${folderContext.relativePath})`;
+    const packageNamePostfix = packageName(folderContext);
+    if (packageNamePostfix) {
+        buildTaskName += ` (${packageNamePostfix})`;
     }
     return buildTaskName;
 }
@@ -232,12 +233,7 @@ export async function getBuildAllTask(
  */
 function createBuildTasks(product: Product, folderContext: FolderContext): vscode.Task[] {
     const toolchain = folderContext.toolchain;
-    let buildTaskNameSuffix = "";
-    if (folderContext.relativePath.length > 0) {
-        buildTaskNameSuffix = ` (${folderContext.relativePath})`;
-    }
-
-    const buildDebugName = `Build Debug ${product.name}${buildTaskNameSuffix}`;
+    const buildDebugName = `Build Debug ${product.name}`;
     const buildDebugTask = createSwiftTask(
         ["build", "--product", product.name, ...buildOptions(toolchain)],
         buildDebugName,
@@ -248,6 +244,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
             presentationOptions: {
                 reveal: getBuildRevealOption(),
             },
+            packageName: packageName(folderContext),
             disableTaskQueue: true,
             dontTriggerTestDiscovery: true,
         },
@@ -255,10 +252,10 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
     );
     const buildDebug = buildAllTaskCache.get(buildDebugName, folderContext, buildDebugTask);
 
-    const buildReleaseName = `Build Release ${product.name}${buildTaskNameSuffix}`;
+    const buildReleaseName = `Build Release ${product.name}`;
     const buildReleaseTask = createSwiftTask(
         ["build", "-c", "release", "--product", product.name, ...buildOptions(toolchain, false)],
-        `Build Release ${product.name}${buildTaskNameSuffix}`,
+        `Build Release ${product.name}`,
         {
             group: vscode.TaskGroup.Build,
             cwd: folderContext.folder,
@@ -266,6 +263,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
             presentationOptions: {
                 reveal: getBuildRevealOption(),
             },
+            packageName: packageName(folderContext),
             disableTaskQueue: true,
             dontTriggerTestDiscovery: true,
         },
@@ -306,6 +304,9 @@ export function createSwiftTask(
     }*/
     const env = { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv(), ...cmdEnv };
     const presentation = config?.presentationOptions ?? {};
+    if (config?.packageName) {
+        name += ` (${config?.packageName})`;
+    }
     const task = new vscode.Task(
         {
             type: "swift",
@@ -334,14 +335,7 @@ export function createSwiftTask(
     );
     // This doesn't include any quotes added by VS Code.
     // See also: https://github.com/microsoft/vscode/issues/137895
-
-    let prefix: string;
-    if (config?.prefix) {
-        prefix = `(${config.prefix}) `;
-    } else {
-        prefix = "";
-    }
-    task.detail = `${prefix}swift ${args.join(" ")}`;
+    task.detail = `swift ${args.join(" ")}`;
     task.group = config?.group;
     task.presentationOptions = presentation;
     return task as SwiftTask;

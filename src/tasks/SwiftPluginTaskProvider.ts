@@ -18,7 +18,7 @@ import { WorkspaceContext } from "../WorkspaceContext";
 import { PackagePlugin } from "../SwiftPackage";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { SwiftExecution } from "../tasks/SwiftExecution";
-import { resolveTaskCwd } from "../utilities/tasks";
+import { packageName, resolveTaskCwd } from "../utilities/tasks";
 import configuration, {
     PluginPermissionConfiguration,
     substituteVariablesInString,
@@ -31,7 +31,7 @@ interface TaskConfig {
     cwd: vscode.Uri;
     scope: vscode.WorkspaceFolder;
     presentationOptions?: vscode.TaskPresentationOptions;
-    prefix?: string;
+    packageName?: string;
 }
 
 /**
@@ -62,6 +62,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
                         presentationOptions: {
                             reveal: vscode.TaskRevealKind.Always,
                         },
+                        packageName: packageName(folderContext),
                     })
                 );
             }
@@ -150,13 +151,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             }),
             []
         );
-        let prefix: string;
-        if (config.prefix) {
-            prefix = `(${config.prefix}) `;
-        } else {
-            prefix = "";
-        }
-        task.detail = `${prefix}swift ${swiftArgs.join(" ")}`;
+        task.detail = `swift ${swiftArgs.join(" ")}`;
         task.presentationOptions = presentation;
         return task as SwiftTask;
     }
