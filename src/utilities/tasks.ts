@@ -14,6 +14,7 @@
 import * as path from "path";
 import * as vscode from "vscode";
 import { substituteVariablesInString } from "../configuration";
+import { FolderContext } from "../FolderContext";
 
 export function resolveTaskCwd(task: vscode.Task, cwd?: string): string | undefined {
     const scopeWorkspaceFolder = getScopeWorkspaceFolder(task);
@@ -55,4 +56,12 @@ export function checkIfBuildComplete(line: string): boolean {
         return true;
     }
     return false;
+}
+
+export function packageName(folderContext: FolderContext): string | undefined {
+    if (vscode.workspace.workspaceFile) {
+        return folderContext.name;
+    } else if (folderContext.relativePath.length > 0) {
+        return folderContext.relativePath;
+    }
 }

@@ -18,7 +18,7 @@ import { WorkspaceContext } from "../WorkspaceContext";
 import { PackagePlugin } from "../SwiftPackage";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { SwiftExecution } from "../tasks/SwiftExecution";
-import { resolveTaskCwd } from "../utilities/tasks";
+import { packageName, resolveTaskCwd } from "../utilities/tasks";
 import configuration, {
     PluginPermissionConfiguration,
     substituteVariablesInString,
@@ -31,7 +31,7 @@ interface TaskConfig {
     cwd: vscode.Uri;
     scope: vscode.WorkspaceFolder;
     presentationOptions?: vscode.TaskPresentationOptions;
-    prefix?: string;
+    packageName?: string;
 }
 
 /**
@@ -54,26 +54,16 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         const tasks = [];
 
         for (const folderContext of this.workspaceContext.folders) {
-            let postfix = "";
             for (const plugin of folderContext.swiftPackage.plugins) {
-                if (vscode.workspace.workspaceFile) {
-                    postfix = ` (${folderContext.name})`;
-                } else if (folderContext.relativePath.length > 0) {
-                    postfix = ` (${folderContext.relativePath})`;
-                }
                 tasks.push(
-                    this.createSwiftPluginTask(
-                        plugin,
-                        folderContext.toolchain,
-                        {
-                            cwd: folderContext.folder,
-                            scope: folderContext.workspaceFolder,
-                            presentationOptions: {
-                                reveal: vscode.TaskRevealKind.Always,
-                            },
+                    this.createSwiftPluginTask(plugin, folderContext.toolchain, {
+                        cwd: folderContext.folder,
+                        scope: folderContext.workspaceFolder,
+                        presentationOptions: {
+                            reveal: vscode.TaskRevealKind.Always,
                         },
-                        postfix
-                    )
+                        packageName: packageName(folderContext),
+                    })
                 );
             }
         }
@@ -132,8 +122,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
     createSwiftPluginTask(
         plugin: PackagePlugin,
         toolchain: SwiftToolchain,
-        config: TaskConfig,
-        postfix: string = ""
+        config: TaskConfig
     ): SwiftTask {
         const swift = toolchain.getToolchainExecutable("swift");
 
@@ -162,13 +151,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             }),
             []
         );
-        let prefix: string;
-        if (config.prefix) {
-            prefix = `(${config.prefix}) `;
-        } else {
-            prefix = "";
-        }
-        task.detail = `${prefix}swift ${swiftArgs.join(" ")}${postfix}`;
+        task.detail = `swift ${swiftArgs.join(" ")}`;
         task.presentationOptions = presentation;
         return task as SwiftTask;
     }
