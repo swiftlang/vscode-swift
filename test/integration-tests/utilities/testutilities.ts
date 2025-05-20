@@ -16,8 +16,8 @@ import * as vscode from "vscode";
 import * as assert from "assert";
 import * as mocha from "mocha";
 import { Api } from "../../../src/extension";
-import { testAssetUri } from "../../fixtures";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import { testAssetPath, testAssetUri } from "../../fixtures";
+import { FolderOperation, WorkspaceContext } from "../../../src/WorkspaceContext";
 import { FolderContext } from "../../../src/FolderContext";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
 import { closeAllEditors } from "../../utilities/commands";
@@ -26,6 +26,8 @@ import { Version } from "../../../src/utilities/version";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import configuration from "../../../src/configuration";
 import { resetBuildAllTaskCache } from "../../../src/tasks/SwiftTaskProvider";
+
+const codeWorkspaceFolders = ["defaultPackage", "diagnostics", "command-plugin"];
 
 function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);
@@ -212,10 +214,30 @@ const extensionBootstrapper = (() => {
             }
 
             // Add assets required for the suite/test to the workspace.
-            const workspaceFolder = getRootWorkspaceFolder();
-            for (const asset of testAssets ?? []) {
-                const packageFolder = testAssetUri(asset);
-                await workspaceContext.addPackageFolder(packageFolder, workspaceFolder);
+            const expectedAssets = testAssets ?? ["defaultPackage"];
+            if (!vscode.workspace.workspaceFile) {
+                for (const asset of expectedAssets) {
+                    await folderInRootWorkspace(asset, workspaceContext);
+                }
+            } else {
+                const uniqueAssets = new Set(expectedAssets);
+                codeWorkspaceFolders.forEach(f => uniqueAssets.add(f));
+                await new Promise<void>(res => {
+                    const found: string[] = [];
+                    workspaceContext.onDidChangeFolders(e => {
+                        if (
+                            e.operation !== FolderOperation.add ||
+                            found.includes(e.folder!.name) ||
+                            !uniqueAssets.has(e.folder!.name)
+                        ) {
+                            return;
+                        }
+                        found.push(e.folder!.name);
+                        if (uniqueAssets.size === found.length) {
+                            res();
+                        }
+                    });
+                });
             }
 
             return workspaceContext;
@@ -313,13 +335,20 @@ export const folderInRootWorkspace = async (
     name: string,
     workspaceContext: WorkspaceContext
 ): Promise<FolderContext> => {
-    const workspaceFolder = getRootWorkspaceFolder();
-    let folder = workspaceContext.folders.find(f => f.workspaceFolder.name === `test/${name}`);
+    let folder = findFolderInWorkspace(name, workspaceContext);
     if (!folder) {
+        const workspaceFolder = getRootWorkspaceFolder();
         folder = await workspaceContext.addPackageFolder(testAssetUri(name), workspaceFolder);
     }
     return folder;
 };
+
+export function findFolderInWorkspace(
+    name: string,
+    workspaceContext: WorkspaceContext
+): FolderContext | undefined {
+    return workspaceContext.folders.find(f => f.folder.fsPath === testAssetPath(name));
+}
 
 export type SettingsMap = { [key: string]: unknown };
 

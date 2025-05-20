@@ -139,7 +139,9 @@ function buildAllTaskName(folderContext: FolderContext, release: boolean): strin
     let buildTaskName = release
         ? `${SwiftTaskProvider.buildAllName} - Release`
         : SwiftTaskProvider.buildAllName;
-    if (folderContext.relativePath.length > 0) {
+    if (vscode.workspace.workspaceFile) {
+        buildTaskName += ` (${folderContext.name})`;
+    } else if (folderContext.relativePath.length > 0) {
         buildTaskName += ` (${folderContext.relativePath})`;
     }
     return buildTaskName;
@@ -189,11 +191,18 @@ export async function getBuildAllTask(
     // search for build all task in task.json first, that are valid for folder
     const tasks = await vscode.tasks.fetchTasks();
     const workspaceTasks = tasks.filter(task => {
-        if (task.source !== "Workspace" || task.scope !== folderContext.workspaceFolder) {
+        if (task.source !== "Workspace") {
             return false;
         }
+
         const swiftExecutionOptions = (task.execution as SwiftExecution).options;
         let cwd = swiftExecutionOptions?.cwd;
+        if (task.scope === vscode.TaskScope.Workspace) {
+            return cwd && substituteVariablesInString(cwd) === folderContext.folder.fsPath;
+        }
+        if (task.scope !== folderContext.workspaceFolder) {
+            return false;
+        }
         if (cwd === "${workspaceFolder}" || cwd === undefined) {
             cwd = folderWorkingDir;
         }
@@ -233,7 +242,9 @@ export async function getBuildAllTask(
 function createBuildTasks(product: Product, folderContext: FolderContext): vscode.Task[] {
     const toolchain = folderContext.toolchain;
     let buildTaskNameSuffix = "";
-    if (folderContext.relativePath.length > 0) {
+    if (vscode.workspace.workspaceFile) {
+        buildTaskNameSuffix = ` (${folderContext.name})`;
+    } else if (folderContext.relativePath.length > 0) {
         buildTaskNameSuffix = ` (${folderContext.relativePath})`;
     }
 

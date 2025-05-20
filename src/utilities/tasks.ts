@@ -13,11 +13,16 @@
 //===----------------------------------------------------------------------===//
 import * as path from "path";
 import * as vscode from "vscode";
+import { substituteVariablesInString } from "../configuration";
 
 export function resolveTaskCwd(task: vscode.Task, cwd?: string): string | undefined {
     const scopeWorkspaceFolder = getScopeWorkspaceFolder(task);
     if (!cwd) {
         return scopeWorkspaceFolder;
+    }
+
+    if (/\$\{.*\}/g.test(cwd)) {
+        return substituteVariablesInString(cwd);
     }
 
     if (path.isAbsolute(cwd)) {

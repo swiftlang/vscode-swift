@@ -110,19 +110,28 @@ export function getLaunchConfiguration(
     target: string,
     folderCtx: FolderContext
 ): vscode.DebugConfiguration | undefined {
-    const wsLaunchSection = vscode.workspace.getConfiguration("launch", folderCtx.workspaceFolder);
-    const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
-    const { folder } = getFolderAndNameSuffix(folderCtx);
-    const targetPath = path.join(
-        BuildFlags.buildDirectoryFromWorkspacePath(folder, true),
-        "debug",
-        target
-    );
-    // Users could be on different platforms with different path annotations,
-    // so normalize before we compare.
-    return launchConfigs.find(
-        config => path.normalize(config.program) === path.normalize(targetPath)
-    );
+    for (const wsLaunchSection of [
+        vscode.workspace.getConfiguration("launch", folderCtx.workspaceFolder),
+        vscode.workspace.getConfiguration("launch"), // Needed for .code-workspace files
+    ]) {
+        const launchConfigs =
+            wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
+        const { folder } = getFolderAndNameSuffix(folderCtx);
+        const targetPath = path.join(
+            BuildFlags.buildDirectoryFromWorkspacePath(folder, true),
+            "debug",
+            target
+        );
+        // Users could be on different platforms with different path annotations,
+        // so normalize before we compare.
+        const launchConfig = launchConfigs.find(
+            config => path.normalize(config.program) === path.normalize(targetPath)
+        );
+        if (!launchConfig) {
+            continue;
+        }
+        return launchConfig;
+    }
 }
 
 // Return array of DebugConfigurations for executables based on what is in Package.swift

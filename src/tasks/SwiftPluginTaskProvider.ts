@@ -54,15 +54,26 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         const tasks = [];
 
         for (const folderContext of this.workspaceContext.folders) {
+            let postfix = "";
             for (const plugin of folderContext.swiftPackage.plugins) {
+                if (vscode.workspace.workspaceFile) {
+                    postfix = ` (${folderContext.name})`;
+                } else if (folderContext.relativePath.length > 0) {
+                    postfix = ` (${folderContext.relativePath})`;
+                }
                 tasks.push(
-                    this.createSwiftPluginTask(plugin, folderContext.toolchain, {
-                        cwd: folderContext.folder,
-                        scope: folderContext.workspaceFolder,
-                        presentationOptions: {
-                            reveal: vscode.TaskRevealKind.Always,
+                    this.createSwiftPluginTask(
+                        plugin,
+                        folderContext.toolchain,
+                        {
+                            cwd: folderContext.folder,
+                            scope: folderContext.workspaceFolder,
+                            presentationOptions: {
+                                reveal: vscode.TaskRevealKind.Always,
+                            },
                         },
-                    })
+                        postfix
+                    )
                 );
             }
         }
@@ -121,7 +132,8 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
     createSwiftPluginTask(
         plugin: PackagePlugin,
         toolchain: SwiftToolchain,
-        config: TaskConfig
+        config: TaskConfig,
+        postfix: string = ""
     ): SwiftTask {
         const swift = toolchain.getToolchainExecutable("swift");
 
@@ -156,7 +168,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         } else {
             prefix = "";
         }
-        task.detail = `${prefix}swift ${swiftArgs.join(" ")}`;
+        task.detail = `${prefix}swift ${swiftArgs.join(" ")}${postfix}`;
         task.presentationOptions = presentation;
         return task as SwiftTask;
     }
