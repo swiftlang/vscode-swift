@@ -34,6 +34,75 @@
   ],
   "main": "./dist/src/extension.js",
   "contributes": {
+    "walkthroughs": [
+      {
+        "id": "swift-welcome",
+        "title": "Get Started with Swift for VS Code",
+        "description": "Learn how to use the Swift extension for VS Code.",
+        "steps": [
+          {
+            "id": "installing-mac",
+            "title": "Installing Swift",
+            "description": "💻 Swift is cross-platform! If you already have Xcode installed, you're ready to go. Otherwise, see the instructions to [install on macOS](https://www.swift.org/install).\n🧑‍🤝‍🧑 Swift is [open source](https://github.com/swiftlang) and community driven!\n💬 Questions? Visit the [Swift forums](https://forums.swift.org/) for help.",
+            "media": {
+              "markdown": "./assets/walkthrough/welcome.md"
+            },
+            "when": "isMac"
+          },
+          {
+            "id": "installing-mac",
+            "title": "Installing Swift",
+            "description": "💻 Swift is cross-platform! See the instructions to [install on Linux](https://www.swift.org/install).\n🧑‍🤝‍🧑 Swift is [open source](https://github.com/swiftlang) and community driven!\n💬 Questions? Visit the [Swift forums](https://forums.swift.org/) for help.",
+            "media": {
+              "markdown": "./assets/walkthrough/welcome.md"
+            },
+            "when": "isLinux"
+          },
+          {
+            "id": "installing-mac",
+            "title": "Installing Swift",
+            "description": "💻 Swift is cross-platform! See the instructions to [install on Windows](https://www.swift.org/install).\n🧑‍🤝‍🧑 Swift is [open source](https://github.com/swiftlang) and community driven!\n💬 Questions? Visit the [Swift forums](https://forums.swift.org/) for help.",
+            "media": {
+              "markdown": "./assets/walkthrough/welcome.md"
+            },
+            "when": "isWindows"
+          },
+          {
+            "id": "creating-new-project",
+            "title": "Creating a Swift Project",
+            "description": "✏️ When you open an empty workspace you can use the Create Swift Project button shown in the File Navigator, or you can create a new Swift project using the command palette.\n[Create New Project](command:swift.createNewProject)",
+            "media": {
+              "markdown": "assets/walkthrough/createNewProject.md"
+            }
+          },
+          {
+            "id": "swift-commands",
+            "title": "Swift Commands",
+            "description": "🎨 Explore the commands available in the command palette prefixed with \"> Swift:\". You can use the command palette to run any of the commands provided by the Swift extension.\n[Open Command Palette](command:workbench.action.showCommands)",
+            "media": {
+              "markdown": "assets/walkthrough/swiftCommands.md"
+            }
+          },
+          {
+            "id": "testing",
+            "title": "Running Tests",
+            "description": "✅ Tests are automatically discovered in your project and added to the [Testing View](https://code.visualstudio.com/docs/debugtest/testing#_automatic-test-discovery-in-testing-view).\n🧪 Both [XCTest](https://developer.apple.com/documentation/xctest) and [Swift Testing](https://developer.apple.com/xcode/swift-testing/) tests are supported.",
+            "media": {
+              "markdown": "assets/walkthrough/runningTests.md"
+            }
+          },
+          {
+            "id": "selecting-toolchain",
+            "title": "Selecting a Toolchain",
+            "description": "🛠️ If you have more than one Swift toolchain installed you can switch between them.",
+            "markdown": "",
+            "media": {
+              "markdown": "assets/walkthrough/swiftToolchains.md"
+            }
+          }
+        ]
+      }
+    ],
     "icons": {
       "swift-icon": {
         "description": "The official icon for the Swift programming language",
