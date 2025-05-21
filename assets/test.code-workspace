@@ -15,7 +15,7 @@
 		{
 			"name": "command-plugin",
 			"path": "./test/command-plugin"
-		},
+		}
 	],
 	"settings": {
 		"swift.disableAutoResolve": true,
@@ -85,7 +85,7 @@
 				"disableASLR": false,
 				"initCommands": [
 					"settings set target.disable-aslr false"
-				],
+				]
 			},
 			{
 				"type": "swift",
@@ -98,7 +98,7 @@
 				"disableASLR": false,
 				"initCommands": [
 					"settings set target.disable-aslr false"
-				],
+				]
 			}
 		],
 		"compounds": []
