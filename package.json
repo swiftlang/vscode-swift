@@ -80,7 +80,8 @@
             "title": "Swift Commands",
             "description": "🎨 Explore the commands available in the command palette prefixed with \"> Swift:\". You can use the command palette to run any of the commands provided by the Swift extension.\n[Open Command Palette](command:workbench.action.showCommands)",
             "media": {
-              "markdown": "assets/walkthrough/swiftCommands.md"
+              "svg": "assets/walkthrough/images/swiftCommands.svg",
+              "altText": "Swift Commands"
             }
           },
           {
