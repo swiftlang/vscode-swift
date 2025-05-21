@@ -17,6 +17,7 @@ import { sourceLocationToVSCodeLocation } from "../../utilities/utilities";
 import { MarkdownString, Location } from "vscode";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
+import { lineBreakRegex } from "../../utilities/tasks";
 
 /** Regex for parsing XCTest output */
 interface TestRegex {
@@ -190,7 +191,7 @@ export class XCTestOutputParser implements IXCTestOutputParser {
         // which we don't care about.
         const output = process.platform === "win32" ? stripAnsi(rawOutput) : rawOutput;
         const output2 = output.replace(/\r\n/g, "\n");
-        const lines = output2.split("\n");
+        const lines = output2.split(lineBreakRegex);
         if (runState.excess) {
             lines[0] = runState.excess + lines[0];
         }

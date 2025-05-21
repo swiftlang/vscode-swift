@@ -24,6 +24,7 @@ import { sourceLocationToVSCodeLocation } from "../../../src/utilities/utilities
 import { TestXUnitParser } from "../../../src/TestExplorer/TestXUnitParser";
 import { activateExtensionForSuite } from "../utilities/testutilities";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
+import { lineBreakRegex } from "../../../src/utilities/tasks";
 
 enum ParserTestKind {
     Regular = "Regular Test Run",
@@ -33,7 +34,7 @@ enum ParserTestKind {
 suite("XCTestOutputParser Suite", () => {
     function inputToTestOutput(input: string) {
         return input
-            .split("\n")
+            .split(lineBreakRegex)
             .slice(0, -1)
             .map(line => `${line}\r\n`);
     }

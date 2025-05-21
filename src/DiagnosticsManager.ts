@@ -19,7 +19,7 @@ import stripAnsi = require("strip-ansi");
 import configuration from "./configuration";
 import { SwiftExecution } from "./tasks/SwiftExecution";
 import { WorkspaceContext } from "./WorkspaceContext";
-import { checkIfBuildComplete } from "./utilities/tasks";
+import { checkIfBuildComplete, lineBreakRegex } from "./utilities/tasks";
 
 interface ParsedDiagnostic {
     uri: string;
@@ -278,7 +278,7 @@ export class DiagnosticsManager implements vscode.Disposable {
             disposables.push(
                 swiftExecution.onDidWrite(data => {
                     const sanitizedData = (remainingData || "") + stripAnsi(data);
-                    const lines = sanitizedData.split(/\r\n|\n|\r/gm);
+                    const lines = sanitizedData.split(lineBreakRegex);
                     // If ends with \n then will be "" and there's no affect.
                     // Otherwise want to keep remaining data to pre-pend next write
                     remainingData = lines.pop();

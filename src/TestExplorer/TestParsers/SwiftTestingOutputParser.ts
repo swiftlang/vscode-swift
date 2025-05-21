@@ -24,6 +24,7 @@ import { ITestRunState } from "./TestRunState";
 import { TestClass } from "../TestDiscovery";
 import { sourceLocationToVSCodeLocation } from "../../utilities/utilities";
 import { exec } from "child_process";
+import { lineBreakRegex } from "../../utilities/tasks";
 
 // All events produced by a swift-testing run will be one of these three types.
 // Detailed information about swift-testing's JSON schema is available here:
@@ -235,7 +236,7 @@ export class SwiftTestingOutputParser {
      * @param chunk A chunk of stdout emitted during a test run.
      */
     public parseStdout(chunk: string, runState: ITestRunState) {
-        for (const line of chunk.split("\n")) {
+        for (const line of chunk.split(lineBreakRegex)) {
             if (line.trim().length > 0) {
                 runState.recordOutput(undefined, `${line}\r\n`);
             }

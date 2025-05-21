@@ -15,6 +15,7 @@
 import * as util from "util";
 import * as child_process from "child_process";
 import { Process, ProcessList } from ".";
+import { lineBreakRegex } from "../utilities/tasks";
 
 const exec = util.promisify(child_process.execFile);
 
@@ -46,7 +47,7 @@ export abstract class BaseProcessList implements ProcessList {
             maxBuffer: 10 * 1024 * 1024, // Increase the max buffer size to 10Mb
         });
         const parser = this.createParser();
-        return (await execCommand).stdout.split("\n").flatMap(line => {
+        return (await execCommand).stdout.split(lineBreakRegex).flatMap(line => {
             const process = parser(line.toString());
             if (!process || process.id === execCommand.child.pid) {
                 return [];
