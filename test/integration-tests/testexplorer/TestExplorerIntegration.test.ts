@@ -156,6 +156,8 @@ suite("Test Explorer Suite", function () {
             });
 
             test("Debugs specified XCTest test @slow", async function () {
+                this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 2);
+
                 // CodeLLDB tests stall out on 5.9 and below.
                 if (folderContext.swiftVersion.isLessThan(new Version(5, 10, 0))) {
                     this.skip();
@@ -420,6 +422,8 @@ suite("Test Explorer Suite", function () {
                 const numIterations = 5;
                 const windowMock = mockGlobalObject(vscode, "window");
 
+                this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 5);
+
                 test("@slow runs an swift-testing test multiple times", async function () {
                     const testItems = await gatherTests(
                         testExplorer.controller,
@@ -551,6 +555,8 @@ suite("Test Explorer Suite", function () {
             suite("Runs multiple", function () {
                 const numIterations = 5;
                 const windowMock = mockGlobalObject(vscode, "window");
+
+                this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 5);
 
                 test("@slow runs an XCTest multiple times", async function () {
                     const testItems = await gatherTests(
