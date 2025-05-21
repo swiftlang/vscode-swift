@@ -1,0 +1,106 @@
+{
+	"folders": [
+		{
+			"name": "test",
+			"path": "./test"
+		},
+		{
+			"name": "defaultPackage",
+			"path": "./test/defaultPackage"
+		},
+		{
+			"name": "diagnostics",
+			"path": "./test/diagnostics"
+		},
+		{
+			"name": "command-plugin",
+			"path": "./test/command-plugin"
+		}
+	],
+	"settings": {
+		"swift.disableAutoResolve": true,
+		"swift.autoGenerateLaunchConfigurations": false,
+		"swift.debugger.debugAdapter": "lldb-dap",
+		"swift.debugger.setupCodeLLDB": "alwaysUpdateGlobal",
+		"swift.additionalTestArguments": [
+			"-Xswiftc",
+			"-DTEST_ARGUMENT_SET_VIA_TEST_BUILD_ARGUMENTS_SETTING"
+		],
+		"lldb.verboseLogging": true,
+		"swift.sourcekit-lsp.backgroundIndexing": "off"
+	},
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"type": "swift",
+				"args": [
+					"build",
+					"--build-tests",
+					"--verbose"
+				],
+				"cwd": "${workspaceFolder:defaultPackage}",
+				"group": {
+					"kind": "build",
+					"isDefault": true
+				},
+				"label": "swift: Build All (defaultPackage)",
+				"detail": "swift build --build-tests --verbose"
+			},
+			{
+				"type": "swift",
+				"args": [
+					"build",
+					"--show-bin-path"
+				],
+				"cwd": "${workspaceFolder:defaultPackage}",
+				"group": "build",
+				"label": "swift: Build All from tasks.json",
+				"detail": "swift build --show-bin-path"
+			},
+			{
+				"type": "swift-plugin",
+				"command": "command_plugin",
+				"args": [
+					"--foo"
+				],
+				"cwd": "${workspaceFolder:command-plugin}",
+				"disableSandbox": true,
+				"label": "swift: command-plugin from tasks.json",
+				"detail": "swift package command_plugin --foo"
+			}
+		]
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"type": "swift",
+				"request": "launch",
+				"name": "Debug PackageExe (defaultPackage)",
+				"program": "${workspaceFolder:defaultPackage}/.build/debug/PackageExe",
+				"args": [],
+				"cwd": "${workspaceFolder:defaultPackage}",
+				"preLaunchTask": "swift: Build Debug PackageExe (defaultPackage)",
+				"disableASLR": false,
+				"initCommands": [
+					"settings set target.disable-aslr false"
+				]
+			},
+			{
+				"type": "swift",
+				"request": "launch",
+				"name": "Release PackageExe (defaultPackage)",
+				"program": "${workspaceFolder:defaultPackage}/.build/release/PackageExe",
+				"args": [],
+				"cwd": "${workspaceFolder:defaultPackage}",
+				"preLaunchTask": "swift: Build Release PackageExe (defaultPackage)",
+				"disableASLR": false,
+				"initCommands": [
+					"settings set target.disable-aslr false"
+				]
+			}
+		],
+		"compounds": []
+	}
+}
