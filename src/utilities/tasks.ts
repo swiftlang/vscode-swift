@@ -14,6 +14,8 @@
 import * as path from "path";
 import * as vscode from "vscode";
 
+export const lineBreakRegex = /\r\n|\n|\r/gm;
+
 export function resolveTaskCwd(task: vscode.Task, cwd?: string): string | undefined {
     const scopeWorkspaceFolder = getScopeWorkspaceFolder(task);
     if (!cwd) {

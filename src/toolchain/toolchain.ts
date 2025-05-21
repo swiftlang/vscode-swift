@@ -25,6 +25,7 @@ import { Version } from "../utilities/version";
 import { BuildFlags } from "./BuildFlags";
 import { Sanitizer } from "./Sanitizer";
 import { SwiftlyConfig } from "./ToolchainVersion";
+import { lineBreakRegex } from "../utilities/tasks";
 
 /**
  * Contents of **Info.plist** on Windows.
@@ -235,7 +236,8 @@ export class SwiftToolchain {
             execFile("mdfind", [`kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'`]),
             this.getXcodeDeveloperDir(),
         ]);
-        const spotlightXcodes = mdfindOutput.length > 0 ? mdfindOutput.trimEnd().split("\n") : [];
+        const spotlightXcodes =
+            mdfindOutput.length > 0 ? mdfindOutput.trimEnd().split(lineBreakRegex) : [];
         const selectedXcode = this.getXcodeDirectory(xcodeDeveloperDir);
 
         // Combine the results from both commands
@@ -933,7 +935,7 @@ export class SwiftToolchain {
             }
             const { stdout } = await execSwift(["--version"], { swiftExecutable });
             return {
-                compilerVersion: stdout.split("\n", 1)[0],
+                compilerVersion: stdout.split(lineBreakRegex, 1)[0],
                 paths: { runtimeLibraryPaths: [""] },
             };
         } catch {

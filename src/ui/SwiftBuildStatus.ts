@@ -18,7 +18,7 @@ import * as vscode from "vscode";
 import configuration, { ShowBuildStatusOptions } from "../configuration";
 import { RunningTask, StatusItem } from "./StatusItem";
 import { SwiftExecution } from "../tasks/SwiftExecution";
-import { checkIfBuildComplete } from "../utilities/tasks";
+import { checkIfBuildComplete, lineBreakRegex } from "../utilities/tasks";
 
 /**
  * Progress of `swift` build, parsed from the
@@ -121,7 +121,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
             // We'll process data one line at a time, in reverse order
             // since the latest interesting message is all we need to
             // be concerned with
-            const lines = sanitizedData.split(/\r\n|\n|\r/gm).reverse();
+            const lines = sanitizedData.split(lineBreakRegex).reverse();
             for (const line of lines) {
                 if (checkIfBuildComplete(line)) {
                     update(name);
