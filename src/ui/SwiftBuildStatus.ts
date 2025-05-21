@@ -125,7 +125,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
             for (const line of lines) {
                 if (checkIfBuildComplete(line)) {
                     update(name);
-                    return !isBuildTask && true;
+                    return !isBuildTask;
                 }
                 const progress = this.findBuildProgress(line);
                 if (progress) {
