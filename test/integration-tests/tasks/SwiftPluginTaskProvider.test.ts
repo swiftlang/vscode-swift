@@ -245,7 +245,6 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
                 });
 
                 test("provides", () => {
-                    expect(task?.detail).to.equal("swift package command_plugin");
                     expect(task?.execution.args).to.deep.equal(
                         folderContext.toolchain.buildFlags.withAdditionalFlags([
                             "package",
@@ -264,15 +263,24 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
             });
 
             suite("includes command plugin provided by tasks.json", () => {
-                let task: vscode.Task | undefined;
+                let task: SwiftTask | undefined;
 
                 setup(async () => {
                     const tasks = await vscode.tasks.fetchTasks({ type: "swift-plugin" });
-                    task = tasks.find(t => t.name === "swift: command-plugin from tasks.json");
+                    task = tasks.find(
+                        t => t.name === "swift: command-plugin from tasks.json"
+                    ) as SwiftTask;
                 });
 
                 test("provides", () => {
-                    expect(task?.detail).to.include("swift package command_plugin --foo");
+                    expect(task?.execution.args).to.deep.equal(
+                        folderContext.toolchain.buildFlags.withAdditionalFlags([
+                            "package",
+                            "--disable-sandbox",
+                            "command_plugin",
+                            "--foo",
+                        ])
+                    );
                 });
 
                 test("executes", async () => {
