@@ -12,9 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as vscode from "vscode";
 import * as path from "path";
-import { activateExtensionForSuite, updateSettings } from "./utilities/testutilities";
+import {
+    activateExtensionForSuite,
+    getRootWorkspaceFolder,
+    updateSettings,
+} from "./utilities/testutilities";
 import { expect } from "chai";
 import { afterEach } from "mocha";
 import configuration from "../../src/configuration";
@@ -47,7 +50,7 @@ suite("Configuration Test Suite", function () {
         expect(task.definition.args).to.not.be.undefined;
         const index = task.definition.args.indexOf("--scratch-path");
         expect(task.definition.args[index + 1]).to.equal(
-            vscode.workspace.workspaceFolders?.at(0)?.uri.fsPath + "/somepath"
+            getRootWorkspaceFolder()?.uri.fsPath + "/somepath"
         );
     });
 
@@ -56,7 +59,7 @@ suite("Configuration Test Suite", function () {
             "swift.buildPath": "${workspaceFolder}${pathSeparator}${workspaceFolderBasename}",
         });
 
-        const basePath = vscode.workspace.workspaceFolders?.at(0)?.uri.fsPath;
+        const basePath = getRootWorkspaceFolder()?.uri.fsPath;
         const baseName = path.basename(basePath ?? "");
         const sep = path.sep;
         expect(configuration.buildPath).to.equal(`${basePath}${sep}${baseName}`);

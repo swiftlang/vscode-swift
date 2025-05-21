@@ -29,8 +29,8 @@ import { resetBuildAllTaskCache } from "../../../src/tasks/SwiftTaskProvider";
 
 const codeWorkspaceFolders = ["defaultPackage", "diagnostics", "command-plugin"];
 
-function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
-    const result = vscode.workspace.workspaceFolders?.at(0);
+export function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
+    const result = vscode.workspace.workspaceFolders?.find(f => f.name === "test");
     assert(result, "No workspace folders were opened for the tests to use");
     return result;
 }
