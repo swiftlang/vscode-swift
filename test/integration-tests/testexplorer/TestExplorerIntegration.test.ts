@@ -50,6 +50,7 @@ import { Commands } from "../../../src/commands";
 import { executeTaskAndWaitForResult } from "../../utilities/tasks";
 import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
 import { FolderContext } from "../../../src/FolderContext";
+import { lineBreakRegex } from "../../../src/utilities/tasks";
 
 suite("Test Explorer Suite", function () {
     const MAX_TEST_RUN_TIME_MINUTES = 5;
@@ -261,9 +262,12 @@ suite("Test Explorer Suite", function () {
                 // in the middle of the print, so the last line is actually end end of our
                 // huge string. If they fix this in future this `find` ensures the test wont break.
                 const needle = "100000";
-                const lastTenLines = testRun.runState.output.slice(-10).join("\n");
+                const output = testRun.runState.output.flatMap(o =>
+                    o.split(lineBreakRegex).filter(o => !!o)
+                );
+                const lastTenLines = output.slice(-10).join("\n");
                 assertContainsTrimmed(
-                    testRun.runState.output,
+                    output,
                     needle,
                     `Expected all test output to be captured, but it was truncated. Last 10 lines of output were: ${lastTenLines}`
                 );

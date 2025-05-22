@@ -729,7 +729,7 @@ export class TestRunner {
                 // discarded. If the test run has already started this is a no-op so its safe to call it multiple times.
                 this.testRun.testRunStarted();
 
-                await this.swiftTestOutputParser.close();
+                void this.swiftTestOutputParser.close();
             }
         } finally {
             outputStream.end();
