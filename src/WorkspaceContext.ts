@@ -228,15 +228,18 @@ export class WorkspaceContext implements vscode.Disposable {
     updateContextKeys(folderContext: FolderContext | null) {
         if (!folderContext) {
             contextKeys.hasPackage = false;
+            contextKeys.hasExecutableProduct = false;
             contextKeys.packageHasDependencies = false;
             return;
         }
 
         Promise.all([
             folderContext.swiftPackage.foundPackage,
+            folderContext.swiftPackage.executableProducts,
             folderContext.swiftPackage.dependencies,
-        ]).then(([foundPackage, dependencies]) => {
+        ]).then(([foundPackage, executableProducts, dependencies]) => {
             contextKeys.hasPackage = foundPackage;
+            contextKeys.hasExecutableProduct = executableProducts.length > 0;
             contextKeys.packageHasDependencies = dependencies.length > 0;
         });
     }

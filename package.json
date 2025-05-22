@@ -893,7 +893,7 @@
       "commandPalette": [
         {
           "command": "swift.generateLaunchConfigurations",
-          "when": "swift.hasPackage"
+          "when": "swift.hasExecutableProduct"
         },
         {
           "command": "swift.previewDocumentation",

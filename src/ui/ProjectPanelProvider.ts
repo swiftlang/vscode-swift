@@ -371,6 +371,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
     constructor(private workspaceContext: WorkspaceContext) {
         // default context key to false. These will be updated as folders are given focus
         contextKeys.hasPackage = false;
+        contextKeys.hasExecutableProduct = false;
         contextKeys.packageHasDependencies = false;
 
         this.observeTasks(workspaceContext);
