@@ -14,6 +14,7 @@
 
 import * as vscode from "vscode";
 import configuration from "../configuration";
+import { IS_RUNNING_IN_CI } from "../utilities/utilities";
 
 export class SwiftOutputChannel implements vscode.OutputChannel {
     private channel: vscode.OutputChannel;
@@ -76,7 +77,7 @@ export class SwiftOutputChannel implements vscode.OutputChannel {
     }
 
     logDiagnostic(message: string, label?: string) {
-        if (!configuration.diagnostics && process.env["CI"] !== "1") {
+        if (!configuration.diagnostics && !IS_RUNNING_IN_CI) {
             return;
         }
         const fullMessage = label !== undefined ? `${label}: ${message}` : message;

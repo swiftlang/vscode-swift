@@ -21,6 +21,22 @@ import { FolderContext } from "../FolderContext";
 import { SwiftToolchain } from "../toolchain/toolchain";
 
 /**
+ * Whether or not this is a production build.
+ *
+ * Code that checks for this will be removed completely when the extension is packaged into
+ * a VSIX.
+ */
+export const IS_PRODUCTION_BUILD = process.env.NODE_ENV === "production";
+
+/**
+ * Whether or not the code is being run in CI.
+ *
+ * Code that checks for this will be removed completely when the extension is packaged into
+ * a VSIX.
+ */
+export const IS_RUNNING_IN_CI = process.env.CI === "1";
+
+/**
  * Get required environment variable for Swift product
  *
  * @param base base environment configuration

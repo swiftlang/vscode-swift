@@ -20,7 +20,7 @@ import { registerLoggingDebugAdapterTracker } from "./logTracker";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { fileExists } from "../utilities/filesystem";
-import { CI_DISABLE_ASLR, getLLDBLibPath } from "./lldb";
+import { updateLaunchConfigForCI, getLLDBLibPath } from "./lldb";
 import { getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
 import configuration from "../configuration";
 
@@ -171,10 +171,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             launchConfig.debugAdapterExecutable = lldbDapPath;
         }
 
-        return {
-            ...launchConfig,
-            ...CI_DISABLE_ASLR,
-        };
+        return updateLaunchConfigForCI(launchConfig);
     }
 
     private async promptToInstallCodeLLDB(): Promise<boolean> {

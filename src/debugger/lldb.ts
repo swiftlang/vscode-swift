@@ -15,20 +15,31 @@
 // Based on code taken from CodeLLDB https://github.com/vadimcn/vscode-lldb/
 // LICENSED with MIT License
 
+import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs/promises";
-import { execFile } from "../utilities/utilities";
+import { execFile, IS_RUNNING_IN_CI } from "../utilities/utilities";
 import { Result } from "../utilities/result";
 import { SwiftToolchain } from "../toolchain/toolchain";
 
-export const CI_DISABLE_ASLR =
-    // DisableASLR when running in Docker CI https://stackoverflow.com/a/78471987
-    process.env["CI"]
-        ? {
-              disableASLR: false,
-              initCommands: ["settings set target.disable-aslr false"],
-          }
-        : {};
+/**
+ * Updates the provided debug configuration to be compatible with running in CI.
+ *
+ * Will be optimized out of production builds.
+ */
+export function updateLaunchConfigForCI(
+    config: vscode.DebugConfiguration
+): vscode.DebugConfiguration {
+    if (!IS_RUNNING_IN_CI) {
+        return config;
+    }
+
+    const result = structuredClone(config);
+    // Tell LLDB not to disable ASLR when running in Docker CI https://stackoverflow.com/a/78471987
+    result.disableASLR = false;
+    result.initCommands = ["settings set target.disable-aslr false"];
+    return result;
+}
 
 /**
  * Get the path to the LLDB library.
