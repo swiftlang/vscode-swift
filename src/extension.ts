@@ -65,7 +65,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         // This can happen if the user has not installed Swift or if the toolchain is not
         // properly configured.
         if (!toolchain) {
-            showToolchainError();
+            void showToolchainError();
             return {
                 workspaceContext: undefined,
                 outputChannel,
@@ -137,7 +137,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         context.subscriptions.push(TestExplorer.observeFolders(workspaceContext));
 
         // setup workspace context with initial workspace folders
-        workspaceContext.addWorkspaceFolders();
+        void workspaceContext.addWorkspaceFolders();
 
         // Mark the extension as activated.
         contextKeys.isActivated = true;
@@ -183,12 +183,12 @@ function handleFolderEvent(
             }
 
             if (folder.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))) {
-                workspace.statusItem.showStatusWhileRunning(
+                void workspace.statusItem.showStatusWhileRunning(
                     `Loading Swift Plugins (${FolderContext.uriName(folder.workspaceFolder.uri)})`,
                     async () => {
                         await folder.loadSwiftPlugins(outputChannel);
                         workspace.updatePluginContextKey();
-                        folder.fireEvent(FolderOperation.pluginsUpdated);
+                        await folder.fireEvent(FolderOperation.pluginsUpdated);
                     }
                 );
             }
@@ -203,16 +203,16 @@ function handleFolderEvent(
         switch (operation) {
             case FolderOperation.add:
                 // Create launch.json files based on package description.
-                debug.makeDebugConfigurations(folder);
+                await debug.makeDebugConfigurations(folder);
                 if (await folder.swiftPackage.foundPackage) {
                     // do not await for this, let packages resolve in parallel
-                    folderAdded(folder, workspace);
+                    void folderAdded(folder, workspace);
                 }
                 break;
 
             case FolderOperation.packageUpdated:
                 // Create launch.json files based on package description.
-                debug.makeDebugConfigurations(folder);
+                await debug.makeDebugConfigurations(folder);
                 if (
                     (await folder.swiftPackage.foundPackage) &&
                     !configuration.folder(folder.workspaceFolder).disableAutoResolve

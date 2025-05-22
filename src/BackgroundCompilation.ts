@@ -58,7 +58,7 @@ export class BackgroundCompilation implements vscode.Disposable {
             this.workspaceFileWatcher.onDidChange(
                 debounce(
                     () => {
-                        this.runTask();
+                        void this.runTask();
                     },
                     100 /* 10 times per second */,
                     { trailing: true }

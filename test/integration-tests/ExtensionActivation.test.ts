@@ -44,6 +44,7 @@ suite("Extension Activation/Deactivation Tests", () => {
 
         test("Duplicate Activation", async function () {
             await activate(this.test as Mocha.Test);
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
             assert.rejects(activateExtension(this.test as Mocha.Test), err => {
                 const msg = (err as unknown as any).message;
                 return (

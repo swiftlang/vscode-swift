@@ -26,5 +26,5 @@ export async function insertFunctionComment(workspaceContext: WorkspaceContext) 
         return;
     }
     const line = activeEditor.selection.active.line;
-    workspaceContext.commentCompletionProvider.insert(activeEditor, line);
+    await workspaceContext.commentCompletionProvider.insert(activeEditor, line);
 }

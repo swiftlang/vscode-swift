@@ -87,9 +87,9 @@ export class TestExplorer {
                 this.testFileEdited = false;
 
                 // only run discover tests if the library has tests
-                this.folderContext.swiftPackage.getTargets(TargetType.test).then(targets => {
+                void this.folderContext.swiftPackage.getTargets(TargetType.test).then(targets => {
                     if (targets.length > 0) {
-                        this.discoverTestsInWorkspace(this.tokenSource.token);
+                        void this.discoverTestsInWorkspace(this.tokenSource.token);
                     }
                 });
             }
@@ -98,7 +98,7 @@ export class TestExplorer {
         // add file watcher to catch changes to swift test files
         const fileWatcher = this.folderContext.workspaceContext.onDidChangeSwiftFiles(({ uri }) => {
             if (this.testFileEdited === false) {
-                this.folderContext.getTestTarget(uri).then(target => {
+                void this.folderContext.getTestTarget(uri).then(target => {
                     if (target) {
                         this.testFileEdited = true;
                     }
@@ -138,7 +138,7 @@ export class TestExplorer {
                 switch (operation) {
                     case FolderOperation.add:
                         if (folder) {
-                            folder.swiftPackage.getTargets(TargetType.test).then(targets => {
+                            void folder.swiftPackage.getTargets(TargetType.test).then(targets => {
                                 if (targets.length === 0) {
                                     return;
                                 }
@@ -149,7 +149,7 @@ export class TestExplorer {
                                 if (
                                     !configuration.folder(folder.workspaceFolder).disableAutoResolve
                                 ) {
-                                    folder.testExplorer?.discoverTestsInWorkspace(
+                                    void folder.testExplorer?.discoverTestsInWorkspace(
                                         tokenSource.token
                                     );
                                 }
@@ -158,7 +158,7 @@ export class TestExplorer {
                         break;
                     case FolderOperation.packageUpdated:
                         if (folder) {
-                            folder.swiftPackage.getTargets(TargetType.test).then(targets => {
+                            void folder.swiftPackage.getTargets(TargetType.test).then(targets => {
                                 const hasTestTargets = targets.length > 0;
                                 if (hasTestTargets && !folder.hasTestExplorer()) {
                                     folder.addTestExplorer();
@@ -168,7 +168,7 @@ export class TestExplorer {
                                         !configuration.folder(folder.workspaceFolder)
                                             .disableAutoResolve
                                     ) {
-                                        folder.testExplorer?.discoverTestsInWorkspace(
+                                        void folder.testExplorer?.discoverTestsInWorkspace(
                                             tokenSource.token
                                         );
                                     }
@@ -219,7 +219,7 @@ export class TestExplorer {
         const testExplorer = folder?.testExplorer;
         if (testExplorer && symbols && uri && uri.scheme === "file") {
             if (isPathInsidePath(uri.fsPath, folder.folder.fsPath)) {
-                folder.swiftPackage.getTarget(uri.fsPath).then(target => {
+                void folder.swiftPackage.getTarget(uri.fsPath).then(target => {
                     if (target && target.type === "test") {
                         testExplorer.lspTestDiscovery
                             .getDocumentTests(folder.swiftPackage, uri)

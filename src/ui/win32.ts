@@ -26,7 +26,7 @@ import * as vscode from "vscode";
  */
 export function checkAndWarnAboutWindowsSymlinks(outputChannel: SwiftOutputChannel) {
     if (process.platform === "win32" && configuration.warnAboutSymlinkCreation) {
-        isSymlinkAllowed(outputChannel).then(async canCreateSymlink => {
+        void isSymlinkAllowed(outputChannel).then(async canCreateSymlink => {
             if (canCreateSymlink) {
                 return;
             }

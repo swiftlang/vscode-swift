@@ -128,7 +128,7 @@ export class PackageWatcher {
     async handleSwiftVersionFileChange() {
         const version = await this.readSwiftVersionFile();
         if (version && version.toString() !== this.currentVersion?.toString()) {
-            this.workspaceContext.fireEvent(
+            await this.workspaceContext.fireEvent(
                 this.folderContext,
                 FolderOperation.swiftVersionUpdated
             );
@@ -162,7 +162,7 @@ export class PackageWatcher {
     async handlePackageSwiftChange() {
         // Load SwiftPM Package.swift description
         await this.folderContext.reload();
-        this.workspaceContext.fireEvent(this.folderContext, FolderOperation.packageUpdated);
+        await this.workspaceContext.fireEvent(this.folderContext, FolderOperation.packageUpdated);
     }
 
     /**
@@ -175,7 +175,10 @@ export class PackageWatcher {
         await this.folderContext.reloadPackageResolved();
         // if file contents has changed then send resolve updated message
         if (this.folderContext.swiftPackage.resolved?.fileHash !== packageResolvedHash) {
-            this.workspaceContext.fireEvent(this.folderContext, FolderOperation.resolvedUpdated);
+            await this.workspaceContext.fireEvent(
+                this.folderContext,
+                FolderOperation.resolvedUpdated
+            );
         }
     }
 
@@ -186,6 +189,9 @@ export class PackageWatcher {
      */
     private async handleWorkspaceStateChange() {
         await this.folderContext.reloadWorkspaceState();
-        this.workspaceContext.fireEvent(this.folderContext, FolderOperation.workspaceStateUpdated);
+        await this.workspaceContext.fireEvent(
+            this.folderContext,
+            FolderOperation.workspaceStateUpdated
+        );
     }
 }

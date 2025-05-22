@@ -96,7 +96,7 @@ export function activatePeekDocuments(client: langclient.LanguageClient): vscode
                     )
             );
 
-            openPeekedEditorIn(peekURI, peekPosition, peekLocations);
+            await openPeekedEditorIn(peekURI, peekPosition, peekLocations);
 
             return { success: true };
         }

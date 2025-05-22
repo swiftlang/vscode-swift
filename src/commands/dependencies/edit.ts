@@ -47,7 +47,7 @@ export async function editDependency(identifier: string, ctx: WorkspaceContext) 
     );
 
     if (success) {
-        ctx.fireEvent(currentFolder, FolderOperation.resolvedUpdated);
+        await ctx.fireEvent(currentFolder, FolderOperation.resolvedUpdated);
         // add folder to workspace
         const index = vscode.workspace.workspaceFolders?.length ?? 0;
         vscode.workspace.updateWorkspaceFolders(index, 0, {

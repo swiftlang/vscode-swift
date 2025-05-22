@@ -532,7 +532,7 @@ export function handleConfigurationChangeEvent(
             event.affectsConfiguration("swift.path") &&
             configuration.path !== ctx.currentFolder?.toolchain.swiftFolderPath
         ) {
-            showReloadExtensionNotification(
+            void showReloadExtensionNotification(
                 "Changing the Swift path requires Visual Studio Code be reloaded."
             );
         } else if (
@@ -542,7 +542,7 @@ export function handleConfigurationChangeEvent(
         ) {
             vscode.commands.executeCommand("swift.restartLSPServer");
         } else if (event.affectsConfiguration("swift.swiftEnvironmentVariables")) {
-            showReloadExtensionNotification(
+            void showReloadExtensionNotification(
                 "Changing environment variables requires the project be reloaded."
             );
         }

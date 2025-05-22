@@ -154,7 +154,7 @@ export class FolderContext implements vscode.Disposable {
      * @param event event type
      */
     async fireEvent(event: FolderOperation) {
-        this.workspaceContext.fireEvent(this, event);
+        await this.workspaceContext.fireEvent(this, event);
     }
 
     /** Return edited Packages folder */

@@ -86,7 +86,7 @@ ${tests.map(
             if (parserTestKind === ParserTestKind.Parallel) {
                 const xmlResults = expectedStateToXML(expected);
                 const xmlParser = new TestXUnitParser(hasMultiLineParallelTestOutput);
-                xmlParser.parse(xmlResults, testRunState, new SwiftOutputChannel("test"));
+                void xmlParser.parse(xmlResults, testRunState, new SwiftOutputChannel("test"));
             }
 
             assert.deepEqual(testRunState.tests, expected);

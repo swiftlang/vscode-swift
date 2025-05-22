@@ -635,7 +635,7 @@ class TaskPoller implements vscode.Disposable {
     private static POLL_INTERVAL = 5000;
 
     constructor(private onTasksChanged: () => void) {
-        this.pollTasks();
+        void this.pollTasks();
     }
 
     private async pollTasks() {

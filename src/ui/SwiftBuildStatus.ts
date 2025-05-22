@@ -100,7 +100,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
                 progress => handleTaskOutput(message => progress.report({ message }))
             );
         } else {
-            this.statusItem.showStatusWhileRunning(task, () =>
+            void this.statusItem.showStatusWhileRunning(task, () =>
                 handleTaskOutput(message => this.statusItem.update(task, message))
             );
         }

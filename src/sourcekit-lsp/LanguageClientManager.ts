@@ -145,7 +145,7 @@ export class LanguageClientManager implements vscode.Disposable {
             }
             vscode.window.showInformationMessage(message, restartLSPButton).then(selected => {
                 if (selected === restartLSPButton) {
-                    this.restart();
+                    void this.restart();
                 }
             });
         });
@@ -160,11 +160,11 @@ export class LanguageClientManager implements vscode.Disposable {
             );
             // restart LSP server on creation of a new file
             const onDidCreateFileDisposable = vscode.workspace.onDidCreateFiles(() => {
-                this.restart();
+                void this.restart();
             });
             // restart LSP server on deletion of a file
             const onDidDeleteFileDisposable = vscode.workspace.onDidDeleteFiles(() => {
-                this.restart();
+                void this.restart();
             });
             this.subscriptions.push(onDidCreateFileDisposable, onDidDeleteFileDisposable);
         }
@@ -236,7 +236,7 @@ export class LanguageClientManager implements vscode.Disposable {
                     uri: client.code2ProtocolConverter.asUri(uri),
                     name: FolderContext.uriName(uri),
                 };
-                client.sendNotification(DidChangeWorkspaceFoldersNotification.type, {
+                await client.sendNotification(DidChangeWorkspaceFoldersNotification.type, {
                     event: { added: [workspaceFolder], removed: [] },
                 });
             });
@@ -253,7 +253,7 @@ export class LanguageClientManager implements vscode.Disposable {
                     uri: client.code2ProtocolConverter.asUri(uri),
                     name: FolderContext.uriName(uri),
                 };
-                client.sendNotification(DidChangeWorkspaceFoldersNotification.type, {
+                await client.sendNotification(DidChangeWorkspaceFoldersNotification.type, {
                     event: { added: [], removed: [workspaceFolder] },
                 });
             });
@@ -266,7 +266,7 @@ export class LanguageClientManager implements vscode.Disposable {
                 uri: client.code2ProtocolConverter.asUri(uri),
                 name: FolderContext.uriName(uri),
             };
-            client.sendNotification(DidChangeWorkspaceFoldersNotification.type, {
+            await client.sendNotification(DidChangeWorkspaceFoldersNotification.type, {
                 event: { added: [workspaceFolder], removed: [] },
             });
         }
@@ -445,7 +445,7 @@ export class LanguageClientManager implements vscode.Disposable {
             // we won't have any sub folder workspaces, but if the server crashed
             // or we forced a restart then we need to do this
             if (e.oldState === State.Starting && e.newState === State.Running) {
-                this.addSubFolderWorkspaces(client);
+                void this.addSubFolderWorkspaces(client);
             }
         });
         if (client.clientOptions.workspaceFolder) {
@@ -495,7 +495,7 @@ export class LanguageClientManager implements vscode.Disposable {
             })
             .catch(reason => {
                 this.folderContext.workspaceContext.outputChannel.log(`${reason}`);
-                this.languageClient?.stop();
+                void this.languageClient?.stop();
                 this.languageClient = undefined;
                 throw reason;
             });

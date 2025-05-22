@@ -71,7 +71,7 @@ export async function runTestMultipleTimes(
             break;
         }
     }
-    runner.testRun.end();
+    await runner.testRun.end();
 
     return runStates;
 }

@@ -252,7 +252,7 @@ export function lspClientOptions(
                     ) {
                         // Only prompt once an hour in case sourcekit is in a crash loop
                         lastPrompted = now;
-                        promptForDiagnostics(workspaceContext);
+                        void promptForDiagnostics(workspaceContext);
                     }
                     return result;
                 };

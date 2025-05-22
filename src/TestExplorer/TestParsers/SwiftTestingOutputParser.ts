@@ -211,7 +211,7 @@ export class SwiftTestingOutputParser {
 
         rl.on("line", line => this.parse(JSON.parse(line), runState));
 
-        reader.start(readlinePipe);
+        await reader.start(readlinePipe);
     }
 
     /**

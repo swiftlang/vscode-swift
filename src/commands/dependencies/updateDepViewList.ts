@@ -18,6 +18,6 @@ import { FolderOperation, WorkspaceContext } from "../../WorkspaceContext";
 export function updateDependenciesViewList(ctx: WorkspaceContext, flatList: boolean) {
     if (ctx.currentFolder) {
         contextKeys.flatDependenciesList = flatList;
-        ctx.fireEvent(ctx.currentFolder, FolderOperation.packageViewUpdated);
+        void ctx.fireEvent(ctx.currentFolder, FolderOperation.packageViewUpdated);
     }
 }
