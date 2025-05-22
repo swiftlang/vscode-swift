@@ -14,94 +14,105 @@
 
 import * as path from "path";
 import * as vscode from "vscode";
+import { isDeepStrictEqual } from "util";
 import { FolderContext } from "../FolderContext";
 import { BuildFlags } from "../toolchain/BuildFlags";
-import { stringArrayInEnglish, swiftLibraryPathKey, swiftRuntimeEnv } from "../utilities/utilities";
+import { stringArrayInEnglish } from "../utilities/utilities";
 import { SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
 import { getFolderAndNameSuffix } from "./buildConfig";
 import configuration from "../configuration";
-import { CI_DISABLE_ASLR } from "./lldb";
+
+/** Options used to configure {@link makeDebugConfigurations}. */
+export interface WriteLaunchConfigurationsOptions {
+    /** Force the generation of launch configurations regardless of user settings. */
+    force?: boolean;
+
+    /** Automatically answer yes to update dialogs. */
+    yes?: boolean;
+}
 
 /**
  * Edit launch.json based on contents of Swift Package.
  * Adds launch configurations based on the executables in Package.swift.
  *
  * @param ctx folder context to create launch configurations for
- * @param yes automatically answer yes to dialogs
+ * @param options the options used to configure behavior of this function
+ * @returns a boolean indicating whether or not launch configurations were actually updated
  */
 export async function makeDebugConfigurations(
     ctx: FolderContext,
-    message?: string,
-    yes = false
+    options: WriteLaunchConfigurationsOptions = {}
 ): Promise<boolean> {
-    if (!configuration.folder(ctx.workspaceFolder).autoGenerateLaunchConfigurations) {
+    if (
+        !options.force &&
+        !configuration.folder(ctx.workspaceFolder).autoGenerateLaunchConfigurations
+    ) {
         return false;
     }
+
     const wsLaunchSection = vscode.workspace.getConfiguration("launch", ctx.folder);
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
-    // list of keys that can be updated in config merge
-    const keysToUpdate = [
-        "program",
-        "cwd",
-        "preLaunchTask",
-        "type",
-        "disableASLR",
-        "initCommands",
-        `env.${swiftLibraryPathKey()}`,
-    ];
-    const configUpdates: { index: number; config: vscode.DebugConfiguration }[] = [];
 
-    const configs = await createExecutableConfigurations(ctx);
-    let edited = false;
-    for (const config of configs) {
-        const index = launchConfigs.findIndex(c => c.name === config.name);
-        if (index !== -1) {
-            // deep clone config and update with keys from calculated config
-            const newConfig: vscode.DebugConfiguration = JSON.parse(
-                JSON.stringify(launchConfigs[index])
-            );
-            updateConfigWithNewKeys(newConfig, config, keysToUpdate);
+    // Determine which launch configurations need updating/creating
+    const configsToCreate: vscode.DebugConfiguration[] = [];
+    const configsToUpdate: { index: number; config: vscode.DebugConfiguration }[] = [];
+    for (const generatedConfig of await createExecutableConfigurations(ctx)) {
+        const index = launchConfigs.findIndex(c => c.name === generatedConfig.name);
+        if (index === -1) {
+            configsToCreate.push(generatedConfig);
+            continue;
+        }
 
-            // if original config is different from new config
-            if (JSON.stringify(launchConfigs[index]) !== JSON.stringify(newConfig)) {
-                configUpdates.push({ index: index, config: newConfig });
-            }
-        } else {
-            launchConfigs.push(config);
-            edited = true;
+        // deep clone the existing config and update with keys from generated config
+        const config = structuredClone(launchConfigs[index]);
+        updateConfigWithNewKeys(config, generatedConfig, [
+            "program",
+            "cwd",
+            "preLaunchTask",
+            "type",
+        ]);
+
+        // Check to see if the config has changed
+        if (!isDeepStrictEqual(launchConfigs[index], config)) {
+            configsToUpdate.push({ index, config });
         }
     }
 
-    if (configUpdates.length > 0) {
-        if (!yes) {
+    // Create/Update launch configurations if necessary
+    let needsUpdate = false;
+    if (configsToCreate.length > 0) {
+        launchConfigs.push(...configsToCreate);
+        needsUpdate = true;
+    }
+    if (configsToUpdate.length > 0) {
+        let answer: "Update" | "Cancel" | undefined = options.yes ? "Update" : undefined;
+        if (!answer) {
             const configUpdateNames = stringArrayInEnglish(
-                configUpdates.map(update => update.config.name)
+                configsToUpdate.map(update => update.config.name)
             );
-            const warningMessage =
-                message ??
-                `The Swift extension would like to update launch configurations '${configUpdateNames}'.`;
-            const answer = await vscode.window.showWarningMessage(
+            const warningMessage = `The Swift extension would like to update launch configurations '${configUpdateNames}'.`;
+            answer = await vscode.window.showWarningMessage(
                 `${ctx.name}: ${warningMessage} Do you want to update?`,
                 "Update",
                 "Cancel"
             );
-            if (answer === "Update") {
-                yes = true;
-            }
         }
-        if (yes) {
-            configUpdates.forEach(update => (launchConfigs[update.index] = update.config));
-            edited = true;
+
+        if (answer === "Update") {
+            configsToUpdate.forEach(update => (launchConfigs[update.index] = update.config));
+            needsUpdate = true;
         }
     }
 
-    if (edited) {
-        await wsLaunchSection.update(
-            "configurations",
-            launchConfigs,
-            vscode.ConfigurationTarget.WorkspaceFolder
-        );
+    if (!needsUpdate) {
+        return false;
     }
+
+    await wsLaunchSection.update(
+        "configurations",
+        launchConfigs,
+        vscode.ConfigurationTarget.WorkspaceFolder
+    );
     return true;
 }
 
@@ -142,8 +153,6 @@ async function createExecutableConfigurations(
             request: "launch",
             args: [],
             cwd: folder,
-            env: swiftRuntimeEnv(true),
-            ...CI_DISABLE_ASLR,
         };
         return [
             {
@@ -182,9 +191,7 @@ export function createSnippetConfiguration(
         program: path.posix.join(buildDirectory, "debug", snippetName),
         args: [],
         cwd: folder,
-        env: swiftRuntimeEnv(true),
         runType: "snippet",
-        ...CI_DISABLE_ASLR,
     };
 }
 
@@ -218,36 +225,17 @@ export async function debugLaunchConfig(
     });
 }
 
-/** Return the base configuration with (nested) keys updated with the new one. */
+/** Update the provided debug configuration with keys from a newly generated configuration. */
 function updateConfigWithNewKeys(
-    baseConfiguration: vscode.DebugConfiguration,
-    newConfiguration: vscode.DebugConfiguration,
+    oldConfig: vscode.DebugConfiguration,
+    newConfig: vscode.DebugConfiguration,
     keys: string[]
 ) {
-    keys.forEach(key => {
-        // We're manually handling `undefined`s during nested update, so even if the depth
-        // is restricted to 2, the implementation still looks a bit messy.
-        if (key.includes(".")) {
-            const [mainKey, subKey] = key.split(".", 2);
-            if (baseConfiguration[mainKey] === undefined) {
-                // { mainKey: unknown | undefined } -> { mainKey: undefined }
-                baseConfiguration[mainKey] = newConfiguration[mainKey];
-            } else if (newConfiguration[mainKey] === undefined) {
-                const subKeys = Object.keys(baseConfiguration[mainKey]);
-                if (subKeys.length === 1 && subKeys[0] === subKey) {
-                    // { mainKey: undefined } -> { mainKey: { subKey: unknown } }
-                    baseConfiguration[mainKey] = undefined;
-                } else {
-                    // { mainKey: undefined } -> { mainKey: { subKey: unknown | undefined, ... } }
-                    baseConfiguration[mainKey][subKey] = undefined;
-                }
-            } else {
-                // { mainKey: { subKey: unknown | undefined } } -> { mainKey: { subKey: unknown | undefined, ... } }
-                baseConfiguration[mainKey][subKey] = newConfiguration[mainKey][subKey];
-            }
-        } else {
-            // { key: unknown | undefined } -> { key: unknown | undefined, ... }
-            baseConfiguration[key] = newConfiguration[key];
+    for (const key of keys) {
+        if (newConfig[key] === undefined) {
+            delete oldConfig[key];
+            continue;
         }
-    });
+        oldConfig[key] = newConfig[key];
+    }
 }

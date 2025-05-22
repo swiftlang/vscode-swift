@@ -35,6 +35,11 @@ interface ContextKeys {
     hasPackage: boolean;
 
     /**
+     * Whether the workspace folder contains a Swift package with at least one executable product.
+     */
+    hasExecutableProduct: boolean;
+
+    /**
      * Whether the Swift package has any dependencies to display in the Package Dependencies view.
      */
     packageHasDependencies: boolean;
@@ -94,6 +99,7 @@ interface ContextKeys {
 function createContextKeys(): ContextKeys {
     let isActivated: boolean = false;
     let hasPackage: boolean = false;
+    let hasExecutableProduct: boolean = false;
     let flatDependenciesList: boolean = false;
     let packageHasDependencies: boolean = false;
     let packageHasPlugins: boolean = false;
@@ -132,6 +138,15 @@ function createContextKeys(): ContextKeys {
         set hasPackage(value: boolean) {
             hasPackage = value;
             vscode.commands.executeCommand("setContext", "swift.hasPackage", value);
+        },
+
+        get hasExecutableProduct() {
+            return hasExecutableProduct;
+        },
+
+        set hasExecutableProduct(value: boolean) {
+            hasExecutableProduct = value;
+            vscode.commands.executeCommand("setContext", "swift.hasExecutableTarget", value);
         },
 
         get packageHasDependencies() {
