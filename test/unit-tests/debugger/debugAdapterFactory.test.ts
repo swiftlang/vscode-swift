@@ -152,6 +152,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 update: mockFn(),
             });
             mockWorkspace.getConfiguration.returns(instance(mockLldbConfiguration));
+            mockLLDB.updateLaunchConfigForCI.returnsArg(0);
             mockLLDB.getLLDBLibPath.resolves(Result.makeSuccess("/path/to/liblldb.dyLib"));
             mockDebuggerConfig.setupCodeLLDB = "prompt";
             mockDebugAdapter.getLaunchConfigType.returns(LaunchConfigType.CODE_LLDB);
