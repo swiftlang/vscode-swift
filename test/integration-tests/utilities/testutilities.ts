@@ -238,7 +238,7 @@ const extensionBootstrapper = (() => {
             lastTestName = undefined;
         },
 
-        activateExtensionForSuite: async function (config?: {
+        activateExtensionForSuite: function (config?: {
             setup?: (
                 this: Mocha.Context,
                 ctx: WorkspaceContext
@@ -259,7 +259,7 @@ const extensionBootstrapper = (() => {
             );
         },
 
-        activateExtensionForTest: async function (config?: {
+        activateExtensionForTest: function (config?: {
             setup?: (
                 this: Mocha.Context,
                 ctx: WorkspaceContext

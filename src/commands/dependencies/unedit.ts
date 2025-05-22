@@ -60,7 +60,7 @@ async function uneditFolderDependency(
         );
         await folder.taskQueue.queueOperation(uneditOperation);
 
-        ctx.fireEvent(folder, FolderOperation.resolvedUpdated);
+        await ctx.fireEvent(folder, FolderOperation.resolvedUpdated);
         // find workspace folder, and check folder still exists
         const folderIndex = vscode.workspace.workspaceFolders?.findIndex(
             item => item.name === identifier

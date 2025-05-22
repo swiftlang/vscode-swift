@@ -30,7 +30,7 @@ export async function createNewProject(toolchain: SwiftToolchain | undefined): P
     // run before the Swift extension is activated. Show the toolchain error notification in
     // this case.
     if (!toolchain) {
-        showToolchainError();
+        void showToolchainError();
         return;
     }
 

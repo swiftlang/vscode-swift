@@ -88,7 +88,7 @@ export class TestCoverage {
                 this.coverageDetails.set(uri, detailedCoverage);
             }
         }
-        this.lcovTmpFiles.dispose();
+        await this.lcovTmpFiles.dispose();
     }
 
     /**

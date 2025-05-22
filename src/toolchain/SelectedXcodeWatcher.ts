@@ -52,7 +52,7 @@ export class SelectedXcodeWatcher implements vscode.Disposable {
         }
 
         // Deliberately not awaiting this, as we don't want to block the extension activation.
-        this.setup();
+        void this.setup();
     }
 
     dispose() {

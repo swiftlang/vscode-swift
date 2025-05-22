@@ -133,7 +133,7 @@ export class WorkspaceContext implements vscode.Disposable {
                     break;
                 case FolderOperation.focus:
                     this.updateContextKeys(event.folder);
-                    this.updateContextKeysForFile();
+                    void this.updateContextKeysForFile();
                     break;
                 case FolderOperation.unfocus:
                     this.updateContextKeys(event.folder);
@@ -233,7 +233,7 @@ export class WorkspaceContext implements vscode.Disposable {
             return;
         }
 
-        Promise.all([
+        void Promise.all([
             folderContext.swiftPackage.foundPackage,
             folderContext.swiftPackage.executableProducts,
             folderContext.swiftPackage.dependencies,
@@ -259,7 +259,7 @@ export class WorkspaceContext implements vscode.Disposable {
 
         if (this.currentFolder) {
             const languageClient = this.languageClientManager.get(this.currentFolder);
-            languageClient.useLanguageClient(async client => {
+            await languageClient.useLanguageClient(async client => {
                 const experimentalCaps = client.initializeResult?.capabilities.experimental;
                 if (!experimentalCaps) {
                     contextKeys.supportsReindexing = false;
@@ -299,7 +299,7 @@ export class WorkspaceContext implements vscode.Disposable {
                 console.log("Trying to run onDidChangeWorkspaceFolders on deleted context");
                 return;
             }
-            this.onDidChangeWorkspaceFolders(event);
+            void this.onDidChangeWorkspaceFolders(event);
         });
         // add event listener for when the active edited text document changes
         const onDidChangeActiveWindow = vscode.window.onDidChangeActiveTextEditor(async editor => {
@@ -330,7 +330,7 @@ export class WorkspaceContext implements vscode.Disposable {
                 await this.focusFolder(null);
             }
         }
-        this.initialisationComplete();
+        await this.initialisationComplete();
     }
 
     /**
@@ -453,7 +453,7 @@ export class WorkspaceContext implements vscode.Disposable {
             // if current folder is this folder send unfocus event by setting
             // current folder to undefined
             if (this.currentFolder === folder) {
-                this.focusFolder(null);
+                await this.focusFolder(null);
             }
             // run observer functions in reverse order when removing
             const observersReversed = [...this.observers];
@@ -522,10 +522,10 @@ export class WorkspaceContext implements vscode.Disposable {
         }
     }
 
-    private initialisationComplete() {
+    private async initialisationComplete() {
         this.initialisationFinished = true;
         if (this.lastFocusUri) {
-            this.focusUri(this.lastFocusUri);
+            await this.focusUri(this.lastFocusUri);
             this.lastFocusUri = undefined;
         }
     }

@@ -81,9 +81,9 @@ export class TaskManager implements vscode.Disposable {
             // one will run. The startingTaskPromise is setup when a executeTask is
             // called and resolved at the point it actually starts
             if (this.startingTaskPromise) {
-                this.startingTaskPromise.then(() => {
-                    this.executeTaskAndResolve(task, resolve, reject, token);
-                });
+                void this.startingTaskPromise.then(() =>
+                    this.executeTaskAndResolve(task, resolve, reject, token)
+                );
             } else {
                 this.executeTaskAndResolve(task, resolve, reject, token);
             }

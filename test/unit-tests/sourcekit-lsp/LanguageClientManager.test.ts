@@ -594,7 +594,7 @@ suite("LanguageClientManager Suite", () => {
 
             const activeDocumentManager = new LSPActiveDocumentManager();
             activeDocumentManager.activateDidChangeActiveDocument(instance(languageClientMock));
-            activeDocumentManager.didOpen(document, async () => {});
+            await activeDocumentManager.didOpen(document, async () => {});
 
             if (_listener) {
                 _listener(instance(mockObject<vscode.TextEditor>({ document })));
@@ -625,7 +625,7 @@ suite("LanguageClientManager Suite", () => {
             await waitForReturnedPromises(languageClientMock.start);
 
             const activeDocumentManager = new LSPActiveDocumentManager();
-            activeDocumentManager.didOpen(document, async () => {});
+            await activeDocumentManager.didOpen(document, async () => {});
 
             activeDocumentManager.activateDidChangeActiveDocument(instance(languageClientMock));
 

@@ -46,9 +46,9 @@ suite("MockUtils Test Suite", () => {
                 });
                 values.push(num);
             });
-            stubbedFn(1);
-            stubbedFn(2);
-            stubbedFn(3);
+            void stubbedFn(1);
+            void stubbedFn(2);
+            void stubbedFn(3);
 
             expect(values).to.deep.equal([]);
             await waitForReturnedPromises(stubbedFn);

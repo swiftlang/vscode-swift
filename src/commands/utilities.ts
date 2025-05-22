@@ -71,6 +71,6 @@ export function updateAfterError(result: boolean, folderContext: FolderContext) 
     folderContext.hasResolveErrors = !result;
 
     if (triggerResolvedUpdatedEvent && !folderContext.hasResolveErrors) {
-        folderContext.fireEvent(FolderOperation.resolvedUpdated);
+        void folderContext.fireEvent(FolderOperation.resolvedUpdated);
     }
 }

@@ -241,7 +241,7 @@ suite("DiagnosticsManager Test Suite", function () {
 
                         // Clean up any lingering diagnostics
                         workspaceContext.diagnostics.clear();
-                        workspaceContext.focusFolder(null);
+                        await workspaceContext.focusFolder(null);
 
                         resetSettings = await updateSettings({ "swift.diagnosticsStyle": style });
                     });

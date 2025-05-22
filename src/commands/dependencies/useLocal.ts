@@ -73,7 +73,7 @@ export async function useLocalDependency(
         true
     );
     if (success) {
-        ctx.fireEvent(currentFolder, FolderOperation.resolvedUpdated);
+        await ctx.fireEvent(currentFolder, FolderOperation.resolvedUpdated);
     }
     return success;
 }

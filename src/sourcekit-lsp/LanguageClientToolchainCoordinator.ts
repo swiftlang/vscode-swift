@@ -45,7 +45,7 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
         // This is mainly for testing purposes, as this class should be created immediately
         // when the extension is activated and the workspace context is first created.
         for (const folder of workspaceContext.folders) {
-            this.handleEvent(folder, FolderOperation.add, languageClientFactory);
+            void this.handleEvent(folder, FolderOperation.add, languageClientFactory);
         }
     }
 

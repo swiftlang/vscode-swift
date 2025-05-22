@@ -11,6 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+/* eslint-disable @typescript-eslint/no-floating-promises */
 
 import { RenderNode, WebviewContent, WebviewMessage } from "./WebviewMessage";
 import { createCommunicationBridge } from "./CommunicationBridge";
