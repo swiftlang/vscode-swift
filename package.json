@@ -101,6 +101,11 @@
     ],
     "commands": [
       {
+        "command": "swift.generateLaunchConfigurations",
+        "title": "Generate Launch Configurations",
+        "category": "Swift"
+      },
+      {
         "command": "swift.previewDocumentation",
         "title": "Preview Documentation",
         "category": "Swift",
@@ -886,6 +891,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "swift.generateLaunchConfigurations",
+          "when": "swift.hasPackage"
+        },
         {
           "command": "swift.previewDocumentation",
           "when": "swift.supportsDocumentationLivePreview"

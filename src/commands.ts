@@ -47,6 +47,7 @@ import { TestKind } from "./TestExplorer/TestKind";
 import { pickProcess } from "./commands/pickProcess";
 import { openDocumentation } from "./commands/openDocumentation";
 import restartLSPServer from "./commands/restartLSPServer";
+import { generateLaunchConfigurations } from "./commands/generateLaunchConfigurations";
 
 /**
  * References:
@@ -105,6 +106,9 @@ export enum Commands {
  */
 export function register(ctx: WorkspaceContext): vscode.Disposable[] {
     return [
+        vscode.commands.registerCommand("swift.generateLaunchConfigurations", () =>
+            generateLaunchConfigurations(ctx)
+        ),
         vscode.commands.registerCommand("swift.newFile", uri => newSwiftFile(uri)),
         vscode.commands.registerCommand(Commands.RESOLVE_DEPENDENCIES, () =>
             resolveDependencies(ctx)

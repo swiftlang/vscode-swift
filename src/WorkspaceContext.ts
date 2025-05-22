@@ -101,7 +101,7 @@ export class WorkspaceContext implements vscode.Disposable {
                     .then(async selected => {
                         if (selected === "Update") {
                             this.folders.forEach(ctx =>
-                                makeDebugConfigurations(ctx, undefined, true)
+                                makeDebugConfigurations(ctx, { yes: true })
                             );
                         }
                     });
@@ -120,7 +120,7 @@ export class WorkspaceContext implements vscode.Disposable {
                     .then(selected => {
                         if (selected === "Update") {
                             this.folders.forEach(ctx =>
-                                makeDebugConfigurations(ctx, undefined, true)
+                                makeDebugConfigurations(ctx, { yes: true })
                             );
                         }
                     });
