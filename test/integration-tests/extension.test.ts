@@ -16,7 +16,7 @@ import * as assert from "assert";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { getBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { SwiftExecution } from "../../src/tasks/SwiftExecution";
-import { activateExtensionForTest } from "./utilities/testutilities";
+import { activateExtensionForTest, findFolderInWorkspace } from "./utilities/testutilities";
 import { expect } from "chai";
 
 suite("Extension Test Suite", function () {
@@ -47,7 +47,7 @@ suite("Extension Test Suite", function () {
         this.timeout(60000);
         /** Verify tasks.json is being loaded */
         test("Tasks.json", async () => {
-            const folder = workspaceContext.folders.find(f => f.name === "test/defaultPackage");
+            const folder = findFolderInWorkspace("defaultPackage", workspaceContext);
             assert(folder);
             const buildAllTask = await getBuildAllTask(folder);
             const execution = buildAllTask.execution as SwiftExecution;

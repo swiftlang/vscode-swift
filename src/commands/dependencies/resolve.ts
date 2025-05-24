@@ -17,6 +17,7 @@ import { FolderContext } from "../../FolderContext";
 import { createSwiftTask, SwiftTaskProvider } from "../../tasks/SwiftTaskProvider";
 import { WorkspaceContext } from "../../WorkspaceContext";
 import { executeTaskWithUI, updateAfterError } from "../utilities";
+import { packageName } from "../../utilities/tasks";
 
 /**
  * Executes a {@link vscode.Task task} to resolve this package's dependencies.
@@ -43,7 +44,7 @@ export async function resolveFolderDependencies(
         {
             cwd: folderContext.folder,
             scope: folderContext.workspaceFolder,
-            prefix: folderContext.name,
+            packageName: packageName(folderContext),
             presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
         },
         folderContext.toolchain
