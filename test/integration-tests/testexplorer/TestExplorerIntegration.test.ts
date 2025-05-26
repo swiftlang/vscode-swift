@@ -434,6 +434,7 @@ suite("Test Explorer Suite", function () {
                         "PackageTests.MixedXCTestSuite/testPassing"
                     );
 
+                    await testExplorer.folderContext.workspaceContext.focusFolder(null);
                     await testExplorer.folderContext.workspaceContext.focusFolder(
                         testExplorer.folderContext
                     );
@@ -441,11 +442,14 @@ suite("Test Explorer Suite", function () {
                     // Stub the showInputBox method to return the input text
                     windowMock.showInputBox.resolves(`${numIterations}`);
 
-                    vscode.commands.executeCommand(Commands.RUN_TESTS_MULTIPLE_TIMES, testItems[0]);
+                    const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
 
-                    const testRun = await eventPromise(testExplorer.onCreateTestRun);
+                    await vscode.commands.executeCommand(
+                        Commands.RUN_TESTS_MULTIPLE_TIMES,
+                        testItems[0]
+                    );
 
-                    await eventPromise(testRun.onTestRunComplete);
+                    const testRun = await testRunPromise;
 
                     assertTestResults(testRun, {
                         passed: [
@@ -568,6 +572,7 @@ suite("Test Explorer Suite", function () {
                         "PackageTests.PassingXCTestSuite/testPassing"
                     );
 
+                    await testExplorer.folderContext.workspaceContext.focusFolder(null);
                     await testExplorer.folderContext.workspaceContext.focusFolder(
                         testExplorer.folderContext
                     );
@@ -575,11 +580,14 @@ suite("Test Explorer Suite", function () {
                     // Stub the showInputBox method to return the input text
                     windowMock.showInputBox.resolves(`${numIterations}`);
 
-                    vscode.commands.executeCommand(Commands.RUN_TESTS_MULTIPLE_TIMES, testItems[0]);
+                    const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
 
-                    const testRun = await eventPromise(testExplorer.onCreateTestRun);
+                    await vscode.commands.executeCommand(
+                        Commands.RUN_TESTS_MULTIPLE_TIMES,
+                        testItems[0]
+                    );
 
-                    await eventPromise(testRun.onTestRunComplete);
+                    const testRun = await testRunPromise;
 
                     assertTestResults(testRun, {
                         passed: [
