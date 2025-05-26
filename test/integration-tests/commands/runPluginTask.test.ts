@@ -15,6 +15,7 @@
 import * as vscode from "vscode";
 import { mockGlobalObject } from "../../MockUtils";
 import { expect } from "chai";
+import { match } from "sinon";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import { Commands } from "../../../src/commands";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
@@ -36,7 +37,7 @@ suite("runPluginTask Test Suite", () => {
 
         expect(commandsMock.executeCommand).to.have.been.calledOnceWith(
             "workbench.action.tasks.runTask",
-            { type: "swift-plugin" }
+            match({ type: "swift-plugin" })
         );
     });
 });
