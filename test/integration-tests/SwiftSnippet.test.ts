@@ -103,7 +103,7 @@ suite("SwiftSnippet Test Suite @slow", function () {
         // Once bp is hit, continue
         await bpPromise;
         let succeeded = false;
-        succeededPromise.then(s => (succeeded = s));
+        void succeededPromise.then(s => (succeeded = s));
         while (!succeeded) {
             try {
                 await continueSession();

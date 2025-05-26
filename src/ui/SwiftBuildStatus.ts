@@ -90,7 +90,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
                 );
             });
         if (showBuildStatus === "progress" || showBuildStatus === "notification") {
-            vscode.window.withProgress<void>(
+            void vscode.window.withProgress<void>(
                 {
                     location:
                         showBuildStatus === "progress"

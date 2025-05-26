@@ -56,6 +56,7 @@ async function cloneSwiftDocCRender(buildDirectory: string): Promise<string> {
     return swiftDocCRenderDirectory;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
 main(async () => {
     const outputDirectory = path.join(getRootDirectory(), "assets", "swift-docc-render");
     if (process.argv.includes("postinstall")) {

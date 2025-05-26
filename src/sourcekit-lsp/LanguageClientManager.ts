@@ -143,7 +143,7 @@ export class LanguageClientManager implements vscode.Disposable {
                 // Ignore configuration changes if SourceKit-LSP is disabled
                 return;
             }
-            vscode.window.showInformationMessage(message, restartLSPButton).then(selected => {
+            void vscode.window.showInformationMessage(message, restartLSPButton).then(selected => {
                 if (selected === restartLSPButton) {
                     void this.restart();
                 }
@@ -589,7 +589,7 @@ export class SourceKitLSPErrorHandler implements ErrorHandler {
             const diff = this.restarts[this.restarts.length - 1] - this.restarts[0];
             if (diff <= 3 * 60 * 1000) {
                 return new Promise<CloseHandlerResult>(resolve => {
-                    vscode.window
+                    void vscode.window
                         .showErrorMessage(
                             `The SourceKit-LSP server crashed ${
                                 this.maxRestartCount + 1

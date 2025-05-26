@@ -44,7 +44,7 @@ export async function newSwiftFile(
             await vscode.languages.setTextDocumentLanguage(document, "swift");
             await vscode.window.showTextDocument(document);
         } catch (err) {
-            vscode.window.showErrorMessage(`Failed to create ${targetUri.fsPath}`);
+            void vscode.window.showErrorMessage(`Failed to create ${targetUri.fsPath}`);
         }
     } else {
         // If no path is supplied then open an untitled editor w/ Swift language type

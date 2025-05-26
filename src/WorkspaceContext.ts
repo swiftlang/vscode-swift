@@ -92,7 +92,7 @@ export class WorkspaceContext implements vscode.Disposable {
                 if (!(await this.needToAutoGenerateLaunchConfig())) {
                     return;
                 }
-                vscode.window
+                void vscode.window
                     .showInformationMessage(
                         `Launch configurations need to be updated after changing the Swift runtime path. Custom versions of environment variable '${swiftLibraryPathKey()}' may be overridden. Do you want to update?`,
                         "Update",
@@ -111,7 +111,7 @@ export class WorkspaceContext implements vscode.Disposable {
                 if (!(await this.needToAutoGenerateLaunchConfig())) {
                     return;
                 }
-                vscode.window
+                void vscode.window
                     .showInformationMessage(
                         `Launch configurations need to be updated after changing the Swift build path. Do you want to update?`,
                         "Update",
@@ -154,7 +154,11 @@ export class WorkspaceContext implements vscode.Disposable {
                 event.exitCode !== undefined &&
                 configuration.actionAfterBuildError === "Focus Problems"
             ) {
-                vscode.commands.executeCommand("workbench.panel.markers.view.focus");
+                void vscode.commands
+                    .executeCommand("workbench.panel.markers.view.focus")
+                    .then(() => {
+                        /* Put in worker queue */
+                    });
             }
         });
         const swiftFileWatcher = vscode.workspace.createFileSystemWatcher("**/*.swift");

@@ -1021,8 +1021,7 @@ export class TestRunner {
                                     "Test Debugging Cancelled",
                                     this.folderContext.name
                                 );
-                                vscode.debug.stopDebugging(session);
-                                resolve();
+                                void vscode.debug.stopDebugging(session).then(() => resolve());
                             });
                             subscriptions.push(cancellation);
                         });
@@ -1051,11 +1050,9 @@ export class TestRunner {
                                                 // dispose terminate debug handler
                                                 subscriptions.forEach(sub => sub.dispose());
 
-                                                vscode.commands.executeCommand(
-                                                    "workbench.view.extension.test"
-                                                );
-
-                                                resolve();
+                                                void vscode.commands
+                                                    .executeCommand("workbench.view.extension.test")
+                                                    .then(() => resolve());
                                             });
                                         subscriptions.push(terminateSession);
                                     } else {

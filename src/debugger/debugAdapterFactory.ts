@@ -163,7 +163,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             const lldbDapPath = await DebugAdapter.getLLDBDebugAdapterPath(toolchain);
             // Verify that the debug adapter exists or bail otherwise
             if (!(await fileExists(lldbDapPath))) {
-                vscode.window.showErrorMessage(
+                void vscode.window.showErrorMessage(
                     `Cannot find the LLDB debug adapter in your Swift toolchain: No such file or directory "${lldbDapPath}"`
                 );
                 return undefined;
@@ -207,7 +207,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         const libLldbPathResult = await getLLDBLibPath(toolchain);
         if (!libLldbPathResult.success) {
             const errorMessage = `Error: ${getErrorDescription(libLldbPathResult.failure)}`;
-            vscode.window.showWarningMessage(
+            void vscode.window.showWarningMessage(
                 `Failed to setup CodeLLDB for debugging of Swift code. Debugging may produce unexpected results. ${errorMessage}`
             );
             this.outputChannel.log(`Failed to setup CodeLLDB: ${errorMessage}`);

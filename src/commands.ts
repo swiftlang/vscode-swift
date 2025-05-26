@@ -216,9 +216,9 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand("swift.openEducationalNote", uri =>
             openEducationalNote(uri)
         ),
-        vscode.commands.registerCommand(Commands.OPEN_MANIFEST, (uri: vscode.Uri) => {
+        vscode.commands.registerCommand(Commands.OPEN_MANIFEST, async (uri: vscode.Uri) => {
             const packagePath = path.join(uri.fsPath, "Package.swift");
-            vscode.commands.executeCommand("vscode.open", vscode.Uri.file(packagePath));
+            await vscode.commands.executeCommand("vscode.open", vscode.Uri.file(packagePath));
         }),
         vscode.commands.registerCommand("swift.openDocumentation", () => openDocumentation()),
     ];

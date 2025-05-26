@@ -76,7 +76,7 @@ export async function captureDiagnostics(
             await showCapturedDiagnosticsResults(diagnosticsDir);
         }
     } catch (error) {
-        vscode.window.showErrorMessage(`Unable to capture diagnostic logs: ${error}`);
+        void vscode.window.showErrorMessage(`Unable to capture diagnostic logs: ${error}`);
     }
 }
 
@@ -149,12 +149,12 @@ async function showCapturedDiagnosticsResults(diagnosticsDir: string) {
         copyPath
     );
     if (result === copyPath) {
-        vscode.env.clipboard.writeText(diagnosticsDir);
+        await vscode.env.clipboard.writeText(diagnosticsDir);
     } else if (result === showInFinderButton) {
         exec(showDirectoryCommand(diagnosticsDir), error => {
             // Opening the explorer on windows returns an exit code of 1 despite opening successfully.
             if (error && process.platform !== "win32") {
-                vscode.window.showErrorMessage(
+                void vscode.window.showErrorMessage(
                     `Failed to open ${showCommandType()}: ${error.message}`
                 );
             }

@@ -51,7 +51,7 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Dispos
                     this.writeEmitter.fire(data.replace(/\n(\r)?/g, "\n\r"));
                 }),
                 this.swiftProcess.onDidThrowError(e => {
-                    vscode.window.showErrorMessage(
+                    void vscode.window.showErrorMessage(
                         `Failed to run Swift command "${this.commandLine}":\n${e}`
                     );
                     this.closeEmitter.fire();

@@ -32,7 +32,7 @@ export const runTask = async (ctx: WorkspaceContext, name: string) => {
     }
 
     if (!task) {
-        vscode.window.showErrorMessage(`Task "${name}" not found`);
+        void vscode.window.showErrorMessage(`Task "${name}" not found`);
         return;
     }
 

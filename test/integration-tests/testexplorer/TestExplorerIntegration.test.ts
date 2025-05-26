@@ -511,7 +511,7 @@ suite("Test Explorer Suite", function () {
                 const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
 
                 // Deliberately don't await this so we can cancel it.
-                targetProfile.runHandler(request, tokenSource.token);
+                void targetProfile.runHandler(request, tokenSource.token);
 
                 const testRun = await testRunPromise;
 

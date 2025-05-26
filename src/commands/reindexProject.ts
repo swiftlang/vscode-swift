@@ -38,7 +38,7 @@ export async function reindexProject(
                 "Close"
             );
             if (result === "Report Issue") {
-                vscode.commands.executeCommand(
+                await vscode.commands.executeCommand(
                     "vscode.open",
                     vscode.Uri.parse(
                         "https://github.com/swiftlang/sourcekit-lsp/issues/new?template=BUG_REPORT.yml&title=Symbol%20Indexing%20Issue"
@@ -49,11 +49,11 @@ export async function reindexProject(
             const error = err as { code: number; message: string };
             // methodNotFound, version of sourcekit-lsp is likely too old.
             if (error.code === -32601) {
-                vscode.window.showWarningMessage(
+                void vscode.window.showWarningMessage(
                     "The installed version of SourceKit-LSP does not support background indexing."
                 );
             } else {
-                vscode.window.showWarningMessage(error.message);
+                void vscode.window.showWarningMessage(error.message);
             }
         }
     });

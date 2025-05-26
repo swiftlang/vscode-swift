@@ -33,6 +33,7 @@ const repository = process.env["GITHUB_REPOSITORY"] || "swiftlang/vscode-swift";
 const owner = repository.split("/")[0];
 const repo = repository.split("/")[1];
 
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async function () {
     const octokit = new Octokit({
         auth: token,

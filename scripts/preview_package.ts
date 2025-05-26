@@ -28,6 +28,7 @@ function formatDate(date: Date): string {
     return year + month + day;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
 main(async () => {
     const rootDirectory = getRootDirectory();
     const version = await getExtensionVersion();

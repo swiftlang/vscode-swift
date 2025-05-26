@@ -15,6 +15,7 @@
 
 import { exec, getExtensionVersion, getRootDirectory, main } from "./lib/utilities";
 
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
 main(async () => {
     const rootDirectory = getRootDirectory();
     const version = await getExtensionVersion();

@@ -143,7 +143,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         if (message.type === "update-content") {
             this.updateContentEmitter.fire(message.content);
         }
-        this.webviewPanel.webview.postMessage(message);
+        void this.webviewPanel.webview.postMessage(message);
     }
 
     private receiveMessage(message: WebviewMessage) {
