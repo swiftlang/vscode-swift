@@ -106,75 +106,98 @@ export enum Commands {
  */
 export function register(ctx: WorkspaceContext): vscode.Disposable[] {
     return [
-        vscode.commands.registerCommand("swift.generateLaunchConfigurations", () =>
-            generateLaunchConfigurations(ctx)
+        vscode.commands.registerCommand(
+            "swift.generateLaunchConfigurations",
+            async () => await generateLaunchConfigurations(ctx)
         ),
-        vscode.commands.registerCommand("swift.newFile", uri => newSwiftFile(uri)),
-        vscode.commands.registerCommand(Commands.RESOLVE_DEPENDENCIES, () =>
-            resolveDependencies(ctx)
+        vscode.commands.registerCommand("swift.newFile", async uri => await newSwiftFile(uri)),
+        vscode.commands.registerCommand(
+            Commands.RESOLVE_DEPENDENCIES,
+            async () => await resolveDependencies(ctx)
         ),
-        vscode.commands.registerCommand(Commands.UPDATE_DEPENDENCIES, () =>
-            updateDependencies(ctx)
+        vscode.commands.registerCommand(
+            Commands.UPDATE_DEPENDENCIES,
+            async () => await updateDependencies(ctx)
         ),
-        vscode.commands.registerCommand(Commands.RUN, target =>
-            runBuild(ctx, ...unwrapTreeItem(target))
+        vscode.commands.registerCommand(
+            Commands.RUN,
+            async target => await runBuild(ctx, ...unwrapTreeItem(target))
         ),
-        vscode.commands.registerCommand(Commands.DEBUG, target =>
-            debugBuild(ctx, ...unwrapTreeItem(target))
+        vscode.commands.registerCommand(
+            Commands.DEBUG,
+            async target => await debugBuild(ctx, ...unwrapTreeItem(target))
         ),
-        vscode.commands.registerCommand(Commands.CLEAN_BUILD, () => cleanBuild(ctx)),
-        vscode.commands.registerCommand(Commands.RUN_TESTS_MULTIPLE_TIMES, item => {
+        vscode.commands.registerCommand(Commands.CLEAN_BUILD, async () => await cleanBuild(ctx)),
+        vscode.commands.registerCommand(Commands.RUN_TESTS_MULTIPLE_TIMES, async item => {
             if (ctx.currentFolder) {
-                return runTestMultipleTimes(ctx.currentFolder, item, false);
+                return await runTestMultipleTimes(ctx.currentFolder, item, false);
             }
         }),
-        vscode.commands.registerCommand("swift.runTestsUntilFailure", item => {
+        vscode.commands.registerCommand("swift.runTestsUntilFailure", async item => {
             if (ctx.currentFolder) {
-                return runTestMultipleTimes(ctx.currentFolder, item, true);
+                return await runTestMultipleTimes(ctx.currentFolder, item, true);
             }
         }),
         // Note: switchPlatform is only available on macOS and Swift 6.1 or later
         // (gated in `package.json`) because it's the only OS and toolchain combination that
         // has Darwin SDKs available and supports code editing with SourceKit-LSP
-        vscode.commands.registerCommand("swift.switchPlatform", () => switchPlatform(ctx)),
-        vscode.commands.registerCommand(Commands.RESET_PACKAGE, () => resetPackage(ctx)),
-        vscode.commands.registerCommand("swift.runScript", () => runSwiftScript(ctx)),
-        vscode.commands.registerCommand("swift.openPackage", () => {
+        vscode.commands.registerCommand(
+            "swift.switchPlatform",
+            async () => await switchPlatform(ctx)
+        ),
+        vscode.commands.registerCommand(
+            Commands.RESET_PACKAGE,
+            async () => await resetPackage(ctx)
+        ),
+        vscode.commands.registerCommand("swift.runScript", async () => await runSwiftScript(ctx)),
+        vscode.commands.registerCommand("swift.openPackage", async () => {
             if (ctx.currentFolder) {
-                return openPackage(ctx.currentFolder.swiftVersion, ctx.currentFolder.folder);
+                return await openPackage(ctx.currentFolder.swiftVersion, ctx.currentFolder.folder);
             }
         }),
-        vscode.commands.registerCommand(Commands.RUN_SNIPPET, target =>
-            runSnippet(ctx, ...unwrapTreeItem(target))
+        vscode.commands.registerCommand(
+            Commands.RUN_SNIPPET,
+            async target => await runSnippet(ctx, ...unwrapTreeItem(target))
         ),
-        vscode.commands.registerCommand(Commands.DEBUG_SNIPPET, target =>
-            debugSnippet(ctx, ...unwrapTreeItem(target))
+        vscode.commands.registerCommand(
+            Commands.DEBUG_SNIPPET,
+            async target => await debugSnippet(ctx, ...unwrapTreeItem(target))
         ),
-        vscode.commands.registerCommand(Commands.RUN_PLUGIN_TASK, () => runPluginTask()),
-        vscode.commands.registerCommand(Commands.RUN_TASK, name => runTask(ctx, name)),
-        vscode.commands.registerCommand(Commands.RESTART_LSP, () => restartLSPServer(ctx)),
-        vscode.commands.registerCommand("swift.reindexProject", () => reindexProject(ctx)),
-        vscode.commands.registerCommand("swift.insertFunctionComment", () =>
-            insertFunctionComment(ctx)
+        vscode.commands.registerCommand(
+            Commands.RUN_PLUGIN_TASK,
+            async () => await runPluginTask()
         ),
-        vscode.commands.registerCommand(Commands.USE_LOCAL_DEPENDENCY, (item, dep) => {
+        vscode.commands.registerCommand(Commands.RUN_TASK, async name => await runTask(ctx, name)),
+        vscode.commands.registerCommand(
+            Commands.RESTART_LSP,
+            async () => await restartLSPServer(ctx)
+        ),
+        vscode.commands.registerCommand(
+            "swift.reindexProject",
+            async () => await reindexProject(ctx)
+        ),
+        vscode.commands.registerCommand(
+            "swift.insertFunctionComment",
+            async () => await insertFunctionComment(ctx)
+        ),
+        vscode.commands.registerCommand(Commands.USE_LOCAL_DEPENDENCY, async (item, dep) => {
             if (item instanceof PackageNode) {
-                return useLocalDependency(item.name, ctx, dep);
+                return await useLocalDependency(item.name, ctx, dep);
             }
         }),
-        vscode.commands.registerCommand("swift.editDependency", item => {
+        vscode.commands.registerCommand("swift.editDependency", async item => {
             if (item instanceof PackageNode) {
-                return editDependency(item.name, ctx);
+                return await editDependency(item.name, ctx);
             }
         }),
-        vscode.commands.registerCommand(Commands.UNEDIT_DEPENDENCY, item => {
+        vscode.commands.registerCommand(Commands.UNEDIT_DEPENDENCY, async item => {
             if (item instanceof PackageNode) {
-                return uneditDependency(item.name, ctx);
+                return await uneditDependency(item.name, ctx);
             }
         }),
-        vscode.commands.registerCommand("swift.openInWorkspace", item => {
+        vscode.commands.registerCommand("swift.openInWorkspace", async item => {
             if (item instanceof PackageNode) {
-                return openInWorkspace(item);
+                return await openInWorkspace(item);
             }
         }),
         vscode.commands.registerCommand("swift.openExternal", item => {
@@ -186,7 +209,10 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand("swift.clearDiagnosticsCollection", () =>
             ctx.diagnostics.clear()
         ),
-        vscode.commands.registerCommand("swift.captureDiagnostics", () => captureDiagnostics(ctx)),
+        vscode.commands.registerCommand(
+            "swift.captureDiagnostics",
+            async () => await captureDiagnostics(ctx)
+        ),
         vscode.commands.registerCommand(
             Commands.RUN_ALL_TESTS_PARALLEL,
             async item => await runAllTests(ctx, TestKind.parallel, ...unwrapTreeItem(item))
