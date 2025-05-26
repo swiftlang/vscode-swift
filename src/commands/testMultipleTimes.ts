@@ -30,6 +30,7 @@ export async function runTestMultipleTimes(
     untilFailure: boolean,
     testRunner?: () => Promise<TestRunState>
 ) {
+    console.log("here 3.0");
     const str = await vscode.window.showInputBox({
         prompt: "Label: ",
         placeHolder: `${untilFailure ? "Maximum " : ""}# of times to run`,

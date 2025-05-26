@@ -564,6 +564,11 @@ suite("Test Explorer Suite", function () {
 
                 this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 5);
 
+                setup(() => {
+                    // Stub the showInputBox method to return the input text
+                    windowMock.showInputBox.resolves(`${numIterations}`);
+                });
+
                 test("@slow runs an XCTest multiple times", async function () {
                     console.log("here 1");
                     const testItems = await gatherTests(
@@ -575,9 +580,6 @@ suite("Test Explorer Suite", function () {
                     await workspaceContext.focusFolder(null);
                     await workspaceContext.focusFolder(testExplorer.folderContext);
                     console.log("here 3");
-
-                    // Stub the showInputBox method to return the input text
-                    windowMock.showInputBox.resolves(`${numIterations}`);
 
                     const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
 
