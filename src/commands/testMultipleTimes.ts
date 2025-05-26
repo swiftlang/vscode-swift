@@ -33,7 +33,7 @@ export async function runTestMultipleTimes(
 ) {
     console.log("here 3.0");
     let numExecutions = count;
-    if (!numExecutions) {
+    if (numExecutions === undefined) {
         const str = await vscode.window.showInputBox({
             prompt: "Label: ",
             placeHolder: `${untilFailure ? "Maximum " : ""}# of times to run`,
