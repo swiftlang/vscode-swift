@@ -35,6 +35,11 @@ suite("ProcessList Tests", () => {
             processNameWin32 = "Code - Insiders";
             processNameLinux = "code-insiders";
         }
+        if (process.env["REMOTE_CONTAINERS"] === "true") {
+            processNameDarwin = "node";
+            processNameWin32 = "node";
+            processNameLinux = "node";
+        }
         switch (process.platform) {
             case "darwin":
                 expectProcessName(processes, `${processNameDarwin} Helper`);
