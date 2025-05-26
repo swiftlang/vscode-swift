@@ -35,10 +35,12 @@ export async function runTestMultipleTimes(
         placeHolder: `${untilFailure ? "Maximum " : ""}# of times to run`,
         validateInput: value => (/^[1-9]\d*$/.test(value) ? undefined : "Enter an integer value"),
     });
+    console.log("here 3.1");
 
     if (!str || !currentFolder.testExplorer) {
         return;
     }
+    console.log("here 3.2");
     const token = new vscode.CancellationTokenSource();
     const numExecutions = parseInt(str);
     const testExplorer = currentFolder.testExplorer;
@@ -50,11 +52,13 @@ export async function runTestMultipleTimes(
         token.token
     );
 
+    console.log("here 3.3");
     testExplorer.onDidCreateTestRunEmitter.fire(runner.testRun);
 
     const testRunState = new TestRunnerTestRunState(runner.testRun);
 
-    vscode.commands.executeCommand("workbench.panel.testResults.view.focus");
+    await vscode.commands.executeCommand("workbench.panel.testResults.view.focus");
+    console.log("here 3.4");
 
     const runStates: TestRunState[] = [];
     for (let i = 0; i < numExecutions; i++) {
@@ -64,6 +68,7 @@ export async function runTestMultipleTimes(
         const runState = await (testRunner !== undefined
             ? testRunner()
             : runner.runSession(testRunState));
+        console.log("here 3.5 " + i);
 
         runStates.push(runState);
 
@@ -71,7 +76,9 @@ export async function runTestMultipleTimes(
             break;
         }
     }
+    console.log("here 3.6");
     await runner.testRun.end();
+    console.log("here 3.7");
 
     return runStates;
 }

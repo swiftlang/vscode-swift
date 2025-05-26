@@ -119,7 +119,7 @@ suite("Test Explorer Suite", function () {
                 }
 
                 resetSettings = await updateSettings({
-                    "swift.debugger.useDebugAdapterFromToolchain": true,
+                    "swift.debugger.debugAdapter": "lldb-dap",
                 });
             });
 
@@ -567,15 +567,18 @@ suite("Test Explorer Suite", function () {
                 this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 5);
 
                 test("@slow runs an XCTest multiple times", async function () {
+                    console.log("here 1");
                     const testItems = await gatherTests(
                         testExplorer.controller,
                         "PackageTests.PassingXCTestSuite/testPassing"
                     );
 
+                    console.log("here 2");
                     await testExplorer.folderContext.workspaceContext.focusFolder(null);
                     await testExplorer.folderContext.workspaceContext.focusFolder(
                         testExplorer.folderContext
                     );
+                    console.log("here 3");
 
                     // Stub the showInputBox method to return the input text
                     windowMock.showInputBox.resolves(`${numIterations}`);
@@ -586,8 +589,10 @@ suite("Test Explorer Suite", function () {
                         Commands.RUN_TESTS_MULTIPLE_TIMES,
                         testItems[0]
                     );
+                    console.log("here 4");
 
                     const testRun = await testRunPromise;
+                    console.log("here 5");
 
                     assertTestResults(testRun, {
                         passed: [
