@@ -438,7 +438,7 @@ suite("Test Explorer Suite", function () {
                     await workspaceContext.focusFolder(testExplorer.folderContext);
 
                     // Stub the showInputBox method to return the input text
-                    windowMock.showInputBox.resolves(`${numIterations}`);
+                    windowMock.showInputBox.returns(Promise.resolve(`${numIterations}`));
 
                     const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
 
@@ -566,7 +566,7 @@ suite("Test Explorer Suite", function () {
 
                 setup(() => {
                     // Stub the showInputBox method to return the input text
-                    windowMock.showInputBox.resolves(`${numIterations}`);
+                    windowMock.showInputBox.returns(Promise.resolve(`${numIterations}`));
                 });
 
                 test("@slow runs an XCTest multiple times", async function () {
