@@ -28,22 +28,30 @@ export async function runTestMultipleTimes(
     currentFolder: FolderContext,
     test: vscode.TestItem,
     untilFailure: boolean,
+    count: number | undefined = undefined,
     testRunner?: () => Promise<TestRunState>
 ) {
     console.log("here 3.0");
-    const str = await vscode.window.showInputBox({
-        prompt: "Label: ",
-        placeHolder: `${untilFailure ? "Maximum " : ""}# of times to run`,
-        validateInput: value => (/^[1-9]\d*$/.test(value) ? undefined : "Enter an integer value"),
-    });
+    let numExecutions = count;
+    if (!numExecutions) {
+        const str = await vscode.window.showInputBox({
+            prompt: "Label: ",
+            placeHolder: `${untilFailure ? "Maximum " : ""}# of times to run`,
+            validateInput: value =>
+                /^[1-9]\d*$/.test(value) ? undefined : "Enter an integer value",
+        });
+        if (!str) {
+            return;
+        }
+        numExecutions = parseInt(str);
+    }
     console.log("here 3.1");
 
-    if (!str || !currentFolder.testExplorer) {
+    if (!currentFolder.testExplorer) {
         return;
     }
     console.log("here 3.2");
     const token = new vscode.CancellationTokenSource();
-    const numExecutions = parseInt(str);
     const testExplorer = currentFolder.testExplorer;
     const runner = new TestRunner(
         TestKind.standard,

@@ -128,16 +128,16 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             async target => await debugBuild(ctx, ...unwrapTreeItem(target))
         ),
         vscode.commands.registerCommand(Commands.CLEAN_BUILD, async () => await cleanBuild(ctx)),
-        vscode.commands.registerCommand(Commands.RUN_TESTS_MULTIPLE_TIMES, async item => {
+        vscode.commands.registerCommand(Commands.RUN_TESTS_MULTIPLE_TIMES, async (item, count) => {
             console.log("command triggered");
             if (ctx.currentFolder) {
                 console.log("have folder context");
-                return await runTestMultipleTimes(ctx.currentFolder, item, false);
+                return await runTestMultipleTimes(ctx.currentFolder, item, false, count);
             }
         }),
-        vscode.commands.registerCommand("swift.runTestsUntilFailure", async item => {
+        vscode.commands.registerCommand("swift.runTestsUntilFailure", async (item, count) => {
             if (ctx.currentFolder) {
-                return await runTestMultipleTimes(ctx.currentFolder, item, true);
+                return await runTestMultipleTimes(ctx.currentFolder, item, true, count);
             }
         }),
         // Note: switchPlatform is only available on macOS and Swift 6.1 or later

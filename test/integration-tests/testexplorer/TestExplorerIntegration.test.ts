@@ -17,7 +17,6 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import { beforeEach, afterEach } from "mocha";
-import { match } from "sinon";
 import { TestExplorer } from "../../../src/TestExplorer/TestExplorer";
 import {
     assertContains,
@@ -36,7 +35,6 @@ import {
     MessageRenderer,
     TestSymbol,
 } from "../../../src/TestExplorer/TestParsers/SwiftTestingOutputParser";
-import { mockGlobalObject } from "../../MockUtils";
 import {
     flattenTestItemCollection,
     reduceTestItemChildren,
@@ -425,7 +423,6 @@ suite("Test Explorer Suite", function () {
 
             suite("Runs multiple", function () {
                 const numIterations = 5;
-                const windowMock = mockGlobalObject(vscode, "window");
 
                 this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 5);
 
@@ -438,16 +435,12 @@ suite("Test Explorer Suite", function () {
                     await workspaceContext.focusFolder(null);
                     await workspaceContext.focusFolder(testExplorer.folderContext);
 
-                    // Stub the showInputBox method to return the input text
-                    windowMock.showInputBox
-                        .withArgs(match.object, undefined)
-                        .returns(Promise.resolve(`${numIterations}`));
-
                     const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
 
                     await vscode.commands.executeCommand(
                         Commands.RUN_TESTS_MULTIPLE_TIMES,
-                        testItems[0]
+                        testItems[0],
+                        numIterations
                     );
 
                     const testRun = await testRunPromise;
@@ -563,16 +556,8 @@ suite("Test Explorer Suite", function () {
 
             suite("Runs multiple", function () {
                 const numIterations = 5;
-                const windowMock = mockGlobalObject(vscode, "window");
 
                 this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 5);
-
-                setup(() => {
-                    // Stub the showInputBox method to return the input text
-                    windowMock.showInputBox
-                        .withArgs(match.object, undefined)
-                        .returns(Promise.resolve(`${numIterations}`));
-                });
 
                 test("@slow runs an XCTest multiple times", async function () {
                     console.log("here 1");
@@ -590,7 +575,8 @@ suite("Test Explorer Suite", function () {
 
                     await vscode.commands.executeCommand(
                         Commands.RUN_TESTS_MULTIPLE_TIMES,
-                        testItems[0]
+                        testItems[0],
+                        numIterations
                     );
                     console.log("here 4");
 
