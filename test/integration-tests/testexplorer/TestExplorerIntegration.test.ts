@@ -17,6 +17,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import { beforeEach, afterEach } from "mocha";
+import { match } from "sinon";
 import { TestExplorer } from "../../../src/TestExplorer/TestExplorer";
 import {
     assertContains,
@@ -438,7 +439,9 @@ suite("Test Explorer Suite", function () {
                     await workspaceContext.focusFolder(testExplorer.folderContext);
 
                     // Stub the showInputBox method to return the input text
-                    windowMock.showInputBox.returns(Promise.resolve(`${numIterations}`));
+                    windowMock.showInputBox
+                        .withArgs(match.object, undefined)
+                        .returns(Promise.resolve(`${numIterations}`));
 
                     const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
 
@@ -566,7 +569,9 @@ suite("Test Explorer Suite", function () {
 
                 setup(() => {
                     // Stub the showInputBox method to return the input text
-                    windowMock.showInputBox.returns(Promise.resolve(`${numIterations}`));
+                    windowMock.showInputBox
+                        .withArgs(match.object, undefined)
+                        .returns(Promise.resolve(`${numIterations}`));
                 });
 
                 test("@slow runs an XCTest multiple times", async function () {
