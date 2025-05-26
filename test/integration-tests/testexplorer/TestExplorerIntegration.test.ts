@@ -434,10 +434,8 @@ suite("Test Explorer Suite", function () {
                         "PackageTests.MixedXCTestSuite/testPassing"
                     );
 
-                    await testExplorer.folderContext.workspaceContext.focusFolder(null);
-                    await testExplorer.folderContext.workspaceContext.focusFolder(
-                        testExplorer.folderContext
-                    );
+                    await workspaceContext.focusFolder(null);
+                    await workspaceContext.focusFolder(testExplorer.folderContext);
 
                     // Stub the showInputBox method to return the input text
                     windowMock.showInputBox.resolves(`${numIterations}`);
@@ -574,10 +572,8 @@ suite("Test Explorer Suite", function () {
                     );
 
                     console.log("here 2");
-                    await testExplorer.folderContext.workspaceContext.focusFolder(null);
-                    await testExplorer.folderContext.workspaceContext.focusFolder(
-                        testExplorer.folderContext
-                    );
+                    await workspaceContext.focusFolder(null);
+                    await workspaceContext.focusFolder(testExplorer.folderContext);
                     console.log("here 3");
 
                     // Stub the showInputBox method to return the input text
