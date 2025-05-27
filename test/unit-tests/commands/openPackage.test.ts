@@ -22,7 +22,7 @@ import { openPackage } from "../../../src/commands/openPackage";
 import { Version } from "../../../src/utilities/version";
 import * as fs from "../../../src/utilities/filesystem";
 
-suite("OpenPackage Command Test Suite", () => {
+suite("openPackage Command Test Suite", () => {
     const windowMock = mockGlobalObject(vscode, "window");
     const filesystemMock = mockGlobalModule(fs);
 
