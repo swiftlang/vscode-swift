@@ -247,10 +247,10 @@ function getTestItem(
  * @param tests A list of test IDs
  * @returns A collection of resolved `vscode.TestItem`s
  */
-export async function gatherTests(
+export function gatherTests(
     controller: vscode.TestController,
     ...tests: string[]
-): Promise<vscode.TestItem[]> {
+): vscode.TestItem[] {
     const testItems = tests.map(test => {
         const testItem = getTestItem(controller, test);
         if (!testItem) {
@@ -295,7 +295,7 @@ export async function runTest(
     if (!targetProfile) {
         throw new Error(`Unable to find run profile named ${runProfile}`);
     }
-    const testItems = await gatherTests(testExplorer.controller, ...tests);
+    const testItems = gatherTests(testExplorer.controller, ...tests);
     const request = new vscode.TestRunRequest(testItems);
 
     // The first promise is the return value, the second promise builds and runs

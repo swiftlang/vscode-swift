@@ -18,7 +18,7 @@ import { SwiftToolchain } from "../../src/toolchain/toolchain";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../utilities/tasks";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { testAssetUri, testSwiftTask } from "../fixtures";
-import { createBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
+import { createBuildAllTask, resetBuildAllTaskCache } from "../../src/tasks/SwiftTaskProvider";
 import { DiagnosticsManager } from "../../src/DiagnosticsManager";
 import { FolderContext } from "../../src/FolderContext";
 import { Version } from "../../src/utilities/version";
@@ -63,8 +63,7 @@ function assertWithoutDiagnostic(uri: vscode.Uri, expected: vscode.Diagnostic) {
 }
 
 suite("DiagnosticsManager Test Suite", function () {
-    // Was hitting a timeout in suiteSetup during CI build once in a while
-    this.timeout(15000);
+    this.timeout(60 * 1000 * 5); // Allow up to 5 minutes for build
 
     let workspaceContext: WorkspaceContext;
     let folderContext: FolderContext;
@@ -78,11 +77,9 @@ suite("DiagnosticsManager Test Suite", function () {
     let cppUri: vscode.Uri;
     let cppHeaderUri: vscode.Uri;
     let diagnosticWaiterDisposable: vscode.Disposable | undefined;
-    let remainingExpectedDiagnostics:
-        | {
-              [uri: string]: vscode.Diagnostic[];
-          }
-        | undefined;
+    let remainingExpectedDiagnostics: {
+        [uri: string]: vscode.Diagnostic[];
+    };
 
     // Wait for all the expected diagnostics to be recieved. This may happen over several `onChangeDiagnostics` events.
     type ExpectedDiagnostics = { [uri: string]: vscode.Diagnostic[] };
@@ -96,22 +93,23 @@ suite("DiagnosticsManager Test Suite", function () {
             }
             // Keep a lookup of diagnostics we haven't encountered yet. When all array values in
             // this lookup are empty then we've seen all diagnostics and we can resolve successfully.
-            const expected = { ...expectedDiagnostics };
+            remainingExpectedDiagnostics = { ...expectedDiagnostics };
             diagnosticWaiterDisposable = vscode.languages.onDidChangeDiagnostics(e => {
                 const matchingPaths = Object.keys(expectedDiagnostics).filter(uri =>
                     e.uris.some(u => u.fsPath === uri)
                 );
                 for (const uri of matchingPaths) {
                     const actualDiagnostics = vscode.languages.getDiagnostics(vscode.Uri.file(uri));
-                    expected[uri] = expected[uri].filter(expectedDiagnostic => {
-                        return !actualDiagnostics.some(actualDiagnostic =>
-                            isEqual(actualDiagnostic, expectedDiagnostic)
-                        );
-                    });
-                    remainingExpectedDiagnostics = expected;
+                    for (const actualDiagnostic of actualDiagnostics) {
+                        remainingExpectedDiagnostics[uri] = remainingExpectedDiagnostics[
+                            uri
+                        ].filter(expectedDiagnostic => {
+                            return !isEqual(actualDiagnostic, expectedDiagnostic);
+                        });
+                    }
                 }
 
-                const allDiagnosticsFulfilled = Object.values(expected).every(
+                const allDiagnosticsFulfilled = Object.values(remainingExpectedDiagnostics).every(
                     diagnostics => diagnostics.length === 0
                 );
 
@@ -126,8 +124,6 @@ suite("DiagnosticsManager Test Suite", function () {
 
     activateExtensionForSuite({
         async setup(ctx) {
-            this.timeout(60000 * 5);
-
             workspaceContext = ctx;
             toolchain = workspaceContext.globalToolchain;
             folderContext = await folderInRootWorkspace("diagnostics", workspaceContext);
@@ -160,8 +156,6 @@ suite("DiagnosticsManager Test Suite", function () {
     });
 
     suite("Parse diagnostics", function () {
-        this.timeout(60000 * 2);
-
         suite("Parse from task output", () => {
             const expectedWarningDiagnostic = new vscode.Diagnostic(
                 new vscode.Range(new vscode.Position(1, 8), new vscode.Position(1, 8)),
@@ -228,7 +222,7 @@ suite("DiagnosticsManager Test Suite", function () {
                     suiteSetup(async function () {
                         // Swift 5.10 and 6.0 on Windows have a bug where the
                         // diagnostics are not emitted on their own line.
-                        const swiftVersion = workspaceContext.globalToolchain.swiftVersion;
+                        const swiftVersion = folderContext.toolchain.swiftVersion;
                         if (
                             swiftVersion.isLessThan(new Version(5, 10, 0)) ||
                             (process.platform === "win32" &&
@@ -237,25 +231,36 @@ suite("DiagnosticsManager Test Suite", function () {
                         ) {
                             this.skip();
                         }
-                        this.timeout(5 * 60 * 1000); // Allow 5 minutes to build
-
-                        // Clean up any lingering diagnostics
-                        workspaceContext.diagnostics.clear();
-                        await workspaceContext.focusFolder(null);
 
                         resetSettings = await updateSettings({ "swift.diagnosticsStyle": style });
+
+                        // Clean up any lingering diagnostics
+                        if (vscode.languages.getDiagnostics(mainUri).length > 0) {
+                            const clearPromise = new Promise<void>(resolve => {
+                                const diagnosticDisposable =
+                                    vscode.languages.onDidChangeDiagnostics(() => {
+                                        if (vscode.languages.getDiagnostics(mainUri).length === 0) {
+                                            diagnosticDisposable?.dispose();
+                                            resolve();
+                                        }
+                                    });
+                            });
+                            workspaceContext.diagnostics.clear();
+                            await clearPromise;
+                        }
+                    });
+
+                    setup(() => {
+                        resetBuildAllTaskCache();
                     });
 
                     test("succeeds", async function () {
                         await Promise.all([
                             waitForDiagnostics(expected()),
                             createBuildAllTask(folderContext).then(task =>
-                                executeTaskAndWaitForResult(task).catch(() => {
-                                    /* Ignore */
-                                })
+                                executeTaskAndWaitForResult(task)
                             ),
                         ]);
-                        await waitForNoRunningTasks();
                     });
 
                     callback && callback();

@@ -36,6 +36,7 @@ import { TestKind } from "./TestExplorer/TestKind";
 import { isValidWorkspaceFolder, searchForPackages } from "./utilities/workspace";
 import { SwiftPluginTaskProvider } from "./tasks/SwiftPluginTaskProvider";
 import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
+import { LLDBDebugConfigurationProvider } from "./debugger/debugAdapterFactory";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -52,6 +53,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public diagnostics: DiagnosticsManager;
     public taskProvider: SwiftTaskProvider;
     public pluginProvider: SwiftPluginTaskProvider;
+    public launchProvider: LLDBDebugConfigurationProvider;
     public subscriptions: vscode.Disposable[];
     public commentCompletionProvider: CommentCompletionProviders;
     public documentation: DocumentationManager;
@@ -82,6 +84,11 @@ export class WorkspaceContext implements vscode.Disposable {
         this.diagnostics = new DiagnosticsManager(this);
         this.taskProvider = new SwiftTaskProvider(this);
         this.pluginProvider = new SwiftPluginTaskProvider(this);
+        this.launchProvider = new LLDBDebugConfigurationProvider(
+            process.platform,
+            this,
+            outputChannel
+        );
         this.documentation = new DocumentationManager(extensionContext, this);
         this.currentDocument = null;
         this.commentCompletionProvider = new CommentCompletionProviders();

@@ -52,7 +52,7 @@ import { FolderContext } from "../../../src/FolderContext";
 import { lineBreakRegex } from "../../../src/utilities/tasks";
 
 suite("Test Explorer Suite", function () {
-    const MAX_TEST_RUN_TIME_MINUTES = 5;
+    const MAX_TEST_RUN_TIME_MINUTES = 6;
 
     this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES);
 
@@ -427,7 +427,7 @@ suite("Test Explorer Suite", function () {
                 this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 5);
 
                 test("@slow runs an swift-testing test multiple times", async function () {
-                    const testItems = await gatherTests(
+                    const testItems = gatherTests(
                         testExplorer.controller,
                         "PackageTests.MixedXCTestSuite/testPassing"
                     );
@@ -495,7 +495,7 @@ suite("Test Explorer Suite", function () {
                 if (!targetProfile) {
                     throw new Error(`Unable to find run profile named ${TestKind.standard}`);
                 }
-                const testItems = await gatherTests(
+                const testItems = gatherTests(
                     testExplorer.controller,
                     "PackageTests.DuplicateSuffixTests/testPassing"
                 );
@@ -560,7 +560,7 @@ suite("Test Explorer Suite", function () {
                 this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 5);
 
                 test("@slow runs an XCTest multiple times", async function () {
-                    const testItems = await gatherTests(
+                    const testItems = gatherTests(
                         testExplorer.controller,
                         "PackageTests.PassingXCTestSuite/testPassing"
                     );
