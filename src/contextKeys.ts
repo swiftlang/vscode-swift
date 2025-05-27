@@ -197,9 +197,6 @@ function createContextKeys(): ContextKeys {
                 .executeCommand("setContext", "swift.packageHasPlugins", value)
                 .then(() => {
                     /* Put in worker queue */
-                })
-                .then(() => {
-                    /* Put in worker queue */
                 });
         },
 
