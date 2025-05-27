@@ -39,7 +39,7 @@ export async function runSwiftScript(ctx: WorkspaceContext) {
         process.platform === "win32" &&
         ctx.currentFolder.swiftVersion.isLessThan(new Version(5, 7, 0))
     ) {
-        vscode.window.showErrorMessage(
+        void vscode.window.showErrorMessage(
             "Run Swift Script is unavailable with the legacy driver on Windows."
         );
         return;

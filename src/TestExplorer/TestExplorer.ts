@@ -204,7 +204,9 @@ export class TestExplorer {
      */
     private updateSwiftTestContext() {
         const items = flattenTestItemCollection(this.controller.items).map(({ id }) => id);
-        vscode.commands.executeCommand("setContext", "swift.tests", items);
+        void vscode.commands.executeCommand("setContext", "swift.tests", items).then(() => {
+            /* Put in worker queue */
+        });
     }
 
     /**
@@ -285,7 +287,7 @@ export class TestExplorer {
                 const ok = "OK";
                 const enable = "Enable SourceKit-LSP";
                 if (firstTry && configuration.lsp.disable === true) {
-                    vscode.window
+                    void vscode.window
                         .showInformationMessage(
                             `swift-testing tests will not be detected since SourceKit-LSP
                             has been disabled for this workspace.`,
@@ -297,9 +299,12 @@ export class TestExplorer {
                                 explorer.folderContext.workspaceContext.outputChannel.log(
                                     `Enabling SourceKit-LSP after swift-testing message`
                                 );
-                                vscode.workspace
+                                void vscode.workspace
                                     .getConfiguration("swift")
-                                    .update("sourcekit-lsp.disable", false);
+                                    .update("sourcekit-lsp.disable", false)
+                                    .then(() => {
+                                        /* Put in worker queue */
+                                    });
                             } else if (selected === ok) {
                                 explorer.folderContext.workspaceContext.outputChannel.log(
                                     `User acknowledged that SourceKit-LSP is disabled`

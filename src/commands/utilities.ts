@@ -46,13 +46,13 @@ export async function executeTaskWithUI(
             return true;
         } else {
             if (showErrors) {
-                vscode.window.showErrorMessage(`${description} failed`);
+                void vscode.window.showErrorMessage(`${description} failed`);
             }
             return false;
         }
     } catch (error) {
         if (showErrors) {
-            vscode.window.showErrorMessage(`${description} failed: ${error}`);
+            void vscode.window.showErrorMessage(`${description} failed: ${error}`);
         }
         return false;
     }

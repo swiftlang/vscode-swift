@@ -15,28 +15,18 @@
 import * as vscode from "vscode";
 import { mockGlobalObject } from "../../MockUtils";
 import { expect } from "chai";
-import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
-import { Commands } from "../../../src/commands";
-import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
+import { match } from "sinon";
+import { runPluginTask } from "../../../src/commands/runPluginTask";
 
 suite("runPluginTask Test Suite", () => {
-    const executeCommand = vscode.commands.executeCommand;
     const commandsMock = mockGlobalObject(vscode, "commands");
 
-    activateExtensionForSuite({
-        async setup(ctx) {
-            const folder = await folderInRootWorkspace("command-plugin", ctx);
-            const outputChannel = new SwiftOutputChannel("runPluginTask.tests");
-            await folder.loadSwiftPlugins(outputChannel);
-        },
-    });
-
     test("Executes runTask command", async () => {
-        await executeCommand(Commands.RUN_PLUGIN_TASK);
+        await runPluginTask();
 
         expect(commandsMock.executeCommand).to.have.been.calledOnceWith(
             "workbench.action.tasks.runTask",
-            { type: "swift-plugin" }
+            match({ type: "swift-plugin" })
         );
     });
 });

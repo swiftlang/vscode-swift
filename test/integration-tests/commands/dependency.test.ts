@@ -28,27 +28,24 @@ suite("Dependency Commmands Test Suite", function () {
     // 3 minutes for each test should be more than enough
     this.timeout(3 * 60 * 1000);
 
-    let defaultContext: FolderContext;
     let depsContext: FolderContext;
     let workspaceContext: WorkspaceContext;
 
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
-            defaultContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
             depsContext = await folderInRootWorkspace("dependencies", workspaceContext);
             await waitForNoRunningTasks();
+            await workspaceContext.focusFolder(depsContext);
         },
     });
 
     test("Swift: Update Package Dependencies", async function () {
-        await workspaceContext.focusFolder(defaultContext);
         const result = await vscode.commands.executeCommand(Commands.UPDATE_DEPENDENCIES);
         expect(result).to.be.true;
     });
 
     test("Swift: Resolve Package Dependencies", async function () {
-        await workspaceContext.focusFolder(defaultContext);
         const result = await vscode.commands.executeCommand(Commands.RESOLVE_DEPENDENCIES);
         expect(result).to.be.true;
     });

@@ -14,7 +14,8 @@
     // TODO "@typescript-eslint/semi" rule moved to https://eslint.style
     "semi": "error",
     "no-console": "warn",
-    "@typescript-eslint/no-floating-promises": "warn",
+    "@typescript-eslint/no-floating-promises": ["warn", { "checkThenables": true }],
+    "@typescript-eslint/await-thenable": "warn",
     // Mostly fails tests, ex. expect(...).to.be.true returns a Chai.Assertion
     "@typescript-eslint/no-unused-expressions": "off",
     "@typescript-eslint/no-non-null-assertion": "off",

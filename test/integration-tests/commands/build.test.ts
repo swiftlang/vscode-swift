@@ -82,7 +82,7 @@ suite("Build Commands @slow", function () {
 
         await bpPromise;
         let succeeded = false;
-        resultPromise.then(s => (succeeded = s));
+        void resultPromise.then(s => (succeeded = s));
         while (!succeeded) {
             await continueSession();
             await new Promise(r => setTimeout(r, 500));

@@ -50,7 +50,7 @@ export async function switchPlatform(ctx: WorkspaceContext) {
             if (swiftSDKTriple !== "") {
                 // set a swiftSDK for non-macOS Darwin platforms so that SourceKit-LSP can provide syntax highlighting
                 configuration.swiftSDK = swiftSDKTriple;
-                vscode.window.showWarningMessage(
+                void vscode.window.showWarningMessage(
                     `Selecting the ${picked.label} target platform will provide code editing support, but compiling with a ${picked.label} SDK will have undefined results.`
                 );
             } else {
@@ -58,7 +58,7 @@ export async function switchPlatform(ctx: WorkspaceContext) {
                 configuration.swiftSDK = "";
             }
         } catch {
-            vscode.window.showErrorMessage(
+            void vscode.window.showErrorMessage(
                 `Unable set the Swift SDK setting to ${picked.label}, verify that the SDK exists`
             );
         }

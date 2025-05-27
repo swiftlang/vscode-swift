@@ -93,7 +93,7 @@ export class FolderContext implements vscode.Disposable {
 
         const error = await swiftPackage.error;
         if (error) {
-            vscode.window.showErrorMessage(
+            void vscode.window.showErrorMessage(
                 `Failed to load ${folderContext.name}/Package.swift: ${error.message}`
             );
             workspaceContext.outputChannel.log(
@@ -179,7 +179,7 @@ export class FolderContext implements vscode.Disposable {
     /** Refresh the tests in the test explorer for this folder */
     refreshTestExplorer() {
         if (this.testExplorer?.controller.resolveHandler) {
-            this.testExplorer.controller.resolveHandler(undefined);
+            void this.testExplorer.controller.resolveHandler(undefined);
         }
     }
 

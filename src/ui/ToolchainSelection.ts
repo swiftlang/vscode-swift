@@ -179,7 +179,7 @@ async function getQuickPickItems(
             if (result.label === "swift-latest") {
                 result.label = "Latest Installed Toolchain";
                 result.onDidSelect = async () => {
-                    vscode.window.showInformationMessage(
+                    void vscode.window.showInformationMessage(
                         `The Swift extension is now configured to always use the most recently installed toolchain pointed at by the symbolic link "${toolchainPath}".`
                     );
                 };

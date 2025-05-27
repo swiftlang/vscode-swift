@@ -28,19 +28,27 @@ export async function runTestMultipleTimes(
     currentFolder: FolderContext,
     test: vscode.TestItem,
     untilFailure: boolean,
+    count: number | undefined = undefined,
     testRunner?: () => Promise<TestRunState>
 ) {
-    const str = await vscode.window.showInputBox({
-        prompt: "Label: ",
-        placeHolder: `${untilFailure ? "Maximum " : ""}# of times to run`,
-        validateInput: value => (/^[1-9]\d*$/.test(value) ? undefined : "Enter an integer value"),
-    });
+    let numExecutions = count;
+    if (numExecutions === undefined) {
+        const str = await vscode.window.showInputBox({
+            prompt: "Label: ",
+            placeHolder: `${untilFailure ? "Maximum " : ""}# of times to run`,
+            validateInput: value =>
+                /^[1-9]\d*$/.test(value) ? undefined : "Enter an integer value",
+        });
+        if (!str) {
+            return;
+        }
+        numExecutions = parseInt(str);
+    }
 
-    if (!str || !currentFolder.testExplorer) {
+    if (!currentFolder.testExplorer) {
         return;
     }
     const token = new vscode.CancellationTokenSource();
-    const numExecutions = parseInt(str);
     const testExplorer = currentFolder.testExplorer;
     const runner = new TestRunner(
         TestKind.standard,
@@ -54,7 +62,7 @@ export async function runTestMultipleTimes(
 
     const testRunState = new TestRunnerTestRunState(runner.testRun);
 
-    vscode.commands.executeCommand("workbench.panel.testResults.view.focus");
+    await vscode.commands.executeCommand("workbench.panel.testResults.view.focus");
 
     const runStates: TestRunState[] = [];
     for (let i = 0; i < numExecutions; i++) {

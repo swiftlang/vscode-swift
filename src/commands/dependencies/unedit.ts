@@ -91,7 +91,7 @@ async function uneditFolderDependency(
             await uneditFolderDependency(folder, identifier, ctx, ["--force"]);
         } else {
             ctx.outputChannel.log(execError.stderr, folder.name);
-            vscode.window.showErrorMessage(`${execError.stderr}`);
+            void vscode.window.showErrorMessage(`${execError.stderr}`);
         }
         return false;
     }

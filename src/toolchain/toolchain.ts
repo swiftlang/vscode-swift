@@ -124,7 +124,7 @@ export class SwiftToolchain {
         const targetInfo = await this.getSwiftTargetInfo(
             this._getToolchainExecutable(toolchainPath, "swift")
         );
-        const swiftVersion = await this.getSwiftVersion(targetInfo);
+        const swiftVersion = this.getSwiftVersion(targetInfo);
         const [runtimePath, defaultSDK] = await Promise.all([
             this.getRuntimePath(targetInfo),
             this.getDefaultSDK(),
@@ -579,7 +579,7 @@ export class SwiftToolchain {
                         const { stdout } = await execFile("where", ["swift"]);
                         const paths = stdout.trimEnd().split("\r\n");
                         if (paths.length > 1) {
-                            vscode.window.showWarningMessage(
+                            void vscode.window.showWarningMessage(
                                 `Found multiple swift executables in in %PATH%. Using excutable found at ${paths[0]}`
                             );
                         }
@@ -698,7 +698,7 @@ export class SwiftToolchain {
                 } catch (err: unknown) {
                     const error = err as ExecFileError;
                     // Its possible the toolchain in .swift-version is misconfigured or doesn't exist.
-                    vscode.window.showErrorMessage(`${error.stderr}`);
+                    void vscode.window.showErrorMessage(`${error.stderr}`);
                 }
             }
         }
@@ -862,7 +862,7 @@ export class SwiftToolchain {
             if (fallbackPath) {
                 return fallbackPath;
             }
-            vscode.window.showWarningMessage(
+            void vscode.window.showWarningMessage(
                 `${type} not found due to non-standardized library layout. Tests explorer won't work as expected.`
             );
             return undefined;
@@ -872,7 +872,7 @@ export class SwiftToolchain {
         try {
             infoPlist = plist.parse(data) as unknown as InfoPlist;
         } catch (error) {
-            vscode.window.showWarningMessage(`Unable to parse ${platformManifest}: ${error}`);
+            void vscode.window.showWarningMessage(`Unable to parse ${platformManifest}: ${error}`);
             return undefined;
         }
         const plistKey = type === "XCTest" ? "XCTEST_VERSION" : "SWIFT_TESTING_VERSION";

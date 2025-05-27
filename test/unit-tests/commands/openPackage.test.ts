@@ -22,8 +22,7 @@ import { openPackage } from "../../../src/commands/openPackage";
 import { Version } from "../../../src/utilities/version";
 import * as fs from "../../../src/utilities/filesystem";
 
-suite("OpenPackage Command Test Suite", () => {
-    const workspaceMock = mockGlobalObject(vscode, "workspace");
+suite("openPackage Command Test Suite", () => {
     const windowMock = mockGlobalObject(vscode, "window");
     const filesystemMock = mockGlobalModule(fs);
 
@@ -36,10 +35,9 @@ suite("OpenPackage Command Test Suite", () => {
         windowMock.showTextDocument.resolves();
         await openPackage(version, vscode.Uri.file(basePath));
 
-        expect(workspaceMock.openTextDocument).to.have.been.calledOnceWith(
+        expect(windowMock.showTextDocument).to.have.been.calledOnceWith(
             match.has("fsPath", expectedPath)
         );
-        expect(windowMock.showTextDocument).to.have.been.calledOnce;
     }
 
     test("Opens nothing when there is no package.swift", async () => {

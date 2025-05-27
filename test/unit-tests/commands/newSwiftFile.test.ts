@@ -21,7 +21,7 @@ import { mockGlobalObject } from "../../MockUtils";
 import { TemporaryFolder } from "../../../src/utilities/tempFolder";
 import { fileExists } from "../../../src/utilities/filesystem";
 
-suite("NewFile Command Test Suite", () => {
+suite("newSwiftFile Command Test Suite", () => {
     const workspaceMock = mockGlobalObject(vscode, "workspace");
     const windowMock = mockGlobalObject(vscode, "window");
     const languagesMock = mockGlobalObject(vscode, "languages");

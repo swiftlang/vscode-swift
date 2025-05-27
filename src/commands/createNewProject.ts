@@ -38,7 +38,7 @@ export async function createNewProject(toolchain: SwiftToolchain | undefined): P
     // activated. As such, we also have to allow this command to run when no workspace is
     // active. Show an error to the user if the command is unavailable.
     if (!toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 8, 0))) {
-        vscode.window.showErrorMessage(
+        void vscode.window.showErrorMessage(
             "Creating a new swift project is only available starting in swift version 5.8.0."
         );
         return;
@@ -180,6 +180,6 @@ export async function createNewProject(toolchain: SwiftToolchain | undefined): P
         });
     } else if (action === "addToWorkspace") {
         const index = vscode.workspace.workspaceFolders?.length ?? 0;
-        await vscode.workspace.updateWorkspaceFolders(index, 0, { uri: projectUri });
+        vscode.workspace.updateWorkspaceFolders(index, 0, { uri: projectUri });
     }
 }

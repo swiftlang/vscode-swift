@@ -191,6 +191,13 @@ const extensionBootstrapper = (() => {
             // `vscode.extensions.getExtension<Api>("swiftlang.swift-vscode")` once.
             // Subsequent activations must be done through the returned API object.
             if (!activator) {
+                for (const depId of ["vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap"]) {
+                    const dep = vscode.extensions.getExtension<Api>(depId);
+                    if (!dep) {
+                        throw new Error(`Unable to find extension "${depId}"`);
+                    }
+                    await dep.activate();
+                }
                 activatedAPI = await ext.activate();
                 // Save the test name so if the test doesn't clean up by deactivating properly the next
                 // test that tries to activate can throw an error with the name of the test that needs to clean up.

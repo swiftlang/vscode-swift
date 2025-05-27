@@ -315,14 +315,24 @@ const configuration = {
         );
     },
     set sdk(value: string | undefined) {
-        vscode.workspace.getConfiguration("swift").update("SDK", value);
+        void vscode.workspace
+            .getConfiguration("swift")
+            .update("SDK", value)
+            .then(() => {
+                /* Put in worker queue */
+            });
     },
     /** Path to custom --swift-sdk */
     get swiftSDK(): string {
         return vscode.workspace.getConfiguration("swift").get<string>("swiftSDK", "");
     },
     set swiftSDK(value: string | undefined) {
-        vscode.workspace.getConfiguration("swift").update("swiftSDK", value);
+        void vscode.workspace
+            .getConfiguration("swift")
+            .update("swiftSDK", value)
+            .then(() => {
+                /* Put in worker queue */
+            });
     },
     /** swift build arguments */
     get buildArguments(): string[] {
@@ -456,9 +466,12 @@ const configuration = {
             .get<boolean>("warnAboutSymlinkCreation", true);
     },
     set warnAboutSymlinkCreation(value: boolean) {
-        vscode.workspace
+        void vscode.workspace
             .getConfiguration("swift")
-            .update("warnAboutSymlinkCreation", value, vscode.ConfigurationTarget.Global);
+            .update("warnAboutSymlinkCreation", value, vscode.ConfigurationTarget.Global)
+            .then(() => {
+                /* Put in worker queue */
+            });
     },
     /** Whether or not the extension will contribute Swift environment variables to the integrated terminal */
     get enableTerminalEnvironment(): boolean {
@@ -540,7 +553,9 @@ export function handleConfigurationChangeEvent(
             event.affectsConfiguration("swift.SDK") ||
             event.affectsConfiguration("swift.swiftSDK")
         ) {
-            vscode.commands.executeCommand("swift.restartLSPServer");
+            void vscode.commands.executeCommand("swift.restartLSPServer").then(() => {
+                /* Put in worker queue */
+            });
         } else if (event.affectsConfiguration("swift.swiftEnvironmentVariables")) {
             void showReloadExtensionNotification(
                 "Changing environment variables requires the project be reloaded."

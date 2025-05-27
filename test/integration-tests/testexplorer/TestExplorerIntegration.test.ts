@@ -35,7 +35,6 @@ import {
     MessageRenderer,
     TestSymbol,
 } from "../../../src/TestExplorer/TestParsers/SwiftTestingOutputParser";
-import { mockGlobalObject } from "../../MockUtils";
 import {
     flattenTestItemCollection,
     reduceTestItemChildren,
@@ -119,7 +118,7 @@ suite("Test Explorer Suite", function () {
                 }
 
                 resetSettings = await updateSettings({
-                    "swift.debugger.useDebugAdapterFromToolchain": true,
+                    "swift.debugger.debugAdapter": "lldb-dap",
                 });
             });
 
@@ -424,7 +423,6 @@ suite("Test Explorer Suite", function () {
 
             suite("Runs multiple", function () {
                 const numIterations = 5;
-                const windowMock = mockGlobalObject(vscode, "window");
 
                 this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 5);
 
@@ -434,18 +432,18 @@ suite("Test Explorer Suite", function () {
                         "PackageTests.MixedXCTestSuite/testPassing"
                     );
 
-                    await testExplorer.folderContext.workspaceContext.focusFolder(
-                        testExplorer.folderContext
+                    await workspaceContext.focusFolder(null);
+                    await workspaceContext.focusFolder(testExplorer.folderContext);
+
+                    const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
+
+                    await vscode.commands.executeCommand(
+                        Commands.RUN_TESTS_MULTIPLE_TIMES,
+                        testItems[0],
+                        numIterations
                     );
 
-                    // Stub the showInputBox method to return the input text
-                    windowMock.showInputBox.resolves(`${numIterations}`);
-
-                    vscode.commands.executeCommand(Commands.RUN_TESTS_MULTIPLE_TIMES, testItems[0]);
-
-                    const testRun = await eventPromise(testExplorer.onCreateTestRun);
-
-                    await eventPromise(testRun.onTestRunComplete);
+                    const testRun = await testRunPromise;
 
                     assertTestResults(testRun, {
                         passed: [
@@ -507,7 +505,7 @@ suite("Test Explorer Suite", function () {
                 const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
 
                 // Deliberately don't await this so we can cancel it.
-                targetProfile.runHandler(request, tokenSource.token);
+                void targetProfile.runHandler(request, tokenSource.token);
 
                 const testRun = await testRunPromise;
 
@@ -558,7 +556,6 @@ suite("Test Explorer Suite", function () {
 
             suite("Runs multiple", function () {
                 const numIterations = 5;
-                const windowMock = mockGlobalObject(vscode, "window");
 
                 this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 5);
 
@@ -568,18 +565,18 @@ suite("Test Explorer Suite", function () {
                         "PackageTests.PassingXCTestSuite/testPassing"
                     );
 
-                    await testExplorer.folderContext.workspaceContext.focusFolder(
-                        testExplorer.folderContext
+                    await workspaceContext.focusFolder(null);
+                    await workspaceContext.focusFolder(testExplorer.folderContext);
+
+                    const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
+
+                    await vscode.commands.executeCommand(
+                        Commands.RUN_TESTS_MULTIPLE_TIMES,
+                        testItems[0],
+                        numIterations
                     );
 
-                    // Stub the showInputBox method to return the input text
-                    windowMock.showInputBox.resolves(`${numIterations}`);
-
-                    vscode.commands.executeCommand(Commands.RUN_TESTS_MULTIPLE_TIMES, testItems[0]);
-
-                    const testRun = await eventPromise(testExplorer.onCreateTestRun);
-
-                    await eventPromise(testRun.onTestRunComplete);
+                    const testRun = await testRunPromise;
 
                     assertTestResults(testRun, {
                         passed: [

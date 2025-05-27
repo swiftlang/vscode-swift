@@ -73,6 +73,34 @@ export interface SwiftProcess {
     setDimensions(dimensions: vscode.TerminalDimensions): void;
 }
 
+class CloseHandler {
+    private readonly closeEmitter: vscode.EventEmitter<number | void> = new vscode.EventEmitter<
+        number | void
+    >();
+    private exitCode: number | void | undefined;
+    private closeTimeout: NodeJS.Timeout | undefined;
+
+    event = this.closeEmitter.event;
+
+    handle(exitCode: number | void) {
+        this.exitCode = exitCode;
+        this.queueClose();
+    }
+
+    reset() {
+        if (this.closeTimeout) {
+            clearTimeout(this.closeTimeout);
+            this.queueClose();
+        }
+    }
+
+    private queueClose() {
+        this.closeTimeout = setTimeout(() => {
+            this.closeEmitter.fire(this.exitCode);
+        }, 250);
+    }
+}
+
 /**
  * Wraps a {@link nodePty node-pty} instance to handle spawning a `swift` process
  * and feeds the process state and output through event emitters.
@@ -81,9 +109,7 @@ export class SwiftPtyProcess implements SwiftProcess {
     private readonly spawnEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     private readonly writeEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
     private readonly errorEmitter: vscode.EventEmitter<Error> = new vscode.EventEmitter<Error>();
-    private readonly closeEmitter: vscode.EventEmitter<number | void> = new vscode.EventEmitter<
-        number | void
-    >();
+    private readonly closeHandler: CloseHandler = new CloseHandler();
 
     private spawnedProcess?: nodePty.IPty;
 
@@ -110,19 +136,20 @@ export class SwiftPtyProcess implements SwiftProcess {
             this.spawnEmitter.fire();
             this.spawnedProcess.onData(data => {
                 this.writeEmitter.fire(data);
+                this.closeHandler.reset();
             });
             this.spawnedProcess.onExit(event => {
                 if (event.signal) {
-                    this.closeEmitter.fire(event.signal);
+                    this.closeHandler.handle(event.signal);
                 } else if (typeof event.exitCode === "number") {
-                    this.closeEmitter.fire(event.exitCode);
+                    this.closeHandler.handle(event.exitCode);
                 } else {
-                    this.closeEmitter.fire();
+                    this.closeHandler.handle();
                 }
             });
         } catch (error) {
             this.errorEmitter.fire(new Error(`${error}`));
-            this.closeEmitter.fire();
+            this.closeHandler.handle();
         }
     }
 
@@ -152,7 +179,7 @@ export class SwiftPtyProcess implements SwiftProcess {
 
     onDidThrowError: vscode.Event<Error> = this.errorEmitter.event;
 
-    onDidClose: vscode.Event<number | void> = this.closeEmitter.event;
+    onDidClose: vscode.Event<number | void> = this.closeHandler.event;
 }
 
 /**
@@ -169,9 +196,7 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
     private readonly spawnEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     private readonly writeEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
     private readonly errorEmitter: vscode.EventEmitter<Error> = new vscode.EventEmitter<Error>();
-    private readonly closeEmitter: vscode.EventEmitter<number | void> = new vscode.EventEmitter<
-        number | void
-    >();
+    private readonly closeHandler: CloseHandler = new CloseHandler();
 
     private spawnedProcess: child_process.ChildProcessWithoutNullStreams | undefined;
 
@@ -191,24 +216,26 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
 
             this.spawnedProcess.stdout.on("data", data => {
                 this.writeEmitter.fire(data.toString());
+                this.closeHandler.reset();
             });
 
             this.spawnedProcess.stderr.on("data", data => {
                 this.writeEmitter.fire(data.toString());
+                this.closeHandler.reset();
             });
 
             this.spawnedProcess.on("error", error => {
                 this.errorEmitter.fire(new Error(`${error}`));
-                this.closeEmitter.fire();
+                this.closeHandler.handle();
             });
 
             this.spawnedProcess.once("exit", code => {
-                this.closeEmitter.fire(code ?? undefined);
+                this.closeHandler.handle(code ?? undefined);
                 this.dispose();
             });
         } catch (error) {
             this.errorEmitter.fire(new Error(`${error}`));
-            this.closeEmitter.fire();
+            this.closeHandler.handle();
             this.dispose();
         }
     }
@@ -241,5 +268,5 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
 
     onDidThrowError: vscode.Event<Error> = this.errorEmitter.event;
 
-    onDidClose: vscode.Event<number | void> = this.closeEmitter.event;
+    onDidClose: vscode.Event<number | void> = this.closeHandler.event;
 }
