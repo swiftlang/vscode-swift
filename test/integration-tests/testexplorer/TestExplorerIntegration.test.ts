@@ -560,16 +560,13 @@ suite("Test Explorer Suite", function () {
                 this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 5);
 
                 test("@slow runs an XCTest multiple times", async function () {
-                    console.log("here 1");
                     const testItems = await gatherTests(
                         testExplorer.controller,
                         "PackageTests.PassingXCTestSuite/testPassing"
                     );
 
-                    console.log("here 2");
                     await workspaceContext.focusFolder(null);
                     await workspaceContext.focusFolder(testExplorer.folderContext);
-                    console.log("here 3");
 
                     const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
 
@@ -578,10 +575,8 @@ suite("Test Explorer Suite", function () {
                         testItems[0],
                         numIterations
                     );
-                    console.log("here 4");
 
                     const testRun = await testRunPromise;
-                    console.log("here 5");
 
                     assertTestResults(testRun, {
                         passed: [
