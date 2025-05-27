@@ -17,11 +17,10 @@ import { mockGlobalObject } from "../../MockUtils";
 import { expect } from "chai";
 import { match } from "sinon";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
-import { Commands } from "../../../src/commands";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
+import { runPluginTask } from "../../../src/commands/runPluginTask";
 
 suite("runPluginTask Test Suite", () => {
-    const executeCommand = vscode.commands.executeCommand;
     const commandsMock = mockGlobalObject(vscode, "commands");
 
     activateExtensionForSuite({
@@ -33,7 +32,7 @@ suite("runPluginTask Test Suite", () => {
     });
 
     test("Executes runTask command", async () => {
-        await executeCommand(Commands.RUN_PLUGIN_TASK);
+        await runPluginTask();
 
         console.log(JSON.stringify(commandsMock.executeCommand.args));
 
