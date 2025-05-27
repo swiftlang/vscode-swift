@@ -11,8 +11,8 @@ To give clarity of what is expected of our members, Swift has adopted the code o
 ## Development
 
 To begin development on the VS Code extension for Swift you will need to install [Node.js](https://nodejs.org). We use [nvm](https://github.com/nvm-sh/nvm) the Node version manager to install Node.js. To install or update nvm you should run their install script
-```
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+```sh
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 ```
 More details on nvm installation can be found in the [README](https://github.com/nvm-sh/nvm/?tab=readme-ov-file) from its GitHub repository.
 
@@ -20,11 +20,17 @@ Once you have installed nvm, you can clone and configure the repository.
 
 ```sh
 git clone https://github.com/swiftlang/vscode-swift.git && cd vscode-swift
+```
 
-# Install the correct version of Node.JS for developing the extension
+Install the correct version of Node.JS for developing the extension
+
+```sh
 nvm install
+```
 
-# Installs all the dependencies the extension requires
+Installs all the dependencies the extension requires
+
+```sh
 npm install
 ```
 
