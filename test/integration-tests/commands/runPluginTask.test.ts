@@ -35,6 +35,8 @@ suite("runPluginTask Test Suite", () => {
     test("Executes runTask command", async () => {
         await executeCommand(Commands.RUN_PLUGIN_TASK);
 
+        console.log(JSON.stringify(commandsMock.executeCommand.args));
+
         expect(commandsMock.executeCommand).to.have.been.calledOnceWith(
             "workbench.action.tasks.runTask",
             match({ type: "swift-plugin" })
