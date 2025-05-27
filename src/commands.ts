@@ -129,9 +129,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         ),
         vscode.commands.registerCommand(Commands.CLEAN_BUILD, async () => await cleanBuild(ctx)),
         vscode.commands.registerCommand(Commands.RUN_TESTS_MULTIPLE_TIMES, async (item, count) => {
-            console.log("command triggered");
             if (ctx.currentFolder) {
-                console.log("have folder context");
                 return await runTestMultipleTimes(ctx.currentFolder, item, false, count);
             }
         }),
