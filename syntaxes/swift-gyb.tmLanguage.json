@@ -11,7 +11,7 @@
   "repository": {
     "gyb-code-block": {
       "name": "meta.embedded.block.gyb",
-      "begin": "(%)\\{",
+      "begin": "^\\s*(%)\\{",
       "beginCaptures": {
         "1": { "name": "keyword.control.gyb" },
         "0": { "name": "punctuation.section.block.begin.gyb" }
@@ -25,7 +25,7 @@
     },
     "gyb-start-control-statement": {
       "name": "meta.embedded.control.begin.gyb",
-      "begin": "(%)(?!\\{|\\s*end\\b).+?",
+      "begin": "^\\s*(%)(?!\\{|\\s*end\\b).+?",
       "beginCaptures": {
         "1": { "name": "keyword.control.flow.gyb" }
       },
@@ -37,7 +37,7 @@
     },
     "gyb-end-control-statement": {
       "name": "meta.embedded.control.end.gyb",
-      "match": "%\\s*end\\b",
+      "match": "^\\s*%\\s*end\\b",
       "captures": {
         "0": { "name": "keyword.control.flow.gyb" }
       }
