@@ -15,6 +15,7 @@ This extension adds language support for Swift to Visual Studio Code, providing 
 * Automatic task creation
 * Package dependency view
 * Test Explorer view
+* Side-by-side live preview of Swift documentation
 
 ## Topics
 
@@ -29,6 +30,7 @@ This extension adds language support for Swift to Visual Studio Code, providing 
 - <doc:project-view>
 - <doc:test-coverage>
 - <doc:test-explorer>
+- <doc:docc-live-preview>
 
 ### Advanced
 
