@@ -64,7 +64,7 @@ If you'd like to return to using the released version of the extension you can u
 
 Occasionally, pre-release builds will be published to the VS Code Marketplace. You can switch to the pre-release version by clicking on the `Switch to Pre-Release Version` button in the Extensions View:
 
-![](userdocs/userdocs.docc/install-pre-release.png)
+![](userdocs/userdocs.docc/Resources/install-pre-release.png)
 
 Switching back to the release version can be done by clicking on the `Switch to Release Version` button.
 
