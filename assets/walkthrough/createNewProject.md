@@ -1,5 +1,5 @@
 There are several project templates to choose from:
-- `Library`: A package with a library. Use this to
+- `Library`: A package with a library. Use this to publish code for other packages to consume.
 - `Executable`: A package with an executable. Use this for command line utilities.
 - `Tool`: A package with an executable that uses Swift Argument Parser. Use this if you plan to have a rich set of command line arguments.
 - `Build Tool Plugin`: A package that vents a Swift build tool plugin.
