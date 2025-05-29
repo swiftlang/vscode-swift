@@ -28,13 +28,13 @@ This extension adds language support for Swift to Visual Studio Code, providing 
 - <doc:debugging>
 - <doc:language-features>
 - <doc:project-view>
-- <doc:test-coverage>
 - <doc:test-explorer>
 - <doc:docc-live-preview>
 
 ### Advanced
 
 - <doc:remote-dev>
+- <doc:install-pre-release>
 
 ### Reference
 

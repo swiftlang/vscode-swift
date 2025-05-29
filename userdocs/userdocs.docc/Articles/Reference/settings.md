@@ -2,7 +2,9 @@
 
 vscode-swift provides various settings to configure its behaviour.
 
-The Visual Studio Code Swift extension comes with a number of settings you can use to control how it works. Detailed descriptions of each setting is provided in the extension settings page.
+> 💡 Tip: The Settings UI is common to all VS Code extensions. See the [VS Code documentation about personalizing VS Code](https://code.visualstudio.com/docs/getstarted/personalize-vscode) for a more in-depth overview.
+
+The Swift extension comes with a number of settings you can use to control how it works. Detailed descriptions of each setting are provided in the extension settings page.
 
 This document outlines useful configuration options not covered by the settings descriptions in the extension settings page.
 
@@ -65,13 +67,15 @@ Alternatively you can specfiy which specific command the arguments should apply 
 
 ## SourceKit-LSP
 
-[SourceKit-LSP](https://github.com/apple/sourcekit-lsp) is the language server used by the the Swift extension to provide symbol completion, jump to definition etc. It is developed by Apple to provide Swift and C language support for any editor that supports the Language Server Protocol.
+[SourceKit-LSP](https://github.com/apple/sourcekit-lsp) is the language server used by the the Swift extension to provide symbol completion, jump to definition, etc. It is developed by Apple to provide Swift and C language support for any editor that supports the Language Server Protocol.
 
 ### Background Indexing
 
-If you're using a nightly (`main`) or recent `6.0` toolchain you can enable support for background indexing in Sourcekit-LSP. This removes the need to do a build before getting code completion and diagnostics.
+Background Indexing was added as an experimental feature in Swift toolchain version 6.0 and then enabled by default in 6.1. This feature removes the need to do a build before getting code completion and diagnostics.
 
-To enable support, set the [`swift.sourcekit-lsp.backgroundIndexing`](vscode://settings/swift.sourcekit-lsp.backgroundIndexing) setting to `true`.
+On startup, SourceKit-LSP will read your project information from your `Package.swift` and begin indexing your project automatically. All indexing results are cached in the `.build/index-build` folder within your workspace.
+
+To enable or disable this feature you can use the [`swift.sourcekit-lsp.backgroundIndexing`](vscode://settings/swift.sourcekit-lsp.backgroundIndexing) setting.
 
 ### Support for 'Expand Macro'
 

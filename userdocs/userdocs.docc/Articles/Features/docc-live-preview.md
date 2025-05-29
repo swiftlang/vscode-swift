@@ -1,6 +1,6 @@
 # Documentation Live Preview
 
-vscode-swift shows you a live preview of your Swift documentation while editing.
+Show a live preview of your Swift documentation while editing.
 
 > Note: This feature is only available when using a Swift toolchain 6.2 or higher running on macOS or Linux.
 
