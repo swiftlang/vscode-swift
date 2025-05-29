@@ -1027,6 +1027,23 @@ export class TestRunner {
                         });
                         subscriptions.push(startSession);
 
+                        const terminateSession = vscode.debug.onDidTerminateDebugSession(e => {
+                            if (e.name !== config.name) {
+                                return;
+                            }
+                            this.workspaceContext.outputChannel.logDiagnostic(
+                                "Stop Test Debugging",
+                                this.folderContext.name
+                            );
+                            // dispose terminate debug handler
+                            subscriptions.forEach(sub => sub.dispose());
+
+                            void vscode.commands
+                                .executeCommand("workbench.view.extension.test")
+                                .then(() => resolve());
+                        });
+                        subscriptions.push(terminateSession);
+
                         vscode.debug
                             .startDebugging(this.folderContext.workspaceFolder, config)
                             .then(
@@ -1040,21 +1057,6 @@ export class TestRunner {
                                                 runState
                                             );
                                         }
-
-                                        const terminateSession =
-                                            vscode.debug.onDidTerminateDebugSession(() => {
-                                                this.workspaceContext.outputChannel.logDiagnostic(
-                                                    "Stop Test Debugging",
-                                                    this.folderContext.name
-                                                );
-                                                // dispose terminate debug handler
-                                                subscriptions.forEach(sub => sub.dispose());
-
-                                                void vscode.commands
-                                                    .executeCommand("workbench.view.extension.test")
-                                                    .then(() => resolve());
-                                            });
-                                        subscriptions.push(terminateSession);
                                     } else {
                                         subscriptions.forEach(sub => sub.dispose());
                                         reject("Debugger not started");

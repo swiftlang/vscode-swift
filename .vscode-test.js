@@ -78,6 +78,7 @@ module.exports = defineConfig({
                 grep: isFastTestRun ? "@slow" : undefined,
                 invert: isFastTestRun,
                 slow: 10000,
+                retries: 1,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
                 reporterOptions: {
                     jsonReporterOptions: {

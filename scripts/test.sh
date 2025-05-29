@@ -17,7 +17,7 @@ set -ex
 
 current_directory=$(pwd)
 
-mkdir /tmp/code
+mkdir -p /tmp/code
 # Add the -v flag to see what is getting copied in to the working folder
 rsync -a --exclude "node_modules" \
     --exclude "out" \

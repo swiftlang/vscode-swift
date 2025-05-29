@@ -93,7 +93,17 @@ const extensionBootstrapper = (() => {
                 restoreSettings = await updateSettings({
                     "swift.debugger.setupCodeLLDB": "never",
                 });
+            } else if (requiresDebugger) {
+                await workspaceContext.launchProvider.promptForCodeLldbSettings(
+                    workspaceContext.globalToolchain
+                );
             }
+
+            // Make sure no running tasks before setting up
+            await waitForNoRunningTasks({ timeout: 10000 });
+            // Clear build all cache before starting suite
+            resetBuildAllTaskCache();
+
             if (!setup) {
                 return;
             }
@@ -122,12 +132,15 @@ const extensionBootstrapper = (() => {
             }
         });
 
-        mocha.afterEach(function () {
+        mocha.afterEach(async function () {
             if (this.currentTest && activatedAPI && this.currentTest.isFailed()) {
                 printLogs(
                     activatedAPI.outputChannel,
                     `Test failed: ${testTitle(this.currentTest)}`
                 );
+            }
+            if (vscode.debug.activeDebugSession) {
+                await vscode.debug.stopDebugging(vscode.debug.activeDebugSession);
             }
         });
 
@@ -141,8 +154,6 @@ const extensionBootstrapper = (() => {
                 if (autoTeardown) {
                     await autoTeardown();
                 }
-                await waitForNoRunningTasks();
-                resetBuildAllTaskCache();
             } catch (error) {
                 if (workspaceContext) {
                     printLogs(workspaceContext.outputChannel, "Error during test/suite teardown");

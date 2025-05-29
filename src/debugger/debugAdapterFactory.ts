@@ -47,9 +47,7 @@ export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Dis
 
     function register() {
         subscriptions.push(registerLoggingDebugAdapterTracker());
-        subscriptions.push(
-            registerLLDBDebugAdapter(workspaceContext, workspaceContext.outputChannel)
-        );
+        subscriptions.push(registerLLDBDebugAdapter(workspaceContext));
     }
 
     if (!configuration.debugger.disable) {
@@ -69,13 +67,10 @@ export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Dis
  * @param workspaceContext The workspace context
  * @returns A disposable to be disposed when the extension is deactivated
  */
-function registerLLDBDebugAdapter(
-    workspaceContext: WorkspaceContext,
-    outputChannel: SwiftOutputChannel
-): vscode.Disposable {
+function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
     return vscode.debug.registerDebugConfigurationProvider(
         SWIFT_LAUNCH_CONFIG_TYPE,
-        new LLDBDebugConfigurationProvider(process.platform, workspaceContext, outputChannel)
+        workspaceContext.launchProvider
     );
 }
 
@@ -203,7 +198,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         }
     }
 
-    private async promptForCodeLldbSettings(toolchain: SwiftToolchain): Promise<boolean> {
+    async promptForCodeLldbSettings(toolchain: SwiftToolchain): Promise<boolean> {
         const libLldbPathResult = await getLLDBLibPath(toolchain);
         if (!libLldbPathResult.success) {
             const errorMessage = `Error: ${getErrorDescription(libLldbPathResult.failure)}`;
