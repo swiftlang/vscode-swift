@@ -1,6 +1,6 @@
 # Visual Studio Code Dev Containers
 
-Dev containers can be used as an easy way to develop when building for other platforms.
+Create reusable development environments using containers.
 
 [VS Code Dev Containers](https://code.visualstudio.com/docs/remote/containers) allows you to run your code and environment in a container. This is especially useful for Swift when developing on macOS and deploying to Linux. You can ensure there are no compatibility issues in Foundation when running your code. The extension also works with [GitHub Codespaces](https://github.com/features/codespaces) to allow you to write your code on the web.
 

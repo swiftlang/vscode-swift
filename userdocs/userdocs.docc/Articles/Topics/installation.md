@@ -1,6 +1,6 @@
 # Installation
 
-vscode-code Swift is installed through the extension marketplace.
+Install the Swift extension via the VS Code Marketplace.
 
 The Swift extension is supported on macOS, Linux, and Windows.
 
