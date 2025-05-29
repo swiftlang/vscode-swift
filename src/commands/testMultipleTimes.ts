@@ -75,7 +75,10 @@ export async function runTestMultipleTimes(
 
         runStates.push(runState);
 
-        if (untilFailure && (runState.failed.length > 0 || runState.errored.length > 0)) {
+        if (
+            runner.testRun.isCancellationRequested ||
+            (untilFailure && (runState.failed.length > 0 || runState.errored.length > 0))
+        ) {
             break;
         }
     }

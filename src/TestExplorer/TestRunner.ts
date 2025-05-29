@@ -374,6 +374,7 @@ export class TestRunner {
     private testArgs: TestRunArguments;
     private xcTestOutputParser: IXCTestOutputParser;
     private swiftTestOutputParser: SwiftTestingOutputParser;
+    private static CANCELLATION_ERROR = "Test run cancelled";
 
     /**
      * Constructor for TestRunner
@@ -718,8 +719,10 @@ export class TestRunner {
                     break;
             }
         } catch (error) {
-            // Test failures result in error code 1
-            if (error !== 1) {
+            if (error === TestRunner.CANCELLATION_ERROR) {
+                this.testRun.appendOutput(`\r\n${error}`);
+            } else if (error !== 1) {
+                // Test failures result in error code 1
                 this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
             } else {
                 // swift-testing tests don't have their run started until the .swift-testing binary has
@@ -793,7 +796,7 @@ export class TestRunner {
             // If the test run is iterrupted by a cancellation request from VS Code, ensure the task is terminated.
             const cancellationDisposable = this.testRun.token.onCancellationRequested(() => {
                 task.execution.terminate("SIGINT");
-                reject("Test run cancelled");
+                reject(TestRunner.CANCELLATION_ERROR);
             });
 
             task.execution.onDidClose(code => {
