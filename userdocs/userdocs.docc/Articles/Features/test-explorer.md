@@ -1,6 +1,16 @@
-# Test Coverage
+# Running and Debugging Tests
 
-vscode-swift provides mechanisms to see coverage of your tests.
+vscode-swift shows test results in the test explorer.
+
+> 💡 Tip: The Test Explorer UI is common to all VS Code extensions. See the [VS Code documentation about testing](https://code.visualstudio.com/docs/debugtest/testing) for a more in-depth overview.
+
+If your package contains tests then they can be viewed, run and debugged in the Test Explorer.
+
+![](test-explorer.png)
+
+Once your project is built, the Test Explorer will list all your tests. These tests are grouped by package, then test target, and finally, by XCTestCase class. From the Test Explorer, you can initiate a test run, debug a test run, and if a file has already been opened, you can jump to the source code for a test.
+
+## Run Tests with Coverage
 
 Test coverage is a measurement of how much of your code is tested by your tests. It defines how many lines of code were actually run when you ran your tests and how many were not. When a line of code is not run by your tests it will not have been tested and perhaps you need to extend your tests.
 

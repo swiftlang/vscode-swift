@@ -1,6 +1,6 @@
-# Project View
+# Swift Project View
 
-vscode-swift provides project view
+View aspects of your Swift project at a glance.
 
 If your workspace contains a package, this extension will add a **Swift Project** view to the Explorer:
 
