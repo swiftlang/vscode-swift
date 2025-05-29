@@ -132,12 +132,15 @@ const extensionBootstrapper = (() => {
             }
         });
 
-        mocha.afterEach(function () {
+        mocha.afterEach(async function () {
             if (this.currentTest && activatedAPI && this.currentTest.isFailed()) {
                 printLogs(
                     activatedAPI.outputChannel,
                     `Test failed: ${testTitle(this.currentTest)}`
                 );
+            }
+            if (vscode.debug.activeDebugSession) {
+                await vscode.debug.stopDebugging(vscode.debug.activeDebugSession);
             }
         });
 
