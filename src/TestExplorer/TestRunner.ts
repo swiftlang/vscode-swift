@@ -995,15 +995,6 @@ export class TestRunner {
                         }
 
                         const startSession = vscode.debug.onDidStartDebugSession(session => {
-                            if (config.testType === TestLibrary.xctest) {
-                                this.testRun.testRunStarted();
-                            }
-
-                            this.workspaceContext.outputChannel.logDiagnostic(
-                                "Start Test Debugging",
-                                this.folderContext.name
-                            );
-
                             const outputHandler = this.testOutputHandler(config.testType, runState);
                             outputHandler(`> ${config.program} ${config.args.join(" ")}\n\n\r`);
 
@@ -1056,7 +1047,14 @@ export class TestRunner {
                                                 fifoPipePath,
                                                 runState
                                             );
+                                        } else if (config.testType === TestLibrary.xctest) {
+                                            this.testRun.testRunStarted();
                                         }
+
+                                        this.workspaceContext.outputChannel.logDiagnostic(
+                                            "Start Test Debugging",
+                                            this.folderContext.name
+                                        );
                                     } else {
                                         subscriptions.forEach(sub => sub.dispose());
                                         reject("Debugger not started");
