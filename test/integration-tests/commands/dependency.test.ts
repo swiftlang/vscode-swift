@@ -35,9 +35,12 @@ suite("Dependency Commmands Test Suite", function () {
         async setup(ctx) {
             workspaceContext = ctx;
             depsContext = await folderInRootWorkspace("dependencies", workspaceContext);
-            await waitForNoRunningTasks();
-            await workspaceContext.focusFolder(depsContext);
         },
+    });
+
+    setup(async () => {
+        await workspaceContext.focusFolder(depsContext);
+        await waitForNoRunningTasks();
     });
 
     test("Swift: Update Package Dependencies", async function () {
@@ -50,7 +53,8 @@ suite("Dependency Commmands Test Suite", function () {
         expect(result).to.be.true;
     });
 
-    suite("Swift: Use Local Dependency", function () {
+    // Skipping: https://github.com/swiftlang/vscode-swift/issues/1316
+    suite.skip("Swift: Use Local Dependency", function () {
         let treeProvider: ProjectPanelProvider;
 
         setup(async () => {
@@ -103,7 +107,6 @@ suite("Dependency Commmands Test Suite", function () {
         }
 
         test("Swift: Reset Package Dependencies", async function () {
-            this.skip(); // https://github.com/swiftlang/vscode-swift/issues/1316
             // spm reset after using local dependency is broken on windows
             if (process.platform === "win32") {
                 this.skip();
@@ -120,7 +123,6 @@ suite("Dependency Commmands Test Suite", function () {
         });
 
         test("Swift: Revert To Original Version", async function () {
-            this.skip(); // https://github.com/swiftlang/vscode-swift/issues/1316
             await useLocalDependencyTest();
 
             const result = await vscode.commands.executeCommand(
