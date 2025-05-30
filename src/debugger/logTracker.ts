@@ -68,6 +68,7 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
     private static debugSessionIdMap: { [id: string]: LoggingDebugAdapterTracker } = {};
 
     private cb?: (output: string) => void;
+    private output: string[] = [];
 
     constructor(public id: string) {
         LoggingDebugAdapterTracker.debugSessionIdMap[id] = this;
@@ -81,6 +82,10 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
         const loggingDebugAdapter = this.debugSessionIdMap[session.id];
         if (loggingDebugAdapter) {
             loggingDebugAdapter.cb = cb;
+            for (const o of loggingDebugAdapter.output) {
+                cb(o);
+            }
+            loggingDebugAdapter.output = [];
         } else {
             outputChannel.appendLine("Could not find debug adapter for session: " + session.id);
         }
@@ -93,13 +98,20 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
     onDidSendMessage(message: unknown): void {
         const debugMessage = message as DebugMessage;
         if (
-            this.cb &&
-            debugMessage &&
-            debugMessage.type === "event" &&
-            debugMessage.event === "output" &&
-            debugMessage.body.category !== "console"
+            !(
+                debugMessage &&
+                debugMessage.type === "event" &&
+                debugMessage.event === "output" &&
+                debugMessage.body.category !== "console"
+            )
         ) {
-            this.cb(debugMessage.body.output);
+            return;
+        }
+        const output = debugMessage.body.output;
+        if (this.cb) {
+            this.cb(output);
+        } else {
+            this.output.push(output);
         }
     }
 
