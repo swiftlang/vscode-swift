@@ -20,7 +20,11 @@ import { FolderOperation, WorkspaceContext } from "../../src/WorkspaceContext";
 import { createBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { Version } from "../../src/utilities/version";
 import { SwiftExecution } from "../../src/tasks/SwiftExecution";
-import { activateExtensionForSuite, updateSettings } from "./utilities/testutilities";
+import {
+    activateExtensionForSuite,
+    getRootWorkspaceFolder,
+    updateSettings,
+} from "./utilities/testutilities";
 import { FolderContext } from "../../src/FolderContext";
 import { assertContains } from "./testexplorer/utilities";
 
@@ -60,7 +64,7 @@ suite("WorkspaceContext Test Suite", () => {
                     recordedFolders.push(changedFolderRecord);
                 });
 
-                const workspaceFolder = vscode.workspace.workspaceFolders?.values().next().value;
+                const workspaceFolder = getRootWorkspaceFolder();
 
                 assert.ok(workspaceFolder, "No workspace folders found in workspace");
 
@@ -102,7 +106,7 @@ suite("WorkspaceContext Test Suite", () => {
         });
 
         // Was hitting a timeout in suiteSetup during CI build once in a while
-        this.timeout(5000);
+        this.timeout(15000);
 
         test("Default Task values", async () => {
             const folder = workspaceContext.folders.find(
@@ -244,4 +248,4 @@ suite("WorkspaceContext Test Suite", () => {
             });
         }).timeout(1000);
     });
-}).timeout(10000);
+}).timeout(15000);
