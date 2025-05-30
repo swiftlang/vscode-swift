@@ -76,6 +76,8 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Dispos
         for (const disposable of this.disposables) {
             disposable.dispose();
         }
+        this.writeEmitter.dispose();
+        this.closeEmitter.dispose();
     }
 
     /**
