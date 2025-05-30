@@ -15,6 +15,7 @@
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
+import * as glob from "glob";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderOperation } from "../WorkspaceContext";
@@ -284,6 +285,7 @@ function snippetTaskName(name: string): string {
 class TargetNode {
     constructor(
         public target: Target,
+        private folder: FolderContext,
         private activeTasks: Set<string>
     ) {}
 
@@ -355,7 +357,79 @@ class TargetNode {
     }
 
     getChildren(): TreeNode[] {
-        return [];
+        return this.buildPluginOutputs();
+    }
+
+    private buildToolGlobPattern(): string {
+        return path.join(
+            this.folder.folder.fsPath,
+            ".build",
+            "plugins",
+            "outputs",
+            "*/",
+            this.target.name,
+            "*/",
+            "*/**"
+        );
+    }
+
+    private buildPluginOutputs(): TreeNode[] {
+        // Files in the `outputs` directory follow the pattern:
+        // .build/plugins/outputs/buildtoolplugin/<target-name>/destination/<build-tool-plugin-name>/*
+        // This glob will capture all the files in the outputs directory for this target.
+        const matches = glob.sync(this.buildToolGlobPattern(), { nodir: false });
+
+        const buildTree = (matches: string[]): TreeNode[] => {
+            const basePath = path.join(this.folder.folder.fsPath, ".build", "plugins", "outputs");
+            // Gather up the files by build tool plugin name. Don't capture any mroe files than
+            // just the build-tool-plugin-name folder, as the FileNode will handle walking the tree.
+            const buildToolPluginFiles = matches.reduce(
+                (memo, filePath) => {
+                    const relativePath = path.relative(basePath, filePath);
+                    const parts = relativePath.split(path.sep);
+                    const buildToolPluginName = parts[3];
+                    const existingFiles = memo[buildToolPluginName] || [];
+                    const isRootPluginFilesDirectory = parts.length === 5;
+                    return {
+                        ...memo,
+                        [buildToolPluginName]: isRootPluginFilesDirectory
+                            ? [...existingFiles, filePath]
+                            : existingFiles,
+                    };
+                },
+                {} as Record<string, string[]>
+            );
+
+            // Create a new HeaderNode for each build tool plugin used to generate files for this target.
+            return Object.keys(buildToolPluginFiles)
+                .map(pluginName => {
+                    const pluginFiles = buildToolPluginFiles[pluginName];
+                    if (pluginFiles.length === 0) {
+                        return undefined;
+                    }
+                    return new HeaderNode(
+                        `${this.target.name}-${pluginName}`,
+                        `${pluginName} - Generated Files`,
+                        "debug-disconnect",
+                        () => {
+                            return Promise.all(
+                                pluginFiles.map(async filePath => {
+                                    const stats = await fs.stat(filePath);
+                                    return new FileNode(
+                                        path.basename(filePath),
+                                        filePath,
+                                        stats.isDirectory(),
+                                        `${this.target.name}-${pluginName}`
+                                    );
+                                })
+                            );
+                        }
+                    );
+                })
+                .filter((node): node is HeaderNode => node !== undefined);
+        };
+
+        return matches.length > 0 ? buildTree(matches) : [];
     }
 }
 
@@ -515,6 +589,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                         if (!folder) {
                             return;
                         }
+                        this.watchBuildPluginOutputs(folder);
                         treeView.title = `Swift Project (${folder.name})`;
                         this.didChangeTreeDataEmitter.fire();
                         break;
@@ -535,6 +610,26 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                 }
             }
         );
+    }
+
+    private buildPluginOutputWatcher?: vscode.FileSystemWatcher;
+
+    watchBuildPluginOutputs(folderContext: FolderContext) {
+        if (this.buildPluginOutputWatcher) {
+            this.buildPluginOutputWatcher.dispose();
+        }
+        this.buildPluginOutputWatcher = vscode.workspace.createFileSystemWatcher(
+            new vscode.RelativePattern(folderContext.folder, ".build/plugins/outputs/**/*")
+        );
+        this.buildPluginOutputWatcher.onDidCreate(() => {
+            this.didChangeTreeDataEmitter.fire();
+        });
+        this.buildPluginOutputWatcher.onDidDelete(() => {
+            this.didChangeTreeDataEmitter.fire();
+        });
+        this.buildPluginOutputWatcher.onDidChange(() => {
+            this.didChangeTreeDataEmitter.fire();
+        });
     }
 
     getTreeItem(element: TreeNode): vscode.TreeItem {
@@ -649,7 +744,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         // Snipepts are shown under the Snippets header
         return targets
             .filter(target => target.type !== "snippet")
-            .map(target => new TargetNode(target, this.activeTasks))
+            .map(target => new TargetNode(target, folderContext, this.activeTasks))
             .sort((a, b) => targetSort(a).localeCompare(targetSort(b)));
     }
 
@@ -705,7 +800,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         const targets = await folderContext.swiftPackage.targets;
         return targets
             .filter(target => target.type === "snippet")
-            .flatMap(target => new TargetNode(target, this.activeTasks))
+            .flatMap(target => new TargetNode(target, folderContext, this.activeTasks))
             .sort((a, b) => a.name.localeCompare(b.name));
     }
 }
