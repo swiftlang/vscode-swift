@@ -16,7 +16,11 @@ import * as vscode from "vscode";
 import * as assert from "assert";
 import { testSwiftTask } from "../../fixtures";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
+import {
+    executeTaskAndWaitForResult,
+    waitForNoRunningTasks,
+    waitForStartTaskProcess,
+} from "../../utilities/tasks";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { activateExtensionForSuite } from "../utilities/testutilities";
 
@@ -48,7 +52,9 @@ suite("SwiftExecution Tests Suite", () => {
 
     test("Write event handler fires", async () => {
         const fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
+        const startPromise = waitForStartTaskProcess(fixture.task);
         const promise = executeTaskAndWaitForResult(fixture);
+        await startPromise;
         fixture.process.write("Fetching some dependency");
         fixture.process.write("[5/7] Building main.swift");
         fixture.process.write("Build complete");

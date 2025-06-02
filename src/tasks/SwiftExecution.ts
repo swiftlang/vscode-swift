@@ -31,33 +31,37 @@ export class SwiftExecution extends vscode.CustomExecution implements vscode.Dis
     private readonly closeEmitter: vscode.EventEmitter<number | void> = new vscode.EventEmitter<
         number | void
     >();
-    private swiftProcess: SwiftProcess | undefined;
     private disposables: vscode.Disposable[] = [];
 
     constructor(
         public readonly command: string,
         public readonly args: string[],
         public readonly options: SwiftExecutionOptions,
-        swiftProcess: SwiftProcess | undefined = undefined
+        private swiftProcess: SwiftProcess | undefined = undefined
     ) {
         super(async () => {
             const createSwiftProcess = () => {
-                this.dispose();
-                if (swiftProcess) {
-                    this.swiftProcess = swiftProcess;
-                } else {
+                if (!swiftProcess) {
                     this.swiftProcess = options.readOnlyTerminal
                         ? new ReadOnlySwiftProcess(command, args, options)
                         : new SwiftPtyProcess(command, args, options);
+                    this.listen(this.swiftProcess);
                 }
-                this.disposables.push(
-                    this.swiftProcess.onDidWrite(e => this.writeEmitter.fire(e)),
-                    this.swiftProcess.onDidClose(e => this.closeEmitter.fire(e))
-                );
-                return this.swiftProcess;
+                return this.swiftProcess!;
             };
             return new SwiftPseudoterminal(createSwiftProcess, options.presentation || {});
         });
+        if (this.swiftProcess) {
+            this.listen(this.swiftProcess);
+        }
+    }
+
+    private listen(swiftProcess: SwiftProcess) {
+        this.dispose();
+        this.disposables.push(
+            swiftProcess.onDidWrite(e => this.writeEmitter.fire(e)),
+            swiftProcess.onDidClose(e => this.closeEmitter.fire(e))
+        );
     }
 
     dispose() {
