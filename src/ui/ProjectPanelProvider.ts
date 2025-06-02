@@ -311,7 +311,7 @@ class TargetNode {
 
         const buildTree = (matches: string[]): TreeNode[] => {
             const basePath = path.join(this.folder.folder.fsPath, ".build", "plugins", "outputs");
-            // Gather up the files by build tool plugin name. Don't capture any mroe files than
+            // Gather up the files by build tool plugin name. Don't capture any more files than
             // just the build-tool-plugin-name folder, as the FileNode will handle walking the tree.
             const buildToolPluginFiles = matches.reduce(
                 (memo, filePath) => {
