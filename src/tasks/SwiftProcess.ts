@@ -192,7 +192,6 @@ export class SwiftPtyProcess implements SwiftProcess {
 
     dispose() {
         this.disposables.forEach(d => d.dispose());
-        this.spawnedProcess?.kill();
     }
 
     onDidSpawn: vscode.Event<void> = this.spawnEmitter.event;

@@ -26,22 +26,43 @@ export interface SwiftExecutionOptions extends vscode.ProcessExecutionOptions {
  * control over how the task and `swift` process is executed and allows
  * us to capture and process the output of the `swift` process
  */
-export class SwiftExecution extends vscode.CustomExecution {
+export class SwiftExecution extends vscode.CustomExecution implements vscode.Disposable {
+    private readonly writeEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
+    private readonly closeEmitter: vscode.EventEmitter<number | void> = new vscode.EventEmitter<
+        number | void
+    >();
+    private swiftProcess: SwiftProcess | undefined;
+    private disposables: vscode.Disposable[] = [];
+
     constructor(
         public readonly command: string,
         public readonly args: string[],
         public readonly options: SwiftExecutionOptions,
-        private readonly swiftProcess: SwiftProcess = options.readOnlyTerminal
-            ? new ReadOnlySwiftProcess(command, args, options)
-            : new SwiftPtyProcess(command, args, options)
+        swiftProcess: SwiftProcess | undefined = undefined
     ) {
         super(async () => {
-            return new SwiftPseudoterminal(swiftProcess, options.presentation || {});
+            const createSwiftProcess = () => {
+                this.dispose();
+                if (swiftProcess) {
+                    this.swiftProcess = swiftProcess;
+                } else {
+                    this.swiftProcess = options.readOnlyTerminal
+                        ? new ReadOnlySwiftProcess(command, args, options)
+                        : new SwiftPtyProcess(command, args, options);
+                }
+                this.disposables.push(
+                    this.swiftProcess.onDidWrite(e => this.writeEmitter.fire(e)),
+                    this.swiftProcess.onDidClose(e => this.closeEmitter.fire(e))
+                );
+                return this.swiftProcess;
+            };
+            return new SwiftPseudoterminal(createSwiftProcess, options.presentation || {});
         });
+    }
 
-        this.swiftProcess = swiftProcess;
-        this.onDidWrite = swiftProcess.onDidWrite;
-        this.onDidClose = swiftProcess.onDidClose;
+    dispose() {
+        this.disposables.forEach(d => d.dispose());
+        this.disposables = [];
     }
 
     /**
@@ -50,7 +71,7 @@ export class SwiftExecution extends vscode.CustomExecution {
      *
      * @see {@link SwiftProcess.onDidWrite}
      */
-    onDidWrite: vscode.Event<string>;
+    onDidWrite: vscode.Event<string> = this.writeEmitter.event;
 
     /**
      * Bubbles up the {@link SwiftProcess.onDidClose onDidClose} event
@@ -58,12 +79,12 @@ export class SwiftExecution extends vscode.CustomExecution {
      *
      * @see {@link SwiftProcess.onDidClose}
      */
-    onDidClose: vscode.Event<number | void>;
+    onDidClose: vscode.Event<number | void> = this.closeEmitter.event;
 
     /**
      * Terminate the underlying executable.
      */
     terminate(signal?: NodeJS.Signals) {
-        this.swiftProcess.terminate(signal);
+        this.swiftProcess?.terminate(signal);
     }
 }
