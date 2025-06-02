@@ -15,7 +15,6 @@
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
-import * as glob from "glob";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderOperation } from "../WorkspaceContext";
@@ -25,6 +24,7 @@ import { FolderContext } from "../FolderContext";
 import { getPlatformConfig, resolveTaskCwd } from "../utilities/tasks";
 import { SwiftTask, TaskPlatformSpecificConfig } from "../tasks/SwiftTaskProvider";
 import { convertPathToPattern, glob } from "fast-glob";
+import { Version } from "../utilities/version";
 
 const LOADING_ICON = "loading~spin";
 
@@ -283,6 +283,8 @@ function snippetTaskName(name: string): string {
 }
 
 class TargetNode {
+    private newPluginLayoutVersion = new Version(6, 0, 0);
+
     constructor(
         public target: Target,
         private folder: FolderContext,
@@ -357,39 +359,45 @@ class TargetNode {
     }
 
     getChildren(): TreeNode[] {
-        return this.buildPluginOutputs();
+        return this.buildPluginOutputs(this.folder.toolchain.swiftVersion);
     }
 
-    private buildToolGlobPattern(): string {
-        return path.join(
-            this.folder.folder.fsPath,
-            ".build",
-            "plugins",
-            "outputs",
-            "*/",
-            this.target.name,
-            "*/",
-            "*/**"
-        );
+    private buildToolGlobPattern(version: Version): string {
+        const base = this.folder.folder.fsPath.replace(/\\/g, "/");
+        if (version.isGreaterThanOrEqual(this.newPluginLayoutVersion)) {
+            return `${base}/.build/plugins/outputs/*/${this.target.name}/*/*/**`;
+        } else {
+            return `${base}/.build/plugins/outputs/*/${this.target.name}/*/{*,*/*}`;
+        }
     }
 
-    private buildPluginOutputs(): TreeNode[] {
+    private buildPluginOutputs(version: Version): TreeNode[] {
         // Files in the `outputs` directory follow the pattern:
         // .build/plugins/outputs/buildtoolplugin/<target-name>/destination/<build-tool-plugin-name>/*
         // This glob will capture all the files in the outputs directory for this target.
-        const matches = glob.sync(this.buildToolGlobPattern(), { nodir: false });
+        const pattern = this.buildToolGlobPattern(version);
+        const matches = glob.sync(pattern, { onlyDirectories: false });
 
         const buildTree = (matches: string[]): TreeNode[] => {
             const basePath = path.join(this.folder.folder.fsPath, ".build", "plugins", "outputs");
-            // Gather up the files by build tool plugin name. Don't capture any mroe files than
+            // Gather up the files by build tool plugin name. Don't capture any more files than
             // just the build-tool-plugin-name folder, as the FileNode will handle walking the tree.
             const buildToolPluginFiles = matches.reduce(
                 (memo, filePath) => {
                     const relativePath = path.relative(basePath, filePath);
                     const parts = relativePath.split(path.sep);
-                    const buildToolPluginName = parts[3];
+                    const buildToolPluginName = version.isGreaterThanOrEqual(
+                        this.newPluginLayoutVersion
+                    )
+                        ? parts[3]
+                        : parts[2];
                     const existingFiles = memo[buildToolPluginName] || [];
-                    const isRootPluginFilesDirectory = parts.length === 5;
+                    const rootDirectoryLength = version.isGreaterThanOrEqual(
+                        this.newPluginLayoutVersion
+                    )
+                        ? 5
+                        : 4;
+                    const isRootPluginFilesDirectory = parts.length === rootDirectoryLength;
                     return {
                         ...memo,
                         [buildToolPluginName]: isRootPluginFilesDirectory
