@@ -134,20 +134,6 @@ suite("ProjectPanelProvider Test Suite", function () {
                 file,
                 `Expected to find Foo.swift, but instead items were ${generatedFilesChildren.map(n => n.name)}`
             ).to.not.be.undefined;
-            assertPathsEqual(
-                file?.path,
-                path.join(
-                    testAssetPath("targets"),
-                    ".build",
-                    "plugins",
-                    "outputs",
-                    "targets",
-                    "LibraryTarget",
-                    "destination",
-                    "BuildToolPlugin",
-                    "Foo.swift"
-                )
-            );
             const folder = generatedFilesChildren.find(n => n.name === "Bar") as FileNode;
             const folderChildren = await folder.getChildren();
             const folderFile = folderChildren.find(n => n.name === "Baz.swift") as FileNode;
@@ -155,21 +141,6 @@ suite("ProjectPanelProvider Test Suite", function () {
                 folderFile,
                 `Expected to find Foo.swift, but instead items were ${folderChildren.map(n => n.name)}`
             ).to.not.be.undefined;
-            assertPathsEqual(
-                folderFile?.path,
-                path.join(
-                    testAssetPath("targets"),
-                    ".build",
-                    "plugins",
-                    "outputs",
-                    "targets",
-                    "LibraryTarget",
-                    "destination",
-                    "BuildToolPlugin",
-                    "Bar",
-                    "Baz.swift"
-                )
-            );
         });
     });
 

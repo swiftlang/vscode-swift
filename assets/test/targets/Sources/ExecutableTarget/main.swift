@@ -9,9 +9,9 @@ struct CodeGenerator {
             throw CodeGeneratorError.invalidArguments
         }
         // arguments[0] is the path to this command line tool
-        let input = URL(filePath: CommandLine.arguments[1])
-        let output = URL(filePath: CommandLine.arguments[2])
-
+        guard let input = URL(string: "file://\(CommandLine.arguments[1])"), let output = URL(string: "file://\(CommandLine.arguments[2])") else {
+            return
+        }
         let jsonData = try Data(contentsOf: input)
         let enumFormat = try JSONDecoder().decode(JSONFormat.self, from: jsonData)
 
