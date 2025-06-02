@@ -19,7 +19,7 @@ struct SimpleBuildToolPlugin: BuildToolPlugin {
         guard inputPath.extension == "json" else { return .none }
 
         // Produces .swift files in the same directory structure as the input JSON files appear in the target.
-        let components = inputPath.string.components(separatedBy: "LibraryTarget")
+        let components = inputPath.string.split(separator: "LibraryTarget", omittingEmptySubsequences: false).map(String.init)
         let inputName = inputPath.lastComponent
         let outputDir = outputDirectoryPath.appending(components[1]).removingLastComponent()
         let outputName = inputPath.stem + ".swift"
