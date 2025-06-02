@@ -1,6 +1,6 @@
 # Installing Pre-Release Builds
 
-Live on the bleeding edge by switching to the pre-release version.
+Try out the latest updates by switching to the pre-release version.
 
 The Swift extension provides pre-release builds that can be used to test out unreleased features or get bug fixes before an official release can be published. Pre-release build numbers are always one minor version ahead of the most recent release.
 

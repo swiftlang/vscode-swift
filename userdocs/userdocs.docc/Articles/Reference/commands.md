@@ -4,7 +4,7 @@ Useful VS Code commands added by the Swift extension.
 
 > 💡 Tip: Commands can be accessed from the VS Code command palette which is common to all VS Code extensions. See the [VS Code documentation about the command palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette) for a more in-depth overview.
 
-The Swift extension adds the following commands, each prefixed with `"Swift: "` in the UI.
+The Swift extension adds the following commands, each prefixed with `"Swift: "` in the command palette.
 
 #### Configuration
 
@@ -14,14 +14,14 @@ The Swift extension adds the following commands, each prefixed with `"Swift: "` 
 
 The following command is only available on macOS:
 
-- **`Select Target Platform...`** - An experimental command that offers code completion for iOS and tvOS projects.
+- **`Select Target Platform...`** - An experimental command available in Swift 6.1 that offers code completion for iOS, tvOS, watchOS, and visionOS projects.
 
 #### Building and Debugging
 
 - **`Run Build`** - Run `swift build` for the package associated with the open file.
 - **`Debug Build`** - Run `swift build` with debugging enabled for the package associated with the open file, launching the binary and attaching the debugger.
 - **`Attach to Process...`** - Attach the debugger to an already running process for debugging.
-- **`Clean Build Folder`** - Clean the build folder for the package associated with the open file, removing all previously built products.
+- **`Clean Build Folder`** - Clean the `.build` folder for the package associated with the open file, removing all previously built products.
 
 #### Dependency Management
 

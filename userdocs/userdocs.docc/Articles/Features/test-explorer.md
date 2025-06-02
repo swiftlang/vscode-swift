@@ -2,7 +2,7 @@
 
 vscode-swift shows test results in the test explorer.
 
-> 💡 Tip: The Test Explorer UI is common to all VS Code extensions. See the [VS Code documentation about testing](https://code.visualstudio.com/docs/debugtest/testing) for a more in-depth overview.
+> 💡 Tip: The Testing view is common to all VS Code extensions. See the [VS Code documentation about testing](https://code.visualstudio.com/docs/debugtest/testing) for a more in-depth overview.
 
 If your package contains tests then they can be viewed, run and debugged in the Test Explorer.
 
