@@ -67,7 +67,7 @@ Alternatively you can specfiy which specific command the arguments should apply 
 
 ## SourceKit-LSP
 
-[SourceKit-LSP](https://github.com/apple/sourcekit-lsp) is the language server used by the the Swift extension to provide symbol completion, jump to definition, etc. It is developed by Apple to provide Swift and C language support for any editor that supports the Language Server Protocol.
+[SourceKit-LSP](https://github.com/apple/sourcekit-lsp) is the language server used by the Swift extension to provide symbol completion, jump to definition, etc. It is developed by Apple to provide Swift and C language support for any editor that supports the Language Server Protocol.
 
 ### Background Indexing
 
@@ -75,7 +75,7 @@ Background Indexing was added as an experimental feature in Swift toolchain vers
 
 On startup, SourceKit-LSP will read your project information from your `Package.swift` and begin indexing your project automatically. All indexing results are cached in the `.build/index-build` folder within your workspace.
 
-To enable or disable this feature you can use the [`swift.sourcekit-lsp.backgroundIndexing`](vscode://settings/swift.sourcekit-lsp.backgroundIndexing) setting.
+You can enable or disable this feature with the [`swift.sourcekit-lsp.backgroundIndexing`](vscode://settings/swift.sourcekit-lsp.backgroundIndexing) setting.
 
 ### Support for 'Expand Macro'
 

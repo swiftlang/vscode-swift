@@ -1,6 +1,6 @@
 # Swift Project View
 
-Navigate your Swift project.
+Use this view to navigate your Swift project.
 
 If your workspace contains a package, this extension will add a **Swift Project** view to the Explorer:
 

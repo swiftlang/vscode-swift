@@ -38,8 +38,8 @@ The following command is only available on macOS:
 
 #### Testing
 
-- **`Test: Run All Tests`** - Run all the tests across all test targes in the open project.
-- **`Test: Rerun Last Run`** - Perform the last test run again.
+- **`Test: Run All Tests`** - Run all the tests across all test targets in the open project.
+- **`Test: Rerun Last Run`** - Repeat the last test run.
 - **`Test: Open Coverage`** - Open the last generated coverage report, if one exists.
 - **`Test: Run All Tests in Parallel`** - Run all tests in parallel. This action only affects XCTests. Swift-testing tests are parallel by default, and their parallelism [is controlled in code](https://developer.apple.com/documentation/testing/parallelization).
 
