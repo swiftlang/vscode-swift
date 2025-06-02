@@ -84,13 +84,26 @@ suite("ProjectPanelProvider Test Suite", function () {
             () => treeProvider.getChildren(),
             commands => {
                 const commandNames = commands.map(n => n.name);
-                expect(commandNames).to.deep.equal([
-                    "Dependencies",
-                    "Targets",
-                    "Tasks",
-                    "Snippets",
-                    "Commands",
-                ]);
+                // There is a bug in 5.9 where if you have a build tool plugin and a
+                // command plugin the command plugins do not get returned from `swift package plugin list`.
+                if (
+                    workspaceContext.globalToolchain.swiftVersion.isLessThan(new Version(5, 10, 0))
+                ) {
+                    expect(commandNames).to.deep.equal([
+                        "Dependencies",
+                        "Targets",
+                        "Tasks",
+                        "Snippets",
+                    ]);
+                } else {
+                    expect(commandNames).to.deep.equal([
+                        "Dependencies",
+                        "Targets",
+                        "Tasks",
+                        "Snippets",
+                        "Commands",
+                    ]);
+                }
             }
         );
     });
@@ -227,10 +240,11 @@ suite("ProjectPanelProvider Test Suite", function () {
     suite("Commands", () => {
         test("Includes commands", async function () {
             if (
-                process.platform === "win32" &&
-                workspaceContext.globalToolchain.swiftVersion.isLessThanOrEqual(
-                    new Version(6, 0, 0)
-                )
+                (process.platform === "win32" &&
+                    workspaceContext.globalToolchain.swiftVersion.isLessThanOrEqual(
+                        new Version(6, 0, 0)
+                    )) ||
+                workspaceContext.globalToolchain.swiftVersion.isLessThan(new Version(5, 10, 0))
             ) {
                 this.skip();
             }
@@ -246,10 +260,11 @@ suite("ProjectPanelProvider Test Suite", function () {
 
         test("Executes a command", async function () {
             if (
-                process.platform === "win32" &&
-                workspaceContext.globalToolchain.swiftVersion.isLessThanOrEqual(
-                    new Version(6, 0, 0)
-                )
+                (process.platform === "win32" &&
+                    workspaceContext.globalToolchain.swiftVersion.isLessThanOrEqual(
+                        new Version(6, 0, 0)
+                    )) ||
+                workspaceContext.globalToolchain.swiftVersion.isLessThan(new Version(5, 10, 0))
             ) {
                 this.skip();
             }
