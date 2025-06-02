@@ -55,7 +55,7 @@ If you'd like to provide specific arguments to your plugin command invocation yo
 }
 ```
 
-Alternatively you can specfiy which specific command the arguments should apply to using `PluginName:command`. A key of `PluginName` will use the arguments for all commands in the plugin. If you'd like the same arguments to be used for all plugins use `*` as the plugin name.
+Alternatively you can specify which specific command the arguments should apply to using `PluginName:command`. A key of `PluginName` will use the arguments for all commands in the plugin. If you'd like the same arguments to be used for all plugins use `*` as the plugin name.
 
 ```json
 {
