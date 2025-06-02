@@ -19,7 +19,7 @@ import * as vscode from "vscode";
 import { requireNativeModule } from "../utilities/native";
 const { spawn } = requireNativeModule<typeof nodePty>("node-pty");
 
-export interface SwiftProcess {
+export interface SwiftProcess extends vscode.Disposable {
     /**
      * Resolved path to the `swift` executable
      */
@@ -73,7 +73,7 @@ export interface SwiftProcess {
     setDimensions(dimensions: vscode.TerminalDimensions): void;
 }
 
-class CloseHandler {
+class CloseHandler implements vscode.Disposable {
     private readonly closeEmitter: vscode.EventEmitter<number | void> = new vscode.EventEmitter<
         number | void
     >();
@@ -94,6 +94,10 @@ class CloseHandler {
         }
     }
 
+    dispose() {
+        this.closeEmitter.dispose();
+    }
+
     private queueClose() {
         this.closeTimeout = setTimeout(() => {
             this.closeEmitter.fire(this.exitCode);
@@ -110,6 +114,7 @@ export class SwiftPtyProcess implements SwiftProcess {
     private readonly writeEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
     private readonly errorEmitter: vscode.EventEmitter<Error> = new vscode.EventEmitter<Error>();
     private readonly closeHandler: CloseHandler = new CloseHandler();
+    private disposables: vscode.Disposable[] = [];
 
     private spawnedProcess?: nodePty.IPty;
 
@@ -117,7 +122,14 @@ export class SwiftPtyProcess implements SwiftProcess {
         public readonly command: string,
         public readonly args: string[],
         private options: vscode.ProcessExecutionOptions = {}
-    ) {}
+    ) {
+        this.disposables.push(
+            this.spawnEmitter,
+            this.writeEmitter,
+            this.errorEmitter,
+            this.closeHandler
+        );
+    }
 
     spawn(): void {
         try {
@@ -147,6 +159,11 @@ export class SwiftPtyProcess implements SwiftProcess {
                     this.closeHandler.handle();
                 }
             });
+            this.disposables.push(
+                this.onDidClose(() => {
+                    this.dispose();
+                })
+            );
         } catch (error) {
             this.errorEmitter.fire(new Error(`${error}`));
             this.closeHandler.handle();
@@ -173,6 +190,10 @@ export class SwiftPtyProcess implements SwiftProcess {
         this.spawnedProcess?.resize(dimensions.columns, dimensions.rows);
     }
 
+    dispose() {
+        this.disposables.forEach(d => d.dispose());
+    }
+
     onDidSpawn: vscode.Event<void> = this.spawnEmitter.event;
 
     onDidWrite: vscode.Event<string> = this.writeEmitter.event;
@@ -197,6 +218,7 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
     private readonly writeEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
     private readonly errorEmitter: vscode.EventEmitter<Error> = new vscode.EventEmitter<Error>();
     private readonly closeHandler: CloseHandler = new CloseHandler();
+    private disposables: vscode.Disposable[] = [];
 
     private spawnedProcess: child_process.ChildProcessWithoutNullStreams | undefined;
 
@@ -204,7 +226,14 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
         public readonly command: string,
         public readonly args: string[],
         private readonly options: vscode.ProcessExecutionOptions = {}
-    ) {}
+    ) {
+        this.disposables.push(
+            this.spawnEmitter,
+            this.writeEmitter,
+            this.errorEmitter,
+            this.closeHandler
+        );
+    }
 
     spawn(): void {
         try {
@@ -231,12 +260,16 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
 
             this.spawnedProcess.once("exit", code => {
                 this.closeHandler.handle(code ?? undefined);
-                this.dispose();
             });
+
+            this.disposables.push(
+                this.onDidClose(() => {
+                    this.dispose();
+                })
+            );
         } catch (error) {
             this.errorEmitter.fire(new Error(`${error}`));
             this.closeHandler.handle();
-            this.dispose();
         }
     }
 
@@ -260,6 +293,7 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
         this.spawnedProcess?.stdout.removeAllListeners();
         this.spawnedProcess?.stderr.removeAllListeners();
         this.spawnedProcess?.removeAllListeners();
+        this.disposables.forEach(d => d.dispose());
     }
 
     onDidSpawn: vscode.Event<void> = this.spawnEmitter.event;

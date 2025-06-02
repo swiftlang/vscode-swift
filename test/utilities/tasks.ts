@@ -143,6 +143,29 @@ export function waitForEndTaskProcess(task: vscode.Task): Promise<number | undef
 }
 
 /**
+ * Ideally we would want to use {@link executeTaskAndWaitForResult} but that
+ * requires the tests creating the task through some means. If the
+ * {@link vscode.Task Task}, was provided by the extension under test, the
+ * {@link SwiftTask.execution} event emitters never seem to fire.
+ *
+ * @param task task to listen for start event
+ */
+export function waitForStartTaskProcess(task: vscode.Task): Promise<void> {
+    return new Promise<void>(res => {
+        const disposables: vscode.Disposable[] = [];
+        disposables.push(
+            vscode.tasks.onDidStartTaskProcess(e => {
+                if (task.detail !== e.execution.task.detail) {
+                    return;
+                }
+                disposables.forEach(d => d.dispose());
+                res();
+            })
+        );
+    });
+}
+
+/**
  * Cleans the provided output stripping ansi and
  * cleaning extra whitespace
  *

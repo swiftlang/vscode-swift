@@ -21,7 +21,7 @@ import { SwiftPseudoterminal } from "../../../src/tasks/SwiftPseudoterminal";
 suite("SwiftPseudoterminal Tests Suite", () => {
     test("Close event handler fires", async () => {
         const process = new TestSwiftProcess("swift", ["build"]);
-        const terminal = new SwiftPseudoterminal(process, {});
+        const terminal = new SwiftPseudoterminal(() => process, {});
 
         terminal.open(undefined);
         const promise = waitForClose(terminal);
@@ -33,7 +33,7 @@ suite("SwiftPseudoterminal Tests Suite", () => {
 
     test("Write event handler fires", async () => {
         const process = new TestSwiftProcess("swift", ["build"]);
-        const terminal = new SwiftPseudoterminal(process, {});
+        const terminal = new SwiftPseudoterminal(() => process, {});
 
         terminal.open(undefined);
         const promise = waitForWrite(terminal);
@@ -46,7 +46,7 @@ suite("SwiftPseudoterminal Tests Suite", () => {
 
     test("Echoes the command", async () => {
         const process = new TestSwiftProcess("swift", ["build", "-c", "dbg"]);
-        const terminal = new SwiftPseudoterminal(process, { echo: true });
+        const terminal = new SwiftPseudoterminal(() => process, { echo: true });
         const promise = waitForWrite(terminal);
 
         terminal.open(undefined);
@@ -57,7 +57,7 @@ suite("SwiftPseudoterminal Tests Suite", () => {
 
     test("Does not echo the command", async () => {
         const process = new TestSwiftProcess("swift", ["build", "-c", "dbg"]);
-        const terminal = new SwiftPseudoterminal(process, { echo: false });
+        const terminal = new SwiftPseudoterminal(() => process, { echo: false });
         let wrote = false;
         const disposable = terminal.onDidWrite(() => {
             wrote = true;
@@ -71,7 +71,7 @@ suite("SwiftPseudoterminal Tests Suite", () => {
 
     test("Handles error on spawn", async () => {
         const process = new TestSwiftProcess("swift", ["build", "-c", "dbg"]);
-        const terminal = new SwiftPseudoterminal(process, { echo: false });
+        const terminal = new SwiftPseudoterminal(() => process, { echo: false });
         process.setError(new Error("Uh oh!"));
 
         const promise = waitForClose(terminal);
@@ -90,7 +90,7 @@ suite("SwiftPseudoterminal Tests Suite", () => {
                 this.input = input;
             }
         })("swift", ["build", "-c", "dbg"]);
-        const terminal = new SwiftPseudoterminal(process, { echo: false });
+        const terminal = new SwiftPseudoterminal(() => process, { echo: false });
         const promise = waitForClose(terminal);
 
         terminal.open(undefined);
@@ -109,7 +109,8 @@ suite("SwiftPseudoterminal Tests Suite", () => {
                 this.input = input;
             }
         })("swift", ["build", "-c", "dbg"]);
-        const terminal = new SwiftPseudoterminal(process, { echo: false });
+        const terminal = new SwiftPseudoterminal(() => process, { echo: false });
+        terminal.open(undefined);
 
         terminal.handleInput("foo");
 
@@ -124,7 +125,7 @@ suite("SwiftPseudoterminal Tests Suite", () => {
                 this.dimensions = dimensions;
             }
         })("swift", ["build", "-c", "dbg"]);
-        const terminal = new SwiftPseudoterminal(process, { echo: false });
+        const terminal = new SwiftPseudoterminal(() => process, { echo: false });
 
         terminal.open({ rows: 100, columns: 200 });
 
@@ -139,10 +140,14 @@ suite("SwiftPseudoterminal Tests Suite", () => {
                 this.dimensions = dimensions;
             }
         })("swift", ["build", "-c", "dbg"]);
-        const terminal = new SwiftPseudoterminal(process, { echo: false });
+        const terminal = new SwiftPseudoterminal(() => process, { echo: false });
 
-        terminal.setDimensions({ rows: 100, columns: 200 });
+        terminal.open({ rows: 100, columns: 200 });
 
         assert.deepEqual(process.dimensions, { rows: 100, columns: 200 });
+
+        terminal.setDimensions({ rows: 200, columns: 400 });
+
+        assert.deepEqual(process.dimensions, { rows: 200, columns: 400 });
     });
 });
