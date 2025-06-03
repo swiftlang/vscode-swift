@@ -16,8 +16,8 @@ import * as vscode from "vscode";
 import * as assert from "assert";
 import * as mocha from "mocha";
 import { Api } from "../../../src/extension";
-import { testAssetUri } from "../../fixtures";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import { testAssetPath, testAssetUri } from "../../fixtures";
+import { FolderOperation, WorkspaceContext } from "../../../src/WorkspaceContext";
 import { FolderContext } from "../../../src/FolderContext";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
 import { closeAllEditors } from "../../utilities/commands";
@@ -26,6 +26,8 @@ import { Version } from "../../../src/utilities/version";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import configuration from "../../../src/configuration";
 import { resetBuildAllTaskCache } from "../../../src/tasks/SwiftTaskProvider";
+
+// const codeWorkspaceFolders = ["defaultPackage", "diagnostics", "command-plugin"];
 
 export function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.find(f => f.name === "test");
@@ -230,10 +232,28 @@ const extensionBootstrapper = (() => {
             }
 
             // Add assets required for the suite/test to the workspace.
-            const workspaceFolder = getRootWorkspaceFolder();
-            for (const asset of testAssets ?? []) {
-                const packageFolder = testAssetUri(asset);
-                await workspaceContext.addPackageFolder(packageFolder, workspaceFolder);
+            const expectedAssets = testAssets ?? ["defaultPackage"];
+            if (!vscode.workspace.workspaceFile) {
+                for (const asset of expectedAssets) {
+                    await folderInRootWorkspace(asset, workspaceContext);
+                }
+            } else if (expectedAssets.length > 0) {
+                await new Promise<void>(res => {
+                    const found: string[] = [];
+                    workspaceContext.onDidChangeFolders(e => {
+                        if (
+                            e.operation !== FolderOperation.add ||
+                            found.includes(e.folder!.name) ||
+                            !expectedAssets.includes(e.folder!.name)
+                        ) {
+                            return;
+                        }
+                        found.push(e.folder!.name);
+                        if (expectedAssets.length === found.length) {
+                            res();
+                        }
+                    });
+                });
             }
 
             return workspaceContext;
@@ -338,6 +358,13 @@ export const folderInRootWorkspace = async (
     }
     return folder;
 };
+
+export function findWorkspaceFolder(
+    name: string,
+    workspaceContext: WorkspaceContext
+): FolderContext | undefined {
+    return workspaceContext.folders.find(f => f.folder.fsPath === testAssetPath(name));
+}
 
 export type SettingsMap = { [key: string]: unknown };
 

@@ -17,7 +17,7 @@ import * as assert from "assert";
 import { testAssetPath } from "../../fixtures";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { SwiftExecOperation, TaskOperation, TaskQueue } from "../../../src/tasks/TaskQueue";
-import { activateExtensionForSuite } from "../utilities/testutilities";
+import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
 
 suite("TaskQueue Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -155,7 +155,7 @@ suite("TaskQueue Test Suite", () => {
 
     // check queuing task will return expected value
     test("swift exec", async () => {
-        const folder = workspaceContext.folders.find(f => f.name === "test/defaultPackage");
+        const folder = findWorkspaceFolder("defaultPackage", workspaceContext);
         assert(folder);
         const operation = new SwiftExecOperation(
             ["--version"],
@@ -172,7 +172,7 @@ suite("TaskQueue Test Suite", () => {
 
     // check queuing swift exec operation will throw expected error
     test("swift exec error", async () => {
-        const folder = workspaceContext.folders.find(f => f.name === "test/defaultPackage");
+        const folder = findWorkspaceFolder("defaultPackage", workspaceContext);
         assert(folder);
         const operation = new SwiftExecOperation(
             ["--version"],
