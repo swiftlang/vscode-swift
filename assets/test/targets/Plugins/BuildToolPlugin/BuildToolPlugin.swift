@@ -29,16 +29,16 @@ struct SimpleBuildToolPlugin: BuildToolPlugin {
         // Produces .swift files in the same directory structure as the input JSON files appear in the target.
         let components = inputURL.absoluteString.split(separator: "LibraryTarget", omittingEmptySubsequences: false).map(String.init)
         let inputName = inputURL.lastPathComponent
-        let outputDir = outputDirectoryURL.appending(path: components[1]).deletingLastPathComponent()
+        let outputDir = outputDirectoryURL.appendingPathComponent(components[1]).deletingLastPathComponent()
         let outputName = inputURL.deletingPathExtension().lastPathComponent + ".swift"
-        let outputURL = outputDir.appending(path: outputName)
+        let outputURL = outputDir.appendingPathComponent(outputName)
 
         return .buildCommand(
             displayName: "Generating \(outputName) from \(inputName)",
             executable: generatorToolPath,
             arguments: ["\(inputPath)", "\(outputURL.path)"],
             inputFiles: [inputPath],
-            outputFiles: [Path(outputURL.path)],
+            outputFiles: [Path(outputURL.path)]
         )
     }
 }
