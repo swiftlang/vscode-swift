@@ -268,7 +268,10 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
                 setup(async () => {
                     const tasks = await vscode.tasks.fetchTasks({ type: "swift-plugin" });
                     task = tasks.find(
-                        t => t.name === "swift: command-plugin from tasks.json"
+                        t =>
+                            t.name ===
+                            "swift: command-plugin from " +
+                                (vscode.workspace.workspaceFile ? "code workspace" : "tasks.json")
                     ) as SwiftTask;
                 });
 

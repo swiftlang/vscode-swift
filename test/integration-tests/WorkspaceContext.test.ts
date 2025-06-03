@@ -49,7 +49,7 @@ suite("WorkspaceContext Test Suite", () => {
                 workspaceContext = ctx;
             },
             // No default assets as we want to verify against a clean workspace.
-            testAssets: [],
+            testAssets: ["defaultPackage"],
         });
 
         test("Add", async () => {

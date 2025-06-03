@@ -128,7 +128,12 @@ suite("SwiftTaskProvider Test Suite", () => {
 
             setup(async () => {
                 const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
-                task = tasks.find(t => t.name === "swift: Build All from tasks.json");
+                task = tasks.find(
+                    t =>
+                        t.name ===
+                        "swift: Build All from " +
+                            (vscode.workspace.workspaceFile ? "code workspace" : "tasks.json")
+                );
             });
 
             test("provided", async () => {

@@ -90,6 +90,40 @@ module.exports = defineConfig({
             installExtensions,
         },
         {
+            label: "codeWorkspaceTests",
+            files: [
+                "dist/test/common.js",
+                "dist/test/integration-tests/extension.test.js",
+                "dist/test/integration-tests/WorkspaceContext.test.js",
+                "dist/test/integration-tests/tasks/**/*.test.js",
+                "dist/test/integration-tests/commands/build.test.js",
+            ],
+            version: process.env["VSCODE_VERSION"] ?? "stable",
+            workspaceFolder: "./assets/test.code-workspace",
+            launchArgs,
+            extensionDevelopmentPath: vsixPath
+                ? [`${__dirname}/.vscode-test/extensions/${publisher}.${name}-${version}`]
+                : undefined,
+            mocha: {
+                ui: "tdd",
+                color: true,
+                timeout,
+                forbidOnly: isCIBuild,
+                grep: isFastTestRun ? "@slow" : undefined,
+                invert: isFastTestRun,
+                slow: 10000,
+                retries: 1,
+                reporter: path.join(__dirname, ".mocha-reporter.js"),
+                reporterOptions: {
+                    jsonReporterOptions: {
+                        output: path.join(__dirname, "test-results", "code-workspace-tests.json"),
+                    },
+                },
+            },
+            reuseMachineInstall: !isCIBuild,
+            installExtensions,
+        },
+        {
             label: "unitTests",
             files: ["dist/test/common.js", "dist/test/unit-tests/**/*.test.js"],
             version: process.env["VSCODE_VERSION"] ?? "stable",
