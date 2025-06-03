@@ -27,6 +27,7 @@ import { TestLibrary } from "../TestExplorer/TestRunner";
 import { TestKind, isDebugging, isRelease } from "../TestExplorer/TestKind";
 import { buildOptions } from "../tasks/SwiftTaskProvider";
 import { updateLaunchConfigForCI } from "./lldb";
+import { packageName } from "../utilities/tasks";
 
 export class BuildConfigurationFactory {
     public static buildAll(
@@ -719,13 +720,14 @@ export function getFolderAndNameSuffix(
         ? ctx.workspaceFolder.uri.fsPath
         : `\${workspaceFolder:${ctx.workspaceFolder.name}}`;
     let folder: string;
-    let nameSuffix: string;
-    if (ctx.relativePath.length === 0) {
+    let nameSuffix;
+    const pkgName = packageName(ctx);
+    if (pkgName) {
+        folder = nodePath.join(workspaceFolder, ctx.relativePath);
+        nameSuffix = ` (${packageName(ctx)})`;
+    } else {
         folder = workspaceFolder;
         nameSuffix = "";
-    } else {
-        folder = nodePath.join(workspaceFolder, ctx.relativePath);
-        nameSuffix = ` (${ctx.relativePath})`;
     }
     return { folder: folder, nameSuffix: nameSuffix };
 }

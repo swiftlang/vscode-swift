@@ -112,7 +112,11 @@ export async function debugBuildWithOptions(
     const launchConfig = getLaunchConfiguration(target.name, current);
     if (launchConfig) {
         ctx.buildStarted(target.name, launchConfig, options);
-        const result = await debugLaunchConfig(current.workspaceFolder, launchConfig, options);
+        const result = await debugLaunchConfig(
+            vscode.workspace.workspaceFile ? undefined : current.workspaceFolder,
+            launchConfig,
+            options
+        );
         ctx.buildFinished(target.name, launchConfig, options);
         return result;
     }

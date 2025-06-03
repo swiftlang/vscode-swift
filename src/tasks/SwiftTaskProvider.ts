@@ -190,11 +190,17 @@ export async function getBuildAllTask(
     // search for build all task in task.json first, that are valid for folder
     const tasks = await vscode.tasks.fetchTasks();
     const workspaceTasks = tasks.filter(task => {
-        if (task.source !== "Workspace" || task.scope !== folderContext.workspaceFolder) {
+        if (task.source !== "Workspace") {
             return false;
         }
         const swiftExecutionOptions = (task.execution as SwiftExecution).options;
         let cwd = swiftExecutionOptions?.cwd;
+        if (task.scope === vscode.TaskScope.Workspace) {
+            return cwd && substituteVariablesInString(cwd) === folderContext.folder.fsPath;
+        }
+        if (task.scope !== folderContext.workspaceFolder) {
+            return false;
+        }
         if (cwd === "${workspaceFolder}" || cwd === undefined) {
             cwd = folderWorkingDir;
         }

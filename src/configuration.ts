@@ -510,6 +510,13 @@ function computeVscodeVar(varName: string): string | null {
 
     const file = () => vscode.window.activeTextEditor?.document?.uri?.fsPath || "";
 
+    const regex = /workspaceFolder:(.*)/gm;
+    const match = regex.exec(varName);
+    if (match) {
+        const name = match[1];
+        return vscode.workspace.workspaceFolders?.find(f => f.name === name)?.uri.fsPath ?? null;
+    }
+
     // https://code.visualstudio.com/docs/editor/variables-reference
     // Variables to be substituted should be added here.
     const supportedVariables: { [k: string]: () => string } = {
