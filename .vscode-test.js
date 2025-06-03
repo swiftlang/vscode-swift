@@ -97,6 +97,7 @@ module.exports = defineConfig({
                 "dist/test/integration-tests/WorkspaceContext.test.js",
                 "dist/test/integration-tests/tasks/**/*.test.js",
                 "dist/test/integration-tests/commands/build.test.js",
+                "dist/test/integration-tests/testexplorer/TestExplorerIntegration.test.js",
             ],
             version: process.env["VSCODE_VERSION"] ?? "stable",
             workspaceFolder: "./assets/test.code-workspace",
