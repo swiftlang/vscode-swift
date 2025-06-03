@@ -12,7 +12,7 @@ This extension adds language support for Swift to Visual Studio Code, providing 
 
 # Documentation
 
-The official documentation for this extension is available at [vscode-swift](https://docs.swift.org/vscode/documentation/userdocs)
+The official documentation for this extension is [available on swift.org](https://docs.swift.org/vscode/documentation/userdocs).
 
 This extension uses [SourceKit LSP](https://github.com/apple/sourcekit-lsp) for the [language server](https://microsoft.github.io/language-server-protocol/overviews/lsp/overview/), which powers code completion. It also has a dependency on the [LLDB DAP](https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.lldb-dap) extension to enable debugging.
 
