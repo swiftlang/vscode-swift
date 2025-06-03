@@ -27,10 +27,8 @@ import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import configuration from "../../../src/configuration";
 import { resetBuildAllTaskCache } from "../../../src/tasks/SwiftTaskProvider";
 
-// const codeWorkspaceFolders = ["defaultPackage", "diagnostics", "command-plugin"];
-
 export function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
-    const result = vscode.workspace.workspaceFolders?.find(f => f.name === "test");
+    const result = vscode.workspace.workspaceFolders?.at(0);
     assert(result, "No workspace folders were opened for the tests to use");
     return result;
 }

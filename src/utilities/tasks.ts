@@ -67,3 +67,10 @@ export function packageName(folderContext: FolderContext): string | undefined {
         return folderContext.relativePath;
     }
 }
+
+export function resolveScope(scope: vscode.WorkspaceFolder | vscode.TaskScope) {
+    if (vscode.workspace.workspaceFile) {
+        return vscode.TaskScope.Workspace;
+    }
+    return scope;
+}
