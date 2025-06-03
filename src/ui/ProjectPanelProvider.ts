@@ -517,6 +517,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
     private disposables: vscode.Disposable[] = [];
     private activeTasks: Set<string> = new Set();
     private lastComputedNodes: TreeNode[] = [];
+    private buildPluginOutputWatcher?: vscode.FileSystemWatcher;
 
     onDidChangeTreeData = this.didChangeTreeDataEmitter.event;
 
@@ -620,24 +621,17 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         );
     }
 
-    private buildPluginOutputWatcher?: vscode.FileSystemWatcher;
-
     watchBuildPluginOutputs(folderContext: FolderContext) {
         if (this.buildPluginOutputWatcher) {
             this.buildPluginOutputWatcher.dispose();
         }
         this.buildPluginOutputWatcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(folderContext.folder, ".build/plugins/outputs/**/*")
+            new vscode.RelativePattern(folderContext.folder, ".build/plugins/outputs/{*,*/*}")
         );
-        this.buildPluginOutputWatcher.onDidCreate(() => {
-            this.didChangeTreeDataEmitter.fire();
-        });
-        this.buildPluginOutputWatcher.onDidDelete(() => {
-            this.didChangeTreeDataEmitter.fire();
-        });
-        this.buildPluginOutputWatcher.onDidChange(() => {
-            this.didChangeTreeDataEmitter.fire();
-        });
+        const fire = () => this.didChangeTreeDataEmitter.fire();
+        this.buildPluginOutputWatcher.onDidCreate(fire);
+        this.buildPluginOutputWatcher.onDidDelete(fire);
+        this.buildPluginOutputWatcher.onDidChange(fire);
     }
 
     getTreeItem(element: TreeNode): vscode.TreeItem {
