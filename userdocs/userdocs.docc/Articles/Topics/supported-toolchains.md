@@ -1,18 +1,19 @@
 # Supported Toolchains
 
-vscode-swift supports several versions of the Swift toolchain.
+Find out which versions of Swift the extension supports.
 
-vscode-swift supports the following Swift toolchains:
+The Swift extension supports the following Swift toolchains:
  * 5.9
  * 5.10
  * 6.0
  * 6.1
+ * 6.2
 
 The extension also strives to work with the latest nightly toolchains built from the main branch.
 
-Certain features of vscode-swift will only work with newer versions of the toolchains. We recommend using the latest version of the Swift toolchain to get the most benefit out of the extension. The following features only work with certain toolchains as listed:
+Certain features of the Swift extension will only work with newer versions of the toolchains. We recommend using the latest version of the Swift toolchain to get the most benefit out of the extension. The following features only work with certain toolchains as listed:
 
-Feature                    | Minimum Toolchain Required                     
+Feature                    | Minimum Toolchain Required
 -------------------------- | ------------------------------------- 
 Debugging with `lldb-dap`  | 6.0
 <doc:docc-live-preview>    | 6.2

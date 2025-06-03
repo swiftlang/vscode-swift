@@ -2,7 +2,6 @@
 
 Useful VS Code commands added by the Swift extension.
 
-> 💡 Tip: Commands can be accessed from the VS Code command palette which is common to all VS Code extensions. See the [VS Code documentation about the command palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette) for a more in-depth overview.
 
 The Swift extension adds the following commands, each prefixed with `"Swift: "` in the command palette.
 
@@ -56,3 +55,5 @@ The following command is only available on macOS:
 - **`Clear Diagnostics Collection`** - Clear all collected diagnostics in the current workspace to start fresh.
 - **`Restart LSP Server`** - Restart the Swift Language Server Protocol (LSP) server for the current workspace.
 - **`Re-Index Project`** - Force a re-index of the project to refresh code completion and symbol navigation support.
+
+> 💡 Tip: Commands can be accessed from the VS Code command palette which is common to all VS Code extensions. See the [VS Code documentation about the command palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette) for a more in-depth overview.

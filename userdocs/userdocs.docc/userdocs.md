@@ -1,4 +1,4 @@
-# vscode-swift
+# The Swift Extension for VS Code
 
 @Metadata {
    @TechnologyRoot

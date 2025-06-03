@@ -1,6 +1,6 @@
 # Extension Settings
 
-vscode-swift provides various settings to configure its behaviour.
+Configure the behavior of the Swift extension.
 
 > 💡 Tip: The Settings Editor is common to all VS Code extensions. See the [documentation about personalizing VS Code](https://code.visualstudio.com/docs/getstarted/personalize-vscode) for a more in-depth overview.
 
