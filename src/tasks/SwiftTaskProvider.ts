@@ -24,7 +24,7 @@ import { swiftRuntimeEnv } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { SwiftExecution } from "../tasks/SwiftExecution";
-import { packageName, resolveTaskCwd } from "../utilities/tasks";
+import { packageName, resolveScope, resolveTaskCwd } from "../utilities/tasks";
 import { BuildConfigurationFactory } from "../debugger/buildConfig";
 
 /**
@@ -161,7 +161,7 @@ export async function createBuildAllTask(
         {
             group: vscode.TaskGroup.Build,
             cwd: folderContext.folder,
-            scope: folderContext.workspaceFolder,
+            scope: resolveScope(folderContext.workspaceFolder),
             presentationOptions: {
                 reveal: getBuildRevealOption(),
             },
@@ -246,7 +246,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
         {
             group: vscode.TaskGroup.Build,
             cwd: folderContext.folder,
-            scope: folderContext.workspaceFolder,
+            scope: resolveScope(folderContext.workspaceFolder),
             presentationOptions: {
                 reveal: getBuildRevealOption(),
             },
@@ -404,7 +404,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
                         type: "swift",
                         args: [],
                     },
-                    folderContext.workspaceFolder,
+                    resolveScope(folderContext.workspaceFolder),
                     buildTaskName,
                     "swift",
                     new vscode.CustomExecution(() => {

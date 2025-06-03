@@ -27,6 +27,7 @@ import {
 } from "./utilities/testutilities";
 import { FolderContext } from "../../src/FolderContext";
 import { assertContains } from "./testexplorer/utilities";
+import { resolveScope } from "../../src/utilities/tasks";
 
 function assertContainsArg(execution: SwiftExecution, arg: string) {
     assert(execution?.args.find(a => a === arg));
@@ -124,7 +125,7 @@ suite("WorkspaceContext Test Suite", () => {
             assertContainsArg(execution, "--build-tests");
             assertContainsArg(execution, "-Xswiftc");
             assertContainsArg(execution, "-diagnostic-style=llvm");
-            assert.strictEqual(buildAllTask.scope, folder.workspaceFolder);
+            assert.strictEqual(buildAllTask.scope, resolveScope(folder.workspaceFolder));
         });
 
         test('"default" diagnosticsStyle', async () => {
@@ -142,7 +143,7 @@ suite("WorkspaceContext Test Suite", () => {
             assertContainsArg(execution, "build");
             assertContainsArg(execution, "--build-tests");
             assertNotContainsArg(execution, "-diagnostic-style");
-            assert.strictEqual(buildAllTask.scope, folder.workspaceFolder);
+            assert.strictEqual(buildAllTask.scope, resolveScope(folder.workspaceFolder));
         });
 
         test('"swift" diagnosticsStyle', async () => {
@@ -161,7 +162,7 @@ suite("WorkspaceContext Test Suite", () => {
             assertContainsArg(execution, "--build-tests");
             assertContainsArg(execution, "-Xswiftc");
             assertContainsArg(execution, "-diagnostic-style=swift");
-            assert.strictEqual(buildAllTask.scope, folder.workspaceFolder);
+            assert.strictEqual(buildAllTask.scope, resolveScope(folder.workspaceFolder));
         });
 
         test("Build Settings", async () => {

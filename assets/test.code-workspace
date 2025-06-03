@@ -1,10 +1,6 @@
 {
 	"folders": [
 		{
-			"name": "test",
-			"path": "./test"
-		},
-		{
 			"name": "diagnostics",
 			"path": "./test/diagnostics"
 		},
