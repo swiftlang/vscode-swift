@@ -103,10 +103,10 @@ suite("Language Client Integration Suite @slow", function () {
                 position
             );
 
-            // We expect 2 references - one in `main.swift` and one in `PackageLib.swift`
+            // We expect 3 references - in `main.swift`, in `PackageLib.swift` and in `hello.swift`
             expect(referenceLocations).to.have.lengthOf(
                 3,
-                "There should be two references to 'a'."
+                "There should be three references to 'a'."
             );
 
             // Extract reference URIs and sort them to have a predictable order
