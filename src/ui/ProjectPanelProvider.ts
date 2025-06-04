@@ -25,6 +25,7 @@ import { FolderContext } from "../FolderContext";
 import { getPlatformConfig, resolveTaskCwd } from "../utilities/tasks";
 import { SwiftTask, TaskPlatformSpecificConfig } from "../tasks/SwiftTaskProvider";
 import { Version } from "../utilities/version";
+import { existsSync } from "fs";
 
 const LOADING_ICON = "loading~spin";
 /**
@@ -469,6 +470,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
     private activeTasks: Set<string> = new Set();
     private lastComputedNodes: TreeNode[] = [];
     private buildPluginOutputWatcher?: vscode.FileSystemWatcher;
+    private buildPluginFolderWatcher?: vscode.Disposable;
 
     onDidChangeTreeData = this.didChangeTreeDataEmitter.event;
 
@@ -565,13 +567,27 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         if (this.buildPluginOutputWatcher) {
             this.buildPluginOutputWatcher.dispose();
         }
-        this.buildPluginOutputWatcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(folderContext.folder, ".build/plugins/outputs/{*,*/*}")
-        );
+        if (this.buildPluginFolderWatcher) {
+            this.buildPluginFolderWatcher.dispose();
+        }
+
         const fire = () => this.didChangeTreeDataEmitter.fire();
-        this.buildPluginOutputWatcher.onDidCreate(fire);
-        this.buildPluginOutputWatcher.onDidDelete(fire);
-        this.buildPluginOutputWatcher.onDidChange(fire);
+        const buildPath = path.join(folderContext.folder.fsPath, ".build/plugins/outputs");
+        this.buildPluginFolderWatcher = watchForFolder(
+            buildPath,
+            () => {
+                this.buildPluginOutputWatcher = vscode.workspace.createFileSystemWatcher(
+                    new vscode.RelativePattern(buildPath, "{*,*/*}")
+                );
+                this.buildPluginOutputWatcher.onDidCreate(fire);
+                this.buildPluginOutputWatcher.onDidDelete(fire);
+                this.buildPluginOutputWatcher.onDidChange(fire);
+            },
+            () => {
+                this.buildPluginOutputWatcher?.dispose();
+                fire();
+            }
+        );
     }
 
     getTreeItem(element: TreeNode): vscode.TreeItem {
@@ -590,7 +606,6 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                 ...this.lastComputedNodes,
             ];
         }
-
         const nodes = await this.computeChildren(folderContext, element);
 
         // If we're fetching the root nodes then save them in case we have an error later,
@@ -793,4 +808,36 @@ class TaskPoller implements vscode.Disposable {
             clearTimeout(this.timeout);
         }
     }
+}
+
+/**
+ * Polls for the existence of a folder at the given path every 2.5 seconds.
+ * Notifies via the provided callbacks when the folder becomes available or is deleted.
+ */
+function watchForFolder(
+    folderPath: string,
+    onAvailable: () => void,
+    onDeleted: () => void
+): vscode.Disposable {
+    const POLL_INTERVAL = 2500;
+    let folderExists = existsSync(folderPath);
+
+    if (folderExists) {
+        onAvailable();
+    }
+
+    const interval = setInterval(() => {
+        const nowExists = existsSync(folderPath);
+        if (nowExists && !folderExists) {
+            folderExists = true;
+            onAvailable();
+        } else if (!nowExists && folderExists) {
+            folderExists = false;
+            onDeleted();
+        }
+    }, POLL_INTERVAL);
+
+    return {
+        dispose: () => clearInterval(interval),
+    };
 }
