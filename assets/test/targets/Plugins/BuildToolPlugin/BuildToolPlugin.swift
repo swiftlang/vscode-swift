@@ -6,6 +6,11 @@ struct SimpleBuildToolPlugin: BuildToolPlugin {
     func createBuildCommands(context: PluginContext, target: Target) async throws -> [Command] {
         guard let sourceFiles = target.sourceModule?.sourceFiles else { return [] }
 
+        // Build tool plugins are not being called on Windows with Swift < 6.0.
+        #if os(Windows) && swift(<6.0)
+        return []
+        #endif
+
         let generatorTool = try context.tool(named: "ExecutableTarget")
 
         // Construct a build command for each source file with a particular suffix.
