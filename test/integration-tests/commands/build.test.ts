@@ -25,84 +25,87 @@ import { continueSession, waitForDebugAdapterRequest } from "../../utilities/deb
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import { Version } from "../../../src/utilities/version";
 
-suite("Build Commands @slow", function () {
-    // Default timeout is a bit too short, give it a little bit more time
-    this.timeout(3 * 60 * 1000);
+for (let i = 0; i < 25; ++i) {
+    suite.only("Build Commands @slow " + i, function () {
+        // Default timeout is a bit too short, give it a little bit more time
+        this.timeout(3 * 60 * 1000);
 
-    let folderContext: FolderContext;
-    let workspaceContext: WorkspaceContext;
-    const uri = testAssetUri("defaultPackage/Sources/PackageExe/main.swift");
-    const breakpoints = [
-        new vscode.SourceBreakpoint(new vscode.Location(uri, new vscode.Position(2, 0))),
-    ];
+        let folderContext: FolderContext;
+        let workspaceContext: WorkspaceContext;
+        const uri = testAssetUri("defaultPackage/Sources/PackageExe/main.swift");
+        const breakpoints = [
+            new vscode.SourceBreakpoint(new vscode.Location(uri, new vscode.Position(2, 0))),
+        ];
 
-    activateExtensionForSuite({
-        async setup(ctx) {
-            // The description of this package is crashing on Windows with Swift 5.9.x and below
-            if (
-                process.platform === "win32" &&
-                ctx.globalToolchain.swiftVersion.isLessThan(new Version(5, 10, 0))
-            ) {
-                this.skip();
+        activateExtensionForSuite({
+            async setup(ctx) {
+                // The description of this package is crashing on Windows with Swift 5.9.x and below
+                if (
+                    process.platform === "win32" &&
+                    ctx.globalToolchain.swiftVersion.isLessThan(new Version(5, 10, 0))
+                ) {
+                    this.skip();
+                }
+                // A breakpoint will have not effect on the Run command.
+                vscode.debug.addBreakpoints(breakpoints);
+
+                workspaceContext = ctx;
+                await waitForNoRunningTasks();
+                folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
+                await workspaceContext.focusFolder(folderContext);
+            },
+            requiresDebugger: true,
+            requiresLSP: true,
+        });
+
+        suiteTeardown(async () => {
+            vscode.debug.removeBreakpoints(breakpoints);
+        });
+
+        test("Swift: Run Build", async () => {
+            const result = await vscode.commands.executeCommand(Commands.RUN, "PackageExe");
+            expect(result).to.be.true;
+        });
+
+        test("Swift: Debug Build", async () => {
+            // Promise used to indicate we hit the break point.
+            // NB: "stopped" is the exact command when debuggee has stopped due to break point,
+            // but "stackTrace" is the deterministic sync point we will use to make sure we can execute continue
+            const bpPromise = waitForDebugAdapterRequest(
+                "Debug PackageExe (defaultPackage)",
+                workspaceContext.globalToolchain.swiftVersion,
+                "stackTrace"
+            );
+
+            const resultPromise: Thenable<boolean> = vscode.commands.executeCommand(
+                Commands.DEBUG,
+                "PackageExe"
+            );
+
+            await bpPromise;
+            let succeeded = false;
+            void resultPromise.then(s => (succeeded = s));
+            while (!succeeded) {
+                await continueSession();
+                await new Promise(r => setTimeout(r, 500));
             }
-            // A breakpoint will have not effect on the Run command.
-            vscode.debug.addBreakpoints(breakpoints);
+            await expect(resultPromise).to.eventually.be.true;
+        });
 
-            workspaceContext = ctx;
-            await waitForNoRunningTasks();
-            folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
-            await workspaceContext.focusFolder(folderContext);
-        },
-        requiresDebugger: true,
+        test("Swift: Clean Build", async () => {
+            let result = await vscode.commands.executeCommand(Commands.RUN, "PackageExe");
+            expect(result).to.be.true;
+
+            const buildPath = path.join(folderContext.folder.fsPath, ".build");
+            const beforeItemCount = (await fs.readdir(buildPath)).length;
+
+            result = await vscode.commands.executeCommand(Commands.CLEAN_BUILD);
+            expect(result).to.be.true;
+
+            const afterItemCount = (await fs.readdir(buildPath)).length;
+            // .build folder is going to be filled with built artifacts after Commands.RUN command
+            // After executing the clean command the build directory is guranteed to have less entry.
+            expect(afterItemCount).to.be.lessThan(beforeItemCount);
+        });
     });
-
-    suiteTeardown(async () => {
-        vscode.debug.removeBreakpoints(breakpoints);
-    });
-
-    test("Swift: Run Build", async () => {
-        const result = await vscode.commands.executeCommand(Commands.RUN, "PackageExe");
-        expect(result).to.be.true;
-    });
-
-    test("Swift: Debug Build", async () => {
-        // Promise used to indicate we hit the break point.
-        // NB: "stopped" is the exact command when debuggee has stopped due to break point,
-        // but "stackTrace" is the deterministic sync point we will use to make sure we can execute continue
-        const bpPromise = waitForDebugAdapterRequest(
-            "Debug PackageExe (defaultPackage)",
-            workspaceContext.globalToolchain.swiftVersion,
-            "stackTrace"
-        );
-
-        const resultPromise: Thenable<boolean> = vscode.commands.executeCommand(
-            Commands.DEBUG,
-            "PackageExe"
-        );
-
-        await bpPromise;
-        let succeeded = false;
-        void resultPromise.then(s => (succeeded = s));
-        while (!succeeded) {
-            await continueSession();
-            await new Promise(r => setTimeout(r, 500));
-        }
-        await expect(resultPromise).to.eventually.be.true;
-    });
-
-    test("Swift: Clean Build", async () => {
-        let result = await vscode.commands.executeCommand(Commands.RUN, "PackageExe");
-        expect(result).to.be.true;
-
-        const buildPath = path.join(folderContext.folder.fsPath, ".build");
-        const beforeItemCount = (await fs.readdir(buildPath)).length;
-
-        result = await vscode.commands.executeCommand(Commands.CLEAN_BUILD);
-        expect(result).to.be.true;
-
-        const afterItemCount = (await fs.readdir(buildPath)).length;
-        // .build folder is going to be filled with built artifacts after Commands.RUN command
-        // After executing the clean command the build directory is guranteed to have less entry.
-        expect(afterItemCount).to.be.lessThan(beforeItemCount);
-    });
-});
+}
