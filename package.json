@@ -757,7 +757,7 @@
               "Use the `lldb-dap` executable from the toolchain. Requires Swift 6 or later.",
               "Use the CodeLLDB extension's debug adapter."
             ],
-            "markdownDescription": "Select which debug adapter to use to debus Swift executables.",
+            "markdownDescription": "Select which debug adapter to use to debug Swift executables.",
             "order": 1
           },
           "swift.debugger.path": {
