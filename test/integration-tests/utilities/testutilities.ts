@@ -238,7 +238,17 @@ const extensionBootstrapper = (() => {
             } else if (expectedAssets.length > 0) {
                 await new Promise<void>(res => {
                     const found: string[] = [];
-                    workspaceContext.onDidChangeFolders(e => {
+                    for (const f of workspaceContext.folders) {
+                        if (found.includes(f.name) || !expectedAssets.includes(f.name)) {
+                            continue;
+                        }
+                        found.push(f.name);
+                    }
+                    if (expectedAssets.length === found.length) {
+                        res();
+                        return;
+                    }
+                    const disposable = workspaceContext.onDidChangeFolders(e => {
                         if (
                             e.operation !== FolderOperation.add ||
                             found.includes(e.folder!.name) ||
@@ -249,6 +259,7 @@ const extensionBootstrapper = (() => {
                         found.push(e.folder!.name);
                         if (expectedAssets.length === found.length) {
                             res();
+                            disposable.dispose();
                         }
                     });
                 });
