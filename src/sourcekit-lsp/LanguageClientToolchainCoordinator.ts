@@ -62,10 +62,7 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
             case FolderOperation.add: {
                 const client = await this.create(folder, singleServer, languageClientFactory);
                 await (singleServer
-                    ? client.useLanguageClient(async () => {
-                          // Just want to wait for client to be ready
-                          await client.addFolder(folder);
-                      })
+                    ? client.addFolder(folder)
                     : client.setLanguageClientFolder(folder));
                 break;
             }

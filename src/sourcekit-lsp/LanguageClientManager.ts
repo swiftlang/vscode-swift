@@ -439,14 +439,21 @@ export class LanguageClientManager implements vscode.Disposable {
     }
 
     private async startClient(client: LanguageClient, errorHandler: SourceKitLSPErrorHandler) {
-        client.onDidChangeState(e => {
-            // if state is now running add in any sub-folder workspaces that
-            // we have cached. If this is the first time we are starting then
-            // we won't have any sub folder workspaces, but if the server crashed
-            // or we forced a restart then we need to do this
-            if (e.oldState === State.Starting && e.newState === State.Running) {
-                void this.addSubFolderWorkspaces(client);
-            }
+        const runningPromise = new Promise<void>((res, rej) => {
+            const disposable = client.onDidChangeState(e => {
+                // if state is now running add in any sub-folder workspaces that
+                // we have cached. If this is the first time we are starting then
+                // we won't have any sub folder workspaces, but if the server crashed
+                // or we forced a restart then we need to do this
+                if (e.oldState === State.Starting && e.newState === State.Running) {
+                    res();
+                    disposable.dispose();
+                    void this.addSubFolderWorkspaces(client);
+                } else if (e.oldState === State.Starting && e.newState === State.Stopped) {
+                    rej("SourceKit-LSP failed to start");
+                    disposable.dispose();
+                }
+            });
         });
         if (client.clientOptions.workspaceFolder) {
             this.folderContext.workspaceContext.outputChannel.log(
@@ -465,6 +472,7 @@ export class LanguageClientManager implements vscode.Disposable {
         // start client
         this.clientReadyPromise = client
             .start()
+            .then(() => runningPromise)
             .then(() => {
                 // Now that we've started up correctly, start the error handler to auto-restart
                 // if sourcekit-lsp crashes during normal operation.
