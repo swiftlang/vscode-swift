@@ -50,7 +50,9 @@ export async function makeDebugConfigurations(
         return false;
     }
 
-    const wsLaunchSection = vscode.workspace.getConfiguration("launch", ctx.folder);
+    const wsLaunchSection = vscode.workspace.workspaceFile
+        ? vscode.workspace.getConfiguration("launch")
+        : vscode.workspace.getConfiguration("launch", ctx.folder);
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
 
     // Determine which launch configurations need updating/creating
@@ -111,7 +113,9 @@ export async function makeDebugConfigurations(
     await wsLaunchSection.update(
         "configurations",
         launchConfigs,
-        vscode.ConfigurationTarget.WorkspaceFolder
+        vscode.workspace.workspaceFile
+            ? vscode.ConfigurationTarget.Workspace
+            : vscode.ConfigurationTarget.WorkspaceFolder
     );
     return true;
 }
@@ -121,7 +125,9 @@ export function getLaunchConfiguration(
     target: string,
     folderCtx: FolderContext
 ): vscode.DebugConfiguration | undefined {
-    const wsLaunchSection = vscode.workspace.getConfiguration("launch", folderCtx.workspaceFolder);
+    const wsLaunchSection = vscode.workspace.workspaceFile
+        ? vscode.workspace.getConfiguration("launch")
+        : vscode.workspace.getConfiguration("launch", folderCtx.workspaceFolder);
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
     const { folder } = getFolderAndNameSuffix(folderCtx);
     const targetPath = path.join(
@@ -131,9 +137,10 @@ export function getLaunchConfiguration(
     );
     // Users could be on different platforms with different path annotations,
     // so normalize before we compare.
-    return launchConfigs.find(
+    const launchConfig = launchConfigs.find(
         config => path.normalize(config.program) === path.normalize(targetPath)
     );
+    return launchConfig;
 }
 
 // Return array of DebugConfigurations for executables based on what is in Package.swift
@@ -201,7 +208,7 @@ export function createSnippetConfiguration(
  * @param workspaceFolder Workspace to run debugger in
  */
 export async function debugLaunchConfig(
-    workspaceFolder: vscode.WorkspaceFolder,
+    workspaceFolder: vscode.WorkspaceFolder | undefined,
     config: vscode.DebugConfiguration,
     options: vscode.DebugSessionOptions = {}
 ) {
