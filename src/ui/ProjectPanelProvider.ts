@@ -15,12 +15,15 @@
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
+import * as glob from "glob";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderOperation } from "../WorkspaceContext";
 import contextKeys from "../contextKeys";
 import { Dependency, ResolvedDependency, Target } from "../SwiftPackage";
 import { FolderContext } from "../FolderContext";
+import { Version } from "../utilities/version";
+import { existsSync } from "fs";
 
 const LOADING_ICON = "loading~spin";
 /**
@@ -212,8 +215,11 @@ function snippetTaskName(name: string): string {
 }
 
 class TargetNode {
+    private newPluginLayoutVersion = new Version(6, 0, 0);
+
     constructor(
         public target: Target,
+        private folder: FolderContext,
         private activeTasks: Set<string>
     ) {}
 
@@ -285,7 +291,85 @@ class TargetNode {
     }
 
     getChildren(): TreeNode[] {
-        return [];
+        return this.buildPluginOutputs(this.folder.toolchain.swiftVersion);
+    }
+
+    private buildToolGlobPattern(version: Version): string {
+        const base = this.folder.folder.fsPath.replace(/\\/g, "/");
+        if (version.isGreaterThanOrEqual(this.newPluginLayoutVersion)) {
+            return `${base}/.build/plugins/outputs/*/${this.target.name}/*/*/**`;
+        } else {
+            return `${base}/.build/plugins/outputs/*/${this.target.name}/*/{*,*/*}`;
+        }
+    }
+
+    private buildPluginOutputs(version: Version): TreeNode[] {
+        // Files in the `outputs` directory follow the pattern:
+        // .build/plugins/outputs/buildtoolplugin/<target-name>/destination/<build-tool-plugin-name>/*
+        // This glob will capture all the files in the outputs directory for this target.
+        const pattern = this.buildToolGlobPattern(version);
+        const matches = glob.sync(pattern, { nodir: false });
+
+        const buildTree = (matches: string[]): TreeNode[] => {
+            const basePath = path.join(this.folder.folder.fsPath, ".build", "plugins", "outputs");
+            // Gather up the files by build tool plugin name. Don't capture any more files than
+            // just the build-tool-plugin-name folder, as the FileNode will handle walking the tree.
+            const buildToolPluginFiles = matches.reduce(
+                (memo, filePath) => {
+                    const relativePath = path.relative(basePath, filePath);
+                    const parts = relativePath.split(path.sep);
+                    const buildToolPluginName = version.isGreaterThanOrEqual(
+                        this.newPluginLayoutVersion
+                    )
+                        ? parts[3]
+                        : parts[2];
+                    const existingFiles = memo[buildToolPluginName] || [];
+                    const rootDirectoryLength = version.isGreaterThanOrEqual(
+                        this.newPluginLayoutVersion
+                    )
+                        ? 5
+                        : 4;
+                    const isRootPluginFilesDirectory = parts.length === rootDirectoryLength;
+                    return {
+                        ...memo,
+                        [buildToolPluginName]: isRootPluginFilesDirectory
+                            ? [...existingFiles, filePath]
+                            : existingFiles,
+                    };
+                },
+                {} as Record<string, string[]>
+            );
+
+            // Create a new HeaderNode for each build tool plugin used to generate files for this target.
+            return Object.keys(buildToolPluginFiles)
+                .map(pluginName => {
+                    const pluginFiles = buildToolPluginFiles[pluginName];
+                    if (pluginFiles.length === 0) {
+                        return undefined;
+                    }
+                    return new HeaderNode(
+                        `${this.target.name}-${pluginName}`,
+                        `${pluginName} - Generated Files`,
+                        "debug-disconnect",
+                        () => {
+                            return Promise.all(
+                                pluginFiles.map(async filePath => {
+                                    const stats = await fs.stat(filePath);
+                                    return new FileNode(
+                                        path.basename(filePath),
+                                        filePath,
+                                        stats.isDirectory(),
+                                        `${this.target.name}-${pluginName}`
+                                    );
+                                })
+                            );
+                        }
+                    );
+                })
+                .filter((node): node is HeaderNode => node !== undefined);
+        };
+
+        return matches.length > 0 ? buildTree(matches) : [];
     }
 }
 
@@ -365,6 +449,8 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
     private disposables: vscode.Disposable[] = [];
     private activeTasks: Set<string> = new Set();
     private lastComputedNodes: TreeNode[] = [];
+    private buildPluginOutputWatcher?: vscode.FileSystemWatcher;
+    private buildPluginFolderWatcher?: vscode.Disposable;
 
     onDidChangeTreeData = this.didChangeTreeDataEmitter.event;
 
@@ -434,6 +520,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                         if (!folder) {
                             return;
                         }
+                        this.watchBuildPluginOutputs(folder);
                         treeView.title = `Swift Project (${folder.name})`;
                         this.didChangeTreeDataEmitter.fire();
                         break;
@@ -456,6 +543,33 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         );
     }
 
+    watchBuildPluginOutputs(folderContext: FolderContext) {
+        if (this.buildPluginOutputWatcher) {
+            this.buildPluginOutputWatcher.dispose();
+        }
+        if (this.buildPluginFolderWatcher) {
+            this.buildPluginFolderWatcher.dispose();
+        }
+
+        const fire = () => this.didChangeTreeDataEmitter.fire();
+        const buildPath = path.join(folderContext.folder.fsPath, ".build/plugins/outputs");
+        this.buildPluginFolderWatcher = watchForFolder(
+            buildPath,
+            () => {
+                this.buildPluginOutputWatcher = vscode.workspace.createFileSystemWatcher(
+                    new vscode.RelativePattern(buildPath, "{*,*/*}")
+                );
+                this.buildPluginOutputWatcher.onDidCreate(fire);
+                this.buildPluginOutputWatcher.onDidDelete(fire);
+                this.buildPluginOutputWatcher.onDidChange(fire);
+            },
+            () => {
+                this.buildPluginOutputWatcher?.dispose();
+                fire();
+            }
+        );
+    }
+
     getTreeItem(element: TreeNode): vscode.TreeItem {
         return element.toTreeItem();
     }
@@ -472,7 +586,6 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                 ...this.lastComputedNodes,
             ];
         }
-
         const nodes = await this.computeChildren(folderContext, element);
 
         // If we're fetching the root nodes then save them in case we have an error later,
@@ -568,7 +681,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         // Snipepts are shown under the Snippets header
         return targets
             .filter(target => target.type !== "snippet")
-            .map(target => new TargetNode(target, this.activeTasks))
+            .map(target => new TargetNode(target, folderContext, this.activeTasks))
             .sort((a, b) => targetSort(a).localeCompare(targetSort(b)));
     }
 
@@ -621,7 +734,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         const targets = await folderContext.swiftPackage.targets;
         return targets
             .filter(target => target.type === "snippet")
-            .flatMap(target => new TargetNode(target, this.activeTasks))
+            .flatMap(target => new TargetNode(target, folderContext, this.activeTasks))
             .sort((a, b) => a.name.localeCompare(b.name));
     }
 }
@@ -674,4 +787,36 @@ class TaskPoller implements vscode.Disposable {
             clearTimeout(this.timeout);
         }
     }
+}
+
+/**
+ * Polls for the existence of a folder at the given path every 2.5 seconds.
+ * Notifies via the provided callbacks when the folder becomes available or is deleted.
+ */
+function watchForFolder(
+    folderPath: string,
+    onAvailable: () => void,
+    onDeleted: () => void
+): vscode.Disposable {
+    const POLL_INTERVAL = 2500;
+    let folderExists = existsSync(folderPath);
+
+    if (folderExists) {
+        onAvailable();
+    }
+
+    const interval = setInterval(() => {
+        const nowExists = existsSync(folderPath);
+        if (nowExists && !folderExists) {
+            folderExists = true;
+            onAvailable();
+        } else if (!nowExists && folderExists) {
+            folderExists = false;
+            onDeleted();
+        }
+    }, POLL_INTERVAL);
+
+    return {
+        dispose: () => clearInterval(interval),
+    };
 }
