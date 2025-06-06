@@ -155,7 +155,7 @@ function createContextKeys(): ContextKeys {
         set hasExecutableProduct(value: boolean) {
             hasExecutableProduct = value;
             void vscode.commands
-                .executeCommand("setContext", "swift.hasExecutableTarget", value)
+                .executeCommand("setContext", "swift.hasExecutableProduct", value)
                 .then(() => {
                     /* Put in worker queue */
                 });
