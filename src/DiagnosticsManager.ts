@@ -14,6 +14,7 @@
 
 import * as vscode from "vscode";
 import * as fs from "fs";
+import * as path from "path";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
 import configuration from "./configuration";
@@ -149,7 +150,24 @@ export class DiagnosticsManager implements vscode.Disposable {
                 typeof diagnostic.code !== "string" &&
                 typeof diagnostic.code !== "number"
             ) {
-                if (diagnostic.code.target.fsPath.endsWith(".md")) {
+                const fsPath = diagnostic.code.target.fsPath;
+
+                // Work around a bug in the nightlies where the URL comes back looking like:
+                // `/path/to/TestPackage/https:/docs.swift.org/compiler/documentation/diagnostics/nominal-types`
+                // Transform this in to a valid docs.swift.org URL which the openEducationalNote command
+                // will open in a browser.
+                // FIXME: This can be removed when the bug is fixed in sourcekit-lsp.
+                let open = false;
+                const needle = `https:${path.sep}docs.swift.org${path.sep}`;
+                if (fsPath.indexOf(needle) !== -1) {
+                    const extractedPath = `https://docs.swift.org/${fsPath.split(needle).pop()}/`;
+                    diagnostic.code.target = vscode.Uri.parse(extractedPath.replace(/\\/g, "/"));
+                    open = true;
+                } else if (diagnostic.code.target.fsPath.endsWith(".md")) {
+                    open = true;
+                }
+
+                if (open) {
                     diagnostic.code = {
                         target: vscode.Uri.parse(
                             `command:swift.openEducationalNote?${encodeURIComponent(JSON.stringify(diagnostic.code.target))}`
