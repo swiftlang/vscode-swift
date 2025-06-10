@@ -20,6 +20,7 @@
 - Disable clicking on links in Live Preview ([#1518](https://github.com/swiftlang/vscode-swift/pull/1518))
 - Avoid blocking folder addition on package loading ([#1422](https://github.com/swiftlang/vscode-swift/pull/1422))
 - Increase the size of child_process buffers ([#1506](https://github.com/swiftlang/vscode-swift/pull/1506))
+- Fix handling of malformed educational notes links ([#1607](https://github.com/swiftlang/vscode-swift/pull/1607))
 
 ## 2.2.0 - 2025-04-07
 
