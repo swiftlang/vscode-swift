@@ -149,7 +149,22 @@ export class DiagnosticsManager implements vscode.Disposable {
                 typeof diagnostic.code !== "string" &&
                 typeof diagnostic.code !== "number"
             ) {
-                if (diagnostic.code.target.fsPath.endsWith(".md")) {
+                const fsPath = diagnostic.code.target.fsPath;
+
+                // Work around a bug in the nightlies where the URL comes back looking like:
+                // `/path/to/TestPackage/https:/docs.swift.org/compiler/documentation/diagnostics/nominal-types`
+                // Transform this in to a valid docs.swift.org URL which the openEducationalNote command
+                // will open in a browser.
+                let open = false;
+                if (fsPath.indexOf("https:/docs.swift.org/") !== -1) {
+                    const extractedPath = `https://docs.swift.org/${fsPath.split("https:/docs.swift.org/").pop()}/`;
+                    diagnostic.code.target = vscode.Uri.parse(extractedPath);
+                    open = true;
+                } else if (diagnostic.code.target.fsPath.endsWith(".md")) {
+                    open = true;
+                }
+
+                if (open) {
                     diagnostic.code = {
                         target: vscode.Uri.parse(
                             `command:swift.openEducationalNote?${encodeURIComponent(JSON.stringify(diagnostic.code.target))}`

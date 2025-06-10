@@ -690,6 +690,45 @@ suite("DiagnosticsManager Test Suite", function () {
                     assert.fail("Diagnostic target not replaced with markdown command");
                 }
             });
+
+            test("target with malformed nightly link", async () => {
+                const malformedUri =
+                    "/path/to/TestPackage/https:/docs.swift.org/compiler/documentation/diagnostics/nominal-types";
+                const expectedUri =
+                    "https://docs.swift.org/compiler/documentation/diagnostics/nominal-types/";
+                diagnostic.code = {
+                    value: "string",
+                    target: vscode.Uri.file(malformedUri),
+                };
+
+                workspaceContext.diagnostics.handleDiagnostics(
+                    mainUri,
+                    DiagnosticsManager.isSourcekit,
+                    [diagnostic]
+                );
+
+                const diagnostics = vscode.languages.getDiagnostics(mainUri);
+                const matchingDiagnostic = diagnostics.find(findDiagnostic(diagnostic));
+
+                expect(matchingDiagnostic).to.have.property("code");
+                expect(matchingDiagnostic?.code).to.have.property("value", "More Information...");
+
+                if (
+                    matchingDiagnostic &&
+                    matchingDiagnostic.code &&
+                    typeof matchingDiagnostic.code !== "string" &&
+                    typeof matchingDiagnostic.code !== "number"
+                ) {
+                    expect(matchingDiagnostic.code.target.scheme).to.equal("command");
+                    expect(matchingDiagnostic.code.target.path).to.equal(
+                        "swift.openEducationalNote"
+                    );
+                    const parsed = JSON.parse(matchingDiagnostic.code.target.query);
+                    expect(vscode.Uri.from(parsed).toString()).to.equal(expectedUri);
+                } else {
+                    assert.fail("Diagnostic target not replaced with markdown command");
+                }
+            });
         });
 
         suite("keepAll", () => {
