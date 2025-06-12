@@ -23,7 +23,7 @@ import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/t
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
 import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
 
-suite.only("Dependency Commmands Test Suite", function () {
+suite("Dependency Commmands Test Suite", function () {
     // full workflow's interaction with spm is longer than the default timeout
     // 3 minutes for each test should be more than enough
     this.timeout(3 * 60 * 1000);
