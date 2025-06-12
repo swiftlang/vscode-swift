@@ -14,7 +14,6 @@
 
 import * as vscode from "vscode";
 import { testAssetUri } from "../fixtures";
-import { waitForNoRunningTasks } from "../utilities/tasks";
 import { expect } from "chai";
 import {
     continueSession,
@@ -52,7 +51,6 @@ suite("SwiftSnippet Test Suite @slow", function () {
             resetSettings = await updateSettings({
                 "swift.debugger.debugAdapter": "lldb-dap",
             });
-            await waitForNoRunningTasks();
 
             // File needs to be open for command to be enabled
             await workspaceContext.focusFolder(folder);

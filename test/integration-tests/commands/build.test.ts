@@ -16,7 +16,6 @@ import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { expect } from "chai";
-import { waitForNoRunningTasks } from "../../utilities/tasks";
 import { testAssetUri } from "../../fixtures";
 import { FolderContext } from "../../../src/FolderContext";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
@@ -49,7 +48,6 @@ suite("Build Commands @slow", function () {
             vscode.debug.addBreakpoints(breakpoints);
 
             workspaceContext = ctx;
-            await waitForNoRunningTasks();
             folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
             await workspaceContext.focusFolder(folderContext);
         },
