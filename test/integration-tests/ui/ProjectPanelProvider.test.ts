@@ -23,7 +23,7 @@ import {
     TreeNode,
 } from "../../../src/ui/ProjectPanelProvider";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
-import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
+import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
 import { testAssetPath } from "../../fixtures";
 import {
     activateExtensionForSuite,
@@ -45,14 +45,13 @@ suite("ProjectPanelProvider Test Suite", function () {
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
-            await waitForNoRunningTasks();
             const folderContext = await folderInRootWorkspace("targets", workspaceContext);
             await vscode.workspace.openTextDocument(
                 path.join(folderContext.folder.fsPath, "Package.swift")
             );
-            const buildAllTask = await getBuildAllTask(folderContext);
+            const buildAllTask = await createBuildAllTask(folderContext);
             buildAllTask.definition.dontTriggerTestDiscovery = true;
-            await executeTaskAndWaitForResult(buildAllTask as SwiftTask);
+            await executeTaskAndWaitForResult(buildAllTask);
             const outputChannel = new SwiftOutputChannel("ProjectPanelProvider.tests");
             await folderContext.loadSwiftPlugins(outputChannel);
             expect(outputChannel.logs.length).to.equal(0, `Expected no output channel logs`);
