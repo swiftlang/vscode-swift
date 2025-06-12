@@ -23,7 +23,7 @@ import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/t
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
 import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
 
-suite("Dependency Commmands Test Suite", function () {
+suite.only("Dependency Commmands Test Suite", function () {
     // full workflow's interaction with spm is longer than the default timeout
     // 3 minutes for each test should be more than enough
     this.timeout(3 * 60 * 1000);
@@ -54,7 +54,7 @@ suite("Dependency Commmands Test Suite", function () {
     });
 
     // Skipping: https://github.com/swiftlang/vscode-swift/issues/1316
-    suite.skip("Swift: Use Local Dependency", function () {
+    suite("Swift: Use Local Dependency", function () {
         let treeProvider: ProjectPanelProvider;
 
         setup(async () => {
@@ -107,10 +107,6 @@ suite("Dependency Commmands Test Suite", function () {
         }
 
         test("Swift: Reset Package Dependencies", async function () {
-            // spm reset after using local dependency is broken on windows
-            if (process.platform === "win32") {
-                this.skip();
-            }
             await useLocalDependencyTest();
 
             // spm reset
