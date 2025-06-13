@@ -36,6 +36,7 @@ suite("Dependency Commmands Test Suite", function () {
             workspaceContext = ctx;
             depsContext = await folderInRootWorkspace("dependencies", workspaceContext);
         },
+        testAssets: ["dependencies"],
     });
 
     setup(async () => {
