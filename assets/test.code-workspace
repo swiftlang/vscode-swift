@@ -5,6 +5,10 @@
 			"path": "./test/diagnostics"
 		},
 		{
+			"name": "dependencies",
+			"path": "./test/dependencies"
+		},
+		{
 			"name": "command-plugin",
 			"path": "./test/command-plugin"
 		},
