@@ -9,6 +9,7 @@
 !images/**
 !snippets/**
 !assets/icons/**
+!assets/walkthrough/**
 !assets/documentation-webview/**
 !assets/swift-docc-render/**
 !node_modules/@vscode/codicons/**
