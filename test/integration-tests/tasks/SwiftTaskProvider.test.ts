@@ -22,11 +22,7 @@ import {
     getBuildAllTask,
 } from "../../../src/tasks/SwiftTaskProvider";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
-import {
-    executeTaskAndWaitForResult,
-    waitForEndTaskProcess,
-    waitForNoRunningTasks,
-} from "../../utilities/tasks";
+import { executeTaskAndWaitForResult, waitForEndTaskProcess } from "../../utilities/tasks";
 import { Version } from "../../../src/utilities/version";
 import { FolderContext } from "../../../src/FolderContext";
 import { mockGlobalObject } from "../../MockUtils";
@@ -51,10 +47,6 @@ suite("SwiftTaskProvider Test Suite", () => {
     });
 
     suite("createSwiftTask", () => {
-        setup(async () => {
-            await waitForNoRunningTasks();
-        });
-
         test("Exit code on success", async () => {
             const task = createSwiftTask(
                 ["--help"],

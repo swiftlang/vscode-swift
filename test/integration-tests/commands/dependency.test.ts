@@ -20,7 +20,7 @@ import { FolderContext } from "../../../src/FolderContext";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Commands } from "../../../src/commands";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
-import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
+import { executeTaskAndWaitForResult } from "../../utilities/tasks";
 import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
 
 suite("Dependency Commmands Test Suite", function () {
@@ -40,7 +40,6 @@ suite("Dependency Commmands Test Suite", function () {
 
     setup(async () => {
         await workspaceContext.focusFolder(depsContext);
-        await waitForNoRunningTasks();
     });
 
     test("Swift: Update Package Dependencies", async function () {
