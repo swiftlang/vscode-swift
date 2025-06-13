@@ -487,7 +487,8 @@ const configuration = {
 
 const vsCodeVariableRegex = new RegExp(/\$\{(.+?)\}/g);
 export function substituteVariablesInString(val: string): string {
-    return val.replace(vsCodeVariableRegex, (substring: string, varName: string) =>
+    // Fallback to "" incase someone explicitly sets to null
+    return (val || "").replace(vsCodeVariableRegex, (substring: string, varName: string) =>
         typeof varName === "string" ? computeVscodeVar(varName) || substring : substring
     );
 }
