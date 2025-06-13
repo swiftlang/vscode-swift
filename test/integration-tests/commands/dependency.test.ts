@@ -53,7 +53,7 @@ suite("Dependency Commmands Test Suite", function () {
     });
 
     // Skipping: https://github.com/swiftlang/vscode-swift/issues/1316
-    suite.skip("Swift: Use Local Dependency", function () {
+    suite("Swift: Use Local Dependency", function () {
         let treeProvider: ProjectPanelProvider;
 
         setup(async () => {
@@ -106,10 +106,6 @@ suite("Dependency Commmands Test Suite", function () {
         }
 
         test("Swift: Reset Package Dependencies", async function () {
-            // spm reset after using local dependency is broken on windows
-            if (process.platform === "win32") {
-                this.skip();
-            }
             await useLocalDependencyTest();
 
             // spm reset
