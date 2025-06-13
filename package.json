@@ -1114,6 +1114,10 @@
           "when": "view == projectPanel && viewItem == remote"
         },
         {
+          "command": "swift.editDependency",
+          "when": "view == packageDependencies && viewItem == remote"
+        },
+        {
           "command": "swift.uneditDependency",
           "when": "view == projectPanel && viewItem == editing"
         },
