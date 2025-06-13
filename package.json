@@ -1716,7 +1716,7 @@
     "fantasticon": "^3.0.0",
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
-    "mocha": "^10.8.2",
+    "mocha": "^11.6.0",
     "mock-fs": "^5.5.0",
     "node-pty": "^1.0.0",
     "octokit": "^3.2.2",
