@@ -17,7 +17,6 @@ import { FolderContext } from "../FolderContext";
 import { createSwiftTask, SwiftTaskProvider } from "../tasks/SwiftTaskProvider";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { executeTaskWithUI } from "./utilities";
-import { Version } from "../utilities/version";
 
 /**
  * Executes a {@link vscode.Task task} to reset the complete cache/build directory.
@@ -50,8 +49,7 @@ export async function folderResetPackage(folderContext: FolderContext) {
 
     const languageClientManager = () =>
         folderContext.workspaceContext.languageClientManager.get(folderContext);
-    const shouldStop =
-        process.platform === "win32" && folderContext.swiftVersion.isLessThan(new Version(6, 1, 0));
+    const shouldStop = process.platform === "win32";
     if (shouldStop) {
         await vscode.window.withProgress(
             {
