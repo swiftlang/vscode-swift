@@ -16,6 +16,7 @@ import * as vscode from "vscode";
 import { createSwiftTask } from "../../tasks/SwiftTaskProvider";
 import { FolderOperation, WorkspaceContext } from "../../WorkspaceContext";
 import { executeTaskWithUI } from "../utilities";
+import { packageName } from "../../utilities/tasks";
 
 /**
  * Setup package dependency to be edited
@@ -34,7 +35,7 @@ export async function editDependency(identifier: string, ctx: WorkspaceContext) 
         {
             scope: currentFolder.workspaceFolder,
             cwd: currentFolder.folder,
-            prefix: currentFolder.name,
+            packageName: packageName(currentFolder),
         },
         currentFolder.toolchain
     );

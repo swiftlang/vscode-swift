@@ -30,6 +30,19 @@
       "preLaunchTask": "compile-tests"
     },
     {
+      "name": "Code Workspace Tests",
+      "type": "extensionHost",
+      "request": "launch",
+      "testConfiguration": "${workspaceFolder}/.vscode-test.js",
+      "testConfigurationLabel": "codeWorkspaceTests",
+      "args": ["--profile=testing-debug"],
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "env": {
+        "VSCODE_DEBUG": "1"
+      },
+      "preLaunchTask": "compile-tests"
+    },
+    {
       "name": "Unit Tests",
       "type": "extensionHost",
       "request": "launch",

@@ -1,0 +1,144 @@
+{
+	"folders": [
+		{
+			"name": "diagnostics",
+			"path": "./test/diagnostics"
+		},
+		{
+			"name": "dependencies",
+			"path": "./test/dependencies"
+		},
+		{
+			"name": "command-plugin",
+			"path": "./test/command-plugin"
+		},
+		{
+			"name": "defaultPackage",
+			"path": "./test/defaultPackage"
+		}
+	],
+	"settings": {
+		"swift.disableAutoResolve": true,
+		"swift.autoGenerateLaunchConfigurations": false,
+		"swift.debugger.debugAdapter": "lldb-dap",
+		"swift.debugger.setupCodeLLDB": "alwaysUpdateGlobal",
+		"swift.additionalTestArguments": [
+			"-Xswiftc",
+			"-DTEST_ARGUMENT_SET_VIA_TEST_BUILD_ARGUMENTS_SETTING"
+		],
+		"lldb.verboseLogging": true,
+		"lldb.launch.terminal": "external",
+		"lldb-dap.detachOnError": true,
+		"swift.sourcekit-lsp.backgroundIndexing": "off"
+	},
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"type": "swift",
+				"args": [
+					"build",
+					"--build-tests",
+					"--verbose",
+					"-Xswiftc",
+					"-DBAR"
+				],
+				"cwd": "${workspaceFolder:defaultPackage}",
+				"group": {
+					"kind": "build",
+					"isDefault": true
+				},
+				"label": "swift: Build All (defaultPackage) (workspace)",
+				"detail": "swift build --build-tests --verbose -Xswiftc -DBAR"
+			},
+			{
+				"type": "swift",
+				"args": [
+					"build",
+					"--show-bin-path"
+				],
+				"cwd": "${workspaceFolder:defaultPackage}",
+				"group": "build",
+				"label": "swift: Build All from code workspace",
+				"detail": "swift build --show-bin-path"
+			},
+			{
+				"type": "swift-plugin",
+				"command": "command_plugin",
+				"args": [
+					"--foo"
+				],
+				"cwd": "${workspaceFolder:command-plugin}",
+				"disableSandbox": true,
+				"label": "swift: command-plugin from code workspace",
+				"detail": "swift package command_plugin --foo"
+			},
+			{
+				"type": "swift",
+				"args": [
+					"build",
+					"--product",
+					"PackageExe",
+					"-Xswiftc",
+					"-diagnostic-style=llvm",
+					"-Xswiftc",
+					"-DBAR"
+				],
+				"cwd": "${workspaceFolder:defaultPackage}",
+				"group": "build",
+				"label": "swift: Build Debug PackageExe (defaultPackage) (workspace)",
+				"detail": "swift build --product PackageExe -Xswiftc -diagnostic-style=llvm -Xswiftc -DBAR"
+			},
+			{
+				"type": "swift",
+				"args": [
+					"build",
+					"-c",
+					"release",
+					"--product",
+					"PackageExe",
+					"-Xswiftc",
+					"-diagnostic-style=llvm",
+					"-Xswiftc",
+					"-DBAR"
+				],
+				"cwd": "${workspaceFolder:defaultPackage}",
+				"group": "build",
+				"label": "swift: Build Release PackageExe (defaultPackage) (workspace)",
+				"detail": "swift build -c release --product PackageExe -Xswiftc -diagnostic-style=llvm -Xswiftc -DBAR"
+			}
+		]
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"type": "swift",
+				"request": "launch",
+				"name": "Debug PackageExe (defaultPackage) (workspace)",
+				"program": "${workspaceFolder:defaultPackage}/.build/debug/PackageExe",
+				"args": [],
+				"cwd": "${workspaceFolder:defaultPackage}",
+				"preLaunchTask": "swift: Build Debug PackageExe (defaultPackage) (workspace)",
+				"disableASLR": false,
+				"initCommands": [
+					"settings set target.disable-aslr false"
+				]
+			},
+			{
+				"type": "swift",
+				"request": "launch",
+				"name": "Release PackageExe (defaultPackage) (workspace)",
+				"program": "${workspaceFolder:defaultPackage}/.build/release/PackageExe",
+				"args": [],
+				"cwd": "${workspaceFolder:defaultPackage}",
+				"preLaunchTask": "swift: Build Release PackageExe (defaultPackage) (workspace)",
+				"disableASLR": false,
+				"initCommands": [
+					"settings set target.disable-aslr false"
+				]
+			}
+		],
+		"compounds": []
+	}
+}

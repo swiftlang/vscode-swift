@@ -51,6 +51,7 @@ import { reduceTestItemChildren } from "./TestUtils";
 import { CompositeCancellationToken } from "../utilities/cancellation";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
+import { packageName, resolveScope } from "../utilities/tasks";
 
 export enum TestLibrary {
     xctest = "XCTest",
@@ -773,8 +774,8 @@ export class TestRunner {
                 `Building and Running Tests${kindLabel}`,
                 {
                     cwd: this.folderContext.folder,
-                    scope: this.folderContext.workspaceFolder,
-                    prefix: this.folderContext.name,
+                    scope: resolveScope(this.folderContext.workspaceFolder),
+                    packageName: packageName(this.folderContext),
                     presentationOptions: { reveal: vscode.TaskRevealKind.Never },
                 },
                 this.folderContext.toolchain,

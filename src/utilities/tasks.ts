@@ -13,6 +13,8 @@
 //===----------------------------------------------------------------------===//
 import * as path from "path";
 import * as vscode from "vscode";
+import { substituteVariablesInString } from "../configuration";
+import { FolderContext } from "../FolderContext";
 
 export const lineBreakRegex = /\r\n|\n|\r/gm;
 
@@ -20,6 +22,10 @@ export function resolveTaskCwd(task: vscode.Task, cwd?: string): string | undefi
     const scopeWorkspaceFolder = getScopeWorkspaceFolder(task);
     if (!cwd) {
         return scopeWorkspaceFolder;
+    }
+
+    if (/\$\{.*\}/g.test(cwd)) {
+        return substituteVariablesInString(cwd);
     }
 
     if (path.isAbsolute(cwd)) {
@@ -52,4 +58,19 @@ export function checkIfBuildComplete(line: string): boolean {
         return true;
     }
     return false;
+}
+
+export function packageName(folderContext: FolderContext): string | undefined {
+    if (vscode.workspace.workspaceFile) {
+        return folderContext.name;
+    } else if (folderContext.relativePath.length > 0) {
+        return folderContext.relativePath;
+    }
+}
+
+export function resolveScope(scope: vscode.WorkspaceFolder | vscode.TaskScope) {
+    if (vscode.workspace.workspaceFile) {
+        return vscode.TaskScope.Workspace;
+    }
+    return scope;
 }

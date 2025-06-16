@@ -68,7 +68,8 @@ suite("Build Commands @slow", function () {
         // NB: "stopped" is the exact command when debuggee has stopped due to break point,
         // but "stackTrace" is the deterministic sync point we will use to make sure we can execute continue
         const bpPromise = waitForDebugAdapterRequest(
-            "Debug PackageExe (defaultPackage)",
+            "Debug PackageExe (defaultPackage)" +
+                (vscode.workspace.workspaceFile ? " (workspace)" : ""),
             workspaceContext.globalToolchain.swiftVersion,
             "stackTrace"
         );

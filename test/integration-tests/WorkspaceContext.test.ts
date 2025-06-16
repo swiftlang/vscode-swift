@@ -20,9 +20,14 @@ import { FolderOperation, WorkspaceContext } from "../../src/WorkspaceContext";
 import { createBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
 import { Version } from "../../src/utilities/version";
 import { SwiftExecution } from "../../src/tasks/SwiftExecution";
-import { activateExtensionForSuite, updateSettings } from "./utilities/testutilities";
+import {
+    activateExtensionForSuite,
+    getRootWorkspaceFolder,
+    updateSettings,
+} from "./utilities/testutilities";
 import { FolderContext } from "../../src/FolderContext";
 import { assertContains } from "./testexplorer/utilities";
+import { resolveScope } from "../../src/utilities/tasks";
 
 function assertContainsArg(execution: SwiftExecution, arg: string) {
     assert(execution?.args.find(a => a === arg));
@@ -45,7 +50,7 @@ suite("WorkspaceContext Test Suite", () => {
                 workspaceContext = ctx;
             },
             // No default assets as we want to verify against a clean workspace.
-            testAssets: [],
+            testAssets: ["defaultPackage"],
         });
 
         test("Add", async () => {
@@ -60,7 +65,7 @@ suite("WorkspaceContext Test Suite", () => {
                     recordedFolders.push(changedFolderRecord);
                 });
 
-                const workspaceFolder = vscode.workspace.workspaceFolders?.values().next().value;
+                const workspaceFolder = getRootWorkspaceFolder();
 
                 assert.ok(workspaceFolder, "No workspace folders found in workspace");
 
@@ -102,7 +107,7 @@ suite("WorkspaceContext Test Suite", () => {
         });
 
         // Was hitting a timeout in suiteSetup during CI build once in a while
-        this.timeout(5000);
+        this.timeout(15000);
 
         test("Default Task values", async () => {
             const folder = workspaceContext.folders.find(
@@ -120,7 +125,7 @@ suite("WorkspaceContext Test Suite", () => {
             assertContainsArg(execution, "--build-tests");
             assertContainsArg(execution, "-Xswiftc");
             assertContainsArg(execution, "-diagnostic-style=llvm");
-            assert.strictEqual(buildAllTask.scope, folder.workspaceFolder);
+            assert.strictEqual(buildAllTask.scope, resolveScope(folder.workspaceFolder));
         });
 
         test('"default" diagnosticsStyle', async () => {
@@ -138,7 +143,7 @@ suite("WorkspaceContext Test Suite", () => {
             assertContainsArg(execution, "build");
             assertContainsArg(execution, "--build-tests");
             assertNotContainsArg(execution, "-diagnostic-style");
-            assert.strictEqual(buildAllTask.scope, folder.workspaceFolder);
+            assert.strictEqual(buildAllTask.scope, resolveScope(folder.workspaceFolder));
         });
 
         test('"swift" diagnosticsStyle', async () => {
@@ -157,7 +162,7 @@ suite("WorkspaceContext Test Suite", () => {
             assertContainsArg(execution, "--build-tests");
             assertContainsArg(execution, "-Xswiftc");
             assertContainsArg(execution, "-diagnostic-style=swift");
-            assert.strictEqual(buildAllTask.scope, folder.workspaceFolder);
+            assert.strictEqual(buildAllTask.scope, resolveScope(folder.workspaceFolder));
         });
 
         test("Build Settings", async () => {
@@ -244,4 +249,4 @@ suite("WorkspaceContext Test Suite", () => {
             });
         }).timeout(1000);
     });
-}).timeout(10000);
+}).timeout(15000);
