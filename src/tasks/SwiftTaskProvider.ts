@@ -24,7 +24,7 @@ import { swiftRuntimeEnv } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { SwiftExecution } from "../tasks/SwiftExecution";
-import { packageName, resolveScope, resolveTaskCwd } from "../utilities/tasks";
+import { getPlatformConfig, packageName, resolveScope, resolveTaskCwd } from "../utilities/tasks";
 import { BuildConfigurationFactory } from "../debugger/buildConfig";
 
 /**
@@ -50,7 +50,7 @@ interface TaskConfig {
     showBuildStatus?: ShowBuildStatusOptions;
 }
 
-interface TaskPlatformSpecificConfig {
+export interface TaskPlatformSpecificConfig {
     args?: string[];
     cwd?: string;
     env?: { [name: string]: unknown };
@@ -447,14 +447,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         const toolchain = currentFolder.toolchain;
         const swift = toolchain.getToolchainExecutable("swift");
         // platform specific
-        let platform: TaskPlatformSpecificConfig | undefined;
-        if (process.platform === "win32") {
-            platform = task.definition.windows;
-        } else if (process.platform === "linux") {
-            platform = task.definition.linux;
-        } else if (process.platform === "darwin") {
-            platform = task.definition.macos;
-        }
+        const platform: TaskPlatformSpecificConfig | undefined = getPlatformConfig(task);
         // get args and cwd values from either platform specific block or base
         const args = (platform?.args ?? task.definition.args ?? []).map(
             substituteVariablesInString

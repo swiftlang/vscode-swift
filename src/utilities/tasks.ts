@@ -44,6 +44,16 @@ function getScopeWorkspaceFolder(task: vscode.Task): string | undefined {
     return;
 }
 
+export function getPlatformConfig<T>(task: vscode.Task): T | undefined {
+    if (process.platform === "win32") {
+        return task.definition.windows;
+    } else if (process.platform === "linux") {
+        return task.definition.linux;
+    } else if (process.platform === "darwin") {
+        return task.definition.macos;
+    }
+}
+
 export function checkIfBuildComplete(line: string): boolean {
     // Output in this format for "build" and "test" commands
     const completeRegex = /^Build complete!/gm;
