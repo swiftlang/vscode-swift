@@ -22,7 +22,7 @@ import { Commands } from "../../../src/commands";
 import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
 
-suite.only("Dependency Commmands Test Suite @slow", function () {
+suite("Dependency Commmands Test Suite @slow", function () {
     // full workflow's interaction with spm is longer than the default timeout
     // 3 minutes for each test should be more than enough
     this.timeout(3 * 60 * 1000);
@@ -54,13 +54,13 @@ suite.only("Dependency Commmands Test Suite @slow", function () {
     });
 
     for (let i = 0; i < 10; ++i) {
-        suite("Swift: Use Local Dependency " + i, function () {
+        suite.only("Swift: Use Local Dependency " + i, function () {
             let treeProvider: ProjectPanelProvider;
 
             suiteSetup(async () => {
-                if (process.platform === "win32") {
-                    await workspaceContext.languageClientManager.get(depsContext).stop();
-                }
+                // if (process.platform === "win32") {
+                //     await workspaceContext.languageClientManager.get(depsContext).stop();
+                // }
             });
 
             setup(async () => {
