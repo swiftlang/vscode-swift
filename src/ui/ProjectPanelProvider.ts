@@ -21,6 +21,8 @@ import { FolderOperation } from "../WorkspaceContext";
 import contextKeys from "../contextKeys";
 import { Dependency, ResolvedDependency, Target } from "../SwiftPackage";
 import { FolderContext } from "../FolderContext";
+import { getPlatformConfig, resolveTaskCwd } from "../utilities/tasks";
+import { SwiftTask, TaskPlatformSpecificConfig } from "../tasks/SwiftTaskProvider";
 
 const LOADING_ICON = "loading~spin";
 /**
@@ -573,17 +575,20 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
     }
 
     private async tasks(folderContext: FolderContext): Promise<TaskNode[]> {
-        const tasks = await vscode.tasks.fetchTasks();
+        const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
 
         return (
             tasks
                 // Plugin tasks are shown under the Commands header
-                .filter(
-                    task =>
-                        (!task.definition.cwd ||
-                            task.definition.cwd === folderContext.folder.fsPath) &&
-                        task.source !== "swift-plugin"
-                )
+                .filter(task => {
+                    const platform: TaskPlatformSpecificConfig | undefined =
+                        getPlatformConfig(task);
+                    return (
+                        !task.definition.cwd ||
+                        resolveTaskCwd(task, platform?.cwd ?? task.definition.cwd) ===
+                            folderContext.folder.fsPath
+                    );
+                })
                 .map(
                     (task, i) =>
                         new TaskNode(
@@ -631,7 +636,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
  * This is a workaround for the lack of an event when tasks are added or removed.
  */
 class TaskPoller implements vscode.Disposable {
-    private previousTasks: vscode.Task[] = [];
+    private previousTasks: SwiftTask[] = [];
     private timeout?: NodeJS.Timeout;
     private static POLL_INTERVAL = 5000;
 
@@ -641,15 +646,13 @@ class TaskPoller implements vscode.Disposable {
 
     private async pollTasks() {
         try {
-            const tasks = await vscode.tasks.fetchTasks();
+            const tasks = (await vscode.tasks.fetchTasks({ type: "swift" })) as SwiftTask[];
             const tasksChanged =
                 tasks.length !== this.previousTasks.length ||
                 tasks.some((task, i) => {
                     const prev = this.previousTasks[i];
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const c1 = (task.execution as any).command;
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const c2 = (prev.execution as any).command;
+                    const c1 = task.execution.command;
+                    const c2 = prev.execution.command;
                     return (
                         !prev ||
                         task.name !== prev.name ||
