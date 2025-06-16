@@ -25,11 +25,15 @@ import {
     mockObject,
 } from "../../MockUtils";
 import configuration from "../../../src/configuration";
+import { Commands } from "../../../src/commands";
 
 suite("Selected Xcode Watcher", () => {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
     let mockOutputChannel: MockedObject<SwiftOutputChannel>;
     const pathConfig = mockGlobalValue(configuration, "path");
+    const mockWorkspace = mockGlobalObject(vscode, "workspace");
+    const mockCommands = mockGlobalObject(vscode, "commands");
+    let mockSwiftConfig: MockedObject<vscode.WorkspaceConfiguration>;
 
     setup(function () {
         // Xcode only exists on macOS, so the SelectedXcodeWatcher is macOS-only.
@@ -42,6 +46,12 @@ suite("Selected Xcode Watcher", () => {
         });
 
         pathConfig.setValue("");
+
+        mockSwiftConfig = mockObject<vscode.WorkspaceConfiguration>({
+            inspect: mockFn(),
+            update: mockFn(),
+        });
+        mockWorkspace.getConfiguration.returns(instance(mockSwiftConfig));
     });
 
     async function run(symLinksOnCallback: (string | undefined)[]) {
@@ -84,11 +94,50 @@ suite("Selected Xcode Watcher", () => {
         );
     });
 
-    test("Ignores when path is explicitly set", async () => {
+    test("Warns that setting is out of date", async () => {
         pathConfig.setValue("/path/to/swift/bin");
 
-        await run(["/foo", "/bar"]);
+        await run(["/path/to/swift/bin", "/foo", "/foo"]);
 
-        expect(mockedVSCodeWindow.showWarningMessage).to.have.not.been.called;
+        expect(mockedVSCodeWindow.showWarningMessage).to.have.been.calledOnceWithExactly(
+            'The Swift Extension has detected a change in the selected Xcode which does not match the value of your "swift.path" setting. Would you like to update your configured "swift.path" setting?',
+            "Remove From Settings",
+            "Select Toolchain"
+        );
+    });
+
+    test("Warns that setting is out of date on startup", async () => {
+        pathConfig.setValue("/path/to/swift/bin");
+
+        await run(["/foo", "/foo"]);
+
+        expect(mockedVSCodeWindow.showWarningMessage).to.have.been.calledOnceWithExactly(
+            'The Swift Extension has detected a change in the selected Xcode which does not match the value of your "swift.path" setting. Would you like to update your configured "swift.path" setting?',
+            "Remove From Settings",
+            "Select Toolchain"
+        );
+    });
+
+    test("Remove setting", async () => {
+        pathConfig.setValue("/path/to/swift/bin");
+
+        mockedVSCodeWindow.showWarningMessage.resolves("Remove From Settings" as any);
+
+        await run(["/foo", "/foo"]);
+
+        expect(mockSwiftConfig.update.args).to.deep.equal([
+            ["path", undefined, vscode.ConfigurationTarget.Global],
+            ["path", undefined, vscode.ConfigurationTarget.Workspace],
+        ]);
+    });
+
+    test("Select toolchain", async () => {
+        pathConfig.setValue("/path/to/swift/bin");
+
+        mockedVSCodeWindow.showWarningMessage.resolves("Select Toolchain" as any);
+
+        await run(["/foo", "/foo"]);
+
+        expect(mockCommands.executeCommand).to.have.been.calledOnceWith(Commands.SELECT_TOOLCHAIN);
     });
 });
