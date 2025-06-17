@@ -19,11 +19,11 @@ import { testAssetUri } from "../../fixtures";
 import { FolderContext } from "../../../src/FolderContext";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Commands } from "../../../src/commands";
-import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
-import { executeTaskAndWaitForResult } from "../../utilities/tasks";
+import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
+import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
 import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
 
-suite("Dependency Commmands Test Suite", function () {
+suite("Dependency Commmands Test Suite @slow", function () {
     // full workflow's interaction with spm is longer than the default timeout
     // 3 minutes for each test should be more than enough
     this.timeout(3 * 60 * 1000);
@@ -34,7 +34,7 @@ suite("Dependency Commmands Test Suite", function () {
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
-            depsContext = await folderInRootWorkspace("dependencies", workspaceContext);
+            depsContext = findWorkspaceFolder("dependencies", workspaceContext)!;
         },
         testAssets: ["dependencies"],
     });
@@ -53,14 +53,13 @@ suite("Dependency Commmands Test Suite", function () {
         expect(result).to.be.true;
     });
 
-    // Skipping: https://github.com/swiftlang/vscode-swift/issues/1316
     suite("Swift: Use Local Dependency", function () {
         let treeProvider: ProjectPanelProvider;
 
         setup(async () => {
-            await workspaceContext.focusFolder(depsContext);
-            await executeTaskAndWaitForResult(await createBuildAllTask(depsContext));
+            await waitForNoRunningTasks();
             treeProvider = new ProjectPanelProvider(workspaceContext);
+            await executeTaskAndWaitForResult(await createBuildAllTask(depsContext));
         });
 
         teardown(() => {
@@ -72,7 +71,9 @@ suite("Dependency Commmands Test Suite", function () {
             const header = headers.find(n => n.name === "Dependencies") as PackageNode;
             expect(header).to.not.be.undefined;
             const children = await header.getChildren();
-            return children.find(n => n.name === "swift-markdown") as PackageNode;
+            return children.find(
+                n => n.name.toLocaleLowerCase() === "swift-markdown"
+            ) as PackageNode;
         }
 
         // Wait for the dependency to switch to the expected state.
@@ -87,11 +88,12 @@ suite("Dependency Commmands Test Suite", function () {
                 }
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
+            throw Error(`Could not find dependency with state "${state}"`);
         }
 
         async function useLocalDependencyTest() {
             // spm edit with user supplied local version of dependency
-            const item = await getDependency();
+            const item = await getDependencyInState("remote");
             const localDep = testAssetUri("swift-markdown");
             const result = await vscode.commands.executeCommand(
                 Commands.USE_LOCAL_DEPENDENCY,
