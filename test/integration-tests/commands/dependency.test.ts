@@ -20,7 +20,8 @@ import { FolderContext } from "../../../src/FolderContext";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Commands } from "../../../src/commands";
 import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
-import { waitForNoRunningTasks } from "../../utilities/tasks";
+import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
+import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
 
 suite("Dependency Commmands Test Suite @slow", function () {
     // full workflow's interaction with spm is longer than the default timeout
@@ -68,6 +69,7 @@ suite("Dependency Commmands Test Suite @slow", function () {
                 await waitForNoRunningTasks();
                 console.log("tree provider");
                 treeProvider = new ProjectPanelProvider(workspaceContext);
+                await executeTaskAndWaitForResult(await createBuildAllTask(depsContext));
             });
 
             teardown(() => {
