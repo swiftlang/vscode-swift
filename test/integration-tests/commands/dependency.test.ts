@@ -54,96 +54,88 @@ suite("Dependency Commmands Test Suite @slow", function () {
         expect(result).to.be.true;
     });
 
-    for (let i = 0; i < 10; ++i) {
-        suite.only("Swift: Use Local Dependency " + i, function () {
-            let treeProvider: ProjectPanelProvider;
+    suite("Swift: Use Local Dependency", function () {
+        let treeProvider: ProjectPanelProvider;
 
-            suiteSetup(async () => {
-                // if (process.platform === "win32") {
-                //     await workspaceContext.languageClientManager.get(depsContext).stop();
-                // }
-            });
-
-            setup(async () => {
-                console.log("wait no tasks");
-                await waitForNoRunningTasks();
-                console.log("tree provider");
-                treeProvider = new ProjectPanelProvider(workspaceContext);
-                await executeTaskAndWaitForResult(await createBuildAllTask(depsContext));
-            });
-
-            teardown(() => {
-                treeProvider?.dispose();
-            });
-
-            async function getDependency() {
-                const headers = await treeProvider.getChildren();
-                const header = headers.find(n => n.name === "Dependencies") as PackageNode;
-                expect(header).to.not.be.undefined;
-                const children = await header.getChildren();
-                return children.find(
-                    n => n.name.toLocaleLowerCase() === "swift-markdown"
-                ) as PackageNode;
-            }
-
-            // Wait for the dependency to switch to the expected state.
-            // This doesn't happen immediately after the USE_LOCAL_DEPENDENCY
-            // and RESET_PACKAGE commands because the file watcher on
-            // workspace-state.json needs to trigger.
-            async function getDependencyInState(state: "remote" | "editing") {
-                for (let i = 0; i < 10; i++) {
-                    const dep = await getDependency();
-                    console.log(dep.type);
-                    if (dep.type === state) {
-                        return dep;
-                    }
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
-                throw Error(`Could not find dependency with state "${state}"`);
-            }
-
-            async function useLocalDependencyTest() {
-                // spm edit with user supplied local version of dependency
-                const item = await getDependencyInState("remote");
-                const localDep = testAssetUri("swift-markdown");
-                const result = await vscode.commands.executeCommand(
-                    Commands.USE_LOCAL_DEPENDENCY,
-                    item,
-                    localDep
-                );
-                expect(result).to.be.true;
-
-                const dep = await getDependencyInState("editing");
-                expect(dep).to.not.be.undefined;
-                // Make sure using local
-                expect(dep?.type).to.equal("editing");
-            }
-
-            test("Swift: Reset Package Dependencies", async function () {
-                await useLocalDependencyTest();
-
-                // spm reset
-                const result = await vscode.commands.executeCommand(Commands.RESET_PACKAGE);
-                expect(result).to.be.true;
-
-                const dep = await getDependencyInState("remote");
-                expect(dep).to.not.be.undefined;
-                expect(dep?.type).to.equal("remote");
-            });
-
-            test("Swift: Revert To Original Version", async function () {
-                await useLocalDependencyTest();
-
-                const result = await vscode.commands.executeCommand(
-                    Commands.UNEDIT_DEPENDENCY,
-                    await getDependency()
-                );
-                expect(result).to.be.true;
-
-                const dep = await getDependencyInState("remote");
-                expect(dep).to.not.be.undefined;
-                expect(dep?.type).to.equal("remote");
-            });
+        setup(async () => {
+            console.log("wait no tasks");
+            await waitForNoRunningTasks();
+            console.log("tree provider");
+            treeProvider = new ProjectPanelProvider(workspaceContext);
+            await executeTaskAndWaitForResult(await createBuildAllTask(depsContext));
         });
-    }
+
+        teardown(() => {
+            treeProvider?.dispose();
+        });
+
+        async function getDependency() {
+            const headers = await treeProvider.getChildren();
+            const header = headers.find(n => n.name === "Dependencies") as PackageNode;
+            expect(header).to.not.be.undefined;
+            const children = await header.getChildren();
+            return children.find(
+                n => n.name.toLocaleLowerCase() === "swift-markdown"
+            ) as PackageNode;
+        }
+
+        // Wait for the dependency to switch to the expected state.
+        // This doesn't happen immediately after the USE_LOCAL_DEPENDENCY
+        // and RESET_PACKAGE commands because the file watcher on
+        // workspace-state.json needs to trigger.
+        async function getDependencyInState(state: "remote" | "editing") {
+            for (let i = 0; i < 10; i++) {
+                const dep = await getDependency();
+                console.log(dep.type);
+                if (dep.type === state) {
+                    return dep;
+                }
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            throw Error(`Could not find dependency with state "${state}"`);
+        }
+
+        async function useLocalDependencyTest() {
+            // spm edit with user supplied local version of dependency
+            const item = await getDependencyInState("remote");
+            const localDep = testAssetUri("swift-markdown");
+            const result = await vscode.commands.executeCommand(
+                Commands.USE_LOCAL_DEPENDENCY,
+                item,
+                localDep
+            );
+            expect(result).to.be.true;
+
+            const dep = await getDependencyInState("editing");
+            expect(dep).to.not.be.undefined;
+            // Make sure using local
+            expect(dep?.type).to.equal("editing");
+        }
+
+        test("Swift: Reset Package Dependencies", async function () {
+            await useLocalDependencyTest();
+
+            // spm reset
+            const result = await vscode.commands.executeCommand(Commands.RESET_PACKAGE);
+            expect(result).to.be.true;
+
+            const dep = await getDependencyInState("remote");
+            expect(dep).to.not.be.undefined;
+            expect(dep?.type).to.equal("remote");
+        });
+
+        test("Swift: Revert To Original Version", async function () {
+            await useLocalDependencyTest();
+
+            const result = await vscode.commands.executeCommand(
+                Commands.UNEDIT_DEPENDENCY,
+                await getDependency()
+            );
+            expect(result).to.be.true;
+
+            const dep = await getDependencyInState("remote");
+            expect(dep).to.not.be.undefined;
+            expect(dep?.type).to.equal("remote");
+        });
+    });
 });
