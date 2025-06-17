@@ -79,7 +79,9 @@ suite("Dependency Commmands Test Suite @slow", function () {
                 const header = headers.find(n => n.name === "Dependencies") as PackageNode;
                 expect(header).to.not.be.undefined;
                 const children = await header.getChildren();
-                return children.find(n => n.name === "swift-markdown") as PackageNode;
+                return children.find(
+                    n => n.name.toLocaleLowerCase() === "swift-markdown"
+                ) as PackageNode;
             }
 
             // Wait for the dependency to switch to the expected state.
@@ -89,11 +91,13 @@ suite("Dependency Commmands Test Suite @slow", function () {
             async function getDependencyInState(state: "remote" | "editing") {
                 for (let i = 0; i < 10; i++) {
                     const dep = await getDependency();
+                    console.log(dep.type);
                     if (dep.type === state) {
                         return dep;
                     }
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 }
+                throw Error(`Could not find dependency with state "${state}"`);
             }
 
             async function useLocalDependencyTest() {
