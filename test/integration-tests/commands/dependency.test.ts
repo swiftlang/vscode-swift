@@ -40,7 +40,6 @@ suite("Dependency Commmands Test Suite @slow", function () {
     });
 
     setup(async () => {
-        console.log("focus");
         await workspaceContext.focusFolder(depsContext);
     });
 
@@ -58,9 +57,7 @@ suite("Dependency Commmands Test Suite @slow", function () {
         let treeProvider: ProjectPanelProvider;
 
         setup(async () => {
-            console.log("wait no tasks");
             await waitForNoRunningTasks();
-            console.log("tree provider");
             treeProvider = new ProjectPanelProvider(workspaceContext);
             await executeTaskAndWaitForResult(await createBuildAllTask(depsContext));
         });
@@ -86,7 +83,6 @@ suite("Dependency Commmands Test Suite @slow", function () {
         async function getDependencyInState(state: "remote" | "editing") {
             for (let i = 0; i < 10; i++) {
                 const dep = await getDependency();
-                console.log(dep.type);
                 if (dep.type === state) {
                     return dep;
                 }
