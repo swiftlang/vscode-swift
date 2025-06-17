@@ -49,14 +49,14 @@ suite("ProjectPanelProvider Test Suite", function () {
             await vscode.workspace.openTextDocument(
                 path.join(folderContext.folder.fsPath, "Package.swift")
             );
-            const buildAllTask = await createBuildAllTask(folderContext);
-            buildAllTask.definition.dontTriggerTestDiscovery = true;
-            await executeTaskAndWaitForResult(buildAllTask);
             const outputChannel = new SwiftOutputChannel("ProjectPanelProvider.tests");
             await folderContext.loadSwiftPlugins(outputChannel);
             expect(outputChannel.logs.length).to.equal(0, `Expected no output channel logs`);
             treeProvider = new ProjectPanelProvider(workspaceContext);
             await workspaceContext.focusFolder(folderContext);
+            const buildAllTask = await createBuildAllTask(folderContext);
+            buildAllTask.definition.dontTriggerTestDiscovery = true;
+            await executeTaskAndWaitForResult(buildAllTask);
         },
         async teardown() {
             contextKeys.flatDependenciesList = false;
