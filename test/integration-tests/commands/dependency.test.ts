@@ -20,8 +20,7 @@ import { FolderContext } from "../../../src/FolderContext";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Commands } from "../../../src/commands";
 import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
-import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
-import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
+import { waitForNoRunningTasks } from "../../utilities/tasks";
 
 suite("Dependency Commmands Test Suite @slow", function () {
     // full workflow's interaction with spm is longer than the default timeout
@@ -59,7 +58,6 @@ suite("Dependency Commmands Test Suite @slow", function () {
         setup(async () => {
             await waitForNoRunningTasks();
             treeProvider = new ProjectPanelProvider(workspaceContext);
-            await executeTaskAndWaitForResult(await createBuildAllTask(depsContext));
         });
 
         teardown(() => {
@@ -69,7 +67,9 @@ suite("Dependency Commmands Test Suite @slow", function () {
         async function getDependency() {
             const headers = await treeProvider.getChildren();
             const header = headers.find(n => n.name === "Dependencies") as PackageNode;
-            expect(header).to.not.be.undefined;
+            if (!header) {
+                return;
+            }
             const children = await header.getChildren();
             return children.find(
                 n => n.name.toLocaleLowerCase() === "swift-markdown"
@@ -83,7 +83,7 @@ suite("Dependency Commmands Test Suite @slow", function () {
         async function getDependencyInState(state: "remote" | "editing") {
             for (let i = 0; i < 10; i++) {
                 const dep = await getDependency();
-                if (dep.type === state) {
+                if (dep?.type === state) {
                     return dep;
                 }
                 await new Promise(resolve => setTimeout(resolve, 1000));
@@ -98,7 +98,8 @@ suite("Dependency Commmands Test Suite @slow", function () {
             const result = await vscode.commands.executeCommand(
                 Commands.USE_LOCAL_DEPENDENCY,
                 item,
-                localDep
+                localDep,
+                depsContext
             );
             expect(result).to.be.true;
 
@@ -112,7 +113,10 @@ suite("Dependency Commmands Test Suite @slow", function () {
             await useLocalDependencyTest();
 
             // spm reset
-            const result = await vscode.commands.executeCommand(Commands.RESET_PACKAGE);
+            const result = await vscode.commands.executeCommand(
+                Commands.RESET_PACKAGE,
+                depsContext
+            );
             expect(result).to.be.true;
 
             const dep = await getDependencyInState("remote");
@@ -125,7 +129,8 @@ suite("Dependency Commmands Test Suite @slow", function () {
 
             const result = await vscode.commands.executeCommand(
                 Commands.UNEDIT_DEPENDENCY,
-                await getDependency()
+                await getDependencyInState("editing"),
+                depsContext
             );
             expect(result).to.be.true;
 

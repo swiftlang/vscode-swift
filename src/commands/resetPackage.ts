@@ -22,8 +22,8 @@ import { packageName } from "../utilities/tasks";
 /**
  * Executes a {@link vscode.Task task} to reset the complete cache/build directory.
  */
-export async function resetPackage(ctx: WorkspaceContext) {
-    const current = ctx.currentFolder;
+export async function resetPackage(ctx: WorkspaceContext, folder: FolderContext | undefined) {
+    const current = folder ?? ctx.currentFolder;
     if (!current) {
         return;
     }
