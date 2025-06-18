@@ -84,7 +84,8 @@ export class PackageNode {
      * So instead we'll check for this set boolean property. Even if the implementation of the
      * {@link PackageNode} class changes, this property should not need to change
      */
-    __isDependency = true;
+    static isPackageNode = (item: { __isPackageNode?: boolean }) => item.__isPackageNode ?? false;
+    __isPackageNode = true;
 
     constructor(
         private dependency: ResolvedDependency,

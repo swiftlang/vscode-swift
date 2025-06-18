@@ -15,6 +15,7 @@
 import * as path from "path";
 import * as vscode from "vscode";
 import { WorkspaceContext } from "./WorkspaceContext";
+import { PackageNode } from "./ui/ProjectPanelProvider";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { debugSnippet, runSnippet } from "./SwiftSnippets";
 import { showToolchainSelectionQuickPick } from "./ui/ToolchainSelection";
@@ -181,27 +182,27 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             async () => await insertFunctionComment(ctx)
         ),
         vscode.commands.registerCommand(Commands.USE_LOCAL_DEPENDENCY, async (item, dep) => {
-            if (item.__isDependency) {
+            if (PackageNode.isPackageNode(item)) {
                 return await useLocalDependency(item.name, ctx, dep);
             }
         }),
         vscode.commands.registerCommand("swift.editDependency", async (item, folder) => {
-            if (item.__isDependency) {
+            if (PackageNode.isPackageNode(item)) {
                 return await editDependency(item.name, ctx, folder);
             }
         }),
         vscode.commands.registerCommand(Commands.UNEDIT_DEPENDENCY, async (item, folder) => {
-            if (item.__isDependency) {
+            if (PackageNode.isPackageNode(item)) {
                 return await uneditDependency(item.name, ctx, folder);
             }
         }),
         vscode.commands.registerCommand("swift.openInWorkspace", async item => {
-            if (item.__isDependency) {
+            if (PackageNode.isPackageNode(item)) {
                 return await openInWorkspace(item);
             }
         }),
         vscode.commands.registerCommand("swift.openExternal", item => {
-            if (item.__isDependency) {
+            if (PackageNode.isPackageNode(item)) {
                 return openInExternalEditor(item);
             }
         }),
