@@ -567,14 +567,14 @@
         "title": "User Interface",
         "properties": {
           "swift.excludePathsFromPackageDependencies": {
-            "markdownDescription": "A list of paths to exclude from the Package Dependencies view.",
+            "markdownDescription": "A list of glob patterns to exclude from the Package Dependencies view. Always use forward-slashes in glob expressions regardless of platform. This is combined with VS Code's default `files.exclude` setting.",
             "type": "array",
             "items": {
               "type": "string"
             },
             "default": [
-              ".git",
-              ".github"
+              "**/.git",
+              "**/.github"
             ]
           },
           "swift.showBuildStatus": {
@@ -1733,6 +1733,7 @@
   },
   "dependencies": {
     "@vscode/codicons": "^0.0.36",
+    "glob": "^11.0.3",
     "lcov-parse": "^1.0.0",
     "plist": "^3.1.0",
     "vscode-languageclient": "^9.0.1",

@@ -356,6 +356,38 @@ suite("ProjectPanelProvider Test Suite", function () {
             const errorNode = children.find(n => n.name === "Error Parsing Package.swift");
             expect(errorNode).to.not.be.undefined;
         });
+
+        suite("", () => {
+            let resetSettings: (() => Promise<void>) | undefined;
+            beforeEach(async function () {
+                resetSettings = await updateSettings({
+                    "files.exclude": { "**/*.swift": true },
+                    "swift.excludePathsFromPackageDependencies": ["**/*.md"],
+                });
+            });
+
+            test("Excludes files based on settings", async () => {
+                contextKeys.flatDependenciesList = false;
+                const children = await getHeaderChildren("Dependencies");
+                const dep = children.find(n => n.name === "swift-markdown") as PackageNode;
+                expect(dep, `${JSON.stringify(children, null, 2)}`).to.not.be.undefined;
+
+                const folders = await treeProvider.getChildren(dep);
+                const manifest = folders.find(n => n.name === "Package.swift") as FileNode;
+                expect(manifest).to.be.undefined;
+                const readme = folders.find(n => n.name === "README.md") as FileNode;
+                expect(readme).to.be.undefined;
+                const licence = folders.find(n => n.name === "LICENSE.txt") as FileNode;
+                expect(licence).to.not.be.undefined;
+            });
+
+            afterEach(async () => {
+                if (resetSettings) {
+                    await resetSettings();
+                    resetSettings = undefined;
+                }
+            });
+        });
     });
 
     async function getHeaderChildren(headerName: string) {

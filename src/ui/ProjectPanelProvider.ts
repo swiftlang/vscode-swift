@@ -23,7 +23,8 @@ import { Dependency, ResolvedDependency, Target } from "../SwiftPackage";
 import { FolderContext } from "../FolderContext";
 import { getPlatformConfig, resolveTaskCwd } from "../utilities/tasks";
 import { SwiftTask, TaskPlatformSpecificConfig } from "../tasks/SwiftTaskProvider";
-
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { glob } = require("glob");
 const LOADING_ICON = "loading~spin";
 /**
  * References:
@@ -37,20 +38,38 @@ const LOADING_ICON = "loading~spin";
  */
 
 /**
+ * Returns an array of file globs that define files that should be excluded from the project panel explorer.
+ */
+function excludedFilesForProjectPanelExplorer(): ReadonlyArray<string> {
+    const config = vscode.workspace.getConfiguration("files");
+    const vscodeExcludeList = config.get<{ [key: string]: boolean }>("exclude");
+    const packageDepsExcludeList = configuration.excludePathsFromPackageDependencies;
+
+    if (!Array.isArray(packageDepsExcludeList)) {
+        throw new Error("Expected excludePathsFromPackageDependencies to be an array");
+    }
+    return [
+        ...packageDepsExcludeList,
+        ...Object.keys(vscodeExcludeList ?? {}),
+    ] as ReadonlyArray<string>;
+}
+
+/**
  * Returns a {@link FileNode} for every file or subdirectory
  * in the given directory.
  */
-async function getChildren(directoryPath: string, parentId?: string): Promise<FileNode[]> {
-    const contents = await fs.readdir(directoryPath);
+async function getChildren(
+    directoryPath: string,
+    excludedFiles: ReadonlyArray<string>,
+    parentId?: string
+): Promise<FileNode[]> {
+    const contents = await glob(`${directoryPath}/*`, { ignore: excludedFiles });
     const results: FileNode[] = [];
-    const excludes = configuration.excludePathsFromPackageDependencies;
-    for (const fileName of contents) {
-        if (excludes.includes(fileName)) {
-            continue;
-        }
-        const filePath = path.join(directoryPath, fileName);
+    for (const filePath of contents) {
         const stats = await fs.stat(filePath);
-        results.push(new FileNode(fileName, filePath, stats.isDirectory(), parentId));
+        results.push(
+            new FileNode(path.basename(filePath), filePath, stats.isDirectory(), parentId)
+        );
     }
     return results.sort((first, second) => {
         if (first.isDirectory === second.isDirectory) {
@@ -119,7 +138,7 @@ export class PackageNode {
     async getChildren(): Promise<TreeNode[]> {
         const [childDeps, files] = await Promise.all([
             this.childDependencies(this.dependency),
-            getChildren(this.dependency.path, this.id),
+            getChildren(this.dependency.path, excludedFilesForProjectPanelExplorer(), this.id),
         ]);
         const childNodes = childDeps.map(
             dep => new PackageNode(dep, this.childDependencies, this.id)
@@ -169,7 +188,7 @@ export class FileNode {
     }
 
     async getChildren(): Promise<FileNode[]> {
-        return await getChildren(this.path, this.id);
+        return await getChildren(this.path, excludedFilesForProjectPanelExplorer(), this.id);
     }
 }
 
