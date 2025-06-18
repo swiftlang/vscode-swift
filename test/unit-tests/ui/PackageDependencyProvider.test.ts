@@ -74,7 +74,7 @@ suite("PackageDependencyProvider Unit Test Suite", function () {
             const node = new PackageNode(
                 {
                     identity: "SwiftMarkdown",
-                    path: "/path/to/.build/swift-markdown",
+                    path: path.normalize("/path/to/.build/swift-markdown"),
                     location: "https://github.com/swiftlang/swift-markdown.git",
                     dependencies: [],
                     version: "1.2.3",
@@ -83,7 +83,7 @@ suite("PackageDependencyProvider Unit Test Suite", function () {
                 () => [
                     {
                         identity: "SomeChildDependency",
-                        path: "/path/to/.build/child-dependency",
+                        path: path.normalize("/path/to/.build/child-dependency"),
                         location: "https://github.com/swiftlang/some-child-dependency.git",
                         dependencies: [],
                         version: "1.2.4",
@@ -93,8 +93,8 @@ suite("PackageDependencyProvider Unit Test Suite", function () {
                 undefined,
                 () =>
                     Promise.resolve([
-                        "/path/to/.build/swift-markdown/file1",
-                        "/path/to/.build/swift-markdown/file2",
+                        path.normalize("/path/to/.build/swift-markdown/file1"),
+                        path.normalize("/path/to/.build/swift-markdown/file2"),
                     ])
             );
 
