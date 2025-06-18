@@ -61,14 +61,17 @@ function excludedFilesForProjectPanelExplorer(): ReadonlyArray<string> {
 async function getChildren(
     directoryPath: string,
     excludedFiles: ReadonlyArray<string>,
-    parentId?: string
+    parentId?: string,
+    mockFs?: (folder: string) => Promise<string[]>
 ): Promise<FileNode[]> {
-    const contents = await glob(`${directoryPath}/*`, { ignore: excludedFiles });
+    const contents = mockFs
+        ? await mockFs(directoryPath)
+        : await glob(`${directoryPath}/*`, { ignore: excludedFiles });
     const results: FileNode[] = [];
     for (const filePath of contents) {
         const stats = await fs.stat(filePath);
         results.push(
-            new FileNode(path.basename(filePath), filePath, stats.isDirectory(), parentId)
+            new FileNode(path.basename(filePath), filePath, stats.isDirectory(), parentId, mockFs)
         );
     }
     return results.sort((first, second) => {
@@ -91,7 +94,8 @@ export class PackageNode {
     constructor(
         private dependency: ResolvedDependency,
         private childDependencies: (dependency: Dependency) => ResolvedDependency[],
-        private parentId?: string
+        private parentId?: string,
+        private fs?: (folder: string) => Promise<string[]>
     ) {
         this.id =
             (this.parentId ? `${this.parentId}->` : "") +
@@ -138,7 +142,12 @@ export class PackageNode {
     async getChildren(): Promise<TreeNode[]> {
         const [childDeps, files] = await Promise.all([
             this.childDependencies(this.dependency),
-            getChildren(this.dependency.path, excludedFilesForProjectPanelExplorer(), this.id),
+            getChildren(
+                this.dependency.path,
+                excludedFilesForProjectPanelExplorer(),
+                this.id,
+                this.fs
+            ),
         ]);
         const childNodes = childDeps.map(
             dep => new PackageNode(dep, this.childDependencies, this.id)
@@ -159,7 +168,8 @@ export class FileNode {
         public name: string,
         public path: string,
         public isDirectory: boolean,
-        private parentId?: string
+        private parentId?: string,
+        private fs?: (folder: string) => Promise<string[]>
     ) {
         this.id = (this.parentId ? `${this.parentId}->` : "") + `${this.path}`;
     }
@@ -188,7 +198,12 @@ export class FileNode {
     }
 
     async getChildren(): Promise<FileNode[]> {
-        return await getChildren(this.path, excludedFilesForProjectPanelExplorer(), this.id);
+        return await getChildren(
+            this.path,
+            excludedFilesForProjectPanelExplorer(),
+            this.id,
+            this.fs
+        );
     }
 }
 
