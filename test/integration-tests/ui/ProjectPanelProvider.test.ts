@@ -357,7 +357,7 @@ suite("ProjectPanelProvider Test Suite", function () {
             expect(errorNode).to.not.be.undefined;
         });
 
-        suite("", () => {
+        suite("Excluded files", () => {
             let resetSettings: (() => Promise<void>) | undefined;
             beforeEach(async function () {
                 resetSettings = await updateSettings({
