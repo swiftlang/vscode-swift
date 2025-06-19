@@ -66,7 +66,7 @@ async function getChildren(
 ): Promise<FileNode[]> {
     const contents = mockFs
         ? await mockFs(directoryPath)
-        : await glob(`${directoryPath}/*`, { ignore: excludedFiles });
+        : await glob(`${directoryPath}/*`, { ignore: excludedFiles, absolute: true });
     const results: FileNode[] = [];
     for (const filePath of contents) {
         const stats = await fs.stat(filePath);
