@@ -460,6 +460,17 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                 this.didChangeTreeDataEmitter.fire();
             })
         );
+
+        this.disposables.push(
+            vscode.workspace.onDidChangeConfiguration(e => {
+                if (
+                    e.affectsConfiguration("files.exclude") ||
+                    e.affectsConfiguration("swift.excludePathsFromPackageDependencies")
+                ) {
+                    this.didChangeTreeDataEmitter.fire();
+                }
+            })
+        );
     }
 
     observeFolders(treeView: vscode.TreeView<TreeNode>) {

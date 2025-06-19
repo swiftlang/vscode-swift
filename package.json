@@ -575,7 +575,8 @@
             "default": [
               "**/.git",
               "**/.github"
-            ]
+            ],
+            "scope": "machine-overridable"
           },
           "swift.showBuildStatus": {
             "type": "string",
