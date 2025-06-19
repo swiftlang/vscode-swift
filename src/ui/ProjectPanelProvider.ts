@@ -69,6 +69,24 @@ async function getChildren(directoryPath: string, parentId?: string): Promise<Fi
 export class PackageNode {
     private id: string;
 
+    /**
+     * "instanceof" has a bad effect in our nightly tests when the VSIX
+     * bundled source is used. For example:
+     *
+     * ```
+     * vscode.commands.registerCommand(Commands.UNEDIT_DEPENDENCY, async (item, folder) => {
+     *  if (item instanceof PackageNode) {
+     *      return await uneditDependency(item.name, ctx, folder);
+     *  }
+     * }),
+     * ```
+     *
+     * So instead we'll check for this set boolean property. Even if the implementation of the
+     * {@link PackageNode} class changes, this property should not need to change
+     */
+    static isPackageNode = (item: { __isPackageNode?: boolean }) => item.__isPackageNode ?? false;
+    __isPackageNode = true;
+
     constructor(
         private dependency: ResolvedDependency,
         private childDependencies: (dependency: Dependency) => ResolvedDependency[],

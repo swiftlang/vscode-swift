@@ -148,7 +148,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         ),
         vscode.commands.registerCommand(
             Commands.RESET_PACKAGE,
-            async () => await resetPackage(ctx)
+            async folder => await resetPackage(ctx, folder)
         ),
         vscode.commands.registerCommand("swift.runScript", async () => await runSwiftScript(ctx)),
         vscode.commands.registerCommand("swift.openPackage", async () => {
@@ -182,27 +182,27 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             async () => await insertFunctionComment(ctx)
         ),
         vscode.commands.registerCommand(Commands.USE_LOCAL_DEPENDENCY, async (item, dep) => {
-            if (item instanceof PackageNode) {
+            if (PackageNode.isPackageNode(item)) {
                 return await useLocalDependency(item.name, ctx, dep);
             }
         }),
-        vscode.commands.registerCommand("swift.editDependency", async item => {
-            if (item instanceof PackageNode) {
-                return await editDependency(item.name, ctx);
+        vscode.commands.registerCommand("swift.editDependency", async (item, folder) => {
+            if (PackageNode.isPackageNode(item)) {
+                return await editDependency(item.name, ctx, folder);
             }
         }),
-        vscode.commands.registerCommand(Commands.UNEDIT_DEPENDENCY, async item => {
-            if (item instanceof PackageNode) {
-                return await uneditDependency(item.name, ctx);
+        vscode.commands.registerCommand(Commands.UNEDIT_DEPENDENCY, async (item, folder) => {
+            if (PackageNode.isPackageNode(item)) {
+                return await uneditDependency(item.name, ctx, folder);
             }
         }),
         vscode.commands.registerCommand("swift.openInWorkspace", async item => {
-            if (item instanceof PackageNode) {
+            if (PackageNode.isPackageNode(item)) {
                 return await openInWorkspace(item);
             }
         }),
         vscode.commands.registerCommand("swift.openExternal", item => {
-            if (item instanceof PackageNode) {
+            if (PackageNode.isPackageNode(item)) {
                 return openInExternalEditor(item);
             }
         }),

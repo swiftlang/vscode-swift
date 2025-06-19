@@ -23,8 +23,12 @@ import { FolderContext } from "../../FolderContext";
  * @param identifier Identifier of dependency
  * @param ctx workspace context
  */
-export async function uneditDependency(identifier: string, ctx: WorkspaceContext) {
-    const currentFolder = ctx.currentFolder;
+export async function uneditDependency(
+    identifier: string,
+    ctx: WorkspaceContext,
+    folder: FolderContext | undefined
+) {
+    const currentFolder = folder ?? ctx.currentFolder;
     if (!currentFolder) {
         ctx.outputChannel.log("currentFolder is not set.");
         return false;
