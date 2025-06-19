@@ -23,9 +23,9 @@ import { Dependency, ResolvedDependency, Target } from "../SwiftPackage";
 import { FolderContext } from "../FolderContext";
 import { getPlatformConfig, resolveTaskCwd } from "../utilities/tasks";
 import { SwiftTask, TaskPlatformSpecificConfig } from "../tasks/SwiftTaskProvider";
-
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { glob } = require("glob");
 const LOADING_ICON = "loading~spin";
-
 /**
  * References:
  *
@@ -66,13 +66,7 @@ async function getChildren(
 ): Promise<FileNode[]> {
     const contents = mockFs
         ? await mockFs(directoryPath)
-        : await vscode.workspace
-              .findFiles(
-                  new vscode.RelativePattern(directoryPath, "*"),
-                  `{${excludedFiles.join(",")}}`
-              )
-              .then(uris => uris.map(uri => uri.fsPath));
-
+        : await glob(`${directoryPath}/*`, { ignore: excludedFiles });
     const results: FileNode[] = [];
     for (const filePath of contents) {
         const stats = await fs.stat(filePath);
@@ -464,17 +458,6 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                     this.activeTasks.delete(testTaskName(target));
                 }
                 this.didChangeTreeDataEmitter.fire();
-            })
-        );
-
-        this.disposables.push(
-            vscode.workspace.onDidChangeConfiguration(e => {
-                if (
-                    e.affectsConfiguration("files.exclude") ||
-                    e.affectsConfiguration("swift.excludePathsFromPackageDependencies")
-                ) {
-                    this.didChangeTreeDataEmitter.fire();
-                }
             })
         );
     }
