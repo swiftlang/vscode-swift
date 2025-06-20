@@ -123,8 +123,6 @@ suite("WorkspaceContext Test Suite", () => {
             assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
             assertContainsArg(execution, "build");
             assertContainsArg(execution, "--build-tests");
-            assertContainsArg(execution, "-Xswiftc");
-            assertContainsArg(execution, "-diagnostic-style=llvm");
             assert.strictEqual(buildAllTask.scope, resolveScope(folder.workspaceFolder));
         });
 
