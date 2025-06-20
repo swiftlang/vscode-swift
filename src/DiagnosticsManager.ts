@@ -320,7 +320,7 @@ export class DiagnosticsManager implements vscode.Disposable {
                                     d =>
                                         d.message === relatedInformation.message &&
                                         d.location.uri.fsPath ===
-                                            relatedInformation.location.uri.fsPath &&
+                                        relatedInformation.location.uri.fsPath &&
                                         d.location.range.isEqual(relatedInformation.location.range)
                                 )
                             ) {
@@ -391,7 +391,7 @@ export class DiagnosticsManager implements vscode.Disposable {
         line: string
     ): ParsedDiagnostic | vscode.DiagnosticRelatedInformation | undefined {
         const diagnosticRegex =
-            /^(?:\S+\s+)?(.*?):(\d+)(?::(\d+))?:\s+(warning|error|note):\s+(.*)$/g;
+            /^(?:[`-\s]*)(.*?):(\d+)(?::(\d+))?:\s+(warning|error|note):\s+(.*)$/g;
         const switfcExtraWarningsRegex = /\[(-W|#).*?\]/g;
         const match = diagnosticRegex.exec(line);
         if (!match) {
