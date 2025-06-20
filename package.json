@@ -804,7 +804,7 @@
             ],
             "markdownDescription": "Choose how CodeLLDB settings are updated when debugging Swift executables.",
             "order": 3,
-            "scope": "application"
+            "scope": "machine-overridable"
           },
           "swift.debugger.useDebugAdapterFromToolchain": {
             "type": "boolean",
