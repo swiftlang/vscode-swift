@@ -383,7 +383,7 @@ const configuration = {
     get diagnosticsStyle(): DiagnosticStyle {
         return vscode.workspace
             .getConfiguration("swift")
-            .get<DiagnosticStyle>("diagnosticsStyle", "llvm");
+            .get<DiagnosticStyle>("diagnosticsStyle", "default");
     },
     /** where to show the build progress for the running task */
     get showBuildStatus(): ShowBuildStatusOptions {

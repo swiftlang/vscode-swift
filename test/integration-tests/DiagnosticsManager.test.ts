@@ -134,7 +134,7 @@ suite("DiagnosticsManager Test Suite", function () {
             cFolderContext = await folderInRootWorkspace("diagnosticsC", workspaceContext);
             cppFolderContext = await folderInRootWorkspace("diagnosticsCpp", workspaceContext);
             mainUri = testAssetUri("diagnostics/Sources/main.swift");
-            funcUri = testAssetUri("diagnostics/Sources/func.swift");
+            funcUri = testAssetUri("diagnostics/Sources/func in here.swift"); // Want spaces in name to watch https://github.com/swiftlang/vscode-swift/issues/1630
             cUri = testAssetUri("diagnosticsC/Sources/MyPoint/MyPoint.c");
             cppUri = testAssetUri("diagnosticsCpp/Sources/MyPoint/MyPoint.cpp");
             cppHeaderUri = testAssetUri("diagnosticsCpp/Sources/MyPoint/include/MyPoint.h");
@@ -271,19 +271,43 @@ suite("DiagnosticsManager Test Suite", function () {
                 });
             }
 
-            runTestDiagnosticStyle("default", () => ({
-                [mainUri.fsPath]: [
-                    expectedWarningDiagnostic,
-                    expectedMainErrorDiagnostic,
-                    expectedMainDictErrorDiagnostic,
-                    ...(workspaceContext.globalToolchainSwiftVersion.isGreaterThanOrEqual(
-                        new Version(6, 0, 0)
-                    )
-                        ? [expectedMacroDiagnostic]
-                        : []),
-                ], // Should have parsed correct severity
-                [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
-            }));
+            runTestDiagnosticStyle(
+                "default",
+                () => ({
+                    [mainUri.fsPath]: [
+                        expectedWarningDiagnostic,
+                        expectedMainErrorDiagnostic,
+                        expectedMainDictErrorDiagnostic,
+                        ...(workspaceContext.globalToolchainSwiftVersion.isGreaterThanOrEqual(
+                            new Version(6, 0, 0)
+                        )
+                            ? [expectedMacroDiagnostic]
+                            : []),
+                    ], // Should have parsed correct severity
+                    [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
+                }),
+                () => {
+                    test("Parses related information", async () => {
+                        const diagnostic = assertHasDiagnostic(mainUri, expectedMacroDiagnostic);
+                        // Should have parsed related note
+                        assert.equal(diagnostic.relatedInformation?.length, 1);
+                        assert.equal(
+                            diagnostic.relatedInformation![0].message,
+                            "Expanded code originates here"
+                        );
+                        assert.equal(
+                            diagnostic.relatedInformation![0].location.uri.fsPath,
+                            mainUri.fsPath
+                        );
+                        assert.equal(
+                            diagnostic.relatedInformation![0].location.range.isEqual(
+                                expectedMacroDiagnostic.range
+                            ),
+                            true
+                        );
+                    });
+                }
+            );
 
             runTestDiagnosticStyle("swift", () => ({
                 [mainUri.fsPath]: [
