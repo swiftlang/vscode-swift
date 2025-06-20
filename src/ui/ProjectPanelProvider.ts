@@ -23,9 +23,10 @@ import { Dependency, ResolvedDependency, Target } from "../SwiftPackage";
 import { FolderContext } from "../FolderContext";
 import { getPlatformConfig, resolveTaskCwd } from "../utilities/tasks";
 import { SwiftTask, TaskPlatformSpecificConfig } from "../tasks/SwiftTaskProvider";
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { glob } = require("glob");
+import { convertPathToPattern, glob } from "fast-glob";
+
 const LOADING_ICON = "loading~spin";
+
 /**
  * References:
  *
@@ -40,7 +41,7 @@ const LOADING_ICON = "loading~spin";
 /**
  * Returns an array of file globs that define files that should be excluded from the project panel explorer.
  */
-function excludedFilesForProjectPanelExplorer(): ReadonlyArray<string> {
+function excludedFilesForProjectPanelExplorer(): string[] {
     const config = vscode.workspace.getConfiguration("files");
     const vscodeExcludeList = config.get<{ [key: string]: boolean }>("exclude");
     const packageDepsExcludeList = configuration.excludePathsFromPackageDependencies;
@@ -48,10 +49,7 @@ function excludedFilesForProjectPanelExplorer(): ReadonlyArray<string> {
     if (!Array.isArray(packageDepsExcludeList)) {
         throw new Error("Expected excludePathsFromPackageDependencies to be an array");
     }
-    return [
-        ...packageDepsExcludeList,
-        ...Object.keys(vscodeExcludeList ?? {}),
-    ] as ReadonlyArray<string>;
+    return [...packageDepsExcludeList, ...Object.keys(vscodeExcludeList ?? {})];
 }
 
 /**
@@ -60,13 +58,17 @@ function excludedFilesForProjectPanelExplorer(): ReadonlyArray<string> {
  */
 async function getChildren(
     directoryPath: string,
-    excludedFiles: ReadonlyArray<string>,
+    excludedFiles: string[],
     parentId?: string,
     mockFs?: (folder: string) => Promise<string[]>
 ): Promise<FileNode[]> {
     const contents = mockFs
         ? await mockFs(directoryPath)
-        : await glob(`${directoryPath}/*`, { ignore: excludedFiles, absolute: true });
+        : await glob(`${convertPathToPattern(directoryPath)}/*`, {
+              ignore: excludedFiles,
+              absolute: true,
+              onlyFiles: false,
+          });
     const results: FileNode[] = [];
     for (const filePath of contents) {
         const stats = await fs.stat(filePath);
