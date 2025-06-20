@@ -17,7 +17,7 @@ function Update-SwiftBuildAndPackageArguments {
         [string]$jsonFilePath = "./assets/test/.vscode/settings.json",
         [string]$codeWorkspaceFilePath = "./assets/test.code-workspace",
         [string]$windowsSdkVersion = "10.0.22000.0",
-        [string]$vcToolsVersion = "14.43.34808"
+        [string]$vcToolsVersion = "14.44.35207"
     )
 
     $windowsSdkRoot = "C:\Program Files (x86)\Windows Kits\10\"
