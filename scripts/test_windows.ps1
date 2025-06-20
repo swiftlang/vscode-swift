@@ -86,7 +86,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Swift version:"
-Write-Host "$swiftVersionOutput"
+Write-Host "$swiftVersionOutput "
 
 $versionLine = $swiftVersionOutput[0]
 if ($versionLine -match "Swift version (\d+)\.(\d+)") {
@@ -101,10 +101,10 @@ if ($versionLine -match "Swift version (\d+)\.(\d+)") {
     # Newer versions of swift (>=6.1) have a fixed modulemap that resolves the issue: https://github.com/swiftlang/swift/pull/79751
     # As a workaround we can pin the tools/SDK versions to older versions that are present in the GH Actions Windows image.
     # In the future we may only want to apply this workaround to older versions of Swift that don't have the fixed module map.
-    if ($majorVersion -lt 6 -or ($majorVersion -eq 6 -and $minorVersion -lt 1)) {
-        Write-Host "Swift version is < 6.1, injecting windows SDK build arguments"
-        Update-SwiftBuildAndPackageArguments
-    }
+    # if ($majorVersion -lt 6 -or ($majorVersion -eq 6 -and $minorVersion -lt 1)) {
+    #     Write-Host "Swift version is < 6.1, injecting windows SDK build arguments"
+    #     Update-SwiftBuildAndPackageArguments
+    # }
 } else {
     Write-Host "Match failed for output: `"$versionLine`""
     Write-Host "Unable to determine Swift version"
