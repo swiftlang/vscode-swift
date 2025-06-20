@@ -658,7 +658,10 @@ export class SwiftToolchain {
                         const swiftlyPath = path.join(configPath, "swiftly");
                         if (await fileExists(swiftlyPath)) {
                             try {
-                                const { stdout } = await execFile(swiftlyPath, ["use", "--print-location"]);
+                                const { stdout } = await execFile(swiftlyPath, [
+                                    "use",
+                                    "--print-location",
+                                ]);
                                 const toolchainPath = path.join(stdout.trim(), "usr");
                                 if (await pathExists(toolchainPath)) {
                                     return toolchainPath;
