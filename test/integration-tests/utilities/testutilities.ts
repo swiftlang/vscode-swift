@@ -422,10 +422,10 @@ export async function updateSettings(settings: SettingsMap): Promise<() => Promi
                 : settings[setting];
 
             while (
-                isDeepStrictEqual(
+                !isConfigurationSuperset(
                     vscode.workspace.getConfiguration(section, { languageId: "swift" }).get(name),
                     expected
-                ) === false
+                )
             ) {
                 // Not yet, wait a bit and try again.
                 await new Promise(resolve => setTimeout(resolve, 30));
@@ -452,4 +452,75 @@ function decomposeSettingName(setting: string): { section: string; name: string 
         throw new Error(`Invalid setting name: ${setting}, must be in the form swift.settingName`);
     }
     return { section, name };
+}
+
+/**
+ * Performs a deep comparison between a configuration value and an expected value.
+ * Supports superset comparisons for objects and arrays, and strict equality for primitives.
+ *
+ * @param configValue The configuration value to compare
+ * @param expected The expected value to compare against
+ * @returns true if the configuration value matches or is a superset of the expected value, false otherwise
+ */
+export function isConfigurationSuperset(configValue: unknown, expected: unknown): boolean {
+    // Handle null cases
+    if (configValue === null || expected === null) {
+        return configValue === expected;
+    }
+
+    // If both values are undefined, they are considered equal
+    if (configValue === undefined && expected === undefined) {
+        return true;
+    }
+
+    // If expected is undefined but configValue is not, they are not equal
+    if (expected === undefined) {
+        return false;
+    }
+
+    // If configValue is undefined but expected is not, they are not equal
+    if (configValue === undefined) {
+        return false;
+    }
+
+    // Use isDeepStrictEqual for primitive types
+    if (typeof configValue !== "object" || typeof expected !== "object") {
+        return isDeepStrictEqual(configValue, expected);
+    }
+
+    // Handle arrays
+    if (Array.isArray(configValue) && Array.isArray(expected)) {
+        // Check if configValue contains all elements from expected
+        return expected.every(expectedItem =>
+            configValue.some(configItem => isConfigurationSuperset(configItem, expectedItem))
+        );
+    }
+
+    // Handle objects
+    if (
+        typeof configValue === "object" &&
+        typeof expected === "object" &&
+        configValue !== null &&
+        expected !== null &&
+        !Array.isArray(configValue) &&
+        !Array.isArray(expected)
+    ) {
+        // Ensure we're working with plain objects
+        const configObj = configValue as Record<string, unknown>;
+        const expectedObj = expected as Record<string, unknown>;
+
+        // Check if all expected properties exist in configValue with matching or superset values
+        return Object.keys(expectedObj).every(key => {
+            // If the key doesn't exist in configValue, return false
+            if (!(key in configObj)) {
+                return false;
+            }
+
+            // Recursively check the value
+            return isConfigurationSuperset(configObj[key], expectedObj[key]);
+        });
+    }
+
+    // If types don't match (one is array, one is object), return false
+    return false;
 }

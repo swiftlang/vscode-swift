@@ -23,8 +23,10 @@ import { Dependency, ResolvedDependency, Target } from "../SwiftPackage";
 import { FolderContext } from "../FolderContext";
 import { getPlatformConfig, resolveTaskCwd } from "../utilities/tasks";
 import { SwiftTask, TaskPlatformSpecificConfig } from "../tasks/SwiftTaskProvider";
+import { convertPathToPattern, glob } from "fast-glob";
 
 const LOADING_ICON = "loading~spin";
+
 /**
  * References:
  *
@@ -37,20 +39,42 @@ const LOADING_ICON = "loading~spin";
  */
 
 /**
+ * Returns an array of file globs that define files that should be excluded from the project panel explorer.
+ */
+function excludedFilesForProjectPanelExplorer(): string[] {
+    const config = vscode.workspace.getConfiguration("files");
+    const vscodeExcludeList = config.get<{ [key: string]: boolean }>("exclude");
+    const packageDepsExcludeList = configuration.excludePathsFromPackageDependencies;
+
+    if (!Array.isArray(packageDepsExcludeList)) {
+        throw new Error("Expected excludePathsFromPackageDependencies to be an array");
+    }
+    return [...packageDepsExcludeList, ...Object.keys(vscodeExcludeList ?? {})];
+}
+
+/**
  * Returns a {@link FileNode} for every file or subdirectory
  * in the given directory.
  */
-async function getChildren(directoryPath: string, parentId?: string): Promise<FileNode[]> {
-    const contents = await fs.readdir(directoryPath);
+async function getChildren(
+    directoryPath: string,
+    excludedFiles: string[],
+    parentId?: string,
+    mockFs?: (folder: string) => Promise<string[]>
+): Promise<FileNode[]> {
+    const contents = mockFs
+        ? await mockFs(directoryPath)
+        : await glob(`${convertPathToPattern(directoryPath)}/*`, {
+              ignore: excludedFiles,
+              absolute: true,
+              onlyFiles: false,
+          });
     const results: FileNode[] = [];
-    const excludes = configuration.excludePathsFromPackageDependencies;
-    for (const fileName of contents) {
-        if (excludes.includes(fileName)) {
-            continue;
-        }
-        const filePath = path.join(directoryPath, fileName);
+    for (const filePath of contents) {
         const stats = await fs.stat(filePath);
-        results.push(new FileNode(fileName, filePath, stats.isDirectory(), parentId));
+        results.push(
+            new FileNode(path.basename(filePath), filePath, stats.isDirectory(), parentId, mockFs)
+        );
     }
     return results.sort((first, second) => {
         if (first.isDirectory === second.isDirectory) {
@@ -90,7 +114,8 @@ export class PackageNode {
     constructor(
         private dependency: ResolvedDependency,
         private childDependencies: (dependency: Dependency) => ResolvedDependency[],
-        private parentId?: string
+        private parentId?: string,
+        private fs?: (folder: string) => Promise<string[]>
     ) {
         this.id =
             (this.parentId ? `${this.parentId}->` : "") +
@@ -137,7 +162,12 @@ export class PackageNode {
     async getChildren(): Promise<TreeNode[]> {
         const [childDeps, files] = await Promise.all([
             this.childDependencies(this.dependency),
-            getChildren(this.dependency.path, this.id),
+            getChildren(
+                this.dependency.path,
+                excludedFilesForProjectPanelExplorer(),
+                this.id,
+                this.fs
+            ),
         ]);
         const childNodes = childDeps.map(
             dep => new PackageNode(dep, this.childDependencies, this.id)
@@ -158,7 +188,8 @@ export class FileNode {
         public name: string,
         public path: string,
         public isDirectory: boolean,
-        private parentId?: string
+        private parentId?: string,
+        private fs?: (folder: string) => Promise<string[]>
     ) {
         this.id = (this.parentId ? `${this.parentId}->` : "") + `${this.path}`;
     }
@@ -187,7 +218,12 @@ export class FileNode {
     }
 
     async getChildren(): Promise<FileNode[]> {
-        return await getChildren(this.path, this.id);
+        return await getChildren(
+            this.path,
+            excludedFilesForProjectPanelExplorer(),
+            this.id,
+            this.fs
+        );
     }
 }
 
@@ -442,6 +478,17 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                     this.activeTasks.delete(testTaskName(target));
                 }
                 this.didChangeTreeDataEmitter.fire();
+            })
+        );
+
+        this.disposables.push(
+            vscode.workspace.onDidChangeConfiguration(e => {
+                if (
+                    e.affectsConfiguration("files.exclude") ||
+                    e.affectsConfiguration("swift.excludePathsFromPackageDependencies")
+                ) {
+                    this.didChangeTreeDataEmitter.fire();
+                }
             })
         );
     }
