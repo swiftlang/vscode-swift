@@ -25,11 +25,12 @@
   ],
   "activationEvents": [
     "onLanguage:swift",
-    "workspaceContains:Package.swift",
-    "workspaceContains:compile_commands.json",
-    "workspaceContains:compile_flags.txt",
-    "workspaceContains:buildServer.json",
-    "onDebugResolve:swift-lldb"
+    "workspaceContains:**/Package.swift",
+    "workspaceContains:**/compile_commands.json",
+    "workspaceContains:**/compile_flags.txt",
+    "workspaceContains:**/buildServer.json",
+    "onDebugResolve:swift-lldb",
+    "onDebugResolve:swift"
   ],
   "main": "./dist/src/extension.js",
   "contributes": {
