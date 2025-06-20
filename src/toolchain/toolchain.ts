@@ -20,7 +20,7 @@ import * as vscode from "vscode";
 import configuration from "../configuration";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { execFile, ExecFileError, execSwift } from "../utilities/utilities";
-import { expandFilePathTilde, pathExists } from "../utilities/filesystem";
+import { expandFilePathTilde, fileExists, pathExists } from "../utilities/filesystem";
 import { Version } from "../utilities/version";
 import { BuildFlags } from "./BuildFlags";
 import { Sanitizer } from "./Sanitizer";
@@ -605,7 +605,15 @@ export class SwiftToolchain {
                 }
             }
             // swift may be a symbolic link
-            const realSwift = await fs.realpath(swift);
+            let realSwift = await fs.realpath(swift);
+            if (path.basename(realSwift) === "swiftly") {
+                try {
+                    const { stdout } = await execFile(realSwift, ["run", "which", "swift"]);
+                    realSwift = stdout.trim();
+                } catch {
+                    // Ignore
+                }
+            }
             const swiftPath = expandFilePathTilde(path.dirname(realSwift));
             return await this.getSwiftEnvPath(swiftPath);
         } catch {
@@ -645,7 +653,20 @@ export class SwiftToolchain {
         try {
             switch (process.platform) {
                 case "darwin": {
-                    if (configuration.path !== "") {
+                    const configPath = configuration.path;
+                    if (configPath !== "") {
+                        const swiftlyPath = path.join(configPath, "swiftly");
+                        if (await fileExists(swiftlyPath)) {
+                            try {
+                                const { stdout } = await execFile(swiftlyPath, ["use", "--print-location"]);
+                                const toolchainPath = path.join(stdout.trim(), "usr");
+                                if (await pathExists(toolchainPath)) {
+                                    return toolchainPath;
+                                }
+                            } catch {
+                                // Ignore
+                            }
+                        }
                         return path.dirname(configuration.path);
                     }
 
