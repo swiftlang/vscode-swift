@@ -10,6 +10,9 @@ This extension adds language support for Swift to Visual Studio Code, providing 
 * Package dependency view
 * Test Explorer view
 
+> **Note**  
+> Most features of the Swift for Visual Studio Code extension only work with projects that build with Swift Package Manager. These projects will have a `Package.swift` file in their root folder. Support for Xcode projects (`.xcodeproj`) is limited.
+
 # Documentation
 
 The official documentation for this extension is [available on swift.org](https://docs.swift.org/vscode/documentation/userdocs).
