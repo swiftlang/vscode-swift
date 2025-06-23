@@ -68,7 +68,8 @@ export class SelectedXcodeWatcher implements vscode.Disposable {
     private async setup() {
         this.xcodePath = await this.xcodeSymlink();
         const developerDir = () => configuration.swiftEnvironmentVariables["DEVELOPER_DIR"];
-        const matchesPath = (xcodePath: string) => configuration.path && configuration.path.startsWith(xcodePath);
+        const matchesPath = (xcodePath: string) =>
+            configuration.path && configuration.path.startsWith(xcodePath);
         const matchesDeveloperDir = (xcodePath: string) => developerDir()?.startsWith(xcodePath);
         if (
             this.xcodePath &&

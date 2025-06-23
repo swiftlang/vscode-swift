@@ -96,13 +96,11 @@ suite("Selected Xcode Watcher", () => {
     });
 
     suite('"swift.path" is out of date', () => {
-
         setup(() => {
             pathConfig.setValue("/path/to/swift/bin");
         });
 
         test("Warns that setting is out of date on startup", async () => {
-
             await run(["/foo", "/foo"]);
 
             expect(mockedVSCodeWindow.showWarningMessage).to.have.been.calledOnceWithExactly(
@@ -128,7 +126,9 @@ suite("Selected Xcode Watcher", () => {
 
             await run(["/foo", "/foo"]);
 
-            expect(mockCommands.executeCommand).to.have.been.calledOnceWith(Commands.SELECT_TOOLCHAIN);
+            expect(mockCommands.executeCommand).to.have.been.calledOnceWith(
+                Commands.SELECT_TOOLCHAIN
+            );
         });
 
         test("Warns that setting is out of date", async () => {
@@ -144,7 +144,6 @@ suite("Selected Xcode Watcher", () => {
     });
 
     suite("DEVELOPER_DIR is out of date", () => {
-
         setup(() => {
             pathConfig.setValue("/path/to/swift/bin");
             envConfig.setValue({ DEVELOPER_DIR: "/bar" });
@@ -178,7 +177,9 @@ suite("Selected Xcode Watcher", () => {
 
             await run(["/foo", "/foo"]);
 
-            expect(mockCommands.executeCommand).to.have.been.calledOnceWith(Commands.SELECT_TOOLCHAIN);
+            expect(mockCommands.executeCommand).to.have.been.calledOnceWith(
+                Commands.SELECT_TOOLCHAIN
+            );
         });
 
         test("Warns that setting is out of date", async () => {
