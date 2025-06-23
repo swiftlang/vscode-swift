@@ -13,7 +13,13 @@
 //===----------------------------------------------------------------------===//
 /* eslint-disable no-console */
 
-import { exec, getExtensionVersion, getRootDirectory, main, updateChangelog } from "./lib/utilities";
+import {
+    exec,
+    getExtensionVersion,
+    getRootDirectory,
+    main,
+    updateChangelog,
+} from "./lib/utilities";
 
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
 main(async () => {

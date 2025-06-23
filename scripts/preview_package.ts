@@ -12,7 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 /* eslint-disable no-console */
-import { exec, getExtensionVersion, getRootDirectory, main, updateChangelog } from "./lib/utilities";
+import {
+    exec,
+    getExtensionVersion,
+    getRootDirectory,
+    main,
+    updateChangelog,
+} from "./lib/utilities";
 
 /**
  * Formats the given date as a string in the form "YYYYMMdd".
@@ -39,7 +45,7 @@ main(async () => {
     if (minor % 2 !== 1) {
         throw new Error(
             `The minor version for the pre-release extension is even (${previewVersion}).` +
-            " The version in the package.json has probably been incorrectly set to an odd minor version."
+                " The version in the package.json has probably been incorrectly set to an odd minor version."
         );
     }
     // Update version in CHANGELOG

@@ -57,14 +57,11 @@ export function getChangelog(): string {
     return path.join(getRootDirectory(), "CHANGELOG.md");
 }
 
-
 /**
  * Retrieves the version number from the package.json.
  */
 export async function getExtensionVersion(): Promise<semver.SemVer> {
-    const packageJSON = JSON.parse(
-        await readFile(getManifest(), "utf-8")
-    );
+    const packageJSON = JSON.parse(await readFile(getManifest(), "utf-8"));
     if (typeof packageJSON.version !== "string") {
         throw new Error("Version number in package.json is not a string");
     }
