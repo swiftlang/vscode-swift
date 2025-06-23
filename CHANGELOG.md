@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.6.0 - TBD
+
+### Added
+
+- Support for [multi-root .code-workspace](https://code.visualstudio.com/docs/editing/workspaces/multi-root-workspaces) workspaces ([#1566](https://github.com/swiftlang/vscode-swift/pull/1566))
+- Notify user if the `xcode-select`ed Xcode doesn't match setting ([#1563](https://github.com/swiftlang/vscode-swift/pull/1563))
+
+### Fixed
+
+- Do not show non-"swift" tasks in the project panel ([#1620](https://github.com/swiftlang/vscode-swift/pull/1620))
+- Make sure activation does not fail when `swift.path` is `null` ([#1616](https://github.com/swiftlang/vscode-swift/pull/1616))
+- Fix `Swift: Reset Package Dependencies` command on Windows ([#1614](https://github.com/swiftlang/vscode-swift/pull/1614))
+
 ## 2.4.0 - 2025-06-11
 
 ### Added
