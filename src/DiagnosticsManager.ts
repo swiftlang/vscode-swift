@@ -320,7 +320,7 @@ export class DiagnosticsManager implements vscode.Disposable {
                                     d =>
                                         d.message === relatedInformation.message &&
                                         d.location.uri.fsPath ===
-                                        relatedInformation.location.uri.fsPath &&
+                                            relatedInformation.location.uri.fsPath &&
                                         d.location.range.isEqual(relatedInformation.location.range)
                                 )
                             ) {
