@@ -692,19 +692,9 @@ export class SwiftToolchain {
     }
 
     private static async swiftlyInUseLocation(swiftlyPath: string, cwd?: vscode.Uri) {
-        const env: Record<string, string> = {};
-        if (path.isAbsolute(swiftlyPath)) {
-            env["SWIFTLY_HOME_DIR"] = path.dirname(path.dirname(swiftlyPath));
-            env["SWIFTLY_BIN_DIR"] = path.dirname(swiftlyPath);
-        }
-        const { stdout: inUse } = await execFile(
-            swiftlyPath,
-            ["use", "--print-location"],
-            {
-                cwd: cwd?.fsPath,
-                env,
-            }
-        );
+        const { stdout: inUse } = await execFile(swiftlyPath, ["use", "--print-location"], {
+            cwd: cwd?.fsPath,
+        });
         return inUse.trimEnd();
     }
 
