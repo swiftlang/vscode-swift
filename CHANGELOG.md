@@ -12,6 +12,7 @@
 - Do not show non-"swift" tasks in the project panel ([#1620](https://github.com/swiftlang/vscode-swift/pull/1620))
 - Make sure activation does not fail when `swift.path` is `null` ([#1616](https://github.com/swiftlang/vscode-swift/pull/1616))
 - Fix `Swift: Reset Package Dependencies` command on Windows ([#1614](https://github.com/swiftlang/vscode-swift/pull/1614))
+- Activate extension when a .swift source file exists in a subfolder ([#1635](https://github.com/swiftlang/vscode-swift/pull/1635))
 
 ## 2.4.0 - 2025-06-11
 
