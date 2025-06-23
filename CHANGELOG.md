@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.6.0 - TBD
+## {{releaseVersion}} - {{releaseDate}}
 
 ### Added
 
