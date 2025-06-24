@@ -66,7 +66,7 @@ function assertWithoutDiagnostic(uri: vscode.Uri, expected: vscode.Diagnostic) {
     );
 }
 
-suite.only("DiagnosticsManager Test Suite", function () {
+suite("DiagnosticsManager Test Suite", function () {
     this.timeout(60 * 1000 * 5); // Allow up to 5 minutes for build
 
     let workspaceContext: WorkspaceContext;
