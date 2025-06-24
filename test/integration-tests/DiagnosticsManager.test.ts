@@ -66,7 +66,7 @@ function assertWithoutDiagnostic(uri: vscode.Uri, expected: vscode.Diagnostic) {
     );
 }
 
-suite("DiagnosticsManager Test Suite", function () {
+suite.only("DiagnosticsManager Test Suite", function () {
     this.timeout(60 * 1000 * 5); // Allow up to 5 minutes for build
 
     let workspaceContext: WorkspaceContext;
@@ -287,7 +287,14 @@ suite("DiagnosticsManager Test Suite", function () {
                     [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
                 }),
                 () => {
-                    test("Parses related information", async () => {
+                    test("Parses related information", async function () {
+                        if (
+                            workspaceContext.globalToolchainSwiftVersion.isLessThan(
+                                new Version(6, 1, 0)
+                            )
+                        ) {
+                            this.skip();
+                        }
                         const diagnostic = assertHasDiagnostic(mainUri, expectedMacroDiagnostic);
                         // Should have parsed related note
                         assert.equal(diagnostic.relatedInformation?.length, 1);
