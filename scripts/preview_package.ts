@@ -12,8 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 /* eslint-disable no-console */
-
-import { exec, getExtensionVersion, getRootDirectory, main } from "./lib/utilities";
+import {
+    exec,
+    getExtensionVersion,
+    getRootDirectory,
+    main,
+    updateChangelog,
+} from "./lib/utilities";
 
 /**
  * Formats the given date as a string in the form "YYYYMMdd".
@@ -43,6 +48,8 @@ main(async () => {
                 " The version in the package.json has probably been incorrectly set to an odd minor version."
         );
     }
+    // Update version in CHANGELOG
+    await updateChangelog(previewVersion);
     // Use VSCE to package the extension
     await exec(
         "npx",
