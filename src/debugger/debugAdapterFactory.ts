@@ -151,6 +151,11 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             if (!(await this.promptForCodeLldbSettings(toolchain))) {
                 return undefined;
             }
+            // Rename lldb-dap's "terminateCommands" to "preTerminateCommands" for CodeLLDB
+            if ("terminateCommands" in launchConfig) {
+                launchConfig["preTerminateCommands"] = launchConfig["terminateCommands"];
+                delete launchConfig["terminateCommands"];
+            }
         } else if (launchConfig.type === LaunchConfigType.LLDB_DAP) {
             if (launchConfig.env) {
                 launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
