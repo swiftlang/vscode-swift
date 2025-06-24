@@ -14,6 +14,7 @@
 - Fix `Swift: Reset Package Dependencies` command on Windows ([#1614](https://github.com/swiftlang/vscode-swift/pull/1614))
 - Activate extension when a .swift source file exists in a subfolder ([#1635](https://github.com/swiftlang/vscode-swift/pull/1635))
 - Resolve Swiftly toolchain path ([#1632](https://github.com/swiftlang/vscode-swift/pull/1632))
+- Hide files excluded with files.exclude from Project Panel ([#1626](https://github.com/swiftlang/vscode-swift/pull/1626))
 
 ## 2.4.0 - 2025-06-11
 
