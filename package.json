@@ -568,15 +568,16 @@
         "title": "User Interface",
         "properties": {
           "swift.excludePathsFromPackageDependencies": {
-            "markdownDescription": "A list of paths to exclude from the Package Dependencies view.",
+            "markdownDescription": "A list of glob patterns to exclude from the Package Dependencies view. Always use forward-slashes in glob expressions regardless of platform. This is combined with VS Code's default `files.exclude` setting.",
             "type": "array",
             "items": {
               "type": "string"
             },
             "default": [
-              ".git",
-              ".github"
-            ]
+              "**/.git",
+              "**/.github"
+            ],
+            "scope": "machine-overridable"
           },
           "swift.showBuildStatus": {
             "type": "string",
@@ -1509,7 +1510,7 @@
               },
               "launchCommands": {
                 "type": "array",
-                "description": "Custom commands that are executed instead of launching a process. A target will be created with the launch arguments prior to executing these commands. The commands may optionally create a new target and must perform a launch. A valid process must exist after these commands complete or the \"launch\" will fail. Launch the process with \"process launch -s\" to make the process to at the entry point since lldb-vscode will auto resume if necessary.",
+                "description": "Custom commands that are executed instead of launching a process. A target will be created with the launch arguments prior to executing these commands. The commands may optionally create a new target and must perform a launch. A valid process must exist after these commands complete or the \"launch\" will fail. Launch the process with \"process launch -s\" to make the process to at the entry point since lldb-dap will auto resume if necessary.",
                 "default": []
               },
               "stopCommands": {
@@ -1519,7 +1520,12 @@
               },
               "exitCommands": {
                 "type": "array",
-                "description": "Commands executed at the end of debugging session.",
+                "description": "Commands executed when the program exits.",
+                "default": []
+              },
+              "terminateCommands": {
+                "type": "array",
+                "description": "Commands executed when the debugging session ends.",
                 "default": []
               },
               "runInTerminal": {
@@ -1687,20 +1693,19 @@
     "@types/chai-as-promised": "^7.1.8",
     "@types/chai-subset": "^1.3.6",
     "@types/decompress": "^4.2.7",
-    "@types/glob": "^7.1.6",
     "@types/lcov-parse": "^1.0.2",
     "@types/lodash.debounce": "^4.0.9",
     "@types/lodash.throttle": "^4.1.9",
     "@types/mocha": "^10.0.10",
     "@types/mock-fs": "^4.13.4",
-    "@types/node": "^20.19.0",
+    "@types/node": "^20.19.1",
     "@types/plist": "^3.0.5",
     "@types/semver": "^7.7.0",
     "@types/sinon": "^17.0.4",
     "@types/sinon-chai": "^3.2.12",
     "@types/vscode": "^1.88.0",
     "@types/xml2js": "^0.4.14",
-    "@typescript-eslint/eslint-plugin": "^8.34.0",
+    "@typescript-eslint/eslint-plugin": "^8.35.0",
     "@typescript-eslint/parser": "^8.32.1",
     "@vscode/debugprotocol": "^1.68.0",
     "@vscode/test-cli": "^0.0.11",
@@ -1717,24 +1722,25 @@
     "fantasticon": "^3.0.0",
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
-    "mocha": "^11.6.0",
+    "mocha": "^11.7.0",
     "mock-fs": "^5.5.0",
     "node-pty": "^1.0.0",
     "octokit": "^3.2.2",
-    "prettier": "^3.5.3",
+    "prettier": "^3.6.0",
     "replace-in-file": "^8.3.0",
     "semver": "^7.7.2",
     "simple-git": "^3.28.0",
-    "sinon": "^20.0.0",
+    "sinon": "^21.0.0",
     "sinon-chai": "^3.7.0",
     "source-map-support": "^0.5.21",
     "strip-ansi": "^6.0.1",
-    "svgo": "^3.3.2",
-    "tsx": "^4.19.4",
+    "svgo": "^4.0.0",
+    "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   },
   "dependencies": {
     "@vscode/codicons": "^0.0.36",
+    "fast-glob": "^3.3.3",
     "lcov-parse": "^1.0.0",
     "plist": "^3.1.0",
     "vscode-languageclient": "^9.0.1",

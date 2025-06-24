@@ -14,6 +14,8 @@
 
 import * as vscode from "vscode";
 import { pathExists } from "./filesystem";
+import { convertPathToPattern, glob } from "fast-glob";
+import { basename } from "path";
 
 export async function searchForPackages(
     folder: vscode.Uri,
@@ -32,14 +34,16 @@ export async function searchForPackages(
             return;
         }
 
-        await vscode.workspace.fs.readDirectory(folder).then(async entries => {
+        const config = vscode.workspace.getConfiguration("files");
+        const vscodeExcludeList = config.get<{ [key: string]: boolean }>("exclude", {});
+        await glob(`${convertPathToPattern(folder.fsPath)}/*`, {
+            ignore: [...Object.keys(vscodeExcludeList).filter(k => vscodeExcludeList[k])],
+            absolute: true,
+            onlyDirectories: true,
+        }).then(async entries => {
             for (const entry of entries) {
-                if (
-                    entry[1] === vscode.FileType.Directory &&
-                    entry[0][0] !== "." &&
-                    entry[0] !== "Packages"
-                ) {
-                    await search(vscode.Uri.joinPath(folder, entry[0]));
+                if (basename(entry) !== "." && basename(entry) !== "Packages") {
+                    await search(vscode.Uri.file(entry));
                 }
             }
         });

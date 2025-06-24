@@ -67,10 +67,14 @@ export class SelectedXcodeWatcher implements vscode.Disposable {
      */
     private async setup() {
         this.xcodePath = await this.xcodeSymlink();
+        const developerDir = () => configuration.swiftEnvironmentVariables["DEVELOPER_DIR"];
+        const matchesPath = (xcodePath: string) =>
+            configuration.path && configuration.path.startsWith(xcodePath);
+        const matchesDeveloperDir = (xcodePath: string) => developerDir()?.startsWith(xcodePath);
         if (
             this.xcodePath &&
-            configuration.path &&
-            !configuration.path.startsWith(this.xcodePath)
+            (configuration.path || developerDir()) &&
+            !(matchesPath(this.xcodePath) || matchesDeveloperDir(this.xcodePath))
         ) {
             this.xcodePath = undefined; // Notify user when initially launching that xcode changed since last session
         }
@@ -89,7 +93,18 @@ export class SelectedXcodeWatcher implements vscode.Disposable {
                     await showReloadExtensionNotification(
                         "The Swift Extension has detected a change in the selected Xcode. Please reload the extension to apply the changes."
                     );
-                } else {
+                } else if (developerDir() && !matchesDeveloperDir(this.xcodePath)) {
+                    const selected = await vscode.window.showWarningMessage(
+                        'The Swift Extension has detected a change in the selected Xcode which does not match the value of your DEVELOPER_DIR in the "swift.swiftEnvironmentVariables" setting. Would you like to update your configured "swift.swiftEnvironmentVariables" setting?',
+                        "Remove From Settings",
+                        "Select Toolchain"
+                    );
+                    if (selected === "Remove From Settings") {
+                        await removeToolchainPath();
+                    } else if (selected === "Select Toolchain") {
+                        await selectToolchain();
+                    }
+                } else if (!matchesPath(this.xcodePath)) {
                     const selected = await vscode.window.showWarningMessage(
                         'The Swift Extension has detected a change in the selected Xcode which does not match the value of your "swift.path" setting. Would you like to update your configured "swift.path" setting?',
                         "Remove From Settings",
