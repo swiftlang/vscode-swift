@@ -12,8 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+import { all, any } from "micromatch";
 import * as fs from "fs/promises";
 import * as path from "path";
+import * as vscode from "vscode";
+import { convertPathToPattern, glob as fastGlob, Options } from "fast-glob";
+import configuration from "../configuration";
 
 export const validFileTypes = ["swift", "c", "cpp", "h", "hpp", "m", "mm"];
 
@@ -78,4 +82,70 @@ export function expandFilePathTilde(
         return filepath;
     }
     return path.join(directory, filepath.slice(1));
+}
+
+function getDefaultExcludeList(): Record<string, boolean> {
+    const config = vscode.workspace.getConfiguration("files");
+    const vscodeExcludeList = config.get<{ [key: string]: boolean }>("exclude", {});
+    const swiftExcludeList = configuration.exclude;
+    return { ...vscodeExcludeList, ...swiftExcludeList };
+}
+
+function getGlobPattern(excludeList: Record<string, boolean>): {
+    include: string[];
+    exclude: string[];
+} {
+    const exclude: string[] = [];
+    const include: string[] = [];
+    for (const key of Object.keys(excludeList)) {
+        if (excludeList[key]) {
+            exclude.push(key);
+        } else {
+            include.push(key);
+        }
+    }
+    return { include, exclude };
+}
+
+export function isIncluded(
+    uri: vscode.Uri,
+    excludeList: Record<string, boolean> = getDefaultExcludeList()
+): boolean {
+    const { include, exclude } = getGlobPattern(excludeList);
+    const notExcluded = all(
+        uri.fsPath,
+        exclude.map(pattern => `!${pattern}`),
+        { contains: true }
+    );
+    if (notExcluded) {
+        return true;
+    }
+    const reincluded = any(uri.fsPath, include, { contains: true });
+    return reincluded;
+}
+
+export function isExcluded(
+    uri: vscode.Uri,
+    excludeList: Record<string, boolean> = getDefaultExcludeList()
+): boolean {
+    return !isIncluded(uri, excludeList);
+}
+
+export async function globDirectory(uri: vscode.Uri, options?: Options): Promise<string[]> {
+    const { include, exclude } = getGlobPattern(getDefaultExcludeList());
+    const matches: string[] = await fastGlob(`${convertPathToPattern(uri.fsPath)}/*`, {
+        ignore: exclude,
+        absolute: true,
+        ...options,
+    });
+    if (include.length > 0) {
+        matches.push(
+            ...(await fastGlob(include, {
+                absolute: true,
+                cwd: uri.fsPath,
+                ...options,
+            }))
+        );
+    }
+    return matches;
 }

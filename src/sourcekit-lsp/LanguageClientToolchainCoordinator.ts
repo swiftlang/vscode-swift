@@ -18,6 +18,7 @@ import { FolderContext } from "../FolderContext";
 import { LanguageClientFactory } from "./LanguageClientFactory";
 import { LanguageClientManager } from "./LanguageClientManager";
 import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
+import { isExcluded } from "../utilities/filesystem";
 
 /**
  * Manages the creation of LanguageClient instances for workspace folders.
@@ -62,6 +63,9 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
         languageClientFactory: LanguageClientFactory
     ) {
         if (!folder) {
+            return;
+        }
+        if (isExcluded(folder.workspaceFolder.uri)) {
             return;
         }
         const singleServer = folder.swiftVersion.isGreaterThanOrEqual(new Version(5, 7, 0));

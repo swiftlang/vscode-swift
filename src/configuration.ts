@@ -490,6 +490,12 @@ const configuration = {
     get disableSandbox(): boolean {
         return vscode.workspace.getConfiguration("swift").get<boolean>("disableSandbox", false);
     },
+    /** Workspace folder glob patterns to exclude */
+    get exclude(): Record<string, boolean> {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<Record<string, boolean>>("exclude", {});
+    },
 };
 
 const vsCodeVariableRegex = new RegExp(/\$\{(.+?)\}/g);
