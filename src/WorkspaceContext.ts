@@ -18,7 +18,7 @@ import { FolderContext } from "./FolderContext";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
 import { swiftLibraryPathKey } from "./utilities/utilities";
-import { isPathInsidePath } from "./utilities/filesystem";
+import { isExcluded, isPathInsidePath } from "./utilities/filesystem";
 import { LanguageClientToolchainCoordinator } from "./sourcekit-lsp/LanguageClientToolchainCoordinator";
 import { TemporaryFolder } from "./utilities/tempFolder";
 import { TaskManager } from "./tasks/TaskManager";
@@ -509,6 +509,9 @@ export class WorkspaceContext implements vscode.Disposable {
 
     /** set focus based on the file */
     async focusPackageUri(uri: vscode.Uri) {
+        if (isExcluded(uri)) {
+            return;
+        }
         const packageFolder = await this.getPackageFolder(uri);
         if (packageFolder instanceof FolderContext) {
             await this.focusFolder(packageFolder);
