@@ -15,6 +15,8 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 
+export const validFileTypes = ["swift", "c", "cpp", "h", "hpp", "m", "mm"];
+
 /**
  * Checks if a file, directory or symlink exists at the supplied path.
  * @param pathComponents The path to check for existence
