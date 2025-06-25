@@ -15,8 +15,9 @@
 function Update-SwiftBuildAndPackageArguments {
     param (
         [string]$jsonFilePath = "./assets/test/.vscode/settings.json",
+        [string]$codeWorkspaceFilePath = "./assets/test.code-workspace",
         [string]$windowsSdkVersion = "10.0.22000.0",
-        [string]$vcToolsVersion = "14.43.34808"
+        [string]$vcToolsVersion = "14.44.35207"
     )
 
     $windowsSdkRoot = "C:\Program Files (x86)\Windows Kits\10\"
@@ -28,9 +29,17 @@ function Update-SwiftBuildAndPackageArguments {
         exit 1
     }
 
+    try {
+        $codeWorkspaceContent = Get-Content -Raw -Path $codeWorkspaceFilePath | ConvertFrom-Json
+    } catch {
+        Write-Host "Invalid JSON content in $codeWorkspaceFilePath"
+        exit 1
+    }
+
     if ($jsonContent.PSObject.Properties['swift.buildArguments']) {
         $jsonContent.PSObject.Properties.Remove('swift.buildArguments')
     }
+    
 
     $jsonContent | Add-Member -MemberType NoteProperty -Name "swift.buildArguments" -Value @(
         "-Xbuild-tools-swiftc", "-windows-sdk-root", "-Xbuild-tools-swiftc", $windowsSdkRoot,
@@ -54,10 +63,20 @@ function Update-SwiftBuildAndPackageArguments {
         "-Xswiftc", "-visualc-tools-version", "-Xswiftc", $vcToolsVersion
     )
 
+
+    $codeWorkspaceContent.PSObject.Properties.Remove('settings')
+    $codeWorkspaceContent | Add-Member -MemberType NoteProperty -Name "settings" -Value $jsonContent
+
     $jsonContent | ConvertTo-Json -Depth 32 | Set-Content -Path $jsonFilePath
+
+    
+    $codeWorkspaceContent | ConvertTo-Json -Depth 32 | Set-Content -Path $codeWorkspaceFilePath
 
     Write-Host "Contents of ${jsonFilePath}:"
     Get-Content -Path $jsonFilePath
+    
+    Write-Host "Contents of ${codeWorkspaceFilePath}:"
+    Get-Content -Path $codeWorkspaceFilePath
 }
 
 $swiftVersionOutput = & swift --version

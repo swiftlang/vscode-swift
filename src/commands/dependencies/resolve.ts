@@ -17,6 +17,7 @@ import { FolderContext } from "../../FolderContext";
 import { createSwiftTask, SwiftTaskProvider } from "../../tasks/SwiftTaskProvider";
 import { WorkspaceContext } from "../../WorkspaceContext";
 import { executeTaskWithUI, updateAfterError } from "../utilities";
+import { packageName } from "../../utilities/tasks";
 
 /**
  * Executes a {@link vscode.Task task} to resolve this package's dependencies.
@@ -24,7 +25,6 @@ import { executeTaskWithUI, updateAfterError } from "../utilities";
 export async function resolveDependencies(ctx: WorkspaceContext) {
     const current = ctx.currentFolder;
     if (!current) {
-        ctx.outputChannel.log("currentFolder is not set.");
         return false;
     }
     return await resolveFolderDependencies(current);
@@ -44,10 +44,10 @@ export async function resolveFolderDependencies(
         {
             cwd: folderContext.folder,
             scope: folderContext.workspaceFolder,
-            prefix: folderContext.name,
+            packageName: packageName(folderContext),
             presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
         },
-        folderContext.workspaceContext.toolchain
+        folderContext.toolchain
     );
 
     const success = await executeTaskWithUI(

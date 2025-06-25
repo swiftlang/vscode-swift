@@ -13,12 +13,21 @@
 ##
 ##===----------------------------------------------------------------------===##
 
-export NODE_VERSION=v20.18.2
-export NODE_PATH=/usr/local/nvm/versions/node/v20.18.2/bin
+export NODE_VERSION=v20.19.0
+export NODE_PATH=/usr/local/nvm/versions/node/v20.19.0/bin
 export NVM_DIR=/usr/local/nvm
 
 apt-get update && apt-get install -y rsync curl gpg libasound2 libgbm1 libgtk-3-0 libnss3 xvfb build-essential
 mkdir -p $NVM_DIR
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-/bin/bash -c "source $NVM_DIR/nvm.sh && nvm install $NODE_VERSION"
+# shellcheck disable=SC1091
+. $NVM_DIR/nvm.sh && nvm install $NODE_VERSION
 echo "$NODE_PATH" >> "$GITHUB_PATH"
+
+env | sort
+
+if [ -n "$VSCODE_SWIFT_VSIX_ID" ]; then
+    npm ci --ignore-scripts
+    npx tsx scripts/download_vsix.ts
+    export VSCODE_SWIFT_VSIX="vscode-swift.vsix"
+fi

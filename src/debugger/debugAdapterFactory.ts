@@ -20,8 +20,8 @@ import { registerLoggingDebugAdapterTracker } from "./logTracker";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { fileExists } from "../utilities/filesystem";
-import { getLLDBLibPath } from "./lldb";
-import { getErrorDescription } from "../utilities/utilities";
+import { updateLaunchConfigForCI, getLLDBLibPath } from "./lldb";
+import { getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
 import configuration from "../configuration";
 
 /**
@@ -47,9 +47,7 @@ export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Dis
 
     function register() {
         subscriptions.push(registerLoggingDebugAdapterTracker());
-        subscriptions.push(
-            registerLLDBDebugAdapter(workspaceContext.toolchain, workspaceContext.outputChannel)
-        );
+        subscriptions.push(registerLLDBDebugAdapter(workspaceContext));
     }
 
     if (!configuration.debugger.disable) {
@@ -69,13 +67,10 @@ export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Dis
  * @param workspaceContext The workspace context
  * @returns A disposable to be disposed when the extension is deactivated
  */
-function registerLLDBDebugAdapter(
-    toolchain: SwiftToolchain,
-    outputChannel: SwiftOutputChannel
-): vscode.Disposable {
+function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
     return vscode.debug.registerDebugConfigurationProvider(
         SWIFT_LAUNCH_CONFIG_TYPE,
-        new LLDBDebugConfigurationProvider(process.platform, toolchain, outputChannel)
+        workspaceContext.launchProvider
     );
 }
 
@@ -91,14 +86,19 @@ function registerLLDBDebugAdapter(
 export class LLDBDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
     constructor(
         private platform: NodeJS.Platform,
-        private toolchain: SwiftToolchain,
+        private workspaceContext: WorkspaceContext,
         private outputChannel: SwiftOutputChannel
     ) {}
 
     async resolveDebugConfigurationWithSubstitutedVariables(
-        _folder: vscode.WorkspaceFolder | undefined,
+        folder: vscode.WorkspaceFolder | undefined,
         launchConfig: vscode.DebugConfiguration
     ): Promise<vscode.DebugConfiguration | undefined | null> {
+        const workspaceFolder = this.workspaceContext.folders.find(
+            f => f.workspaceFolder.uri.fsPath === folder?.uri.fsPath
+        );
+        const toolchain = workspaceFolder?.toolchain ?? this.workspaceContext.globalToolchain;
+
         // Fix the program path on Windows to include the ".exe" extension
         if (
             this.platform === "win32" &&
@@ -132,8 +132,15 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             launchConfig.pid = pid;
         }
 
+        // Merge in the Swift runtime environment variables
+        const runtimeEnv = swiftRuntimeEnv(true);
+        if (runtimeEnv) {
+            const existingEnv = launchConfig.env ?? {};
+            launchConfig.env = { ...runtimeEnv, existingEnv };
+        }
+
         // Delegate to the appropriate debug adapter extension
-        launchConfig.type = DebugAdapter.getLaunchConfigType(this.toolchain.swiftVersion);
+        launchConfig.type = DebugAdapter.getLaunchConfigType(toolchain.swiftVersion);
         if (launchConfig.type === LaunchConfigType.CODE_LLDB) {
             launchConfig.sourceLanguages = ["swift"];
             if (!vscode.extensions.getExtension("vadimcn.vscode-lldb")) {
@@ -141,17 +148,22 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                     return undefined;
                 }
             }
-            if (!(await this.promptForCodeLldbSettings())) {
+            if (!(await this.promptForCodeLldbSettings(toolchain))) {
                 return undefined;
+            }
+            // Rename lldb-dap's "terminateCommands" to "preTerminateCommands" for CodeLLDB
+            if ("terminateCommands" in launchConfig) {
+                launchConfig["preTerminateCommands"] = launchConfig["terminateCommands"];
+                delete launchConfig["terminateCommands"];
             }
         } else if (launchConfig.type === LaunchConfigType.LLDB_DAP) {
             if (launchConfig.env) {
                 launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
             }
-            const lldbDapPath = await DebugAdapter.getLLDBDebugAdapterPath(this.toolchain);
+            const lldbDapPath = await DebugAdapter.getLLDBDebugAdapterPath(toolchain);
             // Verify that the debug adapter exists or bail otherwise
             if (!(await fileExists(lldbDapPath))) {
-                vscode.window.showErrorMessage(
+                void vscode.window.showErrorMessage(
                     `Cannot find the LLDB debug adapter in your Swift toolchain: No such file or directory "${lldbDapPath}"`
                 );
                 return undefined;
@@ -159,7 +171,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             launchConfig.debugAdapterExecutable = lldbDapPath;
         }
 
-        return launchConfig;
+        return updateLaunchConfigForCI(launchConfig);
     }
 
     private async promptToInstallCodeLLDB(): Promise<boolean> {
@@ -191,11 +203,11 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         }
     }
 
-    private async promptForCodeLldbSettings(): Promise<boolean> {
-        const libLldbPathResult = await getLLDBLibPath(this.toolchain);
+    async promptForCodeLldbSettings(toolchain: SwiftToolchain): Promise<boolean> {
+        const libLldbPathResult = await getLLDBLibPath(toolchain);
         if (!libLldbPathResult.success) {
             const errorMessage = `Error: ${getErrorDescription(libLldbPathResult.failure)}`;
-            vscode.window.showWarningMessage(
+            void vscode.window.showWarningMessage(
                 `Failed to setup CodeLLDB for debugging of Swift code. Debugging may produce unexpected results. ${errorMessage}`
             );
             this.outputChannel.log(`Failed to setup CodeLLDB: ${errorMessage}`);

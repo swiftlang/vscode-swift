@@ -70,10 +70,17 @@ export class TestSwiftProcess implements SwiftProcess {
     close(exitCode: number): void {
         this.exitCode = exitCode;
         this.closeEmitter.fire(exitCode);
+        this.dispose();
     }
 
     terminate(): void {
         this.close(8);
+    }
+
+    dispose() {
+        [this.spawnEmitter, this.writeEmitter, this.errorEmitter, this.closeEmitter].forEach(d =>
+            d.dispose()
+        );
     }
 
     // These instantaneous task processes can lead to some

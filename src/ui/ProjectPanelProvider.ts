@@ -20,10 +20,13 @@ import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderOperation } from "../WorkspaceContext";
 import contextKeys from "../contextKeys";
 import { Dependency, ResolvedDependency, Target } from "../SwiftPackage";
-import { SwiftPluginTaskProvider } from "../tasks/SwiftPluginTaskProvider";
 import { FolderContext } from "../FolderContext";
+import { getPlatformConfig, resolveTaskCwd } from "../utilities/tasks";
+import { SwiftTask, TaskPlatformSpecificConfig } from "../tasks/SwiftTaskProvider";
+import { convertPathToPattern, glob } from "fast-glob";
 
 const LOADING_ICON = "loading~spin";
+
 /**
  * References:
  *
@@ -36,20 +39,42 @@ const LOADING_ICON = "loading~spin";
  */
 
 /**
+ * Returns an array of file globs that define files that should be excluded from the project panel explorer.
+ */
+function excludedFilesForProjectPanelExplorer(): string[] {
+    const config = vscode.workspace.getConfiguration("files");
+    const vscodeExcludeList = config.get<{ [key: string]: boolean }>("exclude");
+    const packageDepsExcludeList = configuration.excludePathsFromPackageDependencies;
+
+    if (!Array.isArray(packageDepsExcludeList)) {
+        throw new Error("Expected excludePathsFromPackageDependencies to be an array");
+    }
+    return [...packageDepsExcludeList, ...Object.keys(vscodeExcludeList ?? {})];
+}
+
+/**
  * Returns a {@link FileNode} for every file or subdirectory
  * in the given directory.
  */
-async function getChildren(directoryPath: string, parentId?: string): Promise<FileNode[]> {
-    const contents = await fs.readdir(directoryPath);
+async function getChildren(
+    directoryPath: string,
+    excludedFiles: string[],
+    parentId?: string,
+    mockFs?: (folder: string) => Promise<string[]>
+): Promise<FileNode[]> {
+    const contents = mockFs
+        ? await mockFs(directoryPath)
+        : await glob(`${convertPathToPattern(directoryPath)}/*`, {
+              ignore: excludedFiles,
+              absolute: true,
+              onlyFiles: false,
+          });
     const results: FileNode[] = [];
-    const excludes = configuration.excludePathsFromPackageDependencies;
-    for (const fileName of contents) {
-        if (excludes.includes(fileName)) {
-            continue;
-        }
-        const filePath = path.join(directoryPath, fileName);
+    for (const filePath of contents) {
         const stats = await fs.stat(filePath);
-        results.push(new FileNode(fileName, filePath, stats.isDirectory(), parentId));
+        results.push(
+            new FileNode(path.basename(filePath), filePath, stats.isDirectory(), parentId, mockFs)
+        );
     }
     return results.sort((first, second) => {
         if (first.isDirectory === second.isDirectory) {
@@ -68,10 +93,29 @@ async function getChildren(directoryPath: string, parentId?: string): Promise<Fi
 export class PackageNode {
     private id: string;
 
+    /**
+     * "instanceof" has a bad effect in our nightly tests when the VSIX
+     * bundled source is used. For example:
+     *
+     * ```
+     * vscode.commands.registerCommand(Commands.UNEDIT_DEPENDENCY, async (item, folder) => {
+     *  if (item instanceof PackageNode) {
+     *      return await uneditDependency(item.name, ctx, folder);
+     *  }
+     * }),
+     * ```
+     *
+     * So instead we'll check for this set boolean property. Even if the implementation of the
+     * {@link PackageNode} class changes, this property should not need to change
+     */
+    static isPackageNode = (item: { __isPackageNode?: boolean }) => item.__isPackageNode ?? false;
+    __isPackageNode = true;
+
     constructor(
         private dependency: ResolvedDependency,
         private childDependencies: (dependency: Dependency) => ResolvedDependency[],
-        private parentId?: string
+        private parentId?: string,
+        private fs?: (folder: string) => Promise<string[]>
     ) {
         this.id =
             (this.parentId ? `${this.parentId}->` : "") +
@@ -118,7 +162,12 @@ export class PackageNode {
     async getChildren(): Promise<TreeNode[]> {
         const [childDeps, files] = await Promise.all([
             this.childDependencies(this.dependency),
-            getChildren(this.dependency.path, this.id),
+            getChildren(
+                this.dependency.path,
+                excludedFilesForProjectPanelExplorer(),
+                this.id,
+                this.fs
+            ),
         ]);
         const childNodes = childDeps.map(
             dep => new PackageNode(dep, this.childDependencies, this.id)
@@ -139,7 +188,8 @@ export class FileNode {
         public name: string,
         public path: string,
         public isDirectory: boolean,
-        private parentId?: string
+        private parentId?: string,
+        private fs?: (folder: string) => Promise<string[]>
     ) {
         this.id = (this.parentId ? `${this.parentId}->` : "") + `${this.path}`;
     }
@@ -168,7 +218,12 @@ export class FileNode {
     }
 
     async getChildren(): Promise<FileNode[]> {
-        return await getChildren(this.path, this.id);
+        return await getChildren(
+            this.path,
+            excludedFilesForProjectPanelExplorer(),
+            this.id,
+            this.fs
+        );
     }
 }
 
@@ -239,6 +294,7 @@ class TargetNode {
         item.iconPath = new vscode.ThemeIcon(this.icon());
         item.contextValue = this.contextValue();
         item.accessibilityInformation = { label: name };
+        item.tooltip = `${name} (${this.target.type})`;
         return item;
     }
 
@@ -252,6 +308,12 @@ class TargetNode {
                 return "output";
             case "library":
                 return "library";
+            case "system-target":
+                return "server";
+            case "binary":
+                return "file-binary";
+            case "plugin":
+                return "plug";
             case "test":
                 if (this.activeTasks.has(testTaskName(this.name))) {
                     return LOADING_ICON;
@@ -262,8 +324,6 @@ class TargetNode {
                     return LOADING_ICON;
                 }
                 return "notebook";
-            case "plugin":
-                return "plug";
         }
     }
 
@@ -367,6 +427,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
     constructor(private workspaceContext: WorkspaceContext) {
         // default context key to false. These will be updated as folders are given focus
         contextKeys.hasPackage = false;
+        contextKeys.hasExecutableProduct = false;
         contextKeys.packageHasDependencies = false;
 
         this.observeTasks(workspaceContext);
@@ -377,6 +438,8 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
     }
 
     observeTasks(ctx: WorkspaceContext) {
+        this.disposables.push(new TaskPoller(() => this.didChangeTreeDataEmitter.fire()));
+
         this.disposables.push(
             vscode.tasks.onDidStartTask(e => {
                 const taskId = e.execution.task.detail ?? e.execution.task.name;
@@ -415,6 +478,17 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                     this.activeTasks.delete(testTaskName(target));
                 }
                 this.didChangeTreeDataEmitter.fire();
+            })
+        );
+
+        this.disposables.push(
+            vscode.workspace.onDidChangeConfiguration(e => {
+                if (
+                    e.affectsConfiguration("files.exclude") ||
+                    e.affectsConfiguration("swift.excludePathsFromPackageDependencies")
+                ) {
+                    this.didChangeTreeDataEmitter.fire();
+                }
             })
         );
     }
@@ -566,16 +640,20 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
     }
 
     private async tasks(folderContext: FolderContext): Promise<TaskNode[]> {
-        const tasks = await vscode.tasks.fetchTasks();
+        const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
 
         return (
             tasks
                 // Plugin tasks are shown under the Commands header
-                .filter(
-                    task =>
-                        task.definition.cwd === folderContext.folder.fsPath &&
-                        task.source !== "swift-plugin"
-                )
+                .filter(task => {
+                    const platform: TaskPlatformSpecificConfig | undefined =
+                        getPlatformConfig(task);
+                    return (
+                        !task.definition.cwd ||
+                        resolveTaskCwd(task, platform?.cwd ?? task.definition.cwd) ===
+                            folderContext.folder.fsPath
+                    );
+                })
                 .map(
                     (task, i) =>
                         new TaskNode(
@@ -590,7 +668,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
     }
 
     private async commands(): Promise<TreeNode[]> {
-        const provider = new SwiftPluginTaskProvider(this.workspaceContext);
+        const provider = this.workspaceContext.pluginProvider;
         const tasks = await provider.provideTasks(new vscode.CancellationTokenSource().token);
         return tasks
             .map(
@@ -615,5 +693,53 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
             .filter(target => target.type === "snippet")
             .flatMap(target => new TargetNode(target, this.activeTasks))
             .sort((a, b) => a.name.localeCompare(b.name));
+    }
+}
+
+/*
+ * A simple task poller that checks for changes in the tasks every 5 seconds.
+ * This is a workaround for the lack of an event when tasks are added or removed.
+ */
+class TaskPoller implements vscode.Disposable {
+    private previousTasks: SwiftTask[] = [];
+    private timeout?: NodeJS.Timeout;
+    private static POLL_INTERVAL = 5000;
+
+    constructor(private onTasksChanged: () => void) {
+        void this.pollTasks();
+    }
+
+    private async pollTasks() {
+        try {
+            const tasks = (await vscode.tasks.fetchTasks({ type: "swift" })) as SwiftTask[];
+            const tasksChanged =
+                tasks.length !== this.previousTasks.length ||
+                tasks.some((task, i) => {
+                    const prev = this.previousTasks[i];
+                    const c1 = task.execution.command;
+                    const c2 = prev.execution.command;
+                    return (
+                        !prev ||
+                        task.name !== prev.name ||
+                        task.source !== prev.source ||
+                        task.definition.cwd !== prev.definition.cwd ||
+                        task.detail !== prev.detail ||
+                        c1 !== c2
+                    );
+                });
+            if (tasksChanged) {
+                this.previousTasks = tasks;
+                this.onTasksChanged();
+            }
+        } catch {
+            // ignore errors
+        }
+        this.timeout = setTimeout(() => this.pollTasks(), TaskPoller.POLL_INTERVAL);
+    }
+
+    dispose() {
+        if (this.timeout) {
+            clearTimeout(this.timeout);
+        }
     }
 }

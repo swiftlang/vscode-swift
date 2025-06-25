@@ -16,6 +16,7 @@ import * as vscode from "vscode";
 import { FolderOperation, WorkspaceContext } from "../../WorkspaceContext";
 import { createSwiftTask } from "../../tasks/SwiftTaskProvider";
 import { executeTaskWithUI } from "../utilities";
+import { packageName } from "../../utilities/tasks";
 
 /**
  * Use local version of package dependency
@@ -50,7 +51,7 @@ export async function useLocalDependency(
         folder = folders[0];
     }
     const task = createSwiftTask(
-        ctx.toolchain.buildFlags.withAdditionalFlags([
+        currentFolder.toolchain.buildFlags.withAdditionalFlags([
             "package",
             "edit",
             "--path",
@@ -61,9 +62,9 @@ export async function useLocalDependency(
         {
             scope: currentFolder.workspaceFolder,
             cwd: currentFolder.folder,
-            prefix: currentFolder.name,
+            packageName: packageName(currentFolder),
         },
-        ctx.toolchain
+        currentFolder.toolchain
     );
 
     const success = await executeTaskWithUI(
@@ -73,7 +74,7 @@ export async function useLocalDependency(
         true
     );
     if (success) {
-        ctx.fireEvent(currentFolder, FolderOperation.resolvedUpdated);
+        await ctx.fireEvent(currentFolder, FolderOperation.resolvedUpdated);
     }
     return success;
 }

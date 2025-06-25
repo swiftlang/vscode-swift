@@ -15,7 +15,6 @@
 import * as vscode from "vscode";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { TaskOperation } from "../tasks/TaskQueue";
-import { SwiftPluginTaskProvider } from "../tasks/SwiftPluginTaskProvider";
 
 export const runTask = async (ctx: WorkspaceContext, name: string) => {
     if (!ctx.currentFolder) {
@@ -25,7 +24,7 @@ export const runTask = async (ctx: WorkspaceContext, name: string) => {
     const tasks = await vscode.tasks.fetchTasks();
     let task = tasks.find(task => task.name === name);
     if (!task) {
-        const pluginTaskProvider = new SwiftPluginTaskProvider(ctx);
+        const pluginTaskProvider = ctx.pluginProvider;
         const pluginTasks = await pluginTaskProvider.provideTasks(
             new vscode.CancellationTokenSource().token
         );
@@ -33,7 +32,7 @@ export const runTask = async (ctx: WorkspaceContext, name: string) => {
     }
 
     if (!task) {
-        vscode.window.showErrorMessage(`Task "${name}" not found`);
+        void vscode.window.showErrorMessage(`Task "${name}" not found`);
         return;
     }
 

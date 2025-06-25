@@ -118,7 +118,7 @@ export class SwiftExecOperation implements SwiftOperation {
     async run(): Promise<number | undefined> {
         const { stdout, stderr } = await execSwift(
             this.args,
-            this.folderContext.workspaceContext.toolchain,
+            this.folderContext.toolchain,
             { cwd: this.folderContext.folder.fsPath },
             this.folderContext
         );
@@ -218,7 +218,7 @@ export class TaskQueue {
                 token
             );
             this.queue.push(queuedOperation);
-            this.processQueue();
+            void this.processQueue();
         });
         // if the last item does not have a promise then it is the queue
         // entry we just added above and we should set its promise
@@ -292,7 +292,7 @@ export class TaskQueue {
             this.workspaceContext.statusItem.end(operation.operation.statusItemId);
         }
         this.activeOperation = undefined;
-        this.processQueue();
+        void this.processQueue();
     }
 
     /** Return if we already have an operation in the queue */

@@ -44,6 +44,7 @@ suite("Extension Activation/Deactivation Tests", () => {
 
         test("Duplicate Activation", async function () {
             await activate(this.test as Mocha.Test);
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
             assert.rejects(activateExtension(this.test as Mocha.Test), err => {
                 const msg = (err as unknown as any).message;
                 return (
@@ -111,16 +112,20 @@ suite("Extension Activation/Deactivation Tests", () => {
         });
 
         test("compile_commands.json", async () => {
-            const lspWorkspaces = workspaceContext.languageClientManager.subFolderWorkspaces.map(
-                ({ fsPath }) => fsPath
-            );
+            const folder = workspaceContext.folders[0];
+            assert(folder);
+
+            const languageClient = workspaceContext.languageClientManager.get(folder);
+            const lspWorkspaces = languageClient.subFolderWorkspaces.map(({ fsPath }) => fsPath);
             assertContains(lspWorkspaces, testAssetUri("cmake").fsPath);
         });
 
         test("compile_flags.txt", async () => {
-            const lspWorkspaces = workspaceContext.languageClientManager.subFolderWorkspaces.map(
-                ({ fsPath }) => fsPath
-            );
+            const folder = workspaceContext.folders[0];
+            assert(folder);
+
+            const languageClient = workspaceContext.languageClientManager.get(folder);
+            const lspWorkspaces = languageClient.subFolderWorkspaces.map(({ fsPath }) => fsPath);
             assertContains(lspWorkspaces, testAssetUri("cmake-compile-flags").fsPath);
         });
     });

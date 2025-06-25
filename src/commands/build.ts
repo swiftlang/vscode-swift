@@ -19,6 +19,7 @@ import { debugLaunchConfig, getLaunchConfiguration } from "../debugger/launch";
 import { executeTaskWithUI } from "./utilities";
 import { FolderContext } from "../FolderContext";
 import { Target } from "../SwiftPackage";
+import { packageName } from "../utilities/tasks";
 
 /**
  * Executes a {@link vscode.Task task} to run swift target.
@@ -56,11 +57,11 @@ export async function folderCleanBuild(folderContext: FolderContext) {
         {
             cwd: folderContext.folder,
             scope: folderContext.workspaceFolder,
-            prefix: folderContext.name,
+            packageName: packageName(folderContext),
             presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
             group: vscode.TaskGroup.Clean,
         },
-        folderContext.workspaceContext.toolchain
+        folderContext.toolchain
     );
 
     return await executeTaskWithUI(task, "Clean Build", folderContext);
@@ -111,7 +112,11 @@ export async function debugBuildWithOptions(
     const launchConfig = getLaunchConfiguration(target.name, current);
     if (launchConfig) {
         ctx.buildStarted(target.name, launchConfig, options);
-        const result = await debugLaunchConfig(current.workspaceFolder, launchConfig, options);
+        const result = await debugLaunchConfig(
+            vscode.workspace.workspaceFile ? undefined : current.workspaceFolder,
+            launchConfig,
+            options
+        );
         ctx.buildFinished(target.name, launchConfig, options);
         return result;
     }

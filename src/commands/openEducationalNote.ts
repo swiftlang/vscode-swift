@@ -20,5 +20,9 @@ import * as vscode from "vscode";
  * The default behaviour is to open it in a markdown preview to the side.
  */
 export async function openEducationalNote(markdownFile: vscode.Uri | undefined): Promise<void> {
-    await vscode.commands.executeCommand("markdown.showPreviewToSide", markdownFile);
+    if (markdownFile?.fsPath.endsWith(".md")) {
+        await vscode.commands.executeCommand("markdown.showPreviewToSide", markdownFile);
+    } else if (markdownFile !== undefined) {
+        await vscode.env.openExternal(markdownFile);
+    }
 }

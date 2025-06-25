@@ -17,6 +17,7 @@ import { sourceLocationToVSCodeLocation } from "../../utilities/utilities";
 import { MarkdownString, Location } from "vscode";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
+import { lineBreakRegex } from "../../utilities/tasks";
 
 /** Regex for parsing XCTest output */
 interface TestRegex {
@@ -38,37 +39,37 @@ enum TestCompletionState {
 /** Regex for parsing darwin XCTest output */
 export const darwinTestRegex = {
     // Regex "Test Case '-[<test target> <class.function>]' started"
-    started: /^Test Case '-\[(\S+)\s(.*)\]' started./,
+    started: /Test Case '-\[(\S+)\s(.*)\]' started\./,
     // Regex "Test Case '-[<test target> <class.function>]' <completion_state> (<duration> seconds)"
-    finished: /^Test Case '-\[(\S+)\s(.*)\]' (.*) \((\d.*) seconds\)/,
+    finished: /Test Case '-\[(\S+)\s(.*)\]' (.*) \((\d.*) seconds\)/,
     // Regex "<path/to/test>:<line number>: error: -[<test target> <class.function>] : <error>"
-    error: /^(.+):(\d+):\serror:\s-\[(\S+)\s(.*)\] : (.*)$/,
+    error: /(.+):(\d+):\serror:\s-\[(\S+)\s(.*)\] : (.*)$/,
     // Regex "<path/to/test>:<line number>: -[<test target> <class.function>] : Test skipped"
-    skipped: /^(.+):(\d+):\s-\[(\S+)\s(.*)\] : Test skipped/,
+    skipped: /(.+):(\d+):\s-\[(\S+)\s(.*)\] : Test skipped/,
     // Regex "Test Suite '<class>' started"
-    startedSuite: /^Test Suite '(.*)' started/,
+    startedSuite: /Test Suite '(.*)' started/,
     // Regex "Test Suite '<class>' passed"
-    passedSuite: /^Test Suite '(.*)' passed/,
+    passedSuite: /Test Suite '(.*)' passed/,
     // Regex "Test Suite '<class>' failed"
-    failedSuite: /^Test Suite '(.*)' failed/,
+    failedSuite: /Test Suite '(.*)' failed/,
 };
 
 /** Regex for parsing non darwin XCTest output */
 export const nonDarwinTestRegex = {
     // Regex "Test Case '-[<test target> <class.function>]' started"
-    started: /^Test Case '(.*)\.(.*)' started/,
+    started: /Test Case '(.*)\.(.*)' started/,
     // Regex "Test Case '<class>.<function>' <completion_state> (<duration> seconds)"
-    finished: /^Test Case '(.*)\.(.*)' (.*) \((\d.*) seconds\)/,
+    finished: /Test Case '(.*)\.(.*)' (.*) \((\d.*) seconds\)/,
     // Regex "<path/to/test>:<line number>: error: <class>.<function> : <error>"
-    error: /^(.+):(\d+):\serror:\s*(.*)\.(.*) : (.*)/,
+    error: /(.+):(\d+):\serror:\s*(.*)\.(.*) : (.*)/,
     // Regex "<path/to/test>:<line number>: <class>.<function> : Test skipped"
-    skipped: /^(.+):(\d+):\s*(.*)\.(.*) : Test skipped/,
+    skipped: /(.+):(\d+):\s*(.*)\.(.*) : Test skipped/,
     // Regex "Test Suite '<class>' started"
-    startedSuite: /^Test Suite '(.*)' started/,
+    startedSuite: /Test Suite '(.*)' started/,
     // Regex "Test Suite '<class>' passed"
-    passedSuite: /^Test Suite '(.*)' passed/,
+    passedSuite: /Test Suite '(.*)' passed/,
     // Regex "Test Suite '<class>' failed"
-    failedSuite: /^Test Suite '(.*)' failed/,
+    failedSuite: /Test Suite '(.*)' failed/,
 };
 
 export interface IXCTestOutputParser {
@@ -190,7 +191,7 @@ export class XCTestOutputParser implements IXCTestOutputParser {
         // which we don't care about.
         const output = process.platform === "win32" ? stripAnsi(rawOutput) : rawOutput;
         const output2 = output.replace(/\r\n/g, "\n");
-        const lines = output2.split("\n");
+        const lines = output2.split(lineBreakRegex);
         if (runState.excess) {
             lines[0] = runState.excess + lines[0];
         }

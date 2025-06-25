@@ -23,6 +23,7 @@ import { BackgroundCompilation } from "./BackgroundCompilation";
 import { TaskQueue } from "./tasks/TaskQueue";
 import { isPathInsidePath } from "./utilities/filesystem";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
+import { SwiftToolchain } from "./toolchain/toolchain";
 
 export class FolderContext implements vscode.Disposable {
     private packageWatcher: PackageWatcher;
@@ -39,13 +40,13 @@ export class FolderContext implements vscode.Disposable {
      */
     private constructor(
         public folder: vscode.Uri,
+        public toolchain: SwiftToolchain,
         public linuxMain: LinuxMain,
         public swiftPackage: SwiftPackage,
         public workspaceFolder: vscode.WorkspaceFolder,
         public workspaceContext: WorkspaceContext
     ) {
         this.packageWatcher = new PackageWatcher(this, workspaceContext);
-        this.packageWatcher.install();
         this.backgroundCompilation = new BackgroundCompilation(this);
         this.taskQueue = new TaskQueue(this);
     }
@@ -71,16 +72,19 @@ export class FolderContext implements vscode.Disposable {
     ): Promise<FolderContext> {
         const statusItemText = `Loading Package (${FolderContext.uriName(folder)})`;
         workspaceContext.statusItem.start(statusItemText);
+
+        const toolchain = await SwiftToolchain.create(folder);
         const { linuxMain, swiftPackage } =
             await workspaceContext.statusItem.showStatusWhileRunning(statusItemText, async () => {
                 const linuxMain = await LinuxMain.create(folder);
-                const swiftPackage = await SwiftPackage.create(folder, workspaceContext.toolchain);
+                const swiftPackage = await SwiftPackage.create(folder, toolchain);
                 return { linuxMain, swiftPackage };
             });
         workspaceContext.statusItem.end(statusItemText);
 
         const folderContext = new FolderContext(
             folder,
+            toolchain,
             linuxMain,
             swiftPackage,
             workspaceFolder,
@@ -89,7 +93,7 @@ export class FolderContext implements vscode.Disposable {
 
         const error = await swiftPackage.error;
         if (error) {
-            vscode.window.showErrorMessage(
+            void vscode.window.showErrorMessage(
                 `Failed to load ${folderContext.name}/Package.swift: ${error.message}`
             );
             workspaceContext.outputChannel.log(
@@ -97,6 +101,10 @@ export class FolderContext implements vscode.Disposable {
                 folderContext.name
             );
         }
+
+        // Start watching for changes to Package.swift, Package.resolved and .swift-version
+        await folderContext.packageWatcher.install();
+
         return folderContext;
     }
 
@@ -117,9 +125,13 @@ export class FolderContext implements vscode.Disposable {
         return this.workspaceFolder.uri === this.folder;
     }
 
+    get swiftVersion() {
+        return this.toolchain.swiftVersion;
+    }
+
     /** reload swift package for this folder */
     async reload() {
-        await this.swiftPackage.reload(this.workspaceContext.toolchain);
+        await this.swiftPackage.reload(this.toolchain);
     }
 
     /** reload Package.resolved for this folder */
@@ -134,7 +146,7 @@ export class FolderContext implements vscode.Disposable {
 
     /** Load Swift Plugins and store in Package */
     async loadSwiftPlugins(outputChannel: SwiftOutputChannel) {
-        await this.swiftPackage.loadSwiftPlugins(this.workspaceContext.toolchain, outputChannel);
+        await this.swiftPackage.loadSwiftPlugins(this.toolchain, outputChannel);
     }
 
     /**
@@ -142,7 +154,7 @@ export class FolderContext implements vscode.Disposable {
      * @param event event type
      */
     async fireEvent(event: FolderOperation) {
-        this.workspaceContext.fireEvent(this, event);
+        await this.workspaceContext.fireEvent(this, event);
     }
 
     /** Return edited Packages folder */
@@ -167,7 +179,7 @@ export class FolderContext implements vscode.Disposable {
     /** Refresh the tests in the test explorer for this folder */
     refreshTestExplorer() {
         if (this.testExplorer?.controller.resolveHandler) {
-            this.testExplorer.controller.resolveHandler(undefined);
+            void this.testExplorer.controller.resolveHandler(undefined);
         }
     }
 

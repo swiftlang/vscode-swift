@@ -17,17 +17,12 @@ import * as vscode from "vscode";
 import * as assert from "assert";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import {
-    SwiftTaskProvider,
     createSwiftTask,
     createBuildAllTask,
     getBuildAllTask,
 } from "../../../src/tasks/SwiftTaskProvider";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
-import {
-    executeTaskAndWaitForResult,
-    waitForEndTaskProcess,
-    waitForNoRunningTasks,
-} from "../../utilities/tasks";
+import { executeTaskAndWaitForResult, waitForEndTaskProcess } from "../../utilities/tasks";
 import { Version } from "../../../src/utilities/version";
 import { FolderContext } from "../../../src/FolderContext";
 import { mockGlobalObject } from "../../MockUtils";
@@ -42,20 +37,16 @@ suite("SwiftTaskProvider Test Suite", () => {
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
-            toolchain = workspaceContext.toolchain;
             expect(workspaceContext.folders).to.not.have.lengthOf(0);
             workspaceFolder = workspaceContext.folders[0].workspaceFolder;
 
             // Make sure have another folder
             folderContext = await folderInRootWorkspace("diagnostics", workspaceContext);
+            toolchain = folderContext.toolchain;
         },
     });
 
     suite("createSwiftTask", () => {
-        setup(async () => {
-            await waitForNoRunningTasks();
-        });
-
         test("Exit code on success", async () => {
             const task = createSwiftTask(
                 ["--help"],
@@ -110,9 +101,7 @@ suite("SwiftTaskProvider Test Suite", () => {
             });
 
             test("provided", async () => {
-                expect(task?.detail)
-                    .to.include("swift build --build-tests")
-                    .and.to.include("-Xswiftc -diagnostic-style=llvm");
+                expect(task?.detail).to.include("swift build --build-tests");
             });
 
             test("executes @slow", async () => {
@@ -129,7 +118,12 @@ suite("SwiftTaskProvider Test Suite", () => {
 
             setup(async () => {
                 const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
-                task = tasks.find(t => t.name === "swift: Build All from tasks.json");
+                task = tasks.find(
+                    t =>
+                        t.name ===
+                        "swift: Build All from " +
+                            (vscode.workspace.workspaceFile ? "code workspace" : "tasks.json")
+                );
             });
 
             test("provided", async () => {
@@ -148,13 +142,11 @@ suite("SwiftTaskProvider Test Suite", () => {
         test("includes product debug task", async () => {
             const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
             const task = tasks.find(t => t.name === "Build Debug PackageExe (defaultPackage)");
-            expect(task?.detail)
-                .to.include("swift build --product PackageExe")
-                .and.to.include("-Xswiftc -diagnostic-style=llvm");
+            expect(task?.detail).to.include("swift build --product PackageExe");
         });
 
         test("includes product release task", async () => {
-            const taskProvider = new SwiftTaskProvider(workspaceContext);
+            const taskProvider = workspaceContext.taskProvider;
             const tasks = await taskProvider.provideTasks(
                 new vscode.CancellationTokenSource().token
             );

@@ -51,6 +51,7 @@ import { reduceTestItemChildren } from "./TestUtils";
 import { CompositeCancellationToken } from "../utilities/cancellation";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
+import { packageName, resolveScope } from "../utilities/tasks";
 
 export enum TestLibrary {
     xctest = "XCTest",
@@ -374,6 +375,7 @@ export class TestRunner {
     private testArgs: TestRunArguments;
     private xcTestOutputParser: IXCTestOutputParser;
     private swiftTestOutputParser: SwiftTestingOutputParser;
+    private static CANCELLATION_ERROR = "Test run cancelled";
 
     /**
      * Constructor for TestRunner
@@ -396,7 +398,7 @@ export class TestRunner {
         this.xcTestOutputParser =
             testKind === TestKind.parallel
                 ? new ParallelXCTestOutputParser(
-                      this.folderContext.workspaceContext.toolchain.hasMultiLineParallelTestOutput
+                      this.folderContext.toolchain.hasMultiLineParallelTestOutput
                   )
                 : new XCTestOutputParser();
         this.swiftTestOutputParser = new SwiftTestingOutputParser(
@@ -718,8 +720,10 @@ export class TestRunner {
                     break;
             }
         } catch (error) {
-            // Test failures result in error code 1
-            if (error !== 1) {
+            if (error === TestRunner.CANCELLATION_ERROR) {
+                this.testRun.appendOutput(`\r\n${error}`);
+            } else if (error !== 1) {
+                // Test failures result in error code 1
                 this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
             } else {
                 // swift-testing tests don't have their run started until the .swift-testing binary has
@@ -729,7 +733,7 @@ export class TestRunner {
                 // discarded. If the test run has already started this is a no-op so its safe to call it multiple times.
                 this.testRun.testRunStarted();
 
-                this.swiftTestOutputParser.close();
+                void this.swiftTestOutputParser.close();
             }
         } finally {
             outputStream.end();
@@ -770,11 +774,11 @@ export class TestRunner {
                 `Building and Running Tests${kindLabel}`,
                 {
                     cwd: this.folderContext.folder,
-                    scope: this.folderContext.workspaceFolder,
-                    prefix: this.folderContext.name,
+                    scope: resolveScope(this.folderContext.workspaceFolder),
+                    packageName: packageName(this.folderContext),
                     presentationOptions: { reveal: vscode.TaskRevealKind.Never },
                 },
-                this.folderContext.workspaceContext.toolchain,
+                this.folderContext.toolchain,
                 { ...process.env, ...testBuildConfig.env },
                 { readOnlyTerminal: process.platform !== "win32" }
             );
@@ -793,7 +797,7 @@ export class TestRunner {
             // If the test run is iterrupted by a cancellation request from VS Code, ensure the task is terminated.
             const cancellationDisposable = this.testRun.token.onCancellationRequested(() => {
                 task.execution.terminate("SIGINT");
-                reject("Test run cancelled");
+                reject(TestRunner.CANCELLATION_ERROR);
             });
 
             task.execution.onDidClose(code => {
@@ -807,7 +811,7 @@ export class TestRunner {
                 }
             });
 
-            this.folderContext.taskQueue.queueOperation(
+            void this.folderContext.taskQueue.queueOperation(
                 new TaskOperation(task),
                 this.testRun.token
             );
@@ -859,7 +863,7 @@ export class TestRunner {
 
             const buffer = await asyncfs.readFile(filename, "utf8");
             const xUnitParser = new TestXUnitParser(
-                this.folderContext.workspaceContext.toolchain.hasMultiLineParallelTestOutput
+                this.folderContext.toolchain.hasMultiLineParallelTestOutput
             );
             const results = await xUnitParser.parse(
                 buffer,
@@ -995,15 +999,6 @@ export class TestRunner {
                         }
 
                         const startSession = vscode.debug.onDidStartDebugSession(session => {
-                            if (config.testType === TestLibrary.xctest) {
-                                this.testRun.testRunStarted();
-                            }
-
-                            this.workspaceContext.outputChannel.logDiagnostic(
-                                "Start Test Debugging",
-                                this.folderContext.name
-                            );
-
                             const outputHandler = this.testOutputHandler(config.testType, runState);
                             outputHandler(`> ${config.program} ${config.args.join(" ")}\n\n\r`);
 
@@ -1021,12 +1016,28 @@ export class TestRunner {
                                     "Test Debugging Cancelled",
                                     this.folderContext.name
                                 );
-                                vscode.debug.stopDebugging(session);
-                                resolve();
+                                void vscode.debug.stopDebugging(session).then(() => resolve());
                             });
                             subscriptions.push(cancellation);
                         });
                         subscriptions.push(startSession);
+
+                        const terminateSession = vscode.debug.onDidTerminateDebugSession(e => {
+                            if (e.name !== config.name) {
+                                return;
+                            }
+                            this.workspaceContext.outputChannel.logDiagnostic(
+                                "Stop Test Debugging",
+                                this.folderContext.name
+                            );
+                            // dispose terminate debug handler
+                            subscriptions.forEach(sub => sub.dispose());
+
+                            void vscode.commands
+                                .executeCommand("workbench.view.extension.test")
+                                .then(() => resolve());
+                        });
+                        subscriptions.push(terminateSession);
 
                         vscode.debug
                             .startDebugging(this.folderContext.workspaceFolder, config)
@@ -1040,24 +1051,14 @@ export class TestRunner {
                                                 fifoPipePath,
                                                 runState
                                             );
+                                        } else if (config.testType === TestLibrary.xctest) {
+                                            this.testRun.testRunStarted();
                                         }
 
-                                        const terminateSession =
-                                            vscode.debug.onDidTerminateDebugSession(() => {
-                                                this.workspaceContext.outputChannel.logDiagnostic(
-                                                    "Stop Test Debugging",
-                                                    this.folderContext.name
-                                                );
-                                                // dispose terminate debug handler
-                                                subscriptions.forEach(sub => sub.dispose());
-
-                                                vscode.commands.executeCommand(
-                                                    "workbench.view.extension.test"
-                                                );
-
-                                                resolve();
-                                            });
-                                        subscriptions.push(terminateSession);
+                                        this.workspaceContext.outputChannel.logDiagnostic(
+                                            "Start Test Debugging",
+                                            this.folderContext.name
+                                        );
                                     } else {
                                         subscriptions.forEach(sub => sub.dispose());
                                         reject("Debugger not started");

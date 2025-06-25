@@ -24,6 +24,7 @@ import { ITestRunState } from "./TestRunState";
 import { TestClass } from "../TestDiscovery";
 import { sourceLocationToVSCodeLocation } from "../../utilities/utilities";
 import { exec } from "child_process";
+import { lineBreakRegex } from "../../utilities/tasks";
 
 // All events produced by a swift-testing run will be one of these three types.
 // Detailed information about swift-testing's JSON schema is available here:
@@ -210,7 +211,7 @@ export class SwiftTestingOutputParser {
 
         rl.on("line", line => this.parse(JSON.parse(line), runState));
 
-        reader.start(readlinePipe);
+        void reader.start(readlinePipe);
     }
 
     /**
@@ -235,7 +236,7 @@ export class SwiftTestingOutputParser {
      * @param chunk A chunk of stdout emitted during a test run.
      */
     public parseStdout(chunk: string, runState: ITestRunState) {
-        for (const line of chunk.split("\n")) {
+        for (const line of chunk.split(lineBreakRegex)) {
             if (line.trim().length > 0) {
                 runState.recordOutput(undefined, `${line}\r\n`);
             }
@@ -482,13 +483,18 @@ export class SwiftTestingOutputParser {
 
 export class MessageRenderer {
     /**
-     * Converts a swift-testing `EventMessage` to a colorized symbol and message text.
+     * Converts a swift-testing `EventMessage` to a printable string.
      *
      * @param message An event message, typically found on an `EventRecordPayload`.
-     * @returns A string colorized with ANSI escape codes.
+     * @returns A string representing the message.
      */
     static render(message: EventMessage): string {
-        return `${SymbolRenderer.eventMessageSymbol(message.symbol)} ${MessageRenderer.colorize(message.symbol, message.text)}`;
+        return message.text;
+
+        // Currently VS Code doesn't support colorizing the output of issues
+        // shown inline in the editor. Until this is supported we just return
+        // the message text. Once it is supported we can use the following code:
+        // return `${SymbolRenderer.eventMessageSymbol(message.symbol)} ${MessageRenderer.colorize(message.symbol, message.text)}`;
     }
 
     private static colorize(symbolType: TestSymbol, message: string): string {

@@ -16,8 +16,8 @@ import * as vscode from "vscode";
 import * as assert from "assert";
 import * as mocha from "mocha";
 import { Api } from "../../../src/extension";
-import { testAssetUri } from "../../fixtures";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import { testAssetPath, testAssetUri } from "../../fixtures";
+import { FolderOperation, WorkspaceContext } from "../../../src/WorkspaceContext";
 import { FolderContext } from "../../../src/FolderContext";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
 import { closeAllEditors } from "../../utilities/commands";
@@ -25,8 +25,9 @@ import { isDeepStrictEqual } from "util";
 import { Version } from "../../../src/utilities/version";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import configuration from "../../../src/configuration";
+import { resetBuildAllTaskCache } from "../../../src/tasks/SwiftTaskProvider";
 
-function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
+export function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);
     assert(result, "No workspace folders were opened for the tests to use");
     return result;
@@ -79,7 +80,7 @@ const extensionBootstrapper = (() => {
             // https://github.com/swiftlang/sourcekit-lsp/commit/7e2d12a7a0d184cc820ae6af5ddbb8aa18b1501c
             if (
                 process.platform === "darwin" &&
-                workspaceContext.toolchain.swiftVersion.isLessThan(new Version(6, 1, 0)) &&
+                workspaceContext.globalToolchain.swiftVersion.isLessThan(new Version(6, 1, 0)) &&
                 requiresLSP
             ) {
                 this.skip();
@@ -88,11 +89,21 @@ const extensionBootstrapper = (() => {
                 this.skip();
             }
             // CodeLLDB does not work with libllbd in Swift toolchains prior to 5.10
-            if (workspaceContext.swiftVersion.isLessThan(new Version(5, 10, 0))) {
+            if (workspaceContext.globalToolchainSwiftVersion.isLessThan(new Version(5, 10, 0))) {
                 restoreSettings = await updateSettings({
                     "swift.debugger.setupCodeLLDB": "never",
                 });
+            } else if (requiresDebugger) {
+                await workspaceContext.launchProvider.promptForCodeLldbSettings(
+                    workspaceContext.globalToolchain
+                );
             }
+
+            // Make sure no running tasks before setting up
+            await waitForNoRunningTasks({ timeout: 10000 });
+            // Clear build all cache before starting suite
+            resetBuildAllTaskCache();
+
             if (!setup) {
                 return;
             }
@@ -121,12 +132,15 @@ const extensionBootstrapper = (() => {
             }
         });
 
-        mocha.afterEach(function () {
+        mocha.afterEach(async function () {
             if (this.currentTest && activatedAPI && this.currentTest.isFailed()) {
                 printLogs(
                     activatedAPI.outputChannel,
                     `Test failed: ${testTitle(this.currentTest)}`
                 );
+            }
+            if (vscode.debug.activeDebugSession) {
+                await vscode.debug.stopDebugging(vscode.debug.activeDebugSession);
             }
         });
 
@@ -188,6 +202,13 @@ const extensionBootstrapper = (() => {
             // `vscode.extensions.getExtension<Api>("swiftlang.swift-vscode")` once.
             // Subsequent activations must be done through the returned API object.
             if (!activator) {
+                for (const depId of ["vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap"]) {
+                    const dep = vscode.extensions.getExtension<Api>(depId);
+                    if (!dep) {
+                        throw new Error(`Unable to find extension "${depId}"`);
+                    }
+                    await dep.activate();
+                }
                 activatedAPI = await ext.activate();
                 // Save the test name so if the test doesn't clean up by deactivating properly the next
                 // test that tries to activate can throw an error with the name of the test that needs to clean up.
@@ -209,10 +230,39 @@ const extensionBootstrapper = (() => {
             }
 
             // Add assets required for the suite/test to the workspace.
-            const workspaceFolder = getRootWorkspaceFolder();
-            for (const asset of testAssets ?? []) {
-                const packageFolder = testAssetUri(asset);
-                await workspaceContext.addPackageFolder(packageFolder, workspaceFolder);
+            const expectedAssets = testAssets ?? ["defaultPackage"];
+            if (!vscode.workspace.workspaceFile) {
+                for (const asset of expectedAssets) {
+                    await folderInRootWorkspace(asset, workspaceContext);
+                }
+            } else if (expectedAssets.length > 0) {
+                await new Promise<void>(res => {
+                    const found: string[] = [];
+                    for (const f of workspaceContext.folders) {
+                        if (found.includes(f.name) || !expectedAssets.includes(f.name)) {
+                            continue;
+                        }
+                        found.push(f.name);
+                    }
+                    if (expectedAssets.length === found.length) {
+                        res();
+                        return;
+                    }
+                    const disposable = workspaceContext.onDidChangeFolders(e => {
+                        if (
+                            e.operation !== FolderOperation.add ||
+                            found.includes(e.folder!.name) ||
+                            !expectedAssets.includes(e.folder!.name)
+                        ) {
+                            return;
+                        }
+                        found.push(e.folder!.name);
+                        if (expectedAssets.length === found.length) {
+                            res();
+                            disposable.dispose();
+                        }
+                    });
+                });
             }
 
             return workspaceContext;
@@ -235,7 +285,7 @@ const extensionBootstrapper = (() => {
             lastTestName = undefined;
         },
 
-        activateExtensionForSuite: async function (config?: {
+        activateExtensionForSuite: function (config?: {
             setup?: (
                 this: Mocha.Context,
                 ctx: WorkspaceContext
@@ -256,7 +306,7 @@ const extensionBootstrapper = (() => {
             );
         },
 
-        activateExtensionForTest: async function (config?: {
+        activateExtensionForTest: function (config?: {
             setup?: (
                 this: Mocha.Context,
                 ctx: WorkspaceContext
@@ -318,6 +368,13 @@ export const folderInRootWorkspace = async (
     return folder;
 };
 
+export function findWorkspaceFolder(
+    name: string,
+    workspaceContext: WorkspaceContext
+): FolderContext | undefined {
+    return workspaceContext.folders.find(f => f.folder.fsPath === testAssetPath(name));
+}
+
 export type SettingsMap = { [key: string]: unknown };
 
 /**
@@ -340,10 +397,13 @@ export async function updateSettings(settings: SettingsMap): Promise<() => Promi
         for (const setting of Object.keys(settings)) {
             const { section, name } = decomposeSettingName(setting);
             const config = vscode.workspace.getConfiguration(section, { languageId: "swift" });
-            savedOriginalSettings[setting] = config.get(name);
+            const inspectedSetting = vscode.workspace
+                .getConfiguration(section, { languageId: "swift" })
+                .inspect(name);
+            savedOriginalSettings[setting] = inspectedSetting?.workspaceValue;
             await config.update(
                 name,
-                settings[setting] === "" ? undefined : settings[setting],
+                !settings[setting] ? undefined : settings[setting],
                 vscode.ConfigurationTarget.Workspace
             );
         }
@@ -362,10 +422,10 @@ export async function updateSettings(settings: SettingsMap): Promise<() => Promi
                 : settings[setting];
 
             while (
-                isDeepStrictEqual(
+                !isConfigurationSuperset(
                     vscode.workspace.getConfiguration(section, { languageId: "swift" }).get(name),
                     expected
-                ) === false
+                )
             ) {
                 // Not yet, wait a bit and try again.
                 await new Promise(resolve => setTimeout(resolve, 30));
@@ -392,4 +452,75 @@ function decomposeSettingName(setting: string): { section: string; name: string 
         throw new Error(`Invalid setting name: ${setting}, must be in the form swift.settingName`);
     }
     return { section, name };
+}
+
+/**
+ * Performs a deep comparison between a configuration value and an expected value.
+ * Supports superset comparisons for objects and arrays, and strict equality for primitives.
+ *
+ * @param configValue The configuration value to compare
+ * @param expected The expected value to compare against
+ * @returns true if the configuration value matches or is a superset of the expected value, false otherwise
+ */
+export function isConfigurationSuperset(configValue: unknown, expected: unknown): boolean {
+    // Handle null cases
+    if (configValue === null || expected === null) {
+        return configValue === expected;
+    }
+
+    // If both values are undefined, they are considered equal
+    if (configValue === undefined && expected === undefined) {
+        return true;
+    }
+
+    // If expected is undefined but configValue is not, they are not equal
+    if (expected === undefined) {
+        return false;
+    }
+
+    // If configValue is undefined but expected is not, they are not equal
+    if (configValue === undefined) {
+        return false;
+    }
+
+    // Use isDeepStrictEqual for primitive types
+    if (typeof configValue !== "object" || typeof expected !== "object") {
+        return isDeepStrictEqual(configValue, expected);
+    }
+
+    // Handle arrays
+    if (Array.isArray(configValue) && Array.isArray(expected)) {
+        // Check if configValue contains all elements from expected
+        return expected.every(expectedItem =>
+            configValue.some(configItem => isConfigurationSuperset(configItem, expectedItem))
+        );
+    }
+
+    // Handle objects
+    if (
+        typeof configValue === "object" &&
+        typeof expected === "object" &&
+        configValue !== null &&
+        expected !== null &&
+        !Array.isArray(configValue) &&
+        !Array.isArray(expected)
+    ) {
+        // Ensure we're working with plain objects
+        const configObj = configValue as Record<string, unknown>;
+        const expectedObj = expected as Record<string, unknown>;
+
+        // Check if all expected properties exist in configValue with matching or superset values
+        return Object.keys(expectedObj).every(key => {
+            // If the key doesn't exist in configValue, return false
+            if (!(key in configObj)) {
+                return false;
+            }
+
+            // Recursively check the value
+            return isConfigurationSuperset(configObj[key], expectedObj[key]);
+        });
+    }
+
+    // If types don't match (one is array, one is object), return false
+    return false;
 }

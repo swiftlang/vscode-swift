@@ -38,6 +38,7 @@ export type DiagnosticCollectionOptions =
     | "keepSwiftc"
     | "keepSourceKit"
     | "keepAll";
+export type DiagnosticStyle = "default" | "llvm" | "swift";
 
 /** sourcekit-lsp configuration */
 export interface LSPConfiguration {
@@ -314,14 +315,24 @@ const configuration = {
         );
     },
     set sdk(value: string | undefined) {
-        vscode.workspace.getConfiguration("swift").update("SDK", value);
+        void vscode.workspace
+            .getConfiguration("swift")
+            .update("SDK", value)
+            .then(() => {
+                /* Put in worker queue */
+            });
     },
     /** Path to custom --swift-sdk */
     get swiftSDK(): string {
         return vscode.workspace.getConfiguration("swift").get<string>("swiftSDK", "");
     },
     set swiftSDK(value: string | undefined) {
-        vscode.workspace.getConfiguration("swift").update("swiftSDK", value);
+        void vscode.workspace
+            .getConfiguration("swift")
+            .update("swiftSDK", value)
+            .then(() => {
+                /* Put in worker queue */
+            });
     },
     /** swift build arguments */
     get buildArguments(): string[] {
@@ -369,8 +380,10 @@ const configuration = {
             .get<DiagnosticCollectionOptions>("diagnosticsCollection", "keepSourceKit");
     },
     /** set the -diagnostic-style option when running `swift` tasks */
-    get diagnosticsStyle(): "default" | "llvm" | "swift" {
-        return vscode.workspace.getConfiguration("swift").get("diagnosticsStyle", "llvm");
+    get diagnosticsStyle(): DiagnosticStyle {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<DiagnosticStyle>("diagnosticsStyle", "default");
     },
     /** where to show the build progress for the running task */
     get showBuildStatus(): ShowBuildStatusOptions {
@@ -453,9 +466,12 @@ const configuration = {
             .get<boolean>("warnAboutSymlinkCreation", true);
     },
     set warnAboutSymlinkCreation(value: boolean) {
-        vscode.workspace
+        void vscode.workspace
             .getConfiguration("swift")
-            .update("warnAboutSymlinkCreation", value, vscode.ConfigurationTarget.Global);
+            .update("warnAboutSymlinkCreation", value, vscode.ConfigurationTarget.Global)
+            .then(() => {
+                /* Put in worker queue */
+            });
     },
     /** Whether or not the extension will contribute Swift environment variables to the integrated terminal */
     get enableTerminalEnvironment(): boolean {
@@ -470,8 +486,9 @@ const configuration = {
 };
 
 const vsCodeVariableRegex = new RegExp(/\$\{(.+?)\}/g);
-function substituteVariablesInString(val: string): string {
-    return val.replace(vsCodeVariableRegex, (substring: string, varName: string) =>
+export function substituteVariablesInString(val: string): string {
+    // Fallback to "" incase someone explicitly sets to null
+    return (val || "").replace(vsCodeVariableRegex, (substring: string, varName: string) =>
         typeof varName === "string" ? computeVscodeVar(varName) || substring : substring
     );
 }
@@ -491,14 +508,31 @@ function computeVscodeVar(varName: string): string | null {
         return vscode.workspace.workspaceFolders?.at(0)?.uri.fsPath ?? "";
     };
 
+    const file = () => vscode.window.activeTextEditor?.document?.uri?.fsPath || "";
+
+    const regex = /workspaceFolder:(.*)/gm;
+    const match = regex.exec(varName);
+    if (match) {
+        const name = match[1];
+        return vscode.workspace.workspaceFolders?.find(f => f.name === name)?.uri.fsPath ?? null;
+    }
+
     // https://code.visualstudio.com/docs/editor/variables-reference
     // Variables to be substituted should be added here.
     const supportedVariables: { [k: string]: () => string } = {
         workspaceFolder,
+        fileWorkspaceFolder: workspaceFolder,
         workspaceFolderBasename: () => path.basename(workspaceFolder()),
         cwd: () => process.cwd(),
         userHome: () => os.homedir(),
         pathSeparator: () => path.sep,
+        file,
+        relativeFile: () => path.relative(workspaceFolder(), file()),
+        relativeFileDirname: () => path.dirname(path.relative(workspaceFolder(), file())),
+        fileBasename: () => path.basename(file()),
+        fileExtname: () => path.extname(file()),
+        fileDirname: () => path.dirname(file()),
+        fileDirnameBasename: () => path.basename(path.dirname(file())),
     };
 
     return varName in supportedVariables ? supportedVariables[varName]() : null;
@@ -517,9 +551,9 @@ export function handleConfigurationChangeEvent(
         // on toolchain config change, reload window
         if (
             event.affectsConfiguration("swift.path") &&
-            configuration.path !== ctx.toolchain?.swiftFolderPath
+            configuration.path !== ctx.currentFolder?.toolchain.swiftFolderPath
         ) {
-            showReloadExtensionNotification(
+            void showReloadExtensionNotification(
                 "Changing the Swift path requires Visual Studio Code be reloaded."
             );
         } else if (
@@ -527,9 +561,11 @@ export function handleConfigurationChangeEvent(
             event.affectsConfiguration("swift.SDK") ||
             event.affectsConfiguration("swift.swiftSDK")
         ) {
-            vscode.commands.executeCommand("swift.restartLSPServer");
+            void vscode.commands.executeCommand("swift.restartLSPServer").then(() => {
+                /* Put in worker queue */
+            });
         } else if (event.affectsConfiguration("swift.swiftEnvironmentVariables")) {
-            showReloadExtensionNotification(
+            void showReloadExtensionNotification(
                 "Changing environment variables requires the project be reloaded."
             );
         }

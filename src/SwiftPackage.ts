@@ -20,6 +20,7 @@ import { isPathInsidePath } from "./utilities/filesystem";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { BuildFlags } from "./toolchain/BuildFlags";
 import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
+import { lineBreakRegex } from "./utilities/tasks";
 
 /** Swift Package Manager contents */
 interface PackageContents {
@@ -42,7 +43,7 @@ export interface Target {
     c99name: string;
     path: string;
     sources: string[];
-    type: "executable" | "test" | "library" | "snippet" | "plugin";
+    type: "executable" | "test" | "library" | "snippet" | "plugin" | "binary" | "system-target";
 }
 
 /** Swift Package Manager dependency */
@@ -313,7 +314,7 @@ export class SwiftPackage {
                 cwd: folder.fsPath,
             });
             const plugins: PackagePlugin[] = [];
-            const lines = stdout.split("\n").map(item => item.trim());
+            const lines = stdout.split(lineBreakRegex).map(item => item.trim());
             for (const line of lines) {
                 // ‘generate-documentation’ (plugin ‘Swift-DocC’ in package ‘SwiftDocCPlugin’)
                 const pluginMatch = /^‘(.*)’ \(plugin ‘(.*)’ in package ‘(.*)’\)/.exec(line);

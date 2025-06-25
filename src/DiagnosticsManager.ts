@@ -14,12 +14,13 @@
 
 import * as vscode from "vscode";
 import * as fs from "fs";
+import * as path from "path";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
 import configuration from "./configuration";
 import { SwiftExecution } from "./tasks/SwiftExecution";
 import { WorkspaceContext } from "./WorkspaceContext";
-import { checkIfBuildComplete } from "./utilities/tasks";
+import { checkIfBuildComplete, lineBreakRegex } from "./utilities/tasks";
 
 interface ParsedDiagnostic {
     uri: string;
@@ -59,7 +60,7 @@ export class DiagnosticsManager implements vscode.Disposable {
 
     private diagnosticCollection: vscode.DiagnosticCollection =
         vscode.languages.createDiagnosticCollection("swift");
-    private allDiagnostics: Map<string, vscode.Diagnostic[]> = new Map();
+    allDiagnostics: Map<string, vscode.Diagnostic[]> = new Map();
     private disposed = false;
 
     constructor(context: WorkspaceContext) {
@@ -149,7 +150,24 @@ export class DiagnosticsManager implements vscode.Disposable {
                 typeof diagnostic.code !== "string" &&
                 typeof diagnostic.code !== "number"
             ) {
-                if (diagnostic.code.target.fsPath.endsWith(".md")) {
+                const fsPath = diagnostic.code.target.fsPath;
+
+                // Work around a bug in the nightlies where the URL comes back looking like:
+                // `/path/to/TestPackage/https:/docs.swift.org/compiler/documentation/diagnostics/nominal-types`
+                // Transform this in to a valid docs.swift.org URL which the openEducationalNote command
+                // will open in a browser.
+                // FIXME: This can be removed when the bug is fixed in sourcekit-lsp.
+                let open = false;
+                const needle = `https:${path.sep}docs.swift.org${path.sep}`;
+                if (fsPath.indexOf(needle) !== -1) {
+                    const extractedPath = `https://docs.swift.org/${fsPath.split(needle).pop()}/`;
+                    diagnostic.code.target = vscode.Uri.parse(extractedPath.replace(/\\/g, "/"));
+                    open = true;
+                } else if (diagnostic.code.target.fsPath.endsWith(".md")) {
+                    open = true;
+                }
+
+                if (open) {
                     diagnostic.code = {
                         target: vscode.Uri.parse(
                             `command:swift.openEducationalNote?${encodeURIComponent(JSON.stringify(diagnostic.code.target))}`
@@ -278,7 +296,7 @@ export class DiagnosticsManager implements vscode.Disposable {
             disposables.push(
                 swiftExecution.onDidWrite(data => {
                     const sanitizedData = (remainingData || "") + stripAnsi(data);
-                    const lines = sanitizedData.split(/\r\n|\n|\r/gm);
+                    const lines = sanitizedData.split(lineBreakRegex);
                     // If ends with \n then will be "" and there's no affect.
                     // Otherwise want to keep remaining data to pre-pend next write
                     remainingData = lines.pop();
@@ -373,7 +391,7 @@ export class DiagnosticsManager implements vscode.Disposable {
         line: string
     ): ParsedDiagnostic | vscode.DiagnosticRelatedInformation | undefined {
         const diagnosticRegex =
-            /^(?:\S+\s+)?(.*?):(\d+)(?::(\d+))?:\s+(warning|error|note):\s+(.*)$/g;
+            /^(?:[`-\s]*)(.*?):(\d+)(?::(\d+))?:\s+(warning|error|note):\s+(.*)$/g;
         const switfcExtraWarningsRegex = /\[(-W|#).*?\]/g;
         const match = diagnosticRegex.exec(line);
         if (!match) {

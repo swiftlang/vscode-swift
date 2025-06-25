@@ -69,13 +69,12 @@ suite("PackageDependencyProvider Unit Test Suite", function () {
         const fsMock = mockGlobalModule(fs);
 
         test("enumerates child dependencies and files", async () => {
-            fsMock.readdir.resolves(["file1", "file2"] as any);
             fsMock.stat.resolves({ isFile: () => true, isDirectory: () => false } as any);
 
             const node = new PackageNode(
                 {
                     identity: "SwiftMarkdown",
-                    path: "/path/to/.build/swift-markdown",
+                    path: path.normalize("/path/to/.build/swift-markdown"),
                     location: "https://github.com/swiftlang/swift-markdown.git",
                     dependencies: [],
                     version: "1.2.3",
@@ -84,13 +83,19 @@ suite("PackageDependencyProvider Unit Test Suite", function () {
                 () => [
                     {
                         identity: "SomeChildDependency",
-                        path: "/path/to/.build/child-dependency",
+                        path: path.normalize("/path/to/.build/child-dependency"),
                         location: "https://github.com/swiftlang/some-child-dependency.git",
                         dependencies: [],
                         version: "1.2.4",
                         type: "remote",
                     },
-                ]
+                ],
+                undefined,
+                () =>
+                    Promise.resolve([
+                        path.normalize("/path/to/.build/swift-markdown/file1"),
+                        path.normalize("/path/to/.build/swift-markdown/file2"),
+                    ])
             );
 
             const children = await node.getChildren();
@@ -98,20 +103,22 @@ suite("PackageDependencyProvider Unit Test Suite", function () {
             expect(children).to.have.lengthOf(3);
             const [childDep, ...childFiles] = children;
             expect(childDep.name).to.equal("SomeChildDependency");
-            expect(childFiles).to.deep.equal([
-                new FileNode(
-                    "file1",
-                    path.normalize("/path/to/.build/swift-markdown/file1"),
-                    false,
-                    "SwiftMarkdown-1.2.3"
-                ),
-                new FileNode(
-                    "file2",
-                    path.normalize("/path/to/.build/swift-markdown/file2"),
-                    false,
-                    "SwiftMarkdown-1.2.3"
-                ),
-            ]);
+            expect(childFiles).to.have.lengthOf(2);
+
+            childFiles.forEach((file, index) => {
+                if (!(file instanceof FileNode)) {
+                    throw new Error(`Expected FileNode, got ${file.constructor.name}`);
+                }
+
+                const expectedName = `file${index + 1}`;
+                const expectedPath = path.normalize(
+                    `/path/to/.build/swift-markdown/file${index + 1}`
+                );
+
+                expect(file.name).to.equal(expectedName, `File name should be file${index + 1}`);
+                expect(file.path).to.equal(expectedPath, `File path should match expected path`);
+                expect(file.isDirectory).to.be.false;
+            });
         });
     });
 });

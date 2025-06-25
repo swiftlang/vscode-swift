@@ -19,14 +19,15 @@ import { LanguageClientManager } from "../../../src/sourcekit-lsp/LanguageClient
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { testAssetUri } from "../../fixtures";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
-import { getBuildAllTask, SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
+import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import { waitForClientState, waitForIndex } from "../utilities/lsputilities";
+import { FolderContext } from "../../../src/FolderContext";
 
 async function buildProject(ctx: WorkspaceContext, name: string) {
     await waitForNoRunningTasks();
     const folderContext = await folderInRootWorkspace(name, ctx);
-    const task = (await getBuildAllTask(folderContext)) as SwiftTask;
+    const task = await createBuildAllTask(folderContext);
     const { exitCode, output } = await executeTaskAndWaitForResult(task);
     expect(exitCode, `${output}`).to.equal(0);
     return folderContext;
@@ -36,22 +37,26 @@ suite("Language Client Integration Suite @slow", function () {
     this.timeout(3 * 60 * 1000);
 
     let clientManager: LanguageClientManager;
-    let workspaceContext: WorkspaceContext;
+    let folderContext: FolderContext;
 
     activateExtensionForSuite({
         async setup(ctx) {
-            workspaceContext = ctx;
-
-            await buildProject(ctx, "defaultPackage");
+            if (process.platform === "win32") {
+                this.skip();
+                return;
+            }
+            folderContext = await buildProject(ctx, "defaultPackage");
 
             // Ensure lsp client is ready
-            clientManager = ctx.languageClientManager;
+            clientManager = ctx.languageClientManager.get(folderContext);
+            await clientManager.restart();
             await waitForClientState(clientManager, langclient.State.Running);
+            await waitForIndex(clientManager, folderContext.swiftVersion);
         },
     });
 
     setup(async () => {
-        await waitForIndex(workspaceContext.languageClientManager);
+        await waitForIndex(clientManager, folderContext.swiftVersion);
     });
 
     suite("Symbols", () => {
@@ -98,10 +103,10 @@ suite("Language Client Integration Suite @slow", function () {
                 position
             );
 
-            // We expect 2 references - one in `main.swift` and one in `PackageLib.swift`
+            // We expect 3 references - in `main.swift`, in `PackageLib.swift` and in `hello.swift`
             expect(referenceLocations).to.have.lengthOf(
                 3,
-                "There should be two references to 'a'."
+                "There should be three references to 'a'."
             );
 
             // Extract reference URIs and sort them to have a predictable order

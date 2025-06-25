@@ -1,16 +1,28 @@
+# Build Outputs
+*.vsix
 out
 dist
 coverage
 test-results
+userdocs/userdocs.docc/.docc-build
+
+# Generated Assets
+assets/documentation-webview
+assets/icons
+assets/swift-docc-render
+assets/test/**/Package.resolved
+
+# Node
 node_modules
-default.profraw
-*.vsix
+
+# Hidden Directories
 .vscode-test
 .build
 .index-build
+
+# macOS
 .DS_Store
-assets/documentation-webview
-assets/test/**/Package.resolved
-assets/swift-docc-render
+
+# Miscellaneous
+default.profraw
 ud
-userdocs/userdocs.docc/.docc-build

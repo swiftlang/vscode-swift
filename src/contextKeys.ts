@@ -35,6 +35,11 @@ interface ContextKeys {
     hasPackage: boolean;
 
     /**
+     * Whether the workspace folder contains a Swift package with at least one executable product.
+     */
+    hasExecutableProduct: boolean;
+
+    /**
      * Whether the Swift package has any dependencies to display in the Package Dependencies view.
      */
     packageHasDependencies: boolean;
@@ -94,6 +99,7 @@ interface ContextKeys {
 function createContextKeys(): ContextKeys {
     let isActivated: boolean = false;
     let hasPackage: boolean = false;
+    let hasExecutableProduct: boolean = false;
     let flatDependenciesList: boolean = false;
     let packageHasDependencies: boolean = false;
     let packageHasPlugins: boolean = false;
@@ -110,9 +116,10 @@ function createContextKeys(): ContextKeys {
             this.createNewProjectAvailable = toolchainVersion.isGreaterThanOrEqual(
                 new Version(5, 8, 0)
             );
-            this.switchPlatformAvailable = toolchainVersion.isGreaterThanOrEqual(
-                new Version(6, 1, 0)
-            );
+            this.switchPlatformAvailable =
+                process.platform === "darwin"
+                    ? toolchainVersion.isGreaterThanOrEqual(new Version(6, 1, 0))
+                    : false;
         },
 
         get isActivated() {
@@ -121,7 +128,11 @@ function createContextKeys(): ContextKeys {
 
         set isActivated(value: boolean) {
             isActivated = value;
-            vscode.commands.executeCommand("setContext", "swift.isActivated", value);
+            void vscode.commands
+                .executeCommand("setContext", "swift.isActivated", value)
+                .then(() => {
+                    /* Put in worker queue */
+                });
         },
 
         get hasPackage() {
@@ -130,7 +141,24 @@ function createContextKeys(): ContextKeys {
 
         set hasPackage(value: boolean) {
             hasPackage = value;
-            vscode.commands.executeCommand("setContext", "swift.hasPackage", value);
+            void vscode.commands
+                .executeCommand("setContext", "swift.hasPackage", value)
+                .then(() => {
+                    /* Put in worker queue */
+                });
+        },
+
+        get hasExecutableProduct() {
+            return hasExecutableProduct;
+        },
+
+        set hasExecutableProduct(value: boolean) {
+            hasExecutableProduct = value;
+            void vscode.commands
+                .executeCommand("setContext", "swift.hasExecutableProduct", value)
+                .then(() => {
+                    /* Put in worker queue */
+                });
         },
 
         get packageHasDependencies() {
@@ -139,7 +167,11 @@ function createContextKeys(): ContextKeys {
 
         set packageHasDependencies(value: boolean) {
             packageHasDependencies = value;
-            vscode.commands.executeCommand("setContext", "swift.packageHasDependencies", value);
+            void vscode.commands
+                .executeCommand("setContext", "swift.packageHasDependencies", value)
+                .then(() => {
+                    /* Put in worker queue */
+                });
         },
 
         get flatDependenciesList() {
@@ -148,7 +180,11 @@ function createContextKeys(): ContextKeys {
 
         set flatDependenciesList(value: boolean) {
             flatDependenciesList = value;
-            vscode.commands.executeCommand("setContext", "swift.flatDependenciesList", value);
+            void vscode.commands
+                .executeCommand("setContext", "swift.flatDependenciesList", value)
+                .then(() => {
+                    /* Put in worker queue */
+                });
         },
 
         get packageHasPlugins() {
@@ -157,7 +193,11 @@ function createContextKeys(): ContextKeys {
 
         set packageHasPlugins(value: boolean) {
             packageHasPlugins = value;
-            vscode.commands.executeCommand("setContext", "swift.packageHasPlugins", value);
+            void vscode.commands
+                .executeCommand("setContext", "swift.packageHasPlugins", value)
+                .then(() => {
+                    /* Put in worker queue */
+                });
         },
 
         get currentTargetType() {
@@ -166,11 +206,11 @@ function createContextKeys(): ContextKeys {
 
         set currentTargetType(value: string | undefined) {
             currentTargetType = value;
-            vscode.commands.executeCommand(
-                "setContext",
-                "swift.currentTargetType",
-                value ?? "none"
-            );
+            void vscode.commands
+                .executeCommand("setContext", "swift.currentTargetType", value ?? "none")
+                .then(() => {
+                    /* Put in worker queue */
+                });
         },
 
         get fileIsSnippet() {
@@ -179,7 +219,11 @@ function createContextKeys(): ContextKeys {
 
         set fileIsSnippet(value: boolean) {
             fileIsSnippet = value;
-            vscode.commands.executeCommand("setContext", "swift.fileIsSnippet", value);
+            void vscode.commands
+                .executeCommand("setContext", "swift.fileIsSnippet", value)
+                .then(() => {
+                    /* Put in worker queue */
+                });
         },
 
         get lldbVSCodeAvailable() {
@@ -188,7 +232,11 @@ function createContextKeys(): ContextKeys {
 
         set lldbVSCodeAvailable(value: boolean) {
             lldbVSCodeAvailable = value;
-            vscode.commands.executeCommand("setContext", "swift.lldbVSCodeAvailable", value);
+            void vscode.commands
+                .executeCommand("setContext", "swift.lldbVSCodeAvailable", value)
+                .then(() => {
+                    /* Put in worker queue */
+                });
         },
 
         get createNewProjectAvailable() {
@@ -197,7 +245,11 @@ function createContextKeys(): ContextKeys {
 
         set createNewProjectAvailable(value: boolean) {
             createNewProjectAvailable = value;
-            vscode.commands.executeCommand("setContext", "swift.createNewProjectAvailable", value);
+            void vscode.commands
+                .executeCommand("setContext", "swift.createNewProjectAvailable", value)
+                .then(() => {
+                    /* Put in worker queue */
+                });
         },
 
         get supportsReindexing() {
@@ -206,7 +258,11 @@ function createContextKeys(): ContextKeys {
 
         set supportsReindexing(value: boolean) {
             supportsReindexing = value;
-            vscode.commands.executeCommand("setContext", "swift.supportsReindexing", value);
+            void vscode.commands
+                .executeCommand("setContext", "swift.supportsReindexing", value)
+                .then(() => {
+                    /* Put in worker queue */
+                });
         },
 
         get supportsDocumentationLivePreview() {
@@ -215,11 +271,11 @@ function createContextKeys(): ContextKeys {
 
         set supportsDocumentationLivePreview(value: boolean) {
             supportsDocumentationLivePreview = value;
-            vscode.commands.executeCommand(
-                "setContext",
-                "swift.supportsDocumentationLivePreview",
-                value
-            );
+            void vscode.commands
+                .executeCommand("setContext", "swift.supportsDocumentationLivePreview", value)
+                .then(() => {
+                    /* Put in worker queue */
+                });
         },
 
         get switchPlatformAvailable() {
@@ -228,7 +284,11 @@ function createContextKeys(): ContextKeys {
 
         set switchPlatformAvailable(value: boolean) {
             switchPlatformAvailable = value;
-            vscode.commands.executeCommand("setContext", "swift.switchPlatformAvailable", value);
+            void vscode.commands
+                .executeCommand("setContext", "swift.switchPlatformAvailable", value)
+                .then(() => {
+                    /* Put in worker queue */
+                });
         },
     };
 }

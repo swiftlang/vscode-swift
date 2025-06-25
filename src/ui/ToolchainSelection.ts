@@ -17,6 +17,7 @@ import * as path from "path";
 import { showReloadExtensionNotification } from "./ReloadExtension";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import configuration from "../configuration";
+import { Commands } from "../commands";
 
 /**
  * Open the installation page on Swift.org
@@ -28,7 +29,7 @@ export async function downloadToolchain() {
             "Select Toolchain"
         );
         if (selected === "Select Toolchain") {
-            await vscode.commands.executeCommand("swift.selectToolchain");
+            await selectToolchain();
         }
     }
 }
@@ -37,13 +38,13 @@ export async function downloadToolchain() {
  * Open the installation page for Swiftly
  */
 export async function installSwiftly() {
-    if (await vscode.env.openExternal(vscode.Uri.parse("https://swiftlang.github.io/swiftly"))) {
+    if (await vscode.env.openExternal(vscode.Uri.parse("https://www.swift.org/install/"))) {
         const selected = await showReloadExtensionNotification(
             "The Swift extension must be reloaded once you have downloaded and installed the new toolchain.",
             "Select Toolchain"
         );
         if (selected === "Select Toolchain") {
-            await vscode.commands.executeCommand("swift.selectToolchain");
+            await selectToolchain();
         }
     }
 }
@@ -87,8 +88,12 @@ export async function showToolchainError(): Promise<void> {
     if (selected === "Remove From Settings") {
         await removeToolchainPath();
     } else if (selected === "Select Toolchain") {
-        await vscode.commands.executeCommand("swift.selectToolchain");
+        await selectToolchain();
     }
+}
+
+export async function selectToolchain() {
+    await vscode.commands.executeCommand(Commands.SELECT_TOOLCHAIN);
 }
 
 /** A {@link vscode.QuickPickItem} that contains the path to an installed Swift toolchain */
@@ -143,7 +148,7 @@ async function getQuickPickItems(
     activeToolchain: SwiftToolchain | undefined
 ): Promise<SelectToolchainItem[]> {
     // Find any Xcode installations on the system
-    const xcodes = (await SwiftToolchain.getXcodeInstalls())
+    const xcodes = (await SwiftToolchain.findXcodeInstalls())
         .reverse()
         .map<SwiftToolchainItem>(xcodePath => {
             const toolchainPath = path.join(
@@ -179,7 +184,7 @@ async function getQuickPickItems(
             if (result.label === "swift-latest") {
                 result.label = "Latest Installed Toolchain";
                 result.onDidSelect = async () => {
-                    vscode.window.showInformationMessage(
+                    void vscode.window.showInformationMessage(
                         `The Swift extension is now configured to always use the most recently installed toolchain pointed at by the symbolic link "${toolchainPath}".`
                     );
                 };
@@ -351,7 +356,7 @@ async function showDeveloperDirQuickPick(xcodePaths: string[]): Promise<string |
 /**
  * Delete all set Swift path settings.
  */
-async function removeToolchainPath() {
+export async function removeToolchainPath() {
     const swiftSettings = vscode.workspace.getConfiguration("swift");
     const swiftEnvironmentSettings = swiftSettings.inspect("swiftEnvironmentVariables");
     if (swiftEnvironmentSettings?.globalValue) {

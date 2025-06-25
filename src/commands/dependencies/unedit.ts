@@ -23,8 +23,12 @@ import { FolderContext } from "../../FolderContext";
  * @param identifier Identifier of dependency
  * @param ctx workspace context
  */
-export async function uneditDependency(identifier: string, ctx: WorkspaceContext) {
-    const currentFolder = ctx.currentFolder;
+export async function uneditDependency(
+    identifier: string,
+    ctx: WorkspaceContext,
+    folder: FolderContext | undefined
+) {
+    const currentFolder = folder ?? ctx.currentFolder;
     if (!currentFolder) {
         ctx.outputChannel.log("currentFolder is not set.");
         return false;
@@ -44,7 +48,7 @@ async function uneditFolderDependency(
 ) {
     try {
         const uneditOperation = new SwiftExecOperation(
-            ctx.toolchain.buildFlags.withAdditionalFlags([
+            folder.toolchain.buildFlags.withAdditionalFlags([
                 "package",
                 "unedit",
                 ...args,
@@ -60,7 +64,7 @@ async function uneditFolderDependency(
         );
         await folder.taskQueue.queueOperation(uneditOperation);
 
-        ctx.fireEvent(folder, FolderOperation.resolvedUpdated);
+        await ctx.fireEvent(folder, FolderOperation.resolvedUpdated);
         // find workspace folder, and check folder still exists
         const folderIndex = vscode.workspace.workspaceFolders?.findIndex(
             item => item.name === identifier
@@ -91,7 +95,7 @@ async function uneditFolderDependency(
             await uneditFolderDependency(folder, identifier, ctx, ["--force"]);
         } else {
             ctx.outputChannel.log(execError.stderr, folder.name);
-            vscode.window.showErrorMessage(`${execError.stderr}`);
+            void vscode.window.showErrorMessage(`${execError.stderr}`);
         }
         return false;
     }

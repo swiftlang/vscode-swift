@@ -17,12 +17,13 @@ import { FolderContext } from "../FolderContext";
 import { createSwiftTask, SwiftTaskProvider } from "../tasks/SwiftTaskProvider";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { executeTaskWithUI } from "./utilities";
+import { packageName } from "../utilities/tasks";
 
 /**
  * Executes a {@link vscode.Task task} to reset the complete cache/build directory.
  */
-export async function resetPackage(ctx: WorkspaceContext) {
-    const current = ctx.currentFolder;
+export async function resetPackage(ctx: WorkspaceContext, folder: FolderContext | undefined) {
+    const current = folder ?? ctx.currentFolder;
     if (!current) {
         return;
     }
@@ -35,20 +36,30 @@ export async function resetPackage(ctx: WorkspaceContext) {
  */
 export async function folderResetPackage(folderContext: FolderContext) {
     const task = createSwiftTask(
-        folderContext.workspaceContext.toolchain.buildFlags.withAdditionalFlags([
-            "package",
-            "reset",
-        ]),
+        folderContext.toolchain.buildFlags.withAdditionalFlags(["package", "reset"]),
         "Reset Package Dependencies",
         {
             cwd: folderContext.folder,
             scope: folderContext.workspaceFolder,
-            prefix: folderContext.name,
+            packageName: packageName(folderContext),
             presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
             group: vscode.TaskGroup.Clean,
         },
-        folderContext.workspaceContext.toolchain
+        folderContext.toolchain
     );
+
+    const languageClientManager = () =>
+        folderContext.workspaceContext.languageClientManager.get(folderContext);
+    const shouldStop = process.platform === "win32";
+    if (shouldStop) {
+        await vscode.window.withProgress(
+            {
+                title: "Stopping the SourceKit-LSP server",
+                location: vscode.ProgressLocation.Window,
+            },
+            async () => await languageClientManager().stop(false)
+        );
+    }
 
     return await executeTaskWithUI(task, "Reset Package", folderContext).then(
         async success => {
@@ -61,10 +72,10 @@ export async function folderResetPackage(folderContext: FolderContext) {
                 {
                     cwd: folderContext.folder,
                     scope: folderContext.workspaceFolder,
-                    prefix: folderContext.name,
+                    packageName: packageName(folderContext),
                     presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
                 },
-                folderContext.workspaceContext.toolchain
+                folderContext.toolchain
             );
 
             const result = await executeTaskWithUI(
@@ -72,6 +83,9 @@ export async function folderResetPackage(folderContext: FolderContext) {
                 "Resolving Dependencies",
                 folderContext
             );
+            if (shouldStop) {
+                await languageClientManager().restart();
+            }
             return result;
         },
         reason => {

@@ -17,6 +17,7 @@ import * as vscode from "vscode";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { showReloadExtensionNotification } from "../ui/ReloadExtension";
 import configuration from "../configuration";
+import { removeToolchainPath, selectToolchain } from "../ui/ToolchainSelection";
 
 export class SelectedXcodeWatcher implements vscode.Disposable {
     private xcodePath: string | undefined;
@@ -52,7 +53,7 @@ export class SelectedXcodeWatcher implements vscode.Disposable {
         }
 
         // Deliberately not awaiting this, as we don't want to block the extension activation.
-        this.setup();
+        void this.setup();
     }
 
     dispose() {
@@ -66,20 +67,55 @@ export class SelectedXcodeWatcher implements vscode.Disposable {
      */
     private async setup() {
         this.xcodePath = await this.xcodeSymlink();
+        const developerDir = () => configuration.swiftEnvironmentVariables["DEVELOPER_DIR"];
+        const matchesPath = (xcodePath: string) =>
+            configuration.path && configuration.path.startsWith(xcodePath);
+        const matchesDeveloperDir = (xcodePath: string) => developerDir()?.startsWith(xcodePath);
+        if (
+            this.xcodePath &&
+            (configuration.path || developerDir()) &&
+            !(matchesPath(this.xcodePath) || matchesDeveloperDir(this.xcodePath))
+        ) {
+            this.xcodePath = undefined; // Notify user when initially launching that xcode changed since last session
+        }
         this.interval = setInterval(async () => {
             if (this.disposed) {
                 return clearInterval(this.interval);
             }
 
             const newXcodePath = await this.xcodeSymlink();
-            if (!configuration.path && newXcodePath && this.xcodePath !== newXcodePath) {
+            if (newXcodePath && this.xcodePath !== newXcodePath) {
                 this.outputChannel.appendLine(
                     `Selected Xcode changed from ${this.xcodePath} to ${newXcodePath}`
                 );
                 this.xcodePath = newXcodePath;
-                await showReloadExtensionNotification(
-                    "The Swift Extension has detected a change in the selected Xcode. Please reload the extension to apply the changes."
-                );
+                if (!configuration.path) {
+                    await showReloadExtensionNotification(
+                        "The Swift Extension has detected a change in the selected Xcode. Please reload the extension to apply the changes."
+                    );
+                } else if (developerDir() && !matchesDeveloperDir(this.xcodePath)) {
+                    const selected = await vscode.window.showWarningMessage(
+                        'The Swift Extension has detected a change in the selected Xcode which does not match the value of your DEVELOPER_DIR in the "swift.swiftEnvironmentVariables" setting. Would you like to update your configured "swift.swiftEnvironmentVariables" setting?',
+                        "Remove From Settings",
+                        "Select Toolchain"
+                    );
+                    if (selected === "Remove From Settings") {
+                        await removeToolchainPath();
+                    } else if (selected === "Select Toolchain") {
+                        await selectToolchain();
+                    }
+                } else if (!matchesPath(this.xcodePath)) {
+                    const selected = await vscode.window.showWarningMessage(
+                        'The Swift Extension has detected a change in the selected Xcode which does not match the value of your "swift.path" setting. Would you like to update your configured "swift.path" setting?',
+                        "Remove From Settings",
+                        "Select Toolchain"
+                    );
+                    if (selected === "Remove From Settings") {
+                        await removeToolchainPath();
+                    } else if (selected === "Select Toolchain") {
+                        await selectToolchain();
+                    }
+                }
             }
         }, this.checkIntervalMs);
     }

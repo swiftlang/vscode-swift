@@ -35,7 +35,6 @@ import {
     MessageRenderer,
     TestSymbol,
 } from "../../../src/TestExplorer/TestParsers/SwiftTestingOutputParser";
-import { mockGlobalObject } from "../../MockUtils";
 import {
     flattenTestItemCollection,
     reduceTestItemChildren,
@@ -49,27 +48,30 @@ import {
 import { Commands } from "../../../src/commands";
 import { executeTaskAndWaitForResult } from "../../utilities/tasks";
 import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
+import { FolderContext } from "../../../src/FolderContext";
+import { lineBreakRegex } from "../../../src/utilities/tasks";
 
 suite("Test Explorer Suite", function () {
-    const MAX_TEST_RUN_TIME_MINUTES = 5;
+    const MAX_TEST_RUN_TIME_MINUTES = 6;
 
     this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES);
 
     let workspaceContext: WorkspaceContext;
+    let folderContext: FolderContext;
     let testExplorer: TestExplorer;
 
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
-            const targetFolder = await folderInRootWorkspace("defaultPackage", workspaceContext);
+            folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
 
-            if (!targetFolder) {
+            if (!folderContext) {
                 throw new Error("Unable to find test explorer");
             }
 
-            testExplorer = targetFolder.addTestExplorer();
+            testExplorer = folderContext.addTestExplorer();
 
-            await executeTaskAndWaitForResult(await createBuildAllTask(targetFolder));
+            await executeTaskAndWaitForResult(await createBuildAllTask(folderContext));
 
             // Set up the listener before bringing the text explorer in to focus,
             // which starts searching the workspace for tests.
@@ -94,7 +96,7 @@ suite("Test Explorer Suite", function () {
             if (
                 // swift-testing was not able to produce JSON events until 6.0.2 on Windows.
                 process.platform === "win32" &&
-                workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 2))
+                workspaceContext.globalToolchainSwiftVersion.isLessThan(new Version(6, 0, 2))
             ) {
                 this.skip();
             }
@@ -111,12 +113,12 @@ suite("Test Explorer Suite", function () {
             let resetSettings: (() => Promise<void>) | undefined;
             beforeEach(async function () {
                 // lldb-dap is only present/functional in the toolchain in 6.0.2 and up.
-                if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 2))) {
+                if (folderContext.swiftVersion.isLessThan(new Version(6, 0, 2))) {
                     this.skip();
                 }
 
                 resetSettings = await updateSettings({
-                    "swift.debugger.useDebugAdapterFromToolchain": true,
+                    "swift.debugger.debugAdapter": "lldb-dap",
                 });
             });
 
@@ -154,15 +156,17 @@ suite("Test Explorer Suite", function () {
             });
 
             test("Debugs specified XCTest test @slow", async function () {
+                this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 2);
+
                 // CodeLLDB tests stall out on 5.9 and below.
-                if (workspaceContext.swiftVersion.isLessThan(new Version(5, 10, 0))) {
+                if (folderContext.swiftVersion.isLessThan(new Version(5, 10, 0))) {
                     this.skip();
                 }
                 await runXCTest();
             });
 
             test("Debugs specified swift-testing test", async function () {
-                if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+                if (folderContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
                     this.skip();
                 }
                 await runSwiftTesting.call(this);
@@ -172,7 +176,7 @@ suite("Test Explorer Suite", function () {
 
     suite("Standard", () => {
         test("Finds Tests", async function () {
-            if (workspaceContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
+            if (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
                 // 6.0 uses the LSP which returns tests in the order they're declared.
                 // Includes swift-testing tests.
                 assertTestControllerHierarchy(testExplorer.controller, [
@@ -205,7 +209,7 @@ suite("Test Explorer Suite", function () {
                         ["testCrashing()"],
                     ],
                 ]);
-            } else if (workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
+            } else if (folderContext.swiftVersion.isLessThanOrEqual(new Version(6, 0, 0))) {
                 // 5.10 uses `swift test list` which returns test alphabetically, without the round brackets.
                 // Does not include swift-testing tests.
                 assertTestControllerHierarchy(testExplorer.controller, [
@@ -233,10 +237,10 @@ suite("Test Explorer Suite", function () {
         suite("swift-testing", () => {
             suiteSetup(function () {
                 if (
-                    workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0)) ||
+                    folderContext.swiftVersion.isLessThan(new Version(6, 0, 0)) ||
                     // swift-testing was not able to produce JSON events until 6.0.2 on Windows.
                     (process.platform === "win32" &&
-                        workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 2)))
+                        folderContext.swiftVersion.isLessThan(new Version(6, 0, 2)))
                 ) {
                     this.skip();
                 }
@@ -257,9 +261,12 @@ suite("Test Explorer Suite", function () {
                 // in the middle of the print, so the last line is actually end end of our
                 // huge string. If they fix this in future this `find` ensures the test wont break.
                 const needle = "100000";
-                const lastTenLines = testRun.runState.output.slice(-10).join("\n");
+                const output = testRun.runState.output.flatMap(o =>
+                    o.split(lineBreakRegex).filter(o => !!o)
+                );
+                const lastTenLines = output.slice(-10).join("\n");
                 assertContainsTrimmed(
-                    testRun.runState.output,
+                    output,
                     needle,
                     `Expected all test output to be captured, but it was truncated. Last 10 lines of output were: ${lastTenLines}`
                 );
@@ -268,7 +275,7 @@ suite("Test Explorer Suite", function () {
             // Disabled until Attachments are formalized and released.
             test.skip("attachments", async function () {
                 // Attachments were introduced in 6.1
-                if (workspaceContext.swiftVersion.isLessThan(new Version(6, 1, 0))) {
+                if (folderContext.swiftVersion.isLessThan(new Version(6, 1, 0))) {
                     this.skip();
                 }
 
@@ -416,26 +423,27 @@ suite("Test Explorer Suite", function () {
 
             suite("Runs multiple", function () {
                 const numIterations = 5;
-                const windowMock = mockGlobalObject(vscode, "window");
+
+                this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 5);
 
                 test("@slow runs an swift-testing test multiple times", async function () {
-                    const testItems = await gatherTests(
+                    const testItems = gatherTests(
                         testExplorer.controller,
                         "PackageTests.MixedXCTestSuite/testPassing"
                     );
 
-                    await testExplorer.folderContext.workspaceContext.focusFolder(
-                        testExplorer.folderContext
+                    await workspaceContext.focusFolder(null);
+                    await workspaceContext.focusFolder(testExplorer.folderContext);
+
+                    const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
+
+                    await vscode.commands.executeCommand(
+                        Commands.RUN_TESTS_MULTIPLE_TIMES,
+                        testItems[0],
+                        numIterations
                     );
 
-                    // Stub the showInputBox method to return the input text
-                    windowMock.showInputBox.resolves(`${numIterations}`);
-
-                    vscode.commands.executeCommand(Commands.RUN_TESTS_MULTIPLE_TIMES, testItems[0]);
-
-                    const testRun = await eventPromise(testExplorer.onCreateTestRun);
-
-                    await eventPromise(testRun.onTestRunComplete);
+                    const testRun = await testRunPromise;
 
                     assertTestResults(testRun, {
                         passed: [
@@ -487,7 +495,7 @@ suite("Test Explorer Suite", function () {
                 if (!targetProfile) {
                     throw new Error(`Unable to find run profile named ${TestKind.standard}`);
                 }
-                const testItems = await gatherTests(
+                const testItems = gatherTests(
                     testExplorer.controller,
                     "PackageTests.DuplicateSuffixTests/testPassing"
                 );
@@ -497,7 +505,7 @@ suite("Test Explorer Suite", function () {
                 const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
 
                 // Deliberately don't await this so we can cancel it.
-                targetProfile.runHandler(request, tokenSource.token);
+                void targetProfile.runHandler(request, tokenSource.token);
 
                 const testRun = await testRunPromise;
 
@@ -548,26 +556,27 @@ suite("Test Explorer Suite", function () {
 
             suite("Runs multiple", function () {
                 const numIterations = 5;
-                const windowMock = mockGlobalObject(vscode, "window");
+
+                this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 5);
 
                 test("@slow runs an XCTest multiple times", async function () {
-                    const testItems = await gatherTests(
+                    const testItems = gatherTests(
                         testExplorer.controller,
                         "PackageTests.PassingXCTestSuite/testPassing"
                     );
 
-                    await testExplorer.folderContext.workspaceContext.focusFolder(
-                        testExplorer.folderContext
+                    await workspaceContext.focusFolder(null);
+                    await workspaceContext.focusFolder(testExplorer.folderContext);
+
+                    const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
+
+                    await vscode.commands.executeCommand(
+                        Commands.RUN_TESTS_MULTIPLE_TIMES,
+                        testItems[0],
+                        numIterations
                     );
 
-                    // Stub the showInputBox method to return the input text
-                    windowMock.showInputBox.resolves(`${numIterations}`);
-
-                    vscode.commands.executeCommand(Commands.RUN_TESTS_MULTIPLE_TIMES, testItems[0]);
-
-                    const testRun = await eventPromise(testExplorer.onCreateTestRun);
-
-                    await eventPromise(testRun.onTestRunComplete);
+                    const testRun = await testRunPromise;
 
                     assertTestResults(testRun, {
                         passed: [
@@ -590,7 +599,7 @@ suite("Test Explorer Suite", function () {
                 // as passed or failed with the message from the xunit xml.
                 xcTestFailureMessage =
                     runProfile === TestKind.parallel &&
-                    !workspaceContext.toolchain.hasMultiLineParallelTestOutput
+                    !folderContext.toolchain.hasMultiLineParallelTestOutput
                         ? "failed"
                         : `failed - oh no`;
             });
@@ -599,9 +608,9 @@ suite("Test Explorer Suite", function () {
                 suite(`swift-testing (${runProfile})`, function () {
                     suiteSetup(function () {
                         if (
-                            workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 0)) ||
+                            folderContext.swiftVersion.isLessThan(new Version(6, 0, 0)) ||
                             (process.platform === "win32" &&
-                                workspaceContext.swiftVersion.isLessThan(new Version(6, 0, 2)))
+                                folderContext.swiftVersion.isLessThan(new Version(6, 0, 2)))
                         ) {
                             this.skip();
                         }
@@ -678,9 +687,7 @@ suite("Test Explorer Suite", function () {
 
                         let passed: string[];
                         let failedId: string;
-                        if (
-                            workspaceContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 2, 0))
-                        ) {
+                        if (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 2, 0))) {
                             passed = [
                                 `${testId}/PackageTests.swift:59:2/Parameterized test case ID: argumentIDs: [Testing.Test.Case.Argument.ID(bytes: [49])], discriminator: 0, isStable: true`,
                                 `${testId}/PackageTests.swift:59:2/Parameterized test case ID: argumentIDs: [Testing.Test.Case.Argument.ID(bytes: [51])], discriminator: 0, isStable: true`,

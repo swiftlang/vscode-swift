@@ -24,26 +24,25 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Dispos
     private readonly closeEmitter: vscode.EventEmitter<number | void> = new vscode.EventEmitter<
         number | void
     >();
+    private swiftProcess: SwiftProcess | undefined;
 
     constructor(
-        private swiftProcess: SwiftProcess,
+        private createSwiftProcess: () => SwiftProcess,
         private options: vscode.TaskPresentationOptions
     ) {}
 
     private disposables: vscode.Disposable[] = [];
 
-    get commandLine(): string {
-        return [this.swiftProcess.command, ...this.swiftProcess.args].join(" ");
-    }
-
     open(initialDimensions: vscode.TerminalDimensions | undefined): void {
+        this.swiftProcess = this.createSwiftProcess();
+        const commandLine = [this.swiftProcess.command, ...this.swiftProcess.args].join(" ");
         try {
             // Convert the pty's events to the ones expected by the Tasks API
             this.disposables.push(
                 this.swiftProcess.onDidSpawn(() => {
                     // Display the actual command line that we're executing. `echo` defaults to true.
                     if (this.options.echo !== false) {
-                        this.writeEmitter.fire(`> ${this.commandLine}\n\n\r`);
+                        this.writeEmitter.fire(`> ${commandLine}\n\n\r`);
                     }
                 }),
                 this.swiftProcess.onDidWrite(data => {
@@ -51,8 +50,8 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Dispos
                     this.writeEmitter.fire(data.replace(/\n(\r)?/g, "\n\r"));
                 }),
                 this.swiftProcess.onDidThrowError(e => {
-                    vscode.window.showErrorMessage(
-                        `Failed to run Swift command "${this.commandLine}":\n${e}`
+                    void vscode.window.showErrorMessage(
+                        `Failed to run Swift command "${commandLine}":\n${e}`
                     );
                     this.closeEmitter.fire();
                     this.dispose();
@@ -90,14 +89,14 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Dispos
         const buf: Buffer = Buffer.from(data);
         // Terminate process on ctrl+c
         if (buf.length === 1 && buf[0] === 3) {
-            this.swiftProcess.terminate();
+            this.swiftProcess?.terminate();
         } else {
-            this.swiftProcess.handleInput(data);
+            this.swiftProcess?.handleInput(data);
         }
     }
 
     setDimensions(dimensions: vscode.TerminalDimensions): void {
-        this.swiftProcess.setDimensions(dimensions);
+        this.swiftProcess?.setDimensions(dimensions);
     }
 
     onDidWrite: vscode.Event<string> = this.writeEmitter.event;
@@ -105,6 +104,9 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Dispos
     onDidClose: vscode.Event<number | void> = this.closeEmitter.event;
 
     close(): void {
-        this.swiftProcess.terminate();
+        this.swiftProcess?.terminate();
+        // Terminal may be re-used so only dispose of these on close
+        this.writeEmitter.dispose();
+        this.closeEmitter.dispose();
     }
 }

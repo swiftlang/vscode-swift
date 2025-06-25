@@ -24,8 +24,7 @@ import { fileExists } from "../utilities/filesystem";
 export async function openPackage(swiftVersion: Version, currentFolder: vscode.Uri) {
     const packagePath = await packageSwiftFile(currentFolder, swiftVersion);
     if (packagePath) {
-        const document = await vscode.workspace.openTextDocument(packagePath);
-        vscode.window.showTextDocument(document);
+        await vscode.window.showTextDocument(packagePath);
     }
 }
 

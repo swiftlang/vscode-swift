@@ -19,13 +19,11 @@ import * as vscode from "vscode";
 import * as commands from "./commands";
 import * as debug from "./debugger/launch";
 import { ProjectPanelProvider } from "./ui/ProjectPanelProvider";
-import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
 import { FolderEvent, FolderOperation, WorkspaceContext } from "./WorkspaceContext";
 import { FolderContext } from "./FolderContext";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { LanguageStatusItems } from "./ui/LanguageStatusItems";
 import { getErrorDescription } from "./utilities/utilities";
-import { SwiftPluginTaskProvider } from "./tasks/SwiftPluginTaskProvider";
 import { Version } from "./utilities/version";
 import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
 import { registerDebugger } from "./debugger/debugAdapterFactory";
@@ -67,7 +65,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         // This can happen if the user has not installed Swift or if the toolchain is not
         // properly configured.
         if (!toolchain) {
-            showToolchainError();
+            void showToolchainError();
             return {
                 workspaceContext: undefined,
                 outputChannel,
@@ -97,10 +95,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         context.subscriptions.push(new SelectedXcodeWatcher(outputChannel));
 
         // Register task provider.
-        context.subscriptions.push(SwiftTaskProvider.register(workspaceContext));
+        context.subscriptions.push(
+            vscode.tasks.registerTaskProvider("swift", workspaceContext.taskProvider)
+        );
 
         // Register swift plugin task provider.
-        context.subscriptions.push(SwiftPluginTaskProvider.register(workspaceContext));
+        context.subscriptions.push(
+            vscode.tasks.registerTaskProvider("swift-plugin", workspaceContext.pluginProvider)
+        );
 
         // Register the language status bar items.
         context.subscriptions.push(new LanguageStatusItems(workspaceContext));
@@ -135,7 +137,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         context.subscriptions.push(TestExplorer.observeFolders(workspaceContext));
 
         // setup workspace context with initial workspace folders
-        workspaceContext.addWorkspaceFolders();
+        void workspaceContext.addWorkspaceFolders();
 
         // Mark the extension as activated.
         contextKeys.isActivated = true;
@@ -153,7 +155,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         const errorMessage = getErrorDescription(error);
         // show this error message as the VS Code error message only shows when running
         // the extension through the debugger
-        vscode.window.showErrorMessage(`Activating Swift extension failed: ${errorMessage}`);
+        void vscode.window.showErrorMessage(`Activating Swift extension failed: ${errorMessage}`);
         throw error;
     }
 }
@@ -180,13 +182,13 @@ function handleFolderEvent(
                 await resolveFolderDependencies(folder, true);
             }
 
-            if (workspace.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))) {
-                workspace.statusItem.showStatusWhileRunning(
+            if (folder.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))) {
+                void workspace.statusItem.showStatusWhileRunning(
                     `Loading Swift Plugins (${FolderContext.uriName(folder.workspaceFolder.uri)})`,
                     async () => {
                         await folder.loadSwiftPlugins(outputChannel);
                         workspace.updatePluginContextKey();
-                        folder.fireEvent(FolderOperation.pluginsUpdated);
+                        await folder.fireEvent(FolderOperation.pluginsUpdated);
                     }
                 );
             }
@@ -201,16 +203,16 @@ function handleFolderEvent(
         switch (operation) {
             case FolderOperation.add:
                 // Create launch.json files based on package description.
-                debug.makeDebugConfigurations(folder);
+                await debug.makeDebugConfigurations(folder);
                 if (await folder.swiftPackage.foundPackage) {
                     // do not await for this, let packages resolve in parallel
-                    folderAdded(folder, workspace);
+                    void folderAdded(folder, workspace);
                 }
                 break;
 
             case FolderOperation.packageUpdated:
                 // Create launch.json files based on package description.
-                debug.makeDebugConfigurations(folder);
+                await debug.makeDebugConfigurations(folder);
                 if (
                     (await folder.swiftPackage.foundPackage) &&
                     !configuration.folder(folder.workspaceFolder).disableAutoResolve
@@ -241,8 +243,6 @@ async function createActiveToolchain(
     } catch (error) {
         outputChannel.log("Failed to discover Swift toolchain");
         outputChannel.log(`${error}`);
-        contextKeys.createNewProjectAvailable = false;
-        contextKeys.switchPlatformAvailable = false;
         return undefined;
     }
 }

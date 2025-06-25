@@ -32,7 +32,7 @@ export class LSPActiveDocumentManager {
         next: (data: vscode.TextDocument) => Promise<void>
     ) {
         this.openDocuments.add(document.uri);
-        next(document);
+        await next(document);
     }
 
     public async didClose(
@@ -40,7 +40,7 @@ export class LSPActiveDocumentManager {
         next: (data: vscode.TextDocument) => Promise<void>
     ) {
         this.openDocuments.add(document.uri);
-        next(document);
+        await next(document);
     }
 
     public activateDidChangeActiveDocument(client: langclient.LanguageClient): vscode.Disposable {
@@ -65,7 +65,7 @@ export class LSPActiveDocumentManager {
 
             // Avoid sending multiple identical notifications in a row.
             if (textDocument !== this.lastActiveDocument) {
-                client.sendNotification(DidChangeActiveDocumentNotification.method, {
+                void client.sendNotification(DidChangeActiveDocumentNotification.method, {
                     textDocument: textDocument,
                 });
             }

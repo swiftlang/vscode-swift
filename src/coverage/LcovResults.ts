@@ -88,7 +88,7 @@ export class TestCoverage {
                 this.coverageDetails.set(uri, detailedCoverage);
             }
         }
-        this.lcovTmpFiles.dispose();
+        await this.lcovTmpFiles.dispose();
     }
 
     /**
@@ -96,7 +96,7 @@ export class TestCoverage {
      */
     private async mergeProfdata(profDataFiles: string[]) {
         const filename = this.lcovTmpFiles.file("merged", "profdata");
-        const toolchain = this.folderContext.workspaceContext.toolchain;
+        const toolchain = this.folderContext.toolchain;
         const llvmProfdata = toolchain.getToolchainExecutable("llvm-profdata");
         await execFileStreamOutput(
             llvmProfdata,
@@ -174,7 +174,7 @@ export class TestCoverage {
         });
 
         await execFileStreamOutput(
-            this.folderContext.workspaceContext.toolchain.getToolchainExecutable("llvm-cov"),
+            this.folderContext.toolchain.getToolchainExecutable("llvm-cov"),
             [
                 "export",
                 "--format",

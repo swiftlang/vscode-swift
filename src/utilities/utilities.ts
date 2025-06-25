@@ -21,6 +21,22 @@ import { FolderContext } from "../FolderContext";
 import { SwiftToolchain } from "../toolchain/toolchain";
 
 /**
+ * Whether or not this is a production build.
+ *
+ * Code that checks for this will be removed completely when the extension is packaged into
+ * a VSIX.
+ */
+export const IS_PRODUCTION_BUILD = process.env.NODE_ENV === "production";
+
+/**
+ * Whether or not the code is being run in CI.
+ *
+ * Code that checks for this will be removed completely when the extension is packaged into
+ * a VSIX.
+ */
+export const IS_RUNNING_IN_CI = process.env.CI === "1";
+
+/**
  * Get required environment variable for Swift product
  *
  * @param base base environment configuration
@@ -181,17 +197,17 @@ export async function execFileStreamOutput(
  */
 export async function execSwift(
     args: string[],
-    toolchain: SwiftToolchain | "default",
+    toolchain: SwiftToolchain | "default" | { swiftExecutable: string },
     options: cp.ExecFileOptions = {},
     folderContext?: FolderContext
 ): Promise<{ stdout: string; stderr: string }> {
     let swift: string;
-    if (toolchain === "default") {
+    if (typeof toolchain === "object" && "swiftExecutable" in toolchain) {
+        swift = toolchain.swiftExecutable;
+    } else if (toolchain === "default") {
         swift = getSwiftExecutable();
     } else {
         swift = toolchain.getToolchainExecutable("swift");
-    }
-    if (toolchain !== "default") {
         args = toolchain.buildFlags.withAdditionalFlags(args);
     }
     if (Object.keys(configuration.swiftEnvironmentVariables).length > 0) {

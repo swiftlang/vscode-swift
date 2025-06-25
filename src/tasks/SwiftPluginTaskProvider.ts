@@ -18,16 +18,20 @@ import { WorkspaceContext } from "../WorkspaceContext";
 import { PackagePlugin } from "../SwiftPackage";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { SwiftExecution } from "../tasks/SwiftExecution";
-import { resolveTaskCwd } from "../utilities/tasks";
-import configuration, { PluginPermissionConfiguration } from "../configuration";
+import { packageName, resolveTaskCwd } from "../utilities/tasks";
+import configuration, {
+    PluginPermissionConfiguration,
+    substituteVariablesInString,
+} from "../configuration";
 import { SwiftTask } from "./SwiftTaskProvider";
+import { SwiftToolchain } from "../toolchain/toolchain";
 
 // Interface class for defining task configuration
 interface TaskConfig {
     cwd: vscode.Uri;
     scope: vscode.WorkspaceFolder;
     presentationOptions?: vscode.TaskPresentationOptions;
-    prefix?: string;
+    packageName?: string;
 }
 
 /**
@@ -52,12 +56,13 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         for (const folderContext of this.workspaceContext.folders) {
             for (const plugin of folderContext.swiftPackage.plugins) {
                 tasks.push(
-                    this.createSwiftPluginTask(plugin, {
+                    this.createSwiftPluginTask(plugin, folderContext.toolchain, {
                         cwd: folderContext.folder,
                         scope: folderContext.workspaceFolder,
                         presentationOptions: {
                             reveal: vscode.TaskRevealKind.Always,
                         },
+                        packageName: packageName(folderContext),
                     })
                 );
             }
@@ -73,16 +78,21 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     resolveTask(task: vscode.Task, token: vscode.CancellationToken): vscode.Task {
+        const currentFolder =
+            this.workspaceContext.currentFolder ?? this.workspaceContext.folders[0];
+        if (!currentFolder) {
+            return task;
+        }
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
-        const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
+        const swift = currentFolder.toolchain.getToolchainExecutable("swift");
         let swiftArgs = [
             "package",
             ...this.pluginArguments(task.definition as PluginPermissionConfiguration),
             task.definition.command,
-            ...task.definition.args,
+            ...(task.definition.args ?? []).map(substituteVariablesInString),
         ];
-        swiftArgs = this.workspaceContext.toolchain.buildFlags.withAdditionalFlags(swiftArgs);
+        swiftArgs = currentFolder.toolchain.buildFlags.withAdditionalFlags(swiftArgs);
 
         const cwd = resolveTaskCwd(task, task.definition.cwd);
         const newTask = new vscode.Task(
@@ -109,8 +119,12 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
      * @param config
      * @returns
      */
-    createSwiftPluginTask(plugin: PackagePlugin, config: TaskConfig): SwiftTask {
-        const swift = this.workspaceContext.toolchain.getToolchainExecutable("swift");
+    createSwiftPluginTask(
+        plugin: PackagePlugin,
+        toolchain: SwiftToolchain,
+        config: TaskConfig
+    ): SwiftTask {
+        const swift = toolchain.getToolchainExecutable("swift");
 
         // Add relative path current working directory
         const relativeCwd = path.relative(config.scope.uri.fsPath, config.cwd.fsPath);
@@ -122,7 +136,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             plugin.command,
             ...definition.args,
         ];
-        swiftArgs = this.workspaceContext.toolchain.buildFlags.withAdditionalFlags(swiftArgs);
+        swiftArgs = toolchain.buildFlags.withAdditionalFlags(swiftArgs);
 
         const presentation = config?.presentationOptions ?? {};
         const task = new vscode.Task(
@@ -137,13 +151,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             }),
             []
         );
-        let prefix: string;
-        if (config.prefix) {
-            prefix = `(${config.prefix}) `;
-        } else {
-            prefix = "";
-        }
-        task.detail = `${prefix}swift ${swiftArgs.join(" ")}`;
+        task.detail = `swift ${swiftArgs.join(" ")}`;
         task.presentationOptions = presentation;
         return task as SwiftTask;
     }
@@ -270,14 +278,5 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             args.push(config.allowNetworkConnections);
         }
         return args;
-    }
-
-    /**
-     * Registers the Swift plugin task provider with VS Code.
-     * @param ctx The workspace context.
-     * @returns A disposable that unregisters the provider when disposed.
-     */
-    public static register(ctx: WorkspaceContext): vscode.Disposable {
-        return vscode.tasks.registerTaskProvider("swift-plugin", new SwiftPluginTaskProvider(ctx));
     }
 }

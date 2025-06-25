@@ -13,11 +13,19 @@
 //===----------------------------------------------------------------------===//
 import * as path from "path";
 import * as vscode from "vscode";
+import { substituteVariablesInString } from "../configuration";
+import { FolderContext } from "../FolderContext";
+
+export const lineBreakRegex = /\r\n|\n|\r/gm;
 
 export function resolveTaskCwd(task: vscode.Task, cwd?: string): string | undefined {
     const scopeWorkspaceFolder = getScopeWorkspaceFolder(task);
     if (!cwd) {
         return scopeWorkspaceFolder;
+    }
+
+    if (/\$\{.*\}/g.test(cwd)) {
+        return substituteVariablesInString(cwd);
     }
 
     if (path.isAbsolute(cwd)) {
@@ -36,6 +44,16 @@ function getScopeWorkspaceFolder(task: vscode.Task): string | undefined {
     return;
 }
 
+export function getPlatformConfig<T>(task: vscode.Task): T | undefined {
+    if (process.platform === "win32") {
+        return task.definition.windows;
+    } else if (process.platform === "linux") {
+        return task.definition.linux;
+    } else if (process.platform === "darwin") {
+        return task.definition.macos;
+    }
+}
+
 export function checkIfBuildComplete(line: string): boolean {
     // Output in this format for "build" and "test" commands
     const completeRegex = /^Build complete!/gm;
@@ -50,4 +68,19 @@ export function checkIfBuildComplete(line: string): boolean {
         return true;
     }
     return false;
+}
+
+export function packageName(folderContext: FolderContext): string | undefined {
+    if (vscode.workspace.workspaceFile) {
+        return folderContext.name;
+    } else if (folderContext.relativePath.length > 0) {
+        return folderContext.relativePath;
+    }
+}
+
+export function resolveScope(scope: vscode.WorkspaceFolder | vscode.TaskScope) {
+    if (vscode.workspace.workspaceFile) {
+        return vscode.TaskScope.Workspace;
+    }
+    return scope;
 }

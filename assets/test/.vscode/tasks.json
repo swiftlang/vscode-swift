@@ -6,7 +6,9 @@
 			"args": [
 				"build",
 				"--build-tests",
-				"--verbose"
+				"--verbose",
+				"-Xswiftc",
+				"-DFOO"
 			],
 			"cwd": "defaultPackage",
 			"problemMatcher": [
@@ -14,7 +16,7 @@
 			],
 			"group": "build",
 			"label": "swift: Build All (defaultPackage)",
-			"detail": "swift build --build-tests --verbose"
+			"detail": "swift build --build-tests --verbose -Xswiftc -DFOO"
 		},
 		{
 			"type": "swift",
@@ -33,7 +35,9 @@
 		{
 			"type": "swift-plugin",
 			"command": "command_plugin",
-			"args": ["--foo"],
+			"args": [
+				"--foo"
+			],
 			"cwd": "command-plugin",
 			"disableSandbox": true,
 			"problemMatcher": [

@@ -1,4 +1,4 @@
-$NODEJS='https://nodejs.org/dist/v20.18.2/node-v20.18.2-x64.msi'
+$NODEJS='https://nodejs.org/dist/v20.19.0/node-v20.19.0-x64.msi'
 $NODEJS_SHA256='c2654d3557abd59de08474c6dd009b1d358f420b8e4010e4debbf130b1dfb90a'
 Set-Variable ErrorActionPreference Stop
 Set-Variable ProgressPreference SilentlyContinue

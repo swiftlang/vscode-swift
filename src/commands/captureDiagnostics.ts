@@ -22,6 +22,7 @@ import { WorkspaceContext } from "../WorkspaceContext";
 import { Version } from "../utilities/version";
 import { execFileStreamOutput } from "../utilities/utilities";
 import configuration from "../configuration";
+import { FolderContext } from "../FolderContext";
 
 export async function captureDiagnostics(
     ctx: WorkspaceContext,
@@ -42,23 +43,40 @@ export async function captureDiagnostics(
 
         await fs.mkdir(diagnosticsDir);
         await writeLogFile(diagnosticsDir, "extension-logs.txt", extensionLogs(ctx));
-        await writeLogFile(diagnosticsDir, "settings.txt", settingsLogs(ctx));
 
-        if (captureMode === "Full") {
-            await writeLogFile(diagnosticsDir, "source-code-diagnostics.txt", diagnosticLogs());
+        for (const folder of ctx.folders) {
+            const baseName = path.basename(folder.folder.fsPath);
+            const guid = Math.random().toString(36).substring(2, 10);
+            await writeLogFile(
+                diagnosticsDir,
+                `${baseName}-${guid}-settings.txt`,
+                settingsLogs(folder)
+            );
 
-            // The `sourcekit-lsp diagnose` command is only available in 6.0 and higher.
-            if (ctx.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
-                await sourcekitDiagnose(ctx, diagnosticsDir);
-            } else {
-                await writeLogFile(diagnosticsDir, "sourcekit-lsp.txt", sourceKitLogs(ctx));
+            if (captureMode === "Full") {
+                await writeLogFile(
+                    diagnosticsDir,
+                    `${baseName}-${guid}-source-code-diagnostics.txt`,
+                    diagnosticLogs()
+                );
+
+                // The `sourcekit-lsp diagnose` command is only available in 6.0 and higher.
+                if (folder.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
+                    await sourcekitDiagnose(folder, diagnosticsDir);
+                } else {
+                    await writeLogFile(
+                        diagnosticsDir,
+                        `${baseName}-${guid}-sourcekit-lsp.txt`,
+                        sourceKitLogs(folder)
+                    );
+                }
             }
-        }
 
-        ctx.outputChannel.log(`Saved diagnostics to ${diagnosticsDir}`);
-        await showCapturedDiagnosticsResults(diagnosticsDir);
+            ctx.outputChannel.log(`Saved diagnostics to ${diagnosticsDir}`);
+            await showCapturedDiagnosticsResults(diagnosticsDir);
+        }
     } catch (error) {
-        vscode.window.showErrorMessage(`Unable to capture diagnostic logs: ${error}`);
+        void vscode.window.showErrorMessage(`Unable to capture diagnostic logs: ${error}`);
     }
 }
 
@@ -83,7 +101,7 @@ async function captureDiagnosticsMode(
     allowMinimalCapture: boolean
 ): Promise<"Minimal" | "Full" | undefined> {
     if (
-        ctx.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) ||
+        ctx.globalToolchainSwiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) ||
         vscode.workspace.getConfiguration("sourcekit-lsp").get<string>("trace.server", "off") !==
             "off"
     ) {
@@ -131,12 +149,12 @@ async function showCapturedDiagnosticsResults(diagnosticsDir: string) {
         copyPath
     );
     if (result === copyPath) {
-        vscode.env.clipboard.writeText(diagnosticsDir);
+        await vscode.env.clipboard.writeText(diagnosticsDir);
     } else if (result === showInFinderButton) {
         exec(showDirectoryCommand(diagnosticsDir), error => {
             // Opening the explorer on windows returns an exit code of 1 despite opening successfully.
             if (error && process.platform !== "win32") {
-                vscode.window.showErrorMessage(
+                void vscode.window.showErrorMessage(
                     `Failed to open ${showCommandType()}: ${error.message}`
                 );
             }
@@ -155,7 +173,7 @@ function extensionLogs(ctx: WorkspaceContext): string {
     return ctx.outputChannel.logs.join("\n");
 }
 
-function settingsLogs(ctx: WorkspaceContext): string {
+function settingsLogs(ctx: FolderContext): string {
     const settings = JSON.stringify(vscode.workspace.getConfiguration("swift"), null, 2);
     return `${ctx.toolchain.diagnostics}\nSettings:\n${settings}`;
 }
@@ -173,11 +191,13 @@ function diagnosticLogs(): string {
         .join("\n");
 }
 
-function sourceKitLogs(ctx: WorkspaceContext) {
-    return (ctx.languageClientManager.languageClientOutputChannel?.logs ?? []).join("\n");
+function sourceKitLogs(folder: FolderContext) {
+    const languageClient = folder.workspaceContext.languageClientManager.get(folder);
+    const logs = languageClient.languageClientOutputChannel?.logs ?? [];
+    return logs.join("\n");
 }
 
-async function sourcekitDiagnose(ctx: WorkspaceContext, dir: string) {
+async function sourcekitDiagnose(ctx: FolderContext, dir: string) {
     const sourcekitDiagnosticDir = path.join(dir, "sourcekit-lsp");
     await fs.mkdir(sourcekitDiagnosticDir);
 
@@ -212,7 +232,7 @@ async function sourcekitDiagnose(ctx: WorkspaceContext, dir: string) {
                     env: { ...process.env, ...configuration.swiftEnvironmentVariables },
                     maxBuffer: 16 * 1024 * 1024,
                 },
-                ctx.currentFolder ?? undefined
+                ctx ?? undefined
             );
         }
     );

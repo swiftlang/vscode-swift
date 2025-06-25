@@ -15,14 +15,11 @@
 import * as vscode from "vscode";
 import { expect } from "chai";
 import { runTestMultipleTimes } from "../../../src/commands/testMultipleTimes";
-import { mockGlobalObject } from "../../MockUtils";
 import { FolderContext } from "../../../src/FolderContext";
 import { TestRunProxy } from "../../../src/TestExplorer/TestRunner";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 
 suite("Test Multiple Times Command Test Suite", () => {
-    const windowMock = mockGlobalObject(vscode, "window");
-
     let folderContext: FolderContext;
     let testItem: vscode.TestItem;
 
@@ -42,15 +39,12 @@ suite("Test Multiple Times Command Test Suite", () => {
     });
 
     test("Runs successfully after testing 0 times", async () => {
-        windowMock.showInputBox.resolves("0");
-        const runState = await runTestMultipleTimes(folderContext, testItem, false);
+        const runState = await runTestMultipleTimes(folderContext, testItem, false, 0);
         expect(runState).to.be.an("array").that.is.empty;
     });
 
     test("Runs successfully after testing 3 times", async () => {
-        windowMock.showInputBox.resolves("3");
-
-        const runState = await runTestMultipleTimes(folderContext, testItem, false, () =>
+        const runState = await runTestMultipleTimes(folderContext, testItem, false, 3, () =>
             Promise.resolve(TestRunProxy.initialTestRunState())
         );
 
@@ -62,14 +56,12 @@ suite("Test Multiple Times Command Test Suite", () => {
     });
 
     test("Stops after a failure on the 2nd iteration ", async () => {
-        windowMock.showInputBox.resolves("3");
-
         const failure = {
             ...TestRunProxy.initialTestRunState(),
             failed: [{ test: testItem, message: new vscode.TestMessage("oh no") }],
         };
         let ctr = 0;
-        const runState = await runTestMultipleTimes(folderContext, testItem, true, () => {
+        const runState = await runTestMultipleTimes(folderContext, testItem, true, 3, () => {
             ctr += 1;
             if (ctr === 2) {
                 return Promise.resolve(failure);

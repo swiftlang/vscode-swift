@@ -11,8 +11,8 @@ To give clarity of what is expected of our members, Swift has adopted the code o
 ## Development
 
 To begin development on the VS Code extension for Swift you will need to install [Node.js](https://nodejs.org). We use [nvm](https://github.com/nvm-sh/nvm) the Node version manager to install Node.js. To install or update nvm you should run their install script
-```
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+```sh
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 ```
 More details on nvm installation can be found in the [README](https://github.com/nvm-sh/nvm/?tab=readme-ov-file) from its GitHub repository.
 
@@ -20,11 +20,17 @@ Once you have installed nvm, you can clone and configure the repository.
 
 ```sh
 git clone https://github.com/swiftlang/vscode-swift.git && cd vscode-swift
+```
 
-# Install the correct version of Node.JS for developing the extension
+Install the correct version of Node.JS for developing the extension
+
+```sh
 nvm install
+```
 
-# Installs all the dependencies the extension requires
+Installs all the dependencies the extension requires
+
+```sh
 npm install
 ```
 
@@ -58,7 +64,7 @@ If you'd like to return to using the released version of the extension you can u
 
 Occasionally, pre-release builds will be published to the VS Code Marketplace. You can switch to the pre-release version by clicking on the `Switch to Pre-Release Version` button in the Extensions View:
 
-![](docs/images/install-pre-release.png)
+![A snapshot of VS Code that has Extensions highlighted, showing the Swift extension. In the detail panel of the extension view, a red box highlights the button "Switch to Pre-Release Version".](userdocs/userdocs.docc/Resources/install-pre-release.png)
 
 Switching back to the release version can be done by clicking on the `Switch to Release Version` button.
 
@@ -82,7 +88,7 @@ Please ensure to include the following in your Pull Request (PR):
 - Documentation on how these changes are being tested
 - Additional tests to show your code working and to ensure future changes don't break your code.
 
-Please keep your PRs to a minimal number of changes. If a PR is large, try to split it up into smaller PRs. Don't move code around unnecessarily as it makes comparing old with new very hard. If you have plans for a large change please talk to the maintainers of the project beforehand either on the [swift.org forums](https://forums.swift.org) in the [VS Code Swift Extension category](https://forums.swift.org/c/related-projects/vscode-swift-extension/) or in the `#vscode-swift` channel on the Swift Server Slack. You can [join the Slack workspace here](https://join.slack.com/t/swift-server/shared_invite/zt-5jv0mzlu-1HnA~7cpjL6IfmZqd~yQ2A).
+Please keep your PRs to a minimal number of changes. If a PR is large, try to split it up into smaller PRs. Don't move code around unnecessarily as it makes comparing old with new very hard. If you have plans for a large change please talk to the maintainers of the project beforehand either on the [swift.org forums](https://forums.swift.org) in the [VS Code Swift Extension category](https://forums.swift.org/c/related-projects/vscode-swift-extension/) or in the `#vscode-swift` channel on the Swift Server Slack. You can [join the Slack workspace here](https://join.slack.com/t/swift-open-source/shared_invite/zt-1a3hxb9r5-8sFU3D7JUvaP5QO1AjSivg).
 
 ### Testing
 
@@ -101,7 +107,7 @@ Now you can run tests locally using either of the following methods:
 - Using `npm run test` from your terminal
   - You can also use `npm run unit-test` or `npm run integration-test` to specifically run the Unit Tests or Integration Tests respectively.
 
-Tests can also be launched from the terminal with the `--coverage` flag to display converage information. For example:
+Tests can also be launched from the terminal with the `--coverage` flag to display coverage information. For example:
 
 ```bash
 npm run unit-test -- --coverage

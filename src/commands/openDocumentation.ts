@@ -19,6 +19,6 @@ import * as vscode from "vscode";
  */
 export async function openDocumentation(): Promise<boolean> {
     return await vscode.env.openExternal(
-        vscode.Uri.parse("https://www.swift.org/vscode/documentation/vscode")
+        vscode.Uri.parse("https://docs.swift.org/vscode/documentation/userdocs")
     );
 }

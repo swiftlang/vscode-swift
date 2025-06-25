@@ -1,5 +1,44 @@
 # Changelog
 
+## {{releaseVersion}} - {{releaseDate}}
+
+### Added
+
+- Support for [multi-root .code-workspace](https://code.visualstudio.com/docs/editing/workspaces/multi-root-workspaces) workspaces ([#1566](https://github.com/swiftlang/vscode-swift/pull/1566))
+- Notify user if the `xcode-select`ed Xcode doesn't match setting ([#1563](https://github.com/swiftlang/vscode-swift/pull/1563))
+
+### Fixed
+
+- Do not show non-"swift" tasks in the project panel ([#1620](https://github.com/swiftlang/vscode-swift/pull/1620))
+- Make sure activation does not fail when `swift.path` is `null` ([#1616](https://github.com/swiftlang/vscode-swift/pull/1616))
+- Fix `Swift: Reset Package Dependencies` command on Windows ([#1614](https://github.com/swiftlang/vscode-swift/pull/1614))
+- Activate extension when a .swift source file exists in a subfolder ([#1635](https://github.com/swiftlang/vscode-swift/pull/1635))
+- Resolve Swiftly toolchain path ([#1632](https://github.com/swiftlang/vscode-swift/pull/1632))
+- Fix diagnostic parsing when the file has a space in it ([#1633](https://github.com/swiftlang/vscode-swift/pull/1633))
+- Hide files excluded with files.exclude from Project Panel ([#1626](https://github.com/swiftlang/vscode-swift/pull/1626))
+
+## 2.4.0 - 2025-06-11
+
+### Added
+
+- Add command to generate launch configurations ([#1577](https://github.com/swiftlang/vscode-swift/pull/1577))
+
+### Fixed
+
+- Break immediately when cancelling a multiple test run ([#1589](https://github.com/swiftlang/vscode-swift/pull/1589))
+- Fix timing issues introduced by new version of Node.js ([#1576](https://github.com/swiftlang/vscode-swift/pull/1576))
+- Fix issues with splitting output lines on Windows ([#1570](https://github.com/swiftlang/vscode-swift/pull/1570))
+- Better handle status updates for build tasks ([#1539](https://github.com/swiftlang/vscode-swift/pull/1539))
+- Allow platform selection in remote SSH sessions ([#1567](https://github.com/swiftlang/vscode-swift/pull/1567))
+- Don't colorize swift testing issue messages ([#1543](https://github.com/swiftlang/vscode-swift/pull/1543))
+- Poll for updated tasks in project panel ([#1516](https://github.com/swiftlang/vscode-swift/pull/1516))
+- Support finding compile_commands.json in non root project directories ([#1484](https://github.com/swiftlang/vscode-swift/pull/1484))
+- Support different toolchains per folder ([#1478](https://github.com/swiftlang/vscode-swift/pull/1478))
+- Disable clicking on links in Live Preview ([#1518](https://github.com/swiftlang/vscode-swift/pull/1518))
+- Avoid blocking folder addition on package loading ([#1422](https://github.com/swiftlang/vscode-swift/pull/1422))
+- Increase the size of child_process buffers ([#1506](https://github.com/swiftlang/vscode-swift/pull/1506))
+- Fix handling of malformed educational notes links ([#1607](https://github.com/swiftlang/vscode-swift/pull/1607))
+
 ## 2.2.0 - 2025-04-07
 
 ### Added

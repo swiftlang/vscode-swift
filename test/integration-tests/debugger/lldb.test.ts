@@ -17,6 +17,7 @@ import { getLLDBLibPath } from "../../../src/debugger/lldb";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { activateExtensionForTest } from "../utilities/testutilities";
 import { Version } from "../../../src/utilities/version";
+import { IS_RUNNING_IN_CI } from "../../../src/utilities/utilities";
 
 suite("lldb contract test suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -25,10 +26,10 @@ suite("lldb contract test suite", () => {
         async setup(ctx) {
             // lldb.exe on Windows is not launching correctly, but only in Docker.
             if (
-                process.env["CI"] &&
+                IS_RUNNING_IN_CI &&
                 process.platform === "win32" &&
-                ctx.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
-                ctx.swiftVersion.isLessThan(new Version(6, 0, 2))
+                ctx.globalToolchainSwiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
+                ctx.globalToolchainSwiftVersion.isLessThan(new Version(6, 0, 2))
             ) {
                 this.skip();
             }
@@ -38,7 +39,7 @@ suite("lldb contract test suite", () => {
     });
 
     test("getLLDBLibPath Contract Test, make sure we can find lib LLDB", async () => {
-        const libPath = await getLLDBLibPath(workspaceContext.toolchain);
+        const libPath = await getLLDBLibPath(workspaceContext.globalToolchain);
 
         // Check the result for various platforms
         if (process.platform === "linux") {

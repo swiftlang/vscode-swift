@@ -14,9 +14,11 @@
 /* eslint-disable no-console */
 
 import * as child_process from "child_process";
-import { readFile } from "fs/promises";
+import { mkdtemp, readFile, rm } from "fs/promises";
 import * as path from "path";
+import * as os from "os";
 import * as semver from "semver";
+import { replaceInFile } from "replace-in-file";
 
 /**
  * Executes the provided main function for the script while logging any errors.
@@ -42,12 +44,24 @@ export function getRootDirectory(): string {
 }
 
 /**
+ * Returns the path to the extension manifest.
+ */
+export function getManifest(): string {
+    return path.join(getRootDirectory(), "package.json");
+}
+
+/**
+ * Returns the path to the extension changelog.
+ */
+export function getChangelog(): string {
+    return path.join(getRootDirectory(), "CHANGELOG.md");
+}
+
+/**
  * Retrieves the version number from the package.json.
  */
 export async function getExtensionVersion(): Promise<semver.SemVer> {
-    const packageJSON = JSON.parse(
-        await readFile(path.join(getRootDirectory(), "package.json"), "utf-8")
-    );
+    const packageJSON = JSON.parse(await readFile(getManifest(), "utf-8"));
     if (typeof packageJSON.version !== "string") {
         throw new Error("Version number in package.json is not a string");
     }
@@ -88,5 +102,43 @@ export async function exec(
             }
             console.log("");
         });
+    });
+}
+
+/**
+ * Creates a temporary directory for the lifetime of the provided task.
+ *
+ * @param prefix The prefix of the generated directory name.
+ * @param task The task that will use the temporary directory.
+ */
+export async function withTemporaryDirectory<T>(
+    prefix: string,
+    task: (directory: string) => Promise<T>
+): Promise<T> {
+    const directory = await mkdtemp(path.join(os.tmpdir(), prefix));
+    try {
+        return await task(directory);
+    } finally {
+        await rm(directory, { force: true, recursive: true }).catch(error => {
+            console.error(`Failed to remove temporary directory '${directory}'`);
+            console.error(error);
+        });
+    }
+}
+
+export async function updateChangelog(version: string): Promise<void> {
+    await replaceInFile({
+        files: getChangelog(),
+        from: /{{releaseVersion}}/g,
+        to: version,
+    });
+    const date = new Date();
+    const year = date.getUTCFullYear().toString().padStart(4, "0");
+    const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
+    const day = date.getUTCDate().toString().padStart(2, "0");
+    await replaceInFile({
+        files: getChangelog(),
+        from: /{{releaseDate}}/g,
+        to: `${year}-${month}-${day}`,
     });
 }

@@ -14,6 +14,7 @@
 
 import * as vscode from "vscode";
 import * as assert from "assert";
+import * as os from "os";
 import * as path from "path";
 import { match } from "sinon";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
@@ -23,6 +24,7 @@ import { SwiftExecution } from "../../../src/tasks/SwiftExecution";
 import { Version } from "../../../src/utilities/version";
 import { BuildFlags } from "../../../src/toolchain/BuildFlags";
 import { instance, MockedObject, mockFn, mockObject } from "../../MockUtils";
+import { FolderContext } from "../../../src/FolderContext";
 
 suite("SwiftPluginTaskProvider Unit Test Suite", () => {
     let workspaceContext: MockedObject<WorkspaceContext>;
@@ -39,14 +41,14 @@ suite("SwiftPluginTaskProvider Unit Test Suite", () => {
             buildFlags: instance(buildFlags),
             getToolchainExecutable: mockFn(s => s.withArgs("swift").returns("/path/to/bin/swift")),
         });
-        workspaceContext = mockObject<WorkspaceContext>({
+        const folderContext = mockObject<FolderContext>({
+            workspaceContext: instance(workspaceContext),
+            workspaceFolder,
             toolchain: instance(toolchain),
-            get swiftVersion() {
-                return toolchain.swiftVersion;
-            },
-            set swiftVersion(version) {
-                toolchain.swiftVersion = version;
-            },
+        });
+        workspaceContext = mockObject<WorkspaceContext>({
+            globalToolchain: instance(toolchain),
+            currentFolder: instance(folderContext),
         });
         workspaceFolder = {
             uri: vscode.Uri.file("/path/to/workspace"),
@@ -266,6 +268,31 @@ suite("SwiftPluginTaskProvider Unit Test Suite", () => {
                 "package",
                 "--allow-writing-to-package-directory",
                 "my-plugin",
+            ]);
+        });
+
+        test("substitutes variables", async () => {
+            const taskProvider = new SwiftPluginTaskProvider(instance(workspaceContext));
+            const task = new vscode.Task(
+                {
+                    type: "swift-plugin",
+                    args: ["${cwd}", "${userHome}"],
+                    command: "my-plugin",
+                },
+                workspaceFolder,
+                "MyPlugin",
+                "swift"
+            );
+            const resolvedTask = taskProvider.resolveTask(
+                task,
+                new vscode.CancellationTokenSource().token
+            );
+            const swiftExecution = resolvedTask.execution as SwiftExecution;
+            assert.deepEqual(swiftExecution.args, [
+                "package",
+                "my-plugin",
+                process.cwd(),
+                os.homedir(),
             ]);
         });
     });

@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 
 export async function runPluginTask() {
-    vscode.commands.executeCommand("workbench.action.tasks.runTask", {
+    await vscode.commands.executeCommand("workbench.action.tasks.runTask", {
         type: "swift-plugin",
     });
 }

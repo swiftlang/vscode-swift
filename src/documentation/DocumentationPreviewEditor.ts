@@ -143,7 +143,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         if (message.type === "update-content") {
             this.updateContentEmitter.fire(message.content);
         }
-        this.webviewPanel.webview.postMessage(message);
+        void this.webviewPanel.webview.postMessage(message);
     }
 
     private receiveMessage(message: WebviewMessage) {
@@ -152,7 +152,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                 if (!this.activeTextEditor) {
                     break;
                 }
-                this.convertDocumentation(this.activeTextEditor);
+                void this.convertDocumentation(this.activeTextEditor);
                 break;
             case "rendered":
                 this.renderEmitter.fire();
@@ -166,7 +166,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         }
         this.activeTextEditor = activeTextEditor;
         this.activeTextEditorSelection = activeTextEditor.selection;
-        this.convertDocumentation(activeTextEditor);
+        void this.convertDocumentation(activeTextEditor);
     }
 
     private handleSelectionChange(event: vscode.TextEditorSelectionChangeEvent) {
@@ -177,12 +177,12 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
             return;
         }
         this.activeTextEditorSelection = event.textEditor.selection;
-        this.convertDocumentation(event.textEditor);
+        void this.convertDocumentation(event.textEditor);
     }
 
     private handleDocumentChange(event: vscode.TextDocumentChangeEvent) {
         if (this.activeTextEditor?.document === event.document) {
-            this.convertDocumentation(this.activeTextEditor);
+            void this.convertDocumentation(this.activeTextEditor);
         }
     }
 
@@ -203,8 +203,17 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                 return;
             }
 
+            const folderContext = this.context.folders.find(folderContext =>
+                document.uri.fsPath.startsWith(folderContext.folder.fsPath)
+            );
+
+            if (!folderContext) {
+                return;
+            }
+
+            const languageClientManager = this.context.languageClientManager.get(folderContext);
             try {
-                const response = await this.context.languageClientManager.useLanguageClient(
+                const response = await languageClientManager.useLanguageClient(
                     async (client): Promise<DocCDocumentationResponse> => {
                         return await client.sendRequest(DocCDocumentationRequest.type, {
                             textDocument: {

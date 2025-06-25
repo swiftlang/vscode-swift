@@ -18,7 +18,7 @@ import * as vscode from "vscode";
 import configuration, { ShowBuildStatusOptions } from "../configuration";
 import { RunningTask, StatusItem } from "./StatusItem";
 import { SwiftExecution } from "../tasks/SwiftExecution";
-import { checkIfBuildComplete } from "../utilities/tasks";
+import { checkIfBuildComplete, lineBreakRegex } from "../utilities/tasks";
 
 /**
  * Progress of `swift` build, parsed from the
@@ -64,6 +64,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
         }
 
         const execution = task.execution as SwiftExecution;
+        const isBuildTask = task.group === vscode.TaskGroup.Build;
         const disposables: vscode.Disposable[] = [];
         const handleTaskOutput = (update: (message: string) => void) =>
             new Promise<void>(res => {
@@ -75,6 +76,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
                     this.outputParser(
                         new RunningTask(task).name,
                         execution,
+                        isBuildTask,
                         showBuildStatus,
                         update,
                         done
@@ -88,7 +90,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
                 );
             });
         if (showBuildStatus === "progress" || showBuildStatus === "notification") {
-            vscode.window.withProgress<void>(
+            void vscode.window.withProgress<void>(
                 {
                     location:
                         showBuildStatus === "progress"
@@ -98,7 +100,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
                 progress => handleTaskOutput(message => progress.report({ message }))
             );
         } else {
-            this.statusItem.showStatusWhileRunning(task, () =>
+            void this.statusItem.showStatusWhileRunning(task, () =>
                 handleTaskOutput(message => this.statusItem.update(task, message))
             );
         }
@@ -107,6 +109,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
     private outputParser(
         name: string,
         execution: SwiftExecution,
+        isBuildTask: boolean,
         showBuildStatus: ShowBuildStatusOptions,
         update: (message: string) => void,
         done: () => void
@@ -118,10 +121,11 @@ export class SwiftBuildStatus implements vscode.Disposable {
             // We'll process data one line at a time, in reverse order
             // since the latest interesting message is all we need to
             // be concerned with
-            const lines = sanitizedData.split(/\r\n|\n|\r/gm).reverse();
+            const lines = sanitizedData.split(lineBreakRegex).reverse();
             for (const line of lines) {
                 if (checkIfBuildComplete(line)) {
-                    return true;
+                    update(name);
+                    return !isBuildTask;
                 }
                 const progress = this.findBuildProgress(line);
                 if (progress) {

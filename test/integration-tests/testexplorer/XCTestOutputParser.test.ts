@@ -24,6 +24,7 @@ import { sourceLocationToVSCodeLocation } from "../../../src/utilities/utilities
 import { TestXUnitParser } from "../../../src/TestExplorer/TestXUnitParser";
 import { activateExtensionForSuite } from "../utilities/testutilities";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
+import { lineBreakRegex } from "../../../src/utilities/tasks";
 
 enum ParserTestKind {
     Regular = "Regular Test Run",
@@ -33,7 +34,7 @@ enum ParserTestKind {
 suite("XCTestOutputParser Suite", () => {
     function inputToTestOutput(input: string) {
         return input
-            .split("\n")
+            .split(lineBreakRegex)
             .slice(0, -1)
             .map(line => `${line}\r\n`);
     }
@@ -73,7 +74,7 @@ ${tests.map(
     let hasMultiLineParallelTestOutput: boolean;
     activateExtensionForSuite({
         async setup(ctx) {
-            hasMultiLineParallelTestOutput = ctx.toolchain.hasMultiLineParallelTestOutput;
+            hasMultiLineParallelTestOutput = ctx.globalToolchain.hasMultiLineParallelTestOutput;
         },
     });
 
@@ -85,7 +86,7 @@ ${tests.map(
             if (parserTestKind === ParserTestKind.Parallel) {
                 const xmlResults = expectedStateToXML(expected);
                 const xmlParser = new TestXUnitParser(hasMultiLineParallelTestOutput);
-                xmlParser.parse(xmlResults, testRunState, new SwiftOutputChannel("test"));
+                void xmlParser.parse(xmlResults, testRunState, new SwiftOutputChannel("test"));
             }
 
             assert.deepEqual(testRunState.tests, expected);
@@ -479,6 +480,37 @@ Test Suite 'Selected tests' failed at 2024-10-20 22:01:46.306.
                                     diff: undefined,
                                 },
                             ],
+                        },
+                    ]);
+                    assert.deepEqual(inputToTestOutput(input), testRunState.allOutput);
+                });
+
+                test("Interleaved user and XCTest output", () => {
+                    const input = `Test Suite 'Selected tests' started at 2024-10-20 22:01:46.206.
+Test Suite 'EmptyAppPackageTests.xctest' started at 2024-10-20 22:01:46.207.
+Test Suite 'TestSuite1' started at 2024-10-20 22:01:46.207.
+Test Case '-[MyTests.TestSuite1 testFirst]' started.
+[debug]: evaluating manifest for 'pkg' v. unknown
+[debug]: loading manifeTest Case '-[MyTests.TestSuite1 testFirst]' passed (0.001 seconds).
+Test Suite 'TestSuite1' passed at 2024-10-20 22:01:46.208.
+    Executed 1 test, with 0 failures (0 unexpected) in 0.000 (0.000) seconds`;
+
+                    outputParser.parseResult(input, testRunState);
+
+                    const testOutput = inputToTestOutput(input);
+                    assertTestRunState(testRunState, [
+                        {
+                            name: "MyTests.TestSuite1",
+                            output: [testOutput[2], testOutput[6]],
+                            status: TestStatus.passed,
+                        },
+                        {
+                            name: "MyTests.TestSuite1/testFirst",
+                            output: [testOutput[3], testOutput[5]],
+                            status: TestStatus.passed,
+                            timing: {
+                                duration: 0.001,
+                            },
                         },
                     ]);
                     assert.deepEqual(inputToTestOutput(input), testRunState.allOutput);

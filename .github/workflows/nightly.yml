@@ -11,65 +11,93 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: swift:6.0-jammy
+    outputs:
+      artifact-id: ${{ steps.archive.outputs.artifact-id }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Build Extension
         run: |
-          export NODE_VERSION=v20.18.2
-          export NODE_PATH=/usr/local/nvm/versions/node/v20.18.2/bin
+          export NODE_VERSION=v20.19.0
+          export NODE_PATH=/usr/local/nvm/versions/node/v20.19.0/bin
           export NVM_DIR=/usr/local/nvm
           . .github/workflows/scripts/setup-linux.sh
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
           npm ci
-          npm run compile
           npm run package
           npm run preview-package
+          for file in *.vsix; do
+            name="$(basename "$file" .vsix)-${{github.run_number}}.vsix"
+            echo "Created bundle $name"
+            mv "$file" "$name"
+          done
+          git config --global --add safe.directory $PWD
+          git rev-parse HEAD > vscode-swift-sha.txt
       - name: Archive production artifacts
+        id: archive
         uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ env.ACT != 'true' }}
         with:
+          if-no-files-found: error
           name: vscode-swift-extension
           path: |
             *.vsix
+            vscode-swift-sha.txt
+
   tests_release:
     name: Test Release
+    needs: package
     uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@main
     with:
+      needs_token: true
       # Linux
+      linux_exclude_swift_versions: '[{"swift_version": "nightly-6.1"}]'
       linux_env_vars: |
-        NODE_VERSION=v20.18.2
-        NODE_PATH=/usr/local/nvm/versions/node/v20.18.2/bin
+        NODE_VERSION=v20.19.0
+        NODE_PATH=/usr/local/nvm/versions/node/v20.19.0/bin
         NVM_DIR=/usr/local/nvm
         CI=1
+        VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
+        GITHUB_REPOSITORY=${{github.repository}}
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./scripts/test.sh
       # Windows
+      windows_exclude_swift_versions: '[{"swift_version": "nightly-6.1"},{"swift_version": "nightly"}]'  # Missing https://github.com/swiftlang/swift/pull/80144
       windows_env_vars: |
         CI=1
-      windows_pre_build_command: .github\workflows\scripts\windows\install-nodejs.ps1
+        VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
+        VSCODE_SWIFT_VSIX=vscode-swift.vsix
+        GITHUB_REPOSITORY=${{github.repository}}
+      windows_pre_build_command: .github\workflows\scripts\windows\setup.ps1
       windows_build_command: scripts\test_windows.ps1
       enable_windows_docker: false
 
   tests_insiders:
     name: Test Insiders
+    needs: package
     uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@main
     with:
+      needs_token: true
       # Linux
-      linux_exclude_swift_versions: '[{"swift_version": "5.8"}, {"swift_version": "5.9"}, {"swift_version": "5.10"}, {"swift_version": "6.0"}, {"swift_version": "nightly-6.1"}, {"swift_version": "nightly-main"}]'
+      linux_exclude_swift_versions: '[{"swift_version": "5.8"}, {"swift_version": "5.9"}, {"swift_version": "5.10"}, {"swift_version": "6.0"}, {"swift_version": "nightly-6.1"}, {"swift_version": "nightly-6.2"}, {"swift_version": "nightly-main"}]'
       linux_env_vars: |
-        NODE_VERSION=v20.18.2
-        NODE_PATH=/usr/local/nvm/versions/node/v20.18.2/bin
+        NODE_VERSION=v20.19.0
+        NODE_PATH=/usr/local/nvm/versions/node/v20.19.0/bin
         NVM_DIR=/usr/local/nvm
         CI=1
         VSCODE_VERSION=insiders
+        VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
+        GITHUB_REPOSITORY=${{github.repository}}
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./scripts/test.sh
       # Windows
-      windows_exclude_swift_versions: '[{"swift_version": "5.9"}, {"swift_version": "6.0"}, {"swift_version": "nightly-6.1"}, {"swift_version": "nightly"}]'
+      windows_exclude_swift_versions: '[{"swift_version": "5.9"}, {"swift_version": "6.0"}, {"swift_version": "nightly-6.1"}, {"swift_version": "nightly-6.2"}, {"swift_version": "nightly"}]'
       windows_env_vars: |
         CI=1
         VSCODE_VERSION=insiders
-      windows_pre_build_command: .github\workflows\scripts\windows\install-nodejs.ps1
+        VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
+        VSCODE_SWIFT_VSIX=vscode-swift.vsix
+        GITHUB_REPOSITORY=${{github.repository}}
+      windows_pre_build_command: .github\workflows\scripts\windows\setup.ps1
       windows_build_command: scripts\test_windows.ps1
       enable_windows_docker: false
