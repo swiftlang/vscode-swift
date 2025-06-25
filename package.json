@@ -426,7 +426,7 @@
           },
           "swift.diagnosticsStyle": {
             "type": "string",
-            "default": "llvm",
+            "default": "default",
             "markdownDescription": "The formatting style used when printing diagnostics in the Problems panel. Corresponds to the `-diagnostic-style` option to pass to `swiftc` when running `swift` tasks.",
             "enum": [
               "default",

@@ -101,9 +101,7 @@ suite("SwiftTaskProvider Test Suite", () => {
             });
 
             test("provided", async () => {
-                expect(task?.detail)
-                    .to.include("swift build --build-tests")
-                    .and.to.include("-Xswiftc -diagnostic-style=llvm");
+                expect(task?.detail).to.include("swift build --build-tests");
             });
 
             test("executes @slow", async () => {
@@ -144,9 +142,7 @@ suite("SwiftTaskProvider Test Suite", () => {
         test("includes product debug task", async () => {
             const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
             const task = tasks.find(t => t.name === "Build Debug PackageExe (defaultPackage)");
-            expect(task?.detail)
-                .to.include("swift build --product PackageExe")
-                .and.to.include("-Xswiftc -diagnostic-style=llvm");
+            expect(task?.detail).to.include("swift build --product PackageExe");
         });
 
         test("includes product release task", async () => {
