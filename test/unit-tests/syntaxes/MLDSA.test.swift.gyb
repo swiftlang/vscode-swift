@@ -157,7 +157,7 @@ extension MLDSA${parameter_set} {
 //                                                ^ variable.other.gyb
 //                                                 ^ punctuation.section.expression.begin.gyb
 //                                                               ^ punctuation.section.expression.end.gyb
-//                                                                ^^^^^^^^^^^^^ meta.definition.type.body.swift
+//                                                                ^^^^^^^^^^^^^ meta.definition.function.body.swift
 //                                                                             ^ punctuation.definition.arguments.begin.swift
                                 publicKeyPtr.baseAddress,
                                 seedPtr.baseAddress,
