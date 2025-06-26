@@ -21,6 +21,7 @@ import configuration from "./configuration";
 import { SwiftExecution } from "./tasks/SwiftExecution";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { checkIfBuildComplete, lineBreakRegex } from "./utilities/tasks";
+import { validFileTypes } from "./utilities/filesystem";
 
 interface ParsedDiagnostic {
     uri: string;
@@ -101,6 +102,17 @@ export class DiagnosticsManager implements vscode.Disposable {
                 .catch(e =>
                     context.outputChannel.log(`${e}`, 'Failed to provide "swiftc" diagnostics')
                 );
+        });
+        const fileTypes = validFileTypes.join(",");
+        this.workspaceFileWatcher = vscode.workspace.createFileSystemWatcher(
+            `**/*.{${fileTypes}}`,
+            true,
+            true
+        );
+        this.onDidDeleteDisposible = this.workspaceFileWatcher.onDidDelete(uri => {
+            if (this.allDiagnostics.delete(uri.fsPath)) {
+                this.diagnosticCollection.delete(uri);
+            }
         });
     }
 
@@ -276,6 +288,8 @@ export class DiagnosticsManager implements vscode.Disposable {
         this.diagnosticCollection.dispose();
         this.onDidStartTaskDisposible.dispose();
         this.onDidChangeConfigurationDisposible.dispose();
+        this.onDidDeleteDisposible.dispose();
+        this.workspaceFileWatcher.dispose();
     }
 
     private includeSwiftcDiagnostics(): boolean {
@@ -454,4 +468,6 @@ export class DiagnosticsManager implements vscode.Disposable {
 
     private onDidStartTaskDisposible: vscode.Disposable;
     private onDidChangeConfigurationDisposible: vscode.Disposable;
+    private onDidDeleteDisposible: vscode.Disposable;
+    private workspaceFileWatcher: vscode.FileSystemWatcher;
 }
