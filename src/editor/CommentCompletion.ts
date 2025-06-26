@@ -17,10 +17,7 @@ import { DocumentParser } from "./DocumentParser";
 
 function isLineComment(document: vscode.TextDocument, line: number): boolean {
     // test if line consists of just '///'
-    if (/^\s*\/\/\//.test(document.lineAt(line).text)) {
-        return true;
-    }
-    return false;
+    return /^\s*\/\/\//.test(document.lineAt(line).text);
 }
 
 /** CompletionItem for Swift Comments */
