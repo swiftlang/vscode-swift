@@ -67,6 +67,7 @@ export interface TestRunState {
     passed: vscode.TestItem[];
     skipped: vscode.TestItem[];
     errored: vscode.TestItem[];
+    enqueued: vscode.TestItem[];
     unknown: number;
     output: string[];
 }
@@ -95,6 +96,7 @@ export class TestRunProxy {
             passed: [],
             skipped: [],
             errored: [],
+            enqueued: [],
             unknown: 0,
             output: [],
         };
@@ -181,10 +183,9 @@ export class TestRunProxy {
         for (const outputLine of this.queuedOutput) {
             this.performAppendOutput(this.testRun, outputLine);
         }
-        this.queuedOutput = [];
 
         for (const test of this.testItems) {
-            this.testRun.enqueued(test);
+            this.enqueued(test);
         }
     };
 
@@ -218,17 +219,27 @@ export class TestRunProxy {
         }
     }
 
+    private enqueued(test: vscode.TestItem) {
+        this.testRun?.enqueued(test);
+        this.runState.enqueued.push(test);
+    }
+
     public unknownTestRan() {
         this.runState.unknown++;
     }
 
     public started(test: vscode.TestItem) {
+        this.clearEnqueuedTest(test);
         this.runState.pending.push(test);
         this.testRun?.started(test);
     }
 
     private clearPendingTest(test: vscode.TestItem) {
         this.runState.pending = this.runState.pending.filter(t => t !== test);
+    }
+
+    private clearEnqueuedTest(test: vscode.TestItem) {
+        this.runState.enqueued = this.runState.enqueued.filter(t => t.id !== test.id);
     }
 
     public skipped(test: vscode.TestItem) {
@@ -277,6 +288,19 @@ export class TestRunProxy {
         this.runState.pending.forEach(test => {
             this.failed(test, new vscode.TestMessage("Test did not complete."));
         });
+
+        // If there are tests that never started, mark them as skipped.
+        // This can happen if there is a build error preventing tests from running.
+        this.runState.enqueued.forEach(test => {
+            if (test.children.size === 0) {
+                for (const output of this.queuedOutput) {
+                    this.appendOutputToTest(output, test);
+                }
+                this.skipped(test);
+            }
+        });
+
+        this.queuedOutput = [];
 
         this.reportAttachments();
         this.testRun?.end();
