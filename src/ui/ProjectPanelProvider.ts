@@ -289,7 +289,8 @@ class TargetNode {
     constructor(
         public target: Target,
         private folder: FolderContext,
-        private activeTasks: Set<string>
+        private activeTasks: Set<string>,
+        private fs?: (folder: string) => Promise<string[]>
     ) {}
 
     get name(): string {
@@ -377,68 +378,24 @@ class TargetNode {
         // .build/plugins/outputs/buildtoolplugin/<target-name>/destination/<build-tool-plugin-name>/*
         // This glob will capture all the files in the outputs directory for this target.
         const pattern = this.buildToolGlobPattern(version);
-        const matches = glob.sync(pattern, { onlyDirectories: false });
+        const base = this.folder.folder.fsPath.replace(/\\/g, "/");
+        const matches = glob.sync(pattern, { onlyFiles: false, cwd: base, deep: 4 });
 
-        const buildTree = (matches: string[]): TreeNode[] => {
-            const basePath = path.join(this.folder.folder.fsPath, ".build", "plugins", "outputs");
-            // Gather up the files by build tool plugin name. Don't capture any more files than
-            // just the build-tool-plugin-name folder, as the FileNode will handle walking the tree.
-            const buildToolPluginFiles = matches.reduce(
-                (memo, filePath) => {
-                    const relativePath = path.relative(basePath, filePath);
-                    const parts = relativePath.split(path.sep);
-                    const buildToolPluginName = version.isGreaterThanOrEqual(
-                        this.newPluginLayoutVersion
+        return matches.map(filePath => {
+            const pluginName = path.basename(filePath);
+            return new HeaderNode(
+                `${this.target.name}-${pluginName}`,
+                `${pluginName} - Generated Files`,
+                "debug-disconnect",
+                () =>
+                    getChildren(
+                        filePath,
+                        excludedFilesForProjectPanelExplorer(),
+                        this.target.path,
+                        this.fs
                     )
-                        ? parts[3]
-                        : parts[2];
-                    const existingFiles = memo[buildToolPluginName] || [];
-                    const rootDirectoryLength = version.isGreaterThanOrEqual(
-                        this.newPluginLayoutVersion
-                    )
-                        ? 5
-                        : 4;
-                    const isRootPluginFilesDirectory = parts.length === rootDirectoryLength;
-                    return {
-                        ...memo,
-                        [buildToolPluginName]: isRootPluginFilesDirectory
-                            ? [...existingFiles, filePath]
-                            : existingFiles,
-                    };
-                },
-                {} as Record<string, string[]>
             );
-
-            // Create a new HeaderNode for each build tool plugin used to generate files for this target.
-            return Object.keys(buildToolPluginFiles)
-                .map(pluginName => {
-                    const pluginFiles = buildToolPluginFiles[pluginName];
-                    if (pluginFiles.length === 0) {
-                        return undefined;
-                    }
-                    return new HeaderNode(
-                        `${this.target.name}-${pluginName}`,
-                        `${pluginName} - Generated Files`,
-                        "debug-disconnect",
-                        () => {
-                            return Promise.all(
-                                pluginFiles.map(async filePath => {
-                                    const stats = await fs.stat(filePath);
-                                    return new FileNode(
-                                        path.basename(filePath),
-                                        filePath,
-                                        stats.isDirectory(),
-                                        `${this.target.name}-${pluginName}`
-                                    );
-                                })
-                            );
-                        }
-                    );
-                })
-                .filter((node): node is HeaderNode => node !== undefined);
-        };
-
-        return matches.length > 0 ? buildTree(matches) : [];
+        });
     }
 }
 
