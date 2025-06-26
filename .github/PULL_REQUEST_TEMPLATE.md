@@ -14,4 +14,3 @@ Issue: Please provide reference link to the Github issue
 - [ ] Required tests have been written
 - [ ] Documentation has been updated
 - [ ] Added an entry to CHANGELOG.md if applicable
-- [ ] Nightly tests run as part of CI job with `full-test-run` label set
