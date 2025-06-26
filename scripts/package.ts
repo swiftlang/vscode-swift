@@ -26,6 +26,12 @@ main(async () => {
     const rootDirectory = getRootDirectory();
     const version = await getExtensionVersion();
     const versionString = `${version.major}.${version.minor}.${version.patch}`;
+
+    if (process.platform === "win32") {
+        console.log("Packaging the extension is not supported on Windows.");
+        return process.exit(0);
+    }
+
     // Update version in CHANGELOG
     await updateChangelog(versionString);
     // Use VSCE to package the extension
