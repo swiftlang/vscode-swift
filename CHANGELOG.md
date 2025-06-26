@@ -5,6 +5,7 @@
 ### Fixed
 
 - Cleanup Swift diagnostics when the source file is moved or deleted ([#1653](https://github.com/swiftlang/vscode-swift/pull/1653))
+- Make sure newline starts with /// when splitting doc comment ([#1651](https://github.com/swiftlang/vscode-swift/pull/1651))
 
 ## 2.6.0 - 2025-06-26
 
