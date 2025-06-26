@@ -2,6 +2,12 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Fixed
+
+- Cleanup Swift diagnostics when the source file is moved or deleted ([#1653](https://github.com/swiftlang/vscode-swift/pull/1653))
+
+## 2.6.0 - 2025-06-26
+
 ### Added
 
 - Support for [multi-root .code-workspace](https://code.visualstudio.com/docs/editing/workspaces/multi-root-workspaces) workspaces ([#1566](https://github.com/swiftlang/vscode-swift/pull/1566))
