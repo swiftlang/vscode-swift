@@ -115,6 +115,7 @@ suite("Dependency Commmands Test Suite @slow", function () {
             // spm reset
             const result = await vscode.commands.executeCommand(
                 Commands.RESET_PACKAGE,
+                undefined,
                 depsContext
             );
             expect(result).to.be.true;
