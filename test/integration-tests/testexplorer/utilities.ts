@@ -145,6 +145,7 @@ export function assertTestResults(
         passed?: string[];
         skipped?: string[];
         errored?: string[];
+        enqueued?: string[];
         unknown?: number;
     }
 ) {
@@ -161,6 +162,7 @@ export function assertTestResults(
                 .sort(),
             skipped: testRun.runState.skipped.map(({ id }) => id).sort(),
             errored: testRun.runState.errored.map(({ id }) => id).sort(),
+            enqueued: testRun.runState.enqueued.map(({ id }) => id).sort(),
             unknown: testRun.runState.unknown,
         },
         {
@@ -173,6 +175,7 @@ export function assertTestResults(
                 .sort(),
             skipped: (state.skipped ?? []).sort(),
             errored: (state.errored ?? []).sort(),
+            enqueued: (state.enqueued ?? []).sort(),
             unknown: 0,
         },
         `
