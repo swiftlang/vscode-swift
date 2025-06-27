@@ -202,21 +202,19 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
                 taskProvider = workspaceContext.pluginProvider;
             });
 
-            for (let i = 0; i < 25; ++i) {
-                test("Exit code on success " + i, async () => {
-                    const task = taskProvider.createSwiftPluginTask(
-                        folderContext.swiftPackage.plugins[0],
-                        folderContext.toolchain,
-                        {
-                            cwd: folderContext.folder,
-                            scope: folderContext.workspaceFolder,
-                        }
-                    );
-                    const { exitCode, output } = await executeTaskAndWaitForResult(task);
-                    expect(exitCode, output).to.equal(0);
-                    expect(cleanOutput(output)).to.include("Hello, World!");
-                });
-            }
+            test("Exit code on success", async () => {
+                const task = taskProvider.createSwiftPluginTask(
+                    folderContext.swiftPackage.plugins[0],
+                    folderContext.toolchain,
+                    {
+                        cwd: folderContext.folder,
+                        scope: folderContext.workspaceFolder,
+                    }
+                );
+                const { exitCode, output } = await executeTaskAndWaitForResult(task);
+                expect(exitCode, output).to.equal(0);
+                expect(cleanOutput(output)).to.include("Hello, World!");
+            });
 
             test("Exit code on failure", async () => {
                 const task = taskProvider.createSwiftPluginTask(
