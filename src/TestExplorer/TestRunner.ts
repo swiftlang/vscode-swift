@@ -239,7 +239,19 @@ export class TestRunProxy {
     }
 
     private clearEnqueuedTest(test: vscode.TestItem) {
-        this.runState.enqueued = this.runState.enqueued.filter(t => t.id !== test.id);
+        this.runState.enqueued = this.runState.enqueued.filter(t => t !== test);
+
+        if (!test.parent) {
+            return;
+        }
+
+        const parentHasEnqueuedChildren = Array.from(test.parent.children).some(([_, child]) =>
+            this.runState.enqueued.includes(child)
+        );
+
+        if (!parentHasEnqueuedChildren) {
+            this.clearEnqueuedTest(test.parent);
+        }
     }
 
     public skipped(test: vscode.TestItem) {
@@ -292,7 +304,9 @@ export class TestRunProxy {
         // If there are tests that never started, mark them as skipped.
         // This can happen if there is a build error preventing tests from running.
         this.runState.enqueued.forEach(test => {
-            if (test.children.size === 0) {
+            // Omit adding the root test item as a skipped test to keep just the suites/tests
+            // in the test run output, just like a regular pass/fail test run.
+            if (test.parent) {
                 for (const output of this.queuedOutput) {
                     this.appendOutputToTest(output, test);
                 }
