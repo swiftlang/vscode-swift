@@ -369,7 +369,7 @@ class TargetNode {
         if (version.isGreaterThanOrEqual(this.newPluginLayoutVersion)) {
             return `${base}/.build/plugins/outputs/*/${this.target.name}/*/*/**`;
         } else {
-            return `${base}/.build/plugins/outputs/*/${this.target.name}/*/{*,*/*}`;
+            return `${base}/.build/plugins/outputs/*/${this.target.name}/*/**`;
         }
     }
 
@@ -379,8 +379,8 @@ class TargetNode {
         // This glob will capture all the files in the outputs directory for this target.
         const pattern = this.buildToolGlobPattern(version);
         const base = this.folder.folder.fsPath.replace(/\\/g, "/");
-        const matches = glob.sync(pattern, { onlyFiles: false, cwd: base, deep: 4 });
-
+        const depth = version.isGreaterThanOrEqual(this.newPluginLayoutVersion) ? 4 : 3;
+        const matches = glob.sync(pattern, { onlyFiles: false, cwd: base, deep: depth });
         return matches.map(filePath => {
             const pluginName = path.basename(filePath);
             return new HeaderNode(
