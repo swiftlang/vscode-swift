@@ -133,16 +133,31 @@ export class TestExplorer {
      */
     static observeFolders(workspaceContext: WorkspaceContext): vscode.Disposable {
         const tokenSource = new vscode.CancellationTokenSource();
-        const disposable = workspaceContext.onDidChangeFolders(
-            ({ folder, operation, workspace }) => {
-                switch (operation) {
-                    case FolderOperation.add:
-                        if (folder) {
-                            void folder.swiftPackage.getTargets(TargetType.test).then(targets => {
-                                if (targets.length === 0) {
-                                    return;
-                                }
+        const disposable = workspaceContext.onDidChangeFolders(({ folder, operation }) => {
+            switch (operation) {
+                case FolderOperation.add:
+                    if (folder) {
+                        void folder.swiftPackage.getTargets(TargetType.test).then(targets => {
+                            if (targets.length === 0) {
+                                return;
+                            }
 
+                            folder.addTestExplorer();
+                            // discover tests in workspace but only if disableAutoResolve is not on.
+                            // discover tests will kick off a resolve if required
+                            if (!configuration.folder(folder.workspaceFolder).disableAutoResolve) {
+                                void folder.testExplorer?.discoverTestsInWorkspace(
+                                    tokenSource.token
+                                );
+                            }
+                        });
+                    }
+                    break;
+                case FolderOperation.packageUpdated:
+                    if (folder) {
+                        void folder.swiftPackage.getTargets(TargetType.test).then(targets => {
+                            const hasTestTargets = targets.length > 0;
+                            if (hasTestTargets && !folder.hasTestExplorer()) {
                                 folder.addTestExplorer();
                                 // discover tests in workspace but only if disableAutoResolve is not on.
                                 // discover tests will kick off a resolve if required
@@ -153,43 +168,15 @@ export class TestExplorer {
                                         tokenSource.token
                                     );
                                 }
-                            });
-                        }
-                        break;
-                    case FolderOperation.packageUpdated:
-                        if (folder) {
-                            void folder.swiftPackage.getTargets(TargetType.test).then(targets => {
-                                const hasTestTargets = targets.length > 0;
-                                if (hasTestTargets && !folder.hasTestExplorer()) {
-                                    folder.addTestExplorer();
-                                    // discover tests in workspace but only if disableAutoResolve is not on.
-                                    // discover tests will kick off a resolve if required
-                                    if (
-                                        !configuration.folder(folder.workspaceFolder)
-                                            .disableAutoResolve
-                                    ) {
-                                        void folder.testExplorer?.discoverTestsInWorkspace(
-                                            tokenSource.token
-                                        );
-                                    }
-                                } else if (!hasTestTargets && folder.hasTestExplorer()) {
-                                    folder.removeTestExplorer();
-                                } else if (folder.hasTestExplorer()) {
-                                    folder.refreshTestExplorer();
-                                }
-                            });
-                        }
-                        break;
-                    case FolderOperation.focus:
-                        if (folder) {
-                            const languageClientManager =
-                                workspace.languageClientManager.get(folder);
-                            languageClientManager.documentSymbolWatcher = (document, symbols) =>
-                                TestExplorer.onDocumentSymbols(folder, document, symbols);
-                        }
-                }
+                            } else if (!hasTestTargets && folder.hasTestExplorer()) {
+                                folder.removeTestExplorer();
+                            } else if (folder.hasTestExplorer()) {
+                                folder.refreshTestExplorer();
+                            }
+                        });
+                    }
             }
-        );
+        });
         return {
             dispose: () => {
                 tokenSource.dispose();
@@ -212,7 +199,7 @@ export class TestExplorer {
     /**
      * Called whenever we have new document symbols
      */
-    private static onDocumentSymbols(
+    static onDocumentSymbols(
         folder: FolderContext,
         document: vscode.TextDocument,
         symbols: vscode.DocumentSymbol[] | null | undefined
