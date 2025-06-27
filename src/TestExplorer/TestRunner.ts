@@ -255,6 +255,7 @@ export class TestRunProxy {
     }
 
     public skipped(test: vscode.TestItem) {
+        this.clearEnqueuedTest(test);
         test.tags = [...test.tags, new vscode.TestTag(TestRunProxy.Tags.SKIPPED)];
 
         this.runState.skipped.push(test);
