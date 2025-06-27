@@ -1,3 +1,6 @@
+#if os(Windows) && swift(<6.0)
+print("Executable Target Hello World!")
+#else
 import Foundation
 
 @main
@@ -37,3 +40,4 @@ enum CodeGeneratorError: Error {
     case invalidArguments
     case invalidData
 }
+#endif
