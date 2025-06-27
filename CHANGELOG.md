@@ -8,6 +8,7 @@
 - Make sure newline starts with /// when splitting doc comment ([#1651](https://github.com/swiftlang/vscode-swift/pull/1651))
 - Prevent continuous "package resolve" cycles ([#1654](https://github.com/swiftlang/vscode-swift/pull/1654))
 - Fix error when running `Reset Package Dependencies` command from the Project view ([#1661](https://github.com/swiftlang/vscode-swift/pull/1661))
+- Mark tests as skipped when a compilation error preempts a test run ([#1659](https://github.com/swiftlang/vscode-swift/pull/1659))
 
 ## 2.6.0 - 2025-06-26
 
