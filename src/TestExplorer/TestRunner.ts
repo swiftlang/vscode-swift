@@ -18,7 +18,12 @@ import * as stream from "stream";
 import * as os from "os";
 import * as asyncfs from "fs/promises";
 import { FolderContext } from "../FolderContext";
-import { compactMap, execFile, getErrorDescription } from "../utilities/utilities";
+import {
+    compactMap,
+    execFile,
+    getErrorDescription,
+    IS_PRODUCTION_BUILD,
+} from "../utilities/utilities";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
@@ -239,6 +244,11 @@ export class TestRunProxy {
     }
 
     private clearEnqueuedTest(test: vscode.TestItem) {
+        if (IS_PRODUCTION_BUILD) {
+            // `runState.enqueued` exists only for test validation purposes.
+            return;
+        }
+
         this.runState.enqueued = this.runState.enqueued.filter(t => t !== test);
 
         if (!test.parent) {
@@ -264,6 +274,7 @@ export class TestRunProxy {
     }
 
     public passed(test: vscode.TestItem, duration?: number) {
+        this.clearEnqueuedTest(test);
         this.runState.passed.push(test);
         this.clearPendingTest(test);
         this.testRun?.passed(test, duration);
@@ -274,6 +285,7 @@ export class TestRunProxy {
         message: vscode.TestMessage | readonly vscode.TestMessage[],
         duration?: number
     ) {
+        this.clearEnqueuedTest(test);
         this.runState.failed.push({ test, message });
         this.clearPendingTest(test);
         this.testRun?.failed(test, message, duration);
@@ -284,6 +296,7 @@ export class TestRunProxy {
         message: vscode.TestMessage | readonly vscode.TestMessage[],
         duration?: number
     ) {
+        this.clearEnqueuedTest(test);
         this.runState.errored.push(test);
         this.clearPendingTest(test);
         this.testRun?.errored(test, message, duration);
