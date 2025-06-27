@@ -6,6 +6,7 @@
 
 - Cleanup Swift diagnostics when the source file is moved or deleted ([#1653](https://github.com/swiftlang/vscode-swift/pull/1653))
 - Make sure newline starts with /// when splitting doc comment ([#1651](https://github.com/swiftlang/vscode-swift/pull/1651))
+- Capture diagnostics with `Swift: Capture Diagnostic Bundle` to a .zip file ([#1656](https://github.com/swiftlang/vscode-swift/pull/1656))
 - Prevent continuous "package resolve" cycles ([#1654](https://github.com/swiftlang/vscode-swift/pull/1654))
 - Fix error when running `Reset Package Dependencies` command from the Project view ([#1661](https://github.com/swiftlang/vscode-swift/pull/1661))
 
