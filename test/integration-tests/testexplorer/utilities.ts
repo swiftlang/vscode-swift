@@ -81,6 +81,19 @@ export function testExplorerFor(
 type TestHierarchy = string | TestHierarchy[];
 
 /**
+ * Builds a tree of text items from a TestItemCollection
+ */
+export const buildStateFromController = (items: vscode.TestItemCollection): TestHierarchy =>
+    reduceTestItemChildren(
+        items,
+        (acc, item) => {
+            const children = buildStateFromController(item.children);
+            return [...acc, item.label, ...(children.length ? [children] : [])];
+        },
+        [] as TestHierarchy
+    );
+
+/**
  * Asserts that the test item hierarchy matches the description provided by a collection
  * of `TestControllerState`s.
  */
@@ -88,16 +101,6 @@ export function assertTestControllerHierarchy(
     controller: vscode.TestController,
     state: TestHierarchy
 ) {
-    const buildStateFromController = (items: vscode.TestItemCollection): TestHierarchy =>
-        reduceTestItemChildren(
-            items,
-            (acc, item) => {
-                const children = buildStateFromController(item.children);
-                return [...acc, item.label, ...(children.length ? [children] : [])];
-            },
-            [] as TestHierarchy
-        );
-
     assert.deepEqual(
         buildStateFromController(controller.items),
         state,
