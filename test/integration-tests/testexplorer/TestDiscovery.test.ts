@@ -160,6 +160,35 @@ suite("TestDiscovery Suite", () => {
         assert.deepStrictEqual(testController.items.get("foo")?.label, "New Label");
     });
 
+    test("handles adding tests that are disambiguated by a file/location", () => {
+        const child1 = testItem("AppTarget.example(_:)/AppTarget.swift:4:2", "swift-testing");
+        const child2 = testItem("AppTarget.example(_:)/AppTarget.swift:16:2", "swift-testing");
+
+        updateTestsForTarget(testController, { id: "AppTarget", label: "AppTarget" }, [
+            child1,
+            child2,
+        ]);
+
+        assert.deepStrictEqual(testControllerChildren(testController.items), [
+            {
+                id: "AppTarget",
+                tags: [{ id: "test-target" }, { id: "runnable" }],
+                children: [
+                    {
+                        id: "AppTarget.example(_:)/AppTarget.swift:4:2",
+                        tags: [{ id: "swift-testing" }, { id: "runnable" }],
+                        children: [],
+                    },
+                    {
+                        id: "AppTarget.example(_:)/AppTarget.swift:16:2",
+                        tags: [{ id: "swift-testing" }, { id: "runnable" }],
+                        children: [],
+                    },
+                ],
+            },
+        ]);
+    });
+
     test("handles adding a test to an existing parent when updating with a partial tree", () => {
         const child = testItem("AppTarget.AppTests/ChildTests/SubChildTests", "swift-testing");
 
