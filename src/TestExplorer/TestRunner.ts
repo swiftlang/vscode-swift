@@ -18,7 +18,12 @@ import * as stream from "stream";
 import * as os from "os";
 import * as asyncfs from "fs/promises";
 import { FolderContext } from "../FolderContext";
-import { compactMap, execFile, getErrorDescription } from "../utilities/utilities";
+import {
+    compactMap,
+    execFile,
+    getErrorDescription,
+    IS_PRODUCTION_BUILD,
+} from "../utilities/utilities";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
@@ -67,6 +72,7 @@ export interface TestRunState {
     passed: vscode.TestItem[];
     skipped: vscode.TestItem[];
     errored: vscode.TestItem[];
+    enqueued: vscode.TestItem[];
     unknown: number;
     output: string[];
 }
@@ -95,6 +101,7 @@ export class TestRunProxy {
             passed: [],
             skipped: [],
             errored: [],
+            enqueued: [],
             unknown: 0,
             output: [],
         };
@@ -181,10 +188,9 @@ export class TestRunProxy {
         for (const outputLine of this.queuedOutput) {
             this.performAppendOutput(this.testRun, outputLine);
         }
-        this.queuedOutput = [];
 
         for (const test of this.testItems) {
-            this.testRun.enqueued(test);
+            this.enqueued(test);
         }
     };
 
@@ -218,11 +224,17 @@ export class TestRunProxy {
         }
     }
 
+    private enqueued(test: vscode.TestItem) {
+        this.testRun?.enqueued(test);
+        this.runState.enqueued.push(test);
+    }
+
     public unknownTestRan() {
         this.runState.unknown++;
     }
 
     public started(test: vscode.TestItem) {
+        this.clearEnqueuedTest(test);
         this.runState.pending.push(test);
         this.testRun?.started(test);
     }
@@ -231,7 +243,29 @@ export class TestRunProxy {
         this.runState.pending = this.runState.pending.filter(t => t !== test);
     }
 
+    private clearEnqueuedTest(test: vscode.TestItem) {
+        if (IS_PRODUCTION_BUILD) {
+            // `runState.enqueued` exists only for test validation purposes.
+            return;
+        }
+
+        this.runState.enqueued = this.runState.enqueued.filter(t => t !== test);
+
+        if (!test.parent) {
+            return;
+        }
+
+        const parentHasEnqueuedChildren = Array.from(test.parent.children).some(([_, child]) =>
+            this.runState.enqueued.includes(child)
+        );
+
+        if (!parentHasEnqueuedChildren) {
+            this.clearEnqueuedTest(test.parent);
+        }
+    }
+
     public skipped(test: vscode.TestItem) {
+        this.clearEnqueuedTest(test);
         test.tags = [...test.tags, new vscode.TestTag(TestRunProxy.Tags.SKIPPED)];
 
         this.runState.skipped.push(test);
@@ -240,6 +274,7 @@ export class TestRunProxy {
     }
 
     public passed(test: vscode.TestItem, duration?: number) {
+        this.clearEnqueuedTest(test);
         this.runState.passed.push(test);
         this.clearPendingTest(test);
         this.testRun?.passed(test, duration);
@@ -250,6 +285,7 @@ export class TestRunProxy {
         message: vscode.TestMessage | readonly vscode.TestMessage[],
         duration?: number
     ) {
+        this.clearEnqueuedTest(test);
         this.runState.failed.push({ test, message });
         this.clearPendingTest(test);
         this.testRun?.failed(test, message, duration);
@@ -260,6 +296,7 @@ export class TestRunProxy {
         message: vscode.TestMessage | readonly vscode.TestMessage[],
         duration?: number
     ) {
+        this.clearEnqueuedTest(test);
         this.runState.errored.push(test);
         this.clearPendingTest(test);
         this.testRun?.errored(test, message, duration);
@@ -277,6 +314,21 @@ export class TestRunProxy {
         this.runState.pending.forEach(test => {
             this.failed(test, new vscode.TestMessage("Test did not complete."));
         });
+
+        // If there are tests that never started, mark them as skipped.
+        // This can happen if there is a build error preventing tests from running.
+        this.runState.enqueued.forEach(test => {
+            // Omit adding the root test item as a skipped test to keep just the suites/tests
+            // in the test run output, just like a regular pass/fail test run.
+            if (test.parent) {
+                for (const output of this.queuedOutput) {
+                    this.appendOutputToTest(output, test);
+                }
+                this.skipped(test);
+            }
+        });
+
+        this.queuedOutput = [];
 
         this.reportAttachments();
         this.testRun?.end();

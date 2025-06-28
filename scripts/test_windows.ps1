@@ -16,9 +16,19 @@ function Update-SwiftBuildAndPackageArguments {
     param (
         [string]$jsonFilePath = "./assets/test/.vscode/settings.json",
         [string]$codeWorkspaceFilePath = "./assets/test.code-workspace",
-        [string]$windowsSdkVersion = "10.0.22000.0",
-        [string]$vcToolsVersion = "14.44.35207"
+        [string]$windowsSdkVersion = "10.0.22000.0"
     )
+
+    $vcToolsPath = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC"
+    $vcToolsVersions = Get-ChildItem -Directory -Path $vcToolsPath | ForEach-Object { $_.Name }
+
+    if ($vcToolsVersions.Count -eq 0) {
+        Write-Host "No versions found in $vcToolsPath"
+        exit 1
+    }
+
+    $vcToolsVersion = $vcToolsVersions | Sort-Object -Descending | Select-Object -First 1
+    Write-Host "Highest Visual C++ Tools version: $vcToolsVersion"
 
     $windowsSdkRoot = "C:\Program Files (x86)\Windows Kits\10\"
 
@@ -39,7 +49,6 @@ function Update-SwiftBuildAndPackageArguments {
     if ($jsonContent.PSObject.Properties['swift.buildArguments']) {
         $jsonContent.PSObject.Properties.Remove('swift.buildArguments')
     }
-    
 
     $jsonContent | Add-Member -MemberType NoteProperty -Name "swift.buildArguments" -Value @(
         "-Xbuild-tools-swiftc", "-windows-sdk-root", "-Xbuild-tools-swiftc", $windowsSdkRoot,
@@ -62,7 +71,6 @@ function Update-SwiftBuildAndPackageArguments {
         "-Xswiftc", "-windows-sdk-version", "-Xswiftc", $windowsSdkVersion,
         "-Xswiftc", "-visualc-tools-version", "-Xswiftc", $vcToolsVersion
     )
-
 
     $codeWorkspaceContent.PSObject.Properties.Remove('settings')
     $codeWorkspaceContent | Add-Member -MemberType NoteProperty -Name "settings" -Value $jsonContent
@@ -87,6 +95,12 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "Swift version:"
 Write-Host "$swiftVersionOutput"
+
+Write-Host "Installed MSVC Versions:"
+dir "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC"
+
+Write-Host "Installed Windows SDK Versions:"
+dir "C:\Program Files (x86)\Windows Kits\10\Include\"
 
 $versionLine = $swiftVersionOutput[0]
 if ($versionLine -match "Swift version (\d+)\.(\d+)") {

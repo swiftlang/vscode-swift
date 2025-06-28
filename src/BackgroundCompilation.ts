@@ -19,11 +19,11 @@ import { FolderContext } from "./FolderContext";
 import { TaskOperation } from "./tasks/TaskQueue";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import debounce = require("lodash.debounce");
+import { validFileTypes } from "./utilities/filesystem";
 
 export class BackgroundCompilation implements vscode.Disposable {
     private workspaceFileWatcher?: vscode.FileSystemWatcher;
     private configurationEventDisposable?: vscode.Disposable;
-    private validFileTypes = ["swift", "c", "cpp", "h", "hpp", "m", "mm"];
     private disposables: vscode.Disposable[] = [];
 
     constructor(private folderContext: FolderContext) {
@@ -44,7 +44,7 @@ export class BackgroundCompilation implements vscode.Disposable {
     }
 
     private setupFileWatching() {
-        const fileTypes = this.validFileTypes.join(",");
+        const fileTypes = validFileTypes.join(",");
         const rootFolders = ["Sources", "Tests", "Snippets", "Plugins"].join(",");
         this.disposables.push(
             (this.workspaceFileWatcher = vscode.workspace.createFileSystemWatcher(

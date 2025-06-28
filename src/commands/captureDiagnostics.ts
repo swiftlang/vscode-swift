@@ -12,7 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as fs from "fs/promises";
+import * as archiver from "archiver";
+import * as fs from "fs";
+import * as fsPromises from "fs/promises";
 import * as path from "path";
 import * as vscode from "vscode";
 import { tmpdir } from "os";
@@ -27,7 +29,7 @@ import { FolderContext } from "../FolderContext";
 export async function captureDiagnostics(
     ctx: WorkspaceContext,
     allowMinimalCapture: boolean = true
-) {
+): Promise<string | undefined> {
     try {
         const captureMode = await captureDiagnosticsMode(ctx, allowMinimalCapture);
 
@@ -41,43 +43,86 @@ export async function captureDiagnostics(
             `vscode-diagnostics-${formatDateString(new Date())}`
         );
 
-        await fs.mkdir(diagnosticsDir);
+        await fsPromises.mkdir(diagnosticsDir);
         await writeLogFile(diagnosticsDir, "extension-logs.txt", extensionLogs(ctx));
+
+        const singleFolderWorkspace = ctx.folders.length === 1;
+        const zipDir = await createDiagnosticsZipDir();
+        const zipFilePath = path.join(zipDir, `${path.basename(diagnosticsDir)}.zip`);
+        const { archive, done: archivingDone } = configureZipArchiver(zipFilePath);
 
         for (const folder of ctx.folders) {
             const baseName = path.basename(folder.folder.fsPath);
             const guid = Math.random().toString(36).substring(2, 10);
-            await writeLogFile(
-                diagnosticsDir,
-                `${baseName}-${guid}-settings.txt`,
-                settingsLogs(folder)
-            );
+            const outputDir = singleFolderWorkspace
+                ? diagnosticsDir
+                : path.join(diagnosticsDir, baseName);
+            await fsPromises.mkdir(outputDir, { recursive: true });
+            await writeLogFile(outputDir, `${baseName}-${guid}-settings.txt`, settingsLogs(folder));
 
             if (captureMode === "Full") {
                 await writeLogFile(
-                    diagnosticsDir,
+                    outputDir,
                     `${baseName}-${guid}-source-code-diagnostics.txt`,
                     diagnosticLogs()
                 );
 
                 // The `sourcekit-lsp diagnose` command is only available in 6.0 and higher.
                 if (folder.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
-                    await sourcekitDiagnose(folder, diagnosticsDir);
+                    await sourcekitDiagnose(folder, outputDir);
                 } else {
                     await writeLogFile(
-                        diagnosticsDir,
+                        outputDir,
                         `${baseName}-${guid}-sourcekit-lsp.txt`,
                         sourceKitLogs(folder)
                     );
                 }
             }
-
-            ctx.outputChannel.log(`Saved diagnostics to ${diagnosticsDir}`);
-            await showCapturedDiagnosticsResults(diagnosticsDir);
         }
+
+        archive.directory(diagnosticsDir, false);
+        void archive.finalize();
+        await archivingDone;
+
+        // Clean up the diagnostics directory, leaving `zipFilePath` with the zip file.
+        await fsPromises.rm(diagnosticsDir, { recursive: true, force: true });
+
+        ctx.outputChannel.log(`Saved diagnostics to ${zipFilePath}`);
+        await showCapturedDiagnosticsResults(zipFilePath);
+
+        return zipFilePath;
     } catch (error) {
         void vscode.window.showErrorMessage(`Unable to capture diagnostic logs: ${error}`);
     }
+}
+
+function configureZipArchiver(zipFilePath: string): {
+    archive: archiver.Archiver;
+    done: Promise<void>;
+} {
+    const output = fs.createWriteStream(zipFilePath);
+    const archive = archiver("zip", {
+        zlib: { level: 9 }, // Maximum compression
+    });
+    let resolve: () => void;
+    let reject: (error: unknown) => void;
+    const done = new Promise<void>((res, rej) => {
+        resolve = res;
+        reject = rej;
+    });
+    output.on("close", async () => {
+        try {
+            resolve();
+        } catch (error) {
+            reject(error);
+        }
+    });
+
+    archive.on("error", (err: Error) => {
+        reject(err);
+    });
+    archive.pipe(output);
+    return { archive, done };
 }
 
 export async function promptForDiagnostics(ctx: WorkspaceContext) {
@@ -140,18 +185,19 @@ Please file an issue with a description of the problem you are seeing at https:/
     }
 }
 
-async function showCapturedDiagnosticsResults(diagnosticsDir: string) {
+async function showCapturedDiagnosticsResults(diagnosticsPath: string) {
     const showInFinderButton = `Show In ${showCommandType()}`;
     const copyPath = "Copy Path to Clipboard";
     const result = await vscode.window.showInformationMessage(
-        `Saved diagnostic logs to ${diagnosticsDir}`,
+        `Saved diagnostic logs to ${diagnosticsPath}`,
         showInFinderButton,
         copyPath
     );
     if (result === copyPath) {
-        await vscode.env.clipboard.writeText(diagnosticsDir);
+        await vscode.env.clipboard.writeText(diagnosticsPath);
     } else if (result === showInFinderButton) {
-        exec(showDirectoryCommand(diagnosticsDir), error => {
+        const dirToShow = path.dirname(diagnosticsPath);
+        exec(showDirectoryCommand(dirToShow), error => {
             // Opening the explorer on windows returns an exit code of 1 despite opening successfully.
             if (error && process.platform !== "win32") {
                 void vscode.window.showErrorMessage(
@@ -166,7 +212,16 @@ async function writeLogFile(dir: string, name: string, logs: string) {
     if (logs.length === 0) {
         return;
     }
-    await fs.writeFile(path.join(dir, name), logs);
+    await fsPromises.writeFile(path.join(dir, name), logs);
+}
+
+/**
+ * Creates a directory for diagnostics zip files, located in the system's temporary directory.
+ */
+async function createDiagnosticsZipDir(): Promise<string> {
+    const diagnosticsDir = path.join(tmpdir(), "vscode-diagnostics", formatDateString(new Date()));
+    await fsPromises.mkdir(diagnosticsDir, { recursive: true });
+    return diagnosticsDir;
 }
 
 function extensionLogs(ctx: WorkspaceContext): string {
@@ -199,7 +254,7 @@ function sourceKitLogs(folder: FolderContext) {
 
 async function sourcekitDiagnose(ctx: FolderContext, dir: string) {
     const sourcekitDiagnosticDir = path.join(dir, "sourcekit-lsp");
-    await fs.mkdir(sourcekitDiagnosticDir);
+    await fsPromises.mkdir(sourcekitDiagnosticDir);
 
     const toolchainSourceKitLSP = ctx.toolchain.getToolchainExecutable("sourcekit-lsp");
     const lspConfig = configuration.lsp;

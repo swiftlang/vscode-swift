@@ -30,6 +30,7 @@ import { showReloadExtensionNotification } from "./ui/ReloadExtension";
  */
 export class PackageWatcher {
     private packageFileWatcher?: vscode.FileSystemWatcher;
+    private resolvedChangedDisposable?: vscode.Disposable;
     private resolvedFileWatcher?: vscode.FileSystemWatcher;
     private workspaceStateFileWatcher?: vscode.FileSystemWatcher;
     private snippetWatcher?: vscode.FileSystemWatcher;
@@ -59,6 +60,7 @@ export class PackageWatcher {
      */
     dispose() {
         this.packageFileWatcher?.dispose();
+        this.resolvedChangedDisposable?.dispose();
         this.resolvedFileWatcher?.dispose();
         this.workspaceStateFileWatcher?.dispose();
         this.snippetWatcher?.dispose();
@@ -77,11 +79,18 @@ export class PackageWatcher {
 
     private createResolvedFileWatcher(): vscode.FileSystemWatcher {
         const watcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(this.folderContext.folder, "Package.resolved")
+            new vscode.RelativePattern(this.folderContext.folder, "Package.resolved"),
+            // https://github.com/swiftlang/vscode-swift/issues/1571
+            // We can ignore create because that would be seemingly from a Package.resolved
+            // and will ignore delete as we don't know the reason behind. By still listening
+            // for change
+            true,
+            false,
+            true
         );
-        watcher.onDidCreate(async () => await this.handlePackageResolvedChange());
-        watcher.onDidChange(async () => await this.handlePackageResolvedChange());
-        watcher.onDidDelete(async () => await this.handlePackageResolvedChange());
+        this.resolvedChangedDisposable = watcher.onDidChange(
+            async () => await this.handlePackageResolvedChange()
+        );
         return watcher;
     }
 
