@@ -32,6 +32,13 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
 
     public constructor(
         workspaceContext: WorkspaceContext,
+        private options: {
+            onDocumentSymbols?: (
+                folder: FolderContext,
+                document: vscode.TextDocument,
+                symbols: vscode.DocumentSymbol[] | null | undefined
+            ) => void;
+        } = {},
         languageClientFactory: LanguageClientFactory = new LanguageClientFactory() // used for testing only
     ) {
         this.subscriptions.push(
@@ -124,7 +131,7 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
         const versionString = folder.swiftVersion.toString();
         let client = this.clients.get(versionString);
         if (!client) {
-            client = new LanguageClientManager(folder, languageClientFactory);
+            client = new LanguageClientManager(folder, this.options, languageClientFactory);
             this.clients.set(versionString, client);
             // Callers that must restart when switching folders will call setLanguageClientFolder themselves.
             if (singleServerSupport) {
