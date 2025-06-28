@@ -2,7 +2,7 @@
   "name": "swift-vscode",
   "displayName": "Swift",
   "description": "Swift Language Support for Visual Studio Code.",
-  "version": "2.6.1",
+  "version": "2.6.0",
   "publisher": "swiftlang",
   "icon": "icon.png",
   "repository": {
@@ -1712,7 +1712,6 @@
     "contributors": "./scripts/generate_contributors_list.sh"
   },
   "devDependencies": {
-    "@types/archiver": "^6.0.3",
     "@types/chai": "^4.3.19",
     "@types/chai-as-promised": "^7.1.8",
     "@types/chai-subset": "^1.3.6",
@@ -1765,7 +1764,6 @@
   },
   "dependencies": {
     "@vscode/codicons": "^0.0.36",
-    "archiver": "^7.0.1",
     "fast-glob": "^3.3.3",
     "lcov-parse": "^1.0.0",
     "plist": "^3.1.0",
