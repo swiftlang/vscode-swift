@@ -119,7 +119,7 @@ export class PackageNode {
     ) {
         this.id =
             (this.parentId ? `${this.parentId}->` : "") +
-            `${this.name}-${this.dependency.version ?? ""}`;
+            `${this.name}-${(this.dependency.version || this.dependency.revision?.substring(0, 7)) ?? ""}`;
     }
 
     get name(): string {
