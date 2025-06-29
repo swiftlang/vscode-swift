@@ -347,6 +347,15 @@ export class SwiftTestingOutputParser {
         }));
     }
 
+    private testItemIndexFromTestID(testID: string, runState: ITestRunState): number {
+        const testName = this.testName(testID);
+        const id = runState.getTestItemIndex(testName, undefined);
+        if (id === -1) {
+            return runState.getTestItemIndex(testID, undefined);
+        }
+        return id;
+    }
+
     private parse(item: SwiftTestEvent, runState: ITestRunState) {
         if (
             item.kind === "test" &&
@@ -358,8 +367,7 @@ export class SwiftTestingOutputParser {
             // map an event.payload.testID back to a test case.
             this.buildTestCaseMapForParameterizedTest(item);
 
-            const testName = this.testName(item.payload.id);
-            const testIndex = runState.getTestItemIndex(testName, undefined);
+            const testIndex = this.testItemIndexFromTestID(item.payload.id, runState);
             // If a test has test cases it is paramterized and we need to notify
             // the caller that the TestClass should be added to the vscode.TestRun
             // before it starts.
@@ -385,8 +393,7 @@ export class SwiftTestingOutputParser {
                 this.testRunStarted();
                 return;
             } else if (item.payload.kind === "testStarted") {
-                const testName = this.testName(item.payload.testID);
-                const testIndex = runState.getTestItemIndex(testName, undefined);
+                const testIndex = this.testItemIndexFromTestID(item.payload.testID, runState);
                 runState.started(testIndex, item.payload.instant.absolute);
                 return;
             } else if (item.payload.kind === "testCaseStarted") {
@@ -398,8 +405,7 @@ export class SwiftTestingOutputParser {
                 runState.started(testIndex, item.payload.instant.absolute);
                 return;
             } else if (item.payload.kind === "testSkipped") {
-                const testName = this.testName(item.payload.testID);
-                const testIndex = runState.getTestItemIndex(testName, undefined);
+                const testIndex = this.testItemIndexFromTestID(item.payload.testID, runState);
                 runState.skipped(testIndex);
                 return;
             } else if (item.payload.kind === "issueRecorded") {
@@ -444,8 +450,7 @@ export class SwiftTestingOutputParser {
                 }
                 return;
             } else if (item.payload.kind === "testEnded") {
-                const testName = this.testName(item.payload.testID);
-                const testIndex = runState.getTestItemIndex(testName, undefined);
+                const testIndex = this.testItemIndexFromTestID(item.payload.testID, runState);
 
                 // When running a single test the testEnded and testCaseEnded events
                 // have the same ID, and so we'd end the same test twice.
