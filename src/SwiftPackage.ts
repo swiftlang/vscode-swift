@@ -61,6 +61,7 @@ export interface ResolvedDependency extends Dependency {
     type: string;
     path: string;
     location: string;
+    revision?: string;
 }
 
 /** Swift Package.resolved file */
@@ -409,6 +410,7 @@ export class SwiftPackage {
                 : "",
             type: workspaceStateDep ? this.dependencyType(workspaceStateDep) : "",
             location: workspaceStateDep ? workspaceStateDep.packageRef.location : "",
+            revision: workspaceStateDep?.state.checkoutState?.revision ?? "",
         };
     }
 
