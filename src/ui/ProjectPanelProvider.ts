@@ -119,7 +119,7 @@ export class PackageNode {
     ) {
         this.id =
             (this.parentId ? `${this.parentId}->` : "") +
-            `${this.name}-${this.dependency.version ?? ""}`;
+            `${this.name}-${(this.dependency.version || this.dependency.revision?.substring(0, 7)) ?? ""}`;
     }
 
     get name(): string {
@@ -141,7 +141,7 @@ export class PackageNode {
     toTreeItem(): vscode.TreeItem {
         const item = new vscode.TreeItem(this.name, vscode.TreeItemCollapsibleState.Collapsed);
         item.id = this.id;
-        item.description = this.dependency.version;
+        item.description = this.getDescription();
         item.iconPath = new vscode.ThemeIcon(this.icon());
         item.contextValue = this.dependency.type;
         item.accessibilityInformation = { label: `Package ${this.name}` };
@@ -175,6 +175,20 @@ export class PackageNode {
 
         // Show dependencies first, then files.
         return [...childNodes, ...files];
+    }
+
+    getDescription(): string {
+        switch (this.type) {
+            case "local":
+                return "local";
+            case "editing":
+                return "editing";
+            default:
+                return (
+                    // show the version if used, otherwise show the partial commit hash
+                    (this.dependency.version || this.dependency.revision?.substring(0, 7)) ?? ""
+                );
+        }
     }
 }
 
