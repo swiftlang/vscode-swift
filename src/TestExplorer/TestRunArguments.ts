@@ -14,6 +14,7 @@
 
 import * as vscode from "vscode";
 import { reduceTestItemChildren } from "./TestUtils";
+import { TestRunProxy } from "./TestRunner";
 
 type ProcessResult = {
     testItems: vscode.TestItem[];
@@ -93,13 +94,19 @@ export class TestRunArguments {
                 const terminator = hasChildren ? "/" : "$";
                 // Debugging XCTests requires exact matches, so we don't need a trailing terminator.
                 return isDebug ? arg.id : `${arg.id}${terminator}`;
-            } else if (hasChildren) {
+            } else if (hasChildren && !this.hasParameterizedTestChildren(arg)) {
                 // Append a trailing slash to match a suite name exactly.
                 // This prevents TestTarget.MySuite matching TestTarget.MySuite2.
                 return `${arg.id}/`;
             }
             return arg.id;
         });
+    }
+
+    private hasParameterizedTestChildren(testItem: vscode.TestItem): boolean {
+        return Array.from(testItem.children).some(arr =>
+            arr[1].tags.some(tag => tag.id === TestRunProxy.Tags.PARAMETERIZED_TEST_RESULT)
+        );
     }
 
     private createTestItemReducer(
