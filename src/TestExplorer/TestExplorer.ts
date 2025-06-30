@@ -15,7 +15,6 @@
 import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import { getErrorDescription } from "../utilities/utilities";
-import { isPathInsidePath } from "../utilities/filesystem";
 import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
 import { TestRunProxy, TestRunner } from "./TestRunner";
 import { LSPTestDiscovery } from "./LSPTestDiscovery";
@@ -136,45 +135,11 @@ export class TestExplorer {
         const disposable = workspaceContext.onDidChangeFolders(({ folder, operation }) => {
             switch (operation) {
                 case FolderOperation.add:
-                    if (folder) {
-                        void folder.swiftPackage.getTargets(TargetType.test).then(targets => {
-                            if (targets.length === 0) {
-                                return;
-                            }
-
-                            folder.addTestExplorer();
-                            // discover tests in workspace but only if disableAutoResolve is not on.
-                            // discover tests will kick off a resolve if required
-                            if (!configuration.folder(folder.workspaceFolder).disableAutoResolve) {
-                                void folder.testExplorer?.discoverTestsInWorkspace(
-                                    tokenSource.token
-                                );
-                            }
-                        });
-                    }
-                    break;
                 case FolderOperation.packageUpdated:
                     if (folder) {
-                        void folder.swiftPackage.getTargets(TargetType.test).then(targets => {
-                            const hasTestTargets = targets.length > 0;
-                            if (hasTestTargets && !folder.hasTestExplorer()) {
-                                folder.addTestExplorer();
-                                // discover tests in workspace but only if disableAutoResolve is not on.
-                                // discover tests will kick off a resolve if required
-                                if (
-                                    !configuration.folder(folder.workspaceFolder).disableAutoResolve
-                                ) {
-                                    void folder.testExplorer?.discoverTestsInWorkspace(
-                                        tokenSource.token
-                                    );
-                                }
-                            } else if (!hasTestTargets && folder.hasTestExplorer()) {
-                                folder.removeTestExplorer();
-                            } else if (folder.hasTestExplorer()) {
-                                folder.refreshTestExplorer();
-                            }
-                        });
+                        void this.setupTestExplorerForFolder(folder, tokenSource.token);
                     }
+                    break;
             }
         });
         return {
@@ -183,6 +148,28 @@ export class TestExplorer {
                 disposable.dispose();
             },
         };
+    }
+
+    /**
+     * Configures a test explorer for the given folder.
+     * If the folder has test targets, and there is no existing test explorer,
+     * it will create a test explorer and discover tests.
+     * If the folder has no test targets, it will remove any existing test explorer.
+     * If the folder has test targets and an existing test explorer, it will refresh the tests.
+     */
+    private static async setupTestExplorerForFolder(
+        folder: FolderContext,
+        token: vscode.CancellationToken
+    ) {
+        const targets = await folder.swiftPackage.getTargets(TargetType.test);
+        const hasTestTargets = targets.length > 0;
+        if (hasTestTargets && !folder.hasTestExplorer()) {
+            await folder.addTestExplorer().discoverTestsInWorkspace(token);
+        } else if (hasTestTargets && folder.hasTestExplorer()) {
+            await folder.refreshTestExplorer();
+        } else if (!hasTestTargets && folder.hasTestExplorer()) {
+            folder.removeTestExplorer();
+        }
     }
 
     /**
@@ -196,45 +183,29 @@ export class TestExplorer {
         });
     }
 
-    /**
-     * Called whenever we have new document symbols
-     */
-    static onDocumentSymbols(
+    async getDocumentTests(
         folder: FolderContext,
-        document: vscode.TextDocument,
-        symbols: vscode.DocumentSymbol[] | null | undefined
-    ) {
-        const uri = document?.uri;
-        const testExplorer = folder?.testExplorer;
-        if (testExplorer && symbols && uri && uri.scheme === "file") {
-            if (isPathInsidePath(uri.fsPath, folder.folder.fsPath)) {
-                void folder.swiftPackage.getTarget(uri.fsPath).then(target => {
-                    if (target && target.type === "test") {
-                        testExplorer.lspTestDiscovery
-                            .getDocumentTests(folder.swiftPackage, uri)
-                            .then(tests => {
-                                TestDiscovery.updateTestsForTarget(
-                                    testExplorer.controller,
-                                    { id: target.c99name, label: target.name },
-                                    tests,
-                                    uri
-                                );
-                                testExplorer.onTestItemsDidChangeEmitter.fire(
-                                    testExplorer.controller
-                                );
-                            })
-                            // Fallback to parsing document symbols for XCTests only
-                            .catch(() => {
-                                const tests = parseTestsFromDocumentSymbols(
-                                    target.name,
-                                    symbols,
-                                    uri
-                                );
-                                testExplorer.updateTests(testExplorer.controller, tests, uri);
-                            });
-                    }
-                });
-            }
+        uri: vscode.Uri,
+        symbols: vscode.DocumentSymbol[]
+    ): Promise<void> {
+        const target = await folder.swiftPackage.getTarget(uri.fsPath);
+        if (!target || target.type !== "test") {
+            return;
+        }
+
+        try {
+            const tests = await this.lspTestDiscovery.getDocumentTests(folder.swiftPackage, uri);
+            TestDiscovery.updateTestsForTarget(
+                this.controller,
+                { id: target.c99name, label: target.name },
+                tests,
+                uri
+            );
+            this.onTestItemsDidChangeEmitter.fire(this.controller);
+        } catch {
+            // Fallback to parsing document symbols for XCTests only
+            const tests = parseTestsFromDocumentSymbols(target.name, symbols, uri);
+            this.updateTests(this.controller, tests, uri);
         }
     }
 
