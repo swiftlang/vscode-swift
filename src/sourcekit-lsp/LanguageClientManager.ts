@@ -42,6 +42,17 @@ import { LSPActiveDocumentManager } from "./didChangeActiveDocument";
 import { DidChangeActiveDocumentNotification } from "./extensions/DidChangeActiveDocumentRequest";
 import { lspClientOptions } from "./LanguageClientConfiguration";
 
+interface LanguageClientManageOptions {
+    /**
+     * Options for the LanguageClientManager
+     */
+    onDocumentSymbols?: (
+        folder: FolderContext,
+        document: vscode.TextDocument,
+        symbols: vscode.DocumentSymbol[] | null | undefined
+    ) => void;
+}
+
 /**
  * Manages the creation and destruction of Language clients as we move between
  * workspace folders
@@ -101,6 +112,7 @@ export class LanguageClientManager implements vscode.Disposable {
 
     constructor(
         public folderContext: FolderContext,
+        private options: LanguageClientManageOptions = {},
         private languageClientFactory: LanguageClientFactory = new LanguageClientFactory()
     ) {
         this.namedOutputChannels.set(
@@ -427,7 +439,9 @@ export class LanguageClientManager implements vscode.Disposable {
             workspaceFolder,
             this.activeDocumentManager,
             errorHandler,
-            this.documentSymbolWatcher
+            (document, symbols) => {
+                this.options.onDocumentSymbols?.(this.folderContext, document, symbols);
+            }
         );
 
         return {

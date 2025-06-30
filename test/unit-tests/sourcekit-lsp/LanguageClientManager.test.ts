@@ -214,6 +214,7 @@ suite("LanguageClientManager Suite", () => {
         test("returns the same language client for the same folder", async () => {
             const factory = new LanguageClientToolchainCoordinator(
                 instance(mockedWorkspace),
+                {},
                 languageClientFactoryMock
             );
 
@@ -239,6 +240,7 @@ suite("LanguageClientManager Suite", () => {
             mockedWorkspace.folders.push(instance(newFolder));
             const factory = new LanguageClientToolchainCoordinator(
                 instance(mockedWorkspace),
+                {},
                 languageClientFactoryMock
             );
 
@@ -264,6 +266,7 @@ suite("LanguageClientManager Suite", () => {
             mockedWorkspace.folders.push(instance(newFolder));
             const factory = new LanguageClientToolchainCoordinator(
                 instance(mockedWorkspace),
+                {},
                 languageClientFactoryMock
             );
 
@@ -278,6 +281,7 @@ suite("LanguageClientManager Suite", () => {
     test("launches SourceKit-LSP on startup", async () => {
         const factory = new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
+            {},
             languageClientFactoryMock
         );
 
@@ -301,6 +305,7 @@ suite("LanguageClientManager Suite", () => {
         mockedConfig.swiftSDK = "arm64-apple-ios";
         const factory = new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
+            {},
             languageClientFactoryMock
         );
 
@@ -329,6 +334,7 @@ suite("LanguageClientManager Suite", () => {
 
         new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
+            {},
             languageClientFactoryMock
         );
         await waitForReturnedPromises(languageClientMock.start);
@@ -347,6 +353,7 @@ suite("LanguageClientManager Suite", () => {
 
         new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
+            {},
             languageClientFactoryMock
         );
         await waitForReturnedPromises(languageClientMock.start);
@@ -365,6 +372,7 @@ suite("LanguageClientManager Suite", () => {
 
         new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
+            {},
             languageClientFactoryMock
         );
         await waitForReturnedPromises(languageClientMock.start);
@@ -403,6 +411,7 @@ suite("LanguageClientManager Suite", () => {
 
         new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
+            {},
             languageClientFactoryMock
         );
         await waitForReturnedPromises(languageClientMock.start);
@@ -468,7 +477,11 @@ suite("LanguageClientManager Suite", () => {
 
     test("doesn't launch SourceKit-LSP if disabled by the user", async () => {
         mockedLspConfig.disable = true;
-        const sut = new LanguageClientManager(instance(mockedFolder), languageClientFactoryMock);
+        const sut = new LanguageClientManager(
+            instance(mockedFolder),
+            {},
+            languageClientFactoryMock
+        );
         await waitForReturnedPromises(languageClientMock.start);
 
         expect(sut.state).to.equal(State.Stopped);
@@ -480,6 +493,7 @@ suite("LanguageClientManager Suite", () => {
         mockedLspConfig.serverPath = "/path/to/my/custom/sourcekit-lsp";
         const factory = new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
+            {},
             languageClientFactoryMock
         );
 
@@ -531,6 +545,7 @@ suite("LanguageClientManager Suite", () => {
 
         new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
+            {},
             languageClientFactoryMock
         );
 
@@ -589,7 +604,7 @@ suite("LanguageClientManager Suite", () => {
                 return { dispose: () => {} };
             });
 
-            new LanguageClientManager(instance(mockedFolder), languageClientFactoryMock);
+            new LanguageClientManager(instance(mockedFolder), {}, languageClientFactoryMock);
             await waitForReturnedPromises(languageClientMock.start);
 
             const activeDocumentManager = new LSPActiveDocumentManager();
@@ -621,7 +636,7 @@ suite("LanguageClientManager Suite", () => {
                     document,
                 })
             );
-            new LanguageClientManager(instance(mockedFolder), languageClientFactoryMock);
+            new LanguageClientManager(instance(mockedFolder), {}, languageClientFactoryMock);
             await waitForReturnedPromises(languageClientMock.start);
 
             const activeDocumentManager = new LSPActiveDocumentManager();
@@ -692,6 +707,7 @@ suite("LanguageClientManager Suite", () => {
         test("doesn't launch SourceKit-LSP on startup", async () => {
             const sut = new LanguageClientManager(
                 instance(mockedFolder),
+                {},
                 languageClientFactoryMock
             );
             await waitForReturnedPromises(languageClientMock.start);
@@ -713,6 +729,7 @@ suite("LanguageClientManager Suite", () => {
             );
             const factory = new LanguageClientToolchainCoordinator(
                 instance(mockedWorkspace),
+                {},
                 languageClientFactoryMock
             );
 
@@ -750,6 +767,7 @@ suite("LanguageClientManager Suite", () => {
             );
             const factory = new LanguageClientToolchainCoordinator(
                 instance(mockedWorkspace),
+                {},
                 languageClientFactoryMock
             );
 
