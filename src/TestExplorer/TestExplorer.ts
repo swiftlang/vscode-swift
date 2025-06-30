@@ -164,7 +164,17 @@ export class TestExplorer {
         const targets = await folder.swiftPackage.getTargets(TargetType.test);
         const hasTestTargets = targets.length > 0;
         if (hasTestTargets && !folder.hasTestExplorer()) {
-            await folder.addTestExplorer().discoverTestsInWorkspace(token);
+            const testExplorer = folder.addTestExplorer();
+            if (
+                configuration.folder(folder.workspaceFolder).disableAutoResolve &&
+                process.platform === "win32" &&
+                folder.swiftVersion.isLessThan(new Version(5, 10, 0))
+            ) {
+                // On Windows 5.9 and earlier discoverTestsInWorkspace kicks off a build,
+                // which will perform a resolve.
+                return;
+            }
+            await testExplorer.discoverTestsInWorkspace(token);
         } else if (hasTestTargets && folder.hasTestExplorer()) {
             await folder.refreshTestExplorer();
         } else if (!hasTestTargets && folder.hasTestExplorer()) {
