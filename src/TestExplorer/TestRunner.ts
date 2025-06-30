@@ -164,7 +164,7 @@ export class TestRunProxy {
                 // https://github.com/swiftlang/swift-testing/issues/671 is resolved.
                 testClass.tags = compactMap(parent.tags, t =>
                     t.id === runnableTag.id ? null : new vscode.TestTag(t.id)
-                );
+                ).concat(new vscode.TestTag(TestRunProxy.Tags.PARAMETERIZED_TEST_RESULT));
 
                 const added = upsertTestItem(this.controller, testClass, parent);
 
@@ -406,9 +406,10 @@ export class TestRunProxy {
         await this.coverage.computeCoverage(this.testRun);
     }
 
-    private static Tags = {
+    static Tags = {
         SKIPPED: "skipped",
         HAS_ATTACHMENT: "hasAttachment",
+        PARAMETERIZED_TEST_RESULT: "parameterizedTestResult",
     };
 
     // Remove any tags that were added due to test results
