@@ -1,3 +1,4 @@
+#if !(os(Windows) && swift(<6.1))
 import Foundation
 
 @main
@@ -35,3 +36,4 @@ enum CodeGeneratorError: Error {
     case invalidArguments
     case invalidData
 }
+#endif
