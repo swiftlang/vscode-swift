@@ -33,6 +33,9 @@ let package = Package(
         .executableTarget(
             name: "ExecutableTarget"
         ),
+        .executableTarget(
+            name: "BuildToolExecutableTarget"
+        ),
         .plugin(
             name: "PluginTarget",
             capability: .command(
@@ -42,7 +45,7 @@ let package = Package(
         .plugin(
             name: "BuildToolPlugin",
             capability: .buildTool(),
-            dependencies: ["ExecutableTarget"]
+            dependencies: ["BuildToolExecutableTarget"]
         ),
         .testTarget(
             name: "TargetsTests",

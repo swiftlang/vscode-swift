@@ -11,7 +11,7 @@ struct SimpleBuildToolPlugin: BuildToolPlugin {
         return []
         #endif
 
-        let generatorTool = try context.tool(named: "ExecutableTarget")
+        let generatorTool = try context.tool(named: "BuildToolExecutableTarget")
 
         // Construct a build command for each source file with a particular suffix.
         return sourceFiles.map(\.path).compactMap {

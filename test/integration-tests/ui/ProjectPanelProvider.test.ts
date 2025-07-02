@@ -118,6 +118,7 @@ suite("ProjectPanelProvider Test Suite", function () {
                         targetNames,
                         `Expected to find dependencies target, but instead items were ${targetNames}`
                     ).to.deep.equal([
+                        "BuildToolExecutableTarget",
                         "ExecutableTarget",
                         "LibraryTarget",
                         "BuildToolPlugin",
