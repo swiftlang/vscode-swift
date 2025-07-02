@@ -236,7 +236,10 @@ suite("DiagnosticsManager Test Suite", function () {
                             this.skip();
                         }
 
-                        resetSettings = await updateSettings({ "swift.diagnosticsStyle": style });
+                        resetSettings = await updateSettings({
+                            "swift.diagnosticsStyle": style,
+                            "swift.buildArguments": ["-Xswiftc", `-DDIAGNOSTIC_STYLE=${style}`],
+                        });
 
                         // Clean up any lingering diagnostics
                         if (vscode.languages.getDiagnostics(mainUri).length > 0) {
