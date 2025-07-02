@@ -21,6 +21,7 @@ The following command is only available on macOS:
 - **`Debug Build`** - Run `swift build` with debugging enabled for the package associated with the open file, launching the binary and attaching the debugger.
 - **`Attach to Process...`** - Attach the debugger to an already running process for debugging.
 - **`Clean Build Folder`** - Clean the `.build` folder for the package associated with the open file, removing all previously built products.
+- **`Generate Launch Configurations`** - Generate and persist `swift` debug launch configurations to the launch.json file for the project. This is useful when the `swift.autoGenerateLaunchConfigurations` setting is disabled.
 
 #### Dependency Management
 
