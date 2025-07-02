@@ -2,13 +2,12 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
-## 2.6.1 - 2025-06-27
-
 ### Fixed
 
 - Fix test explorer tests not updating on document modification ([#1663](https://github.com/swiftlang/vscode-swift/pull/1663))
 - Fix improper parenting of tests w/ identical names in explorer ([#1664](https://github.com/swiftlang/vscode-swift/pull/1664))
 - Ensure document symbols are provided for folders in multi root workspaces ([#1668](https://github.com/swiftlang/vscode-swift/pull/1668))
+- Re-add support for revision hash or local/editing keyword in project panel dependency descriptions ([#1667](https://github.com/swiftlang/vscode-swift/pull/1667))
 
 ## 2.6.1 - 2025-06-27
 
