@@ -37,7 +37,6 @@ import { isValidWorkspaceFolder, searchForPackages } from "./utilities/workspace
 import { SwiftPluginTaskProvider } from "./tasks/SwiftPluginTaskProvider";
 import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
 import { LLDBDebugConfigurationProvider } from "./debugger/debugAdapterFactory";
-import { TestExplorer } from "./TestExplorer/TestExplorer";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -82,7 +81,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.buildStatus = new SwiftBuildStatus(this.statusItem);
         this.languageClientManager = new LanguageClientToolchainCoordinator(this, {
             onDocumentSymbols: (folder, document, symbols) => {
-                TestExplorer.onDocumentSymbols(folder, document, symbols);
+                folder.onDocumentSymbols(document, symbols);
             },
         });
         this.tasks = new TaskManager(this);

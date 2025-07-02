@@ -177,9 +177,9 @@ export class FolderContext implements vscode.Disposable {
     }
 
     /** Refresh the tests in the test explorer for this folder */
-    refreshTestExplorer() {
+    async refreshTestExplorer() {
         if (this.testExplorer?.controller.resolveHandler) {
-            void this.testExplorer.controller.resolveHandler(undefined);
+            return this.testExplorer.controller.resolveHandler(undefined);
         }
     }
 
@@ -210,6 +210,25 @@ export class FolderContext implements vscode.Disposable {
             return element.sources.find(file => file === relativeUri) !== undefined;
         });
         return target;
+    }
+
+    /**
+     * Called whenever we have new document symbols
+     */
+    onDocumentSymbols(
+        document: vscode.TextDocument,
+        symbols: vscode.DocumentSymbol[] | null | undefined
+    ) {
+        const uri = document?.uri;
+        if (
+            this.testExplorer &&
+            symbols &&
+            uri &&
+            uri.scheme === "file" &&
+            isPathInsidePath(uri.fsPath, this.folder.fsPath)
+        ) {
+            void this.testExplorer.getDocumentTests(this, uri, symbols);
+        }
     }
 }
 

@@ -6,6 +6,14 @@
 
 ### Fixed
 
+- Fix test explorer tests not updating on document modification ([#1663](https://github.com/swiftlang/vscode-swift/pull/1663))
+- Fix improper parenting of tests w/ identical names in explorer ([#1664](https://github.com/swiftlang/vscode-swift/pull/1664))
+- Ensure document symbols are provided for folders in multi root workspaces ([#1668](https://github.com/swiftlang/vscode-swift/pull/1668))
+
+## 2.6.1 - 2025-06-27
+
+### Fixed
+
 - Cleanup Swift diagnostics when the source file is moved or deleted ([#1653](https://github.com/swiftlang/vscode-swift/pull/1653))
 - Make sure newline starts with /// when splitting doc comment ([#1651](https://github.com/swiftlang/vscode-swift/pull/1651))
 - Capture diagnostics with `Swift: Capture Diagnostic Bundle` to a .zip file ([#1656](https://github.com/swiftlang/vscode-swift/pull/1656))
