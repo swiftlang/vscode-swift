@@ -2,7 +2,7 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
-## 2.6.1 - 2025-06-27
+## 2.6.2 - 2025-06-27
 
 ### Fixed
 
