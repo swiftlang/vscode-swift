@@ -2,6 +2,8 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+## 2.6.1 - 2025-06-27
+
 ### Fixed
 
 - Cleanup Swift diagnostics when the source file is moved or deleted ([#1653](https://github.com/swiftlang/vscode-swift/pull/1653))
