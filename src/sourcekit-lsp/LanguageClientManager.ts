@@ -97,7 +97,8 @@ export class LanguageClientManager implements vscode.Disposable {
     private singleServerSupport: boolean;
     // used by single server support to keep a record of the project folders
     // that are not at the root of their workspace
-    public subFolderWorkspaces: vscode.Uri[];
+    public subFolderWorkspaces: FolderContext[] = [];
+    private addedFolders: FolderContext[] = [];
     private namedOutputChannels: Map<string, LSPOutputChannel> = new Map();
     private swiftVersion: Version;
     private activeDocumentManager = new LSPActiveDocumentManager();
@@ -122,7 +123,6 @@ export class LanguageClientManager implements vscode.Disposable {
         this.swiftVersion = folderContext.swiftVersion;
         this.singleServerSupport = this.swiftVersion.isGreaterThanOrEqual(new Version(5, 7, 0));
         this.subscriptions = [];
-        this.subFolderWorkspaces = [];
 
         // on change config restart server
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
@@ -244,9 +244,9 @@ export class LanguageClientManager implements vscode.Disposable {
     async addFolder(folderContext: FolderContext) {
         if (!folderContext.isRootFolder) {
             await this.useLanguageClient(async client => {
-                const uri = folderContext.folder;
-                this.subFolderWorkspaces.push(folderContext.folder);
+                this.subFolderWorkspaces.push(folderContext);
 
+                const uri = folderContext.folder;
                 const workspaceFolder = {
                     uri: client.code2ProtocolConverter.asUri(uri),
                     name: FolderContext.uriName(uri),
@@ -256,13 +256,16 @@ export class LanguageClientManager implements vscode.Disposable {
                 });
             });
         }
+        this.addedFolders.push(folderContext);
     }
 
     async removeFolder(folderContext: FolderContext) {
         if (!folderContext.isRootFolder) {
             await this.useLanguageClient(async client => {
                 const uri = folderContext.folder;
-                this.subFolderWorkspaces = this.subFolderWorkspaces.filter(item => item !== uri);
+                this.subFolderWorkspaces = this.subFolderWorkspaces.filter(
+                    item => item.folder !== uri
+                );
 
                 const workspaceFolder = {
                     uri: client.code2ProtocolConverter.asUri(uri),
@@ -273,13 +276,14 @@ export class LanguageClientManager implements vscode.Disposable {
                 });
             });
         }
+        this.addedFolders = this.addedFolders.filter(item => item.folder !== folderContext.folder);
     }
 
     private async addSubFolderWorkspaces(client: LanguageClient) {
-        for (const uri of this.subFolderWorkspaces) {
+        for (const folderContext of this.subFolderWorkspaces) {
             const workspaceFolder = {
-                uri: client.code2ProtocolConverter.asUri(uri),
-                name: FolderContext.uriName(uri),
+                uri: client.code2ProtocolConverter.asUri(folderContext.folder),
+                name: FolderContext.uriName(folderContext.folder),
             };
             await client.sendNotification(DidChangeWorkspaceFoldersNotification.type, {
                 event: { added: [workspaceFolder], removed: [] },
@@ -440,7 +444,17 @@ export class LanguageClientManager implements vscode.Disposable {
             this.activeDocumentManager,
             errorHandler,
             (document, symbols) => {
-                this.options.onDocumentSymbols?.(this.folderContext, document, symbols);
+                const documentFolderContext = [this.folderContext, ...this.addedFolders].find(
+                    folderContext => document.uri.fsPath.startsWith(folderContext.folder.fsPath)
+                );
+                if (!documentFolderContext) {
+                    this.languageClientOutputChannel?.log(
+                        "Unable to find folder for document: " + document.uri.fsPath,
+                        "WARN"
+                    );
+                    return;
+                }
+                this.options.onDocumentSymbols?.(documentFolderContext, document, symbols);
             }
         );
 

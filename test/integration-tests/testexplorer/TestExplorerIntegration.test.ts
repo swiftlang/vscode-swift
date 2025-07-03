@@ -83,126 +83,6 @@ suite("Test Explorer Suite", function () {
         requiresDebugger: true,
     });
 
-    suite("Modifying", function () {
-        let sourceFile: string;
-        let originalSource: string;
-
-        suiteSetup(function () {
-            if (
-                (process.platform === "win32" &&
-                    workspaceContext.globalToolchainSwiftVersion.isLessThan(
-                        new Version(6, 1, 0)
-                    )) ||
-                workspaceContext.globalToolchainSwiftVersion.isLessThan(new Version(6, 0, 2))
-            ) {
-                this.skip();
-            }
-
-            // FIXME: Both Linux and Windows aren't triggering the onTestItemsDidChange event
-            // at the expected time for these tests.
-            this.skip();
-        });
-
-        beforeEach(() => {
-            sourceFile = path.join(
-                folderContext.folder.fsPath,
-                "Tests",
-                "PackageTests",
-                "PackageTests.swift"
-            );
-            originalSource = fs.readFileSync(sourceFile, "utf8");
-        });
-
-        async function appendSource(newContent: string) {
-            const document = await vscode.workspace.openTextDocument(sourceFile);
-            await vscode.window.showTextDocument(document);
-            const edit = new vscode.WorkspaceEdit();
-            const lastLine = document.lineAt(document.lineCount - 1);
-            edit.insert(document.uri, lastLine.range.end, newContent);
-            await vscode.workspace.applyEdit(edit);
-            return document;
-        }
-
-        async function setSource(content: string) {
-            const document = await vscode.workspace.openTextDocument(sourceFile);
-            await vscode.window.showTextDocument(document);
-            const edit = new vscode.WorkspaceEdit();
-            edit.replace(
-                document.uri,
-                document.validateRange(new vscode.Range(0, 0, 10000000, 0)),
-                content
-            );
-            await vscode.workspace.applyEdit(edit);
-            return document;
-        }
-
-        type TestHierarchy = string | TestHierarchy[];
-
-        // Because we're at the whim of how often VS Code/the LSP provide document symbols
-        // we can't assume that changes to test items will be reflected in the next onTestItemsDidChange
-        // so poll until the condition is met.
-        async function validate(validator: (testItems: TestHierarchy) => boolean) {
-            let testItems: TestHierarchy = [];
-            const startTime = Date.now();
-            while (Date.now() - startTime < 5000) {
-                testItems = buildStateFromController(testExplorer.controller.items);
-                if (validator(testItems)) {
-                    return;
-                }
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            assert.fail("Expected test items to be updated, but they were not: " + testItems);
-        }
-
-        test("Test explorer updates when a test is added and removed", async () => {
-            const testName = `newTest${randomString()}()`;
-            const newTest = `\n@Test func ${testName} {\n    #expect(1 == 1)\n}\n`;
-
-            console.log(
-                ">>> Appending new test to the source file and waiting for test items to change"
-            );
-            await Promise.all([
-                eventPromise(testExplorer.onTestItemsDidChange),
-                appendSource(newTest),
-            ]);
-
-            console.log(">>> Validating that the new test appears in the test items");
-            await validate(testItems => testItems[1].includes(testName));
-
-            console.log(
-                ">>> Restoring the original source file and waiting for test items to change"
-            );
-            await Promise.all([
-                eventPromise(testExplorer.onTestItemsDidChange),
-                setSource(originalSource),
-            ]);
-
-            console.log(">>> Validating that the new test no longer appears in the test items");
-            await validate(testItems => !testItems[1].includes(testName));
-        });
-
-        test("Test explorer updates when a suite is added and removed", async () => {
-            const suiteName = `newSuite${randomString()}`;
-            const newSuite = `\n@Suite\nstruct ${suiteName} {\n    @Test\n    func testPassing() throws {\n        #expect(1 == 1)\n    }\n}\n`;
-            await Promise.all([
-                eventPromise(testExplorer.onTestItemsDidChange),
-                appendSource(newSuite),
-            ]);
-            await validate(testItems => testItems[1].includes(suiteName));
-
-            await Promise.all([
-                eventPromise(testExplorer.onTestItemsDidChange),
-                setSource(originalSource),
-            ]);
-            await validate(testItems => !testItems[1].includes(suiteName));
-        });
-
-        afterEach(async () => {
-            const document = await setSource(originalSource);
-            await document.save();
-        });
-    });
-
     suite("Debugging", function () {
         async function runXCTest() {
             const suiteId = "PackageTests.PassingXCTestSuite";
@@ -989,6 +869,114 @@ suite("Test Explorer Suite", function () {
                     });
                 });
             });
+        });
+    });
+
+    suite("Modifying", function () {
+        let sourceFile: string;
+        let originalSource: string;
+
+        suiteSetup(function () {
+            if (
+                (process.platform === "win32" &&
+                    workspaceContext.globalToolchainSwiftVersion.isLessThan(
+                        new Version(6, 1, 0)
+                    )) ||
+                workspaceContext.globalToolchainSwiftVersion.isLessThan(new Version(6, 0, 2))
+            ) {
+                this.skip();
+            }
+        });
+
+        beforeEach(() => {
+            sourceFile = path.join(
+                folderContext.folder.fsPath,
+                "Tests",
+                "PackageTests",
+                "PackageTests.swift"
+            );
+            originalSource = fs.readFileSync(sourceFile, "utf8");
+        });
+
+        async function appendSource(newContent: string) {
+            const document = await vscode.workspace.openTextDocument(sourceFile);
+            await vscode.window.showTextDocument(document);
+            const edit = new vscode.WorkspaceEdit();
+            const lastLine = document.lineAt(document.lineCount - 1);
+            edit.insert(document.uri, lastLine.range.end, newContent);
+            await vscode.workspace.applyEdit(edit);
+            return document;
+        }
+
+        async function setSource(content: string) {
+            const document = await vscode.workspace.openTextDocument(sourceFile);
+            await vscode.window.showTextDocument(document);
+            const edit = new vscode.WorkspaceEdit();
+            edit.replace(
+                document.uri,
+                document.validateRange(new vscode.Range(0, 0, 10000000, 0)),
+                content
+            );
+            await vscode.workspace.applyEdit(edit);
+            return document;
+        }
+
+        type TestHierarchy = string | TestHierarchy[];
+
+        // Because we're at the whim of how often VS Code/the LSP provide document symbols
+        // we can't assume that changes to test items will be reflected in the next onTestItemsDidChange
+        // so poll until the condition is met.
+        async function validate(validator: (testItems: TestHierarchy) => boolean) {
+            let testItems: TestHierarchy = [];
+            const startTime = Date.now();
+            while (Date.now() - startTime < 5000) {
+                testItems = buildStateFromController(testExplorer.controller.items);
+                if (validator(testItems)) {
+                    return;
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            assert.fail("Expected test items to be updated, but they were not: " + testItems);
+        }
+
+        test("Test explorer updates when a test is added and removed", async () => {
+            const testName = `newTest${randomString()}()`;
+            const newTest = `\n@Test func ${testName} {\n    #expect(1 == 1)\n}\n`;
+
+            await Promise.all([
+                eventPromise(testExplorer.onTestItemsDidChange),
+                appendSource(newTest),
+            ]);
+
+            await validate(testItems => testItems[1].includes(testName));
+
+            await Promise.all([
+                eventPromise(testExplorer.onTestItemsDidChange),
+                setSource(originalSource),
+            ]);
+
+            await validate(testItems => !testItems[1].includes(testName));
+        });
+
+        test("Test explorer updates when a suite is added and removed", async () => {
+            const suiteName = `newSuite${randomString()}`;
+            const newSuite = `\n@Suite\nstruct ${suiteName} {\n    @Test\n    func testPassing() throws {\n        #expect(1 == 1)\n    }\n}\n`;
+            await Promise.all([
+                eventPromise(testExplorer.onTestItemsDidChange),
+                appendSource(newSuite),
+            ]);
+            await validate(testItems => testItems[1].includes(suiteName));
+
+            await Promise.all([
+                eventPromise(testExplorer.onTestItemsDidChange),
+                setSource(originalSource),
+            ]);
+            await validate(testItems => !testItems[1].includes(suiteName));
+        });
+
+        afterEach(async () => {
+            const document = await setSource(originalSource);
+            await document.save();
         });
     });
 });
