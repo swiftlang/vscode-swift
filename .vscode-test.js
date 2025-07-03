@@ -70,6 +70,9 @@ module.exports = defineConfig({
             extensionDevelopmentPath: vsixPath
                 ? [`${__dirname}/.vscode-test/extensions/${publisher}.${name}-${version}`]
                 : undefined,
+            env: {
+                VSCODE_TEST: "1",
+            },
             mocha: {
                 ui: "tdd",
                 color: true,
@@ -106,6 +109,9 @@ module.exports = defineConfig({
             extensionDevelopmentPath: vsixPath
                 ? [`${__dirname}/.vscode-test/extensions/${publisher}.${name}-${version}`]
                 : undefined,
+            env: {
+                VSCODE_TEST: "1",
+            },
             mocha: {
                 ui: "tdd",
                 color: true,
@@ -130,6 +136,9 @@ module.exports = defineConfig({
             files: ["dist/test/common.js", "dist/test/unit-tests/**/*.test.js"],
             version: process.env["VSCODE_VERSION"] ?? "stable",
             launchArgs: launchArgs.concat("--disable-extensions"),
+            env: {
+                VSCODE_TEST: "1",
+            },
             mocha: {
                 ui: "tdd",
                 color: true,

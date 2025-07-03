@@ -37,6 +37,13 @@ export const IS_PRODUCTION_BUILD = process.env.NODE_ENV === "production";
 export const IS_RUNNING_IN_CI = process.env.CI === "1";
 
 /**
+ * Whether or not the code is being run as part of a test suite.
+ *
+ * This will NOT be removed when the extension is packaged into a VSIX.
+ */
+export const IS_RUNNING_UNDER_TEST = process.env.VSCODE_TEST === "1";
+
+/**
  * Get required environment variable for Swift product
  *
  * @param base base environment configuration
