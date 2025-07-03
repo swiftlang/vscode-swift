@@ -22,7 +22,7 @@ import { exec } from "child_process";
 import { Writable } from "stream";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { Version } from "../utilities/version";
-import { execFileStreamOutput } from "../utilities/utilities";
+import { destructuredPromise, execFileStreamOutput } from "../utilities/utilities";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
 
@@ -101,28 +101,21 @@ function configureZipArchiver(zipFilePath: string): {
     done: Promise<void>;
 } {
     const output = fs.createWriteStream(zipFilePath);
-    const archive = archiver("zip", {
-        zlib: { level: 9 }, // Maximum compression
+    // Create an archive with max compression
+    const archive = archiver.create("zip", {
+        zlib: { level: 9 },
     });
-    let resolve: () => void;
-    let reject: (error: unknown) => void;
-    const done = new Promise<void>((res, rej) => {
-        resolve = res;
-        reject = rej;
+    const { promise, resolve, reject } = destructuredPromise<void>();
+    output.once("close", () => {
+        archive.removeListener("error", reject);
+        resolve();
     });
-    output.on("close", async () => {
-        try {
-            resolve();
-        } catch (error) {
-            reject(error);
-        }
-    });
-
-    archive.on("error", (err: Error) => {
+    archive.once("error", err => {
+        output.removeListener("close", resolve);
         reject(err);
     });
     archive.pipe(output);
-    return { archive, done };
+    return { archive, done: promise };
 }
 
 export async function promptForDiagnostics(ctx: WorkspaceContext) {

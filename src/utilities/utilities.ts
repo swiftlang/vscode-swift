@@ -386,3 +386,23 @@ export function regexEscapedString(string: string, omitting?: Set<string>): stri
     }
     return result;
 }
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * Creates a promise that can be resolved or rejected outside the promise executor.
+ * @returns An object containing a promise, a resolve function, and a reject function.
+ */
+export function destructuredPromise<T>(): {
+    promise: Promise<T>;
+    resolve: (value: T) => void;
+    reject: (reason?: any) => void;
+} {
+    let resolve: (value: T) => void;
+    let reject: (reason?: any) => void;
+    const p = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+    });
+    return { promise: p, resolve: resolve!, reject: reject! };
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
