@@ -1,4 +1,4 @@
-#if !(os(Windows) && swift(<6.1))
+#if !os(Windows)
 import Foundation
 
 @main
@@ -35,5 +35,11 @@ struct JSONFormat: Decodable {
 enum CodeGeneratorError: Error {
     case invalidArguments
     case invalidData
+}
+#else
+@main
+struct DummyMain {
+    static func main() {
+    }
 }
 #endif
