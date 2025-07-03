@@ -302,4 +302,38 @@ suite("SwiftTestingOutputParser Suite", () => {
             },
         ]);
     });
+
+    test("Issue with isFailure: false isn't recorded", async () => {
+        const issueLocation = {
+            _filePath: "file:///some/file.swift",
+            line: 1,
+            column: 2,
+        };
+        const issueEvent = testEvent(
+            "issueRecorded",
+            "MyTests.MyTests/testWarning()",
+            [{ text: "This is a warning", symbol: TestSymbol.warning }],
+            issueLocation
+        );
+        (issueEvent.payload as any).issue.isFailure = false;
+
+        const events = new TestEventStream([
+            testEvent("runStarted"),
+            testEvent("testCaseStarted", "MyTests.MyTests/testWarning()"),
+            issueEvent,
+            testEvent("testCaseEnded", "MyTests.MyTests/testWarning()"),
+            testEvent("runEnded"),
+        ]);
+
+        await outputParser.watch("file:///mock/named/pipe", testRunState, events);
+
+        assert.deepEqual(testRunState.tests, [
+            {
+                name: "MyTests.MyTests/testWarning()",
+                status: TestStatus.passed,
+                timing: { timestamp: 0 },
+                output: [],
+            },
+        ]);
+    });
 });
