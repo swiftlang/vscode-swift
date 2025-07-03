@@ -25,7 +25,7 @@ import { isDeepStrictEqual } from "util";
 import { Version } from "../../../src/utilities/version";
 import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import configuration from "../../../src/configuration";
-import { resetBuildAllTaskCache } from "../../../src/tasks/SwiftTaskProvider";
+import { buildAllTaskName, resetBuildAllTaskCache } from "../../../src/tasks/SwiftTaskProvider";
 
 export function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);
@@ -364,6 +364,14 @@ export const folderInRootWorkspace = async (
     let folder = workspaceContext.folders.find(f => f.workspaceFolder.name === `test/${name}`);
     if (!folder) {
         folder = await workspaceContext.addPackageFolder(testAssetUri(name), workspaceFolder);
+    }
+    let i = 0;
+    while (i++ < 5) {
+        const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
+        if (tasks.find(t => t.name === buildAllTaskName(folder, false))) {
+            break;
+        }
+        await new Promise(r => setTimeout(r, 5000));
     }
     return folder;
 };
