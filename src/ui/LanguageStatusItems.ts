@@ -32,8 +32,7 @@ export class LanguageStatusItems implements vscode.Disposable {
             label: `Swift Version ${toolchain.swiftVersion.toString()}`,
         };
 
-        swiftVersionItem.command = Command.create("Select Toolchain",
-             Commands.SELECT_TOOLCHAIN);
+        swiftVersionItem.command = Command.create("Select Toolchain", Commands.SELECT_TOOLCHAIN);
 
         // Package.swift item
         const packageSwiftItem = vscode.languages.createLanguageStatusItem("swiftlang-package", [

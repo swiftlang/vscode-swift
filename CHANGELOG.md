@@ -2,6 +2,10 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Added
+
+- Add clickable toolchain selection to Swift version status bar item ([#TBD](https://github.com/swiftlang/vscode-swift/pull/1674))
+
 ### Fixed
 
 - Cleanup Swift diagnostics when the source file is moved or deleted ([#1653](https://github.com/swiftlang/vscode-swift/pull/1653))
