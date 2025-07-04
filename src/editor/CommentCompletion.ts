@@ -137,7 +137,7 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
         position: vscode.Position
     ): FunctionDetails | null {
         const parser = new DocumentParser(document, position);
-        if (!parser.match(/^[^{]*\b(?:func|init)/)) {
+        if (!parser.match(/\b(?:func|init)\b(?=[^{]*\{)/)) {
             return null;
         }
         const funcName = parser.match(/^([^(<]*)\s*(\(|<)/);

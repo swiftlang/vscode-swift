@@ -207,6 +207,55 @@ suite("CommentCompletion Test Suite", () => {
         ); // ! ensures trailing white space is not trimmed when this file is formatted.
     });
 
+    test("Comment completion on function with default parameter using #function", async () => {
+        const { document, positions } = await openDocument(`
+            /// 1️⃣
+            func foo(f: String = #function) {}`);
+        const position = positions["1️⃣"];
+
+        const items = await provider.functionCommentCompletion.provideCompletionItems(
+            document,
+            position
+        );
+        assert.deepEqual(items, [
+            expectedCompletionItem(` $1
+/// - Parameter f: $2`),
+        ]);
+    });
+
+    test("Comment completion on function with parameter named 'func'", async () => {
+        const { document, positions } = await openDocument(`
+            /// 1️⃣
+            func foo(func: String) {}`);
+        const position = positions["1️⃣"];
+
+        const items = await provider.functionCommentCompletion.provideCompletionItems(
+            document,
+            position
+        );
+        assert.deepEqual(items, [
+            expectedCompletionItem(` $1
+/// - Parameter func: $2`),
+        ]);
+    });
+
+    test("Comment completion on function with function and parameter named 'func' and #function default, returning function type", async () => {
+        const { document, positions } = await openDocument(`
+            /// 1️⃣
+            public func \`func\`(func: #function) -> function {}`);
+        const position = positions["1️⃣"];
+
+        const items = await provider.functionCommentCompletion.provideCompletionItems(
+            document,
+            position
+        );
+        assert.deepEqual(items, [
+            expectedCompletionItem(` $1
+/// - Parameter func: $2
+/// - Returns: $3`),
+        ]);
+    });
+
     function expectedCompletionItem(snippet: string): vscode.CompletionItem {
         const expected = new vscode.CompletionItem(
             "/// - parameters:",
