@@ -16,6 +16,7 @@ import * as vscode from "vscode";
 import { Command } from "vscode-languageclient";
 import { WorkspaceContext, FolderOperation } from "../WorkspaceContext";
 import { LanguagerClientDocumentSelectors } from "../sourcekit-lsp/LanguageClientConfiguration";
+import { Commands } from "../commands";
 
 export class LanguageStatusItems implements vscode.Disposable {
     constructor(workspaceContext: WorkspaceContext) {
@@ -30,6 +31,8 @@ export class LanguageStatusItems implements vscode.Disposable {
         swiftVersionItem.accessibilityInformation = {
             label: `Swift Version ${toolchain.swiftVersion.toString()}`,
         };
+
+        swiftVersionItem.command = Command.create("Select Toolchain", Commands.SELECT_TOOLCHAIN);
 
         // Package.swift item
         const packageSwiftItem = vscode.languages.createLanguageStatusItem("swiftlang-package", [
