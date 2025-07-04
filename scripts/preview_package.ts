@@ -40,7 +40,10 @@ main(async () => {
     // Increment the minor version and set the patch version to today's date
     const minor = version.minor + 1;
     const patch = formatDate(new Date());
-    const previewVersion = `${version.major}.${minor}.${patch}`;
+    let previewVersion = `${version.major}.${minor}.${patch}`;
+    if (process.argv.includes("dev")) {
+        previewVersion = `${previewVersion}-dev`;
+    }
     // Make sure that the new minor version is odd
     if (minor % 2 !== 1) {
         throw new Error(

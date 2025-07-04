@@ -23,8 +23,8 @@ jobs:
           . .github/workflows/scripts/setup-linux.sh
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
           npm ci
-          npm run package
-          npm run preview-package
+          npm run dev-package
+          npm run preview-package -- dev
           for file in *.vsix; do
             name="$(basename "$file" .vsix)-${{github.run_number}}.vsix"
             echo "Created bundle $name"
