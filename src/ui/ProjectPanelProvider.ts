@@ -43,13 +43,16 @@ const LOADING_ICON = "loading~spin";
  */
 function excludedFilesForProjectPanelExplorer(): string[] {
     const config = vscode.workspace.getConfiguration("files");
-    const vscodeExcludeList = config.get<{ [key: string]: boolean }>("exclude");
     const packageDepsExcludeList = configuration.excludePathsFromPackageDependencies;
-
     if (!Array.isArray(packageDepsExcludeList)) {
         throw new Error("Expected excludePathsFromPackageDependencies to be an array");
     }
-    return [...packageDepsExcludeList, ...Object.keys(vscodeExcludeList ?? {})];
+
+    const vscodeExcludeList = config.get<{ [key: string]: boolean }>("exclude") ?? {};
+    const vscodeFileTypesToExclude = Object.keys(vscodeExcludeList).filter(
+        key => vscodeExcludeList[key]
+    );
+    return [...packageDepsExcludeList, ...vscodeFileTypesToExclude];
 }
 
 /**
