@@ -223,11 +223,12 @@ async function getQuickPickItems(
     }
     // Various actions that the user can perform (e.g. to install new toolchains)
     const actionItems: ActionItem[] = [];
-    if (process.platform === "linux") {
+    if (process.platform === "linux" || process.platform === "darwin") {
+        const platformName = process.platform === "linux" ? "Linux" : "macOS";
         actionItems.push({
             type: "action",
             label: "$(swift-icon) Install Swiftly for toolchain management...",
-            detail: "Install https://swiftlang.github.io/swiftly to manage your toolchains on Linux",
+            detail: `Install https://swiftlang.github.io/swiftly to manage your toolchains on ${platformName}`,
             run: installSwiftly,
         });
     }
