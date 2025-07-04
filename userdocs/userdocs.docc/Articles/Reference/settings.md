@@ -8,6 +8,64 @@ The Swift extension comes with a number of settings you can use to control how i
 
 This document outlines useful configuration options not covered by the settings descriptions in the extension settings page.
 
+## Workspace Setup
+
+### Multiple packages in workspace folder
+
+If the workspace folder you open in VS Code contains multiple Swift packages:
+```
+<workspace folder>
+    /proj1
+        /Package.swift
+    /proj2
+        /Package.swift
+    /aSubfolder
+        /proj3
+            /Package.swift
+```
+
+You can enable the `searchSubfoldersForPackages` setting so the Swift extension can initializing all these projects.
+```json
+{
+  "swift.searchSubfoldersForPackages": true,
+}
+```
+
+Additionally you can exclude individual packages from initializing:
+```json
+{
+  "swift.exclude": {
+    "**/proj2": true,
+    "**/aSubfolder": true,
+    "**/aSubfolder/proj3": false,
+  },
+}
+```
+
+### Multi-root Workspaces
+
+As an alternative to opening [a single workspace folder with multiple packages in it](#multiple-packages-in-workspace-folder), VS Code has a concept of [multi-root workspaces](https://code.visualstudio.com/docs/editing/workspaces/multi-root-workspaces) which the Swift extension supports.
+
+Ex. myProj.code-workspace
+```json
+{
+	"folders": [
+		{
+			"name": "proj1",
+			"path": "./proj1"
+		},
+		{
+			"name": "proj3",
+			"path": "./aSubfolder/proj3"
+		},
+	],
+	"settings": {
+		"swift.autoGenerateLaunchConfigurations": false,
+		"swift.debugger.debugAdapter": "lldb-dap",
+    }
+}
+```
+
 ## Command Plugins
 
 Swift packages can define [command plugins](https://github.com/swiftlang/swift-package-manager/blob/main/Documentation/Plugins.md) that can perform arbitrary tasks. For example, the [swift-format](https://github.com/swiftlang/swift-format) package exposes a `format-source-code` command which will use swift-format to format source code in a folder. These plugin commands can be invoked from VS Code using `> Swift: Run Command Plugin`.
