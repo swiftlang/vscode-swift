@@ -135,7 +135,7 @@ export function resetBuildAllTaskCache() {
     buildAllTaskCache.reset();
 }
 
-function buildAllTaskName(folderContext: FolderContext, release: boolean): string {
+export function buildAllTaskName(folderContext: FolderContext, release: boolean): string {
     let buildTaskName = release
         ? `${SwiftTaskProvider.buildAllName} - Release`
         : SwiftTaskProvider.buildAllName;
