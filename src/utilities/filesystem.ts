@@ -112,7 +112,7 @@ export function isIncluded(
     excludeList: Record<string, boolean> = getDefaultExcludeList()
 ): boolean {
     let notExcluded = true;
-    let included = false;
+    let included = true;
     for (const key of Object.keys(excludeList)) {
         if (excludeList[key]) {
             if (contains(uri.fsPath, key, { contains: true })) {
