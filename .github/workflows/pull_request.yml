@@ -45,8 +45,10 @@ jobs:
 
   tests:
     name: ${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && 'Full Test Run' || 'Test'}}
+    needs: package
     uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@main
     with:
+      needs_token: true
       # Linux
       linux_exclude_swift_versions: '[{"swift_version": "nightly-6.1"},{"swift_version": "nightly-6.2"},{"swift_version": "nightly-main"}]'
       linux_env_vars: |
@@ -55,6 +57,8 @@ jobs:
         NVM_DIR=/usr/local/nvm
         CI=1
         FAST_TEST_RUN=${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && '0' || '1'}}
+        VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
+        GITHUB_REPOSITORY=${{github.repository}}
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./scripts/test.sh
       # Windows
@@ -62,6 +66,9 @@ jobs:
       windows_env_vars: |
         CI=1
         FAST_TEST_RUN=${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && '0' || '1'}}
+        VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
+        VSCODE_SWIFT_VSIX=vscode-swift.vsix
+        GITHUB_REPOSITORY=${{github.repository}}
       windows_pre_build_command: .github\workflows\scripts\windows\setup.ps1
       windows_build_command: scripts\test_windows.ps1
       enable_windows_docker: false

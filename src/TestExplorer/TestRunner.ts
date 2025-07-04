@@ -23,6 +23,7 @@ import {
     execFile,
     getErrorDescription,
     IS_PRODUCTION_BUILD,
+    IS_RUNNING_UNDER_TEST,
 } from "../utilities/utilities";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import configuration from "../configuration";
@@ -244,7 +245,7 @@ export class TestRunProxy {
     }
 
     private clearEnqueuedTest(test: vscode.TestItem) {
-        if (IS_PRODUCTION_BUILD) {
+        if (IS_PRODUCTION_BUILD && !IS_RUNNING_UNDER_TEST) {
             // `runState.enqueued` exists only for test validation purposes.
             return;
         }
