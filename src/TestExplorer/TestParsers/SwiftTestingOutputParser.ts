@@ -81,6 +81,14 @@ interface TestFunction extends TestBase {
     isParameterized: boolean;
 }
 
+type ParameterizedTestRecord = TestRecord & {
+    payload: {
+        kind: "function";
+        isParameterized: true;
+        _testCases: TestCase[];
+    };
+};
+
 export interface TestCase {
     id: string;
     displayName: string;
@@ -249,6 +257,188 @@ export class SwiftTestingOutputParser {
             : new UnixNamedPipeReader(path);
     }
 
+    private parse(item: SwiftTestEvent, runState: ITestRunState) {
+        switch (item.kind) {
+            case "test":
+                this.handleTestEvent(item, runState);
+                break;
+            case "event":
+                this.handleEventRecord(item.payload, runState);
+                break;
+        }
+    }
+
+    private handleTestEvent(item: TestRecord, runState: ITestRunState) {
+        if (this.isParameterizedFunction(item)) {
+            this.handleParameterizedFunction(item, runState);
+        }
+    }
+
+    private handleEventRecord(payload: EventRecordPayload, runState: ITestRunState) {
+        switch (payload.kind) {
+            case "runStarted":
+                this.handleRunStarted();
+                break;
+            case "testStarted":
+                this.handleTestStarted(payload, runState);
+                break;
+            case "testCaseStarted":
+                this.handleTestCaseStarted(payload, runState);
+                break;
+            case "testSkipped":
+                this.handleTestSkipped(payload, runState);
+                break;
+            case "issueRecorded":
+                this.handleIssueRecorded(payload, runState);
+                break;
+            case "testEnded":
+                this.handleTestEnded(payload, runState);
+                break;
+            case "testCaseEnded":
+                this.handleTestCaseEnded(payload, runState);
+                break;
+            case "_valueAttached":
+                this.handleValueAttached(payload, runState);
+                break;
+        }
+    }
+
+    private isParameterizedFunction(item: TestRecord): item is ParameterizedTestRecord {
+        return (
+            item.kind === "test" &&
+            item.payload.kind === "function" &&
+            item.payload.isParameterized &&
+            !!item.payload._testCases
+        );
+    }
+
+    private handleParameterizedFunction(item: ParameterizedTestRecord, runState: ITestRunState) {
+        // Store a map of [Test ID, [Test Case ID, TestCase]] so we can quickly
+        // map an event.payload.testID back to a test case.
+        this.buildTestCaseMapForParameterizedTest(item);
+
+        const testIndex = this.testItemIndexFromTestID(item.payload.id, runState);
+        // If a test has test cases it is paramterized and we need to notify
+        // the caller that the TestClass should be added to the vscode.TestRun
+        // before it starts.
+        item.payload._testCases
+            .map((testCase, index) =>
+                this.parameterizedFunctionTestCaseToTestClass(
+                    item.payload.id,
+                    testCase,
+                    sourceLocationToVSCodeLocation(
+                        item.payload.sourceLocation._filePath,
+                        item.payload.sourceLocation.line,
+                        item.payload.sourceLocation.column
+                    ),
+                    index
+                )
+            )
+            .flatMap(testClass => (testClass ? [testClass] : []))
+            .forEach(testClass => this.addParameterizedTestCase(testClass, testIndex));
+    }
+
+    private handleRunStarted() {
+        // Notify the runner that we've received all the test cases and
+        // are going to start running tests now.
+        this.testRunStarted();
+    }
+
+    private handleTestStarted(payload: TestStarted, runState: ITestRunState) {
+        const testIndex = this.testItemIndexFromTestID(payload.testID, runState);
+        runState.started(testIndex, payload.instant.absolute);
+    }
+
+    private handleTestCaseStarted(payload: TestCaseStarted, runState: ITestRunState) {
+        const testID = this.idFromOptionalTestCase(payload.testID, payload._testCase);
+        const testIndex = this.getTestCaseIndex(runState, testID);
+        runState.started(testIndex, payload.instant.absolute);
+    }
+
+    private handleTestSkipped(payload: TestSkipped, runState: ITestRunState) {
+        const testIndex = this.testItemIndexFromTestID(payload.testID, runState);
+        runState.skipped(testIndex);
+    }
+
+    private handleIssueRecorded(payload: IssueRecorded, runState: ITestRunState) {
+        const testID = this.idFromOptionalTestCase(payload.testID, payload._testCase);
+        const testIndex = this.getTestCaseIndex(runState, testID);
+        const { isKnown, sourceLocation } = payload.issue;
+        const location = sourceLocationToVSCodeLocation(
+            sourceLocation._filePath,
+            sourceLocation.line,
+            sourceLocation.column
+        );
+
+        const messages = this.transformIssueMessageSymbols(payload.messages);
+        const { issues, details } = this.partitionIssueMessages(messages);
+
+        // Order the details after the issue text.
+        const additionalDetails = details
+            .map(message => MessageRenderer.render(message))
+            .join("\n");
+
+        issues.forEach(message => {
+            runState.recordIssue(
+                testIndex,
+                additionalDetails.length > 0
+                    ? `${MessageRenderer.render(message)}\n${additionalDetails}`
+                    : MessageRenderer.render(message),
+                isKnown,
+                location
+            );
+        });
+
+        if (payload._testCase && testID !== payload.testID) {
+            const testIndex = this.getTestCaseIndex(runState, payload.testID);
+            messages.forEach(message => {
+                runState.recordIssue(testIndex, message.text, isKnown, location);
+            });
+        }
+    }
+
+    private handleTestEnded(payload: TestEnded, runState: ITestRunState) {
+        const testIndex = this.testItemIndexFromTestID(payload.testID, runState);
+
+        // When running a single test the testEnded and testCaseEnded events
+        // have the same ID, and so we'd end the same test twice.
+        if (this.checkTestCompleted(testIndex)) {
+            return;
+        }
+        runState.completed(testIndex, { timestamp: payload.instant.absolute });
+    }
+
+    private handleTestCaseEnded(payload: TestCaseEnded, runState: ITestRunState) {
+        const testID = this.idFromOptionalTestCase(payload.testID, payload._testCase);
+        const testIndex = this.getTestCaseIndex(runState, testID);
+
+        // When running a single test the testEnded and testCaseEnded events
+        // have the same ID, and so we'd end the same test twice.
+        if (this.checkTestCompleted(testIndex)) {
+            return;
+        }
+        runState.completed(testIndex, { timestamp: payload.instant.absolute });
+    }
+
+    private handleValueAttached(payload: ValueAttached, runState: ITestRunState) {
+        if (!payload._attachment.path) {
+            return;
+        }
+        const testID = this.idFromOptionalTestCase(payload.testID);
+        const testIndex = this.getTestCaseIndex(runState, testID);
+
+        this.onAttachment(testIndex, payload._attachment.path);
+    }
+
+    private checkTestCompleted(testIndex: number): boolean {
+        // If the test has already been completed, we don't need to do anything.
+        if (this.completionMap.get(testIndex)) {
+            return true;
+        }
+        this.completionMap.set(testIndex, true);
+        return false;
+    }
+
     private testName(id: string): string {
         const nameMatcher = /^(.*\(.*\))\/(.*)\.swift:\d+:\d+$/;
         const matches = id.match(nameMatcher);
@@ -354,135 +544,6 @@ export class SwiftTestingOutputParser {
             return runState.getTestItemIndex(testID, undefined);
         }
         return id;
-    }
-
-    private parse(item: SwiftTestEvent, runState: ITestRunState) {
-        if (
-            item.kind === "test" &&
-            item.payload.kind === "function" &&
-            item.payload.isParameterized &&
-            item.payload._testCases
-        ) {
-            // Store a map of [Test ID, [Test Case ID, TestCase]] so we can quickly
-            // map an event.payload.testID back to a test case.
-            this.buildTestCaseMapForParameterizedTest(item);
-
-            const testIndex = this.testItemIndexFromTestID(item.payload.id, runState);
-            // If a test has test cases it is paramterized and we need to notify
-            // the caller that the TestClass should be added to the vscode.TestRun
-            // before it starts.
-            item.payload._testCases
-                .map((testCase, index) =>
-                    this.parameterizedFunctionTestCaseToTestClass(
-                        item.payload.id,
-                        testCase,
-                        sourceLocationToVSCodeLocation(
-                            item.payload.sourceLocation._filePath,
-                            item.payload.sourceLocation.line,
-                            item.payload.sourceLocation.column
-                        ),
-                        index
-                    )
-                )
-                .flatMap(testClass => (testClass ? [testClass] : []))
-                .forEach(testClass => this.addParameterizedTestCase(testClass, testIndex));
-        } else if (item.kind === "event") {
-            if (item.payload.kind === "runStarted") {
-                // Notify the runner that we've recieved all the test cases and
-                // are going to start running tests now.
-                this.testRunStarted();
-                return;
-            } else if (item.payload.kind === "testStarted") {
-                const testIndex = this.testItemIndexFromTestID(item.payload.testID, runState);
-                runState.started(testIndex, item.payload.instant.absolute);
-                return;
-            } else if (item.payload.kind === "testCaseStarted") {
-                const testID = this.idFromOptionalTestCase(
-                    item.payload.testID,
-                    item.payload._testCase
-                );
-                const testIndex = this.getTestCaseIndex(runState, testID);
-                runState.started(testIndex, item.payload.instant.absolute);
-                return;
-            } else if (item.payload.kind === "testSkipped") {
-                const testIndex = this.testItemIndexFromTestID(item.payload.testID, runState);
-                runState.skipped(testIndex);
-                return;
-            } else if (item.payload.kind === "issueRecorded") {
-                const testID = this.idFromOptionalTestCase(
-                    item.payload.testID,
-                    item.payload._testCase
-                );
-                const testIndex = this.getTestCaseIndex(runState, testID);
-
-                const isKnown = item.payload.issue.isKnown;
-                const sourceLocation = item.payload.issue.sourceLocation;
-                const location = sourceLocationToVSCodeLocation(
-                    sourceLocation._filePath,
-                    sourceLocation.line,
-                    sourceLocation.column
-                );
-
-                const messages = this.transformIssueMessageSymbols(item.payload.messages);
-                const { issues, details } = this.partitionIssueMessages(messages);
-
-                // Order the details after the issue text.
-                const additionalDetails = details
-                    .map(message => MessageRenderer.render(message))
-                    .join("\n");
-
-                issues.forEach(message => {
-                    runState.recordIssue(
-                        testIndex,
-                        additionalDetails.length > 0
-                            ? `${MessageRenderer.render(message)}\n${additionalDetails}`
-                            : MessageRenderer.render(message),
-                        isKnown,
-                        location
-                    );
-                });
-
-                if (item.payload._testCase && testID !== item.payload.testID) {
-                    const testIndex = this.getTestCaseIndex(runState, item.payload.testID);
-                    messages.forEach(message => {
-                        runState.recordIssue(testIndex, message.text, isKnown, location);
-                    });
-                }
-                return;
-            } else if (item.payload.kind === "testEnded") {
-                const testIndex = this.testItemIndexFromTestID(item.payload.testID, runState);
-
-                // When running a single test the testEnded and testCaseEnded events
-                // have the same ID, and so we'd end the same test twice.
-                if (this.completionMap.get(testIndex)) {
-                    return;
-                }
-                this.completionMap.set(testIndex, true);
-                runState.completed(testIndex, { timestamp: item.payload.instant.absolute });
-                return;
-            } else if (item.payload.kind === "testCaseEnded") {
-                const testID = this.idFromOptionalTestCase(
-                    item.payload.testID,
-                    item.payload._testCase
-                );
-                const testIndex = this.getTestCaseIndex(runState, testID);
-
-                // When running a single test the testEnded and testCaseEnded events
-                // have the same ID, and so we'd end the same test twice.
-                if (this.completionMap.get(testIndex)) {
-                    return;
-                }
-                this.completionMap.set(testIndex, true);
-                runState.completed(testIndex, { timestamp: item.payload.instant.absolute });
-                return;
-            } else if (item.payload.kind === "_valueAttached" && item.payload._attachment.path) {
-                const testID = this.idFromOptionalTestCase(item.payload.testID);
-                const testIndex = this.getTestCaseIndex(runState, testID);
-
-                this.onAttachment(testIndex, item.payload._attachment.path);
-                return;
-            }
-        }
     }
 }
 
