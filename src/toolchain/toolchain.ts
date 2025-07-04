@@ -254,9 +254,8 @@ export class SwiftToolchain {
      * @returns an array of toolchain paths
      */
     public static async getSwiftlyToolchainInstalls(): Promise<string[]> {
-        // Swiftly is only available on Linux right now
-        // TODO: Add support for macOS
-        if (process.platform !== "linux") {
+        // Swiftly is available on Linux and macOS
+        if (process.platform !== "linux" && process.platform !== "darwin") {
             return [];
         }
         try {
