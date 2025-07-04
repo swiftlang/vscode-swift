@@ -4,7 +4,7 @@
 
 ### Added
 
-- Add clickable toolchain selection to Swift version status bar item ([#TBD](https://github.com/swiftlang/vscode-swift/pull/1674))
+- Add clickable toolchain selection to Swift version status bar item ([#1674](https://github.com/swiftlang/vscode-swift/pull/1674))
 - Show revision hash or local/editing keyword in project panel dependency descriptions ([#1667](https://github.com/swiftlang/vscode-swift/pull/1667))
 
 ## 2.6.2 - 2025-07-02
