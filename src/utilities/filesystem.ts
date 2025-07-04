@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import { all, any } from "micromatch";
+import { contains } from "micromatch";
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as vscode from "vscode";
@@ -111,17 +111,24 @@ export function isIncluded(
     uri: vscode.Uri,
     excludeList: Record<string, boolean> = getDefaultExcludeList()
 ): boolean {
-    const { include, exclude } = getGlobPattern(excludeList);
-    const notExcluded = all(
-        uri.fsPath,
-        exclude.map(pattern => `!${pattern}`),
-        { contains: true }
-    );
+    let notExcluded = true;
+    let included = false;
+    for (const key of Object.keys(excludeList)) {
+        if (excludeList[key]) {
+            if (contains(uri.fsPath, key, { contains: true })) {
+                notExcluded = false;
+                included = false;
+            }
+        } else {
+            if (contains(uri.fsPath, key, { contains: true })) {
+                included = true;
+            }
+        }
+    }
     if (notExcluded) {
         return true;
     }
-    const reincluded = any(uri.fsPath, include, { contains: true });
-    return reincluded;
+    return included;
 }
 
 export function isExcluded(
