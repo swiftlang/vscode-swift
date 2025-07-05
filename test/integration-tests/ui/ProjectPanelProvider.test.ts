@@ -361,7 +361,7 @@ suite("ProjectPanelProvider Test Suite", function () {
             let resetSettings: (() => Promise<void>) | undefined;
             beforeEach(async function () {
                 resetSettings = await updateSettings({
-                    "files.exclude": { "**/*.swift": true },
+                    "files.exclude": { "**/*.swift": true, "**/*.txt": false },
                     "swift.excludePathsFromPackageDependencies": ["**/*.md"],
                 });
             });
@@ -374,11 +374,11 @@ suite("ProjectPanelProvider Test Suite", function () {
 
                 const folders = await treeProvider.getChildren(dep);
                 const manifest = folders.find(n => n.name === "Package.swift") as FileNode;
-                expect(manifest).to.be.undefined;
+                expect(manifest, "Package.swift was not found").to.be.undefined;
                 const readme = folders.find(n => n.name === "README.md") as FileNode;
-                expect(readme).to.be.undefined;
+                expect(readme, "README.md was not found").to.be.undefined;
                 const licence = folders.find(n => n.name === "LICENSE.txt") as FileNode;
-                expect(licence).to.not.be.undefined;
+                expect(licence, "LICENSE.txt was not found").to.not.be.undefined;
             });
 
             afterEach(async () => {
