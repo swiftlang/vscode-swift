@@ -307,6 +307,27 @@
         "icon": "$(debug-coverage)"
       },
       {
+        "command": "swift.runTest",
+        "title": "Run Test",
+        "category": "Test",
+        "icon": "$(testing-run-icon)",
+        "enablement": "false"
+      },
+      {
+        "command": "swift.debugTest",
+        "title": "Debug Test",
+        "category": "Test",
+        "icon": "$(testing-debug-icon)",
+        "enablement": "false"
+      },
+      {
+        "command": "swift.runTestWithCoverage",
+        "title": "Run Test with Coverage",
+        "category": "Test",
+        "icon": "$(debug-coverage)",
+        "enablement": "false"
+      },
+      {
         "command": "swift.openDocumentation",
         "title": "Open Documentation",
         "category": "Swift",
@@ -562,7 +583,7 @@
         }
       },
       {
-        "title": "Code Coverage",
+        "title": "Testing",
         "properties": {
           "swift.excludeFromCodeCoverage": {
             "description": "A list of paths to exclude from code coverage reports. Paths can be absolute or relative to the workspace root.",
@@ -572,6 +593,11 @@
             },
             "default": [],
             "scope": "machine-overridable"
+          },
+          "swift.showTestCodeLenses": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Controls whether or not to show inline code lenses for running and debugging tests inline, above test and suite declarations."
           }
         }
       },
@@ -1043,6 +1069,18 @@
         {
           "command": "swift.coverAllTests",
           "when": "swift.isActivated"
+        },
+        {
+          "command": "swift.runTest",
+          "when": "false"
+        },
+        {
+          "command": "swift.debugTest",
+          "when": "false"
+        },
+        {
+          "command": "swift.runTestWithCoverage",
+          "when": "false"
         },
         {
           "command": "swift.openEducationalNote",

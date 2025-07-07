@@ -290,6 +290,10 @@ const configuration = {
             .get<string[]>("excludeFromCodeCoverage", [])
             .map(substituteVariablesInString);
     },
+    /** Whether to show inline code lenses for running and debugging tests. */
+    get showTestCodeLenses(): boolean {
+        return vscode.workspace.getConfiguration("swift").get<boolean>("showTestCodeLenses", false);
+    },
     /** Files and directories to exclude from the Package Dependencies view. */
     get excludePathsFromPackageDependencies(): string[] {
         return vscode.workspace
