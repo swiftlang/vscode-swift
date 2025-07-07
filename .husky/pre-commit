@@ -1,0 +1,25 @@
+# Store list of staged files before formatting
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR)
+
+# Run lint-staged to format only staged files
+echo "Running formatter on staged files..."
+npx lint-staged
+
+# Check if there are any changes in previously staged files
+UNSTAGED_CHANGES=0
+for FILE in $STAGED_FILES; do
+  if [ -f "$FILE" ] && git diff --quiet "$FILE"; then
+    # No changes in this file
+    continue
+  else
+    # Changes detected
+    UNSTAGED_CHANGES=1
+    echo "File modified after formatting: $FILE"
+  fi
+done
+
+if [ $UNSTAGED_CHANGES -eq 1 ]; then
+  echo "Error: There are unstaged changes after running the formatter."
+  echo "Please stage the modified files and try committing again."
+  exit 1
+fi
