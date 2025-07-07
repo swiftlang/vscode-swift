@@ -34,8 +34,13 @@ main(async () => {
 
     // Update version in CHANGELOG
     await updateChangelog(versionString);
+
     // Use VSCE to package the extension
-    await exec("npx", ["vsce", "package"], {
+    // Note: There are no sendgrid secrets in the extension. `--allow-package-secrets` works around a false positive
+    // where the symbol `SG.MessageTransports.is` can appear in the dist.js if we're unlucky enough
+    // to have `SG` as the minified name of a namespace. Here is the rule we sometimes mistakenly match:
+    // https://github.com/secretlint/secretlint/blob/5706ac4942f098b845570541903472641d4ae914/packages/%40secretlint/secretlint-rule-sendgrid/src/index.ts#L35
+    await exec("npx", ["vsce", "package", "--allow-package-secrets", "sendgrid"], {
         cwd: rootDirectory,
     });
 });
