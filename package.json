@@ -1713,7 +1713,11 @@
     "dev-package": "tsx ./scripts/dev_package.ts",
     "preview-package": "tsx ./scripts/preview_package.ts",
     "tag": "./scripts/tag_release.sh $npm_package_version",
-    "contributors": "./scripts/generate_contributors_list.sh"
+    "contributors": "./scripts/generate_contributors_list.sh",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "**/*": "prettier --write --ignore-unknown"
   },
   "devDependencies": {
     "@types/archiver": "^6.0.3",
@@ -1748,6 +1752,8 @@
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^10.1.5",
     "fantasticon": "^3.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.2",
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
     "mocha": "^11.7.1",
