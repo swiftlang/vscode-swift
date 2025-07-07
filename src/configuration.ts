@@ -283,7 +283,7 @@ const configuration = {
             },
         };
     },
-    /** Files and directories to exclude from the code coverage. */
+    /** Files and directories to exclude from the code coverage.  */
     get excludeFromCodeCoverage(): string[] {
         return vscode.workspace
             .getConfiguration("swift")
