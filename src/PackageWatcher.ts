@@ -154,11 +154,13 @@ export class PackageWatcher {
             const contents = await fs.readFile(versionFile);
             return Version.fromString(contents.toString().trim());
         } catch (error) {
-            this.workspaceContext.outputChannel.appendLine(
-                `Failed to read .swift-version file at ${versionFile}: ${error}`
-            );
-            return undefined;
+            if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+                this.workspaceContext.outputChannel.appendLine(
+                    `Failed to read .swift-version file at ${versionFile}: ${error}`
+                );
+            }
         }
+        return undefined;
     }
 
     /**
