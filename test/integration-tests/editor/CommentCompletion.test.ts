@@ -38,165 +38,166 @@ suite("CommentCompletion Test Suite", () => {
         provider.dispose();
     });
 
-    test("Completion on line that isn't a comment", async () => {
-        const { document, positions } = await openDocument(`
+    suite("Function Comment Completion", () => {
+        test("Completion on line that isn't a comment", async () => {
+            const { document, positions } = await openDocument(`
             1️⃣
             func foo() {}`);
-        const position = positions["1️⃣"];
+            const position = positions["1️⃣"];
 
-        const items = await provider.functionCommentCompletion.provideCompletionItems(
-            document,
-            position
-        );
-        assert.deepEqual(items, undefined);
-    });
+            const items = await provider.functionCommentCompletion.provideCompletionItems(
+                document,
+                position
+            );
+            assert.deepEqual(items, undefined);
+        });
 
-    test("Comment completion on line that isn't a function", async () => {
-        const { document, positions } = await openDocument(`
+        test("Comment completion on line that isn't a function", async () => {
+            const { document, positions } = await openDocument(`
             /// 1️⃣
             let x = 1`);
-        const position = positions["1️⃣"];
+            const position = positions["1️⃣"];
 
-        const items = await provider.functionCommentCompletion.provideCompletionItems(
-            document,
-            position
-        );
-        assert.deepEqual(items, undefined);
-    });
+            const items = await provider.functionCommentCompletion.provideCompletionItems(
+                document,
+                position
+            );
+            assert.deepEqual(items, undefined);
+        });
 
-    test("Comment completion on func with no argument, no return should have no completions", async () => {
-        const { document, positions } = await openDocument(`
+        test("Comment completion on func with no argument, no return should have no completions", async () => {
+            const { document, positions } = await openDocument(`
             /// 1️⃣
             func foo() {}`);
-        const position = positions["1️⃣"];
+            const position = positions["1️⃣"];
 
-        const items = await provider.functionCommentCompletion.provideCompletionItems(
-            document,
-            position
-        );
-        assert.deepEqual(items, undefined);
-    });
+            const items = await provider.functionCommentCompletion.provideCompletionItems(
+                document,
+                position
+            );
+            assert.deepEqual(items, undefined);
+        });
 
-    test("Comment completion on single argument function, no return should have a completion", async () => {
-        const { document, positions } = await openDocument(`
+        test("Comment completion on single argument function, no return should have a completion", async () => {
+            const { document, positions } = await openDocument(`
             /// 1️⃣
             func foo(bar: Int) {}`);
-        const position = positions["1️⃣"];
+            const position = positions["1️⃣"];
 
-        const items = await provider.functionCommentCompletion.provideCompletionItems(
-            document,
-            position
-        );
-        assert.deepEqual(items, [
-            expectedCompletionItem(` $1
+            const items = await provider.functionCommentCompletion.provideCompletionItems(
+                document,
+                position
+            );
+            assert.deepEqual(items, [
+                expectedCompletionItem(` $1
 /// - Parameter bar: $2`),
-        ]);
-    });
+            ]);
+        });
 
-    test("Comment completion on single argument function, with return should have a completion", async () => {
-        const { document, positions } = await openDocument(`
+        test("Comment completion on single argument function, with return should have a completion", async () => {
+            const { document, positions } = await openDocument(`
             /// 1️⃣
             func foo(bar: Int) -> Int { return 0 }`);
-        const position = positions["1️⃣"];
+            const position = positions["1️⃣"];
 
-        const items = await provider.functionCommentCompletion.provideCompletionItems(
-            document,
-            position
-        );
-        assert.deepEqual(items, [
-            expectedCompletionItem(` $1
+            const items = await provider.functionCommentCompletion.provideCompletionItems(
+                document,
+                position
+            );
+            assert.deepEqual(items, [
+                expectedCompletionItem(` $1
 /// - Parameter bar: $2
 /// - Returns: $3`),
-        ]);
-    });
+            ]);
+        });
 
-    test("Comment completion on a throwing function", async () => {
-        const { document, positions } = await openDocument(`
+        test("Comment completion on a throwing function", async () => {
+            const { document, positions } = await openDocument(`
             /// 1️⃣
             func foo() throws {}`);
-        const position = positions["1️⃣"];
+            const position = positions["1️⃣"];
 
-        const items = await provider.functionCommentCompletion.provideCompletionItems(
-            document,
-            position
-        );
-        assert.deepEqual(items, [
-            expectedCompletionItem(` $1
+            const items = await provider.functionCommentCompletion.provideCompletionItems(
+                document,
+                position
+            );
+            assert.deepEqual(items, [
+                expectedCompletionItem(` $1
 /// - Throws: $2`),
-        ]);
-    });
+            ]);
+        });
 
-    test("Comment completion on single argument throwing function", async () => {
-        const { document, positions } = await openDocument(`
+        test("Comment completion on single argument throwing function", async () => {
+            const { document, positions } = await openDocument(`
             /// 1️⃣
             func foo(bar: Int) throws {}`);
-        const position = positions["1️⃣"];
+            const position = positions["1️⃣"];
 
-        const items = await provider.functionCommentCompletion.provideCompletionItems(
-            document,
-            position
-        );
-        assert.deepEqual(items, [
-            expectedCompletionItem(` $1
+            const items = await provider.functionCommentCompletion.provideCompletionItems(
+                document,
+                position
+            );
+            assert.deepEqual(items, [
+                expectedCompletionItem(` $1
 /// - Parameter bar: $2
 /// - Throws: $3`),
-        ]);
-    });
+            ]);
+        });
 
-    test("Comment completion on complex function", async () => {
-        const { document, positions } = await openDocument(`
+        test("Comment completion on complex function", async () => {
+            const { document, positions } = await openDocument(`
             /// 1️⃣
             func foo(bar: Int, baz: String) -> Data throws { return Data() }`);
-        const position = positions["1️⃣"];
+            const position = positions["1️⃣"];
 
-        const items = await provider.functionCommentCompletion.provideCompletionItems(
-            document,
-            position
-        );
-        assert.deepEqual(items, [
-            expectedCompletionItem(
-                ` $1
+            const items = await provider.functionCommentCompletion.provideCompletionItems(
+                document,
+                position
+            );
+            assert.deepEqual(items, [
+                expectedCompletionItem(
+                    ` $1
 /// - Parameters:
 ///   - bar: $2
 ///   - baz: $3
 /// - Returns: $4`
-            ),
-        ]);
-    });
+                ),
+            ]);
+        });
 
-    test("Comment completion on complex typed throwing function", async () => {
-        const { document, positions } = await openDocument(`
+        test("Comment completion on complex typed throwing function", async () => {
+            const { document, positions } = await openDocument(`
             /// 1️⃣
             func foo(bar: Int, baz: String) -> Data throws(MyError) { return Data() }`);
-        const position = positions["1️⃣"];
+            const position = positions["1️⃣"];
 
-        const items = await provider.functionCommentCompletion.provideCompletionItems(
-            document,
-            position
-        );
-        assert.deepEqual(items, [
-            expectedCompletionItem(
-                ` $1
+            const items = await provider.functionCommentCompletion.provideCompletionItems(
+                document,
+                position
+            );
+            assert.deepEqual(items, [
+                expectedCompletionItem(
+                    ` $1
 /// - Parameters:
 ///   - bar: $2
 ///   - baz: $3
 /// - Returns: $4`
-            ),
-        ]);
-    });
+                ),
+            ]);
+        });
 
-    test("Comment Insertion", async () => {
-        const { document, positions } = await openDocument(`
+        test("Comment Insertion", async () => {
+            const { document, positions } = await openDocument(`
             /// 1️⃣
             func foo(bar: Int, baz: String) -> Data throws { return Data() }`);
-        const position = positions["1️⃣"];
+            const position = positions["1️⃣"];
 
-        const editor = await vscode.window.showTextDocument(document);
-        await provider.insert(editor, position.line + 1);
+            const editor = await vscode.window.showTextDocument(document);
+            await provider.insert(editor, position.line + 1);
 
-        assert.deepEqual(
-            editor.document.getText(),
-            `
+            assert.deepEqual(
+                editor.document.getText(),
+                `
             /// !
             ///  !
             /// - Parameters:
@@ -204,56 +205,91 @@ suite("CommentCompletion Test Suite", () => {
             ///   - baz: !
             /// - Returns: !
             func foo(bar: Int, baz: String) -> Data throws { return Data() }`.replace(/!/g, "")
-        ); // ! ensures trailing white space is not trimmed when this file is formatted.
-    });
+            ); // ! ensures trailing white space is not trimmed when this file is formatted.
+        });
 
-    test("Comment completion on function with default parameter using #function", async () => {
-        const { document, positions } = await openDocument(`
+        test("Comment completion on function with default parameter using #function", async () => {
+            const { document, positions } = await openDocument(`
             /// 1️⃣
             func foo(f: String = #function) {}`);
-        const position = positions["1️⃣"];
+            const position = positions["1️⃣"];
 
-        const items = await provider.functionCommentCompletion.provideCompletionItems(
-            document,
-            position
-        );
-        assert.deepEqual(items, [
-            expectedCompletionItem(` $1
+            const items = await provider.functionCommentCompletion.provideCompletionItems(
+                document,
+                position
+            );
+            assert.deepEqual(items, [
+                expectedCompletionItem(` $1
 /// - Parameter f: $2`),
-        ]);
-    });
+            ]);
+        });
 
-    test("Comment completion on function with parameter named 'func'", async () => {
-        const { document, positions } = await openDocument(`
+        test("Comment completion on function with parameter named 'func'", async () => {
+            const { document, positions } = await openDocument(`
             /// 1️⃣
             func foo(func: String) {}`);
-        const position = positions["1️⃣"];
+            const position = positions["1️⃣"];
 
-        const items = await provider.functionCommentCompletion.provideCompletionItems(
-            document,
-            position
-        );
-        assert.deepEqual(items, [
-            expectedCompletionItem(` $1
+            const items = await provider.functionCommentCompletion.provideCompletionItems(
+                document,
+                position
+            );
+            assert.deepEqual(items, [
+                expectedCompletionItem(` $1
 /// - Parameter func: $2`),
-        ]);
-    });
+            ]);
+        });
 
-    test("Comment completion on function with function and parameter named 'func' and #function default, returning function type", async () => {
-        const { document, positions } = await openDocument(`
+        test("Comment completion on function with function and parameter named 'func' and #function default, returning function type", async () => {
+            const { document, positions } = await openDocument(`
             /// 1️⃣
             public func \`func\`(func: #function) -> function {}`);
-        const position = positions["1️⃣"];
+            const position = positions["1️⃣"];
 
-        const items = await provider.functionCommentCompletion.provideCompletionItems(
-            document,
-            position
-        );
-        assert.deepEqual(items, [
-            expectedCompletionItem(` $1
+            const items = await provider.functionCommentCompletion.provideCompletionItems(
+                document,
+                position
+            );
+            assert.deepEqual(items, [
+                expectedCompletionItem(` $1
 /// - Parameter func: $2
 /// - Returns: $3`),
-        ]);
+            ]);
+        });
+    });
+
+    suite("Document Comment Completion", () => {
+        test("Should continue a documentation comment block on new line", async () => {
+            const { document, positions } = await openDocument(`
+            /// aaa
+            1️⃣
+            public func foo() {}`);
+
+            const position = positions["1️⃣"];
+            await provider.docCommentCompletion.provideCompletionItems(document, position);
+
+            const newLine = document.getText(
+                new vscode.Range(position, position.translate(0, 1000))
+            );
+
+            assert.strictEqual(newLine, "/// ", "New line should continue the comment block");
+        });
+
+        test("Should continue a documentation comment when an existing comment line is split", async () => {
+            const { document, positions } = await openDocument(`
+            /// aaa
+            1️⃣// bbb
+            public func foo() {}`);
+
+            const position = positions["1️⃣"];
+            await provider.docCommentCompletion.provideCompletionItems(document, position);
+
+            const newLine = document.getText(
+                new vscode.Range(position, position.translate(0, 1000))
+            );
+
+            assert.strictEqual(newLine, "/// bbb", "New line should continue the comment block");
+        });
     });
 
     function expectedCompletionItem(snippet: string): vscode.CompletionItem {
@@ -303,6 +339,8 @@ suite("CommentCompletion Test Suite", () => {
             language: "swift",
             content: purgedContent,
         });
+
+        await vscode.window.showTextDocument(doc);
 
         // Save the document so we can clean it up when the test finishes
         document = doc;
