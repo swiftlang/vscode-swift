@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import { TestExplorer } from "./TestExplorer";
 import { flattenTestItemCollection } from "./TestUtils";
-import configuration from "../configuration";
+import configuration, { ValidCodeLens } from "../configuration";
 
 export class TestCodeLensProvider implements vscode.CodeLensProvider, vscode.Disposable {
     private onDidChangeCodeLensesEmitter = new vscode.EventEmitter<void>();
@@ -37,37 +37,59 @@ export class TestCodeLensProvider implements vscode.CodeLensProvider, vscode.Dis
         document: vscode.TextDocument,
         _token: vscode.CancellationToken
     ): vscode.ProviderResult<vscode.CodeLens[]> {
-        if (configuration.showTestCodeLenses === false) {
+        const config = configuration.showTestCodeLenses;
+        if (config === false || (Array.isArray(config) && config.length === 0)) {
             return [];
         }
 
         const items = flattenTestItemCollection(this.testExplorer.controller.items);
         return items
             .filter(item => item.uri?.fsPath === document.uri.fsPath)
-            .flatMap(item => this.codeLensesForTestItem(item));
+            .flatMap(item => this.codeLensesForTestItem(item, config));
     }
 
-    private codeLensesForTestItem(item: vscode.TestItem): vscode.CodeLens[] {
+    private codeLensesForTestItem(
+        item: vscode.TestItem,
+        config: boolean | ValidCodeLens[]
+    ): vscode.CodeLens[] {
         if (!item.range) {
             return [];
         }
 
-        return [
-            new vscode.CodeLens(item.range, {
+        const lensConfigs: Array<{
+            type: ValidCodeLens;
+            title: string;
+            command: string;
+        }> = [
+            {
+                type: "run",
                 title: "$(play)\u00A0Run",
                 command: "swift.runTest",
-                arguments: [item],
-            }),
-            new vscode.CodeLens(item.range, {
+            },
+            {
+                type: "debug",
                 title: "$(debug)\u00A0Debug",
                 command: "swift.debugTest",
-                arguments: [item],
-            }),
-            new vscode.CodeLens(item.range, {
+            },
+            {
+                type: "coverage",
                 title: "$(debug-coverage)\u00A0Run w/ Coverage",
                 command: "swift.runTestWithCoverage",
-                arguments: [item],
-            }),
+            },
         ];
+
+        return lensConfigs
+            .filter(
+                lensConfig =>
+                    config === true || (Array.isArray(config) && config.includes(lensConfig.type))
+            )
+            .map(
+                lensConfig =>
+                    new vscode.CodeLens(item.range!, {
+                        title: lensConfig.title,
+                        command: lensConfig.command,
+                        arguments: [item],
+                    })
+            );
     }
 }

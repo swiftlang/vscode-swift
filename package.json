@@ -595,10 +595,21 @@
             "scope": "machine-overridable"
           },
           "swift.showTestCodeLenses": {
-            "type": "boolean",
+            "type": [
+              "boolean",
+              "array"
+            ],
             "default": true,
-            "markdownDescription": "Controls whether or not to show inline code lenses for running and debugging tests inline, above test and suite declarations.",
-            "scope": "application"
+            "markdownDescription": "Controls whether or not to show inline code lenses for running and debugging tests inline, above test and suite declarations. If set to an array, specify one or more of the following: 'run', 'debug', 'coverage'.",
+            "scope": "application",
+            "items": {
+              "type": "string",
+              "enum": [
+                "run",
+                "debug",
+                "coverage"
+              ]
+            }
           }
         }
       },
