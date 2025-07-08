@@ -596,7 +596,7 @@
           },
           "swift.showTestCodeLenses": {
             "type": "boolean",
-            "default": false,
+            "default": true,
             "markdownDescription": "Controls whether or not to show inline code lenses for running and debugging tests inline, above test and suite declarations.",
             "scope": "application"
           }

@@ -54,17 +54,17 @@ export class TestCodeLensProvider implements vscode.CodeLensProvider, vscode.Dis
 
         return [
             new vscode.CodeLens(item.range, {
-                title: "$(play) Run",
+                title: "$(play)\u00A0Run",
                 command: "swift.runTest",
                 arguments: [item],
             }),
             new vscode.CodeLens(item.range, {
-                title: "$(debug) Debug",
+                title: "$(debug)\u00A0Debug",
                 command: "swift.debugTest",
                 arguments: [item],
             }),
             new vscode.CodeLens(item.range, {
-                title: "$(debug-coverage) Run w/ Coverage",
+                title: "$(debug-coverage)\u00A0Run w/ Coverage",
                 command: "swift.runTestWithCoverage",
                 arguments: [item],
             }),
