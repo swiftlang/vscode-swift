@@ -27,15 +27,16 @@ import { TargetType } from "../SwiftPackage";
 import { parseTestsFromSwiftTestListOutput } from "./SPMTestDiscovery";
 import { parseTestsFromDocumentSymbols } from "./DocumentSymbolTestDiscovery";
 import { flattenTestItemCollection } from "./TestUtils";
+import { TestCodeLensProvider } from "./TestCodeLensProvider";
 
 /** Build test explorer UI */
 export class TestExplorer {
     static errorTestItemId = "#Error#";
     public controller: vscode.TestController;
     public testRunProfiles: vscode.TestRunProfile[];
+
     private lspTestDiscovery: LSPTestDiscovery;
     private subscriptions: { dispose(): unknown }[];
-    private testFileEdited = true;
     private tokenSource = new vscode.CancellationTokenSource();
 
     // Emits after the `vscode.TestController` has been updated.
@@ -45,9 +46,13 @@ export class TestExplorer {
     public onDidCreateTestRunEmitter = new vscode.EventEmitter<TestRunProxy>();
     public onCreateTestRun: vscode.Event<TestRunProxy>;
 
+    private codeLensProvider?: TestCodeLensProvider;
+
     constructor(public folderContext: FolderContext) {
         this.onTestItemsDidChange = this.onTestItemsDidChangeEmitter.event;
         this.onCreateTestRun = this.onDidCreateTestRunEmitter.event;
+        this.lspTestDiscovery = this.configureLSPTestDiscovery(folderContext);
+        this.codeLensProvider = new TestCodeLensProvider(this);
 
         this.controller = vscode.tests.createTestController(
             folderContext.name,
@@ -66,55 +71,109 @@ export class TestExplorer {
             this.onDidCreateTestRunEmitter
         );
 
-        const workspaceContext = folderContext.workspaceContext;
-        const languageClientManager = workspaceContext.languageClientManager.get(folderContext);
-        this.lspTestDiscovery = new LSPTestDiscovery(languageClientManager);
-
-        // add end of task handler to be called whenever a build task has finished. If
-        // it is the build task for this folder then update the tests
-        const onDidEndTask = folderContext.workspaceContext.tasks.onDidEndTaskProcess(event => {
-            const task = event.execution.task;
-            const execution = task.execution as vscode.ProcessExecution;
-            if (
-                task.scope === this.folderContext.workspaceFolder &&
-                task.group === vscode.TaskGroup.Build &&
-                execution?.options?.cwd === this.folderContext.folder.fsPath &&
-                event.exitCode === 0 &&
-                task.definition.dontTriggerTestDiscovery !== true &&
-                this.testFileEdited
-            ) {
-                this.testFileEdited = false;
-
-                // only run discover tests if the library has tests
-                void this.folderContext.swiftPackage.getTargets(TargetType.test).then(targets => {
-                    if (targets.length > 0) {
-                        void this.discoverTestsInWorkspace(this.tokenSource.token);
-                    }
-                });
-            }
-        });
-
-        // add file watcher to catch changes to swift test files
-        const fileWatcher = this.folderContext.workspaceContext.onDidChangeSwiftFiles(({ uri }) => {
-            if (this.testFileEdited === false) {
-                void this.folderContext.getTestTarget(uri).then(target => {
-                    if (target) {
-                        this.testFileEdited = true;
-                    }
-                });
-            }
-        });
-
         this.subscriptions = [
             this.tokenSource,
-            fileWatcher,
-            onDidEndTask,
             this.controller,
             this.onTestItemsDidChangeEmitter,
             this.onDidCreateTestRunEmitter,
             ...this.testRunProfiles,
             this.onTestItemsDidChange(() => this.updateSwiftTestContext()),
+            this.discoverUpdatedTestsAfterBuild(folderContext),
         ];
+    }
+
+    /**
+     * Query the LSP for tests in the document. If the LSP is not available
+     * this method will fallback to the legacy method of parsing document symbols,
+     * but only for XCTests.
+     * @param folder The folder context.
+     * @param uri The document URI. If the document is not part of a test target, this method will do nothing.
+     * @param symbols The document symbols.
+     * @returns A promise that resolves when the tests have been retrieved.
+     */
+    public async getDocumentTests(
+        folder: FolderContext,
+        uri: vscode.Uri,
+        symbols: vscode.DocumentSymbol[]
+    ): Promise<void> {
+        const target = await folder.swiftPackage.getTarget(uri.fsPath);
+        if (!target || target.type !== "test") {
+            return;
+        }
+
+        try {
+            const tests = await this.lspTestDiscovery.getDocumentTests(folder.swiftPackage, uri);
+            TestDiscovery.updateTestsForTarget(
+                this.controller,
+                { id: target.c99name, label: target.name },
+                tests,
+                uri
+            );
+            this.onTestItemsDidChangeEmitter.fire(this.controller);
+        } catch {
+            // Fallback to parsing document symbols for XCTests only
+            const tests = parseTestsFromDocumentSymbols(target.name, symbols, uri);
+            this.updateTests(this.controller, tests, uri);
+        }
+    }
+
+    /**
+     * Creates an LSPTestDiscovery client for the given folder context.
+     */
+    private configureLSPTestDiscovery(folderContext: FolderContext): LSPTestDiscovery {
+        const workspaceContext = folderContext.workspaceContext;
+        const languageClientManager = workspaceContext.languageClientManager.get(folderContext);
+        return new LSPTestDiscovery(languageClientManager);
+    }
+
+    /**
+     * Configure test discovery for updated tests after a build task has completed.
+     */
+    private discoverUpdatedTestsAfterBuild(folderContext: FolderContext): vscode.Disposable {
+        let testFileEdited = true;
+        const endProcessDisposable = folderContext.workspaceContext.tasks.onDidEndTaskProcess(
+            event => {
+                const task = event.execution.task;
+                const execution = task.execution as vscode.ProcessExecution;
+                if (
+                    task.scope === folderContext.workspaceFolder &&
+                    task.group === vscode.TaskGroup.Build &&
+                    execution?.options?.cwd === folderContext.folder.fsPath &&
+                    event.exitCode === 0 &&
+                    task.definition.dontTriggerTestDiscovery !== true &&
+                    testFileEdited
+                ) {
+                    testFileEdited = false;
+
+                    // only run discover tests if the library has tests
+                    void folderContext.swiftPackage.getTargets(TargetType.test).then(targets => {
+                        if (targets.length > 0) {
+                            void this.discoverTestsInWorkspace(this.tokenSource.token);
+                        }
+                    });
+                }
+            }
+        );
+
+        // add file watcher to catch changes to swift test files
+        const didChangeSwiftFileDisposable = folderContext.workspaceContext.onDidChangeSwiftFiles(
+            ({ uri }) => {
+                if (testFileEdited === false) {
+                    void folderContext.getTestTarget(uri).then(target => {
+                        if (target) {
+                            testFileEdited = true;
+                        }
+                    });
+                }
+            }
+        );
+
+        return {
+            dispose: () => {
+                endProcessDisposable.dispose();
+                didChangeSwiftFileDisposable.dispose();
+            },
+        };
     }
 
     dispose() {
@@ -193,32 +252,6 @@ export class TestExplorer {
         });
     }
 
-    async getDocumentTests(
-        folder: FolderContext,
-        uri: vscode.Uri,
-        symbols: vscode.DocumentSymbol[]
-    ): Promise<void> {
-        const target = await folder.swiftPackage.getTarget(uri.fsPath);
-        if (!target || target.type !== "test") {
-            return;
-        }
-
-        try {
-            const tests = await this.lspTestDiscovery.getDocumentTests(folder.swiftPackage, uri);
-            TestDiscovery.updateTestsForTarget(
-                this.controller,
-                { id: target.c99name, label: target.name },
-                tests,
-                uri
-            );
-            this.onTestItemsDidChangeEmitter.fire(this.controller);
-        } catch {
-            // Fallback to parsing document symbols for XCTests only
-            const tests = parseTestsFromDocumentSymbols(target.name, symbols, uri);
-            this.updateTests(this.controller, tests, uri);
-        }
-    }
-
     private updateTests(
         controller: vscode.TestController,
         tests: TestDiscovery.TestClass[],
@@ -231,7 +264,7 @@ export class TestExplorer {
     /**
      * Discover tests
      */
-    async discoverTestsInWorkspace(token: vscode.CancellationToken) {
+    private async discoverTestsInWorkspace(token: vscode.CancellationToken) {
         try {
             // If the LSP cannot produce a list of tests it throws and
             // we fall back to discovering tests with SPM.
@@ -249,7 +282,7 @@ export class TestExplorer {
      * Discover tests
      * Uses `swift test --list-tests` to get the list of tests
      */
-    async discoverTestsInWorkspaceSPM(token: vscode.CancellationToken) {
+    private async discoverTestsInWorkspaceSPM(token: vscode.CancellationToken) {
         async function runDiscover(explorer: TestExplorer, firstTry: boolean) {
             try {
                 // we depend on sourcekit-lsp to detect swift-testing tests so let the user know
@@ -379,7 +412,7 @@ export class TestExplorer {
     /**
      * Discover tests
      */
-    async discoverTestsInWorkspaceLSP(token: vscode.CancellationToken) {
+    private async discoverTestsInWorkspaceLSP(token: vscode.CancellationToken) {
         const tests = await this.lspTestDiscovery.getWorkspaceTests(
             this.folderContext.swiftPackage
         );

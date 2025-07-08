@@ -179,10 +179,10 @@ export function lspClientOptions(
                 return result?.map(codelens => {
                     switch (codelens.command?.command) {
                         case "swift.run":
-                            codelens.command.title = `$(play) ${codelens.command.title}`;
+                            codelens.command.title = `$(play)\u00A0${codelens.command.title}`;
                             break;
                         case "swift.debug":
-                            codelens.command.title = `$(debug) ${codelens.command.title}`;
+                            codelens.command.title = `$(debug)\u00A0${codelens.command.title}`;
                             break;
                     }
                     return codelens;

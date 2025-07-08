@@ -48,6 +48,7 @@ import { pickProcess } from "./commands/pickProcess";
 import { openDocumentation } from "./commands/openDocumentation";
 import restartLSPServer from "./commands/restartLSPServer";
 import { generateLaunchConfigurations } from "./commands/generateLaunchConfigurations";
+import { runTest } from "./commands/runTest";
 
 /**
  * References:
@@ -97,6 +98,9 @@ export enum Commands {
     RUN_ALL_TESTS_PARALLEL = "swift.runAllTestsParallel",
     DEBUG_ALL_TESTS = "swift.debugAllTests",
     COVER_ALL_TESTS = "swift.coverAllTests",
+    RUN_TEST = "swift.runTest",
+    DEBUG_TEST = "swift.debugTest",
+    RUN_TEST_WITH_COVERAGE = "swift.runTestWithCoverage",
     OPEN_MANIFEST = "swift.openManifest",
     RESTART_LSP = "swift.restartLSPServer",
     SELECT_TOOLCHAIN = "swift.selectToolchain",
@@ -229,6 +233,18 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand(
             Commands.COVER_ALL_TESTS,
             async item => await runAllTests(ctx, TestKind.coverage, ...unwrapTreeItem(item))
+        ),
+        vscode.commands.registerCommand(
+            Commands.RUN_TEST,
+            async item => await runTest(ctx, TestKind.standard, item)
+        ),
+        vscode.commands.registerCommand(
+            Commands.DEBUG_TEST,
+            async item => await runTest(ctx, TestKind.debug, item)
+        ),
+        vscode.commands.registerCommand(
+            Commands.RUN_TEST_WITH_COVERAGE,
+            async item => await runTest(ctx, TestKind.coverage, item)
         ),
         vscode.commands.registerCommand(
             Commands.PREVIEW_DOCUMENTATION,
