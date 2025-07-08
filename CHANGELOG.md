@@ -84,7 +84,7 @@
 ### Fixed
 
 - Prevent duplicate reload extension notifications from appearing ([#1473](https://github.com/swiftlang/vscode-swift/pull/1473))
-- "Actual" and "Expected" values are shown in the right order on test failure ([#1444](https://github.com/swiftlang/vscode-swift/issues/1444))
+- Actual and Expected values are shown in the right order on test failure ([#1444](https://github.com/swiftlang/vscode-swift/issues/1444))
 - Correctly set the `DEVELOPER_DIR` environment variable when selecting between two Xcode installs ([#1433](https://github.com/swiftlang/vscode-swift/pull/1433))
 - Prompt to reload the extension when swiftEnvironmentVariables is changed ([#1430](https://github.com/swiftlang/vscode-swift/pull/1430))
 - Search for Swift packages in sub-folders of the workspace ([#1425](https://github.com/swiftlang/vscode-swift/pull/1425))
@@ -210,8 +210,8 @@ The new extension id is `swiftlang.swift-vscode`.
 
 ### Changed
 
-- Add setting to exclude files/directories from code coverage results.
-- Updated and refined settings descriptions.
+- Add setting to exclude files/directories from code coverage results
+- Updated and refined settings descriptions
 - Added "throws" section to doc comment template
 
 ### Fixed
@@ -270,7 +270,7 @@ The new extension id is `swiftlang.swift-vscode`.
 
 - Fix XCTest argument format when debugging multiple tests
 - Add user defined and optional sanitizer/diagnostics arguments to test builds
-- Silence Terminal on test runs.
+- Silence Terminal on test runs
 
 ## 1.10.0 - 2024-06-07
 
@@ -300,13 +300,16 @@ The new extension id is `swiftlang.swift-vscode`.
 ## 1.9.0 - 2024-04-15
 
 ### Added
+
 - Running tests in parallel. It is available from the drop-down next to the run button at the top of the TestExplorer. It is not available while debugging and parsing of XCT failure messages does not work prior to Swift 6.
 
 ### Changed
+
 - If using Swift 5.10 allow for InlayHint text edits.
 - If using Swift 6 name of debug adapter has changed from `lldb-vscode` to `lldb-dap`.
 
 ### Fixed
+
 - Don't check if line above is a comment if you are on line 0 in comment completion code.
 
 ## 1.8.1 - 2024-03-06
@@ -318,6 +321,7 @@ The new extension id is `swiftlang.swift-vscode`.
 ## 1.8.0 - 2024-02-21
 
 ### Added
+
 - Platform specific settings in the swift task definition.
 - Environment variables to set while running a swift task.
 - Setting to disable all Swift Package Manager integrations.
@@ -325,6 +329,7 @@ The new extension id is `swiftlang.swift-vscode`.
 - Watch for changes to swift files in test targets and flag 'test discovery is required' if a file changes or is deleted.
 
 ### Changed
+
 - Expand `~` in swift file path setting to home directory.
 - Don't create test explorer if project has no tests.
 - Only run test discovery after a build all task.
@@ -335,21 +340,26 @@ The new extension id is `swiftlang.swift-vscode`.
 ## 1.7.2 - 2024-01-03
 
 ### Added
+
 - Setting to control action after a build error: focus on problems pane, focus on terminal or do nothing.
 
-### Changes
+### Changed
+
 - Don't force show test pane when testing starts. Let `Testing: Open Testing` define when test pane should open.
 
 ### Fixed
+
 - Setup of URI on readonly document viewer. This fixes jump to symbol in a swiftinterface on Windows
 
 ## 1.7.1 - 2023-12-02
 
 ### Added
+
 - Task queue operation to spawn a process and parse its output. Using this ensures a build task does not run at the same time.
 - Use spawn process task queue operation in test discovery and unedit of modules.
 
-### Changes
+### Changed
+
 - Don't wait for SwiftPM plugin listing to finish before allowing build and run.
 - If auto-resolve is disabled then also disable the initial test discovery as this can cause a resolve
 
@@ -360,7 +370,7 @@ The new extension id is `swiftlang.swift-vscode`.
 
 Merge debug adapter changes from v1.6.x prerelease builds into main release.
 
-### Changes
+### Changed
 
 - Consolidate common debug configurations when building debug configurations.
 
@@ -369,8 +379,6 @@ Merge debug adapter changes from v1.6.x prerelease builds into main release.
 - Fix version comparisons for Swift versions 5.10 or greater.
 - Increase the size of stdout available to `llvm-cov` process. This fixes displaying test coverage for larger projects.
 - Build product instead of target when compiling Swift Snippets. This fixes running of Snippets on macOS.
-
-### Fixed
 
 ## 1.6.1 - 2023-10-04 (Toolchain debug adapter preview)
 
@@ -430,17 +438,20 @@ Merge debug adapter changes from v1.6.x prerelease builds into main release.
 ## 1.4.0 - 2023-07-05
 
 ### Added
+
 - Add sanitizer build setting
 - Build tasks are not available while other tasks are running on the package
 - Add read-only document provider for swiftinterface files in preparation for go to definition for stdlib/framework symbols.
 
 ### Changed
+
 - Add supported language configuration setting to replace Support C/C++ setting
 - deprecate Support C/C++ setting
 - Remove a number of unnecessary build arguments for Windows when using Swift 5.9 or later
 - Configure vscode-lldb to use native expressions
 
 ### Fixed
+
 - Require a reload when using the select Xcode developer directory command
 - Reporting of errors returned by the compiler without a column number
 
@@ -580,7 +591,7 @@ Merge debug adapter changes from v1.6.x prerelease builds into main release.
 ### Added
 
 - Support for Swift Snippets (requires Swift 5.7). Two new commands have been added `Run Swift Snippet` and `Debug Swift Snippet`.
-- Sub menu to text editor right click menu. Includes commands not acccessible elsewhere `Run Swift Script`, Snippet commands and `Clean Build`.
+- Sub menu to text editor right click menu. Includes commands not accessible elsewhere `Run Swift Script`, Snippet commands and `Clean Build`.
 - macOS: Command to choose between macOS, iOS, tvOS and watchOS targets. Switching to a non macOS target will give you symbol completion for that target, but building your package will have undefined results.
 - macOS: Command to choose between Swift toolchains from all versions of Xcode installed on your system.
 
@@ -588,7 +599,7 @@ Merge debug adapter changes from v1.6.x prerelease builds into main release.
 
 - When working out project dependencies traverse local dependencies to get full dependency chain
 - Changed settings scope for a number of settings so they can be set per workspace folder
-- Store hash of `Package.resolved` to compare with new `Package.resolved` whenever it has been updated, to ensure it has actaully changed before running `swift package resolve`.
+- Store hash of `Package.resolved` to compare with new `Package.resolved` whenever it has been updated, to ensure it has actually changed before running `swift package resolve`.
 
 ### Fixed
 
@@ -663,7 +674,6 @@ Merge debug adapter changes from v1.6.x prerelease builds into main release.
 ### Fixed
 
 - Running non-Swift LLDB on Windows
-
 ## 0.5.0 - 2022-05-02
 
 Version 0.5.0 of vscode-swift now requires v1.65.0 of Visual Studio Code
@@ -760,10 +770,10 @@ Version 0.5.0 of vscode-swift now requires v1.65.0 of Visual Studio Code
 
 - Automatic generation of launch target for running tests. This is no longer needed now we have the test explorer.
 
-
 ## 0.3.0 - 2022-02-22
 
 ### Added
+
 - Function documentation comment completion. Type "///" on line above function to activate.
 - Package dependency view has new right click menu. Menu entries include:
   - Use Local Version: Use local version of package dependency.
@@ -775,6 +785,7 @@ Version 0.5.0 of vscode-swift now requires v1.65.0 of Visual Studio Code
 - Support for building development version of package via `npm run dev-package`.
 
 ### Changed
+
 - Build terminal window is cleared before a build
 - When the Swift path or SourceKit-LSP path are changed the extension will restart to ensure the correct versions are used.
 
@@ -786,6 +797,7 @@ Version 0.5.0 of vscode-swift now requires v1.65.0 of Visual Studio Code
 ## 0.2.0 - 2022-01-20
 
 ### Added
+
 - Build tasks for all folders in the workspace.
 - Resolve and update commands which update current folder.
 - Reset package and clean build commands.
@@ -796,10 +808,12 @@ Version 0.5.0 of vscode-swift now requires v1.65.0 of Visual Studio Code
 - Cache contents of Package.resolved for use across different systems.
 
 ### Changed
+
 - Cleanup Language client code
 - Package dependency view updates based on current folder
 
 ### Fixed
+
 - Use correct workspace folder in launch.json program name
 
 ## 0.1.1 - 2021-12-27
