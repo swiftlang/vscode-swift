@@ -236,7 +236,7 @@ async function createActiveToolchain(
     outputChannel: SwiftOutputChannel
 ): Promise<SwiftToolchain | undefined> {
     try {
-        const toolchain = await SwiftToolchain.create();
+        const toolchain = await SwiftToolchain.create(undefined, outputChannel);
         toolchain.logDiagnostics(outputChannel);
         contextKeys.updateKeysBasedOnActiveVersion(toolchain.swiftVersion);
         return toolchain;

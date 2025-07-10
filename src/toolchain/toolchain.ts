@@ -118,8 +118,11 @@ export class SwiftToolchain {
         this.swiftVersionString = targetInfo.compilerVersion;
     }
 
-    static async create(folder?: vscode.Uri): Promise<SwiftToolchain> {
-        const swiftFolderPath = await this.getSwiftFolderPath(folder);
+    static async create(
+        folder?: vscode.Uri,
+        outputChannel?: vscode.OutputChannel
+    ): Promise<SwiftToolchain> {
+        const swiftFolderPath = await this.getSwiftFolderPath(folder, outputChannel);
         const toolchainPath = await this.getToolchainPath(swiftFolderPath, folder);
         const targetInfo = await this.getSwiftTargetInfo(
             this._getToolchainExecutable(toolchainPath, "swift")
@@ -561,7 +564,10 @@ export class SwiftToolchain {
         channel.logDiagnostic(this.diagnostics);
     }
 
-    private static async getSwiftFolderPath(cwd?: vscode.Uri): Promise<string> {
+    private static async getSwiftFolderPath(
+        cwd?: vscode.Uri,
+        outputChannel?: vscode.OutputChannel
+    ): Promise<string> {
         try {
             let swift: string;
             if (configuration.path !== "") {
@@ -589,7 +595,7 @@ export class SwiftToolchain {
                         // use `type swift` to find `swift`. Run inside /bin/sh to ensure
                         // we get consistent output as different shells output a different
                         // format. Tried running with `-p` but that is not available in /bin/sh
-                        const { stdout } = await execFile("/bin/sh", [
+                        const { stdout, stderr } = await execFile("/bin/sh", [
                             "-c",
                             "LC_MESSAGES=C type swift",
                         ]);
@@ -597,7 +603,9 @@ export class SwiftToolchain {
                         if (swiftMatch) {
                             swift = swiftMatch[1];
                         } else {
-                            throw Error("Failed to find swift executable");
+                            throw Error(
+                                `/bin/sh -c LC_MESSAGES=C type swift: stdout: ${stdout}, stderr: ${stderr}`
+                            );
                         }
                         break;
                     }
@@ -617,7 +625,8 @@ export class SwiftToolchain {
             }
             const swiftPath = expandFilePathTilde(path.dirname(realSwift));
             return await this.getSwiftEnvPath(swiftPath);
-        } catch {
+        } catch (error) {
+            outputChannel?.appendLine(`Failed to find swift executable: ${error}`);
             throw Error("Failed to find swift executable");
         }
     }
