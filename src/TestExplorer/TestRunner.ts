@@ -18,13 +18,7 @@ import * as stream from "stream";
 import * as os from "os";
 import * as asyncfs from "fs/promises";
 import { FolderContext } from "../FolderContext";
-import {
-    compactMap,
-    execFile,
-    getErrorDescription,
-    IS_PRODUCTION_BUILD,
-    IS_RUNNING_UNDER_TEST,
-} from "../utilities/utilities";
+import { compactMap, execFile, getErrorDescription } from "../utilities/utilities";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
@@ -245,11 +239,6 @@ export class TestRunProxy {
     }
 
     private clearEnqueuedTest(test: vscode.TestItem) {
-        if (IS_PRODUCTION_BUILD && !IS_RUNNING_UNDER_TEST) {
-            // `runState.enqueued` exists only for test validation purposes.
-            return;
-        }
-
         this.runState.enqueued = this.runState.enqueued.filter(t => t !== test);
 
         if (!test.parent) {
