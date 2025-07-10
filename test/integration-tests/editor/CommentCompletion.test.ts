@@ -290,6 +290,20 @@ suite("CommentCompletion Test Suite", () => {
 
             assert.strictEqual(newLine, "/// bbb", "New line should continue the comment block");
         });
+
+        test("Should not continue a comment on a line that has content", async () => {
+            const { document, positions } = await openDocument(`
+            /// aaa
+            public func foo(param: Int, a1️⃣) {}`);
+
+            const originalText = document.getText();
+            const position = positions["1️⃣"];
+            await provider.docCommentCompletion.provideCompletionItems(document, position);
+
+            const documentText = document.getText();
+
+            assert.deepEqual(documentText, originalText, "Document text should not change");
+        });
     });
 
     function expectedCompletionItem(snippet: string): vscode.CompletionItem {
