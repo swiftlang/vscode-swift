@@ -1,3 +1,6 @@
+# Create a New Swift Project
+![Create new project](./images/createNewProject.gif)
+
 There are several project templates to choose from:
 - `Library`: A package with a library. Use this to publish code for other packages to consume.
 - `Executable`: A package with an executable. Use this for command line utilities.
@@ -10,3 +13,9 @@ There are several project templates to choose from:
 Once you select a template, you'll be prompted to enter a name for your new project. This will be the name of the folder created in your workspace.
 
 Finally, you'll be prompted to select a location for your new project. You can choose any location in your workspace, or create a new folder.
+
+![Open existing project](./images/openProject.gif)
+
+When you open an existing project with a ``Package.swift`` file the extension will start automatically.
+
+Tip: You can view more information about the toolchain and other configurations being used for the project by hovering over the `{}` icon in the status bar.
