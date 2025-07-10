@@ -60,13 +60,19 @@ class DocCommentCompletionProvider implements vscode.CompletionItemProvider {
             return;
         }
         // Fixes https://github.com/swiftlang/vscode-swift/issues/1648
-        const match = /^(\s*)(\/\/)?\s?(.+)?/.exec(document.lineAt(position.line).text);
+        const lineText = document.lineAt(position.line).text;
+        // Continue the comment if its a white space only line, or if VS Code has already continued
+        // the comment by adding a // on the new line.
+        const match =
+            lineText.trim().length === 0
+                ? [lineText, lineText, ""]
+                : /^(\s*)\/\/\s(.+)/.exec(lineText);
         if (match) {
             await vscode.window.activeTextEditor.edit(
                 edit => {
                     edit.replace(
                         new vscode.Range(position.line, 0, position.line, match[0].length),
-                        `${match[1]}/// ${match[3] ?? ""}`
+                        `${match[1]}/// ${match[2]}`
                     );
                 },
                 { undoStopBefore: false, undoStopAfter: true }
