@@ -797,7 +797,7 @@
             "markdownDescription": "Disable the running of SourceKit-LSP.",
             "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.disable#` instead."
           },
-          "swift.exclude": {
+          "swift.excludePathsFromActivation": {
             "type": "object",
             "additionalProperties": {
               "type": "boolean"

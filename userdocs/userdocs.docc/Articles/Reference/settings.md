@@ -34,7 +34,7 @@ You can enable the `searchSubfoldersForPackages` setting so the Swift extension 
 Additionally you can exclude individual packages from initializing:
 ```json
 {
-  "swift.exclude": {
+  "swift.excludePathsFromActivation": {
     "**/proj2": true,
     "**/aSubfolder": true,
     "**/aSubfolder/proj3": false,

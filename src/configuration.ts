@@ -491,10 +491,10 @@ const configuration = {
         return vscode.workspace.getConfiguration("swift").get<boolean>("disableSandbox", false);
     },
     /** Workspace folder glob patterns to exclude */
-    get exclude(): Record<string, boolean> {
+    get excludePathsFromActivation(): Record<string, boolean> {
         return vscode.workspace
             .getConfiguration("swift")
-            .get<Record<string, boolean>>("exclude", {});
+            .get<Record<string, boolean>>("excludePathsFromActivation", {});
     },
 };
 

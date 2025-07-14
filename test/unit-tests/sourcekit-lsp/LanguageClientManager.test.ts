@@ -69,7 +69,7 @@ suite("LanguageClientManager Suite", () => {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
     const mockedVSCodeExtensions = mockGlobalObject(vscode, "extensions");
     const mockedVSCodeWorkspace = mockGlobalObject(vscode, "workspace");
-    const excludeConfig = mockGlobalValue(configuration, "exclude");
+    const excludeConfig = mockGlobalValue(configuration, "excludePathsFromActivation");
     let changeConfigEmitter: AsyncEventEmitter<vscode.ConfigurationChangeEvent>;
     let createFilesEmitter: AsyncEventEmitter<vscode.FileCreateEvent>;
     let deleteFilesEmitter: AsyncEventEmitter<vscode.FileDeleteEvent>;

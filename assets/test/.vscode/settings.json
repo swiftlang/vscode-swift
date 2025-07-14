@@ -11,7 +11,7 @@
     "lldb.launch.terminal": "external",
     "lldb-dap.detachOnError": true,
     "swift.sourcekit-lsp.backgroundIndexing": "off",
-    "swift.exclude": {
+    "swift.excludePathsFromActivation": {
         "**/excluded": true
     }
 }

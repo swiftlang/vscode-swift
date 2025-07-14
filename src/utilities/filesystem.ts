@@ -87,7 +87,7 @@ export function expandFilePathTilde(
 function getDefaultExcludeList(): Record<string, boolean> {
     const config = vscode.workspace.getConfiguration("files");
     const vscodeExcludeList = config.get<{ [key: string]: boolean }>("exclude", {});
-    const swiftExcludeList = configuration.exclude;
+    const swiftExcludeList = configuration.excludePathsFromActivation;
     return { ...vscodeExcludeList, ...swiftExcludeList };
 }
 
