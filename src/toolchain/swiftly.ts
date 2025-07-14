@@ -24,7 +24,9 @@ const ListResult = z.object({
     toolchains: z.array(
         z.object({
             inUse: z.boolean(),
+            installed: z.boolean(),
             isDefault: z.boolean(),
+            name: z.string(),
             version: z.discriminatedUnion("type", [
                 z.object({
                     major: z.number().optional(),
@@ -243,3 +245,5 @@ export class Swiftly {
         return JSON.parse(swiftlyConfigRaw);
     }
 }
+
+export const swiftly = new Swiftly();

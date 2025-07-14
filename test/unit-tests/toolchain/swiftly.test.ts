@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import { expect } from "chai";
+import * as sinon from "sinon";
 import { Swiftly } from "../../../src/toolchain/swiftly";
 import * as utilities from "../../../src/utilities/utilities";
 import { mockGlobalModule, mockGlobalValue } from "../../MockUtils";
@@ -38,7 +39,9 @@ suite("Swiftly Unit Tests", () => {
                 toolchains: [
                     {
                         inUse: true,
+                        installed: true,
                         isDefault: true,
+                        name: "swift-5.9.0-RELEASE",
                         version: {
                             major: 5,
                             minor: 9,
@@ -49,7 +52,9 @@ suite("Swiftly Unit Tests", () => {
                     },
                     {
                         inUse: false,
+                        installed: true,
                         isDefault: false,
+                        name: "swift-5.8.0-RELEASE",
                         version: {
                             major: 5,
                             minor: 8,
@@ -60,7 +65,9 @@ suite("Swiftly Unit Tests", () => {
                     },
                     {
                         inUse: false,
+                        installed: false,
                         isDefault: false,
+                        name: "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
                         version: {
                             major: 5,
                             minor: 10,
