@@ -46,6 +46,7 @@ function initializationOptions(swiftVersion: Version): any {
         options = {
             "workspace/peekDocuments": {
                 supported: true, // workaround for client capability to handle `PeekDocumentsRequest`
+                peekLocation: true, // allow SourceKit-LSP to send `Location` instead of `DocumentUri` for the locations to peek.
             },
             "workspace/getReferenceDocument": {
                 supported: true, // the client can handle URIs with scheme `sourcekit-lsp:`
@@ -79,7 +80,7 @@ function initializationOptions(swiftVersion: Version): any {
         options = {
             ...options,
             "window/didChangeActiveDocument": {
-                "supported": true, // the client can send `window/didChangeActiveDocument` notifications
+                supported: true, // the client can send `window/didChangeActiveDocument` notifications
             },
         };
     } else if (swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))) {
