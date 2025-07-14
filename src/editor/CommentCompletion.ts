@@ -45,7 +45,11 @@ class DocCommentCompletionProvider implements vscode.CompletionItemProvider {
         position: vscode.Position
     ): Promise<vscode.CompletionItem[] | undefined> {
         // Is line a '///' comment
-        if (position.line === 0 || isLineComment(document, position.line - 1) === false) {
+        if (
+            position.line === 0 ||
+            document.isClosed ||
+            isLineComment(document, position.line - 1) === false
+        ) {
             return undefined;
         }
         await this.continueExistingDocCommentBlock(document, position);
