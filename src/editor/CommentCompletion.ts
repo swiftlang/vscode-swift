@@ -39,31 +39,54 @@ class CommentCompletion extends vscode.CompletionItem {
  * CompletionItem Provider that provides "///" on pressing return if previous line
  * contained a "///" documentation comment.
  */
-class CommentCompletionProvider implements vscode.CompletionItemProvider {
+class DocCommentCompletionProvider implements vscode.CompletionItemProvider {
     public async provideCompletionItems(
         document: vscode.TextDocument,
         position: vscode.Position
     ): Promise<vscode.CompletionItem[] | undefined> {
         // Is line a '///' comment
-        if (position.line === 0 || isLineComment(document, position.line - 1) === false) {
+        if (
+            position.line === 0 ||
+            document.isClosed ||
+            isLineComment(document, position.line - 1) === false
+        ) {
             return undefined;
         }
+        await this.continueExistingDocCommentBlock(document, position);
+        return [new CommentCompletion("/// ", "///", "Documentation comment")];
+    }
+
+    private async continueExistingDocCommentBlock(
+        document: vscode.TextDocument,
+        position: vscode.Position
+    ) {
+        if (!vscode.window.activeTextEditor) {
+            return;
+        }
         // Fixes https://github.com/swiftlang/vscode-swift/issues/1648
-        const match = /^(\s*)\/\/\s(.+)/.exec(document.lineAt(position.line).text);
+        const lineText = document.lineAt(position.line).text;
+        // Continue the comment if its a white space only line, or if VS Code has already continued
+        // the comment by adding a // on the new line.
+        const match =
+            lineText.trim().length === 0
+                ? [lineText, lineText, ""]
+                : /^(\s*)\/\/\s(.+)/.exec(lineText);
         if (match) {
-            void vscode.window.activeTextEditor?.edit(
+            await vscode.window.activeTextEditor.edit(
                 edit => {
-                    void edit.replace(
+                    edit.replace(
                         new vscode.Range(position.line, 0, position.line, match[0].length),
-                        `${match[1]}///${match[2]}`
+                        `${match[1]}/// ${match[2]}`
                     );
                 },
                 { undoStopBefore: false, undoStopAfter: true }
             );
-            return undefined;
+            const newPosition = new vscode.Position(position.line, match[1].length + 4);
+            vscode.window.activeTextEditor.selection = new vscode.Selection(
+                newPosition,
+                newPosition
+            );
         }
-        const completion = new CommentCompletion("/// ", "///", "Documentation comment");
-        return [completion];
     }
 }
 
@@ -237,8 +260,9 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
  */
 export class CommentCompletionProviders implements vscode.Disposable {
     functionCommentCompletion: FunctionDocumentationCompletionProvider;
+    docCommentCompletion: DocCommentCompletionProvider;
     functionCommentCompletionProvider: vscode.Disposable;
-    commentCompletionProvider: vscode.Disposable;
+    docCommentCompletionProvider: vscode.Disposable;
 
     constructor() {
         this.functionCommentCompletion = new FunctionDocumentationCompletionProvider();
@@ -247,9 +271,10 @@ export class CommentCompletionProviders implements vscode.Disposable {
             this.functionCommentCompletion,
             "/"
         );
-        this.commentCompletionProvider = vscode.languages.registerCompletionItemProvider(
+        this.docCommentCompletion = new DocCommentCompletionProvider();
+        this.docCommentCompletionProvider = vscode.languages.registerCompletionItemProvider(
             "swift",
-            new CommentCompletionProvider(),
+            this.docCommentCompletion,
             "\n"
         );
     }
@@ -265,6 +290,6 @@ export class CommentCompletionProviders implements vscode.Disposable {
 
     dispose() {
         this.functionCommentCompletionProvider.dispose();
-        this.commentCompletionProvider.dispose();
+        this.docCommentCompletionProvider.dispose();
     }
 }

@@ -17,5 +17,6 @@
 
   // Disable for when opening files in this workspace
   "swift.disableAutoResolve": true,
-  "swift.autoGenerateLaunchConfigurations": false
+  "swift.autoGenerateLaunchConfigurations": false,
+  "swift.sourcekit-lsp.disable": true
 }

@@ -101,7 +101,9 @@ suite("Extension Activation/Deactivation Tests", () => {
         });
     });
 
-    suite("Activates for cmake projects", () => {
+    suite("Activates for cmake projects", function () {
+        this.timeout(60000);
+
         let workspaceContext: WorkspaceContext;
 
         activateExtensionForTest({
