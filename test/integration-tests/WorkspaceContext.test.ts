@@ -205,7 +205,10 @@ suite("WorkspaceContext Test Suite", () => {
         });
     });
 
-    suite("Toolchain", () => {
+    suite("Toolchain", function () {
+        // Increase the timeout as this takes several seconds longer for the codeWorkspaceTests variant
+        this.timeout(60000);
+
         activateExtensionForSuite({
             async setup(ctx) {
                 workspaceContext = ctx;
