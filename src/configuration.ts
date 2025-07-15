@@ -39,6 +39,7 @@ export type DiagnosticCollectionOptions =
     | "keepSourceKit"
     | "keepAll";
 export type DiagnosticStyle = "default" | "llvm" | "swift";
+export type ValidCodeLens = "run" | "debug" | "coverage";
 
 /** sourcekit-lsp configuration */
 export interface LSPConfiguration {
@@ -289,6 +290,12 @@ const configuration = {
             .getConfiguration("swift")
             .get<string[]>("excludeFromCodeCoverage", [])
             .map(substituteVariablesInString);
+    },
+    /** Whether to show inline code lenses for running and debugging tests. */
+    get showTestCodeLenses(): boolean | ValidCodeLens[] {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<boolean | ValidCodeLens[]>("showTestCodeLenses", true);
     },
     /** Files and directories to exclude from the Package Dependencies view. */
     get excludePathsFromPackageDependencies(): string[] {

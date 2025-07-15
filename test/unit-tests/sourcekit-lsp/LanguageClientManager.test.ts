@@ -560,7 +560,7 @@ suite("LanguageClientManager Suite", () => {
             {
                 range: new vscode.Range(0, 0, 0, 0),
                 command: {
-                    title: "$(play) Run",
+                    title: "$(play)\u00A0Run",
                     command: "swift.run",
                 },
                 isResolved: true,
@@ -568,7 +568,7 @@ suite("LanguageClientManager Suite", () => {
             {
                 range: new vscode.Range(0, 0, 0, 0),
                 command: {
-                    title: "$(debug) Debug",
+                    title: "$(debug)\u00A0Debug",
                     command: "swift.debug",
                 },
                 isResolved: true,
