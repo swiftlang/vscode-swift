@@ -6,7 +6,7 @@
 
 - Added code lenses to run suites/tests, configurable with the `swift.showTestCodeLenses` setting ([#1698](https://github.com/swiftlang/vscode-swift/pull/1698))
 
-## 2.6.2 - 2025-07-02
+## 2.8.0 - 2025-07-14
 
 ### Added
 
