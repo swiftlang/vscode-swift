@@ -796,6 +796,13 @@
             "default": false,
             "markdownDescription": "Disable the running of SourceKit-LSP.",
             "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.disable#` instead."
+          },
+          "swift.excludePathsFromActivation": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "markdownDescription": "Configure glob patterns for excluding Swift package folders from getting activated. This will take precedence over the glob patterns provided to `files.exclude`."
           }
         }
       },
@@ -1778,6 +1785,7 @@
     "@types/lcov-parse": "^1.0.2",
     "@types/lodash.debounce": "^4.0.9",
     "@types/lodash.throttle": "^4.1.9",
+    "@types/micromatch": "^4.0.9",
     "@types/mocha": "^10.0.10",
     "@types/mock-fs": "^4.13.4",
     "@types/node": "^20.19.7",
@@ -1806,6 +1814,7 @@
     "lint-staged": "^16.1.2",
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
+    "micromatch": "^4.0.8",
     "mocha": "^11.7.1",
     "mock-fs": "^5.5.0",
     "node-pty": "^1.0.0",

@@ -69,6 +69,7 @@ suite("LanguageClientManager Suite", () => {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
     const mockedVSCodeExtensions = mockGlobalObject(vscode, "extensions");
     const mockedVSCodeWorkspace = mockGlobalObject(vscode, "workspace");
+    const excludeConfig = mockGlobalValue(configuration, "excludePathsFromActivation");
     let changeConfigEmitter: AsyncEventEmitter<vscode.ConfigurationChangeEvent>;
     let createFilesEmitter: AsyncEventEmitter<vscode.FileCreateEvent>;
     let deleteFilesEmitter: AsyncEventEmitter<vscode.FileDeleteEvent>;
@@ -92,6 +93,9 @@ suite("LanguageClientManager Suite", () => {
         mockedVSCodeWorkspace.onDidCreateFiles.callsFake(createFilesEmitter.event);
         deleteFilesEmitter = new AsyncEventEmitter();
         mockedVSCodeWorkspace.onDidDeleteFiles.callsFake(deleteFilesEmitter.event);
+        mockedVSCodeWorkspace.getConfiguration
+            .withArgs("files")
+            .returns({ get: () => ({}) } as any);
         // Mock the WorkspaceContext and SwiftToolchain
         mockedBuildFlags = mockObject<BuildFlags>({
             buildPathFlags: mockFn(s => s.returns([])),
@@ -208,6 +212,8 @@ suite("LanguageClientManager Suite", () => {
         mockedLspConfig.serverArguments = [];
         // Process environment variables
         mockedEnvironment.setValue({});
+        // Exclusion
+        excludeConfig.setValue({});
     });
 
     suite("LanguageClientToolchainCoordinator", () => {
