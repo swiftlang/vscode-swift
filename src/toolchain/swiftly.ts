@@ -244,5 +244,3 @@ export class Swiftly {
         return JSON.parse(swiftlyConfigRaw);
     }
 }
-
-export const swiftly = new Swiftly();
