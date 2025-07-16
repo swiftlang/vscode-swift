@@ -25,8 +25,7 @@ import { Version } from "../utilities/version";
 import { BuildFlags } from "./BuildFlags";
 import { Sanitizer } from "./Sanitizer";
 import { lineBreakRegex } from "../utilities/tasks";
-import { swiftly } from "./swiftly";
-
+import { Swiftly } from "./swiftly";
 /**
  * Contents of **Info.plist** on Windows.
  */
@@ -567,7 +566,7 @@ export class SwiftToolchain {
             let realSwift = await fs.realpath(swift);
             if (path.basename(realSwift) === "swiftly") {
                 try {
-                    const inUse = await swiftly.swiftlyInUseLocation(realSwift, cwd);
+                    const inUse = await Swiftly.inUseLocation(realSwift, cwd);
                     if (inUse) {
                         realSwift = path.join(inUse, "usr", "bin", "swift");
                     }
@@ -620,7 +619,7 @@ export class SwiftToolchain {
                         const swiftlyPath = path.join(configPath, "swiftly");
                         if (await fileExists(swiftlyPath)) {
                             try {
-                                const inUse = await swiftly.swiftlyInUseLocation(swiftlyPath, cwd);
+                                const inUse = await Swiftly.inUseLocation(swiftlyPath, cwd);
                                 if (inUse) {
                                     return path.join(inUse, "usr");
                                 }
@@ -631,7 +630,7 @@ export class SwiftToolchain {
                         return path.dirname(configuration.path);
                     }
 
-                    const swiftlyToolchainLocation = await swiftly.swiftlyToolchain(cwd);
+                    const swiftlyToolchainLocation = await Swiftly.toolchain(cwd);
                     if (swiftlyToolchainLocation) {
                         return swiftlyToolchainLocation;
                     }

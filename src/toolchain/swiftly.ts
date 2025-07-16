@@ -54,8 +54,8 @@ export class Swiftly {
      * @returns the version of Swiftly as a `Version` object, or `undefined`
      * if Swiftly is not installed or not supported.
      */
-    public async getSwiftlyVersion(): Promise<Version | undefined> {
-        if (!this.isSupported()) {
+    public static async version(): Promise<Version | undefined> {
+        if (!Swiftly.isSupported()) {
             return undefined;
         }
         const { stdout } = await execFile("swiftly", ["--version"]);
@@ -67,19 +67,19 @@ export class Swiftly {
      *
      * @returns an array of toolchain paths
      */
-    public async getSwiftlyToolchainInstalls(): Promise<string[]> {
+    public static async listAvailableToolchains(): Promise<string[]> {
         if (!this.isSupported()) {
             return [];
         }
-        const version = await swiftly.getSwiftlyVersion();
+        const version = await Swiftly.version();
         if (version?.isLessThan(new Version(1, 1, 0))) {
-            return await this.getToolchainInstallLegacy();
+            return await Swiftly.getToolchainInstallLegacy();
         }
 
-        return await this.getListAvailableToolchains();
+        return await Swiftly.getListAvailableToolchains();
     }
 
-    private async getListAvailableToolchains(): Promise<string[]> {
+    private static async getListAvailableToolchains(): Promise<string[]> {
         try {
             const { stdout } = await execFile("swiftly", ["list-available", "--format=json"]);
             const response = ListAvailableResult.parse(JSON.parse(stdout));
@@ -89,13 +89,13 @@ export class Swiftly {
         }
     }
 
-    private async getToolchainInstallLegacy() {
+    private static async getToolchainInstallLegacy() {
         try {
             const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
             if (!swiftlyHomeDir) {
                 return [];
             }
-            const swiftlyConfig = await swiftly.getSwiftlyConfig();
+            const swiftlyConfig = await Swiftly.getConfig();
             if (!swiftlyConfig || !("installedToolchains" in swiftlyConfig)) {
                 return [];
             }
@@ -111,11 +111,11 @@ export class Swiftly {
         }
     }
 
-    private isSupported() {
+    private static isSupported() {
         return process.platform === "linux" || process.platform === "darwin";
     }
 
-    public async swiftlyInUseLocation(swiftlyPath: string, cwd?: vscode.Uri) {
+    public static async inUseLocation(swiftlyPath: string, cwd?: vscode.Uri) {
         const { stdout: inUse } = await execFile(swiftlyPath, ["use", "--print-location"], {
             cwd: cwd?.fsPath,
         });
@@ -127,7 +127,7 @@ export class Swiftly {
      * the path to the active toolchain.
      * @returns The location of the active toolchain if swiftly is being used to manage it.
      */
-    public async swiftlyToolchain(cwd?: vscode.Uri): Promise<string | undefined> {
+    public static async toolchain(cwd?: vscode.Uri): Promise<string | undefined> {
         const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
         if (swiftlyHomeDir) {
             const { stdout: swiftLocation } = await execFile("which", ["swift"]);
@@ -136,7 +136,7 @@ export class Swiftly {
                 // is no cwd specified then it returns the global "inUse" toolchain otherwise
                 // it respects the .swift-version file in the cwd and resolves using that.
                 try {
-                    const inUse = await swiftly.swiftlyInUseLocation("swiftly", cwd);
+                    const inUse = await Swiftly.inUseLocation("swiftly", cwd);
                     if (inUse.length > 0) {
                         return path.join(inUse, "usr");
                     }
@@ -155,7 +155,7 @@ export class Swiftly {
      *
      * @returns A parsed Swiftly configuration.
      */
-    private async getSwiftlyConfig(): Promise<SwiftlyConfig | undefined> {
+    private static async getConfig(): Promise<SwiftlyConfig | undefined> {
         const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
         if (!swiftlyHomeDir) {
             return;
@@ -167,5 +167,3 @@ export class Swiftly {
         return JSON.parse(swiftlyConfigRaw);
     }
 }
-
-export const swiftly = new Swiftly();

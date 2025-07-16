@@ -19,12 +19,6 @@ import { mockGlobalModule } from "../../MockUtils";
 
 suite("Swiftly Unit Tests", () => {
     const mockUtilities = mockGlobalModule(utilities);
-    let swiftly: Swiftly;
-
-    setup(() => {
-        swiftly = new Swiftly();
-    });
-
 
     suite("getSwiftlyToolchainInstalls", () => {
         test("should return toolchain names from list-available command for version 1.1.0", async () => {
@@ -82,7 +76,7 @@ suite("Swiftly Unit Tests", () => {
                 stderr: ""
             });
 
-            const result = await swiftly.getSwiftlyToolchainInstalls();
+            const result = await Swiftly.listAvailableToolchains();
 
             expect(result).to.deep.equal([
                 "swift-5.9.0-RELEASE",
@@ -101,7 +95,7 @@ suite("Swiftly Unit Tests", () => {
                 writable: true
             });
 
-            const result = await swiftly.getSwiftlyToolchainInstalls();
+            const result = await Swiftly.listAvailableToolchains();
 
             expect(result).to.deep.equal([]);
             expect(mockUtilities.execFile).not.have.been.called;

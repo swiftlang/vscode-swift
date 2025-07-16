@@ -19,7 +19,7 @@ import * as utilities from "../../../src/utilities/utilities";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { Version } from "../../../src/utilities/version";
 import { mockGlobalModule, mockGlobalValue } from "../../MockUtils";
-import { swiftly } from "../../../src/toolchain/swiftly";
+import { Swiftly } from "../../../src/toolchain/swiftly";
 
 suite("SwiftToolchain Unit Test Suite", () => {
     const mockedUtilities = mockGlobalModule(utilities);
@@ -313,7 +313,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 }),
             });
 
-            const toolchains = await swiftly.getSwiftlyToolchainInstalls();
+            const toolchains = await Swiftly.listAvailableToolchains();
             expect(toolchains).to.deep.equal([
                 path.join(mockHomeDir, "toolchains", "swift-5.9.0"),
                 path.join(mockHomeDir, "toolchains", "swift-6.0.0"),
@@ -331,7 +331,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 }),
             });
 
-            const toolchains = await swiftly.getSwiftlyToolchainInstalls();
+            const toolchains = await Swiftly.listAvailableToolchains();
             expect(toolchains).to.deep.equal([
                 path.join(mockHomeDir, "toolchains", "swift-5.9.0"),
                 path.join(mockHomeDir, "toolchains", "swift-6.0.0"),
@@ -342,7 +342,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
             mockedPlatform.setValue("linux");
             mockedEnv.setValue({});
 
-            const toolchains = await swiftly.getSwiftlyToolchainInstalls();
+            const toolchains = await Swiftly.listAvailableToolchains();
             expect(toolchains).to.be.empty;
         });
 
@@ -353,7 +353,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
 
             mockFS({});
 
-            await expect(swiftly.getSwiftlyToolchainInstalls()).to.be.rejectedWith(
+            await expect(Swiftly.listAvailableToolchains()).to.be.rejectedWith(
                 "Failed to retrieve Swiftly installations from disk: ENOENT, no such file or directory '/home/user/.swiftly/config.json'"
             );
         });
@@ -369,13 +369,13 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 }),
             });
 
-            const toolchains = await swiftly.getSwiftlyToolchainInstalls();
+            const toolchains = await Swiftly.listAvailableToolchains();
             expect(toolchains).to.be.empty;
         });
 
         test("returns empty array on Windows", async () => {
             mockedPlatform.setValue("win32");
-            const toolchains = await swiftly.getSwiftlyToolchainInstalls();
+            const toolchains = await Swiftly.listAvailableToolchains();
             expect(toolchains).to.be.empty;
         });
 
@@ -390,7 +390,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 }),
             });
 
-            const toolchains = await swiftly.getSwiftlyToolchainInstalls();
+            const toolchains = await Swiftly.listAvailableToolchains();
             expect(toolchains).to.deep.equal([
                 path.join(mockHomeDir, "toolchains", "swift-5.9.0"),
                 path.join(mockHomeDir, "toolchains", "swift-6.0.0"),

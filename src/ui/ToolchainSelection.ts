@@ -18,7 +18,7 @@ import { showReloadExtensionNotification } from "./ReloadExtension";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import configuration from "../configuration";
 import { Commands } from "../commands";
-import { swiftly } from "../toolchain/swiftly";
+import { Swiftly } from "../toolchain/swiftly";
 
 /**
  * Open the installation page on Swift.org
@@ -193,7 +193,7 @@ async function getQuickPickItems(
             return result;
         });
     // Find any Swift toolchains installed via Swiftly
-    const swiftlyToolchains = (await swiftly.getSwiftlyToolchainInstalls())
+    const swiftlyToolchains = (await Swiftly.listAvailableToolchains())
         .reverse()
         .map<SwiftToolchainItem>(toolchainPath => ({
             type: "toolchain",
