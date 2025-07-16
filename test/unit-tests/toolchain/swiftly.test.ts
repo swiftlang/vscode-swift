@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import { expect } from "chai";
-import * as sinon from "sinon";
 import { Swiftly } from "../../../src/toolchain/swiftly";
 import * as utilities from "../../../src/utilities/utilities";
 import { mockGlobalModule, mockGlobalValue } from "../../MockUtils";
