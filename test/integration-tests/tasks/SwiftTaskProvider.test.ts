@@ -142,6 +142,11 @@ suite("SwiftTaskProvider Test Suite", () => {
         test("includes product debug task", async () => {
             const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
             const task = tasks.find(t => t.name === "Build Debug PackageExe (defaultPackage)");
+            expect(
+                task,
+                'expected to find a task named "Build Debug PackageExe (defaultPackage)", instead found ' +
+                    tasks.map(t => t.name)
+            ).to.not.be.undefined;
             expect(task?.detail).to.include("swift build --product PackageExe");
         });
 
@@ -151,6 +156,11 @@ suite("SwiftTaskProvider Test Suite", () => {
                 new vscode.CancellationTokenSource().token
             );
             const task = tasks.find(t => t.name === "Build Release PackageExe (defaultPackage)");
+            expect(
+                task,
+                'expected to find a task named "Build Release PackageExe (defaultPackage)", instead found ' +
+                    tasks.map(t => t.name)
+            ).to.not.be.undefined;
             expect(task?.detail).to.include("swift build -c release --product PackageExe");
         });
 

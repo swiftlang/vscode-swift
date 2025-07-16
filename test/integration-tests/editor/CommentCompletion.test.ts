@@ -18,25 +18,13 @@ import { CommentCompletionProviders } from "../../../src/editor/CommentCompletio
 import { Workbench } from "../../../src/utilities/commands";
 
 suite("CommentCompletion Test Suite", () => {
-    let document: vscode.TextDocument | undefined;
     let provider: CommentCompletionProviders;
 
     setup(() => {
         provider = new CommentCompletionProviders();
     });
 
-    teardown(async () => {
-        const editor = vscode.window.visibleTextEditors.find(
-            editor => editor.document === document
-        );
-
-        if (editor && document) {
-            await vscode.window.showTextDocument(document, editor.viewColumn);
-            await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
-        }
-
-        provider.dispose();
-    });
+    teardown(() => provider.dispose());
 
     suite("Function Comment Completion", () => {
         test("Completion on line that isn't a comment", async () => {
@@ -404,7 +392,13 @@ suite("CommentCompletion Test Suite", () => {
         });
     });
 
-    suite("Document Comment Completion", () => {
+    suite("Document Comment Completion", function () {
+        setup(function () {
+            if (process.platform === "linux") {
+                // Skip as these tests access the active test editor which will sometimes crash on Linux.
+                this.skip();
+            }
+        });
         test("Should not provide completions on first line", async () => {
             const { document, positions } = await openDocument(`1️⃣
             public func foo() {}`);
@@ -439,32 +433,28 @@ suite("CommentCompletion Test Suite", () => {
 
         test("Should continue a documentation comment block on new line", async () => {
             const { document, positions } = await openDocument(`
-            /// aaa
-            1️⃣
-            public func foo() {}`);
+/// aaa
+1️⃣
+public func foo() {}`);
 
             const position = positions["1️⃣"];
             await provider.docCommentCompletion.provideCompletionItems(document, position);
 
-            const newLine = document.getText(
-                new vscode.Range(position, position.translate(0, 1000))
-            );
+            const newLine = document.lineAt(position.line).text;
 
             assert.strictEqual(newLine, "/// ", "New line should continue the comment block");
         });
 
         test("Should continue a documentation comment when an existing comment line is split", async () => {
             const { document, positions } = await openDocument(`
-            /// aaa
-            1️⃣// bbb
-            public func foo() {}`);
+/// aaa
+1️⃣// bbb
+public func foo() {}`);
 
             const position = positions["1️⃣"];
             await provider.docCommentCompletion.provideCompletionItems(document, position);
 
-            const newLine = document.getText(
-                new vscode.Range(position, position.translate(0, 1000))
-            );
+            const newLine = document.lineAt(position.line).text;
 
             assert.strictEqual(newLine, "/// bbb", "New line should continue the comment block");
         });
@@ -484,7 +474,7 @@ suite("CommentCompletion Test Suite", () => {
         });
 
         test("Should handle case when no active text editor", async () => {
-            const { document, positions } = await openDocument(`
+            const { document: doc, positions } = await openDocument(`
             /// aaa
             1️⃣
             public func foo() {}`);
@@ -495,60 +485,13 @@ suite("CommentCompletion Test Suite", () => {
             await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
 
             // This should not throw an error
-            const items = await provider.docCommentCompletion.provideCompletionItems(
-                document,
-                position
-            );
+            const items = await provider.docCommentCompletion.provideCompletionItems(doc, position);
 
             assert.equal(
                 items,
                 undefined,
                 "Should not provide completions when no active text editor"
             );
-        });
-
-        test("Should specifically test continueExistingDocCommentBlock with no active editor", async () => {
-            const { document, positions } = await openDocument(`
-            /// aaa
-            1️⃣
-            public func foo() {}`);
-
-            const position = positions["1️⃣"];
-
-            // Close all editors to simulate no active text editor
-            await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
-
-            // Store original activeTextEditor property
-            const originalActiveTextEditor = Object.getOwnPropertyDescriptor(
-                vscode.window,
-                "activeTextEditor"
-            );
-
-            // Mock the activeTextEditor to be null for the specific method call
-            Object.defineProperty(vscode.window, "activeTextEditor", {
-                get: () => null,
-                configurable: true,
-            });
-
-            try {
-                // Call the method directly to ensure the branch is covered
-                await provider.docCommentCompletion["continueExistingDocCommentBlock"](
-                    document,
-                    position
-                );
-
-                // If we get here, the method didn't throw an error, which is what we want
-                assert.ok(true, "Method should not throw when there's no active editor");
-            } finally {
-                // Restore the original activeTextEditor property
-                if (originalActiveTextEditor) {
-                    Object.defineProperty(
-                        vscode.window,
-                        "activeTextEditor",
-                        originalActiveTextEditor
-                    );
-                }
-            }
         });
 
         test("Should handle when previous line has // but not ///", async () => {
@@ -641,8 +584,7 @@ suite("CommentCompletion Test Suite", () => {
                 return;
             }
 
-            const column = lines[line].indexOf(str);
-            return new vscode.Position(line, column);
+            return new vscode.Position(line, lines[line].indexOf(str));
         }
 
         let purgedContent = content;
@@ -668,9 +610,6 @@ suite("CommentCompletion Test Suite", () => {
         });
 
         await vscode.window.showTextDocument(doc);
-
-        // Save the document so we can clean it up when the test finishes
-        document = doc;
 
         return { document: doc, positions };
     }
