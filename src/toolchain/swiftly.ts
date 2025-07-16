@@ -85,7 +85,7 @@ export class Swiftly {
             const response = ListAvailableResult.parse(JSON.parse(stdout));
             return response.toolchains.map(t => t.name);
         } catch (error) {
-            throw new Error("Failed to retrieve Swiftly installations from disk: ${error.message}");
+            throw new Error(`Failed to retrieve Swiftly installations from disk: ${(error as Error).message}`);
         }
     }
 
@@ -107,7 +107,7 @@ export class Swiftly {
                 .filter((toolchain): toolchain is string => typeof toolchain === "string")
                 .map(toolchain => path.join(swiftlyHomeDir, "toolchains", toolchain));
         } catch (error) {
-            throw new Error("Failed to retrieve Swiftly installations from disk: ${error.message}");
+            throw new Error(`Failed to retrieve Swiftly installations from disk: ${(error as Error).message}`);
         }
     }
 

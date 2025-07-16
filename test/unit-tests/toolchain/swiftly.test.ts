@@ -13,27 +13,23 @@
 //===----------------------------------------------------------------------===//
 
 import { expect } from "chai";
-import * as sinon from "sinon";
 import { Swiftly } from "../../../src/toolchain/swiftly";
 import * as utilities from "../../../src/utilities/utilities";
+import { mockGlobalModule } from "../../MockUtils";
 
 suite("Swiftly Unit Tests", () => {
-    let execFileStub: sinon.SinonStub;
+    const mockUtilities = mockGlobalModule(utilities);
     let swiftly: Swiftly;
 
     setup(() => {
-        execFileStub = sinon.stub(utilities, "execFile");
         swiftly = new Swiftly();
     });
 
-    teardown(() => {
-        sinon.restore();
-    });
 
     suite("getSwiftlyToolchainInstalls", () => {
         test("should return toolchain names from list-available command for version 1.1.0", async () => {
             // Mock version check to return 1.1.0
-            execFileStub.withArgs("swiftly", ["--version"]).resolves({
+            mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
                 stdout: "1.1.0\n",
                 stderr: ""
             });
@@ -81,7 +77,7 @@ suite("Swiftly Unit Tests", () => {
                 ]
             };
 
-            execFileStub.withArgs("swiftly", ["list-available", "--format=json"]).resolves({
+            mockUtilities.execFile.withArgs("swiftly", ["list-available", "--format=json"]).resolves({
                 stdout: JSON.stringify(jsonOutput),
                 stderr: ""
             });
@@ -94,8 +90,8 @@ suite("Swiftly Unit Tests", () => {
                 "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a"
             ]);
 
-            expect(execFileStub.calledWith("swiftly", ["--version"])).to.be.true;
-            expect(execFileStub.calledWith("swiftly", ["list-available", "--format=json"])).to.be.true;
+            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["--version"]);
+            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["list-available", "--format=json"]);
         });
 
         test("should return empty array when platform is not supported", async () => {
@@ -108,7 +104,7 @@ suite("Swiftly Unit Tests", () => {
             const result = await swiftly.getSwiftlyToolchainInstalls();
 
             expect(result).to.deep.equal([]);
-            expect(execFileStub.called).to.be.false;
+            expect(mockUtilities.execFile).not.have.been.called;
 
             Object.defineProperty(process, "platform", {
                 value: originalPlatform,
