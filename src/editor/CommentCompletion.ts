@@ -60,7 +60,10 @@ class DocCommentCompletionProvider implements vscode.CompletionItemProvider {
         document: vscode.TextDocument,
         position: vscode.Position
     ) {
-        if (!vscode.window.activeTextEditor) {
+        const editor = vscode.window.visibleTextEditors.find(
+            e => e.document.uri.toString() === document.uri.toString()
+        );
+        if (!editor || editor.document.isClosed) {
             return;
         }
         // Fixes https://github.com/swiftlang/vscode-swift/issues/1648
@@ -72,7 +75,7 @@ class DocCommentCompletionProvider implements vscode.CompletionItemProvider {
                 ? [lineText, lineText, ""]
                 : /^(\s*)\/\/\s(.+)/.exec(lineText);
         if (match) {
-            await vscode.window.activeTextEditor.edit(
+            await editor.edit(
                 edit => {
                     edit.replace(
                         new vscode.Range(position.line, 0, position.line, match[0].length),
@@ -82,10 +85,7 @@ class DocCommentCompletionProvider implements vscode.CompletionItemProvider {
                 { undoStopBefore: false, undoStopAfter: true }
             );
             const newPosition = new vscode.Position(position.line, match[1].length + 4);
-            vscode.window.activeTextEditor.selection = new vscode.Selection(
-                newPosition,
-                newPosition
-            );
+            editor.selection = new vscode.Selection(newPosition, newPosition);
         }
     }
 }
