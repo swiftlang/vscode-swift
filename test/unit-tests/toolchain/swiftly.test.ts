@@ -110,4 +110,46 @@ suite("Swiftly Unit Tests", () => {
             expect(mockUtilities.execFile).not.have.been.called;
         });
     });
+
+    suite("isInstalled", () => {
+        test("should return false when platform is not supported", async () => {
+            mockedPlatform.setValue("win32");
+
+            const result = await Swiftly.isInstalled();
+
+            expect(result).to.be.false;
+            expect(mockUtilities.execFile).not.have.been.called;
+        });
+
+        test("should return true when swiftly is installed", async () => {
+            mockedPlatform.setValue("darwin");
+
+            mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
+                stdout: "1.1.0\n",
+                stderr: "",
+            });
+
+            const result = await Swiftly.isInstalled();
+
+            expect(result).to.be.true;
+            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["--version"]);
+        });
+
+        test("should throw error when swiftly command fails with non-ENOENT error", async () => {
+            mockedPlatform.setValue("darwin");
+
+            const otherError = new Error("Other error");
+
+            mockUtilities.execFile.withArgs("swiftly", ["--version"]).rejects(otherError);
+
+            try {
+                await Swiftly.isInstalled();
+                expect.fail("Should have thrown an error");
+            } catch (error) {
+                expect(error).to.equal(otherError);
+            }
+
+            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["--version"]);
+        });
+    });
 });
