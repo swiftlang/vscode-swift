@@ -127,7 +127,8 @@ export class Swiftly {
             const response = ListResult.parse(JSON.parse(stdout));
             return response.toolchains.map(t => t.version.name);
         } catch (error) {
-            outputChannel?.appendLine(`Failed to retrieve Swiftly installations: ${error}`);
+            outputChannel?.appendLine(
+                `Failed to retrieve Swiftly installations : ${error}`);
             return [];
         }
     }
@@ -220,7 +221,8 @@ export class Swiftly {
                     const error = err as ExecFileError;
                     // Its possible the toolchain in .swift-version is misconfigured or doesn't exist.
                     void vscode.window.showErrorMessage(
-                        `Failed to load toolchain from Swiftly: ${error.stderr}`);
+                        `Failed to load toolchain from Swiftly: ${error.stderr}`
+                    );
                 }
             }
         }

@@ -79,10 +79,12 @@ suite("Swiftly Unit Tests", () => {
                 ],
             };
 
-            mockUtilities.execFile.withArgs("swiftly", ["list", "--format=json"]).resolves({
-                stdout: JSON.stringify(jsonOutput),
-                stderr: "",
-            });
+            mockUtilities.execFile
+                .withArgs("swiftly", ["list", "--format=json"])
+                .resolves({
+                    stdout: JSON.stringify(jsonOutput),
+                    stderr: "",
+                });
 
             const result = await Swiftly.listAvailableToolchains();
 
