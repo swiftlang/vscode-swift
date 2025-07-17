@@ -257,7 +257,7 @@ async function getQuickPickItems(
     }
     // Various actions that the user can perform (e.g. to install new toolchains)
     const actionItems: ActionItem[] = [];
-    if (process.platform === "linux" || process.platform === "darwin") {
+    if (Swiftly.isSupported() && !(await Swiftly.isInstalled())) {
         const platformName = process.platform === "linux" ? "Linux" : "macOS";
         actionItems.push({
             type: "action",
