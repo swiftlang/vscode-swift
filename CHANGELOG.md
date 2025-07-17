@@ -7,6 +7,10 @@
 - Added code lenses to run suites/tests, configurable with the `swift.showTestCodeLenses` setting ([#1698](https://github.com/swiftlang/vscode-swift/pull/1698))
 - New `swift.excludePathsFromActivation` setting to ignore specified sub-folders from being activated as projects ([#1693](https://github.com/swiftlang/vscode-swift/pull/1693))
 
+### Fixed
+
+- `Run multiple times...` and `Run until failure...` will now work when multiple tests are selected ([#1724](https://github.com/swiftlang/vscode-swift/pull/1724))
+
 ## 2.8.0 - 2025-07-14
 
 ### Added
