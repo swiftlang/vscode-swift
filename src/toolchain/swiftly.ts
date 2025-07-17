@@ -196,8 +196,7 @@ export class Swiftly {
     }
 
     public static async isInstalled() {
-
-        if(!Swiftly.isSupported()) {
+        if (!Swiftly.isSupported()) {
             return false;
         }
 
@@ -205,11 +204,10 @@ export class Swiftly {
             await Swiftly.version();
             return true;
         } catch (error) {
-            if (error instanceof ExecFileError && 'code' in error && error.code === "ENOENT") {
+            if (error instanceof ExecFileError && "code" in error && error.code === "ENOENT") {
                 return false;
             }
             throw error;
         }
-
     }
 }
