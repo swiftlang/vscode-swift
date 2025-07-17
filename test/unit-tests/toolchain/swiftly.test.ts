@@ -15,10 +15,11 @@
 import { expect } from "chai";
 import { Swiftly } from "../../../src/toolchain/swiftly";
 import * as utilities from "../../../src/utilities/utilities";
-import { mockGlobalModule } from "../../MockUtils";
+import { mockGlobalModule, mockGlobalValue } from "../../MockUtils";
 
 suite("Swiftly Unit Tests", () => {
     const mockUtilities = mockGlobalModule(utilities);
+    const mockedPlatform = mockGlobalValue(process, "platform");
 
     suite("getSwiftlyToolchainInstalls", () => {
         test("should return toolchain names from list-available command for version 1.1.0", async () => {
@@ -94,21 +95,12 @@ suite("Swiftly Unit Tests", () => {
         });
 
         test("should return empty array when platform is not supported", async () => {
-            const originalPlatform = process.platform;
-            Object.defineProperty(process, "platform", {
-                value: "win32",
-                writable: true,
-            });
+            mockedPlatform.setValue("win32");
 
             const result = await Swiftly.listAvailableToolchains();
 
             expect(result).to.deep.equal([]);
             expect(mockUtilities.execFile).not.have.been.called;
-
-            Object.defineProperty(process, "platform", {
-                value: originalPlatform,
-                writable: true,
-            });
         });
     });
 });

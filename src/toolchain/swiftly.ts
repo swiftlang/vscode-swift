@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as path from "node:path";
+import * as path from "path";
 import { SwiftlyConfig } from "./ToolchainVersion";
-import * as fs from "node:fs/promises";
+import * as fs from "fs/promises";
 import { execFile, ExecFileError } from "../utilities/utilities";
 import * as vscode from "vscode";
 import { Version } from "../utilities/version";
