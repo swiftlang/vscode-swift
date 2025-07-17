@@ -86,6 +86,7 @@ export enum Commands {
     SHOW_NESTED_DEPENDENCIES_LIST = "swift.nestedDependenciesList",
     UPDATE_DEPENDENCIES = "swift.updateDependencies",
     RUN_TESTS_MULTIPLE_TIMES = "swift.runTestsMultipleTimes",
+    RUN_TESTS_UNTIL_FAILURE = "swift.runTestsUntilFailure",
     RESET_PACKAGE = "swift.resetPackage",
     USE_LOCAL_DEPENDENCY = "swift.useLocalDependency",
     UNEDIT_DEPENDENCY = "swift.uneditDependency",
@@ -133,16 +134,24 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             async target => await debugBuild(ctx, ...unwrapTreeItem(target))
         ),
         vscode.commands.registerCommand(Commands.CLEAN_BUILD, async () => await cleanBuild(ctx)),
-        vscode.commands.registerCommand(Commands.RUN_TESTS_MULTIPLE_TIMES, async (item, count) => {
-            if (ctx.currentFolder) {
-                return await runTestMultipleTimes(ctx.currentFolder, item, false, count);
+        vscode.commands.registerCommand(
+            Commands.RUN_TESTS_MULTIPLE_TIMES,
+            async (...args: (vscode.TestItem | number)[]) => {
+                const { testItems, count } = extractTestItemsAndCount(...args);
+                if (ctx.currentFolder) {
+                    return await runTestMultipleTimes(ctx.currentFolder, testItems, false, count);
+                }
             }
-        }),
-        vscode.commands.registerCommand("swift.runTestsUntilFailure", async (item, count) => {
-            if (ctx.currentFolder) {
-                return await runTestMultipleTimes(ctx.currentFolder, item, true, count);
+        ),
+        vscode.commands.registerCommand(
+            Commands.RUN_TESTS_UNTIL_FAILURE,
+            async (...args: (vscode.TestItem | number)[]) => {
+                const { testItems, count } = extractTestItemsAndCount(...args);
+                if (ctx.currentFolder) {
+                    return await runTestMultipleTimes(ctx.currentFolder, testItems, true, count);
+                }
             }
-        }),
+        ),
         // Note: switchPlatform is only available on macOS and Swift 6.1 or later
         // (gated in `package.json`) because it's the only OS and toolchain combination that
         // has Darwin SDKs available and supports code editing with SourceKit-LSP
@@ -265,6 +274,43 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         }),
         vscode.commands.registerCommand("swift.openDocumentation", () => openDocumentation()),
     ];
+}
+
+/**
+ * Extracts an array of vscode.TestItem and count from the provided varargs. Effectively, this
+ * converts a varargs function from accepting both numbers and test items to:
+ *
+ *     function (...testItems: vscode.TestItem[], count?: number): void;
+ *
+ * The VS Code testing view sends test items via varargs, but we have a couple testing commands that
+ * also accept a final count parameter. We have to find the count parameter ourselves since JavaScript
+ * only supports varargs at the end of an argument list.
+ */
+function extractTestItemsAndCount(...args: (vscode.TestItem | number)[]): {
+    testItems: vscode.TestItem[];
+    count?: number;
+} {
+    const result = args.reduceRight<{
+        testItems: vscode.TestItem[];
+        count?: number;
+    }>(
+        (result, arg, index) => {
+            if (typeof arg === "number" && index === args.length - 1) {
+                result.count = arg;
+                return result;
+            } else if (typeof arg === "object") {
+                result.testItems.push(arg);
+                return result;
+            } else {
+                throw new Error(`Unexpected argument ${arg} at index ${index}`);
+            }
+        },
+        { testItems: [] }
+    );
+    if (result.testItems.length === 0) {
+        throw new Error("At least one TestItem must be provided");
+    }
+    return result;
 }
 
 /**

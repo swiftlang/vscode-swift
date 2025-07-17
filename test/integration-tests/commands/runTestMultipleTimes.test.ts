@@ -39,12 +39,12 @@ suite("Test Multiple Times Command Test Suite", () => {
     });
 
     test("Runs successfully after testing 0 times", async () => {
-        const runState = await runTestMultipleTimes(folderContext, testItem, false, 0);
+        const runState = await runTestMultipleTimes(folderContext, [testItem], false, 0);
         expect(runState).to.be.an("array").that.is.empty;
     });
 
     test("Runs successfully after testing 3 times", async () => {
-        const runState = await runTestMultipleTimes(folderContext, testItem, false, 3, () =>
+        const runState = await runTestMultipleTimes(folderContext, [testItem], false, 3, () =>
             Promise.resolve(TestRunProxy.initialTestRunState())
         );
 
@@ -61,7 +61,7 @@ suite("Test Multiple Times Command Test Suite", () => {
             failed: [{ test: testItem, message: new vscode.TestMessage("oh no") }],
         };
         let ctr = 0;
-        const runState = await runTestMultipleTimes(folderContext, testItem, true, 3, () => {
+        const runState = await runTestMultipleTimes(folderContext, [testItem], true, 3, () => {
             ctr += 1;
             if (ctr === 2) {
                 return Promise.resolve(failure);
