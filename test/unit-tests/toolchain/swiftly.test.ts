@@ -25,7 +25,7 @@ suite("Swiftly Unit Tests", () => {
             // Mock version check to return 1.1.0
             mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
                 stdout: "1.1.0\n",
-                stderr: ""
+                stderr: "",
             });
 
             // Mock list-available command with JSON output
@@ -40,8 +40,8 @@ suite("Swiftly Unit Tests", () => {
                             major: 5,
                             minor: 9,
                             patch: 0,
-                            type: "stable"
-                        }
+                            type: "stable",
+                        },
                     },
                     {
                         inUse: false,
@@ -52,8 +52,8 @@ suite("Swiftly Unit Tests", () => {
                             major: 5,
                             minor: 8,
                             patch: 0,
-                            type: "stable"
-                        }
+                            type: "stable",
+                        },
                     },
                     {
                         inUse: false,
@@ -65,34 +65,39 @@ suite("Swiftly Unit Tests", () => {
                             minor: 10,
                             branch: "development",
                             date: "2023-10-15",
-                            type: "snapshot"
-                        }
-                    }
-                ]
+                            type: "snapshot",
+                        },
+                    },
+                ],
             };
 
-            mockUtilities.execFile.withArgs("swiftly", ["list-available", "--format=json"]).resolves({
-                stdout: JSON.stringify(jsonOutput),
-                stderr: ""
-            });
+            mockUtilities.execFile
+                .withArgs("swiftly", ["list-available", "--format=json"])
+                .resolves({
+                    stdout: JSON.stringify(jsonOutput),
+                    stderr: "",
+                });
 
             const result = await Swiftly.listAvailableToolchains();
 
             expect(result).to.deep.equal([
                 "swift-5.9.0-RELEASE",
                 "swift-5.8.0-RELEASE",
-                "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a"
+                "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
             ]);
 
             expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["--version"]);
-            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["list-available", "--format=json"]);
+            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", [
+                "list-available",
+                "--format=json",
+            ]);
         });
 
         test("should return empty array when platform is not supported", async () => {
             const originalPlatform = process.platform;
             Object.defineProperty(process, "platform", {
                 value: "win32",
-                writable: true
+                writable: true,
             });
 
             const result = await Swiftly.listAvailableToolchains();
@@ -102,7 +107,7 @@ suite("Swiftly Unit Tests", () => {
 
             Object.defineProperty(process, "platform", {
                 value: originalPlatform,
-                writable: true
+                writable: true,
             });
         });
     });

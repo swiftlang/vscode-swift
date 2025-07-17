@@ -29,7 +29,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
         mockFS({});
         mockedUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
             stdout: "1.0.0\n",
-            stderr: ""
+            stderr: "",
         });
     });
 
