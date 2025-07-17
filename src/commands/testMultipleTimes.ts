@@ -26,7 +26,7 @@ import { FolderContext } from "../FolderContext";
  */
 export async function runTestMultipleTimes(
     currentFolder: FolderContext,
-    test: vscode.TestItem,
+    tests: vscode.TestItem[],
     untilFailure: boolean,
     count: number | undefined = undefined,
     testRunner?: () => Promise<TestRunState>
@@ -52,7 +52,7 @@ export async function runTestMultipleTimes(
     const testExplorer = currentFolder.testExplorer;
     const runner = new TestRunner(
         TestKind.standard,
-        new vscode.TestRunRequest([test]),
+        new vscode.TestRunRequest(tests),
         currentFolder,
         testExplorer.controller,
         token.token
