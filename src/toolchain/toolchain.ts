@@ -122,7 +122,7 @@ export class SwiftToolchain {
         outputChannel?: vscode.OutputChannel
     ): Promise<SwiftToolchain> {
         const swiftFolderPath = await this.getSwiftFolderPath(folder, outputChannel);
-        const toolchainPath = await this.getToolchainPath(swiftFolderPath, folder);
+        const toolchainPath = await this.getToolchainPath(swiftFolderPath, folder, outputChannel);
         const targetInfo = await this.getSwiftTargetInfo(
             this._getToolchainExecutable(toolchainPath, "swift")
         );
@@ -610,7 +610,11 @@ export class SwiftToolchain {
     /**
      * @returns path to Toolchain folder
      */
-    private static async getToolchainPath(swiftPath: string, cwd?: vscode.Uri): Promise<string> {
+    private static async getToolchainPath(
+        swiftPath: string,
+        cwd?: vscode.Uri,
+        channel?: vscode.OutputChannel
+    ): Promise<string> {
         try {
             switch (process.platform) {
                 case "darwin": {
@@ -630,7 +634,7 @@ export class SwiftToolchain {
                         return path.dirname(configuration.path);
                     }
 
-                    const swiftlyToolchainLocation = await Swiftly.toolchain(cwd);
+                    const swiftlyToolchainLocation = await Swiftly.toolchain(channel, cwd);
                     if (swiftlyToolchainLocation) {
                         return swiftlyToolchainLocation;
                     }
