@@ -14,8 +14,8 @@
 
 import { makeDebugConfigurations } from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
+import { selectFolder } from "../ui/SelectFolderQuickPick";
 import { WorkspaceContext } from "../WorkspaceContext";
-import * as vscode from "vscode";
 
 export async function generateLaunchConfigurations(ctx: WorkspaceContext): Promise<boolean> {
     if (ctx.folders.length === 0) {
@@ -26,27 +26,12 @@ export async function generateLaunchConfigurations(ctx: WorkspaceContext): Promi
         return await makeDebugConfigurations(ctx.folders[0], { force: true, yes: true });
     }
 
-    const quickPickItems: SelectFolderQuickPick[] = ctx.folders.map(folder => ({
-        type: "folder",
-        folder,
-        label: folder.name,
-        detail: folder.workspaceFolder.uri.fsPath,
-    }));
-    quickPickItems.push({ type: "all", label: "Generate For All Folders" });
-    const selection = await vscode.window.showQuickPick(quickPickItems, {
-        matchOnDetail: true,
-        placeHolder: "Select a folder to generate launch configurations for",
-    });
-
-    if (!selection) {
+    const foldersToUpdate: FolderContext[] = await selectFolder(
+        ctx,
+        "Select a folder to generate launch configurations for"
+    );
+    if (!foldersToUpdate.length) {
         return false;
-    }
-
-    const foldersToUpdate: FolderContext[] = [];
-    if (selection.type === "all") {
-        foldersToUpdate.push(...ctx.folders);
-    } else {
-        foldersToUpdate.push(selection.folder);
     }
 
     return (
@@ -56,15 +41,4 @@ export async function generateLaunchConfigurations(ctx: WorkspaceContext): Promi
             )
         )
     ).reduceRight((prev, curr) => prev || curr);
-}
-
-type SelectFolderQuickPick = AllQuickPickItem | FolderQuickPickItem;
-
-interface AllQuickPickItem extends vscode.QuickPickItem {
-    type: "all";
-}
-
-interface FolderQuickPickItem extends vscode.QuickPickItem {
-    type: "folder";
-    folder: FolderContext;
 }
