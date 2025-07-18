@@ -102,6 +102,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             "swift-plugin",
             new SwiftExecution(swift, swiftArgs, {
                 cwd,
+                env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
                 presentation: task.presentationOptions,
             }),
             task.problemMatchers
