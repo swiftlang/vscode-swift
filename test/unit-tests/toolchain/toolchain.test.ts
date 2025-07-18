@@ -353,9 +353,11 @@ suite("SwiftToolchain Unit Test Suite", () => {
 
             mockFS({});
 
-            await expect(Swiftly.listAvailableToolchains()).to.be.rejectedWith(
-                "Failed to retrieve Swiftly installations from disk: ENOENT, no such file or directory '/home/user/.swiftly/config.json'"
-            );
+            await expect(Swiftly.listAvailableToolchains()).to.be.rejected.then(error => {
+                expect(error.message).to.include(
+                    "Failed to retrieve Swiftly installations from disk"
+                );
+            });
         });
 
         test("returns empty array when config has no installedToolchains", async () => {

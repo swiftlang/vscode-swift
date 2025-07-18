@@ -21,6 +21,10 @@ suite("Swiftly Unit Tests", () => {
     const mockUtilities = mockGlobalModule(utilities);
     const mockedPlatform = mockGlobalValue(process, "platform");
 
+    setup(() => {
+        mockedPlatform.setValue("darwin");
+    });
+
     suite("getSwiftlyToolchainInstalls", () => {
         test("should return toolchain names from list-available command for version 1.1.0", async () => {
             // Mock version check to return 1.1.0
