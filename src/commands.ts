@@ -49,6 +49,7 @@ import { openDocumentation } from "./commands/openDocumentation";
 import restartLSPServer from "./commands/restartLSPServer";
 import { generateLaunchConfigurations } from "./commands/generateLaunchConfigurations";
 import { runTest } from "./commands/runTest";
+import { generateSourcekitConfiguration } from "./commands/generateSourcekitConfiguration";
 
 /**
  * References:
@@ -105,6 +106,7 @@ export enum Commands {
     OPEN_MANIFEST = "swift.openManifest",
     RESTART_LSP = "swift.restartLSPServer",
     SELECT_TOOLCHAIN = "swift.selectToolchain",
+    GENERATE_SOURCEKIT_CONFIG = "swift.generateSourcekitConfiguration",
 }
 
 /**
@@ -273,6 +275,10 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             await vscode.commands.executeCommand("vscode.open", vscode.Uri.file(packagePath));
         }),
         vscode.commands.registerCommand("swift.openDocumentation", () => openDocumentation()),
+        vscode.commands.registerCommand(
+            Commands.GENERATE_SOURCEKIT_CONFIG,
+            async () => await generateSourcekitConfiguration(ctx)
+        ),
     ];
 }
 
