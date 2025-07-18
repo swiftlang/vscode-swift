@@ -27,6 +27,7 @@ import {
     sourcekitConfigFilePath,
     sourcekitFolderPath,
 } from "../../../src/commands/generateSourcekitConfiguration";
+import { Version } from "../../../src/utilities/version";
 
 suite("Generate SourceKit-LSP configuration Command", function () {
     let folderContext: FolderContext;
@@ -64,7 +65,12 @@ suite("Generate SourceKit-LSP configuration Command", function () {
         ).toString("utf-8");
         const config = JSON.parse(contents);
         const version = folderContext.swiftVersion;
-        const branch = version.dev ? "main" : `release/${version.major}.${version.minor}`;
+        let branch: string;
+        if (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))) {
+            branch = version.dev ? "main" : `release/${version.major}.${version.minor}`;
+        } else {
+            branch = "main";
+        }
         expect(config).to.have.property(
             "$schema",
             `https://raw.githubusercontent.com/swiftlang/sourcekit-lsp/refs/heads/${branch}/config.schema.json`
