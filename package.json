@@ -332,6 +332,11 @@
         "title": "Open Documentation",
         "category": "Swift",
         "icon": "$(book)"
+      },
+      {
+        "command": "swift.generateSourcekitConfiguration",
+        "title": "Generate SourceKit-LSP Configuration",
+        "category": "Swift"
       }
     ],
     "configuration": [
@@ -743,6 +748,10 @@
             "markdownDescription": "Disable SourceKit-LSP. This will turn off features like code completion, error diagnostics and jump-to-definition. Features like swift-testing test discovery will not work correctly.",
             "order": 6,
             "scope": "machine-overridable"
+          },
+          "swift.sourcekit-lsp.configurationBranch": {
+            "type": "string",
+            "markdownDescription": "Set the branch to use when setting the `$schema` property of the SourceKit-LSP configuration. For example: \"release/6.1\" or \"main\". When this setting is unset, the extension will determine the branch based on the version of the toolchain that is in use."
           },
           "sourcekit-lsp.inlayHints.enabled": {
             "type": "boolean",
@@ -1738,6 +1747,12 @@
             }
           }
         ]
+      }
+    ],
+    "jsonValidation": [
+      {
+        "fileMatch": "**/.sourcekit-lsp/config.json",
+        "url": "https://raw.githubusercontent.com/swiftlang/sourcekit-lsp/refs/heads/main/config.schema.json"
       }
     ]
   },
