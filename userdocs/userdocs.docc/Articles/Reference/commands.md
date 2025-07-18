@@ -10,6 +10,7 @@ The Swift extension adds the following commands, each prefixed with `"Swift: "` 
 - **`Create New Project...`** - Create a new Swift project using a template. This opens a dialog to guide you through creating a new project structure.
 - **`Create New Swift File...`** - Create a new `.swift` file in the current workspace.
 - **`Select Toolchain...`** - Select the locally installed Swift toolchain (including Xcode toolchains on macOS) that you want to use Swift tools from.
+- **`Generate SourceKit-LSP Configuration`** - Generate the `.sourcekit-lsp/config.json` file for the selected project(s). The generated configuration file will be pre-populated with the JSON schema for the version of the Swift toolchain that is being used. Use the `swift.sourcekit-lsp.configurationBranch` setting to pin the SourceKit-LSP branch that the schema comes from.
 
 The following command is only available on macOS:
 
