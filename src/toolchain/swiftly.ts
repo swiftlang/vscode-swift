@@ -1,0 +1,197 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the VS Code Swift open source project
+//
+// Copyright (c) 2025 the VS Code Swift project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.txt for the list of VS Code Swift project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+import * as path from "path";
+import { SwiftlyConfig } from "./ToolchainVersion";
+import * as fs from "fs/promises";
+import { execFile, ExecFileError } from "../utilities/utilities";
+import * as vscode from "vscode";
+import { Version } from "../utilities/version";
+import { z } from "zod";
+
+const ListAvailableResult = z.object({
+    toolchains: z.array(
+        z.object({
+            inUse: z.boolean(),
+            installed: z.boolean(),
+            isDefault: z.boolean(),
+            name: z.string(),
+            version: z.discriminatedUnion("type", [
+                z.object({
+                    major: z.number(),
+                    minor: z.number(),
+                    patch: z.number().optional(),
+                    type: z.literal("stable"),
+                }),
+                z.object({
+                    major: z.number(),
+                    minor: z.number(),
+                    branch: z.string(),
+                    date: z.string(),
+
+                    type: z.literal("snapshot"),
+                }),
+            ]),
+        })
+    ),
+});
+
+export class Swiftly {
+    /**
+     * Finds the version of Swiftly installed on the system.
+     *
+     * @returns the version of Swiftly as a `Version` object, or `undefined`
+     * if Swiftly is not installed or not supported.
+     */
+    public static async version(
+        outputChannel?: vscode.OutputChannel
+    ): Promise<Version | undefined> {
+        if (!Swiftly.isSupported()) {
+            return undefined;
+        }
+        try {
+            const { stdout } = await execFile("swiftly", ["--version"]);
+            return Version.fromString(stdout.trim());
+        } catch (error) {
+            outputChannel?.appendLine(`Failed to retrieve Swiftly version: ${error}`);
+            return undefined;
+        }
+    }
+
+    /**
+     * Finds the list of toolchains managed by Swiftly.
+     *
+     * @returns an array of toolchain paths
+     */
+    public static async listAvailableToolchains(
+        outputChannel?: vscode.OutputChannel
+    ): Promise<string[]> {
+        if (!this.isSupported()) {
+            return [];
+        }
+        const version = await Swiftly.version(outputChannel);
+        if (!version) {
+            outputChannel?.appendLine("Swiftly is not installed");
+            return [];
+        }
+
+        if (version.isLessThan(new Version(1, 1, 0))) {
+            return await Swiftly.getToolchainInstallLegacy(outputChannel);
+        }
+
+        return await Swiftly.getListAvailableToolchains(outputChannel);
+    }
+
+    private static async getListAvailableToolchains(
+        outputChannel?: vscode.OutputChannel
+    ): Promise<string[]> {
+        try {
+            const { stdout } = await execFile("swiftly", ["list-available", "--format=json"]);
+            const response = ListAvailableResult.parse(JSON.parse(stdout));
+            return response.toolchains.map(t => t.name);
+        } catch (error) {
+            outputChannel?.appendLine(`Failed to retrieve Swiftly installations: ${error}`);
+            throw new Error(
+                `Failed to retrieve Swiftly installations from disk: ${(error as Error).message}`
+            );
+        }
+    }
+
+    private static async getToolchainInstallLegacy(outputChannel?: vscode.OutputChannel) {
+        try {
+            const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
+            if (!swiftlyHomeDir) {
+                return [];
+            }
+            const swiftlyConfig = await Swiftly.getConfig();
+            if (!swiftlyConfig || !("installedToolchains" in swiftlyConfig)) {
+                return [];
+            }
+            const installedToolchains = swiftlyConfig.installedToolchains;
+            if (!Array.isArray(installedToolchains)) {
+                return [];
+            }
+            return installedToolchains
+                .filter((toolchain): toolchain is string => typeof toolchain === "string")
+                .map(toolchain => path.join(swiftlyHomeDir, "toolchains", toolchain));
+        } catch (error) {
+            outputChannel?.appendLine(`Failed to retrieve Swiftly installations: ${error}`);
+            throw new Error(
+                `Failed to retrieve Swiftly installations from disk: ${(error as Error).message}`
+            );
+        }
+    }
+
+    private static isSupported() {
+        return process.platform === "linux" || process.platform === "darwin";
+    }
+
+    public static async inUseLocation(swiftlyPath: string, cwd?: vscode.Uri) {
+        const { stdout: inUse } = await execFile(swiftlyPath, ["use", "--print-location"], {
+            cwd: cwd?.fsPath,
+        });
+        return inUse.trimEnd();
+    }
+
+    /**
+     * Determine if Swiftly is being used to manage the active toolchain and if so, return
+     * the path to the active toolchain.
+     * @returns The location of the active toolchain if swiftly is being used to manage it.
+     */
+    public static async toolchain(
+        outputChannel?: vscode.OutputChannel,
+        cwd?: vscode.Uri
+    ): Promise<string | undefined> {
+        const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
+        if (swiftlyHomeDir) {
+            const { stdout: swiftLocation } = await execFile("which", ["swift"]);
+            if (swiftLocation.startsWith(swiftlyHomeDir)) {
+                // Print the location of the toolchain that swiftly is using. If there
+                // is no cwd specified then it returns the global "inUse" toolchain otherwise
+                // it respects the .swift-version file in the cwd and resolves using that.
+                try {
+                    const inUse = await Swiftly.inUseLocation("swiftly", cwd);
+                    if (inUse.length > 0) {
+                        return path.join(inUse, "usr");
+                    }
+                } catch (err: unknown) {
+                    outputChannel?.appendLine(`Failed to retrieve Swiftly installations: ${err}`);
+                    const error = err as ExecFileError;
+                    // Its possible the toolchain in .swift-version is misconfigured or doesn't exist.
+                    void vscode.window.showErrorMessage(
+                        `Failed to load toolchain from Swiftly: ${error.stderr}`
+                    );
+                }
+            }
+        }
+        return undefined;
+    }
+
+    /**
+     * Reads the Swiftly configuration file, if it exists.
+     *
+     * @returns A parsed Swiftly configuration.
+     */
+    private static async getConfig(): Promise<SwiftlyConfig | undefined> {
+        const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
+        if (!swiftlyHomeDir) {
+            return;
+        }
+        const swiftlyConfigRaw = await fs.readFile(
+            path.join(swiftlyHomeDir, "config.json"),
+            "utf-8"
+        );
+        return JSON.parse(swiftlyConfigRaw);
+    }
+}
