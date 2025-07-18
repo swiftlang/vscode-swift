@@ -6,6 +6,7 @@
 
 - Added code lenses to run suites/tests, configurable with the `swift.showTestCodeLenses` setting ([#1698](https://github.com/swiftlang/vscode-swift/pull/1698))
 - New `swift.excludePathsFromActivation` setting to ignore specified sub-folders from being activated as projects ([#1693](https://github.com/swiftlang/vscode-swift/pull/1693))
+- Add a `Generate SourceKit-LSP Configuration` command that creates the configuration file with versioned schema pre-populated ([#1726](https://github.com/swiftlang/vscode-swift/pull/1716))
 
 ### Fixed
 
