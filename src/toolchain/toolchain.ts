@@ -19,14 +19,13 @@ import * as plist from "plist";
 import * as vscode from "vscode";
 import configuration from "../configuration";
 import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
-import { execFile, ExecFileError, execSwift } from "../utilities/utilities";
+import { execFile, execSwift } from "../utilities/utilities";
 import { expandFilePathTilde, fileExists, pathExists } from "../utilities/filesystem";
 import { Version } from "../utilities/version";
 import { BuildFlags } from "./BuildFlags";
 import { Sanitizer } from "./Sanitizer";
-import { SwiftlyConfig } from "./ToolchainVersion";
 import { lineBreakRegex } from "../utilities/tasks";
-
+import { Swiftly } from "./swiftly";
 /**
  * Contents of **Info.plist** on Windows.
  */
@@ -123,7 +122,7 @@ export class SwiftToolchain {
         outputChannel?: vscode.OutputChannel
     ): Promise<SwiftToolchain> {
         const swiftFolderPath = await this.getSwiftFolderPath(folder, outputChannel);
-        const toolchainPath = await this.getToolchainPath(swiftFolderPath, folder);
+        const toolchainPath = await this.getToolchainPath(swiftFolderPath, folder, outputChannel);
         const targetInfo = await this.getSwiftTargetInfo(
             this._getToolchainExecutable(toolchainPath, "swift")
         );
@@ -249,54 +248,6 @@ export class SwiftToolchain {
             result.push(selectedXcode);
         }
         return result;
-    }
-
-    /**
-     * Finds the list of toolchains managed by Swiftly.
-     *
-     * @returns an array of toolchain paths
-     */
-    public static async getSwiftlyToolchainInstalls(): Promise<string[]> {
-        // Swiftly is available on Linux and macOS
-        if (process.platform !== "linux" && process.platform !== "darwin") {
-            return [];
-        }
-        try {
-            const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
-            if (!swiftlyHomeDir) {
-                return [];
-            }
-            const swiftlyConfig = await SwiftToolchain.getSwiftlyConfig();
-            if (!swiftlyConfig || !("installedToolchains" in swiftlyConfig)) {
-                return [];
-            }
-            const installedToolchains = swiftlyConfig.installedToolchains;
-            if (!Array.isArray(installedToolchains)) {
-                return [];
-            }
-            return installedToolchains
-                .filter((toolchain): toolchain is string => typeof toolchain === "string")
-                .map(toolchain => path.join(swiftlyHomeDir, "toolchains", toolchain));
-        } catch (error) {
-            throw new Error("Failed to retrieve Swiftly installations from disk.");
-        }
-    }
-
-    /**
-     * Reads the Swiftly configuration file, if it exists.
-     *
-     * @returns A parsed Swiftly configuration.
-     */
-    private static async getSwiftlyConfig(): Promise<SwiftlyConfig | undefined> {
-        const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
-        if (!swiftlyHomeDir) {
-            return;
-        }
-        const swiftlyConfigRaw = await fs.readFile(
-            path.join(swiftlyHomeDir, "config.json"),
-            "utf-8"
-        );
-        return JSON.parse(swiftlyConfigRaw);
     }
 
     /**
@@ -615,7 +566,7 @@ export class SwiftToolchain {
             let realSwift = await fs.realpath(swift);
             if (path.basename(realSwift) === "swiftly") {
                 try {
-                    const inUse = await this.swiftlyInUseLocation(realSwift, cwd);
+                    const inUse = await Swiftly.inUseLocation(realSwift, cwd);
                     if (inUse) {
                         realSwift = path.join(inUse, "usr", "bin", "swift");
                     }
@@ -659,7 +610,11 @@ export class SwiftToolchain {
     /**
      * @returns path to Toolchain folder
      */
-    private static async getToolchainPath(swiftPath: string, cwd?: vscode.Uri): Promise<string> {
+    private static async getToolchainPath(
+        swiftPath: string,
+        cwd?: vscode.Uri,
+        channel?: vscode.OutputChannel
+    ): Promise<string> {
         try {
             switch (process.platform) {
                 case "darwin": {
@@ -668,7 +623,7 @@ export class SwiftToolchain {
                         const swiftlyPath = path.join(configPath, "swiftly");
                         if (await fileExists(swiftlyPath)) {
                             try {
-                                const inUse = await this.swiftlyInUseLocation(swiftlyPath, cwd);
+                                const inUse = await Swiftly.inUseLocation(swiftlyPath, cwd);
                                 if (inUse) {
                                     return path.join(inUse, "usr");
                                 }
@@ -679,7 +634,7 @@ export class SwiftToolchain {
                         return path.dirname(configuration.path);
                     }
 
-                    const swiftlyToolchainLocation = await this.swiftlyToolchain(cwd);
+                    const swiftlyToolchainLocation = await Swiftly.toolchain(channel, cwd);
                     if (swiftlyToolchainLocation) {
                         return swiftlyToolchainLocation;
                     }
@@ -697,41 +652,6 @@ export class SwiftToolchain {
         } catch {
             throw Error("Failed to find swift toolchain");
         }
-    }
-
-    private static async swiftlyInUseLocation(swiftlyPath: string, cwd?: vscode.Uri) {
-        const { stdout: inUse } = await execFile(swiftlyPath, ["use", "--print-location"], {
-            cwd: cwd?.fsPath,
-        });
-        return inUse.trimEnd();
-    }
-
-    /**
-     * Determine if Swiftly is being used to manage the active toolchain and if so, return
-     * the path to the active toolchain.
-     * @returns The location of the active toolchain if swiftly is being used to manage it.
-     */
-    private static async swiftlyToolchain(cwd?: vscode.Uri): Promise<string | undefined> {
-        const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
-        if (swiftlyHomeDir) {
-            const { stdout: swiftLocation } = await execFile("which", ["swift"]);
-            if (swiftLocation.indexOf(swiftlyHomeDir) === 0) {
-                // Print the location of the toolchain that swiftly is using. If there
-                // is no cwd specified then it returns the global "inUse" toolchain otherwise
-                // it respects the .swift-version file in the cwd and resolves using that.
-                try {
-                    const inUse = await this.swiftlyInUseLocation("swiftly", cwd);
-                    if (inUse.length > 0) {
-                        return path.join(inUse, "usr");
-                    }
-                } catch (err: unknown) {
-                    const error = err as ExecFileError;
-                    // Its possible the toolchain in .swift-version is misconfigured or doesn't exist.
-                    void vscode.window.showErrorMessage(`${error.stderr}`);
-                }
-            }
-        }
-        return undefined;
     }
 
     /**

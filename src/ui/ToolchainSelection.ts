@@ -18,6 +18,7 @@ import { showReloadExtensionNotification } from "./ReloadExtension";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import configuration from "../configuration";
 import { Commands } from "../commands";
+import { Swiftly } from "../toolchain/swiftly";
 
 /**
  * Open the installation page on Swift.org
@@ -192,7 +193,7 @@ async function getQuickPickItems(
             return result;
         });
     // Find any Swift toolchains installed via Swiftly
-    const swiftlyToolchains = (await SwiftToolchain.getSwiftlyToolchainInstalls())
+    const swiftlyToolchains = (await Swiftly.listAvailableToolchains())
         .reverse()
         .map<SwiftToolchainItem>(toolchainPath => ({
             type: "toolchain",
@@ -223,7 +224,7 @@ async function getQuickPickItems(
     }
     // Various actions that the user can perform (e.g. to install new toolchains)
     const actionItems: ActionItem[] = [];
-    if (process.platform === "linux" || process.platform === "darwin") {
+    if (Swiftly.isSupported() && !(await Swiftly.isInstalled())) {
         const platformName = process.platform === "linux" ? "Linux" : "macOS";
         actionItems.push({
             type: "action",
