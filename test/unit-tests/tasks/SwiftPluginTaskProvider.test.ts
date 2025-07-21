@@ -23,8 +23,9 @@ import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 import { SwiftExecution } from "../../../src/tasks/SwiftExecution";
 import { Version } from "../../../src/utilities/version";
 import { BuildFlags } from "../../../src/toolchain/BuildFlags";
-import { instance, MockedObject, mockFn, mockObject } from "../../MockUtils";
+import { instance, MockedObject, mockFn, mockGlobalValue, mockObject } from "../../MockUtils";
 import { FolderContext } from "../../../src/FolderContext";
+import configuration from "../../../src/configuration";
 
 suite("SwiftPluginTaskProvider Unit Test Suite", () => {
     let workspaceContext: MockedObject<WorkspaceContext>;
@@ -58,6 +59,14 @@ suite("SwiftPluginTaskProvider Unit Test Suite", () => {
     });
 
     suite("resolveTask", () => {
+        const configurationMock = mockGlobalValue(configuration, "swiftEnvironmentVariables");
+
+        setup(async () => {
+            configurationMock.setValue({
+                FOO: "bar",
+            });
+        });
+
         test("uses SwiftExecution", async () => {
             const taskProvider = new SwiftPluginTaskProvider(instance(workspaceContext));
             const task = new vscode.Task(
@@ -294,6 +303,25 @@ suite("SwiftPluginTaskProvider Unit Test Suite", () => {
                 process.cwd(),
                 os.homedir(),
             ]);
+        });
+
+        test("provides environment", async () => {
+            const taskProvider = new SwiftPluginTaskProvider(instance(workspaceContext));
+            const task = new vscode.Task(
+                {
+                    type: "swift",
+                    args: [],
+                },
+                workspaceFolder,
+                "run PackageExe",
+                "swift"
+            );
+            const resolvedTask = taskProvider.resolveTask(
+                task,
+                new vscode.CancellationTokenSource().token
+            );
+            const swiftExecution = resolvedTask.execution as SwiftExecution;
+            assert.equal(swiftExecution.options.env?.FOO, "bar");
         });
     });
 });

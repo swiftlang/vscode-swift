@@ -11,6 +11,7 @@
 ### Fixed
 
 - `Run multiple times...` and `Run until failure...` will now work when multiple tests are selected ([#1724](https://github.com/swiftlang/vscode-swift/pull/1724))
+- Provide the Swift environment variables when resolving a `swift-plugin` task ([#1727](https://github.com/swiftlang/vscode-swift/pull/1727))
 
 ## 2.8.0 - 2025-07-14
 
