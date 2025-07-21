@@ -165,7 +165,9 @@ export function assertTestResults(
                 .sort(),
             skipped: testRun.runState.skipped.map(({ id }) => id).sort(),
             errored: testRun.runState.errored.map(({ id }) => id).sort(),
-            enqueued: testRun.runState.enqueued.map(({ id }) => id).sort(),
+            enqueued: Array.from(testRun.runState.enqueued)
+                .map(({ id }) => id)
+                .sort(),
             unknown: testRun.runState.unknown,
         },
         {
