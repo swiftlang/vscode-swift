@@ -26,7 +26,7 @@ export async function generateSourcekitConfiguration(ctx: WorkspaceContext): Pro
 
     if (ctx.folders.length === 1) {
         const folder = ctx.folders[0];
-        const success = await createSourcekitConfiguration(folder);
+        const success = await createSourcekitConfiguration(ctx, folder);
         void vscode.window.showTextDocument(vscode.Uri.file(sourcekitConfigFilePath(folder)));
         return success;
     }
@@ -40,7 +40,9 @@ export async function generateSourcekitConfiguration(ctx: WorkspaceContext): Pro
     }
 
     return (
-        await Promise.all(foldersToGenerate.map(folder => createSourcekitConfiguration(folder)))
+        await Promise.all(
+            foldersToGenerate.map(folder => createSourcekitConfiguration(ctx, folder))
+        )
     ).reduceRight((prev, curr) => prev || curr);
 }
 
@@ -48,14 +50,22 @@ export const sourcekitFolderPath = (f: FolderContext) => join(f.folder.fsPath, "
 export const sourcekitConfigFilePath = (f: FolderContext) =>
     join(sourcekitFolderPath(f), "config.json");
 
-async function createSourcekitConfiguration(folderContext: FolderContext): Promise<boolean> {
+async function createSourcekitConfiguration(
+    workspaceContext: WorkspaceContext,
+    folderContext: FolderContext
+): Promise<boolean> {
     const sourcekitFolder = vscode.Uri.file(sourcekitFolderPath(folderContext));
     const sourcekitConfigFile = vscode.Uri.file(sourcekitConfigFilePath(folderContext));
 
     try {
         await vscode.workspace.fs.stat(sourcekitConfigFile);
         return true;
-    } catch {
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+            workspaceContext.outputChannel.appendLine(
+                `Failed to read file at ${sourcekitConfigFile.fsPath}: ${error}`
+            );
+        }
         // Ignore, don't care if the file doesn't exist yet
     }
 
@@ -67,7 +77,12 @@ async function createSourcekitConfiguration(folderContext: FolderContext): Promi
             );
             return false;
         }
-    } catch {
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+            workspaceContext.outputChannel.appendLine(
+                `Failed to read folder at ${sourcekitFolder.fsPath}: ${error}`
+            );
+        }
         await vscode.workspace.fs.createDirectory(sourcekitFolder);
     }
     const version = folderContext.toolchain.swiftVersion;
