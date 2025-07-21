@@ -23,7 +23,7 @@ suite("CommentCompletion Test Suite", () => {
         provider = new CommentCompletionProviders();
     });
 
-    teardown(async () => provider.dispose());
+    teardown(() => provider.dispose());
 
     suite("Function Comment Completion", () => {
         test("Completion on line that isn't a comment", async () => {
