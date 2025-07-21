@@ -15,7 +15,7 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
 import { CommentCompletionProviders } from "../../../src/editor/CommentCompletion";
-import { Workbench } from "../../../src/utilities/commands";
+import { closeAllEditors } from "../../utilities/commands";
 
 suite("CommentCompletion Test Suite", () => {
     let provider: CommentCompletionProviders;
@@ -24,7 +24,10 @@ suite("CommentCompletion Test Suite", () => {
         provider = new CommentCompletionProviders();
     });
 
-    teardown(() => provider.dispose());
+    teardown(async () => {
+        await closeAllEditors();
+        provider.dispose();
+    });
 
     suite("Function Comment Completion", () => {
         test("Completion on line that isn't a comment", async () => {
@@ -393,12 +396,6 @@ suite("CommentCompletion Test Suite", () => {
     });
 
     suite("Document Comment Completion", function () {
-        setup(function () {
-            if (process.platform === "linux") {
-                // Skip as these tests access the active test editor which will sometimes crash on Linux.
-                this.skip();
-            }
-        });
         test("Should not provide completions on first line", async () => {
             const { document, positions } = await openDocument(`1️⃣
             public func foo() {}`);
@@ -482,7 +479,7 @@ public func foo() {}`);
             const position = positions["1️⃣"];
 
             // Close all editors to simulate no active text editor
-            await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
+            await closeAllEditors();
 
             // This should not throw an error
             const items = await provider.docCommentCompletion.provideCompletionItems(doc, position);
