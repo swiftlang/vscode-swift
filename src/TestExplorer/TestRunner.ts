@@ -67,7 +67,7 @@ export interface TestRunState {
     passed: vscode.TestItem[];
     skipped: vscode.TestItem[];
     errored: vscode.TestItem[];
-    enqueued: vscode.TestItem[];
+    enqueued: Set<vscode.TestItem>;
     unknown: number;
     output: string[];
 }
@@ -80,6 +80,7 @@ export class TestRunProxy {
     private _testItems: vscode.TestItem[];
     private iteration: number | undefined;
     private attachments: { [key: string]: string[] } = {};
+    private testItemFinder: TestItemFinder;
     public coverage: TestCoverage;
     public token: CompositeCancellationToken;
 
@@ -96,7 +97,7 @@ export class TestRunProxy {
             passed: [],
             skipped: [],
             errored: [],
-            enqueued: [],
+            enqueued: new Set<vscode.TestItem>(),
             unknown: 0,
             output: [],
         };
@@ -120,6 +121,10 @@ export class TestRunProxy {
         this._testItems = args.testItems;
         this.coverage = new TestCoverage(folderContext);
         this.token = new CompositeCancellationToken(testProfileCancellationToken);
+        this.testItemFinder =
+            process.platform === "darwin"
+                ? new DarwinTestItemFinder(args.testItems)
+                : new NonDarwinTestItemFinder(args.testItems, this.folderContext);
         this.onTestRunComplete = this.testRunCompleteEmitter.event;
     }
 
@@ -177,12 +182,23 @@ export class TestRunProxy {
 
         this.testRun = this.controller.createTestRun(this.testRunRequest);
         this.token.add(this.testRun.token);
+
+        const existingTestItemCount = this.testItems.length;
         this._testItems = [...this.testItems, ...addedTestItems];
+
+        if (this._testItems.length !== existingTestItemCount) {
+            // Recreate a test item finder with the added test items
+            this.testItemFinder =
+                process.platform === "darwin"
+                    ? new DarwinTestItemFinder(this.testItems)
+                    : new NonDarwinTestItemFinder(this.testItems, this.folderContext);
+        }
 
         // Forward any output captured before the testRun was created.
         for (const outputLine of this.queuedOutput) {
             this.performAppendOutput(this.testRun, outputLine);
         }
+        this.queuedOutput = [];
 
         for (const test of this.testItems) {
             this.enqueued(test);
@@ -211,17 +227,9 @@ export class TestRunProxy {
         return this.testItemFinder.getIndex(id, filename);
     }
 
-    private get testItemFinder(): TestItemFinder {
-        if (process.platform === "darwin") {
-            return new DarwinTestItemFinder(this.testItems);
-        } else {
-            return new NonDarwinTestItemFinder(this.testItems, this.folderContext);
-        }
-    }
-
     private enqueued(test: vscode.TestItem) {
         this.testRun?.enqueued(test);
-        this.runState.enqueued.push(test);
+        this.runState.enqueued.add(test);
     }
 
     public unknownTestRan() {
@@ -239,14 +247,14 @@ export class TestRunProxy {
     }
 
     private clearEnqueuedTest(test: vscode.TestItem) {
-        this.runState.enqueued = this.runState.enqueued.filter(t => t !== test);
+        this.runState.enqueued.delete(test);
 
         if (!test.parent) {
             return;
         }
 
         const parentHasEnqueuedChildren = Array.from(test.parent.children).some(([_, child]) =>
-            this.runState.enqueued.includes(child)
+            this.runState.enqueued.has(child)
         );
 
         if (!parentHasEnqueuedChildren) {
@@ -304,7 +312,6 @@ export class TestRunProxy {
         this.runState.pending.forEach(test => {
             this.failed(test, new vscode.TestMessage("Test did not complete."));
         });
-
         // If there are tests that never started, mark them as skipped.
         // This can happen if there is a build error preventing tests from running.
         this.runState.enqueued.forEach(test => {
@@ -1169,15 +1176,6 @@ export class TestRunner {
         });
     }
 
-    /** Get TestItem finder for current platform */
-    get testItemFinder(): TestItemFinder {
-        if (process.platform === "darwin") {
-            return new DarwinTestItemFinder(this.testArgs.testItems);
-        } else {
-            return new NonDarwinTestItemFinder(this.testArgs.testItems, this.folderContext);
-        }
-    }
-
     private generateFifoPipePath(testRunDateNow: number): string {
         return process.platform === "win32"
             ? `\\\\.\\pipe\\vscodemkfifo-${testRunDateNow}`
@@ -1193,10 +1191,14 @@ interface TestItemFinder {
 
 /** Defines how to find test items given a test id from XCTest output on Darwin platforms */
 class DarwinTestItemFinder implements TestItemFinder {
-    constructor(public testItems: vscode.TestItem[]) {}
+    private readonly testItemMap: Map<string, number>;
+
+    constructor(public testItems: vscode.TestItem[]) {
+        this.testItemMap = new Map(testItems.map((item, index) => [item.id, index]));
+    }
 
     getIndex(id: string): number {
-        return this.testItems.findIndex(item => item.id === id);
+        return this.testItemMap.get(id) ?? -1;
     }
 }
 
