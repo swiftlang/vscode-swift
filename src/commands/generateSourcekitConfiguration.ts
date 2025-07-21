@@ -85,20 +85,13 @@ async function createSourcekitConfiguration(
         }
         await vscode.workspace.fs.createDirectory(sourcekitFolder);
     }
-    const version = folderContext.toolchain.swiftVersion;
-    const versionString = `${version.major}.${version.minor}`;
-    let branch =
-        configuration.lsp.configurationBranch ||
-        (version.dev ? "main" : `release/${versionString}`);
-    if (!(await checkURLExists(schemaURL(branch)))) {
-        branch = "main";
-    }
+    const url = await determineSchemaURL(folderContext);
     await vscode.workspace.fs.writeFile(
         sourcekitConfigFile,
         Buffer.from(
             JSON.stringify(
                 {
-                    $schema: schemaURL(branch),
+                    $schema: url,
                 },
                 undefined,
                 2
@@ -118,4 +111,85 @@ async function checkURLExists(url: string): Promise<boolean> {
     } catch {
         return false;
     }
+}
+
+export async function determineSchemaURL(folderContext: FolderContext): Promise<string> {
+    const version = folderContext.toolchain.swiftVersion;
+    const versionString = `${version.major}.${version.minor}`;
+    let branch =
+        configuration.lspConfigurationBranch || (version.dev ? "main" : `release/${versionString}`);
+    if (!(await checkURLExists(schemaURL(branch)))) {
+        branch = "main";
+    }
+    return schemaURL(branch);
+}
+
+async function checkDocumentSchema(doc: vscode.TextDocument, workspaceContext: WorkspaceContext) {
+    const folder = await workspaceContext.getPackageFolder(doc.uri);
+    if (!folder) {
+        return;
+    }
+    const folderContext = folder as FolderContext;
+    if (!folderContext.name) {
+        return; // Not a FolderContext if no "name"
+    }
+    let buffer: Uint8Array;
+    try {
+        buffer = await vscode.workspace.fs.readFile(doc.uri);
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+            workspaceContext.outputChannel.appendLine(
+                `Failed to read file at ${doc.uri.fsPath}: ${error}`
+            );
+        }
+        return;
+    }
+    const contents = Buffer.from(buffer).toString("utf-8");
+    const config = JSON.parse(contents);
+    const schema = config.$schema;
+    if (!schema) {
+        return;
+    }
+    const newUrl = await determineSchemaURL(folderContext);
+    if (newUrl === schema) {
+        return;
+    }
+    const result = await vscode.window.showInformationMessage(
+        `The $schema property for ${doc.uri.fsPath} is not set to the version of the Swift toolchain that you are using. Would you like to update the $schema property?`,
+        "Yes",
+        "No",
+        "Don't Ask Again"
+    );
+    if (result === "Yes") {
+        config.$schema = newUrl;
+        await vscode.workspace.fs.writeFile(
+            doc.uri,
+            Buffer.from(JSON.stringify(config, undefined, 2))
+        );
+        return;
+    } else if (result === "Don't Ask Again") {
+        configuration.checkLspConfigurationSchema = false;
+        return;
+    }
+}
+
+export async function handleSchemaUpdate(
+    doc: vscode.TextDocument,
+    workspaceContext: WorkspaceContext
+) {
+    if (
+        !configuration.checkLspConfigurationSchema ||
+        !doc.uri.fsPath.endsWith("/.sourcekit-lsp/config.json")
+    ) {
+        return;
+    }
+    await checkDocumentSchema(doc, workspaceContext);
+}
+
+export function registerSourceKitSchemaWatcher(
+    workspaceContext: WorkspaceContext
+): vscode.Disposable {
+    return vscode.workspace.onDidOpenTextDocument(doc => {
+        void handleSchemaUpdate(doc, workspaceContext);
+    });
 }

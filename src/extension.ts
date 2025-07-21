@@ -36,6 +36,7 @@ import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 import { SelectedXcodeWatcher } from "./toolchain/SelectedXcodeWatcher";
 import configuration, { handleConfigurationChangeEvent } from "./configuration";
 import contextKeys from "./contextKeys";
+import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConfiguration";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -135,6 +136,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             workspaceContext.onDidChangeFolders(handleFolderEvent(outputChannel))
         );
         context.subscriptions.push(TestExplorer.observeFolders(workspaceContext));
+
+        context.subscriptions.push(registerSourceKitSchemaWatcher(workspaceContext));
 
         // setup workspace context with initial workspace folders
         void workspaceContext.addWorkspaceFolders();
