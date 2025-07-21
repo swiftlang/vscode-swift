@@ -60,12 +60,6 @@ class DocCommentCompletionProvider implements vscode.CompletionItemProvider {
         document: vscode.TextDocument,
         position: vscode.Position
     ) {
-        const editor = vscode.window.visibleTextEditors.find(
-            e => e.document.uri.toString() === document.uri.toString()
-        );
-        if (!editor || editor.document.isClosed) {
-            return;
-        }
         // Fixes https://github.com/swiftlang/vscode-swift/issues/1648
         const lineText = document.lineAt(position.line).text;
         // Continue the comment if its a white space only line, or if VS Code has already continued
@@ -75,17 +69,13 @@ class DocCommentCompletionProvider implements vscode.CompletionItemProvider {
                 ? [lineText, lineText, ""]
                 : /^(\s*)\/\/\s(.+)/.exec(lineText);
         if (match) {
-            await editor.edit(
-                edit => {
-                    edit.replace(
-                        new vscode.Range(position.line, 0, position.line, match[0].length),
-                        `${match[1]}/// ${match[2]}`
-                    );
-                },
-                { undoStopBefore: false, undoStopAfter: true }
+            const edit = new vscode.WorkspaceEdit();
+            edit.replace(
+                document.uri,
+                new vscode.Range(position.line, 0, position.line, match[0].length),
+                `${match[1]}/// ${match[2]}`
             );
-            const newPosition = new vscode.Position(position.line, match[1].length + 4);
-            editor.selection = new vscode.Selection(newPosition, newPosition);
+            await vscode.workspace.applyEdit(edit);
         }
     }
 }

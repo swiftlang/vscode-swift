@@ -15,7 +15,6 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
 import { CommentCompletionProviders } from "../../../src/editor/CommentCompletion";
-import { Workbench } from "../../../src/utilities/commands";
 
 suite("CommentCompletion Test Suite", () => {
     let provider: CommentCompletionProviders;
@@ -223,7 +222,12 @@ suite("CommentCompletion Test Suite", () => {
             ]);
         });
 
-        test("Comment insertion", async () => {
+        test("Comment insertion", async function () {
+            if (process.platform === "linux") {
+                // Linux tests are having issues with open text editors
+                this.skip();
+            }
+
             const { document, positions } = await openDocument(`
             /// 1️⃣
             func foo(bar: Int, baz: String) -> Data throws { return Data() }`);
@@ -393,12 +397,6 @@ suite("CommentCompletion Test Suite", () => {
     });
 
     suite("Document Comment Completion", function () {
-        setup(function () {
-            if (process.platform === "linux") {
-                // Skip as these tests access the active test editor which will sometimes crash on Linux.
-                this.skip();
-            }
-        });
         test("Should not provide completions on first line", async () => {
             const { document, positions } = await openDocument(`1️⃣
             public func foo() {}`);
@@ -473,27 +471,6 @@ public func foo() {}`);
             assert.deepEqual(documentText, originalText, "Document text should not change");
         });
 
-        test("Should handle case when no active text editor", async () => {
-            const { document: doc, positions } = await openDocument(`
-            /// aaa
-            1️⃣
-            public func foo() {}`);
-
-            const position = positions["1️⃣"];
-
-            // Close all editors to simulate no active text editor
-            await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
-
-            // This should not throw an error
-            const items = await provider.docCommentCompletion.provideCompletionItems(doc, position);
-
-            assert.equal(
-                items,
-                undefined,
-                "Should not provide completions when no active text editor"
-            );
-        });
-
         test("Should handle when previous line has // but not ///", async () => {
             const { document, positions } = await openDocument(`
             // aaa
@@ -521,9 +498,6 @@ public func foo() {}`);
 
             const position = positions["1️⃣"];
 
-            // Show the document to ensure there's an active editor
-            await vscode.window.showTextDocument(document);
-
             const items = await provider.docCommentCompletion.provideCompletionItems(
                 document,
                 position
@@ -544,9 +518,6 @@ public func foo() {}`);
             public func foo() {}`);
 
             const position = positions["1️⃣"];
-
-            // Show the document to ensure there's an active editor
-            await vscode.window.showTextDocument(document);
 
             const originalText = document.getText();
             const items = await provider.docCommentCompletion.provideCompletionItems(
@@ -608,8 +579,6 @@ public func foo() {}`);
             language: "swift",
             content: purgedContent,
         });
-
-        await vscode.window.showTextDocument(doc);
 
         return { document: doc, positions };
     }

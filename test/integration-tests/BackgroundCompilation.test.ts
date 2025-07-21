@@ -16,8 +16,8 @@ import * as assert from "assert";
 import * as vscode from "vscode";
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { testAssetUri } from "../fixtures";
-import { Workbench } from "../../src/utilities/commands";
 import { activateExtensionForTest, updateSettings } from "./utilities/testutilities";
+import { closeAllEditors } from "../utilities/commands";
 
 suite("BackgroundCompilation Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -33,7 +33,7 @@ suite("BackgroundCompilation Test Suite", () => {
     });
 
     suiteTeardown(async () => {
-        await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
+        await closeAllEditors();
     });
 
     test("build all on save @slow", async () => {
