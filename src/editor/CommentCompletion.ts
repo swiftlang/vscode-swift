@@ -69,18 +69,6 @@ class DocCommentCompletionProvider implements vscode.CompletionItemProvider {
                 ? [lineText, lineText, ""]
                 : /^(\s*)\/\/\s(.+)/.exec(lineText);
         if (match) {
-            // Issues using the `activeTextEditor` property so we'll "show", preserving focus,
-            // so that we get an editor instance
-            // const editor = await vscode.window.showTextDocument(document, undefined, true);
-            // const succeeded = await editor.edit(
-            //     edit => {
-            //         edit.replace(
-            //             new vscode.Range(position.line, 0, position.line, match[0].length),
-            //             `${match[1]}/// ${match[2]}`
-            //         );
-            //     },
-            //     { undoStopBefore: false, undoStopAfter: true }
-            // );
             const edit = new vscode.WorkspaceEdit();
             edit.replace(
                 document.uri,
@@ -88,11 +76,6 @@ class DocCommentCompletionProvider implements vscode.CompletionItemProvider {
                 `${match[1]}/// ${match[2]}`
             );
             await vscode.workspace.applyEdit(edit);
-            // const editor = document.
-            // if (editor && succeeded) {
-            //     const newPosition = new vscode.Position(position.line, match[1].length + 4);
-            //     editor.selection = new vscode.Selection(newPosition, newPosition);
-            // }
         }
     }
 }
