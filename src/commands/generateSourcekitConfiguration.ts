@@ -85,19 +85,24 @@ async function createSourcekitConfiguration(
         }
         await vscode.workspace.fs.createDirectory(sourcekitFolder);
     }
-    const url = await determineSchemaURL(folderContext);
-    await vscode.workspace.fs.writeFile(
-        sourcekitConfigFile,
-        Buffer.from(
-            JSON.stringify(
-                {
-                    $schema: url,
-                },
-                undefined,
-                2
+    try {
+        const url = await determineSchemaURL(folderContext);
+        await vscode.workspace.fs.writeFile(
+            sourcekitConfigFile,
+            Buffer.from(
+                JSON.stringify(
+                    {
+                        $schema: url,
+                    },
+                    undefined,
+                    2
+                )
             )
-        )
-    );
+        );
+    } catch (e) {
+        void vscode.window.showErrorMessage(`${e}`);
+        return false;
+    }
     return true;
 }
 
@@ -107,6 +112,9 @@ const schemaURL = (branch: string) =>
 async function checkURLExists(url: string): Promise<boolean> {
     try {
         const response = await fetch(url, { method: "HEAD" });
+        if (response.status >= 500) {
+            throw new Error(`Received exit code ${response.status} when trying to fetch ${url}`);
+        }
         return response.ok;
     } catch {
         return false;
