@@ -32,7 +32,7 @@ import {
 import { Version } from "../../../src/utilities/version";
 import { mockGlobalObject } from "../../MockUtils";
 
-suite.only("Generate SourceKit-LSP configuration Command", function () {
+suite("Generate SourceKit-LSP configuration Command", function () {
     let folderContext: FolderContext;
     let configFileUri: vscode.Uri;
     let workspaceContext: WorkspaceContext;
