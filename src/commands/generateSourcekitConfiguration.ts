@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import { join } from "path";
+import { basename, dirname, join } from "path";
 import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import { selectFolder } from "../ui/SelectFolderQuickPick";
@@ -187,7 +187,10 @@ export async function handleSchemaUpdate(
 ) {
     if (
         !configuration.checkLspConfigurationSchema ||
-        !doc.uri.fsPath.endsWith("/.sourcekit-lsp/config.json")
+        !(
+            basename(dirname(doc.uri.fsPath)) === ".sourcekit-lsp" &&
+            basename(doc.uri.fsPath) === "config.json"
+        )
     ) {
         return;
     }
