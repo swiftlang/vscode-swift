@@ -682,7 +682,7 @@
           "swift.checkLspConfigurationSchema": {
             "type": "boolean",
             "default": true,
-            "markdownDescription": "When opening a .sourckit-lsp/config.json configurationfile, whether or not to check if the $schema matches the version of Swift you are using.",
+            "markdownDescription": "When opening a .sourckit-lsp/config.json configuration file, whether or not to check if the $schema matches the version of Swift you are using.",
             "scope": "machine-overridable"
           }
         }
