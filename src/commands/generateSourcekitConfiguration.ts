@@ -152,8 +152,16 @@ async function checkDocumentSchema(doc: vscode.TextDocument, workspaceContext: W
         }
         return;
     }
-    const contents = Buffer.from(buffer).toString("utf-8");
-    const config = JSON.parse(contents);
+    let config;
+    try {
+        const contents = Buffer.from(buffer).toString("utf-8");
+        config = JSON.parse(contents);
+    } catch (error) {
+        workspaceContext.outputChannel.appendLine(
+            `Failed to parse JSON from  ${doc.uri.fsPath}: ${error}`
+        );
+        return;
+    }
     const schema = config.$schema;
     if (!schema) {
         return;
