@@ -112,10 +112,12 @@ const schemaURL = (branch: string) =>
 async function checkURLExists(url: string): Promise<boolean> {
     try {
         const response = await fetch(url, { method: "HEAD" });
-        if (response.status >= 500) {
+        if (response.ok) {
+            return true;
+        } else if (response.status !== 404) {
             throw new Error(`Received exit code ${response.status} when trying to fetch ${url}`);
         }
-        return response.ok;
+        return false;
     } catch {
         return false;
     }
