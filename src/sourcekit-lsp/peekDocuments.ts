@@ -89,11 +89,16 @@ export function activatePeekDocuments(client: langclient.LanguageClient): vscode
             );
 
             const peekLocations = params.locations.map(
-                location =>
-                    new vscode.Location(
-                        client.protocol2CodeConverter.asUri(location),
-                        new vscode.Position(0, 0)
-                    )
+                location => {
+                    if (typeof location === "string") { // DocumentUri is a typedef of `string`, so effectively we are checking for DocumentUri here
+                        return new vscode.Location(
+                            client.protocol2CodeConverter.asUri(location),
+                            new vscode.Position(0, 0)
+                        )
+                    } else {
+                        return client.protocol2CodeConverter.asLocation(location)
+                    }
+                }
             );
 
             await openPeekedEditorIn(peekURI, peekPosition, peekLocations);
