@@ -102,10 +102,13 @@
           {
             "id": "swift-commands",
             "title": "Swift commands",
-            "description": "Explore the commands available in the command palette prefixed with ``> Swift:`` \n[Open Command Palette](command:workbench.action.showCommands)",
+            "description": "Explore commands available in the Command Palette prefixed with ``> Swift:``\n See documentation for [available commands](https://docs.swift.org/vscode/documentation/userdocs/commands/). \n[Open Command Palette](command:workbench.action.showCommands)",
             "media": {
               "markdown": "assets/walkthrough/swiftCommands.md"
-            }
+            },
+            "completionEvents": [
+              "onLink:https://docs.swift.org/vscode/documentation/userdocs/commands/"
+            ]
           },
           {
             "id": "selecting-toolchain",

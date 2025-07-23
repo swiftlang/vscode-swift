@@ -2,11 +2,7 @@
 
 ![Swift Extension Settings](./images/settings.gif)
 
-The Swift Extension contains several settings you can customize. 
-
-## Workspace Settings
-
-**Add details about custom workspace settings and environment variable here.**
+The Swift Extension contains several settings you can customize. You can filter settings Swift extension settings by searching for `@ext:swiftlang.swift-vscode`.
 
 ## Inlay Hints
 
