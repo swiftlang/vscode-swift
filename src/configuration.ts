@@ -55,8 +55,6 @@ export interface LSPConfiguration {
     readonly supportedLanguages: string[];
     /** Is SourceKit-LSP disabled */
     readonly disable: boolean;
-    /** Configuration branch to use when setting $schema */
-    readonly configurationBranch: string;
 }
 
 /** debugger configuration */
@@ -151,11 +149,6 @@ const configuration = {
                 return vscode.workspace
                     .getConfiguration("swift.sourcekit-lsp")
                     .get<boolean>("disable", false);
-            },
-            get configurationBranch(): string {
-                return vscode.workspace
-                    .getConfiguration("swift.sourcekit-lsp")
-                    .get<string>("configurationBranch", "");
             },
         };
     },
@@ -502,6 +495,22 @@ const configuration = {
         return vscode.workspace
             .getConfiguration("swift")
             .get<Record<string, boolean>>("excludePathsFromActivation", {});
+    },
+    get lspConfigurationBranch(): string {
+        return vscode.workspace.getConfiguration("swift").get<string>("lspConfigurationBranch", "");
+    },
+    get checkLspConfigurationSchema(): boolean {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<boolean>("checkLspConfigurationSchema", true);
+    },
+    set checkLspConfigurationSchema(value: boolean) {
+        void vscode.workspace
+            .getConfiguration("swift")
+            .update("checkLspConfigurationSchema", value)
+            .then(() => {
+                /* Put in worker queue */
+            });
     },
 };
 

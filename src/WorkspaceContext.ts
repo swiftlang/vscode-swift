@@ -569,9 +569,7 @@ export class WorkspaceContext implements vscode.Disposable {
      * one of those. If not then it searches up the tree to find the uppermost folder in the
      * workspace that contains a Package.swift
      */
-    private async getPackageFolder(
-        url: vscode.Uri
-    ): Promise<FolderContext | vscode.Uri | undefined> {
+    async getPackageFolder(url: vscode.Uri): Promise<FolderContext | vscode.Uri | undefined> {
         // is editor document in any of the current FolderContexts
         const folder = this.folders.find(context => {
             return isPathInsidePath(url.fsPath, context.folder.fsPath);

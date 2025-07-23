@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import { join } from "path";
+import { basename, dirname, join } from "path";
 import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import { selectFolder } from "../ui/SelectFolderQuickPick";
@@ -85,26 +85,24 @@ async function createSourcekitConfiguration(
         }
         await vscode.workspace.fs.createDirectory(sourcekitFolder);
     }
-    const version = folderContext.toolchain.swiftVersion;
-    const versionString = `${version.major}.${version.minor}`;
-    let branch =
-        configuration.lsp.configurationBranch ||
-        (version.dev ? "main" : `release/${versionString}`);
-    if (!(await checkURLExists(schemaURL(branch)))) {
-        branch = "main";
-    }
-    await vscode.workspace.fs.writeFile(
-        sourcekitConfigFile,
-        Buffer.from(
-            JSON.stringify(
-                {
-                    $schema: schemaURL(branch),
-                },
-                undefined,
-                2
+    try {
+        const url = await determineSchemaURL(folderContext);
+        await vscode.workspace.fs.writeFile(
+            sourcekitConfigFile,
+            Buffer.from(
+                JSON.stringify(
+                    {
+                        $schema: url,
+                    },
+                    undefined,
+                    2
+                )
             )
-        )
-    );
+        );
+    } catch (e) {
+        void vscode.window.showErrorMessage(`${e}`);
+        return false;
+    }
     return true;
 }
 
@@ -114,8 +112,105 @@ const schemaURL = (branch: string) =>
 async function checkURLExists(url: string): Promise<boolean> {
     try {
         const response = await fetch(url, { method: "HEAD" });
-        return response.ok;
+        if (response.ok) {
+            return true;
+        } else if (response.status !== 404) {
+            throw new Error(`Received exit code ${response.status} when trying to fetch ${url}`);
+        }
+        return false;
     } catch {
         return false;
     }
+}
+
+export async function determineSchemaURL(folderContext: FolderContext): Promise<string> {
+    const version = folderContext.toolchain.swiftVersion;
+    const versionString = `${version.major}.${version.minor}`;
+    let branch =
+        configuration.lspConfigurationBranch || (version.dev ? "main" : `release/${versionString}`);
+    if (!(await checkURLExists(schemaURL(branch)))) {
+        branch = "main";
+    }
+    return schemaURL(branch);
+}
+
+async function checkDocumentSchema(doc: vscode.TextDocument, workspaceContext: WorkspaceContext) {
+    const folder = await workspaceContext.getPackageFolder(doc.uri);
+    if (!folder) {
+        return;
+    }
+    const folderContext = folder as FolderContext;
+    if (!folderContext.name) {
+        return; // Not a FolderContext if no "name"
+    }
+    let buffer: Uint8Array;
+    try {
+        buffer = await vscode.workspace.fs.readFile(doc.uri);
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+            workspaceContext.outputChannel.appendLine(
+                `Failed to read file at ${doc.uri.fsPath}: ${error}`
+            );
+        }
+        return;
+    }
+    let config;
+    try {
+        const contents = Buffer.from(buffer).toString("utf-8");
+        config = JSON.parse(contents);
+    } catch (error) {
+        workspaceContext.outputChannel.appendLine(
+            `Failed to parse JSON from  ${doc.uri.fsPath}: ${error}`
+        );
+        return;
+    }
+    const schema = config.$schema;
+    if (!schema) {
+        return;
+    }
+    const newUrl = await determineSchemaURL(folderContext);
+    if (newUrl === schema) {
+        return;
+    }
+    const result = await vscode.window.showInformationMessage(
+        `The $schema property for ${doc.uri.fsPath} is not set to the version of the Swift toolchain that you are using. Would you like to update the $schema property?`,
+        "Yes",
+        "No",
+        "Don't Ask Again"
+    );
+    if (result === "Yes") {
+        config.$schema = newUrl;
+        await vscode.workspace.fs.writeFile(
+            doc.uri,
+            Buffer.from(JSON.stringify(config, undefined, 2))
+        );
+        return;
+    } else if (result === "Don't Ask Again") {
+        configuration.checkLspConfigurationSchema = false;
+        return;
+    }
+}
+
+export async function handleSchemaUpdate(
+    doc: vscode.TextDocument,
+    workspaceContext: WorkspaceContext
+) {
+    if (
+        !configuration.checkLspConfigurationSchema ||
+        !(
+            basename(dirname(doc.uri.fsPath)) === ".sourcekit-lsp" &&
+            basename(doc.uri.fsPath) === "config.json"
+        )
+    ) {
+        return;
+    }
+    await checkDocumentSchema(doc, workspaceContext);
+}
+
+export function registerSourceKitSchemaWatcher(
+    workspaceContext: WorkspaceContext
+): vscode.Disposable {
+    return vscode.workspace.onDidOpenTextDocument(doc => {
+        void handleSchemaUpdate(doc, workspaceContext);
+    });
 }

@@ -24,20 +24,32 @@ import {
 } from "../utilities/testutilities";
 import { closeAllEditors } from "../../utilities/commands";
 import {
+    determineSchemaURL,
+    handleSchemaUpdate,
     sourcekitConfigFilePath,
     sourcekitFolderPath,
 } from "../../../src/commands/generateSourcekitConfiguration";
 import { Version } from "../../../src/utilities/version";
+import { mockGlobalObject } from "../../MockUtils";
 
 suite("Generate SourceKit-LSP configuration Command", function () {
     let folderContext: FolderContext;
+    let configFileUri: vscode.Uri;
     let workspaceContext: WorkspaceContext;
     let resetSettings: (() => Promise<void>) | undefined;
+
+    async function getSchema() {
+        const contents = Buffer.from(await vscode.workspace.fs.readFile(configFileUri)).toString(
+            "utf-8"
+        );
+        return JSON.parse(contents);
+    }
 
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
             folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
+            configFileUri = vscode.Uri.file(sourcekitConfigFilePath(folderContext));
             await workspaceContext.focusFolder(folderContext);
         },
     });
@@ -58,12 +70,7 @@ suite("Generate SourceKit-LSP configuration Command", function () {
     test("Calculates branch based on toolchain", async () => {
         const result = await vscode.commands.executeCommand(Commands.GENERATE_SOURCEKIT_CONFIG);
         expect(result).to.be.true;
-        const contents = Buffer.from(
-            await vscode.workspace.fs.readFile(
-                vscode.Uri.file(sourcekitConfigFilePath(folderContext))
-            )
-        ).toString("utf-8");
-        const config = JSON.parse(contents);
+        const config = await getSchema();
         const version = folderContext.swiftVersion;
         let branch: string;
         if (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))) {
@@ -79,16 +86,11 @@ suite("Generate SourceKit-LSP configuration Command", function () {
 
     test("Uses hardcoded path", async () => {
         resetSettings = await updateSettings({
-            "swift.sourcekit-lsp.configurationBranch": "release/6.1",
+            "swift.lspConfigurationBranch": "release/6.1",
         });
         const result = await vscode.commands.executeCommand(Commands.GENERATE_SOURCEKIT_CONFIG);
         expect(result).to.be.true;
-        const contents = Buffer.from(
-            await vscode.workspace.fs.readFile(
-                vscode.Uri.file(sourcekitConfigFilePath(folderContext))
-            )
-        ).toString("utf-8");
-        const config = JSON.parse(contents);
+        const config = await getSchema();
         expect(config).to.have.property(
             "$schema",
             `https://raw.githubusercontent.com/swiftlang/sourcekit-lsp/refs/heads/release/6.1/config.schema.json`
@@ -97,19 +99,86 @@ suite("Generate SourceKit-LSP configuration Command", function () {
 
     test('Fallsback to "main" when path does not exist', async () => {
         resetSettings = await updateSettings({
-            "swift.sourcekit-lsp.configurationBranch": "totally-invalid-branch",
+            "swift.lspConfigurationBranch": "totally-invalid-branch",
         });
         const result = await vscode.commands.executeCommand(Commands.GENERATE_SOURCEKIT_CONFIG);
         expect(result).to.be.true;
-        const contents = Buffer.from(
-            await vscode.workspace.fs.readFile(
-                vscode.Uri.file(sourcekitConfigFilePath(folderContext))
-            )
-        ).toString("utf-8");
-        const config = JSON.parse(contents);
+        const config = await getSchema();
         expect(config).to.have.property(
             "$schema",
             `https://raw.githubusercontent.com/swiftlang/sourcekit-lsp/refs/heads/main/config.schema.json`
         );
+    });
+
+    suite("handleSchemaUpdate", async () => {
+        const mockWindow = mockGlobalObject(vscode, "window");
+
+        test("Updates to new schema version", async () => {
+            await vscode.workspace.fs.writeFile(
+                configFileUri,
+                Buffer.from(
+                    JSON.stringify({
+                        $schema:
+                            "https://raw.githubusercontent.com/swiftlang/sourcekit-lsp/refs/heads/main/config.schema.json",
+                    })
+                )
+            );
+            mockWindow.showInformationMessage.resolves("Yes" as any);
+            const document = await vscode.workspace.openTextDocument(configFileUri);
+
+            await handleSchemaUpdate(document, workspaceContext);
+
+            const config = await getSchema();
+            const version = folderContext.swiftVersion;
+            let branch: string;
+            if (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))) {
+                branch = version.dev ? "main" : `release/${version.major}.${version.minor}`;
+            } else {
+                branch = "main";
+            }
+            expect(config).to.have.property(
+                "$schema",
+                `https://raw.githubusercontent.com/swiftlang/sourcekit-lsp/refs/heads/${branch}/config.schema.json`
+            );
+        });
+
+        test("Schema version still the same", async () => {
+            await vscode.workspace.fs.writeFile(
+                configFileUri,
+                Buffer.from(
+                    JSON.stringify({
+                        $schema: await determineSchemaURL(folderContext),
+                    })
+                )
+            );
+            mockWindow.showInformationMessage.resolves("Yes" as any);
+            const document = await vscode.workspace.openTextDocument(configFileUri);
+
+            await handleSchemaUpdate(document, workspaceContext);
+
+            expect(mockWindow.showInformationMessage).to.have.not.been.called;
+        });
+
+        test("Don't update schema version", async () => {
+            await vscode.workspace.fs.writeFile(
+                configFileUri,
+                Buffer.from(
+                    JSON.stringify({
+                        $schema:
+                            "https://raw.githubusercontent.com/swiftlang/sourcekit-lsp/refs/heads/main/config.schema.json",
+                    })
+                )
+            );
+            mockWindow.showInformationMessage.resolves("No" as any);
+            const document = await vscode.workspace.openTextDocument(configFileUri);
+
+            await handleSchemaUpdate(document, workspaceContext);
+
+            const config = await getSchema();
+            expect(config).to.have.property(
+                "$schema",
+                "https://raw.githubusercontent.com/swiftlang/sourcekit-lsp/refs/heads/main/config.schema.json"
+            );
+        });
     });
 });
