@@ -109,9 +109,7 @@ export function extractTestItemsAndCount(
         (result, arg, index) => {
             if (arg === undefined || arg === null) {
                 return result;
-            }
-
-            if (typeof arg === "number" && index === args.length - 1) {
+            } else if (typeof arg === "number" && index === args.length - 1) {
                 result.count = arg ?? undefined;
                 return result;
             } else if (typeof arg === "object") {
