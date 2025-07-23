@@ -38,7 +38,7 @@ import { resolveDependencies } from "./commands/dependencies/resolve";
 import { resetPackage } from "./commands/resetPackage";
 import { updateDependencies } from "./commands/dependencies/update";
 import { runPluginTask } from "./commands/runPluginTask";
-import { runTestMultipleTimes } from "./commands/testMultipleTimes";
+import { extractTestItemsAndCount, runTestMultipleTimes } from "./commands/testMultipleTimes";
 import { newSwiftFile } from "./commands/newFile";
 import { runAllTests } from "./commands/runAllTests";
 import { updateDependenciesViewList } from "./commands/dependencies/updateDepViewList";
@@ -280,43 +280,6 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             async () => await generateSourcekitConfiguration(ctx)
         ),
     ];
-}
-
-/**
- * Extracts an array of vscode.TestItem and count from the provided varargs. Effectively, this
- * converts a varargs function from accepting both numbers and test items to:
- *
- *     function (...testItems: vscode.TestItem[], count?: number): void;
- *
- * The VS Code testing view sends test items via varargs, but we have a couple testing commands that
- * also accept a final count parameter. We have to find the count parameter ourselves since JavaScript
- * only supports varargs at the end of an argument list.
- */
-function extractTestItemsAndCount(...args: (vscode.TestItem | number)[]): {
-    testItems: vscode.TestItem[];
-    count?: number;
-} {
-    const result = args.reduceRight<{
-        testItems: vscode.TestItem[];
-        count?: number;
-    }>(
-        (result, arg, index) => {
-            if (typeof arg === "number" && index === args.length - 1) {
-                result.count = arg;
-                return result;
-            } else if (typeof arg === "object") {
-                result.testItems.push(arg);
-                return result;
-            } else {
-                throw new Error(`Unexpected argument ${arg} at index ${index}`);
-            }
-        },
-        { testItems: [] }
-    );
-    if (result.testItems.length === 0) {
-        throw new Error("At least one TestItem must be provided");
-    }
-    return result;
 }
 
 /**
