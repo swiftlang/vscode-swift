@@ -402,6 +402,12 @@ const configuration = {
             .getConfiguration("swift")
             .get<ShowBuildStatusOptions>("showBuildStatus", "swiftStatus");
     },
+    /** create build tasks for the library products of the package(s) */
+    get createTasksForLibraryProducts(): boolean {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<boolean>("createTasksForLibraryProducts", false);
+    },
     /** background compilation */
     get backgroundCompilation(): boolean {
         return vscode.workspace
