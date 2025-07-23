@@ -34,7 +34,6 @@ export async function runTestMultipleTimes(
     let numExecutions = count;
     if (numExecutions === undefined) {
         const str = await vscode.window.showInputBox({
-            prompt: "Label: ",
             placeHolder: `${untilFailure ? "Maximum " : ""}# of times to run`,
             validateInput: value =>
                 /^[1-9]\d*$/.test(value) ? undefined : "Enter an integer value",
@@ -85,4 +84,41 @@ export async function runTestMultipleTimes(
     await runner.testRun.end();
 
     return runStates;
+}
+
+/**
+ * Extracts an array of vscode.TestItem and count from the provided varargs. Effectively, this
+ * converts a varargs function from accepting both numbers and test items to:
+ *
+ *     function (...testItems: vscode.TestItem[], count?: number): void;
+ *
+ * The VS Code testing view sends test items via varargs, but we have a couple testing commands that
+ * also accept a final count parameter. We have to find the count parameter ourselves since JavaScript
+ * only supports varargs at the end of an argument list.
+ */
+export function extractTestItemsAndCount(...args: (vscode.TestItem | number)[]): {
+    testItems: vscode.TestItem[];
+    count?: number;
+} {
+    const result = args.reduceRight<{
+        testItems: vscode.TestItem[];
+        count?: number;
+    }>(
+        (result, arg, index) => {
+            if (
+                (arg === undefined || arg === null || typeof arg === "number") &&
+                index === args.length - 1
+            ) {
+                result.count = arg ?? undefined;
+                return result;
+            } else if (typeof arg === "object") {
+                result.testItems.push(arg);
+                return result;
+            } else {
+                throw new Error(`Unexpected argument ${arg} at index ${index}`);
+            }
+        },
+        { testItems: [] }
+    );
+    return result;
 }

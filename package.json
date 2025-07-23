@@ -975,6 +975,16 @@
       ],
       "commandPalette": [
         {
+          "command": "swift.runTestsMultipleTimes",
+          "group": "testExtras",
+          "when": "false"
+        },
+        {
+          "command": "swift.runTestsUntilFailure",
+          "group": "testExtras",
+          "when": "false"
+        },
+        {
           "command": "swift.generateLaunchConfigurations",
           "when": "swift.hasExecutableProduct"
         },
