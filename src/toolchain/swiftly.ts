@@ -20,18 +20,17 @@ import * as vscode from "vscode";
 import { Version } from "../utilities/version";
 import { z } from "zod";
 
-const ListAvailableResult = z.object({
+const ListResult = z.object({
     toolchains: z.array(
         z.object({
             inUse: z.boolean(),
-            installed: z.boolean(),
             isDefault: z.boolean(),
-            name: z.string(),
             version: z.discriminatedUnion("type", [
                 z.object({
                     major: z.number(),
                     minor: z.number(),
                     patch: z.number().optional(),
+                    name: z.string(),
                     type: z.literal("stable"),
                 }),
                 z.object({
@@ -39,7 +38,7 @@ const ListAvailableResult = z.object({
                     minor: z.number(),
                     branch: z.string(),
                     date: z.string(),
-
+                    name: z.string(),
                     type: z.literal("snapshot"),
                 }),
             ]),
@@ -97,9 +96,9 @@ export class Swiftly {
         outputChannel?: vscode.OutputChannel
     ): Promise<string[]> {
         try {
-            const { stdout } = await execFile("swiftly", ["list-available", "--format=json"]);
-            const response = ListAvailableResult.parse(JSON.parse(stdout));
-            return response.toolchains.map(t => t.name);
+            const { stdout } = await execFile("swiftly", ["list", "--format=json"]);
+            const response = ListResult.parse(JSON.parse(stdout));
+            return response.toolchains.map(t => t.version.name);
         } catch (error) {
             outputChannel?.appendLine(`Failed to retrieve Swiftly installations: ${error}`);
             throw new Error(
