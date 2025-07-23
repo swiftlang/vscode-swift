@@ -96,19 +96,22 @@ export async function runTestMultipleTimes(
  * also accept a final count parameter. We have to find the count parameter ourselves since JavaScript
  * only supports varargs at the end of an argument list.
  */
-export function extractTestItemsAndCount(...args: (vscode.TestItem | number)[]): {
+export function extractTestItemsAndCount(
+    ...args: (vscode.TestItem | number | undefined | null)[]
+): {
     testItems: vscode.TestItem[];
     count?: number;
 } {
-    const result = args.reduceRight<{
+    const result = args.reduce<{
         testItems: vscode.TestItem[];
         count?: number;
     }>(
         (result, arg, index) => {
-            if (
-                (arg === undefined || arg === null || typeof arg === "number") &&
-                index === args.length - 1
-            ) {
+            if (arg === undefined || arg === null) {
+                return result;
+            }
+
+            if (typeof arg === "number" && index === args.length - 1) {
                 result.count = arg ?? undefined;
                 return result;
             } else if (typeof arg === "object") {
