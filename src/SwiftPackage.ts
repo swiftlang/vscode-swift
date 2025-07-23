@@ -37,6 +37,10 @@ export interface Product {
     type: { executable?: null; library?: string[] };
 }
 
+export function isAutomatic(product: Product): boolean {
+    return (product.type.library || []).includes("automatic");
+}
+
 /** Swift Package Manager target */
 export interface Target {
     name: string;
