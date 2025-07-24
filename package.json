@@ -615,6 +615,12 @@
                 "coverage"
               ]
             }
+          },
+          "swift.recordTestDuration": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Controls whether or not to record the duration of tests in the Test Explorer. This is used to show the duration of tests in the Test Explorer view. If you're experiencing performance issues when running a large number of tests that complete quickly, disabling this setting can make the UI more responsive.",
+            "scope": "machine-overridable"
           }
         }
       },

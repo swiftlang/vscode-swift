@@ -297,6 +297,10 @@ const configuration = {
             .getConfiguration("swift")
             .get<boolean | ValidCodeLens[]>("showTestCodeLenses", true);
     },
+    /** Whether to record the duration of tests in the Test Explorer. */
+    get recordTestDuration(): boolean {
+        return vscode.workspace.getConfiguration("swift").get<boolean>("recordTestDuration", true);
+    },
     /** Files and directories to exclude from the Package Dependencies view. */
     get excludePathsFromPackageDependencies(): string[] {
         return vscode.workspace
