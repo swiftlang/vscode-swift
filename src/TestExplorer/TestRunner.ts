@@ -116,6 +116,7 @@ export class TestRunProxy {
         private controller: vscode.TestController,
         private args: TestRunArguments,
         private folderContext: FolderContext,
+        private recordDuration: boolean,
         testProfileCancellationToken: vscode.CancellationToken
     ) {
         this._testItems = args.testItems;
@@ -275,7 +276,7 @@ export class TestRunProxy {
         this.clearEnqueuedTest(test);
         this.runState.passed.push(test);
         this.clearPendingTest(test);
-        this.testRun?.passed(test, duration);
+        this.testRun?.passed(test, this.recordDuration ? duration : undefined);
     }
 
     public failed(
@@ -286,7 +287,7 @@ export class TestRunProxy {
         this.clearEnqueuedTest(test);
         this.runState.failed.push({ test, message });
         this.clearPendingTest(test);
-        this.testRun?.failed(test, message, duration);
+        this.testRun?.failed(test, message, this.recordDuration ? duration : undefined);
     }
 
     public errored(
@@ -297,7 +298,7 @@ export class TestRunProxy {
         this.clearEnqueuedTest(test);
         this.runState.errored.push(test);
         this.clearPendingTest(test);
-        this.testRun?.errored(test, message, duration);
+        this.testRun?.errored(test, message, this.recordDuration ? duration : undefined);
     }
 
     public async end() {
@@ -444,7 +445,14 @@ export class TestRunner {
             this.ensureRequestIncludesTests(this.request),
             isDebugging(testKind)
         );
-        this.testRun = new TestRunProxy(request, controller, this.testArgs, folderContext, token);
+        this.testRun = new TestRunProxy(
+            request,
+            controller,
+            this.testArgs,
+            folderContext,
+            configuration.recordTestDuration,
+            token
+        );
         this.xcTestOutputParser =
             testKind === TestKind.parallel
                 ? new ParallelXCTestOutputParser(
