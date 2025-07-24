@@ -304,7 +304,22 @@ export async function showToolchainSelectionQuickPick(activeToolchain: SwiftTool
             }
         }
         // Update the toolchain path
-        const isUpdated = await setToolchainPath(selected.swiftFolderPath, developerDir);
+        let swiftPath = selected.swiftFolderPath;
+
+        // Handle Swiftly toolchains specially
+        if (selected.category === "swiftly") {
+            try {
+                // Run swiftly use <version> and get the path to the toolchain
+                await Swiftly.use(selected.label);
+                const inUseLocation = await Swiftly.inUseLocation("swiftly");
+                swiftPath = path.join(inUseLocation, "usr", "bin");
+            } catch (error) {
+                void vscode.window.showErrorMessage(`Failed to switch Swiftly toolchain: ${error}`);
+                return;
+            }
+        }
+
+        const isUpdated = await setToolchainPath(swiftPath, developerDir);
         if (isUpdated && selected.onDidSelect) {
             await selected.onDidSelect();
         }

@@ -101,9 +101,7 @@ export class Swiftly {
             return response.toolchains.map(t => t.version.name);
         } catch (error) {
             outputChannel?.appendLine(`Failed to retrieve Swiftly installations: ${error}`);
-            throw new Error(
-                `Failed to retrieve Swiftly installations from disk: ${(error as Error).message}`
-            );
+            return [];
         }
     }
 
@@ -141,6 +139,13 @@ export class Swiftly {
             cwd: cwd?.fsPath,
         });
         return inUse.trimEnd();
+    }
+
+    public static async use(version: string): Promise<void> {
+        if (!this.isSupported()) {
+            throw new Error("Swiftly is not supported on this platform");
+        }
+        await execFile("swiftly", ["use", version]);
     }
 
     /**
