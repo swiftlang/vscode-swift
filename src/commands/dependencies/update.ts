@@ -25,7 +25,7 @@ import { packageName } from "../../utilities/tasks";
 export async function updateDependencies(ctx: WorkspaceContext) {
     const current = ctx.currentFolder;
     if (!current) {
-        ctx.outputChannel.log("currentFolder is not set.");
+        ctx.logger.debug("currentFolder is not set.", "updateDependencies");
         return false;
     }
     return await updateFolderDependencies(current);

@@ -19,6 +19,7 @@ import { execFile, ExecFileError } from "../utilities/utilities";
 import * as vscode from "vscode";
 import { Version } from "../utilities/version";
 import { z } from "zod";
+import { SwiftLogger } from "../logging/SwiftLogger";
 
 const ListAvailableResult = z.object({
     toolchains: z.array(
@@ -54,9 +55,7 @@ export class Swiftly {
      * @returns the version of Swiftly as a `Version` object, or `undefined`
      * if Swiftly is not installed or not supported.
      */
-    public static async version(
-        outputChannel?: vscode.OutputChannel
-    ): Promise<Version | undefined> {
+    public static async version(logger?: SwiftLogger): Promise<Version | undefined> {
         if (!Swiftly.isSupported()) {
             return undefined;
         }
@@ -64,7 +63,7 @@ export class Swiftly {
             const { stdout } = await execFile("swiftly", ["--version"]);
             return Version.fromString(stdout.trim());
         } catch (error) {
-            outputChannel?.appendLine(`Failed to retrieve Swiftly version: ${error}`);
+            logger?.error(`Failed to retrieve Swiftly version: ${error}`);
             return undefined;
         }
     }
@@ -74,41 +73,37 @@ export class Swiftly {
      *
      * @returns an array of toolchain paths
      */
-    public static async listAvailableToolchains(
-        outputChannel?: vscode.OutputChannel
-    ): Promise<string[]> {
+    public static async listAvailableToolchains(logger?: SwiftLogger): Promise<string[]> {
         if (!this.isSupported()) {
             return [];
         }
-        const version = await Swiftly.version(outputChannel);
+        const version = await Swiftly.version(logger);
         if (!version) {
-            outputChannel?.appendLine("Swiftly is not installed");
+            logger?.warn("Swiftly is not installed");
             return [];
         }
 
         if (version.isLessThan(new Version(1, 1, 0))) {
-            return await Swiftly.getToolchainInstallLegacy(outputChannel);
+            return await Swiftly.getToolchainInstallLegacy(logger);
         }
 
-        return await Swiftly.getListAvailableToolchains(outputChannel);
+        return await Swiftly.getListAvailableToolchains(logger);
     }
 
-    private static async getListAvailableToolchains(
-        outputChannel?: vscode.OutputChannel
-    ): Promise<string[]> {
+    private static async getListAvailableToolchains(logger?: SwiftLogger): Promise<string[]> {
         try {
             const { stdout } = await execFile("swiftly", ["list-available", "--format=json"]);
             const response = ListAvailableResult.parse(JSON.parse(stdout));
             return response.toolchains.map(t => t.name);
         } catch (error) {
-            outputChannel?.appendLine(`Failed to retrieve Swiftly installations: ${error}`);
+            logger?.error(`Failed to retrieve Swiftly installations: ${error}`);
             throw new Error(
                 `Failed to retrieve Swiftly installations from disk: ${(error as Error).message}`
             );
         }
     }
 
-    private static async getToolchainInstallLegacy(outputChannel?: vscode.OutputChannel) {
+    private static async getToolchainInstallLegacy(logger?: SwiftLogger) {
         try {
             const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
             if (!swiftlyHomeDir) {
@@ -126,7 +121,7 @@ export class Swiftly {
                 .filter((toolchain): toolchain is string => typeof toolchain === "string")
                 .map(toolchain => path.join(swiftlyHomeDir, "toolchains", toolchain));
         } catch (error) {
-            outputChannel?.appendLine(`Failed to retrieve Swiftly installations: ${error}`);
+            logger?.error(`Failed to retrieve Swiftly installations: ${error}`);
             throw new Error(
                 `Failed to retrieve Swiftly installations from disk: ${(error as Error).message}`
             );
@@ -150,7 +145,7 @@ export class Swiftly {
      * @returns The location of the active toolchain if swiftly is being used to manage it.
      */
     public static async toolchain(
-        outputChannel?: vscode.OutputChannel,
+        logger?: SwiftLogger,
         cwd?: vscode.Uri
     ): Promise<string | undefined> {
         const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
@@ -166,7 +161,7 @@ export class Swiftly {
                         return path.join(inUse, "usr");
                     }
                 } catch (err: unknown) {
-                    outputChannel?.appendLine(`Failed to retrieve Swiftly installations: ${err}`);
+                    logger?.error(`Failed to retrieve Swiftly installations: ${err}`);
                     const error = err as ExecFileError;
                     // Its possible the toolchain in .swift-version is misconfigured or doesn't exist.
                     void vscode.window.showErrorMessage(

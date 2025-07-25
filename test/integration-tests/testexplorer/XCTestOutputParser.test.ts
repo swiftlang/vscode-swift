@@ -23,8 +23,8 @@ import { TestRunState, TestRunTestItem, TestStatus } from "./MockTestRunState";
 import { sourceLocationToVSCodeLocation } from "../../../src/utilities/utilities";
 import { TestXUnitParser } from "../../../src/TestExplorer/TestXUnitParser";
 import { activateExtensionForSuite } from "../utilities/testutilities";
-import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import { lineBreakRegex } from "../../../src/utilities/tasks";
+import { WorkspaceContext } from "../../../src/WorkspaceContext";
 
 enum ParserTestKind {
     Regular = "Regular Test Run",
@@ -72,8 +72,10 @@ ${tests.map(
     }
 
     let hasMultiLineParallelTestOutput: boolean;
+    let workspaceContext: WorkspaceContext;
     activateExtensionForSuite({
         async setup(ctx) {
+            workspaceContext = ctx;
             hasMultiLineParallelTestOutput = ctx.globalToolchain.hasMultiLineParallelTestOutput;
         },
     });
@@ -86,7 +88,7 @@ ${tests.map(
             if (parserTestKind === ParserTestKind.Parallel) {
                 const xmlResults = expectedStateToXML(expected);
                 const xmlParser = new TestXUnitParser(hasMultiLineParallelTestOutput);
-                void xmlParser.parse(xmlResults, testRunState, new SwiftOutputChannel("test"));
+                void xmlParser.parse(xmlResults, testRunState, workspaceContext.logger);
             }
 
             assert.deepEqual(testRunState.tests, expected);

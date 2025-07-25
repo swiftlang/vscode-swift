@@ -19,6 +19,7 @@ import { SwiftToolchain } from "../toolchain/toolchain";
 import configuration from "../configuration";
 import { Commands } from "../commands";
 import { Swiftly } from "../toolchain/swiftly";
+import { SwiftLogger } from "../logging/SwiftLogger";
 
 /**
  * Open the installation page on Swift.org
@@ -146,7 +147,8 @@ type SelectToolchainItem = SwiftToolchainItem | ActionItem | SeparatorItem;
  * @returns an array of {@link SelectToolchainItem}
  */
 async function getQuickPickItems(
-    activeToolchain: SwiftToolchain | undefined
+    activeToolchain: SwiftToolchain | undefined,
+    logger: SwiftLogger
 ): Promise<SelectToolchainItem[]> {
     // Find any Xcode installations on the system
     const xcodes = (await SwiftToolchain.findXcodeInstalls())
@@ -193,7 +195,7 @@ async function getQuickPickItems(
             return result;
         });
     // Find any Swift toolchains installed via Swiftly
-    const swiftlyToolchains = (await Swiftly.listAvailableToolchains())
+    const swiftlyToolchains = (await Swiftly.listAvailableToolchains(logger))
         .reverse()
         .map<SwiftToolchainItem>(toolchainPath => ({
             type: "toolchain",
@@ -262,10 +264,13 @@ async function getQuickPickItems(
  *
  * @param activeToolchain the {@link WorkspaceContext}
  */
-export async function showToolchainSelectionQuickPick(activeToolchain: SwiftToolchain | undefined) {
+export async function showToolchainSelectionQuickPick(
+    activeToolchain: SwiftToolchain | undefined,
+    logger: SwiftLogger
+) {
     let xcodePaths: string[] = [];
     const selected = await vscode.window.showQuickPick<SelectToolchainItem>(
-        getQuickPickItems(activeToolchain).then(result => {
+        getQuickPickItems(activeToolchain, logger).then(result => {
             xcodePaths = result
                 .filter((i): i is XcodeToolchainItem => "category" in i && i.category === "xcode")
                 .map(xcode => xcode.xcodePath);

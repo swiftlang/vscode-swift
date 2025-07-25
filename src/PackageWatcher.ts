@@ -155,7 +155,7 @@ export class PackageWatcher {
             return Version.fromString(contents.toString().trim());
         } catch (error) {
             if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-                this.workspaceContext.outputChannel.appendLine(
+                this.workspaceContext.logger.error(
                     `Failed to read .swift-version file at ${versionFile}: ${error}`
                 );
             }

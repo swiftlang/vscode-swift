@@ -246,13 +246,13 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                             break;
                         default:
                             // We should log additional info for other response errors
-                            this.context.outputChannel.log(
+                            this.context.logger.error(
                                 baseLogErrorMessage + JSON.stringify(error.toJson(), undefined, 2)
                             );
                             break;
                     }
                 } else {
-                    this.context.outputChannel.log(baseLogErrorMessage + `${error}`);
+                    this.context.logger.error(baseLogErrorMessage + `${error}`);
                 }
                 this.postMessage({
                     type: "update-content",

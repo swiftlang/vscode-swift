@@ -23,12 +23,12 @@ import { captureDiagnostics } from "../../../src/commands/captureDiagnostics";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { FolderContext } from "../../../src/FolderContext";
 import { Version } from "../../../src/utilities/version";
-import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
+import { SwiftLogger } from "../../../src/logging/SwiftLogger";
 
 suite("captureDiagnostics Test Suite", () => {
     let mockContext: MockedObject<WorkspaceContext>;
-    let mockedOutputChannel: MockedObject<SwiftOutputChannel>;
+    let mockedLogger: MockedObject<SwiftLogger>;
     let mockedToolchain: MockedObject<SwiftToolchain>;
     const mockWindow = mockGlobalObject(vscode, "window");
 
@@ -41,14 +41,14 @@ suite("captureDiagnostics Test Suite", () => {
             folder: vscode.Uri.file("/folder1"),
             toolchain: instance(mockedToolchain),
         });
-        mockedOutputChannel = mockObject<SwiftOutputChannel>({
-            log: mockFn(),
+        mockedLogger = mockObject<SwiftLogger>({
+            info: mockFn(),
             logs: ["hello", "world"],
         });
         mockContext = mockObject<WorkspaceContext>({
             folders: [instance(mockedFolder)],
             globalToolchainSwiftVersion: new Version(6, 0, 0),
-            outputChannel: instance(mockedOutputChannel),
+            logger: instance(mockedLogger),
         });
         mockWindow.showInformationMessage.resolves("Minimal" as any);
     });
@@ -85,7 +85,7 @@ suite("captureDiagnostics Test Suite", () => {
             mockContext = mockObject<WorkspaceContext>({
                 folders: [instance(mockedFolder1), instance(mockedFolder2)],
                 globalToolchainSwiftVersion: new Version(6, 0, 0),
-                outputChannel: instance(mockedOutputChannel),
+                logger: instance(mockedLogger),
             });
             mockWindow.showInformationMessage.resolves("Minimal" as any);
         });

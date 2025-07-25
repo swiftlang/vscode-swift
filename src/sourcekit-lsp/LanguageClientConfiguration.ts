@@ -23,7 +23,6 @@ import configuration from "../configuration";
 import { Version } from "../utilities/version";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { DiagnosticsManager } from "../DiagnosticsManager";
-import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { promptForDiagnostics } from "../commands/captureDiagnostics";
 import { uriConverters } from "./uriConverters";
 import { LSPActiveDocumentManager } from "./didChangeActiveDocument";
@@ -167,9 +166,11 @@ export function lspClientOptions(
     return {
         documentSelector: LanguagerClientDocumentSelectors.sourcekitLSPDocumentTypes(),
         revealOutputChannelOn: RevealOutputChannelOn.Never,
-        workspaceFolder: workspaceFolder,
-        outputChannel: new SwiftOutputChannel(
-            `SourceKit Language Server (${swiftVersion.toString()})`
+        workspaceFolder,
+        outputChannel: workspaceContext.loggerFactory.create(
+            `SourceKit Language Server (${swiftVersion.toString()})`,
+            `sourcekit-lsp-${swiftVersion.toString()}.log`,
+            { outputChannel: true }
         ),
         middleware: {
             didOpen: activeDocumentManager.didOpen.bind(activeDocumentManager),

@@ -50,6 +50,7 @@ import restartLSPServer from "./commands/restartLSPServer";
 import { generateLaunchConfigurations } from "./commands/generateLaunchConfigurations";
 import { runTest } from "./commands/runTest";
 import { generateSourcekitConfiguration } from "./commands/generateSourcekitConfiguration";
+import { SwiftLogger } from "./logging/SwiftLogger";
 
 /**
  * References:
@@ -63,14 +64,15 @@ import { generateSourcekitConfiguration } from "./commands/generateSourcekitConf
 export type WorkspaceContextWithToolchain = WorkspaceContext & { toolchain: SwiftToolchain };
 
 export function registerToolchainCommands(
-    toolchain: SwiftToolchain | undefined
+    toolchain: SwiftToolchain | undefined,
+    logger: SwiftLogger
 ): vscode.Disposable[] {
     return [
         vscode.commands.registerCommand("swift.createNewProject", () =>
             createNewProject(toolchain)
         ),
         vscode.commands.registerCommand("swift.selectToolchain", () =>
-            showToolchainSelectionQuickPick(toolchain)
+            showToolchainSelectionQuickPick(toolchain, logger)
         ),
         vscode.commands.registerCommand("swift.pickProcess", configuration =>
             pickProcess(configuration)
