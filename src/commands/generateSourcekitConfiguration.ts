@@ -62,7 +62,7 @@ async function createSourcekitConfiguration(
         return true;
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-            workspaceContext.outputChannel.appendLine(
+            workspaceContext.logger.error(
                 `Failed to read file at ${sourcekitConfigFile.fsPath}: ${error}`
             );
         }
@@ -79,7 +79,7 @@ async function createSourcekitConfiguration(
         }
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-            workspaceContext.outputChannel.appendLine(
+            workspaceContext.logger.error(
                 `Failed to read folder at ${sourcekitFolder.fsPath}: ${error}`
             );
         }
@@ -148,9 +148,7 @@ async function checkDocumentSchema(doc: vscode.TextDocument, workspaceContext: W
         buffer = await vscode.workspace.fs.readFile(doc.uri);
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-            workspaceContext.outputChannel.appendLine(
-                `Failed to read file at ${doc.uri.fsPath}: ${error}`
-            );
+            workspaceContext.logger.error(`Failed to read file at ${doc.uri.fsPath}: ${error}`);
         }
         return;
     }
@@ -159,9 +157,7 @@ async function checkDocumentSchema(doc: vscode.TextDocument, workspaceContext: W
         const contents = Buffer.from(buffer).toString("utf-8");
         config = JSON.parse(contents);
     } catch (error) {
-        workspaceContext.outputChannel.appendLine(
-            `Failed to parse JSON from  ${doc.uri.fsPath}: ${error}`
-        );
+        workspaceContext.logger.error(`Failed to parse JSON from  ${doc.uri.fsPath}: ${error}`);
         return;
     }
     const schema = config.$schema;

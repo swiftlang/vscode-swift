@@ -19,8 +19,8 @@ import { execSwift, getErrorDescription, hashString } from "./utilities/utilitie
 import { isPathInsidePath } from "./utilities/filesystem";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { BuildFlags } from "./toolchain/BuildFlags";
-import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
 import { lineBreakRegex } from "./utilities/tasks";
+import { SwiftLogger } from "./logging/SwiftLogger";
 
 /** Swift Package Manager contents */
 interface PackageContents {
@@ -312,7 +312,7 @@ export class SwiftPackage {
     private static async loadPlugins(
         folder: vscode.Uri,
         toolchain: SwiftToolchain,
-        outputChannel: SwiftOutputChannel
+        logger: SwiftLogger
     ): Promise<PackagePlugin[]> {
         try {
             const { stdout } = await execSwift(["package", "plugin", "--list"], toolchain, {
@@ -333,7 +333,7 @@ export class SwiftPackage {
             }
             return plugins;
         } catch (error) {
-            outputChannel.appendLine(`Failed to laod plugins: ${error}`);
+            logger.error(`Failed to load plugins: ${error}`);
             // failed to load resolved file return undefined
             return [];
         }
@@ -375,8 +375,8 @@ export class SwiftPackage {
         this.workspaceState = await SwiftPackage.loadWorkspaceState(this.folder);
     }
 
-    public async loadSwiftPlugins(toolchain: SwiftToolchain, outputChannel: SwiftOutputChannel) {
-        this.plugins = await SwiftPackage.loadPlugins(this.folder, toolchain, outputChannel);
+    public async loadSwiftPlugins(toolchain: SwiftToolchain, logger: SwiftLogger) {
+        this.plugins = await SwiftPackage.loadPlugins(this.folder, toolchain, logger);
     }
 
     /** Return if has valid contents */

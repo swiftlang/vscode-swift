@@ -270,7 +270,7 @@ export class TestExplorer {
             // we fall back to discovering tests with SPM.
             await this.discoverTestsInWorkspaceLSP(token);
         } catch {
-            this.folderContext.workspaceContext.outputChannel.logDiagnostic(
+            this.folderContext.workspaceContext.logger.debug(
                 "workspace/tests LSP request not supported, falling back to SPM to discover tests.",
                 "Test Discovery"
             );
@@ -300,7 +300,7 @@ export class TestExplorer {
                         )
                         .then(selected => {
                             if (selected === enable) {
-                                explorer.folderContext.workspaceContext.outputChannel.log(
+                                explorer.folderContext.workspaceContext.logger.info(
                                     `Enabling SourceKit-LSP after swift-testing message`
                                 );
                                 void vscode.workspace
@@ -310,7 +310,7 @@ export class TestExplorer {
                                         /* Put in worker queue */
                                     });
                             } else if (selected === ok) {
-                                explorer.folderContext.workspaceContext.outputChannel.log(
+                                explorer.folderContext.workspaceContext.logger.info(
                                     `User acknowledged that SourceKit-LSP is disabled`
                                 );
                             }
@@ -399,7 +399,7 @@ export class TestExplorer {
                     } else {
                         explorer.setErrorTestItem(errorDescription);
                     }
-                    explorer.folderContext.workspaceContext.outputChannel.log(
+                    explorer.folderContext.workspaceContext.logger.error(
                         `Test Discovery Failed: ${errorDescription}`,
                         explorer.folderContext.name
                     );
@@ -439,7 +439,7 @@ export class TestExplorer {
      * @param errorDescription Error description to display
      */
     private setErrorTestItem(errorDescription: string | undefined, title = "Test Discovery Error") {
-        this.folderContext.workspaceContext.outputChannel.log(
+        this.folderContext.workspaceContext.logger.error(
             `Test Discovery Error: ${errorDescription}`
         );
         this.controller.items.forEach(item => {

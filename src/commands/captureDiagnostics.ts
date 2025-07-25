@@ -44,7 +44,7 @@ export async function captureDiagnostics(
         );
 
         await fsPromises.mkdir(diagnosticsDir);
-        await writeLogFile(diagnosticsDir, "extension-logs.txt", extensionLogs(ctx));
+        await copyLogFile(diagnosticsDir, extensionLogFile(ctx));
 
         const singleFolderWorkspace = ctx.folders.length === 1;
         const zipDir = await createDiagnosticsZipDir();
@@ -71,11 +71,10 @@ export async function captureDiagnostics(
                 if (folder.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
                     await sourcekitDiagnose(folder, outputDir);
                 } else {
-                    await writeLogFile(
-                        outputDir,
-                        `${baseName}-${guid}-sourcekit-lsp.txt`,
-                        sourceKitLogs(folder)
-                    );
+                    const logFile = sourceKitLogFile(folder);
+                    if (logFile) {
+                        await copyLogFile(outputDir, logFile);
+                    }
                 }
             }
         }
@@ -87,7 +86,7 @@ export async function captureDiagnostics(
         // Clean up the diagnostics directory, leaving `zipFilePath` with the zip file.
         await fsPromises.rm(diagnosticsDir, { recursive: true, force: true });
 
-        ctx.outputChannel.log(`Saved diagnostics to ${zipFilePath}`);
+        ctx.logger.info(`Saved diagnostics to ${zipFilePath}`);
         await showCapturedDiagnosticsResults(zipFilePath);
 
         return zipFilePath;
@@ -208,6 +207,10 @@ async function writeLogFile(dir: string, name: string, logs: string) {
     await fsPromises.writeFile(path.join(dir, name), logs);
 }
 
+async function copyLogFile(dir: string, filePath: string) {
+    await fsPromises.copyFile(filePath, path.join(dir, path.basename(filePath)));
+}
+
 /**
  * Creates a directory for diagnostics zip files, located in the system's temporary directory.
  */
@@ -217,8 +220,8 @@ async function createDiagnosticsZipDir(): Promise<string> {
     return diagnosticsDir;
 }
 
-function extensionLogs(ctx: WorkspaceContext): string {
-    return ctx.outputChannel.logs.join("\n");
+function extensionLogFile(ctx: WorkspaceContext): string {
+    return ctx.logger.logFilePath;
 }
 
 function settingsLogs(ctx: FolderContext): string {
@@ -239,10 +242,9 @@ function diagnosticLogs(): string {
         .join("\n");
 }
 
-function sourceKitLogs(folder: FolderContext) {
+function sourceKitLogFile(folder: FolderContext) {
     const languageClient = folder.workspaceContext.languageClientManager.get(folder);
-    const logs = languageClient.languageClientOutputChannel?.logs ?? [];
-    return logs.join("\n");
+    return languageClient.languageClientOutputChannel?.logFilePath;
 }
 
 async function sourcekitDiagnose(ctx: FolderContext, dir: string) {

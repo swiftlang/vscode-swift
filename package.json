@@ -584,6 +584,18 @@
             "default": ".build/attachments",
             "markdownDescription": "The path to a directory that will be used to store attachments produced during a test run.\n\nA relative path resolves relative to the root directory of the workspace running the test(s)",
             "scope": "machine-overridable"
+          },
+          "swift.outputChannelLevel": {
+            "type": "string",
+            "default": "info",
+            "markdownDescription": "The the level of the Swift output channel. This has no affect on the verbosity of messages written to the extension's log file.",
+            "enum": [
+              "debug",
+              "info",
+              "warn",
+              "error"
+            ],
+            "scope": "machine-overridable"
           }
         }
       },
@@ -933,7 +945,8 @@
           "swift.diagnostics": {
             "type": "boolean",
             "default": false,
-            "markdownDescription": "Output additional diagnostics to the Swift Output View.",
+            "markdownDescription": "Output additional diagnostics to the Swift output channel.",
+            "deprecationMessage": "**Deprecated**: Please use `#swift.outputChannelLevel#` instead.",
             "order": 100,
             "scope": "machine-overridable"
           }
@@ -1872,7 +1885,8 @@
     "strip-ansi": "^6.0.1",
     "svgo": "^4.0.0",
     "tsx": "^4.20.3",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "winston": "^3.17.0"
   },
   "dependencies": {
     "@vscode/codicons": "^0.0.38",

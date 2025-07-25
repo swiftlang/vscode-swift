@@ -29,7 +29,6 @@ import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
 import { registerDebugger } from "./debugger/debugAdapterFactory";
 import { showToolchainError } from "./ui/ToolchainSelection";
 import { SwiftToolchain } from "./toolchain/toolchain";
-import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
 import { checkAndWarnAboutWindowsSymlinks } from "./ui/win32";
 import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "./terminal";
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
@@ -37,6 +36,8 @@ import { SelectedXcodeWatcher } from "./toolchain/SelectedXcodeWatcher";
 import configuration, { handleConfigurationChangeEvent } from "./configuration";
 import contextKeys from "./contextKeys";
 import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConfiguration";
+import { SwiftLogger } from "./logging/SwiftLogger";
+import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -44,7 +45,7 @@ import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConf
  */
 export interface Api {
     workspaceContext?: WorkspaceContext;
-    outputChannel: SwiftOutputChannel;
+    logger: SwiftLogger;
     activate(): Promise<Api>;
     deactivate(): Promise<void>;
 }
@@ -54,13 +55,17 @@ export interface Api {
  */
 export async function activate(context: vscode.ExtensionContext): Promise<Api> {
     try {
-        const outputChannel = new SwiftOutputChannel("Swift");
-        context.subscriptions.push(outputChannel);
-        outputChannel.log("Activating Swift for Visual Studio Code...");
+        await vscode.workspace.fs.createDirectory(context.logUri);
+        const logger = new SwiftLoggerFactory(context.logUri).create(
+            "Swift",
+            "swift-vscode-extension.log"
+        );
+        context.subscriptions.push(logger);
+        logger.info("Activating Swift for Visual Studio Code...");
 
-        checkAndWarnAboutWindowsSymlinks(outputChannel);
+        checkAndWarnAboutWindowsSymlinks(logger);
 
-        const toolchain = await createActiveToolchain(outputChannel);
+        const toolchain = await createActiveToolchain(logger);
 
         // If we don't have a toolchain, show an error and stop initializing the extension.
         // This can happen if the user has not installed Swift or if the toolchain is not
@@ -69,7 +74,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             void showToolchainError();
             return {
                 workspaceContext: undefined,
-                outputChannel,
+                logger,
                 activate: () => activate(context),
                 deactivate: async () => {
                     await deactivate(context);
@@ -77,13 +82,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             };
         }
 
-        const workspaceContext = await WorkspaceContext.create(context, outputChannel, toolchain);
+        const workspaceContext = await WorkspaceContext.create(context, logger, toolchain);
         context.subscriptions.push(workspaceContext);
 
         context.subscriptions.push(new SwiftEnvironmentVariablesManager(context));
         context.subscriptions.push(SwiftTerminalProfileProvider.register());
         context.subscriptions.push(
-            ...commands.registerToolchainCommands(toolchain, workspaceContext.currentFolder?.folder)
+            ...commands.registerToolchainCommands(
+                toolchain,
+                workspaceContext.logger,
+                workspaceContext.currentFolder?.folder
+            )
         );
 
         // Watch for configuration changes the trigger a reload of the extension if necessary.
@@ -95,7 +104,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
 
         context.subscriptions.push(...commands.register(workspaceContext));
         context.subscriptions.push(registerDebugger(workspaceContext));
-        context.subscriptions.push(new SelectedXcodeWatcher(outputChannel));
+        context.subscriptions.push(new SelectedXcodeWatcher(logger));
 
         // Register task provider.
         context.subscriptions.push(
@@ -116,10 +125,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         // observer for logging workspace folder addition/removal
         context.subscriptions.push(
             workspaceContext.onDidChangeFolders(({ folder, operation }) => {
-                workspaceContext.outputChannel.log(
-                    `${operation}: ${folder?.folder.fsPath}`,
-                    folder?.name
-                );
+                logger.info(`${operation}: ${folder?.folder.fsPath}`, folder?.name);
             })
         );
 
@@ -134,9 +140,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         context.subscriptions.push(dependenciesView, projectPanelProvider);
 
         // observer that will resolve package and build launch configurations
-        context.subscriptions.push(
-            workspaceContext.onDidChangeFolders(handleFolderEvent(outputChannel))
-        );
+        context.subscriptions.push(workspaceContext.onDidChangeFolders(handleFolderEvent(logger)));
         context.subscriptions.push(TestExplorer.observeFolders(workspaceContext));
 
         context.subscriptions.push(registerSourceKitSchemaWatcher(workspaceContext));
@@ -149,7 +153,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
 
         return {
             workspaceContext,
-            outputChannel,
+            logger,
             activate: () => activate(context),
             deactivate: async () => {
                 await workspaceContext.stop();
@@ -165,9 +169,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
     }
 }
 
-function handleFolderEvent(
-    outputChannel: SwiftOutputChannel
-): (event: FolderEvent) => Promise<void> {
+function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise<void> {
     // function called when a folder is added. I broke this out so we can trigger it
     // without having to await for it.
     async function folderAdded(folder: FolderContext, workspace: WorkspaceContext) {
@@ -191,7 +193,7 @@ function handleFolderEvent(
                 void workspace.statusItem.showStatusWhileRunning(
                     `Loading Swift Plugins (${FolderContext.uriName(folder.workspaceFolder.uri)})`,
                     async () => {
-                        await folder.loadSwiftPlugins(outputChannel);
+                        await folder.loadSwiftPlugins(logger);
                         workspace.updatePluginContextKey();
                         await folder.fireEvent(FolderOperation.pluginsUpdated);
                     }
@@ -237,17 +239,14 @@ function handleFolderEvent(
     };
 }
 
-async function createActiveToolchain(
-    outputChannel: SwiftOutputChannel
-): Promise<SwiftToolchain | undefined> {
+async function createActiveToolchain(logger: SwiftLogger): Promise<SwiftToolchain | undefined> {
     try {
-        const toolchain = await SwiftToolchain.create(undefined, outputChannel);
-        toolchain.logDiagnostics(outputChannel);
+        const toolchain = await SwiftToolchain.create(undefined, logger);
+        toolchain.logDiagnostics(logger);
         contextKeys.updateKeysBasedOnActiveVersion(toolchain.swiftVersion);
         return toolchain;
     } catch (error) {
-        outputChannel.log("Failed to discover Swift toolchain");
-        outputChannel.log(`${error}`);
+        logger.error(`Failed to discover Swift toolchain: ${error}`);
         return undefined;
     }
 }
