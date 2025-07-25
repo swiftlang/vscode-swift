@@ -18,11 +18,11 @@ import { WorkspaceContext } from "../WorkspaceContext";
 import { DebugAdapter, LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
 import { registerLoggingDebugAdapterTracker } from "./logTracker";
 import { SwiftToolchain } from "../toolchain/toolchain";
-import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { fileExists } from "../utilities/filesystem";
 import { updateLaunchConfigForCI, getLLDBLibPath } from "./lldb";
 import { getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
 import configuration from "../configuration";
+import { SwiftLogger } from "../logging/SwiftLogger";
 
 /**
  * Registers the active debugger with the extension, and reregisters it
@@ -87,7 +87,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
     constructor(
         private platform: NodeJS.Platform,
         private workspaceContext: WorkspaceContext,
-        private outputChannel: SwiftOutputChannel
+        private logger: SwiftLogger
     ) {}
 
     async resolveDebugConfigurationWithSubstitutedVariables(
@@ -210,7 +210,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             void vscode.window.showWarningMessage(
                 `Failed to setup CodeLLDB for debugging of Swift code. Debugging may produce unexpected results. ${errorMessage}`
             );
-            this.outputChannel.log(`Failed to setup CodeLLDB: ${errorMessage}`);
+            this.logger.error(`Failed to setup CodeLLDB: ${errorMessage}`);
             return true;
         }
         const libLldbPath = libLldbPathResult.success;

@@ -18,7 +18,6 @@ import * as os from "os";
 import * as plist from "plist";
 import * as vscode from "vscode";
 import configuration from "../configuration";
-import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { execFile, execSwift } from "../utilities/utilities";
 import { expandFilePathTilde, fileExists, pathExists } from "../utilities/filesystem";
 import { Version } from "../utilities/version";
@@ -26,6 +25,7 @@ import { BuildFlags } from "./BuildFlags";
 import { Sanitizer } from "./Sanitizer";
 import { lineBreakRegex } from "../utilities/tasks";
 import { Swiftly } from "./swiftly";
+import { SwiftLogger } from "../logging/SwiftLogger";
 /**
  * Contents of **Info.plist** on Windows.
  */
@@ -117,12 +117,9 @@ export class SwiftToolchain {
         this.swiftVersionString = targetInfo.compilerVersion;
     }
 
-    static async create(
-        folder?: vscode.Uri,
-        outputChannel?: vscode.OutputChannel
-    ): Promise<SwiftToolchain> {
-        const swiftFolderPath = await this.getSwiftFolderPath(folder, outputChannel);
-        const toolchainPath = await this.getToolchainPath(swiftFolderPath, folder, outputChannel);
+    static async create(folder?: vscode.Uri, logger?: SwiftLogger): Promise<SwiftToolchain> {
+        const swiftFolderPath = await this.getSwiftFolderPath(folder, logger);
+        const toolchainPath = await this.getToolchainPath(swiftFolderPath, folder, logger);
         const targetInfo = await this.getSwiftTargetInfo(
             this._getToolchainExecutable(toolchainPath, "swift")
         );
@@ -138,13 +135,15 @@ export class SwiftToolchain {
                 swiftFolderPath,
                 swiftVersion,
                 runtimePath,
-                customSDK ?? defaultSDK
+                customSDK ?? defaultSDK,
+                logger
             ),
             this.getSwiftTestingPath(
                 targetInfo,
                 swiftVersion,
                 runtimePath,
-                customSDK ?? defaultSDK
+                customSDK ?? defaultSDK,
+                logger
             ),
             this.getSwiftPMTestingHelperPath(toolchainPath),
         ]);
@@ -511,13 +510,13 @@ export class SwiftToolchain {
         return str;
     }
 
-    logDiagnostics(channel: SwiftOutputChannel) {
-        channel.logDiagnostic(this.diagnostics);
+    logDiagnostics(logger: SwiftLogger) {
+        logger.debug(this.diagnostics);
     }
 
     private static async getSwiftFolderPath(
         cwd?: vscode.Uri,
-        outputChannel?: vscode.OutputChannel
+        logger?: SwiftLogger
     ): Promise<string> {
         try {
             let swift: string;
@@ -577,7 +576,7 @@ export class SwiftToolchain {
             const swiftPath = expandFilePathTilde(path.dirname(realSwift));
             return await this.getSwiftEnvPath(swiftPath);
         } catch (error) {
-            outputChannel?.appendLine(`Failed to find swift executable: ${error}`);
+            logger?.error(`Failed to find swift executable: ${error}`);
             throw Error("Failed to find swift executable");
         }
     }
@@ -613,7 +612,7 @@ export class SwiftToolchain {
     private static async getToolchainPath(
         swiftPath: string,
         cwd?: vscode.Uri,
-        channel?: vscode.OutputChannel
+        logger?: SwiftLogger
     ): Promise<string> {
         try {
             switch (process.platform) {
@@ -634,7 +633,7 @@ export class SwiftToolchain {
                         return path.dirname(configuration.path);
                     }
 
-                    const swiftlyToolchainLocation = await Swiftly.toolchain(channel, cwd);
+                    const swiftlyToolchainLocation = await Swiftly.toolchain(logger, cwd);
                     if (swiftlyToolchainLocation) {
                         return swiftlyToolchainLocation;
                     }
@@ -738,7 +737,8 @@ export class SwiftToolchain {
         targetInfo: SwiftTargetInfo,
         swiftVersion: Version,
         runtimePath: string | undefined,
-        sdkroot: string | undefined
+        sdkroot: string | undefined,
+        logger?: SwiftLogger
     ): Promise<string | undefined> {
         if (process.platform !== "win32") {
             return undefined;
@@ -748,7 +748,8 @@ export class SwiftToolchain {
             targetInfo,
             swiftVersion,
             runtimePath,
-            sdkroot
+            sdkroot,
+            logger
         );
     }
 
@@ -764,7 +765,8 @@ export class SwiftToolchain {
         swiftFolderPath: string,
         swiftVersion: Version,
         runtimePath: string | undefined,
-        sdkroot: string | undefined
+        sdkroot: string | undefined,
+        logger?: SwiftLogger
     ): Promise<string | undefined> {
         switch (process.platform) {
             case "darwin": {
@@ -782,7 +784,8 @@ export class SwiftToolchain {
                     targetInfo,
                     swiftVersion,
                     runtimePath,
-                    sdkroot
+                    sdkroot,
+                    logger
                 );
             }
         }
@@ -794,7 +797,8 @@ export class SwiftToolchain {
         targetInfo: SwiftTargetInfo,
         swiftVersion: Version,
         runtimePath: string | undefined,
-        sdkroot: string | undefined
+        sdkroot: string | undefined,
+        logger?: SwiftLogger
     ): Promise<string | undefined> {
         // look up runtime library directory for XCTest/Testing alternatively
         const fallbackPath =
@@ -827,9 +831,7 @@ export class SwiftToolchain {
         const plistKey = type === "XCTest" ? "XCTEST_VERSION" : "SWIFT_TESTING_VERSION";
         const version = infoPlist.DefaultProperties[plistKey];
         if (!version) {
-            new SwiftOutputChannel("swift").appendLine(
-                `Warning: ${platformManifest} is missing the ${plistKey} key.`
-            );
+            logger?.warn(`${platformManifest} is missing the ${plistKey} key.`);
             return undefined;
         }
 

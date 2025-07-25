@@ -99,9 +99,7 @@ export class DiagnosticsManager implements vscode.Disposable {
                         );
                     });
                 })
-                .catch(e =>
-                    context.outputChannel.log(`${e}`, 'Failed to provide "swiftc" diagnostics')
-                );
+                .catch(e => context.logger.error(`Failed to provide "swiftc" diagnostics: ${e}`));
         });
         const fileTypes = validFileTypes.join(",");
         this.workspaceFileWatcher = vscode.workspace.createFileSystemWatcher(

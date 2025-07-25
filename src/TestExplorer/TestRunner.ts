@@ -658,7 +658,7 @@ export class TestRunner {
                 await this.runSession(runState);
             }
         } catch (error) {
-            this.workspaceContext.outputChannel.log(`Error: ${getErrorDescription(error)}`);
+            this.workspaceContext.logger.error(`Error: ${getErrorDescription(error)}`);
             this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
         }
 
@@ -726,7 +726,7 @@ export class TestRunner {
                 await SwiftTestingConfigurationSetup.cleanupAttachmentFolder(
                     this.folderContext,
                     testRunTime,
-                    this.workspaceContext.outputChannel
+                    this.workspaceContext.logger
                 );
             });
         }
@@ -923,11 +923,7 @@ export class TestRunner {
             const xUnitParser = new TestXUnitParser(
                 this.folderContext.toolchain.hasMultiLineParallelTestOutput
             );
-            const results = await xUnitParser.parse(
-                buffer,
-                runState,
-                this.workspaceContext.outputChannel
-            );
+            const results = await xUnitParser.parse(buffer, runState, this.workspaceContext.logger);
             if (results) {
                 this.testRun.appendOutput(
                     `\r\nExecuted ${results.tests} tests, with ${results.failures} failures and ${results.errors} errors.\r\n`
@@ -1007,7 +1003,7 @@ export class TestRunner {
                     // output test build configuration
                     if (configuration.diagnostics) {
                         const configJSON = JSON.stringify(swiftTestBuildConfig);
-                        this.workspaceContext.outputChannel.logDiagnostic(
+                        this.workspaceContext.logger.debug(
                             `swift-testing Debug Config: ${configJSON}`,
                             this.folderContext.name
                         );
@@ -1034,7 +1030,7 @@ export class TestRunner {
                     // output test build configuration
                     if (configuration.diagnostics) {
                         const configJSON = JSON.stringify(xcTestBuildConfig);
-                        this.workspaceContext.outputChannel.logDiagnostic(
+                        this.workspaceContext.logger.debug(
                             `XCTest Debug Config: ${configJSON}`,
                             this.folderContext.name
                         );
@@ -1062,7 +1058,7 @@ export class TestRunner {
 
                             LoggingDebugAdapterTracker.setDebugSessionCallback(
                                 session,
-                                this.workspaceContext.outputChannel,
+                                this.workspaceContext.logger,
                                 output => {
                                     outputHandler(output);
                                 }
@@ -1070,7 +1066,7 @@ export class TestRunner {
 
                             // add cancellation
                             const cancellation = this.testRun.token.onCancellationRequested(() => {
-                                this.workspaceContext.outputChannel.logDiagnostic(
+                                this.workspaceContext.logger.debug(
                                     "Test Debugging Cancelled",
                                     this.folderContext.name
                                 );
@@ -1084,7 +1080,7 @@ export class TestRunner {
                             if (e.name !== config.name) {
                                 return;
                             }
-                            this.workspaceContext.outputChannel.logDiagnostic(
+                            this.workspaceContext.logger.debug(
                                 "Stop Test Debugging",
                                 this.folderContext.name
                             );
@@ -1113,7 +1109,7 @@ export class TestRunner {
                                             this.testRun.testRunStarted();
                                         }
 
-                                        this.workspaceContext.outputChannel.logDiagnostic(
+                                        this.workspaceContext.logger.debug(
                                             "Start Test Debugging",
                                             this.folderContext.name
                                         );
@@ -1137,7 +1133,7 @@ export class TestRunner {
             await SwiftTestingConfigurationSetup.cleanupAttachmentFolder(
                 this.folderContext,
                 testRunTime,
-                this.workspaceContext.outputChannel
+                this.workspaceContext.logger
             );
         });
     }

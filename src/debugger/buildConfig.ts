@@ -28,6 +28,7 @@ import { TestKind, isDebugging, isRelease } from "../TestExplorer/TestKind";
 import { buildOptions } from "../tasks/SwiftTaskProvider";
 import { updateLaunchConfigForCI } from "./lldb";
 import { packageName } from "../utilities/tasks";
+import { SwiftLogger } from "../logging/SwiftLogger";
 
 export class BuildConfigurationFactory {
     public static buildAll(
@@ -136,7 +137,7 @@ export class SwiftTestingConfigurationSetup {
     public static async cleanupAttachmentFolder(
         folderContext: FolderContext,
         testRunTime: number,
-        outputChannel: vscode.OutputChannel
+        logger: SwiftLogger
     ): Promise<void> {
         const attachmentPath = SwiftTestingConfigurationSetup.resolveAttachmentPath(
             folderContext,
@@ -153,7 +154,7 @@ export class SwiftTestingConfigurationSetup {
                     await fs.rmdir(attachmentPath);
                 }
             } catch (error) {
-                outputChannel.appendLine(`Failed to clean up attachment path: ${error}`);
+                logger.error(`Failed to clean up attachment path: ${error}`);
             }
         }
     }

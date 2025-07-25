@@ -22,8 +22,8 @@ import { WorkspaceContext, FolderOperation } from "./WorkspaceContext";
 import { BackgroundCompilation } from "./BackgroundCompilation";
 import { TaskQueue } from "./tasks/TaskQueue";
 import { isPathInsidePath } from "./utilities/filesystem";
-import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
 import { SwiftToolchain } from "./toolchain/toolchain";
+import { SwiftLogger } from "./logging/SwiftLogger";
 
 export class FolderContext implements vscode.Disposable {
     private packageWatcher: PackageWatcher;
@@ -96,7 +96,7 @@ export class FolderContext implements vscode.Disposable {
             void vscode.window.showErrorMessage(
                 `Failed to load ${folderContext.name}/Package.swift: ${error.message}`
             );
-            workspaceContext.outputChannel.log(
+            workspaceContext.logger.info(
                 `Failed to load Package.swift: ${error.message}`,
                 folderContext.name
             );
@@ -145,8 +145,8 @@ export class FolderContext implements vscode.Disposable {
     }
 
     /** Load Swift Plugins and store in Package */
-    async loadSwiftPlugins(outputChannel: SwiftOutputChannel) {
-        await this.swiftPackage.loadSwiftPlugins(this.toolchain, outputChannel);
+    async loadSwiftPlugins(logger: SwiftLogger) {
+        await this.swiftPackage.loadSwiftPlugins(this.toolchain, logger);
     }
 
     /**

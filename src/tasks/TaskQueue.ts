@@ -88,7 +88,7 @@ export class TaskOperation implements SwiftOperation {
         if (token?.isCancellationRequested) {
             return Promise.resolve(undefined);
         }
-        workspaceContext.outputChannel.log(`Exec Task: ${this.task.detail ?? this.task.name}`);
+        workspaceContext.logger.info(`Exec Task: ${this.task.detail ?? this.task.name}`);
         return workspaceContext.tasks.executeTaskAndWait(this.task, token);
     }
 }
@@ -245,7 +245,7 @@ export class TaskQueue {
                 await this.waitWhileDisabled();
                 // log start
                 if (operation.log) {
-                    this.workspaceContext.outputChannel.log(
+                    this.workspaceContext.logger.info(
                         `${operation.log}: starting ... `,
                         this.folderContext.name
                     );
@@ -257,13 +257,13 @@ export class TaskQueue {
                         if (operation.log && !operation.token?.isCancellationRequested) {
                             switch (result) {
                                 case 0:
-                                    this.workspaceContext.outputChannel.log(
+                                    this.workspaceContext.logger.info(
                                         `${operation.log}: ... done.`,
                                         this.folderContext.name
                                     );
                                     break;
                                 default:
-                                    this.workspaceContext.outputChannel.log(
+                                    this.workspaceContext.logger.error(
                                         `${operation.log}: ... failed.`,
                                         this.folderContext.name
                                     );
@@ -275,7 +275,7 @@ export class TaskQueue {
                     .catch(error => {
                         // log error
                         if (operation.log) {
-                            this.workspaceContext.outputChannel.log(
+                            this.workspaceContext.logger.error(
                                 `${operation.log}: ${error}`,
                                 this.folderContext.name
                             );

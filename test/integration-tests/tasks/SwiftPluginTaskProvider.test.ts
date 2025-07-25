@@ -32,7 +32,6 @@ import {
 import { mutable } from "../../utilities/types";
 import { SwiftExecution } from "../../../src/tasks/SwiftExecution";
 import { SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
-import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 
 suite("SwiftPluginTaskProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;
@@ -43,10 +42,10 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
-            const outputChannel = new SwiftOutputChannel("SwiftPluginTaskProvider.tests");
             folderContext = await folderInRootWorkspace("command-plugin", workspaceContext);
-            await folderContext.loadSwiftPlugins(outputChannel);
-            expect(outputChannel.logs.length).to.equal(0, `Expected no output channel logs`);
+            const logger = await ctx.loggerFactory.temp("SwiftPluginTaskProvider.tests");
+            await folderContext.loadSwiftPlugins(logger);
+            expect(logger.logs.length).to.equal(0, `Expected no output channel logs`);
             expect(workspaceContext.folders).to.not.have.lengthOf(0);
         },
     });

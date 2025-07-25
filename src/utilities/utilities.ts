@@ -122,7 +122,7 @@ export async function execFile(
     folderContext?: FolderContext,
     customSwiftRuntime = true
 ): Promise<{ stdout: string; stderr: string }> {
-    folderContext?.workspaceContext.outputChannel.logDiagnostic(
+    folderContext?.workspaceContext.logger.debug(
         `Exec: ${executable} ${args.join(" ")}`,
         folderContext.name
     );
@@ -158,7 +158,7 @@ export async function execFileStreamOutput(
     customSwiftRuntime = true,
     killSignal: NodeJS.Signals = "SIGTERM"
 ): Promise<void> {
-    folderContext?.workspaceContext.outputChannel.logDiagnostic(
+    folderContext?.workspaceContext.logger.debug(
         `Exec: ${executable} ${args.join(" ")}`,
         folderContext.name
     );

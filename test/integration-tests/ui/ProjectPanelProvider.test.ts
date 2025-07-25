@@ -34,7 +34,6 @@ import contextKeys from "../../../src/contextKeys";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Version } from "../../../src/utilities/version";
 import { wait } from "../../../src/utilities/utilities";
-import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import { Commands } from "../../../src/commands";
 
 suite("ProjectPanelProvider Test Suite", function () {
@@ -49,9 +48,9 @@ suite("ProjectPanelProvider Test Suite", function () {
             await vscode.workspace.openTextDocument(
                 path.join(folderContext.folder.fsPath, "Package.swift")
             );
-            const outputChannel = new SwiftOutputChannel("ProjectPanelProvider.tests");
-            await folderContext.loadSwiftPlugins(outputChannel);
-            expect(outputChannel.logs.length).to.equal(0, `Expected no output channel logs`);
+            const logger = await ctx.loggerFactory.temp("ProjectPanelProvider.tests");
+            await folderContext.loadSwiftPlugins(logger);
+            expect(logger.logs.length).to.equal(0, `Expected no output channel logs`);
             treeProvider = new ProjectPanelProvider(workspaceContext);
             await workspaceContext.focusFolder(folderContext);
             const buildAllTask = await createBuildAllTask(folderContext);

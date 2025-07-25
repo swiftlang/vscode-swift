@@ -120,7 +120,7 @@ export async function debugSnippetWithOptions(
                 return result;
             });
     } catch (error) {
-        ctx.outputChannel.appendLine(`Failed to debug snippet: ${error}`);
+        ctx.logger.error(`Failed to debug snippet: ${error}`);
         // ignore error if task failed to run
         return false;
     }
