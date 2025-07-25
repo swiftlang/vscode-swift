@@ -46,6 +46,10 @@ const ListResult = z.object({
     ),
 });
 
+const InUseVersionResult = z.object({
+    version: z.string(),
+});
+
 export class Swiftly {
     /**
      * Finds the version of Swiftly installed on the system.
@@ -69,6 +73,27 @@ export class Swiftly {
     }
 
     /**
+     * Checks if the installed version of Swiftly supports JSON output.
+     *
+     * @returns `true` if JSON output is supported, `false` otherwise.
+     */
+    private static async supportsJsonOutput(
+        outputChannel?: vscode.OutputChannel
+    ): Promise<boolean> {
+        if (!Swiftly.isSupported()) {
+            return false;
+        }
+        try {
+            const { stdout } = await execFile("swiftly", ["--version"]);
+            const version = Version.fromString(stdout.trim());
+            return version?.isGreaterThanOrEqual(new Version(1, 1, 0)) ?? false;
+        } catch (error) {
+            outputChannel?.appendLine(`Failed to check Swiftly JSON support: ${error}`);
+            return false;
+        }
+    }
+
+    /**
      * Finds the list of toolchains managed by Swiftly.
      *
      * @returns an array of toolchain paths
@@ -85,7 +110,7 @@ export class Swiftly {
             return [];
         }
 
-        if (version.isLessThan(new Version(1, 1, 0))) {
+        if (!(await Swiftly.supportsJsonOutput(outputChannel))) {
             return await Swiftly.getToolchainInstallLegacy(outputChannel);
         }
 
@@ -141,6 +166,25 @@ export class Swiftly {
         return inUse.trimEnd();
     }
 
+    public static async inUseVersion(
+        swiftlyPath: string = "swiftly",
+        cwd?: vscode.Uri
+    ): Promise<string | undefined> {
+        if (!this.isSupported()) {
+            throw new Error("Swiftly is not supported on this platform");
+        }
+
+        if (!(await Swiftly.supportsJsonOutput())) {
+            return undefined;
+        }
+
+        const { stdout } = await execFile(swiftlyPath, ["use", "--format=json"], {
+            cwd: cwd?.fsPath,
+        });
+        const result = InUseVersionResult.parse(JSON.parse(stdout));
+        return result.version;
+    }
+
     public static async use(version: string): Promise<void> {
         if (!this.isSupported()) {
             throw new Error("Swiftly is not supported on this platform");
@@ -180,36 +224,6 @@ export class Swiftly {
             }
         }
         return undefined;
-    }
-
-    /**
-     * Returns the home directory for Swiftly.
-     *
-     * @returns The path to the Swiftly home directory.
-     */
-    static getHomeDir(): string | undefined {
-        return process.env["SWIFTLY_HOME_DIR"];
-    }
-
-    /**
-     * Returns the directory where Swift binaries managed by Swiftly are installed.
-     * This is a placeholder method and should be implemented based on your environment.
-     *
-     * @returns The path to the Swiftly binaries directory.
-     */
-    static getBinDir(): string {
-        const overriddenBinDir = process.env["SWIFTLY_BIN_DIR"];
-        if (overriddenBinDir) {
-            return overriddenBinDir;
-        }
-
-        // If SWIFTLY_BIN_DIR is not set, use the default location based on SWIFTLY_HOME_DIR
-        // This assumes that the binaries are located in the "bin" subdirectory of SWIFTLY_HOME_DIR
-        const swiftlyHomeDir = Swiftly.getHomeDir();
-        if (!swiftlyHomeDir) {
-            throw new Error("Swiftly is not installed or SWIFTLY_HOME_DIR is not set.");
-        }
-        return path.join(swiftlyHomeDir, "bin");
     }
 
     /**
