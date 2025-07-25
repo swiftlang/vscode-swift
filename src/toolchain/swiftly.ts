@@ -27,15 +27,15 @@ const ListResult = z.object({
             isDefault: z.boolean(),
             version: z.discriminatedUnion("type", [
                 z.object({
-                    major: z.number(),
-                    minor: z.number(),
+                    major: z.number().optional(),
+                    minor: z.number().optional(),
                     patch: z.number().optional(),
                     name: z.string(),
                     type: z.literal("stable"),
                 }),
                 z.object({
-                    major: z.number(),
-                    minor: z.number(),
+                    major: z.number().optional(),
+                    minor: z.number().optional(),
                     branch: z.string(),
                     date: z.string(),
                     name: z.string(),
@@ -134,7 +134,7 @@ export class Swiftly {
         return process.platform === "linux" || process.platform === "darwin";
     }
 
-    public static async inUseLocation(swiftlyPath: string, cwd?: vscode.Uri) {
+    public static async inUseLocation(swiftlyPath: string = "swiftly", cwd?: vscode.Uri) {
         const { stdout: inUse } = await execFile(swiftlyPath, ["use", "--print-location"], {
             cwd: cwd?.fsPath,
         });
@@ -180,6 +180,36 @@ export class Swiftly {
             }
         }
         return undefined;
+    }
+
+    /**
+     * Returns the home directory for Swiftly.
+     *
+     * @returns The path to the Swiftly home directory.
+     */
+    static getHomeDir(): string | undefined {
+        return process.env["SWIFTLY_HOME_DIR"];
+    }
+
+    /**
+     * Returns the directory where Swift binaries managed by Swiftly are installed.
+     * This is a placeholder method and should be implemented based on your environment.
+     *
+     * @returns The path to the Swiftly binaries directory.
+     */
+    static getBinDir(): string {
+        const overriddenBinDir = process.env["SWIFTLY_BIN_DIR"];
+        if (overriddenBinDir) {
+            return overriddenBinDir;
+        }
+
+        // If SWIFTLY_BIN_DIR is not set, use the default location based on SWIFTLY_HOME_DIR
+        // This assumes that the binaries are located in the "bin" subdirectory of SWIFTLY_HOME_DIR
+        const swiftlyHomeDir = Swiftly.getHomeDir();
+        if (!swiftlyHomeDir) {
+            throw new Error("Swiftly is not installed or SWIFTLY_HOME_DIR is not set.");
+        }
+        return path.join(swiftlyHomeDir, "bin");
     }
 
     /**
