@@ -20,31 +20,34 @@ import * as vscode from "vscode";
 import { Version } from "../utilities/version";
 import { z } from "zod";
 
-const ListAvailableResult = z.object({
+const ListResult = z.object({
     toolchains: z.array(
         z.object({
             inUse: z.boolean(),
-            installed: z.boolean(),
             isDefault: z.boolean(),
-            name: z.string(),
             version: z.discriminatedUnion("type", [
                 z.object({
-                    major: z.number(),
-                    minor: z.number(),
+                    major: z.number().optional(),
+                    minor: z.number().optional(),
                     patch: z.number().optional(),
+                    name: z.string(),
                     type: z.literal("stable"),
                 }),
                 z.object({
-                    major: z.number(),
-                    minor: z.number(),
+                    major: z.number().optional(),
+                    minor: z.number().optional(),
                     branch: z.string(),
                     date: z.string(),
-
+                    name: z.string(),
                     type: z.literal("snapshot"),
                 }),
             ]),
         })
     ),
+});
+
+const InUseVersionResult = z.object({
+    version: z.string(),
 });
 
 export class Swiftly {
@@ -70,6 +73,27 @@ export class Swiftly {
     }
 
     /**
+     * Checks if the installed version of Swiftly supports JSON output.
+     *
+     * @returns `true` if JSON output is supported, `false` otherwise.
+     */
+    private static async supportsJsonOutput(
+        outputChannel?: vscode.OutputChannel
+    ): Promise<boolean> {
+        if (!Swiftly.isSupported()) {
+            return false;
+        }
+        try {
+            const { stdout } = await execFile("swiftly", ["--version"]);
+            const version = Version.fromString(stdout.trim());
+            return version?.isGreaterThanOrEqual(new Version(1, 1, 0)) ?? false;
+        } catch (error) {
+            outputChannel?.appendLine(`Failed to check Swiftly JSON support: ${error}`);
+            return false;
+        }
+    }
+
+    /**
      * Finds the list of toolchains managed by Swiftly.
      *
      * @returns an array of toolchain paths
@@ -86,7 +110,7 @@ export class Swiftly {
             return [];
         }
 
-        if (version.isLessThan(new Version(1, 1, 0))) {
+        if (!(await Swiftly.supportsJsonOutput(outputChannel))) {
             return await Swiftly.getToolchainInstallLegacy(outputChannel);
         }
 
@@ -97,14 +121,12 @@ export class Swiftly {
         outputChannel?: vscode.OutputChannel
     ): Promise<string[]> {
         try {
-            const { stdout } = await execFile("swiftly", ["list-available", "--format=json"]);
-            const response = ListAvailableResult.parse(JSON.parse(stdout));
-            return response.toolchains.map(t => t.name);
+            const { stdout } = await execFile("swiftly", ["list", "--format=json"]);
+            const response = ListResult.parse(JSON.parse(stdout));
+            return response.toolchains.map(t => t.version.name);
         } catch (error) {
             outputChannel?.appendLine(`Failed to retrieve Swiftly installations: ${error}`);
-            throw new Error(
-                `Failed to retrieve Swiftly installations from disk: ${(error as Error).message}`
-            );
+            return [];
         }
     }
 
@@ -137,11 +159,37 @@ export class Swiftly {
         return process.platform === "linux" || process.platform === "darwin";
     }
 
-    public static async inUseLocation(swiftlyPath: string, cwd?: vscode.Uri) {
+    public static async inUseLocation(swiftlyPath: string = "swiftly", cwd?: vscode.Uri) {
         const { stdout: inUse } = await execFile(swiftlyPath, ["use", "--print-location"], {
             cwd: cwd?.fsPath,
         });
         return inUse.trimEnd();
+    }
+
+    public static async inUseVersion(
+        swiftlyPath: string = "swiftly",
+        cwd?: vscode.Uri
+    ): Promise<string | undefined> {
+        if (!this.isSupported()) {
+            throw new Error("Swiftly is not supported on this platform");
+        }
+
+        if (!(await Swiftly.supportsJsonOutput())) {
+            return undefined;
+        }
+
+        const { stdout } = await execFile(swiftlyPath, ["use", "--format=json"], {
+            cwd: cwd?.fsPath,
+        });
+        const result = InUseVersionResult.parse(JSON.parse(stdout));
+        return result.version;
+    }
+
+    public static async use(version: string): Promise<void> {
+        if (!this.isSupported()) {
+            throw new Error("Swiftly is not supported on this platform");
+        }
+        await execFile("swiftly", ["use", version]);
     }
 
     /**

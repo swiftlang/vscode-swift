@@ -82,7 +82,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
 
         context.subscriptions.push(new SwiftEnvironmentVariablesManager(context));
         context.subscriptions.push(SwiftTerminalProfileProvider.register());
-        context.subscriptions.push(...commands.registerToolchainCommands(toolchain));
+        context.subscriptions.push(
+            ...commands.registerToolchainCommands(toolchain, workspaceContext.currentFolder?.folder)
+        );
 
         // Watch for configuration changes the trigger a reload of the extension if necessary.
         context.subscriptions.push(

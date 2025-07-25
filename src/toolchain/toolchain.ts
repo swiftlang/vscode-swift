@@ -112,7 +112,8 @@ export class SwiftToolchain {
         public customSDK?: string,
         public xcTestPath?: string,
         public swiftTestingPath?: string,
-        public swiftPMTestingHelperPath?: string
+        public swiftPMTestingHelperPath?: string,
+        public isSwiftlyManaged: boolean = false // true if this toolchain is managed by Swiftly
     ) {
         this.swiftVersionString = targetInfo.compilerVersion;
     }
@@ -121,7 +122,10 @@ export class SwiftToolchain {
         folder?: vscode.Uri,
         outputChannel?: vscode.OutputChannel
     ): Promise<SwiftToolchain> {
-        const swiftFolderPath = await this.getSwiftFolderPath(folder, outputChannel);
+        const { path: swiftFolderPath, isSwiftlyManaged } = await this.getSwiftFolderPath(
+            folder,
+            outputChannel
+        );
         const toolchainPath = await this.getToolchainPath(swiftFolderPath, folder, outputChannel);
         const targetInfo = await this.getSwiftTargetInfo(
             this._getToolchainExecutable(toolchainPath, "swift")
@@ -159,7 +163,8 @@ export class SwiftToolchain {
             customSDK,
             xcTestPath,
             swiftTestingPath,
-            swiftPMTestingHelperPath
+            swiftPMTestingHelperPath,
+            isSwiftlyManaged
         );
     }
 
@@ -518,7 +523,7 @@ export class SwiftToolchain {
     private static async getSwiftFolderPath(
         cwd?: vscode.Uri,
         outputChannel?: vscode.OutputChannel
-    ): Promise<string> {
+    ): Promise<{ path: string; isSwiftlyManaged: boolean }> {
         try {
             let swift: string;
             if (configuration.path !== "") {
@@ -564,18 +569,24 @@ export class SwiftToolchain {
             }
             // swift may be a symbolic link
             let realSwift = await fs.realpath(swift);
+            let isSwiftlyManaged = false;
+
             if (path.basename(realSwift) === "swiftly") {
                 try {
                     const inUse = await Swiftly.inUseLocation(realSwift, cwd);
                     if (inUse) {
                         realSwift = path.join(inUse, "usr", "bin", "swift");
+                        isSwiftlyManaged = true;
                     }
                 } catch {
                     // Ignore, will fall back to original path
                 }
             }
             const swiftPath = expandFilePathTilde(path.dirname(realSwift));
-            return await this.getSwiftEnvPath(swiftPath);
+            return {
+                path: await this.getSwiftEnvPath(swiftPath),
+                isSwiftlyManaged,
+            };
         } catch (error) {
             outputChannel?.appendLine(`Failed to find swift executable: ${error}`);
             throw Error("Failed to find swift executable");

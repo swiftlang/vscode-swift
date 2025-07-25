@@ -38,50 +38,45 @@ suite("Swiftly Unit Tests", () => {
                 toolchains: [
                     {
                         inUse: true,
-                        installed: true,
                         isDefault: true,
-                        name: "swift-5.9.0-RELEASE",
                         version: {
                             major: 5,
                             minor: 9,
                             patch: 0,
+                            name: "swift-5.9.0-RELEASE",
                             type: "stable",
                         },
                     },
                     {
                         inUse: false,
-                        installed: true,
                         isDefault: false,
-                        name: "swift-5.8.0-RELEASE",
                         version: {
                             major: 5,
                             minor: 8,
                             patch: 0,
+                            name: "swift-5.8.0-RELEASE",
                             type: "stable",
                         },
                     },
                     {
                         inUse: false,
-                        installed: false,
                         isDefault: false,
-                        name: "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
                         version: {
                             major: 5,
                             minor: 10,
                             branch: "development",
                             date: "2023-10-15",
+                            name: "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
                             type: "snapshot",
                         },
                     },
                 ],
             };
 
-            mockUtilities.execFile
-                .withArgs("swiftly", ["list-available", "--format=json"])
-                .resolves({
-                    stdout: JSON.stringify(jsonOutput),
-                    stderr: "",
-                });
+            mockUtilities.execFile.withArgs("swiftly", ["list", "--format=json"]).resolves({
+                stdout: JSON.stringify(jsonOutput),
+                stderr: "",
+            });
 
             const result = await Swiftly.listAvailableToolchains();
 
@@ -93,7 +88,7 @@ suite("Swiftly Unit Tests", () => {
 
             expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["--version"]);
             expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", [
-                "list-available",
+                "list",
                 "--format=json",
             ]);
         });

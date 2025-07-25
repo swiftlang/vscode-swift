@@ -98,31 +98,38 @@ export async function selectToolchain() {
 }
 
 /** A {@link vscode.QuickPickItem} that contains the path to an installed Swift toolchain */
-type SwiftToolchainItem = PublicSwiftToolchainItem | XcodeToolchainItem;
+type SwiftToolchainItem = PublicSwiftToolchainItem | XcodeToolchainItem | SwiftlyToolchainItem;
 
 /** Common properties for a {@link vscode.QuickPickItem} that represents a Swift toolchain */
 interface BaseSwiftToolchainItem extends vscode.QuickPickItem {
     type: "toolchain";
-    toolchainPath: string;
-    swiftFolderPath: string;
     onDidSelect?(): Promise<void>;
 }
 
 /** A {@link vscode.QuickPickItem} for a Swift toolchain that has been installed manually */
 interface PublicSwiftToolchainItem extends BaseSwiftToolchainItem {
-    category: "public" | "swiftly";
+    category: "public";
+    toolchainPath: string;
+    swiftFolderPath: string;
 }
 
 /** A {@link vscode.QuickPickItem} for a Swift toolchain provided by an installed Xcode application */
 interface XcodeToolchainItem extends BaseSwiftToolchainItem {
     category: "xcode";
     xcodePath: string;
+    toolchainPath: string;
+    swiftFolderPath: string;
 }
 
 /** A {@link vscode.QuickPickItem} that performs an action for the user */
 interface ActionItem extends vscode.QuickPickItem {
     type: "action";
     run(): Promise<void>;
+}
+
+interface SwiftlyToolchainItem extends BaseSwiftToolchainItem {
+    category: "swiftly";
+    version: string;
 }
 
 /** A {@link vscode.QuickPickItem} that separates items in the UI */
@@ -146,7 +153,8 @@ type SelectToolchainItem = SwiftToolchainItem | ActionItem | SeparatorItem;
  * @returns an array of {@link SelectToolchainItem}
  */
 async function getQuickPickItems(
-    activeToolchain: SwiftToolchain | undefined
+    activeToolchain: SwiftToolchain | undefined,
+    cwd?: vscode.Uri
 ): Promise<SelectToolchainItem[]> {
     // Find any Xcode installations on the system
     const xcodes = (await SwiftToolchain.findXcodeInstalls())
@@ -195,18 +203,43 @@ async function getQuickPickItems(
     // Find any Swift toolchains installed via Swiftly
     const swiftlyToolchains = (await Swiftly.listAvailableToolchains())
         .reverse()
-        .map<SwiftToolchainItem>(toolchainPath => ({
+        .map<SwiftlyToolchainItem>(toolchainPath => ({
             type: "toolchain",
-            category: "swiftly",
             label: path.basename(toolchainPath),
-            detail: toolchainPath,
-            toolchainPath: path.join(toolchainPath, "usr"),
-            swiftFolderPath: path.join(toolchainPath, "usr", "bin"),
+            category: "swiftly",
+            version: path.basename(toolchainPath),
+            onDidSelect: async () => {
+                try {
+                    await Swiftly.use(toolchainPath);
+                    void showReloadExtensionNotification(
+                        "Changing the Swift path requires Visual Studio Code be reloaded."
+                    );
+                } catch (error) {
+                    void vscode.window.showErrorMessage(
+                        `Failed to switch Swiftly toolchain: ${error}`
+                    );
+                }
+            },
         }));
     // Mark which toolchain is being actively used
     if (activeToolchain) {
+        const currentSwiftlyVersion = activeToolchain.isSwiftlyManaged
+            ? await Swiftly.inUseVersion("swiftly", cwd)
+            : undefined;
         const toolchainInUse = [...xcodes, ...toolchains, ...swiftlyToolchains].find(toolchain => {
-            return toolchain.toolchainPath === activeToolchain.toolchainPath;
+            if (currentSwiftlyVersion) {
+                if (toolchain.category !== "swiftly") {
+                    return false;
+                }
+
+                // For Swiftly toolchains, check if the label matches the active toolchain version
+                return currentSwiftlyVersion === toolchain.label;
+            }
+            // For non-Swiftly toolchains, check if the toolchain path matches
+            return (
+                (toolchain as PublicSwiftToolchainItem | XcodeToolchainItem).toolchainPath ===
+                activeToolchain.toolchainPath
+            );
         });
         if (toolchainInUse) {
             toolchainInUse.description = "$(check) in use";
@@ -262,10 +295,13 @@ async function getQuickPickItems(
  *
  * @param activeToolchain the {@link WorkspaceContext}
  */
-export async function showToolchainSelectionQuickPick(activeToolchain: SwiftToolchain | undefined) {
+export async function showToolchainSelectionQuickPick(
+    activeToolchain: SwiftToolchain | undefined,
+    cwd?: vscode.Uri
+) {
     let xcodePaths: string[] = [];
     const selected = await vscode.window.showQuickPick<SelectToolchainItem>(
-        getQuickPickItems(activeToolchain).then(result => {
+        getQuickPickItems(activeToolchain, cwd).then(result => {
             xcodePaths = result
                 .filter((i): i is XcodeToolchainItem => "category" in i && i.category === "xcode")
                 .map(xcode => xcode.xcodePath);
@@ -303,8 +339,23 @@ export async function showToolchainSelectionQuickPick(activeToolchain: SwiftTool
                 });
             }
         }
-        // Update the toolchain path
-        const isUpdated = await setToolchainPath(selected.swiftFolderPath, developerDir);
+        // Update the toolchain path`
+        let swiftPath: string | undefined;
+
+        // Handle Swiftly toolchains specially
+        if (selected.category === "swiftly") {
+            try {
+                swiftPath = undefined;
+            } catch (error) {
+                void vscode.window.showErrorMessage(`Failed to switch Swiftly toolchain: ${error}`);
+                return;
+            }
+        } else {
+            // For non-Swiftly toolchains, use the swiftFolderPath
+            swiftPath = selected.swiftFolderPath;
+        }
+
+        const isUpdated = await setToolchainPath(swiftPath, developerDir);
         if (isUpdated && selected.onDidSelect) {
             await selected.onDidSelect();
         }

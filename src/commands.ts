@@ -63,14 +63,15 @@ import { generateSourcekitConfiguration } from "./commands/generateSourcekitConf
 export type WorkspaceContextWithToolchain = WorkspaceContext & { toolchain: SwiftToolchain };
 
 export function registerToolchainCommands(
-    toolchain: SwiftToolchain | undefined
+    toolchain: SwiftToolchain | undefined,
+    cwd?: vscode.Uri
 ): vscode.Disposable[] {
     return [
         vscode.commands.registerCommand("swift.createNewProject", () =>
             createNewProject(toolchain)
         ),
         vscode.commands.registerCommand("swift.selectToolchain", () =>
-            showToolchainSelectionQuickPick(toolchain)
+            showToolchainSelectionQuickPick(toolchain, cwd)
         ),
         vscode.commands.registerCommand("swift.pickProcess", configuration =>
             pickProcess(configuration)
