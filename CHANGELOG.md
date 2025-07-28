@@ -9,6 +9,7 @@
 
 ### Changed
 - Added log levels and improved Swift extension logging so a logfile is produced in addition to logging messages to the existing `Swift` output channel. Deprecated the `swift.diagnostics` setting in favour of the new `swift.outputChannelLogLevel` setting ([#1746](https://github.com/swiftlang/vscode-swift/pull/1746))
+- A walkthrough for first time extension users ([#1560](https://github.com/swiftlang/vscode-swift/issues/1560))
 
 ## 2.10.0 - 2025-07-28
 
