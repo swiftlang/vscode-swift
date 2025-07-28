@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
-import * as Transport from "winston-transport";
 
 export class RollingLog implements vscode.Disposable {
     private _logs: (string | null)[];
@@ -77,22 +76,5 @@ export class RollingLog implements vscode.Disposable {
         this.startIndex = 0;
         this.endIndex = 1;
         this.logCount = 1;
-    }
-}
-
-export class RollingLogTransport extends Transport {
-    constructor(private readonly rollingLog: RollingLog) {
-        super();
-        this.level = "info"; // This log is used for testing, we
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public log(info: any, next: () => void): void {
-        if (info.append) {
-            this.rollingLog.append(info.message);
-        } else {
-            this.rollingLog.appendLine(info.message);
-        }
-        next();
     }
 }

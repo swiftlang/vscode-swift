@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import * as winston from "winston";
 import { RollingLog } from "./RollingLog";
-import { RollingLogTransport } from "./RollingLog";
+import { RollingLogTransport } from "./RollingLogTransport";
 import { IS_RUNNING_UNDER_TEST } from "../utilities/utilities";
 import { OutputChannelTransport } from "./OutputChannelTransport";
 import configuration from "../configuration";
