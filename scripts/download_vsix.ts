@@ -58,13 +58,13 @@ const repo = repository.split("/")[1];
     const files = await decompress("artifacts.zip", process.cwd());
     console.log(`Downloaded artifact(s): ${files.map(f => f.path).join(", ")}`);
     const newName = process.env["VSCODE_SWIFT_VSIX"] || "vscode-swift.vsix";
-    const releaseVSIX = files.find(f => /swift-vscode-\d.\d.\d-\d+.vsix/m.test(f.path));
+    const releaseVSIX = files.find(f => /swift-vscode-\d+.\d+.\d+-\d+.vsix/m.test(f.path));
     if (!releaseVSIX) {
         console.error("Cound not find vscode-swift release VSIX in artifact bundle");
         process.exit(1);
     }
     await rename(releaseVSIX.path, newName);
-    const prereleaseVSIX = files.find(f => /swift-vscode-\d.\d.\d{8}-\d+.vsix/m.test(f.path));
+    const prereleaseVSIX = files.find(f => /swift-vscode-\d+.\d+.\d{8}-\d+.vsix/m.test(f.path));
     if (!prereleaseVSIX) {
         console.error("Cound not find vscode-swift pre-release VSIX in artifact bundle");
         process.exit(1);
