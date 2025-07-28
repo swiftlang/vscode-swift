@@ -70,7 +70,7 @@
           {
             "id": "creating-new-project",
             "title": "Create a Swift project",
-            "description": "You can create a new Swift project with \n``Swift: Create New Project``\n in the Command Palette. \n[Try it out](command:workbench.action.showCommands)",
+            "description": "You can create a new Swift project with \n``Swift: Create New Project``\n in the Command Palette. \n[Try it out](command:swift.createNewProject)",
             "media": {
               "markdown": "assets/walkthrough/createNewProject.md"
             }
@@ -105,10 +105,7 @@
             "description": "Explore commands available in the Command Palette prefixed with ``> Swift:``\n See documentation for [available commands](https://docs.swift.org/vscode/documentation/userdocs/commands/). \n[Open Command Palette](command:workbench.action.showCommands)",
             "media": {
               "markdown": "assets/walkthrough/swiftCommands.md"
-            },
-            "completionEvents": [
-              "onLink:https://docs.swift.org/vscode/documentation/userdocs/commands/"
-            ]
+            }
           },
           {
             "id": "selecting-toolchain",
