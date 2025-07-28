@@ -20,14 +20,15 @@ import {
     main,
     updateChangelog,
 } from "./lib/utilities";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { dev } = require("./versions");
 
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
 main(async () => {
     const rootDirectory = getRootDirectory();
     const version = await getExtensionVersion();
     // Increment the patch version from the package.json
-    const patch = version.patch + 1;
-    const devVersion = `${version.major}.${version.minor}.${patch}-dev`;
+    const devVersion = dev(version);
     // Update version in CHANGELOG
     await updateChangelog(devVersion);
     // Use VSCE to package the extension
