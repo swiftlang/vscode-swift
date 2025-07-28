@@ -15,6 +15,7 @@
 const { defineConfig } = require("@vscode/test-cli");
 const path = require("path");
 const { version, publisher, name } = require("./package.json");
+const { preview } = require("./scripts/versions");
 
 const isCIBuild = process.env["CI"] === "1";
 const isFastTestRun = process.env["FAST_TEST_RUN"] === "1";
@@ -40,7 +41,15 @@ if (dataDir) {
 if (process.platform === "darwin" && process.arch === "x64") {
     launchArgs.push("--disable-gpu");
 }
-let vsixPath = process.env["VSCODE_SWIFT_VSIX"];
+const isStableRun = process.env["VSCODE_VERSION"] !== "insiders";
+let versionStr = version;
+if (!isStableRun) {
+    const segments = version.split(".").map(v => parseInt(v, 10));
+    versionStr = preview({ major: segments[0], minor: segments[1], patch: segments[2] });
+}
+let vsixPath = isStableRun
+    ? process.env["VSCODE_SWIFT_VSIX"]
+    : process.env["VSCODE_SWIFT_PRERELEASE_VSIX"];
 const install = [];
 const installExtensions = ["vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap"];
 if (vsixPath) {
@@ -48,11 +57,15 @@ if (vsixPath) {
         vsixPath = path.join(__dirname, vsixPath);
     }
     console.log("Installing " + vsixPath);
+    installExtensions.push(vsixPath);
+}
+
+for (const ext of installExtensions) {
     install.push({
-        label: "installExtension",
-        installExtensions: installExtensions.concat(vsixPath ? [vsixPath] : []),
+        label: `installExtension-${ext}`,
+        installExtensions: [ext],
         launchArgs,
-        files: [],
+        files: ["dist/test/sleep.test.js"],
         version: process.env["VSCODE_VERSION"] ?? "stable",
         reuseMachineInstall: !isCIBuild,
     });
@@ -68,7 +81,7 @@ module.exports = defineConfig({
             workspaceFolder: "./assets/test",
             launchArgs,
             extensionDevelopmentPath: vsixPath
-                ? [`${__dirname}/.vscode-test/extensions/${publisher}.${name}-${version}`]
+                ? [`${__dirname}/.vscode-test/extensions/${publisher}.${name}-${versionStr}`]
                 : undefined,
             env: {
                 VSCODE_TEST: "1",
@@ -107,7 +120,7 @@ module.exports = defineConfig({
             workspaceFolder: "./assets/test.code-workspace",
             launchArgs,
             extensionDevelopmentPath: vsixPath
-                ? [`${__dirname}/.vscode-test/extensions/${publisher}.${name}-${version}`]
+                ? [`${__dirname}/.vscode-test/extensions/${publisher}.${name}-${versionStr}`]
                 : undefined,
             env: {
                 VSCODE_TEST: "1",

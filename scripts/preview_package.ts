@@ -19,19 +19,8 @@ import {
     main,
     updateChangelog,
 } from "./lib/utilities";
-
-/**
- * Formats the given date as a string in the form "YYYYMMdd".
- *
- * @param date The date to format as a string.
- * @returns The formatted date.
- */
-function formatDate(date: Date): string {
-    const year = date.getUTCFullYear().toString().padStart(4, "0");
-    const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
-    const day = date.getUTCDate().toString().padStart(2, "0");
-    return year + month + day;
-}
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { preview } = require("./versions");
 
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
 main(async () => {
@@ -39,8 +28,7 @@ main(async () => {
     const version = await getExtensionVersion();
     // Increment the minor version and set the patch version to today's date
     const minor = version.minor + 1;
-    const patch = formatDate(new Date());
-    const previewVersion = `${version.major}.${minor}.${patch}`;
+    const previewVersion = preview(version);
     // Make sure that the new minor version is odd
     if (minor % 2 !== 1) {
         throw new Error(
