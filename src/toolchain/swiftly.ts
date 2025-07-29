@@ -24,7 +24,9 @@ const ListResult = z.object({
     toolchains: z.array(
         z.object({
             inUse: z.boolean(),
+            installed: z.boolean(),
             isDefault: z.boolean(),
+            name: z.string(),
             version: z.discriminatedUnion("type", [
                 z.object({
                     major: z.number().optional(),
@@ -125,7 +127,8 @@ export class Swiftly {
             const response = ListResult.parse(JSON.parse(stdout));
             return response.toolchains.map(t => t.version.name);
         } catch (error) {
-            outputChannel?.appendLine(`Failed to retrieve Swiftly installations: ${error}`);
+            outputChannel?.appendLine(
+                `Failed to retrieve Swiftly installations : ${error}`);
             return [];
         }
     }
@@ -155,7 +158,7 @@ export class Swiftly {
         }
     }
 
-    private static isSupported() {
+    public static isSupported() {
         return process.platform === "linux" || process.platform === "darwin";
     }
 
@@ -241,5 +244,21 @@ export class Swiftly {
             "utf-8"
         );
         return JSON.parse(swiftlyConfigRaw);
+    }
+
+    public static async isInstalled() {
+        if (!Swiftly.isSupported()) {
+            return false;
+        }
+
+        try {
+            await Swiftly.version();
+            return true;
+        } catch (error) {
+            if (error instanceof ExecFileError && "code" in error && error.code === "ENOENT") {
+                return false;
+            }
+            throw error;
+        }
     }
 }
