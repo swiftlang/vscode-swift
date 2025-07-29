@@ -18,4 +18,4 @@ By default build tasks are only automatically created for executable products. I
 - **Build Debug \<Library\>**: Each library product in a Package.swift get a task for building a debug build.
 - **Build Release \<Library\>**: Each library product in a Package.swift get a task for building a release build.
 
-> ⚠️ Important: Tasks will not be created for automatic library products, as you cannot specify a `--product` option for automatic products when building.
+> ⚠️ Important: Tasks will not be created for automatic library products, as you cannot specify a `--product` option for automatic products when building. For more information see the [Swift Package Manager documentation for Product definitions](https://docs.swift.org/package-manager/PackageDescription/PackageDescription.html#product).
