@@ -10,3 +10,8 @@ if ($Process.ExitCode -eq 0) {
     Write-Host  ('FAILED ({0})' -f $Process.ExitCode)
     exit 1
 }
+
+Get-Content $env:GITHUB_ENV | foreach {
+    $name, $value = $_.split('=')
+    Set-Content env:\$name $value
+}

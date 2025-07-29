@@ -23,8 +23,7 @@ jobs:
           . .github/workflows/scripts/setup-linux.sh
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
           npm ci
-          npm run package
-          npm run preview-package
+          npm run dev-package
           for file in *.vsix; do
             name="$(basename "$file" .vsix)-${{github.run_number}}.vsix"
             echo "Created bundle $name"
@@ -67,9 +66,8 @@ jobs:
         CI=1
         FAST_TEST_RUN=${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && '0' || '1'}}
         VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
-        VSCODE_SWIFT_VSIX=vscode-swift.vsix
         GITHUB_REPOSITORY=${{github.repository}}
-      windows_pre_build_command: .github\workflows\scripts\windows\setup.ps1
+      windows_pre_build_command: . .github\workflows\scripts\windows\setup.ps1
       windows_build_command: scripts\test_windows.ps1
       enable_windows_docker: false
 

@@ -29,6 +29,4 @@ env | sort
 if [ -n "$VSCODE_SWIFT_VSIX_ID" ]; then
     npm ci --ignore-scripts
     npx tsx scripts/download_vsix.ts
-    export VSCODE_SWIFT_VSIX="vscode-swift.vsix"
-    export VSCODE_SWIFT_PRERELEASE_VSIX="vscode-swift-prerelease.vsix"
 fi

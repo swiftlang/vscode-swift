@@ -14,7 +14,7 @@
 /* eslint-disable no-console */
 
 import * as child_process from "child_process";
-import { mkdtemp, readFile, rm } from "fs/promises";
+import { copyFile, mkdtemp, readFile, rm } from "fs/promises";
 import * as path from "path";
 import * as os from "os";
 import * as semver from "semver";
@@ -126,9 +126,11 @@ export async function withTemporaryDirectory<T>(
     }
 }
 
-export async function updateChangelog(version: string): Promise<void> {
+export async function updateChangelog(version: string): Promise<string> {
+    const tempChangelog = path.join(getRootDirectory(), `CHANGELOG-${version}.md`);
+    await copyFile(getChangelog(), tempChangelog);
     await replaceInFile({
-        files: getChangelog(),
+        files: tempChangelog,
         from: /{{releaseVersion}}/g,
         to: version,
     });
@@ -137,8 +139,42 @@ export async function updateChangelog(version: string): Promise<void> {
     const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
     const day = date.getUTCDate().toString().padStart(2, "0");
     await replaceInFile({
-        files: getChangelog(),
+        files: tempChangelog,
         from: /{{releaseDate}}/g,
         to: `${year}-${month}-${day}`,
+    });
+    return tempChangelog;
+}
+
+export async function packageExtension(version: string) {
+    // Update version in a temporary CHANGELOG
+    const changelogPath = await updateChangelog(version);
+
+    // Use VSCE to package the extension
+    // Note: There are no sendgrid secrets in the extension. `--allow-package-secrets` works around a false positive
+    // where the symbol `SG.MessageTransports.is` can appear in the dist.js if we're unlucky enough
+    // to have `SG` as the minified name of a namespace. Here is the rule we sometimes mistakenly match:
+    // https://github.com/secretlint/secretlint/blob/5706ac4942f098b845570541903472641d4ae914/packages/%40secretlint/secretlint-rule-sendgrid/src/index.ts#L35
+    await exec(
+        "npx",
+        [
+            "vsce",
+            "package",
+            "--allow-package-secrets",
+            "sendgrid",
+            "--no-update-package-json",
+            "--changelog-path",
+            path.basename(changelogPath),
+            version,
+        ],
+        {
+            cwd: getRootDirectory(),
+        }
+    );
+
+    // Clean up temporary changelog
+    await rm(changelogPath, { force: true }).catch(error => {
+        console.error(`Failed to remove temporary changelog '${changelogPath}'`);
+        console.error(error);
     });
 }
