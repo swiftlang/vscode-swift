@@ -2,6 +2,8 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+## 2.10.0 - 2025-07-28
+
 ### Added
 
 - Added Swiftly toolchain management support `.swift-version` files, and integration with the toolchain selection UI ([#1717](https://github.com/swiftlang/vscode-swift/pull/1717)
