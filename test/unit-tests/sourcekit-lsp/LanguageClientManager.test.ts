@@ -50,6 +50,8 @@ import {
     DidChangeActiveDocumentParams,
 } from "../../../src/sourcekit-lsp/extensions/DidChangeActiveDocumentRequest";
 import { SwiftLogger } from "../../../src/logging/SwiftLogger";
+import { SwiftOutputChannel } from "../../../src/logging/SwiftOutputChannel";
+import { SwiftLoggerFactory } from "../../../src/logging/SwiftLoggerFactory";
 
 suite("LanguageClientManager Suite", () => {
     let languageClientFactoryMock: MockedObject<LanguageClientFactory>;
@@ -60,6 +62,7 @@ suite("LanguageClientManager Suite", () => {
     let mockedFolder: MockedObject<FolderContext>;
     let didChangeFoldersEmitter: AsyncEventEmitter<FolderEvent>;
     let mockLogger: MockedObject<SwiftLogger>;
+    let mockLoggerFactory: MockedObject<SwiftLoggerFactory>;
     let mockedToolchain: MockedObject<SwiftToolchain>;
     let mockedBuildFlags: MockedObject<BuildFlags>;
 
@@ -113,6 +116,9 @@ suite("LanguageClientManager Suite", () => {
             info: s => s,
             debug: s => s,
         });
+        mockLoggerFactory = mockObject<SwiftLoggerFactory>({
+            create: mockFn(s => s.returns(mockObject<SwiftOutputChannel>({}))),
+        });
         didChangeFoldersEmitter = new AsyncEventEmitter();
         mockedFolder = mockObject<FolderContext>({
             isRootFolder: false,
@@ -127,6 +133,7 @@ suite("LanguageClientManager Suite", () => {
                     globalToolchain: instance(mockedToolchain),
                     globalToolchainSwiftVersion: new Version(6, 0, 0),
                     logger: instance(mockLogger),
+                    loggerFactory: instance(mockLoggerFactory),
                 })
             ),
             swiftVersion: new Version(6, 0, 0),
@@ -136,6 +143,7 @@ suite("LanguageClientManager Suite", () => {
             globalToolchain: instance(mockedToolchain),
             globalToolchainSwiftVersion: new Version(6, 0, 0),
             logger: instance(mockLogger),
+            loggerFactory: instance(mockLoggerFactory),
             subscriptions: [],
             folders: [instance(mockedFolder)],
             onDidChangeFolders: mockFn(s => s.callsFake(didChangeFoldersEmitter.event)),
@@ -150,7 +158,7 @@ suite("LanguageClientManager Suite", () => {
             code2ProtocolConverter: instance(mockedConverter),
             clientOptions: {},
             outputChannel: instance(
-                mockObject<vscode.OutputChannel>({
+                mockObject<SwiftOutputChannel>({
                     dispose: mockFn(),
                 })
             ),
