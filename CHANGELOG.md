@@ -2,11 +2,15 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Added
+
+- New `swift.createTasksForLibraryProducts` setting that when enabled causes the extension to automatically create and provide tasks for library products ([#1741](https://github.com/swiftlang/vscode-swift/pull/1741))
+
 ## 2.10.0 - 2025-07-28
 
 ### Added
 
-- Added Swiftly toolchain management support `.swift-version` files, and integration with the toolchain selection UI ([#1717](https://github.com/swiftlang/vscode-swift/pull/1717)
+- Added Swiftly toolchain management support `.swift-version` files, and integration with the toolchain selection UI ([#1717](https://github.com/swiftlang/vscode-swift/pull/1717))
 - Added code lenses to run suites/tests, configurable with the `swift.showTestCodeLenses` setting ([#1698](https://github.com/swiftlang/vscode-swift/pull/1698))
 - New `swift.excludePathsFromActivation` setting to ignore specified sub-folders from being activated as projects ([#1693](https://github.com/swiftlang/vscode-swift/pull/1693))
 - New `swift.recordTestDuration` setting to disable capturing test durations, which can improve performance of heavy test runs ([#1745](https://github.com/swiftlang/vscode-swift/pull/1745))
