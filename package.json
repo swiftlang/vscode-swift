@@ -34,6 +34,99 @@
   ],
   "main": "./dist/src/extension.js",
   "contributes": {
+    "walkthroughs": [
+      {
+        "id": "swift-welcome",
+        "title": "Get Started with Swift for VS Code",
+        "description": "Learn how to use the Swift extension for VS Code.",
+        "steps": [
+          {
+            "id": "installing-mac",
+            "title": "Install Swift",
+            "description": "Swift is cross-platform! If you already have Xcode installed, you're ready to go. Otherwise, see the instructions to [install on macOS](https://www.swift.org/install).\n Swift is [open source](https://github.com/swiftlang) and community driven!\n Questions? Visit the [Swift forums](https://forums.swift.org/) or the [Swift extension GitHub page](https://github.com/swiftlang/vscode-swift) for help.",
+            "media": {
+              "markdown": "./assets/walkthrough/welcome.md"
+            },
+            "when": "isMac"
+          },
+          {
+            "id": "installing-linux",
+            "title": "Installing Swift",
+            "description": "Swift is cross-platform! See the instructions to [install on Linux](https://www.swift.org/install).\n Swift is [open source](https://github.com/swiftlang) and community driven!\n Questions? Visit the [Swift forums](https://forums.swift.org/) or the [Swift extension GitHub page](https://github.com/swiftlang/vscode-swift) for help.",
+            "media": {
+              "markdown": "./assets/walkthrough/welcome.md"
+            },
+            "when": "isLinux"
+          },
+          {
+            "id": "installing-windows",
+            "title": "Installing Swift",
+            "description": "Swift is cross-platform! See the instructions to [install on Windows](https://www.swift.org/install).\n Swift is [open source](https://github.com/swiftlang) and community driven!\n Questions? Visit the [Swift forums](https://forums.swift.org/) or the [Swift extension GitHub page](https://github.com/swiftlang/vscode-swift) for help.",
+            "media": {
+              "markdown": "./assets/walkthrough/welcome.md"
+            },
+            "when": "isWindows"
+          },
+          {
+            "id": "creating-new-project",
+            "title": "Create a Swift project",
+            "description": "You can create a new Swift project with \n``Swift: Create New Project``\n in the Command Palette. \n[Try it out](command:swift.createNewProject)",
+            "media": {
+              "markdown": "assets/walkthrough/createNewProject.md"
+            }
+          },
+          {
+            "id": "run-and-debug-executable",
+            "title": "Run and debug an executable",
+            "description": "You can run an executable from the Swift file, Command Palette or the Project Panel.",
+            "media": {
+              "markdown": "assets/walkthrough/runExecutable.md"
+            }
+          },
+          {
+            "id": "testing",
+            "title": "Run tests",
+            "description": "Tests are automatically discovered in your project and added to the [Testing View](https://code.visualstudio.com/docs/debugtest/testing#_automatic-test-discovery-in-testing-view).\n Both [XCTest](https://developer.apple.com/documentation/xctest) and [Swift Testing](https://developer.apple.com/xcode/swift-testing/) tests are supported.",
+            "media": {
+              "markdown": "assets/walkthrough/runTests.md"
+            }
+          },
+          {
+            "id": "documentation",
+            "title": "Preview DocC documentation",
+            "description": "Preview documentation written in DocC.",
+            "media": {
+              "markdown": "assets/walkthrough/previewDocs.md"
+            }
+          },
+          {
+            "id": "swift-commands",
+            "title": "Swift commands",
+            "description": "Explore commands available in the Command Palette prefixed with ``> Swift:``\n See documentation for [available commands](https://docs.swift.org/vscode/documentation/userdocs/commands/). \n[Open Command Palette](command:workbench.action.showCommands)",
+            "media": {
+              "markdown": "assets/walkthrough/swiftCommands.md"
+            }
+          },
+          {
+            "id": "selecting-toolchain",
+            "title": "Select a toolchain",
+            "description": "If you have more than one Swift toolchain installed you can switch between them. \n[Select Toolchain](command:swift.selectToolchain)",
+            "markdown": "",
+            "media": {
+              "markdown": "assets/walkthrough/swiftToolchains.md"
+            }
+          },
+          {
+            "id": "customize",
+            "title": "Customize settings",
+            "description": "Customize language and extension settings. \n[Open Settings](command:workbench.action.openSettings)",
+            "media": {
+              "markdown": "assets/walkthrough/customizeSettings.md"
+            }
+          }
+        ]
+      }
+    ],
     "icons": {
       "swift-icon": {
         "description": "The official icon for the Swift programming language",
