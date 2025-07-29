@@ -657,6 +657,12 @@
             ],
             "scope": "application"
           },
+          "swift.createTasksForLibraryProducts": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "When enabled, the extension will create \"swift\" build tasks for library products in the package manifest. Note that automatic library products will not be included.",
+            "scope": "machine-overridable"
+          },
           "swift.showCreateSwiftProjectInWelcomePage": {
             "type": "boolean",
             "default": true,

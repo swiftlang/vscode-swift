@@ -15,7 +15,7 @@
 import * as vscode from "vscode";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderContext } from "../FolderContext";
-import { Product } from "../SwiftPackage";
+import { isAutomatic, Product } from "../SwiftPackage";
 import configuration, {
     ShowBuildStatusOptions,
     substituteVariablesInString,
@@ -424,6 +424,16 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             const executables = await folderContext.swiftPackage.executableProducts;
             for (const executable of executables) {
                 tasks.push(...createBuildTasks(executable, folderContext));
+            }
+
+            if (configuration.createTasksForLibraryProducts) {
+                const libraries = await folderContext.swiftPackage.libraryProducts;
+                for (const lib of libraries) {
+                    if (isAutomatic(lib)) {
+                        continue;
+                    }
+                    tasks.push(...createBuildTasks(lib, folderContext));
+                }
             }
         }
         return tasks;
