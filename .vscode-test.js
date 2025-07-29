@@ -102,8 +102,8 @@ module.exports = defineConfig({
                     },
                 },
             },
+            skipExtensionDependencies: install.length > 0,
             reuseMachineInstall: !isCIBuild,
-            installExtensions,
         },
         {
             label: "codeWorkspaceTests",
@@ -141,8 +141,8 @@ module.exports = defineConfig({
                     },
                 },
             },
+            skipExtensionDependencies: install.length > 0,
             reuseMachineInstall: !isCIBuild,
-            installExtensions,
         },
         {
             label: "unitTests",
