@@ -25,6 +25,7 @@ import { Version } from "../utilities/version";
 import { destructuredPromise, execFileStreamOutput } from "../utilities/utilities";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
+import { Extension } from "../utilities/extensions";
 
 export async function captureDiagnostics(
     ctx: WorkspaceContext,
@@ -75,6 +76,13 @@ export async function captureDiagnostics(
                     if (logFile) {
                         await copyLogFile(outputDir, logFile);
                     }
+                }
+
+                // Copy lldb-dap logs
+                const logFolder = lldbDapLogFolder(ctx);
+                const lldbLogFiles = await fsPromises.readdir(logFolder);
+                for (const log of lldbLogFiles) {
+                    await copyLogFile(outputDir, path.join(logFolder, log));
                 }
             }
         }
@@ -142,15 +150,19 @@ async function captureDiagnosticsMode(
         vscode.workspace.getConfiguration("sourcekit-lsp").get<string>("trace.server", "off") !==
             "off"
     ) {
-        const fullButton = allowMinimalCapture ? "Capture Full Diagnostics" : "Capture Diagnostics";
+        const fullButton = "Capture Full Diagnostics";
         const minimalButton = "Capture Minimal Diagnostics";
         const buttons = allowMinimalCapture ? [fullButton, minimalButton] : [fullButton];
         const fullCaptureResult = await vscode.window.showInformationMessage(
             `A Diagnostic Bundle collects information that helps the developers of the Swift for VS Code extension diagnose and fix issues.
 
-This information contains:
+This information includes:
 - Extension logs
+- Extension settings
 - Versions of Swift installed on your system
+
+If you allow capturing a Full Diagnostic Bundle, the information will also include:
+- Log message emitted by LLDB DAP
 - Crash logs from SourceKit
 - Log messages emitted by SourceKit
 - If possible, a minimized project that caused SourceKit to crash
@@ -222,6 +234,11 @@ async function createDiagnosticsZipDir(): Promise<string> {
 
 function extensionLogFile(ctx: WorkspaceContext): string {
     return ctx.logger.logFilePath;
+}
+
+function lldbDapLogFolder(ctx: WorkspaceContext): string {
+    const rootLogFolder = path.dirname(ctx.loggerFactory.logFolderUri.fsPath);
+    return path.join(rootLogFolder, Extension.LLDBDAP);
 }
 
 function settingsLogs(ctx: FolderContext): string {
