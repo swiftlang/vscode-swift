@@ -585,7 +585,7 @@
             "markdownDescription": "The path to a directory that will be used to store attachments produced during a test run.\n\nA relative path resolves relative to the root directory of the workspace running the test(s)",
             "scope": "machine-overridable"
           },
-          "swift.outputChannelLevel": {
+          "swift.outputChannelLogLevel": {
             "type": "string",
             "default": "info",
             "markdownDescription": "The log level of the Swift output channel. This has no effect on the verbosity of messages written to the extension's log file.",
@@ -946,7 +946,7 @@
             "type": "boolean",
             "default": false,
             "markdownDescription": "Output additional diagnostics to the Swift output channel.",
-            "deprecationMessage": "**Deprecated**: Please use `#swift.outputChannelLevel#` instead.",
+            "deprecationMessage": "**Deprecated**: Please use `#swift.outputChannelLogLevel#` instead.",
             "order": 100,
             "scope": "machine-overridable"
           }

@@ -75,7 +75,7 @@ export class SwiftLogger implements vscode.Disposable {
             },
             vscode.workspace.onDidChangeConfiguration(e => {
                 if (
-                    e.affectsConfiguration("swift.outputChannelLevel") ||
+                    e.affectsConfiguration("swift.outputChannelLogLevel") ||
                     e.affectsConfiguration("swift.diagnostics")
                 ) {
                     ouptutChannelTransport.level = this.outputChannelLevel;
@@ -131,15 +131,15 @@ export class SwiftLogger implements vscode.Disposable {
     }
 
     private get outputChannelLevel(): string {
-        const info = vscode.workspace.getConfiguration("swift").inspect("outputChannelLevel");
-        // If the user has explicitly set `outputChannelLevel` then use it, otherwise
+        const info = vscode.workspace.getConfiguration("swift").inspect("outputChannelLogLevel");
+        // If the user has explicitly set `outputChannelLogLevel` then use it, otherwise
         // check the deprecated `diagnostics` property
         if (info?.globalValue || info?.workspaceValue || info?.workspaceFolderValue) {
-            return configuration.outputChannelLevel;
+            return configuration.outputChannelLogLevel;
         } else if (configuration.diagnostics) {
             return "debug";
         } else {
-            return configuration.outputChannelLevel;
+            return configuration.outputChannelLogLevel;
         }
     }
 
