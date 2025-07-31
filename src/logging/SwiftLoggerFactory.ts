@@ -19,7 +19,7 @@ import { SwiftOutputChannel } from "./SwiftOutputChannel";
 import { SwiftLogger } from "./SwiftLogger";
 
 export class SwiftLoggerFactory {
-    constructor(private logFolderUri: vscode.Uri) {}
+    constructor(public readonly logFolderUri: vscode.Uri) {}
 
     create(name: string, logFilename: string): SwiftLogger;
     create(name: string, logFilename: string, options: { outputChannel: true }): SwiftOutputChannel;
