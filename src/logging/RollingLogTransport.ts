@@ -21,7 +21,7 @@ const Transport: typeof TransportType = require("winston-transport");
 export class RollingLogTransport extends Transport {
     constructor(private rollingLog: RollingLog) {
         super();
-        this.level = "info"; // This log is used for testing, we
+        this.level = "info"; // This log is used for testing, we don't want to hold verbose log messages
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
