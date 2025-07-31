@@ -522,6 +522,9 @@ const configuration = {
                 /* Put in worker queue */
             });
     },
+    get outputChannelLogLevel(): string {
+        return vscode.workspace.getConfiguration("swift").get("outputChannelLogLevel", "info");
+    },
 };
 
 const vsCodeVariableRegex = new RegExp(/\$\{(.+?)\}/g);

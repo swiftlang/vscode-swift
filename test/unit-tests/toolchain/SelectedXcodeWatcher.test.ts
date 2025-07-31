@@ -15,7 +15,6 @@
 import * as vscode from "vscode";
 import { expect } from "chai";
 import { SelectedXcodeWatcher } from "../../../src/toolchain/SelectedXcodeWatcher";
-import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import {
     instance,
     MockedObject,
@@ -26,10 +25,11 @@ import {
 } from "../../MockUtils";
 import configuration from "../../../src/configuration";
 import { Commands } from "../../../src/commands";
+import { SwiftLogger } from "../../../src/logging/SwiftLogger";
 
 suite("Selected Xcode Watcher", () => {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
-    let mockOutputChannel: MockedObject<SwiftOutputChannel>;
+    let mockLogger: MockedObject<SwiftLogger>;
     const pathConfig = mockGlobalValue(configuration, "path");
     const envConfig = mockGlobalValue(configuration, "swiftEnvironmentVariables");
     const mockWorkspace = mockGlobalObject(vscode, "workspace");
@@ -42,8 +42,9 @@ suite("Selected Xcode Watcher", () => {
             this.skip();
         }
 
-        mockOutputChannel = mockObject<SwiftOutputChannel>({
-            appendLine: mockFn(),
+        mockLogger = mockObject<SwiftLogger>({
+            debug: mockFn(),
+            info: mockFn(),
         });
 
         pathConfig.setValue("");
@@ -58,7 +59,7 @@ suite("Selected Xcode Watcher", () => {
     async function run(symLinksOnCallback: (string | undefined)[]) {
         return new Promise<void>(resolve => {
             let ctr = 0;
-            const watcher = new SelectedXcodeWatcher(instance(mockOutputChannel), {
+            const watcher = new SelectedXcodeWatcher(instance(mockLogger), {
                 checkIntervalMs: 1,
                 xcodeSymlink: async () => {
                     if (ctr >= symLinksOnCallback.length) {

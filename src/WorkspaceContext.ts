@@ -16,7 +16,6 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { FolderContext } from "./FolderContext";
 import { StatusItem } from "./ui/StatusItem";
-import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
 import { swiftLibraryPathKey } from "./utilities/utilities";
 import { isExcluded, isPathInsidePath } from "./utilities/filesystem";
 import { LanguageClientToolchainCoordinator } from "./sourcekit-lsp/LanguageClientToolchainCoordinator";
@@ -37,6 +36,8 @@ import { isValidWorkspaceFolder, searchForPackages } from "./utilities/workspace
 import { SwiftPluginTaskProvider } from "./tasks/SwiftPluginTaskProvider";
 import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
 import { LLDBDebugConfigurationProvider } from "./debugger/debugAdapterFactory";
+import { SwiftLogger } from "./logging/SwiftLogger";
+import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -71,12 +72,15 @@ export class WorkspaceContext implements vscode.Disposable {
     public onDidStartBuild = this.buildStartEmitter.event;
     public onDidFinishBuild = this.buildFinishEmitter.event;
 
+    public loggerFactory: SwiftLoggerFactory;
+
     private constructor(
         extensionContext: vscode.ExtensionContext,
         public tempFolder: TemporaryFolder,
-        public outputChannel: SwiftOutputChannel,
+        public logger: SwiftLogger,
         public globalToolchain: SwiftToolchain
     ) {
+        this.loggerFactory = new SwiftLoggerFactory(extensionContext.logUri);
         this.statusItem = new StatusItem();
         this.buildStatus = new SwiftBuildStatus(this.statusItem);
         this.languageClientManager = new LanguageClientToolchainCoordinator(this, {
@@ -88,11 +92,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.diagnostics = new DiagnosticsManager(this);
         this.taskProvider = new SwiftTaskProvider(this);
         this.pluginProvider = new SwiftPluginTaskProvider(this);
-        this.launchProvider = new LLDBDebugConfigurationProvider(
-            process.platform,
-            this,
-            outputChannel
-        );
+        this.launchProvider = new LLDBDebugConfigurationProvider(process.platform, this, logger);
         this.documentation = new DocumentationManager(extensionContext, this);
         this.currentDocument = null;
         this.commentCompletionProvider = new CommentCompletionProviders();
@@ -199,7 +199,7 @@ export class WorkspaceContext implements vscode.Disposable {
             this.diagnostics,
             this.documentation,
             this.languageClientManager,
-            this.outputChannel,
+            this.logger,
             this.statusItem,
             this.buildStatus,
         ];
@@ -230,11 +230,11 @@ export class WorkspaceContext implements vscode.Disposable {
     /** Get swift version and create WorkspaceContext */
     static async create(
         extensionContext: vscode.ExtensionContext,
-        outputChannel: SwiftOutputChannel,
+        logger: SwiftLogger,
         toolchain: SwiftToolchain
     ): Promise<WorkspaceContext> {
         const tempFolder = await TemporaryFolder.create();
-        return new WorkspaceContext(extensionContext, tempFolder, outputChannel, toolchain);
+        return new WorkspaceContext(extensionContext, tempFolder, logger, toolchain);
     }
 
     /**
@@ -446,7 +446,7 @@ export class WorkspaceContext implements vscode.Disposable {
         // find context with root folder
         const index = this.folders.findIndex(context => context.folder.fsPath === folder.fsPath);
         if (index !== -1) {
-            this.outputChannel.log(`Adding package folder ${folder} twice`, "WARN");
+            this.logger.warn(`Adding package folder ${folder} twice`);
             return this.folders[index];
         }
         const folderContext = await FolderContext.create(folder, workspaceFolder, this);

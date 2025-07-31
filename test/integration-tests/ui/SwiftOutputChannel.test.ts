@@ -13,14 +13,26 @@
 //===----------------------------------------------------------------------===//
 
 import * as assert from "assert";
-import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
+import { SwiftOutputChannel } from "../../../src/logging/SwiftOutputChannel";
+import { TemporaryFolder } from "../../../src/utilities/tempFolder";
+import { join } from "path";
 
 suite("SwiftOutputChannel", function () {
     let channel: SwiftOutputChannel;
     const channels: SwiftOutputChannel[] = [];
+    let tempFolder: TemporaryFolder;
+
+    suiteSetup(async function () {
+        tempFolder = await TemporaryFolder.create();
+    });
+
     setup(function () {
         const channelName = `SwiftOutputChannel Tests ${this.currentTest?.id ?? "<unknown test>"}`;
-        channel = new SwiftOutputChannel(channelName, 3);
+        channel = new SwiftOutputChannel(
+            channelName,
+            join(tempFolder.path, "SwiftOutputChannel.test.log"),
+            3
+        );
         channels.push(channel);
     });
 

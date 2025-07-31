@@ -15,97 +15,69 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as os from "os";
-import * as fs from "fs/promises";
+import { mkdir, rm } from "fs/promises";
 import * as decompress from "decompress";
 import { expect } from "chai";
-import { instance, MockedObject, mockFn, mockGlobalObject, mockObject } from "../../MockUtils";
 import { captureDiagnostics } from "../../../src/commands/captureDiagnostics";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { FolderContext } from "../../../src/FolderContext";
-import { Version } from "../../../src/utilities/version";
-import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
+import { mockGlobalObject } from "../../MockUtils";
+import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 
 suite("captureDiagnostics Test Suite", () => {
-    let mockContext: MockedObject<WorkspaceContext>;
-    let mockedOutputChannel: MockedObject<SwiftOutputChannel>;
-    let mockedToolchain: MockedObject<SwiftToolchain>;
+    let workspaceContext: WorkspaceContext;
     const mockWindow = mockGlobalObject(vscode, "window");
 
+    activateExtensionForSuite({
+        async setup(ctx) {
+            workspaceContext = ctx;
+        },
+        testAssets: ["defaultPackage"],
+    });
+
     setup(() => {
-        mockedToolchain = mockObject<SwiftToolchain>({
-            swiftVersion: new Version(6, 0, 0),
-            diagnostics: "some diagnostics",
-        });
-        const mockedFolder = mockObject<FolderContext>({
-            folder: vscode.Uri.file("/folder1"),
-            toolchain: instance(mockedToolchain),
-        });
-        mockedOutputChannel = mockObject<SwiftOutputChannel>({
-            log: mockFn(),
-            logs: ["hello", "world"],
-        });
-        mockContext = mockObject<WorkspaceContext>({
-            folders: [instance(mockedFolder)],
-            globalToolchainSwiftVersion: new Version(6, 0, 0),
-            outputChannel: instance(mockedOutputChannel),
-        });
         mockWindow.showInformationMessage.resolves("Minimal" as any);
     });
 
     test("Should capture dianostics to a zip file", async () => {
-        const zipPath = await captureDiagnostics(instance(mockContext));
+        const zipPath = await captureDiagnostics(workspaceContext);
         expect(zipPath).to.not.be.undefined;
     });
 
     test("Should validate a single folder project zip file has contents", async () => {
-        const zipPath = await captureDiagnostics(instance(mockContext));
+        const zipPath = await captureDiagnostics(workspaceContext);
         expect(zipPath).to.not.be.undefined;
 
         const { files, folder } = await decompressZip(zipPath as string);
 
         validate(
             files.map(file => file.path),
-            ["extension-logs.txt", "folder1-[a-z0-9]+-settings.txt"]
+            ["swift-vscode-extension.log", "defaultPackage-[a-z0-9]+-settings.txt"]
         );
 
-        await fs.rm(folder, { recursive: true, force: true });
+        await rm(folder, { recursive: true, force: true });
     });
 
     suite("Multiple folder project", () => {
-        setup(() => {
-            const mockedFolder1 = mockObject<FolderContext>({
-                folder: vscode.Uri.file("/folder1"),
-                toolchain: instance(mockedToolchain),
-            });
-            const mockedFolder2 = mockObject<FolderContext>({
-                folder: vscode.Uri.file("/folder2"),
-                toolchain: instance(mockedToolchain),
-            });
-            mockContext = mockObject<WorkspaceContext>({
-                folders: [instance(mockedFolder1), instance(mockedFolder2)],
-                globalToolchainSwiftVersion: new Version(6, 0, 0),
-                outputChannel: instance(mockedOutputChannel),
-            });
-            mockWindow.showInformationMessage.resolves("Minimal" as any);
+        setup(async () => {
+            await folderInRootWorkspace("dependencies", workspaceContext);
         });
 
         test("Should validate a multiple folder project zip file has contents", async () => {
-            const zipPath = await captureDiagnostics(instance(mockContext));
+            const zipPath = await captureDiagnostics(workspaceContext);
             expect(zipPath).to.not.be.undefined;
 
             const { files, folder } = await decompressZip(zipPath as string);
             validate(
                 files.map(file => file.path),
                 [
-                    "extension-logs.txt",
-                    "folder1/",
-                    "folder1/folder1-[a-z0-9]+-settings.txt",
-                    "folder2/",
-                    "folder2/folder2-[a-z0-9]+-settings.txt",
+                    "swift-vscode-extension.log",
+                    "defaultPackage/",
+                    "defaultPackage/defaultPackage-[a-z0-9]+-settings.txt",
+                    "dependencies/",
+                    "dependencies/dependencies-[a-z0-9]+-settings.txt",
                 ]
             );
-            await fs.rm(folder, { recursive: true, force: true });
+            await rm(folder, { recursive: true, force: true });
         });
     });
 
@@ -116,7 +88,7 @@ suite("captureDiagnostics Test Suite", () => {
             os.tmpdir(),
             `vscode-swift-test-${Math.random().toString(36).substring(7)}`
         );
-        await fs.mkdir(tempDir, { recursive: true });
+        await mkdir(tempDir, { recursive: true });
         return { folder: tempDir, files: await decompress(zipPath as string, tempDir) };
     }
 

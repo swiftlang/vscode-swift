@@ -77,9 +77,7 @@ export async function debugBuildWithOptions(
 ) {
     const current = ctx.currentFolder;
     if (!current) {
-        ctx.outputChannel.appendLine(
-            "debugBuildWithOptions: No current folder on WorkspaceContext"
-        );
+        ctx.logger.debug("debugBuildWithOptions: No current folder on WorkspaceContext");
         return;
     }
 
@@ -90,7 +88,7 @@ export async function debugBuildWithOptions(
     } else {
         const file = vscode.window.activeTextEditor?.document.fileName;
         if (!file) {
-            ctx.outputChannel.appendLine("debugBuildWithOptions: No active text editor");
+            ctx.logger.debug("debugBuildWithOptions: No active text editor");
             return;
         }
 
@@ -98,12 +96,12 @@ export async function debugBuildWithOptions(
     }
 
     if (!target) {
-        ctx.outputChannel.appendLine("debugBuildWithOptions: No active target");
+        ctx.logger.debug("debugBuildWithOptions: No active target");
         return;
     }
 
     if (target.type !== "executable") {
-        ctx.outputChannel.appendLine(
+        ctx.logger.debug(
             `debugBuildWithOptions: Target is not an executable, instead is ${target.type}`
         );
         return;

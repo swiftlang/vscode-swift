@@ -32,7 +32,7 @@ export async function useLocalDependency(
 ): Promise<boolean> {
     const currentFolder = ctx.currentFolder;
     if (!currentFolder) {
-        ctx.outputChannel.log("currentFolder is not set.");
+        ctx.logger.debug("currentFolder is not set.", "useLocalDependency");
         return false;
     }
     let folder = dep;

@@ -23,9 +23,9 @@ import { waitForNoRunningTasks } from "../../utilities/tasks";
 import { closeAllEditors } from "../../utilities/commands";
 import { isDeepStrictEqual } from "util";
 import { Version } from "../../../src/utilities/version";
-import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 import configuration from "../../../src/configuration";
 import { buildAllTaskName, resetBuildAllTaskCache } from "../../../src/tasks/SwiftTaskProvider";
+import { SwiftLogger } from "../../../src/logging/SwiftLogger";
 
 export function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);
@@ -33,9 +33,9 @@ export function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     return result;
 }
 
-function printLogs(outputChannel: SwiftOutputChannel, message: string) {
+function printLogs(logger: SwiftLogger, message: string) {
     console.error(`${message}, captured logs are:`);
-    outputChannel.logs.map(log => console.log(log));
+    logger.logs.map(log => console.log(log));
     console.log("======== END OF LOGS ========\n\n");
 }
 
@@ -116,7 +116,7 @@ const extensionBootstrapper = (() => {
                 // Mocha will throw an error to break out of a test if `.skip` is used.
                 if (error.message?.indexOf("sync skip;") === -1) {
                     console.error(`Error during test/suite setup, captured logs are:`);
-                    workspaceContext.outputChannel.logs.map(log => console.error(log));
+                    workspaceContext.logger.logs.map(log => console.error(log));
                     console.log("======== END OF LOGS ========\n\n");
                 }
                 throw error;
@@ -125,19 +125,14 @@ const extensionBootstrapper = (() => {
 
         mocha.beforeEach(function () {
             if (this.currentTest && activatedAPI) {
-                activatedAPI.outputChannel.clear();
-                activatedAPI.outputChannel.appendLine(
-                    `Starting test: ${testTitle(this.currentTest)}`
-                );
+                activatedAPI.logger.clear();
+                activatedAPI.logger.info(`Starting test: ${testTitle(this.currentTest)}`);
             }
         });
 
         mocha.afterEach(async function () {
             if (this.currentTest && activatedAPI && this.currentTest.isFailed()) {
-                printLogs(
-                    activatedAPI.outputChannel,
-                    `Test failed: ${testTitle(this.currentTest)}`
-                );
+                printLogs(activatedAPI.logger, `Test failed: ${testTitle(this.currentTest)}`);
             }
             if (vscode.debug.activeDebugSession) {
                 await vscode.debug.stopDebugging(vscode.debug.activeDebugSession);
@@ -156,7 +151,7 @@ const extensionBootstrapper = (() => {
                 }
             } catch (error) {
                 if (workspaceContext) {
-                    printLogs(workspaceContext.outputChannel, "Error during test/suite teardown");
+                    printLogs(workspaceContext.logger, "Error during test/suite teardown");
                 }
                 // We always want to restore settings and deactivate the extension even if the
                 // user supplied teardown fails. That way we have the best chance at not causing
@@ -223,7 +218,7 @@ const extensionBootstrapper = (() => {
 
             if (!workspaceContext) {
                 printLogs(
-                    activatedAPI.outputChannel,
+                    activatedAPI.logger,
                     "Error during test/suite setup, workspace context could not be created"
                 );
                 throw new Error("Extension did not activate. Workspace context is not available.");

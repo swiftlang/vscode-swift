@@ -34,13 +34,13 @@ import { FolderContext } from "../FolderContext";
 import { Executable, LanguageClient, ServerOptions } from "vscode-languageclient/node";
 import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
 import { LSPLogger, LSPOutputChannel } from "./LSPOutputChannel";
-import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 import { activateGetReferenceDocument } from "./getReferenceDocument";
 import { LanguageClientFactory } from "./LanguageClientFactory";
 import { SourceKitLogMessageNotification, SourceKitLogMessageParams } from "./extensions";
 import { LSPActiveDocumentManager } from "./didChangeActiveDocument";
 import { DidChangeActiveDocumentNotification } from "./extensions/DidChangeActiveDocumentRequest";
 import { lspClientOptions } from "./LanguageClientConfiguration";
+import { SwiftOutputChannel } from "../logging/SwiftOutputChannel";
 
 interface LanguageClientManageOptions {
     /**
@@ -167,9 +167,7 @@ export class LanguageClientManager implements vscode.Disposable {
         // Swift versions prior to 5.6 don't support file changes, so need to restart
         // lSP server when a file is either created or deleted
         if (this.swiftVersion.isLessThan(new Version(5, 6, 0))) {
-            folderContext.workspaceContext.outputChannel.logDiagnostic(
-                "LSP: Adding new/delete file handlers"
-            );
+            folderContext.workspaceContext.logger.debug("LSP: Adding new/delete file handlers");
             // restart LSP server on creation of a new file
             const onDidCreateFileDisposable = vscode.workspace.onDidCreateFiles(() => {
                 void this.restart();
@@ -364,7 +362,7 @@ export class LanguageClientManager implements vscode.Disposable {
                     if (reason.message === "Stopping the server timed out") {
                         await this.setupLanguageClient(workspaceFolder);
                     }
-                    this.folderContext.workspaceContext.outputChannel.log(`${reason}`);
+                    this.folderContext.workspaceContext.logger.error(reason);
                 });
             await this.restartedPromise;
         }
@@ -448,9 +446,8 @@ export class LanguageClientManager implements vscode.Disposable {
                     folderContext => document.uri.fsPath.startsWith(folderContext.folder.fsPath)
                 );
                 if (!documentFolderContext) {
-                    this.languageClientOutputChannel?.log(
-                        "Unable to find folder for document: " + document.uri.fsPath,
-                        "WARN"
+                    this.languageClientOutputChannel?.warn(
+                        "Unable to find folder for document: " + document.uri.fsPath
                     );
                     return;
                 }
@@ -487,13 +484,13 @@ export class LanguageClientManager implements vscode.Disposable {
             });
         });
         if (client.clientOptions.workspaceFolder) {
-            this.folderContext.workspaceContext.outputChannel.log(
+            this.folderContext.workspaceContext.logger.info(
                 `SourceKit-LSP setup for ${FolderContext.uriName(
                     client.clientOptions.workspaceFolder.uri
                 )}`
             );
         } else {
-            this.folderContext.workspaceContext.outputChannel.log(`SourceKit-LSP setup`);
+            this.folderContext.workspaceContext.logger.info(`SourceKit-LSP setup`);
         }
 
         client.onNotification(SourceKitLogMessageNotification.type, params => {
@@ -533,7 +530,7 @@ export class LanguageClientManager implements vscode.Disposable {
                 }
             })
             .catch(reason => {
-                this.folderContext.workspaceContext.outputChannel.log(`${reason}`);
+                this.folderContext.workspaceContext.logger.error(reason);
                 void this.languageClient?.stop();
                 this.languageClient = undefined;
                 throw reason;

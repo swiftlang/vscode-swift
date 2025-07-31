@@ -5,6 +5,10 @@
 ### Added
 
 - New `swift.createTasksForLibraryProducts` setting that when enabled causes the extension to automatically create and provide tasks for library products ([#1741](https://github.com/swiftlang/vscode-swift/pull/1741))
+- New `swift.outputChannelLogLevel` setting to control the verbosity of the `Swift` output channel ([#1746](https://github.com/swiftlang/vscode-swift/pull/1746))
+
+### Changed
+- Added log levels and improved Swift extension logging so a logfile is produced in addition to logging messages to the existing `Swift` output channel. Deprecated the `swift.diagnostics` setting in favour of the new `swift.outputChannelLogLevel` setting ([#1746](https://github.com/swiftlang/vscode-swift/pull/1746))
 
 ## 2.10.0 - 2025-07-28
 
