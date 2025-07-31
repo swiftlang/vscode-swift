@@ -2,7 +2,7 @@
 //
 // This source file is part of the VS Code Swift open source project
 //
-// Copyright (c) 2021 the VS Code Swift project authors
+// Copyright (c) 2025 the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -17,7 +17,7 @@ import { SwiftLogger } from "./SwiftLogger";
 
 export class SwiftOutputChannel extends SwiftLogger implements vscode.OutputChannel {
     /**
-     * Creates a vscode.OutputChannel that allows for later retrival of logs.
+     * Creates a vscode.OutputChannel that allows for later retrieval of logs.
      * @param name
      */
     constructor(name: string, logFilePath: string, logStoreLinesSize?: number) {

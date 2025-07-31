@@ -588,7 +588,7 @@
           "swift.outputChannelLevel": {
             "type": "string",
             "default": "info",
-            "markdownDescription": "The the level of the Swift output channel. This has no affect on the verbosity of messages written to the extension's log file.",
+            "markdownDescription": "The log level of the Swift output channel. This has no effect on the verbosity of messages written to the extension's log file.",
             "enum": [
               "debug",
               "info",
