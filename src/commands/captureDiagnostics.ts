@@ -45,7 +45,6 @@ export async function captureDiagnostics(
         );
 
         await fsPromises.mkdir(diagnosticsDir);
-        await copyLogFile(diagnosticsDir, extensionLogFile(ctx));
 
         const singleFolderWorkspace = ctx.folders.length === 1;
         const zipDir = await createDiagnosticsZipDir();
@@ -80,12 +79,20 @@ export async function captureDiagnostics(
 
                 // Copy lldb-dap logs
                 const logFolder = lldbDapLogFolder(ctx);
-                const lldbLogFiles = await fsPromises.readdir(logFolder);
-                for (const log of lldbLogFiles) {
-                    await copyLogFile(outputDir, path.join(logFolder, log));
+                try {
+                    const lldbLogFiles = await fsPromises.readdir(logFolder);
+                    for (const log of lldbLogFiles) {
+                        await copyLogFile(outputDir, path.join(logFolder, log));
+                    }
+                } catch (error) {
+                    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+                        ctx.logger.error(`Failed to read log files from ${logFolder}: ${error}`);
+                    }
                 }
             }
         }
+        // Leave at end in case log above
+        await copyLogFile(diagnosticsDir, extensionLogFile(ctx));
 
         archive.directory(diagnosticsDir, false);
         void archive.finalize();
