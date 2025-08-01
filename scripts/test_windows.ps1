@@ -128,7 +128,6 @@ if ($versionLine -match "Swift version (\d+)\.(\d+)") {
 npm ci -ignore-script node-pty
 npm run lint
 npm run format
-npm run package
 npm run test
 if ($LASTEXITCODE -eq 0) {
     Write-Host 'SUCCESS'

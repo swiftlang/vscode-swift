@@ -18,7 +18,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs/promises";
-import { execFile, IS_RUNNING_IN_CI } from "../utilities/utilities";
+import { execFile, IS_RUNNING_UNDER_TEST } from "../utilities/utilities";
 import { Result } from "../utilities/result";
 import { SwiftToolchain } from "../toolchain/toolchain";
 
@@ -30,7 +30,7 @@ import { SwiftToolchain } from "../toolchain/toolchain";
 export function updateLaunchConfigForCI(
     config: vscode.DebugConfiguration
 ): vscode.DebugConfiguration {
-    if (!IS_RUNNING_IN_CI) {
+    if (!IS_RUNNING_UNDER_TEST) {
         return config;
     }
 

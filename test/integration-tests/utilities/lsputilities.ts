@@ -15,7 +15,6 @@
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 import { LanguageClientManager } from "../../../src/sourcekit-lsp/LanguageClientManager";
-import { Version } from "../../../src/utilities/version";
 
 export async function waitForClient<Result>(
     languageClientManager: LanguageClientManager,
@@ -32,38 +31,6 @@ export async function waitForClient<Result>(
         await new Promise(resolve => setTimeout(resolve, 100));
     }
     return result;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-namespace
-export namespace PollIndexRequest {
-    export const method = "workspace/_pollIndex" as const;
-    export const messageDirection: langclient.MessageDirection =
-        langclient.MessageDirection.clientToServer;
-    export const type = new langclient.RequestType<object, object, never>(method);
-}
-
-// eslint-disable-next-line @typescript-eslint/no-namespace
-export namespace WorkspaceSynchronizeRequest {
-    export const method = "workspace/synchronize" as const;
-    export const messageDirection: langclient.MessageDirection =
-        langclient.MessageDirection.clientToServer;
-    export const type = new langclient.RequestType<object, object, never>(method);
-}
-export async function waitForIndex(
-    languageClientManager: LanguageClientManager,
-    swiftVersion: Version
-): Promise<void> {
-    const requestType = swiftVersion.isGreaterThanOrEqual(new Version(6, 2, 0))
-        ? WorkspaceSynchronizeRequest.type
-        : PollIndexRequest.type;
-
-    await languageClientManager.useLanguageClient(async (client, token) =>
-        client.sendRequest(
-            requestType,
-            requestType === WorkspaceSynchronizeRequest.type ? { index: true } : {},
-            token
-        )
-    );
 }
 
 export async function waitForClientState(

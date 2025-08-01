@@ -41,6 +41,7 @@ import { LSPActiveDocumentManager } from "./didChangeActiveDocument";
 import { DidChangeActiveDocumentNotification } from "./extensions/DidChangeActiveDocumentRequest";
 import { lspClientOptions } from "./LanguageClientConfiguration";
 import { SwiftOutputChannel } from "../logging/SwiftOutputChannel";
+import { PollIndexRequest, WorkspaceSynchronizeRequest } from "./extensions/PollIndexRequest";
 
 interface LanguageClientManageOptions {
     /**
@@ -311,6 +312,25 @@ export class LanguageClientManager implements vscode.Disposable {
             }
             await this.restartLanguageClient(folder);
         }
+    }
+
+    /**
+     * Wait for the LSP to indicate it is done indexing
+     */
+    async waitForIndex(): Promise<void> {
+        const requestType = this.swiftVersion.isGreaterThanOrEqual(new Version(6, 2, 0))
+            ? WorkspaceSynchronizeRequest.type
+            : PollIndexRequest.type;
+
+        await this.useLanguageClient(async (client, token) =>
+            client.sendRequest(
+                requestType,
+                requestType.method === WorkspaceSynchronizeRequest.type.method
+                    ? { index: true }
+                    : {},
+                token
+            )
+        );
     }
 
     /**
