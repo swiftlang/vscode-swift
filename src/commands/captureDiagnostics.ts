@@ -51,6 +51,11 @@ export async function captureDiagnostics(
         const zipFilePath = path.join(zipDir, `${path.basename(diagnosticsDir)}.zip`);
         const { archive, done: archivingDone } = configureZipArchiver(zipFilePath);
 
+        if (captureMode === "Full") {
+            const defaultLldbDapLogs = defaultLldbDapLogFolder(ctx);
+            await copyLogFolder(ctx, diagnosticsDir, defaultLldbDapLogs);
+        }
+
         for (const folder of ctx.folders) {
             const baseName = path.basename(folder.folder.fsPath);
             const guid = Math.random().toString(36).substring(2, 10);
@@ -78,16 +83,9 @@ export async function captureDiagnostics(
                 }
 
                 // Copy lldb-dap logs
-                const logFolder = lldbDapLogFolder(ctx);
-                try {
-                    const lldbLogFiles = await fsPromises.readdir(logFolder);
-                    for (const log of lldbLogFiles) {
-                        await copyLogFile(outputDir, path.join(logFolder, log));
-                    }
-                } catch (error) {
-                    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-                        ctx.logger.error(`Failed to read log files from ${logFolder}: ${error}`);
-                    }
+                const lldbDapLogs = lldbDapLogFolder(folder);
+                if (lldbDapLogs) {
+                    await copyLogFolder(ctx, outputDir, lldbDapLogs);
                 }
             }
         }
@@ -230,6 +228,19 @@ async function copyLogFile(dir: string, filePath: string) {
     await fsPromises.copyFile(filePath, path.join(dir, path.basename(filePath)));
 }
 
+async function copyLogFolder(ctx: WorkspaceContext, dir: string, folderPath: string) {
+    try {
+        const lldbLogFiles = await fsPromises.readdir(folderPath);
+        for (const log of lldbLogFiles) {
+            await copyLogFile(dir, path.join(folderPath, log));
+        }
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+            ctx.logger.error(`Failed to read log files from ${folderPath}: ${error}`);
+        }
+    }
+}
+
 /**
  * Creates a directory for diagnostics zip files, located in the system's temporary directory.
  */
@@ -243,9 +254,27 @@ function extensionLogFile(ctx: WorkspaceContext): string {
     return ctx.logger.logFilePath;
 }
 
-function lldbDapLogFolder(ctx: WorkspaceContext): string {
+function defaultLldbDapLogFolder(ctx: WorkspaceContext): string {
     const rootLogFolder = path.dirname(ctx.loggerFactory.logFolderUri.fsPath);
     return path.join(rootLogFolder, Extension.LLDBDAP);
+}
+
+function lldbDapLogFolder(folder: FolderContext): string | undefined {
+    const config = vscode.workspace.workspaceFile
+        ? vscode.workspace.getConfiguration("lldb-dap")
+        : vscode.workspace.getConfiguration("lldb-dap", folder.workspaceFolder);
+    let logFolder = config.get<string>("logFolder");
+    if (!logFolder) {
+        return;
+    } else if (!path.isAbsolute(logFolder)) {
+        logFolder = path.join(
+            vscode.workspace.workspaceFile
+                ? path.dirname(vscode.workspace.workspaceFile.fsPath)
+                : folder.workspaceFolder.uri.fsPath,
+            logFolder
+        );
+    }
+    return logFolder;
 }
 
 function settingsLogs(ctx: FolderContext): string {
