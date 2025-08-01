@@ -31,8 +31,6 @@ import { SourceKitLSPErrorHandler } from "./LanguageClientManager";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function initializationOptions(swiftVersion: Version): any {
     let options: any = {
-        "workspace/peekDocuments": true, // workaround for client capability to handle `PeekDocumentsRequest`
-        "workspace/getReferenceDocument": true, // the client can handle URIs with scheme `sourcekit-lsp:`
         "textDocument/codeLens": {
             supportedCommands: {
                 "swift.run": "swift.run",
@@ -40,6 +38,25 @@ function initializationOptions(swiftVersion: Version): any {
             },
         },
     };
+
+    // Swift 6.3 changed the value to enable experimental client capabilities from `true` to `{ "supported": true }`
+    // (https://github.com/swiftlang/sourcekit-lsp/pull/2204)
+    if (swiftVersion.isGreaterThanOrEqual(new Version(6, 3, 0))) {
+        options = {
+            "workspace/peekDocuments": {
+                supported: true, // workaround for client capability to handle `PeekDocumentsRequest`
+            },
+            "workspace/getReferenceDocument": {
+                supported: true, // the client can handle URIs with scheme `sourcekit-lsp:`
+            },
+        };
+    } else {
+        options = {
+            ...options,
+            "workspace/peekDocuments": true, // workaround for client capability to handle `PeekDocumentsRequest`
+            "workspace/getReferenceDocument": true, // the client can handle URIs with scheme `sourcekit-lsp:`
+        };
+    }
 
     // Swift 6.0.0 and later supports background indexing.
     // In 6.0.0 it is experimental so only "true" enables it.
@@ -57,7 +74,14 @@ function initializationOptions(swiftVersion: Version): any {
         };
     }
 
-    if (swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))) {
+    if (swiftVersion.isGreaterThanOrEqual(new Version(6, 3, 0))) {
+        options = {
+            ...options,
+            "window/didChangeActiveDocument": {
+                supported: true, // the client can send `window/didChangeActiveDocument` notifications
+            },
+        };
+    } else if (swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))) {
         options = {
             ...options,
             "window/didChangeActiveDocument": true, // the client can send `window/didChangeActiveDocument` notifications
