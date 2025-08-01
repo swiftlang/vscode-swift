@@ -232,7 +232,19 @@ export function registerSourceKitSchemaWatcher(
     const onDidChangeDisposable = configFileWatcher.onDidChange(async uri => {
         await handleConfigFileChange(uri, workspaceContext);
     });
-    return vscode.Disposable.from(onDidOpenDisposable, configFileWatcher, onDidChangeDisposable);
+    const onDidDeleteDisposable = configFileWatcher.onDidDelete(async uri => {
+        await handleConfigFileChange(uri, workspaceContext);
+    });
+    const onDidCreateDisposable = configFileWatcher.onDidCreate(async uri => {
+        await handleConfigFileChange(uri, workspaceContext);
+    });
+    return vscode.Disposable.from(
+        onDidOpenDisposable,
+        configFileWatcher,
+        onDidChangeDisposable,
+        onDidDeleteDisposable,
+        onDidCreateDisposable
+    );
 }
 
 async function handleConfigFileChange(
