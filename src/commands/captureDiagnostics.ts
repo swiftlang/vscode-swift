@@ -51,9 +51,15 @@ export async function captureDiagnostics(
         const zipFilePath = path.join(zipDir, `${path.basename(diagnosticsDir)}.zip`);
         const { archive, done: archivingDone } = configureZipArchiver(zipFilePath);
 
+        const archivedLldbDapLogFolders = new Set<string>();
         if (captureMode === "Full") {
-            const defaultLldbDapLogs = defaultLldbDapLogFolder(ctx);
-            await copyLogFolder(ctx, diagnosticsDir, defaultLldbDapLogs);
+            for (const defaultLldbDapLogs of [defaultLldbDapLogFolder(ctx), lldbDapLogFolder()]) {
+                if (!defaultLldbDapLogs || archivedLldbDapLogFolders.has(defaultLldbDapLogs)) {
+                    continue;
+                }
+                archivedLldbDapLogFolders.add(defaultLldbDapLogs);
+                await copyLogFolder(ctx, diagnosticsDir, defaultLldbDapLogs);
+            }
         }
 
         for (const folder of ctx.folders) {
@@ -75,7 +81,11 @@ export async function captureDiagnostics(
                 // The `sourcekit-lsp diagnose` command is only available in 6.0 and higher.
                 if (folder.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
                     await sourcekitDiagnose(folder, outputDir);
-                } else {
+                } else if (
+                    vscode.workspace
+                        .getConfiguration("sourcekit-lsp")
+                        .get<string>("trace.server", "off") !== "off"
+                ) {
                     const logFile = sourceKitLogFile(folder);
                     if (logFile) {
                         await copyLogFile(outputDir, logFile);
@@ -83,8 +93,9 @@ export async function captureDiagnostics(
                 }
 
                 // Copy lldb-dap logs
-                const lldbDapLogs = lldbDapLogFolder(folder);
-                if (lldbDapLogs) {
+                const lldbDapLogs = lldbDapLogFolder(folder.workspaceFolder);
+                if (lldbDapLogs && !archivedLldbDapLogFolders.has(lldbDapLogs)) {
+                    archivedLldbDapLogFolders.add(lldbDapLogs);
                     await copyLogFolder(ctx, outputDir, lldbDapLogs);
                 }
             }
@@ -150,11 +161,7 @@ async function captureDiagnosticsMode(
     ctx: WorkspaceContext,
     allowMinimalCapture: boolean
 ): Promise<"Minimal" | "Full" | undefined> {
-    if (
-        ctx.globalToolchainSwiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) ||
-        vscode.workspace.getConfiguration("sourcekit-lsp").get<string>("trace.server", "off") !==
-            "off"
-    ) {
+    if (ctx.globalToolchainSwiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
         const fullButton = "Capture Full Diagnostics";
         const minimalButton = "Capture Minimal Diagnostics";
         const buttons = allowMinimalCapture ? [fullButton, minimalButton] : [fullButton];
@@ -259,20 +266,22 @@ function defaultLldbDapLogFolder(ctx: WorkspaceContext): string {
     return path.join(rootLogFolder, Extension.LLDBDAP);
 }
 
-function lldbDapLogFolder(folder: FolderContext): string | undefined {
+function lldbDapLogFolder(workspaceFolder?: vscode.WorkspaceFolder): string | undefined {
     const config = vscode.workspace.workspaceFile
         ? vscode.workspace.getConfiguration("lldb-dap")
-        : vscode.workspace.getConfiguration("lldb-dap", folder.workspaceFolder);
+        : vscode.workspace.getConfiguration("lldb-dap", workspaceFolder);
     let logFolder = config.get<string>("logFolder");
     if (!logFolder) {
         return;
     } else if (!path.isAbsolute(logFolder)) {
-        logFolder = path.join(
-            vscode.workspace.workspaceFile
-                ? path.dirname(vscode.workspace.workspaceFile.fsPath)
-                : folder.workspaceFolder.uri.fsPath,
-            logFolder
-        );
+        const logFolderSettingInfo = config.inspect<string>("logFolder");
+        if (logFolderSettingInfo?.workspaceFolderValue && workspaceFolder) {
+            logFolder = path.join(workspaceFolder.uri.fsPath, logFolder);
+        } else if (logFolderSettingInfo?.workspaceValue && vscode.workspace.workspaceFile) {
+            logFolder = path.join(path.dirname(vscode.workspace.workspaceFile.fsPath), logFolder);
+        } else if (vscode.workspace.workspaceFolders?.length) {
+            logFolder = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, logFolder);
+        }
     }
     return logFolder;
 }
