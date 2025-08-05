@@ -26,6 +26,7 @@ import { destructuredPromise, execFileStreamOutput } from "../utilities/utilitie
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
 import { Extension } from "../utilities/extensions";
+import { DebugAdapter } from "../debugger/debugAdapter";
 
 export async function captureDiagnostics(
     ctx: WorkspaceContext,
@@ -52,7 +53,10 @@ export async function captureDiagnostics(
         const { archive, done: archivingDone } = configureZipArchiver(zipFilePath);
 
         const archivedLldbDapLogFolders = new Set<string>();
-        if (captureMode === "Full") {
+        const includeLldbDapLogs = DebugAdapter.getLaunchConfigType(
+            ctx.globalToolchainSwiftVersion
+        );
+        if (captureMode === "Full" && includeLldbDapLogs) {
             for (const defaultLldbDapLogs of [defaultLldbDapLogFolder(ctx), lldbDapLogFolder()]) {
                 if (!defaultLldbDapLogs || archivedLldbDapLogFolders.has(defaultLldbDapLogs)) {
                     continue;
@@ -92,6 +96,10 @@ export async function captureDiagnostics(
                     }
                 }
 
+                const includeLldbDapLogs = DebugAdapter.getLaunchConfigType(folder.swiftVersion);
+                if (!includeLldbDapLogs) {
+                    continue;
+                }
                 // Copy lldb-dap logs
                 const lldbDapLogs = lldbDapLogFolder(folder.workspaceFolder);
                 if (lldbDapLogs && !archivedLldbDapLogFolders.has(lldbDapLogs)) {
@@ -174,11 +182,11 @@ This information includes:
 - Versions of Swift installed on your system
 
 If you allow capturing a Full Diagnostic Bundle, the information will also include:
-- Log messages emitted by LLDB DAP
 - Crash logs from SourceKit
 - Log messages emitted by SourceKit
 - If possible, a minimized project that caused SourceKit to crash
 - If possible, a minimized project that caused the Swift compiler to crash
+- If available, log messages emitted by LLDB DAP
 
 All information is collected locally and you can inspect the diagnose bundle before sharing it with developers of the Swift for VS Code extension.
 
