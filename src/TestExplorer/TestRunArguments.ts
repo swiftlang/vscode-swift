@@ -38,12 +38,26 @@ export class TestRunArguments {
         this.swiftTestArgs = this.annotateTestArgs(swiftTestArgs, isDebug);
     }
 
+    /**
+     * Returns true if there are XCTests specified in the request.
+     */
     public get hasXCTests(): boolean {
-        return this.xcTestArgs.length > 0;
+        return this.xcTestArgs.length > 0 || this.hasNoSpecifiedTests;
     }
 
+    /**
+     * Returns true if there are swift-testing tests specified in the request.
+     */
     public get hasSwiftTestingTests(): boolean {
-        return this.swiftTestArgs.length > 0;
+        return this.swiftTestArgs.length > 0 || this.hasNoSpecifiedTests;
+    }
+
+    /**
+     * Returns true if there are no tests specified in the request,
+     * which indicates that we should run all tests.
+     */
+    private get hasNoSpecifiedTests(): boolean {
+        return this.testItems.length === 0;
     }
 
     /**
