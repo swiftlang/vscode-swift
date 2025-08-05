@@ -18,7 +18,7 @@ import * as fs from "fs/promises";
 import { execFile, ExecFileError } from "../utilities/utilities";
 import * as vscode from "vscode";
 import { Version } from "../utilities/version";
-import { z } from "zod";
+import { z } from "zod/v4/mini";
 import { SwiftLogger } from "../logging/SwiftLogger";
 
 const ListResult = z.object({
@@ -28,15 +28,15 @@ const ListResult = z.object({
             isDefault: z.boolean(),
             version: z.discriminatedUnion("type", [
                 z.object({
-                    major: z.number().optional(),
-                    minor: z.number().optional(),
-                    patch: z.number().optional(),
+                    major: z.union([z.number(), z.undefined()]),
+                    minor: z.union([z.number(), z.undefined()]),
+                    patch: z.union([z.number(), z.undefined()]),
                     name: z.string(),
                     type: z.literal("stable"),
                 }),
                 z.object({
-                    major: z.number().optional(),
-                    minor: z.number().optional(),
+                    major: z.union([z.number(), z.undefined()]),
+                    minor: z.union([z.number(), z.undefined()]),
                     branch: z.string(),
                     date: z.string(),
                     name: z.string(),
