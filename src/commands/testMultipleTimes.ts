@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { TestKind } from "../TestExplorer/TestKind";
+import { isDebugging, TestKind } from "../TestExplorer/TestKind";
 import { TestRunner, TestRunnerTestRunState, TestRunState } from "../TestExplorer/TestRunner";
 import { FolderContext } from "../FolderContext";
+import { colorize } from "../utilities/utilities";
 
 /**
  * Runs the supplied TestItem a number of times. The user is prompted with a dialog
@@ -28,6 +29,7 @@ export async function runTestMultipleTimes(
     currentFolder: FolderContext,
     tests: vscode.TestItem[],
     untilFailure: boolean,
+    kind: TestKind,
     count: number | undefined = undefined,
     testRunner?: () => Promise<TestRunState>
 ) {
@@ -50,7 +52,7 @@ export async function runTestMultipleTimes(
     const token = new vscode.CancellationTokenSource();
     const testExplorer = currentFolder.testExplorer;
     const runner = new TestRunner(
-        TestKind.standard,
+        kind,
         new vscode.TestRunRequest(tests),
         currentFolder,
         testExplorer.controller,
@@ -66,11 +68,18 @@ export async function runTestMultipleTimes(
     const runStates: TestRunState[] = [];
     for (let i = 0; i < numExecutions; i++) {
         runner.setIteration(i);
-        runner.testRun.appendOutput(`\x1b[36mBeginning Test Iteration #${i + 1}\x1b[0m\n`);
+        runner.testRun.appendOutput(
+            colorize(`Beginning Test Iteration #${i + 1}`, "cyan") + "\n\r"
+        );
 
-        const runState = await (testRunner !== undefined
-            ? testRunner()
-            : runner.runSession(testRunState));
+        let runState: TestRunState;
+        if (testRunner !== undefined) {
+            runState = await testRunner();
+        } else if (isDebugging(kind)) {
+            runState = await runner.debugSession(testRunState, i === 0);
+        } else {
+            runState = await runner.runSession(testRunState);
+        }
 
         runStates.push(runState);
 

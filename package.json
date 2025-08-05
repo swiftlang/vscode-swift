@@ -278,6 +278,16 @@
         "category": "Swift"
       },
       {
+        "command": "swift.debugTestsMultipleTimes",
+        "title": "Debug Multiple Times...",
+        "category": "Swift"
+      },
+      {
+        "command": "swift.debugTestsUntilFailure",
+        "title": "Debug Until Failure...",
+        "category": "Swift"
+      },
+      {
         "command": "swift.pickProcess",
         "title": "Pick Process...",
         "category": "Swift"
@@ -976,6 +986,16 @@
           "command": "swift.runTestsUntilFailure",
           "group": "testExtras",
           "when": "testId in swift.tests"
+        },
+        {
+          "command": "swift.debugTestsMultipleTimes",
+          "group": "testExtras",
+          "when": "testId in swift.tests"
+        },
+        {
+          "command": "swift.debugTestsUntilFailure",
+          "group": "testExtras",
+          "when": "testId in swift.tests"
         }
       ],
       "testing/item/context": [
@@ -986,6 +1006,16 @@
         },
         {
           "command": "swift.runTestsUntilFailure",
+          "group": "testExtras",
+          "when": "testId in swift.tests"
+        },
+        {
+          "command": "swift.debugTestsMultipleTimes",
+          "group": "testExtras",
+          "when": "testId in swift.tests"
+        },
+        {
+          "command": "swift.debugTestsUntilFailure",
           "group": "testExtras",
           "when": "testId in swift.tests"
         }
@@ -1012,6 +1042,16 @@
         },
         {
           "command": "swift.runTestsUntilFailure",
+          "group": "testExtras",
+          "when": "false"
+        },
+        {
+          "command": "swift.debugTestsMultipleTimes",
+          "group": "testExtras",
+          "when": "false"
+        },
+        {
+          "command": "swift.debugTestsUntilFailure",
           "group": "testExtras",
           "when": "false"
         },
