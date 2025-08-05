@@ -174,7 +174,7 @@ This information includes:
 - Versions of Swift installed on your system
 
 If you allow capturing a Full Diagnostic Bundle, the information will also include:
-- Log message emitted by LLDB DAP
+- Log messages emitted by LLDB DAP
 - Crash logs from SourceKit
 - Log messages emitted by SourceKit
 - If possible, a minimized project that caused SourceKit to crash
