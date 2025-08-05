@@ -336,15 +336,18 @@ export class WorkspaceContext implements vscode.Disposable {
                 await this.addWorkspaceFolder(folder);
             }
         }
+
         // If we don't have a current selected folder Start up language server by firing focus event
-        // on either null folder or the first folder if there is only one
+        // on the first root folder found in the workspace if there is only one.
         if (this.currentFolder === undefined) {
-            if (this.folders.length === 1) {
-                await this.focusFolder(this.folders[0]);
+            const rootFolders = this.folders.filter(folder => folder.isRootFolder);
+            if (rootFolders.length === 1) {
+                await this.focusFolder(rootFolders[0]);
             } else {
                 await this.focusFolder(null);
             }
         }
+
         await this.initialisationComplete();
     }
 
