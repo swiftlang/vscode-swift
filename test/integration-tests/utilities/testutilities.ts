@@ -26,6 +26,7 @@ import { Version } from "../../../src/utilities/version";
 import configuration from "../../../src/configuration";
 import { buildAllTaskName, resetBuildAllTaskCache } from "../../../src/tasks/SwiftTaskProvider";
 import { SwiftLogger } from "../../../src/logging/SwiftLogger";
+import { Extension } from "../../../src/utilities/extensions";
 
 export function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);
@@ -197,7 +198,7 @@ const extensionBootstrapper = (() => {
             // `vscode.extensions.getExtension<Api>("swiftlang.swift-vscode")` once.
             // Subsequent activations must be done through the returned API object.
             if (!activator) {
-                for (const depId of ["vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap"]) {
+                for (const depId of [Extension.CODELLDB, Extension.LLDBDAP]) {
                     const dep = vscode.extensions.getExtension<Api>(depId);
                     if (!dep) {
                         throw new Error(`Unable to find extension "${depId}"`);

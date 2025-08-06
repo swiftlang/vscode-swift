@@ -42,6 +42,7 @@ if (process.platform === "darwin" && process.arch === "x64") {
 }
 
 const installExtensions = [];
+const extensionDependencies = [];
 let vsixPath = process.env["VSCODE_SWIFT_VSIX"];
 let versionStr = version;
 let extensionDevelopmentPath;
@@ -66,6 +67,8 @@ if (vsixPath) {
 
     extensionDevelopmentPath = `${__dirname}/.vscode-test/extensions/${publisher}.${name}-${versionStr}`;
     console.log("Running tests against extension development path " + extensionDevelopmentPath);
+} else {
+    extensionDependencies.push("vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap");
 }
 
 const vscodeVersion = process.env["VSCODE_VERSION"] ?? "stable";
@@ -117,6 +120,7 @@ module.exports = defineConfig({
                     },
                 },
             },
+            installExtensions: extensionDependencies,
             skipExtensionDependencies: installConfigs.length > 0,
             reuseMachineInstall: !isCIBuild,
         },
@@ -152,6 +156,7 @@ module.exports = defineConfig({
                     },
                 },
             },
+            installExtensions: extensionDependencies,
             skipExtensionDependencies: installConfigs.length > 0,
             reuseMachineInstall: !isCIBuild,
         },
