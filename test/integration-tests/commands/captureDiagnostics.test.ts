@@ -26,6 +26,7 @@ import {
     folderInRootWorkspace,
     updateSettings,
 } from "../utilities/testutilities";
+import { Version } from "../../../src/utilities/version";
 
 suite("captureDiagnostics Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -117,14 +118,18 @@ suite("captureDiagnostics Test Suite", () => {
 
             const { files, folder } = await decompressZip(zipPath as string);
 
+            const post60Logs = workspaceContext.globalToolchainSwiftVersion.isGreaterThanOrEqual(
+                new Version(6, 0, 0)
+            )
+                ? ["sourcekit-lsp/", "lldb-dap-session-123456789.log", "LLDB-DAP.log"]
+                : [];
+
             validate(
                 files.map(file => file.path),
                 [
                     "swift-vscode-extension.log",
                     "defaultPackage-[a-z0-9]+-settings.txt",
-                    "lldb-dap-session-123456789.log",
-                    "sourcekit-lsp/",
-                    "LLDB-DAP.log",
+                    ...post60Logs,
                 ],
                 false // Sometime are diagnostics, sometimes not but not point of this test
             );
