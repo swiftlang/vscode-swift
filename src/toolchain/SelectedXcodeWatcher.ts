@@ -12,7 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as fs from "fs/promises";
+// TODO Is no way to read symlink target with the vscode.workspace.fs APIs
+// eslint-disable-next-line no-restricted-imports
+import { readlink } from "fs/promises";
 import * as vscode from "vscode";
 import { showReloadExtensionNotification } from "../ui/ReloadExtension";
 import configuration from "../configuration";
@@ -42,7 +44,7 @@ export class SelectedXcodeWatcher implements vscode.Disposable {
             testDependencies?.xcodeSymlink ||
             (async () => {
                 try {
-                    return await fs.readlink(SelectedXcodeWatcher.XCODE_SYMLINK_LOCATION);
+                    return await readlink(SelectedXcodeWatcher.XCODE_SYMLINK_LOCATION);
                 } catch (e) {
                     return undefined;
                 }

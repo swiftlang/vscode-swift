@@ -14,7 +14,6 @@
 
 import * as archiver from "archiver";
 import * as fs from "fs";
-import * as fsPromises from "fs/promises";
 import * as path from "path";
 import * as vscode from "vscode";
 import { tmpdir } from "os";
@@ -31,7 +30,7 @@ import { DebugAdapter } from "../debugger/debugAdapter";
 export async function captureDiagnostics(
     ctx: WorkspaceContext,
     allowMinimalCapture: boolean = true
-): Promise<string | undefined> {
+): Promise<vscode.Uri | undefined> {
     try {
         const captureMode = await captureDiagnosticsMode(ctx, allowMinimalCapture);
 
@@ -40,16 +39,18 @@ export async function captureDiagnostics(
             return;
         }
 
-        const diagnosticsDir = path.join(
-            tmpdir(),
-            `vscode-diagnostics-${formatDateString(new Date())}`
+        const diagnosticsDir = vscode.Uri.file(
+            path.join(tmpdir(), `vscode-diagnostics-${formatDateString(new Date())}`)
         );
 
-        await fsPromises.mkdir(diagnosticsDir);
+        await vscode.workspace.fs.createDirectory(diagnosticsDir);
 
         const singleFolderWorkspace = ctx.folders.length === 1;
         const zipDir = await createDiagnosticsZipDir();
-        const zipFilePath = path.join(zipDir, `${path.basename(diagnosticsDir)}.zip`);
+        const zipFilePath = vscode.Uri.joinPath(
+            zipDir,
+            `${path.basename(diagnosticsDir.fsPath)}.zip`
+        );
         const { archive, done: archivingDone } = configureZipArchiver(zipFilePath);
 
         const archivedLldbDapLogFolders = new Set<string>();
@@ -58,10 +59,13 @@ export async function captureDiagnostics(
         );
         if (captureMode === "Full" && includeLldbDapLogs) {
             for (const defaultLldbDapLogs of [defaultLldbDapLogFolder(ctx), lldbDapLogFolder()]) {
-                if (!defaultLldbDapLogs || archivedLldbDapLogFolders.has(defaultLldbDapLogs)) {
+                if (
+                    !defaultLldbDapLogs ||
+                    archivedLldbDapLogFolders.has(defaultLldbDapLogs.fsPath)
+                ) {
                     continue;
                 }
-                archivedLldbDapLogFolders.add(defaultLldbDapLogs);
+                archivedLldbDapLogFolders.add(defaultLldbDapLogs.fsPath);
                 await copyLogFolder(ctx, diagnosticsDir, defaultLldbDapLogs);
             }
         }
@@ -71,8 +75,8 @@ export async function captureDiagnostics(
             const guid = Math.random().toString(36).substring(2, 10);
             const outputDir = singleFolderWorkspace
                 ? diagnosticsDir
-                : path.join(diagnosticsDir, baseName);
-            await fsPromises.mkdir(outputDir, { recursive: true });
+                : vscode.Uri.joinPath(diagnosticsDir, baseName);
+            await vscode.workspace.fs.createDirectory(outputDir);
             await writeLogFile(outputDir, `${baseName}-${guid}-settings.txt`, settingsLogs(folder));
 
             if (captureMode === "Full") {
@@ -102,8 +106,8 @@ export async function captureDiagnostics(
                 }
                 // Copy lldb-dap logs
                 const lldbDapLogs = lldbDapLogFolder(folder.workspaceFolder);
-                if (lldbDapLogs && !archivedLldbDapLogFolders.has(lldbDapLogs)) {
-                    archivedLldbDapLogFolders.add(lldbDapLogs);
+                if (lldbDapLogs && !archivedLldbDapLogFolders.has(lldbDapLogs.fsPath)) {
+                    archivedLldbDapLogFolders.add(lldbDapLogs.fsPath);
                     await copyLogFolder(ctx, outputDir, lldbDapLogs);
                 }
             }
@@ -111,15 +115,15 @@ export async function captureDiagnostics(
         // Leave at end in case log above
         await copyLogFile(diagnosticsDir, extensionLogFile(ctx));
 
-        archive.directory(diagnosticsDir, false);
+        archive.directory(diagnosticsDir.fsPath, false);
         void archive.finalize();
         await archivingDone;
 
         // Clean up the diagnostics directory, leaving `zipFilePath` with the zip file.
-        await fsPromises.rm(diagnosticsDir, { recursive: true, force: true });
+        await vscode.workspace.fs.delete(diagnosticsDir, { recursive: true, useTrash: false });
 
         ctx.logger.info(`Saved diagnostics to ${zipFilePath}`);
-        await showCapturedDiagnosticsResults(zipFilePath);
+        await showCapturedDiagnosticsResults(zipFilePath.fsPath);
 
         return zipFilePath;
     } catch (error) {
@@ -127,11 +131,11 @@ export async function captureDiagnostics(
     }
 }
 
-function configureZipArchiver(zipFilePath: string): {
+function configureZipArchiver(zipFilePath: vscode.Uri): {
     archive: archiver.Archiver;
     done: Promise<void>;
 } {
-    const output = fs.createWriteStream(zipFilePath);
+    const output = fs.createWriteStream(zipFilePath.fsPath);
     // Create an archive with max compression
     const archive = archiver.create("zip", {
         zlib: { level: 9 },
@@ -232,26 +236,34 @@ async function showCapturedDiagnosticsResults(diagnosticsPath: string) {
     }
 }
 
-async function writeLogFile(dir: string, name: string, logs: string) {
+async function writeLogFile(dir: vscode.Uri, name: string, logs: string) {
     if (logs.length === 0) {
         return;
     }
-    await fsPromises.writeFile(path.join(dir, name), logs);
+    await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(dir, name), Buffer.from(logs));
 }
 
-async function copyLogFile(dir: string, filePath: string) {
-    await fsPromises.copyFile(filePath, path.join(dir, path.basename(filePath)));
+async function copyLogFile(outputDir: vscode.Uri, file: vscode.Uri) {
+    await vscode.workspace.fs.copy(
+        file,
+        vscode.Uri.joinPath(outputDir, path.basename(file.fsPath))
+    );
 }
 
-async function copyLogFolder(ctx: WorkspaceContext, dir: string, folderPath: string) {
+async function copyLogFolder(
+    ctx: WorkspaceContext,
+    outputDir: vscode.Uri,
+    folderToCopy: vscode.Uri
+) {
     try {
-        const lldbLogFiles = await fsPromises.readdir(folderPath);
+        await vscode.workspace.fs.stat(folderToCopy);
+        const lldbLogFiles = await vscode.workspace.fs.readDirectory(folderToCopy);
         for (const log of lldbLogFiles) {
-            await copyLogFile(dir, path.join(folderPath, log));
+            await copyLogFile(outputDir, vscode.Uri.joinPath(folderToCopy, log[0]));
         }
     } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-            ctx.logger.error(`Failed to read log files from ${folderPath}: ${error}`);
+        if ((error as vscode.FileSystemError).code !== "FileNotFound") {
+            ctx.logger.error(`Failed to read log files from ${folderToCopy}: ${error}`);
         }
     }
 }
@@ -259,22 +271,24 @@ async function copyLogFolder(ctx: WorkspaceContext, dir: string, folderPath: str
 /**
  * Creates a directory for diagnostics zip files, located in the system's temporary directory.
  */
-async function createDiagnosticsZipDir(): Promise<string> {
-    const diagnosticsDir = path.join(tmpdir(), "vscode-diagnostics", formatDateString(new Date()));
-    await fsPromises.mkdir(diagnosticsDir, { recursive: true });
+async function createDiagnosticsZipDir(): Promise<vscode.Uri> {
+    const diagnosticsDir = vscode.Uri.file(
+        path.join(tmpdir(), "vscode-diagnostics", formatDateString(new Date()))
+    );
+    await vscode.workspace.fs.createDirectory(diagnosticsDir);
     return diagnosticsDir;
 }
 
-function extensionLogFile(ctx: WorkspaceContext): string {
-    return ctx.logger.logFilePath;
+function extensionLogFile(ctx: WorkspaceContext): vscode.Uri {
+    return vscode.Uri.file(ctx.logger.logFilePath);
 }
 
-function defaultLldbDapLogFolder(ctx: WorkspaceContext): string {
+function defaultLldbDapLogFolder(ctx: WorkspaceContext): vscode.Uri {
     const rootLogFolder = path.dirname(ctx.loggerFactory.logFolderUri.fsPath);
-    return path.join(rootLogFolder, Extension.LLDBDAP);
+    return vscode.Uri.file(path.join(rootLogFolder, Extension.LLDBDAP));
 }
 
-function lldbDapLogFolder(workspaceFolder?: vscode.WorkspaceFolder): string | undefined {
+function lldbDapLogFolder(workspaceFolder?: vscode.WorkspaceFolder): vscode.Uri | undefined {
     const config = vscode.workspace.workspaceFile
         ? vscode.workspace.getConfiguration("lldb-dap")
         : vscode.workspace.getConfiguration("lldb-dap", workspaceFolder);
@@ -291,7 +305,7 @@ function lldbDapLogFolder(workspaceFolder?: vscode.WorkspaceFolder): string | un
             logFolder = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, logFolder);
         }
     }
-    return logFolder;
+    return vscode.Uri.file(logFolder);
 }
 
 function settingsLogs(ctx: FolderContext): string {
@@ -312,14 +326,15 @@ function diagnosticLogs(): string {
         .join("\n");
 }
 
-function sourceKitLogFile(folder: FolderContext) {
+function sourceKitLogFile(folder: FolderContext): vscode.Uri | undefined {
     const languageClient = folder.workspaceContext.languageClientManager.get(folder);
-    return languageClient.languageClientOutputChannel?.logFilePath;
+    const logPath = languageClient.languageClientOutputChannel?.logFilePath;
+    return logPath ? vscode.Uri.file(logPath) : undefined;
 }
 
-async function sourcekitDiagnose(ctx: FolderContext, dir: string) {
-    const sourcekitDiagnosticDir = path.join(dir, "sourcekit-lsp");
-    await fsPromises.mkdir(sourcekitDiagnosticDir);
+async function sourcekitDiagnose(ctx: FolderContext, dir: vscode.Uri) {
+    const sourcekitDiagnosticDir = vscode.Uri.joinPath(dir, "sourcekit-lsp");
+    await vscode.workspace.fs.createDirectory(sourcekitDiagnosticDir);
 
     const toolchainSourceKitLSP = ctx.toolchain.getToolchainExecutable("sourcekit-lsp");
     const lspConfig = configuration.lsp;
@@ -341,7 +356,7 @@ async function sourcekitDiagnose(ctx: FolderContext, dir: string) {
                 [
                     "diagnose",
                     "--bundle-output-path",
-                    sourcekitDiagnosticDir,
+                    sourcekitDiagnosticDir.fsPath,
                     "--toolchain",
                     ctx.toolchain.toolchainPath,
                 ],

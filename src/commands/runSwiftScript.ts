@@ -14,7 +14,6 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
-import * as fs from "fs/promises";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { Version } from "../utilities/version";
@@ -69,13 +68,15 @@ export async function runSwiftScript(ctx: WorkspaceContext) {
     }
 
     let filename = document.fileName;
+    let file = document.uri;
     let isTempFile = false;
     if (document.isUntitled) {
         // if document hasn't been saved, save it to a temporary file
         isTempFile = true;
         filename = ctx.tempFolder.filename(document.fileName, "swift");
+        file = vscode.Uri.file(filename);
         const text = document.getText();
-        await fs.writeFile(filename, text);
+        await vscode.workspace.fs.writeFile(file, Buffer.from(text));
     } else {
         // otherwise save document
         await document.save();
@@ -94,6 +95,6 @@ export async function runSwiftScript(ctx: WorkspaceContext) {
 
     // delete file after running swift
     if (isTempFile) {
-        await fs.rm(filename);
+        await vscode.workspace.fs.delete(file);
     }
 }

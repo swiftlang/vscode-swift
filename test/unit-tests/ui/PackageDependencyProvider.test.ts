@@ -15,9 +15,8 @@
 import { expect } from "chai";
 import * as path from "path";
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
 import { FileNode, PackageNode } from "../../../src/ui/ProjectPanelProvider";
-import { mockGlobalModule } from "../../MockUtils";
+import { mockFn, mockGlobalValue, mockObject } from "../../MockUtils";
 
 suite("PackageDependencyProvider Unit Test Suite", function () {
     suite("FileNode", () => {
@@ -66,7 +65,12 @@ suite("PackageDependencyProvider Unit Test Suite", function () {
             expect(item.command).to.be.undefined;
         });
 
-        const fsMock = mockGlobalModule(fs);
+        const wsMock = mockGlobalValue(vscode.workspace, "fs");
+        const fsMock = mockObject<vscode.FileSystem>({ readDirectory: mockFn(), stat: mockFn() });
+
+        setup(() => {
+            wsMock.setValue(fsMock);
+        });
 
         test("enumerates child dependencies and files", async () => {
             fsMock.stat.resolves({ isFile: () => true, isDirectory: () => false } as any);

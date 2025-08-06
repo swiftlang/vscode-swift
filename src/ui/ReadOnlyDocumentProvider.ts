@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
 
 /**
  * Registers a {@link vscode.TextDocumentContentProvider TextDocumentContentProvider} that will display
@@ -23,8 +22,8 @@ export function getReadOnlyDocumentProvider(): vscode.Disposable {
     const provider = vscode.workspace.registerTextDocumentContentProvider("readonly", {
         provideTextDocumentContent: async uri => {
             try {
-                const contents = await fs.readFile(uri.fsPath, "utf8");
-                return contents;
+                const contents = Buffer.from(await vscode.workspace.fs.readFile(uri));
+                return contents.toString("utf-8");
             } catch (error) {
                 return `Failed to load swiftinterface ${uri.path}`;
             }

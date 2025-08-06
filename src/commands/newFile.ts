@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as fs from "fs/promises";
 import * as path from "path";
 import * as vscode from "vscode";
 
@@ -39,7 +38,7 @@ export async function newSwiftFile(
         }
 
         try {
-            await fs.writeFile(targetUri.fsPath, "", "utf-8");
+            await vscode.workspace.fs.writeFile(targetUri, Buffer.from(""));
             const document = await vscode.workspace.openTextDocument(targetUri);
             await vscode.languages.setTextDocumentLanguage(document, "swift");
             await vscode.window.showTextDocument(document);

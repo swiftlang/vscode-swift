@@ -13,8 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
-import * as path from "path";
 import { expect } from "chai";
 import { testAssetUri } from "../../fixtures";
 import { FolderContext } from "../../../src/FolderContext";
@@ -93,13 +91,13 @@ suite("Build Commands @slow", function () {
         let result = await vscode.commands.executeCommand(Commands.RUN, "PackageExe");
         expect(result).to.be.true;
 
-        const buildPath = path.join(folderContext.folder.fsPath, ".build");
-        const beforeItemCount = (await fs.readdir(buildPath)).length;
+        const buildPath = vscode.Uri.joinPath(folderContext.folder, ".build");
+        const beforeItemCount = (await vscode.workspace.fs.readDirectory(buildPath)).length;
 
         result = await vscode.commands.executeCommand(Commands.CLEAN_BUILD);
         expect(result).to.be.true;
 
-        const afterItemCount = (await fs.readdir(buildPath)).length;
+        const afterItemCount = (await vscode.workspace.fs.readDirectory(buildPath)).length;
         // .build folder is going to be filled with built artifacts after Commands.RUN command
         // After executing the clean command the build directory is guranteed to have less entry.
         expect(afterItemCount).to.be.lessThan(beforeItemCount);

@@ -16,7 +16,6 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as stream from "stream";
 import * as os from "os";
-import * as asyncfs from "fs/promises";
 import { FolderContext } from "../FolderContext";
 import { compactMap, execFile, getErrorDescription } from "../utilities/utilities";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
@@ -695,7 +694,7 @@ export class TestRunner {
                 );
                 const swiftTestingArgs = SwiftTestingBuildAguments.build(
                     fifoPipePath,
-                    attachmentFolder
+                    attachmentFolder?.fsPath
                 );
                 const testBuildConfig = await TestingConfigurationFactory.swiftTestingConfig(
                     this.folderContext,
@@ -919,11 +918,17 @@ export class TestRunner {
                 }
             }
 
-            const buffer = await asyncfs.readFile(filename, "utf8");
+            const buffer = Buffer.from(
+                await vscode.workspace.fs.readFile(vscode.Uri.file(filename))
+            );
             const xUnitParser = new TestXUnitParser(
                 this.folderContext.toolchain.hasMultiLineParallelTestOutput
             );
-            const results = await xUnitParser.parse(buffer, runState, this.workspaceContext.logger);
+            const results = await xUnitParser.parse(
+                buffer.toString("utf-8"),
+                runState,
+                this.workspaceContext.logger
+            );
             if (results) {
                 this.testRun.appendOutput(
                     `\r\nExecuted ${results.tests} tests, with ${results.failures} failures and ${results.errors} errors.\r\n`
@@ -978,7 +983,7 @@ export class TestRunner {
                 );
                 const swiftTestingArgs = SwiftTestingBuildAguments.build(
                     fifoPipePath,
-                    attachmentFolder
+                    attachmentFolder?.fsPath
                 );
 
                 const swiftTestBuildConfig = await TestingConfigurationFactory.swiftTestingConfig(
