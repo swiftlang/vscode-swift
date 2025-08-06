@@ -147,18 +147,28 @@ suite("captureDiagnostics Test Suite", () => {
                 expect(zipPath).to.not.be.undefined;
 
                 const { files, folder } = await decompressZip(zipPath as string);
+
+                const post60Logs =
+                    workspaceContext.globalToolchainSwiftVersion.isGreaterThanOrEqual(
+                        new Version(6, 0, 0)
+                    )
+                        ? [
+                              "dependencies/sourcekit-lsp/",
+                              "LLDB-DAP.log",
+                              "lldb-dap-session-123456789.log",
+                              "defaultPackage/sourcekit-lsp/",
+                          ]
+                        : [];
+
                 validate(
                     files.map(file => file.path),
                     [
                         "swift-vscode-extension.log",
                         "defaultPackage/",
                         "defaultPackage/defaultPackage-[a-z0-9]+-settings.txt",
-                        "defaultPackage/sourcekit-lsp/",
                         "dependencies/",
                         "dependencies/dependencies-[a-z0-9]+-settings.txt",
-                        "dependencies/sourcekit-lsp/",
-                        "LLDB-DAP.log",
-                        "lldb-dap-session-123456789.log",
+                        ...post60Logs,
                     ],
                     false // Sometime are diagnostics, sometimes not but not point of this test
                 );
