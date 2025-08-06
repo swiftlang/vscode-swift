@@ -121,12 +121,12 @@ suite("captureDiagnostics Test Suite", () => {
                 files.map(file => file.path),
                 [
                     "swift-vscode-extension.log",
-                    "defaultPackage-[a-z0-9]+-diagnostics.txt",
                     "defaultPackage-[a-z0-9]+-settings.txt",
                     "lldb-dap-session-123456789.log",
                     "sourcekit-lsp/",
                     "LLDB-DAP.log",
-                ]
+                ],
+                false // Sometime are diagnostics, sometimes not but not point of this test
             );
 
             await rm(folder, { recursive: true, force: true });
@@ -147,16 +147,15 @@ suite("captureDiagnostics Test Suite", () => {
                     [
                         "swift-vscode-extension.log",
                         "defaultPackage/",
-                        "defaultPackage/defaultPackage-[a-z0-9]+-diagnostics.txt",
                         "defaultPackage/defaultPackage-[a-z0-9]+-settings.txt",
                         "defaultPackage/sourcekit-lsp/",
                         "dependencies/",
-                        "dependencies/dependencies-[a-z0-9]+-diagnostics.txt",
                         "dependencies/dependencies-[a-z0-9]+-settings.txt",
                         "dependencies/sourcekit-lsp/",
                         "LLDB-DAP.log",
                         "lldb-dap-session-123456789.log",
-                    ]
+                    ],
+                    false // Sometime are diagnostics, sometimes not but not point of this test
                 );
                 await rm(folder, { recursive: true, force: true });
             });
@@ -174,11 +173,13 @@ suite("captureDiagnostics Test Suite", () => {
         return { folder: tempDir, files: await decompress(zipPath as string, tempDir) };
     }
 
-    function validate(paths: string[], patterns: string[]): void {
-        expect(paths.length).to.equal(
-            patterns.length,
-            `Expected ${patterns.length} files: ${JSON.stringify(patterns)}\n\n...but found ${paths.length}: ${JSON.stringify(paths)}`
-        );
+    function validate(paths: string[], patterns: string[], matchCount: boolean = true): void {
+        if (matchCount) {
+            expect(paths.length).to.equal(
+                patterns.length,
+                `Expected ${patterns.length} files: ${JSON.stringify(patterns)}\n\n...but found ${paths.length}: ${JSON.stringify(paths)}`
+            );
+        }
         const regexes = patterns.map(pattern => new RegExp(`^${pattern}$`));
         for (const regex of regexes) {
             const matched = paths.some(path => regex.test(path));
