@@ -15,7 +15,6 @@
 import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
 import { BuildFlags } from "../toolchain/BuildFlags";
@@ -109,9 +108,9 @@ export class SwiftTestingBuildAguments {
 
     public static build(
         fifoPipePath: string,
-        attachmentPath: string | undefined
+        attachmentFolder: string | undefined
     ): SwiftTestingBuildAguments {
-        return new SwiftTestingBuildAguments(fifoPipePath, attachmentPath);
+        return new SwiftTestingBuildAguments(fifoPipePath, attachmentFolder);
     }
 }
 
@@ -119,19 +118,19 @@ export class SwiftTestingConfigurationSetup {
     public static async setupAttachmentFolder(
         folderContext: FolderContext,
         testRunTime: number
-    ): Promise<string | undefined> {
-        const attachmentPath = SwiftTestingConfigurationSetup.resolveAttachmentPath(
+    ): Promise<vscode.Uri | undefined> {
+        const attachmentFile = SwiftTestingConfigurationSetup.resolveAttachmentFile(
             folderContext,
             testRunTime
         );
-        if (attachmentPath) {
+        if (attachmentFile) {
             // Create the directory if it doesn't exist.
-            await fs.mkdir(attachmentPath, { recursive: true });
+            await vscode.workspace.fs.createDirectory(attachmentFile);
 
-            return attachmentPath;
+            return attachmentFile;
         }
 
-        return attachmentPath;
+        return attachmentFile;
     }
 
     public static async cleanupAttachmentFolder(
@@ -139,30 +138,34 @@ export class SwiftTestingConfigurationSetup {
         testRunTime: number,
         logger: SwiftLogger
     ): Promise<void> {
-        const attachmentPath = SwiftTestingConfigurationSetup.resolveAttachmentPath(
+        const attachmentFile = SwiftTestingConfigurationSetup.resolveAttachmentFile(
             folderContext,
             testRunTime
         );
 
-        if (attachmentPath) {
+        if (attachmentFile) {
             try {
+                // readDirectory always prints ugly error if not exists
+                await vscode.workspace.fs.stat(attachmentFile);
                 // If no attachments were written during the test run clean up the folder
                 // that was created to contain them to prevent accumulation of empty folders
                 // after every run.
-                const files = await fs.readdir(attachmentPath);
+                const files = await vscode.workspace.fs.readDirectory(attachmentFile);
                 if (files.length === 0) {
-                    await fs.rmdir(attachmentPath);
+                    await vscode.workspace.fs.delete(attachmentFile);
                 }
             } catch (error) {
-                logger.error(`Failed to clean up attachment path: ${error}`);
+                if ((error as vscode.FileSystemError).code !== "FileNotFound") {
+                    logger.error(`Failed to clean up attachment path: ${error}`);
+                }
             }
         }
     }
 
-    private static resolveAttachmentPath(
+    private static resolveAttachmentFile(
         folderContext: FolderContext,
         testRunTime: number
-    ): string | undefined {
+    ): vscode.Uri | undefined {
         let attachmentPath = configuration.folder(folderContext.workspaceFolder).attachmentsPath;
         if (attachmentPath.length > 0) {
             // If the attachment path is relative, resolve it relative to the workspace folder.
@@ -171,7 +174,7 @@ export class SwiftTestingConfigurationSetup {
             }
 
             const dateString = this.dateString(testRunTime);
-            return path.join(attachmentPath, dateString);
+            return vscode.Uri.file(path.join(attachmentPath, dateString));
         }
         return undefined;
     }

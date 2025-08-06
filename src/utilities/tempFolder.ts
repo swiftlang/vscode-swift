@@ -14,9 +14,8 @@
 
 import { tmpdir } from "os";
 import * as path from "path";
-import * as fs from "fs/promises";
 import { randomString } from "./utilities";
-import { Disposable } from "vscode";
+import { Disposable, Uri, workspace } from "vscode";
 
 export class TemporaryFolder {
     private constructor(public path: string) {}
@@ -64,7 +63,7 @@ export class TemporaryFolder {
     static async create(): Promise<TemporaryFolder> {
         const tmpPath = path.join(tmpdir(), "vscode-swift");
         try {
-            await fs.mkdir(tmpPath);
+            await workspace.fs.createDirectory(Uri.file(tmpPath));
         } catch {
             // ignore error. It is most likely directory exists already
         }
@@ -101,12 +100,12 @@ export class TemporaryFolder {
         try {
             const rt = await process();
             for (const path of paths) {
-                await fs.rm(path, { force: true });
+                await workspace.fs.delete(Uri.file(path), { recursive: true });
             }
             return rt;
         } catch (error) {
             for (const path of paths) {
-                await fs.rm(path, { force: true });
+                await workspace.fs.delete(Uri.file(path), { recursive: true });
             }
             throw error;
         }
@@ -126,7 +125,7 @@ export class DisposableFileCollection implements Disposable {
 
     async dispose() {
         for (const file of this.files) {
-            await fs.rm(file, { force: true });
+            await workspace.fs.delete(Uri.file(file), { recursive: true });
         }
         this.files = [];
     }

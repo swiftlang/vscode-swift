@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
 import * as path from "path";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
@@ -25,6 +24,8 @@ import { getPlatformConfig, resolveTaskCwd } from "../utilities/tasks";
 import { SwiftTask, TaskPlatformSpecificConfig } from "../tasks/SwiftTaskProvider";
 import { convertPathToPattern, glob } from "fast-glob";
 import { Version } from "../utilities/version";
+// No synchronous APIs in vscode.workspace.fs
+// eslint-disable-next-line no-restricted-imports
 import { existsSync } from "fs";
 
 const LOADING_ICON = "loading~spin";
@@ -76,9 +77,15 @@ async function getChildren(
           });
     const results: FileNode[] = [];
     for (const filePath of contents) {
-        const stats = await fs.stat(filePath);
+        const stats = await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
         results.push(
-            new FileNode(path.basename(filePath), filePath, stats.isDirectory(), parentId, mockFs)
+            new FileNode(
+                path.basename(filePath),
+                filePath,
+                stats.type === vscode.FileType.Directory,
+                parentId,
+                mockFs
+            )
         );
     }
     return results.sort((first, second) => {

@@ -12,7 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as fs from "fs/promises";
+// TODO cannot work with symlinks using vscode.workspace.fs APIs
+// eslint-disable-next-line no-restricted-imports
+import { symlink, unlink } from "fs/promises";
 import { TemporaryFolder } from "../utilities/tempFolder";
 import configuration from "../configuration";
 import * as vscode from "vscode";
@@ -58,8 +60,8 @@ export async function isSymlinkAllowed(logger?: SwiftLogger): Promise<boolean> {
     return await temporaryFolder.withTemporaryFile("", async testFilePath => {
         const testSymlinkPath = temporaryFolder.filename("symlink-");
         try {
-            await fs.symlink(testFilePath, testSymlinkPath, "file");
-            await fs.unlink(testSymlinkPath);
+            await symlink(testFilePath, testSymlinkPath, "file");
+            await unlink(testSymlinkPath);
             return true;
         } catch (error) {
             logger?.error(error);

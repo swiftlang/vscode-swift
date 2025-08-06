@@ -14,7 +14,6 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
-import * as fs from "fs/promises";
 import configuration from "../configuration";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import { TemporaryFolder } from "../utilities/tempFolder";
@@ -104,7 +103,10 @@ async function withDocumentFile(
     if (document.isUntitled) {
         const tmpFolder = await TemporaryFolder.create();
         await tmpFolder.withTemporaryFile("swift", async filename => {
-            await fs.writeFile(filename, document.getText());
+            await vscode.workspace.fs.writeFile(
+                vscode.Uri.file(filename),
+                Buffer.from(document.getText())
+            );
             await callback(filename);
         });
     } else {

@@ -15,7 +15,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as os from "os";
-import { mkdir, rm } from "fs/promises";
 import * as decompress from "decompress";
 import { expect } from "chai";
 import { captureDiagnostics } from "../../../src/commands/captureDiagnostics";
@@ -27,6 +26,7 @@ import {
     updateSettings,
 } from "../utilities/testutilities";
 import { Version } from "../../../src/utilities/version";
+import * as assert from "assert";
 
 suite("captureDiagnostics Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -45,22 +45,22 @@ suite("captureDiagnostics Test Suite", () => {
         });
 
         test("Should capture dianostics to a zip file", async () => {
-            const zipPath = await captureDiagnostics(workspaceContext);
-            expect(zipPath).to.not.be.undefined;
+            const zipFile = await captureDiagnostics(workspaceContext);
+            expect(zipFile).to.not.be.undefined;
         });
 
         test("Should validate a single folder project zip file has contents", async () => {
-            const zipPath = await captureDiagnostics(workspaceContext);
-            expect(zipPath).to.not.be.undefined;
+            const zipFile = await captureDiagnostics(workspaceContext);
+            assert(zipFile);
 
-            const { files, folder } = await decompressZip(zipPath as string);
+            const { files, folder } = await decompressZip(zipFile);
 
             validate(
                 files.map(file => file.path),
                 ["swift-vscode-extension.log", "defaultPackage-[a-z0-9]+-settings.txt"]
             );
 
-            await rm(folder, { recursive: true, force: true });
+            await vscode.workspace.fs.delete(folder, { recursive: true });
         });
 
         suite("Multiple folder project", () => {
@@ -69,10 +69,10 @@ suite("captureDiagnostics Test Suite", () => {
             });
 
             test("Should validate a multiple folder project zip file has contents", async () => {
-                const zipPath = await captureDiagnostics(workspaceContext);
-                expect(zipPath).to.not.be.undefined;
+                const zipFile = await captureDiagnostics(workspaceContext);
+                assert(zipFile);
 
-                const { files, folder } = await decompressZip(zipPath as string);
+                const { files, folder } = await decompressZip(zipFile);
                 validate(
                     files.map(file => file.path),
                     [
@@ -83,7 +83,7 @@ suite("captureDiagnostics Test Suite", () => {
                         "dependencies/dependencies-[a-z0-9]+-settings.txt",
                     ]
                 );
-                await rm(folder, { recursive: true, force: true });
+                await vscode.workspace.fs.delete(folder, { recursive: true });
             });
         });
     });
@@ -113,10 +113,10 @@ suite("captureDiagnostics Test Suite", () => {
         });
 
         test("Should validate a single folder project zip file has contents", async () => {
-            const zipPath = await captureDiagnostics(workspaceContext, false);
-            expect(zipPath).to.not.be.undefined;
+            const zipFile = await captureDiagnostics(workspaceContext, false);
+            assert(zipFile);
 
-            const { files, folder } = await decompressZip(zipPath as string);
+            const { files, folder } = await decompressZip(zipFile);
 
             const post60Logs = workspaceContext.globalToolchainSwiftVersion.isGreaterThanOrEqual(
                 new Version(6, 0, 0)
@@ -134,7 +134,7 @@ suite("captureDiagnostics Test Suite", () => {
                 false // Sometime are diagnostics, sometimes not but not point of this test
             );
 
-            await rm(folder, { recursive: true, force: true });
+            await vscode.workspace.fs.delete(folder, { recursive: true });
         });
 
         suite("Multiple folder project", () => {
@@ -143,10 +143,8 @@ suite("captureDiagnostics Test Suite", () => {
             });
 
             test("Should validate a multiple folder project zip file has contents", async () => {
-                const zipPath = await captureDiagnostics(workspaceContext, false);
-                expect(zipPath).to.not.be.undefined;
-
-                const { files, folder } = await decompressZip(zipPath as string);
+                const zipFile = await captureDiagnostics(workspaceContext, false);
+                assert(zipFile);
 
                 const post60Logs =
                     workspaceContext.globalToolchainSwiftVersion.isGreaterThanOrEqual(
@@ -160,6 +158,7 @@ suite("captureDiagnostics Test Suite", () => {
                           ]
                         : [];
 
+                const { files, folder } = await decompressZip(zipFile);
                 validate(
                     files.map(file => file.path),
                     [
@@ -172,20 +171,19 @@ suite("captureDiagnostics Test Suite", () => {
                     ],
                     false // Sometime are diagnostics, sometimes not but not point of this test
                 );
-                await rm(folder, { recursive: true, force: true });
+                await vscode.workspace.fs.delete(folder, { recursive: true });
             });
         });
     });
 
     async function decompressZip(
-        zipPath: string
-    ): Promise<{ folder: string; files: decompress.File[] }> {
-        const tempDir = path.join(
-            os.tmpdir(),
-            `vscode-swift-test-${Math.random().toString(36).substring(7)}`
+        zipFile: vscode.Uri
+    ): Promise<{ folder: vscode.Uri; files: decompress.File[] }> {
+        const tempDir = vscode.Uri.file(
+            path.join(os.tmpdir(), `vscode-swift-test-${Math.random().toString(36).substring(7)}`)
         );
-        await mkdir(tempDir, { recursive: true });
-        return { folder: tempDir, files: await decompress(zipPath as string, tempDir) };
+        await vscode.workspace.fs.createDirectory(tempDir);
+        return { folder: tempDir, files: await decompress(zipFile.fsPath, tempDir.fsPath) };
     }
 
     function validate(paths: string[], patterns: string[], matchCount: boolean = true): void {
