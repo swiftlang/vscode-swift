@@ -8,3 +8,7 @@ You may be prompted to select where to configure this new path. Your options are
 Keep in mind that Workspace Settings take precedence over `User Settings`.
 
 The Swift extension will then prompt you to reload the extension in order to pick up the new toolchain. The extension will not use the new toolchain until the extension is restarted.
+
+Tip: You can view more information about the toolchain and other configurations being used for the project by hovering over the `{}` icon in the bottom right corner of the status bar.
+
+![Hover over {} to see toolchain info](./images/toolchainInfo.png)

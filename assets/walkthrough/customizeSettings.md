@@ -4,7 +4,7 @@
 
 The Swift Extension contains several settings you can customize. You can filter settings Swift extension settings by searching for `@ext:swiftlang.swift-vscode`.
 
-## Inlay Hints
+## Language Settings
 
 Some language settings such as those for inlay hints for inferred variable types are turned on by default in VS Code.
 
