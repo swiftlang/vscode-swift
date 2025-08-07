@@ -121,9 +121,9 @@ Mocking file system access can be a challenging endeavor that is prone to fail w
 The [`mock-fs`](https://github.com/tschaub/mock-fs) module is a well-maintained library that can be used to mitigate these issues by temporarily replacing Node's built-in `fs` module with an in-memory file system. This can be useful for testing logic that uses the `fs` module without actually reaching out to the file system. Just a single function call can be used to configure what the fake file system will contain:
 
 ```typescript
-import * as chai from "chai";
+import { expect } from "chai";
 import * as mockFS from "mock-fs";
-import * as fs from "fs/promises";
+import * as vscode from "vscode";
 
 suite("mock-fs example", () => {
     // This teardown step is also important to make sure your tests clean up the
@@ -137,8 +137,9 @@ suite("mock-fs example", () => {
         mockFS({
             "/path/to/some/file": "Some really cool file contents",
         });
-        await expect(fs.readFile("/path/to/some/file", "utf-8"))
-            .to.eventually.equal("Some really cool file contents");
+        const uri = vscode.Uri.file("/path/to/some/file");
+        expect(Buffer.from(await vscode.workspace.fs.readFile(uri)).toString("utf-8"))
+            .to.equal("Some really cool file contents");
     });
 });
 ```
@@ -148,7 +149,8 @@ In order to test failure paths, you can either create an empty file system or us
 ```typescript
 test("file is not readable by the current user", async () => {
     mockFS({ "/path/to/file": mockFS.file({ mode: 0o000 }) });
-    await expect(fs.readFile("/path/to/file", "utf-8")).to.eventually.be.rejected;
+    const uri = vscode.Uri.file("/path/to/file");
+    await expect(vscode.workspace.fs.readFile(uri)).to.eventually.be.rejected;
 });
 ```
 
