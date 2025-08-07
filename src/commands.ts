@@ -91,6 +91,8 @@ export enum Commands {
     UPDATE_DEPENDENCIES = "swift.updateDependencies",
     RUN_TESTS_MULTIPLE_TIMES = "swift.runTestsMultipleTimes",
     RUN_TESTS_UNTIL_FAILURE = "swift.runTestsUntilFailure",
+    DEBUG_TESTS_MULTIPLE_TIMES = "swift.debugTestsMultipleTimes",
+    DEBUG_TESTS_UNTIL_FAILURE = "swift.debugTestsUntilFailure",
     RESET_PACKAGE = "swift.resetPackage",
     USE_LOCAL_DEPENDENCY = "swift.useLocalDependency",
     UNEDIT_DEPENDENCY = "swift.uneditDependency",
@@ -144,7 +146,13 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             async (...args: (vscode.TestItem | number)[]) => {
                 const { testItems, count } = extractTestItemsAndCount(...args);
                 if (ctx.currentFolder) {
-                    return await runTestMultipleTimes(ctx.currentFolder, testItems, false, count);
+                    return await runTestMultipleTimes(
+                        ctx.currentFolder,
+                        testItems,
+                        false,
+                        TestKind.standard,
+                        count
+                    );
                 }
             }
         ),
@@ -153,7 +161,44 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             async (...args: (vscode.TestItem | number)[]) => {
                 const { testItems, count } = extractTestItemsAndCount(...args);
                 if (ctx.currentFolder) {
-                    return await runTestMultipleTimes(ctx.currentFolder, testItems, true, count);
+                    return await runTestMultipleTimes(
+                        ctx.currentFolder,
+                        testItems,
+                        true,
+                        TestKind.standard,
+                        count
+                    );
+                }
+            }
+        ),
+
+        vscode.commands.registerCommand(
+            Commands.DEBUG_TESTS_MULTIPLE_TIMES,
+            async (...args: (vscode.TestItem | number)[]) => {
+                const { testItems, count } = extractTestItemsAndCount(...args);
+                if (ctx.currentFolder) {
+                    return await runTestMultipleTimes(
+                        ctx.currentFolder,
+                        testItems,
+                        false,
+                        TestKind.debug,
+                        count
+                    );
+                }
+            }
+        ),
+        vscode.commands.registerCommand(
+            Commands.DEBUG_TESTS_UNTIL_FAILURE,
+            async (...args: (vscode.TestItem | number)[]) => {
+                const { testItems, count } = extractTestItemsAndCount(...args);
+                if (ctx.currentFolder) {
+                    return await runTestMultipleTimes(
+                        ctx.currentFolder,
+                        testItems,
+                        true,
+                        TestKind.debug,
+                        count
+                    );
                 }
             }
         ),

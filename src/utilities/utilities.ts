@@ -154,6 +154,29 @@ export async function execFile(
     });
 }
 
+enum Color {
+    red = 31,
+    green = 32,
+    yellow = 33,
+    blue = 34,
+    magenta = 35,
+    cyan = 36,
+    white = 37,
+    grey = 90,
+    lightRed = 91,
+    lightGreen = 92,
+    lightYellow = 93,
+    lightBlue = 94,
+}
+
+export function colorize(text: string, color: keyof typeof Color): string {
+    const colorCode = Color[color];
+    if (colorCode !== undefined) {
+        return `\x1b[${colorCode}m${text}\x1b[0m`;
+    }
+    return text;
+}
+
 export async function execFileStreamOutput(
     executable: string,
     args: string[],

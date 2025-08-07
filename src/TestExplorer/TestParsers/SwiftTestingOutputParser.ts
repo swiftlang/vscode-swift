@@ -22,7 +22,7 @@ import {
 } from "./TestEventStreamReader";
 import { ITestRunState } from "./TestRunState";
 import { TestClass } from "../TestDiscovery";
-import { sourceLocationToVSCodeLocation } from "../../utilities/utilities";
+import { colorize, sourceLocationToVSCodeLocation } from "../../utilities/utilities";
 import { exec } from "child_process";
 import { lineBreakRegex } from "../../utilities/tasks";
 
@@ -649,15 +649,15 @@ export class SymbolRenderer {
             case TestSymbol.skip:
             case TestSymbol.difference:
             case TestSymbol.passWithKnownIssue:
-                return `${SymbolRenderer.ansiEscapeCodePrefix}90m${symbol}${SymbolRenderer.resetANSIEscapeCode}`;
+                return colorize(symbol, "grey");
             case TestSymbol.pass:
-                return `${SymbolRenderer.ansiEscapeCodePrefix}92m${symbol}${SymbolRenderer.resetANSIEscapeCode}`;
+                return colorize(symbol, "lightGreen");
             case TestSymbol.fail:
-                return `${SymbolRenderer.ansiEscapeCodePrefix}91m${symbol}${SymbolRenderer.resetANSIEscapeCode}`;
+                return colorize(symbol, "lightRed");
             case TestSymbol.warning:
-                return `${SymbolRenderer.ansiEscapeCodePrefix}93m${symbol}${SymbolRenderer.resetANSIEscapeCode}`;
+                return colorize(symbol, "lightYellow");
             case TestSymbol.attachment:
-                return `${SymbolRenderer.ansiEscapeCodePrefix}94m${symbol}${SymbolRenderer.resetANSIEscapeCode}`;
+                return colorize(symbol, "lightBlue");
             case TestSymbol.none:
             default:
                 return symbol;

@@ -337,6 +337,9 @@ export class TestRunProxy {
     public setIteration(iteration: number) {
         this.runState = TestRunProxy.initialTestRunState();
         this.iteration = iteration;
+        if (this.testRun) {
+            this.performAppendOutput(this.testRun, "\n\r");
+        }
     }
 
     public appendOutput(output: string) {
@@ -933,29 +936,34 @@ export class TestRunner {
     }
 
     /** Run test session inside debugger */
-    async debugSession(runState: TestRunnerTestRunState) {
-        // Perform a build all first to produce the binaries we'll run later.
-        let buildOutput = "";
-        try {
-            await this.runStandardSession(
-                // Capture the output to print it in case of a build error.
-                // We dont want to associate it with the test run.
-                new stream.Writable({
-                    write: (chunk, _encoding, next) => {
-                        buildOutput += chunk.toString();
-                        next();
-                    },
-                }),
-                await BuildConfigurationFactory.buildAll(
-                    this.folderContext,
-                    true,
-                    isRelease(this.testKind)
-                ),
-                this.testKind
-            );
-        } catch (buildExitCode) {
-            runState.recordOutput(undefined, buildOutput);
-            throw new Error(`Build failed with exit code ${buildExitCode}`);
+    async debugSession(
+        runState: TestRunnerTestRunState,
+        performBuild: boolean = true
+    ): Promise<TestRunState> {
+        if (performBuild) {
+            // Perform a build all first to produce the binaries we'll run later.
+            let buildOutput = "";
+            try {
+                await this.runStandardSession(
+                    // Capture the output to print it in case of a build error.
+                    // We dont want to associate it with the test run.
+                    new stream.Writable({
+                        write: (chunk, _encoding, next) => {
+                            buildOutput += chunk.toString();
+                            next();
+                        },
+                    }),
+                    await BuildConfigurationFactory.buildAll(
+                        this.folderContext,
+                        true,
+                        isRelease(this.testKind)
+                    ),
+                    this.testKind
+                );
+            } catch (buildExitCode) {
+                runState.recordOutput(undefined, buildOutput);
+                throw new Error(`Build failed with exit code ${buildExitCode}`);
+            }
         }
 
         const testRunTime = Date.now();
@@ -1136,6 +1144,8 @@ export class TestRunner {
                 this.workspaceContext.logger
             );
         });
+
+        return this.testRun.runState;
     }
 
     /** Returns a callback that handles a chunk of stdout output from a test run. */

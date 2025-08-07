@@ -18,6 +18,7 @@ import { runTestMultipleTimes } from "../../../src/commands/testMultipleTimes";
 import { FolderContext } from "../../../src/FolderContext";
 import { TestRunProxy } from "../../../src/TestExplorer/TestRunner";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
+import { TestKind } from "../../../src/TestExplorer/TestKind";
 
 suite("Test Multiple Times Command Test Suite", () => {
     let folderContext: FolderContext;
@@ -39,13 +40,24 @@ suite("Test Multiple Times Command Test Suite", () => {
     });
 
     test("Runs successfully after testing 0 times", async () => {
-        const runState = await runTestMultipleTimes(folderContext, [testItem], false, 0);
+        const runState = await runTestMultipleTimes(
+            folderContext,
+            [testItem],
+            false,
+            TestKind.standard,
+            0
+        );
         expect(runState).to.be.an("array").that.is.empty;
     });
 
     test("Runs successfully after testing 3 times", async () => {
-        const runState = await runTestMultipleTimes(folderContext, [testItem], false, 3, () =>
-            Promise.resolve(TestRunProxy.initialTestRunState())
+        const runState = await runTestMultipleTimes(
+            folderContext,
+            [testItem],
+            false,
+            TestKind.standard,
+            3,
+            () => Promise.resolve(TestRunProxy.initialTestRunState())
         );
 
         expect(runState).to.deep.equal([
@@ -61,13 +73,20 @@ suite("Test Multiple Times Command Test Suite", () => {
             failed: [{ test: testItem, message: new vscode.TestMessage("oh no") }],
         };
         let ctr = 0;
-        const runState = await runTestMultipleTimes(folderContext, [testItem], true, 3, () => {
-            ctr += 1;
-            if (ctr === 2) {
-                return Promise.resolve(failure);
+        const runState = await runTestMultipleTimes(
+            folderContext,
+            [testItem],
+            true,
+            TestKind.standard,
+            3,
+            () => {
+                ctr += 1;
+                if (ctr === 2) {
+                    return Promise.resolve(failure);
+                }
+                return Promise.resolve(TestRunProxy.initialTestRunState());
             }
-            return Promise.resolve(TestRunProxy.initialTestRunState());
-        });
+        );
 
         expect(runState).to.deep.equal([TestRunProxy.initialTestRunState(), failure]);
     });
