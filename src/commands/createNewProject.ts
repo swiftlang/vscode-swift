@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
 import configuration from "../configuration";
 import { SwiftToolchain, SwiftProjectTemplate } from "../toolchain/toolchain";
 import { showToolchainError } from "../ui/ToolchainSelection";
@@ -77,7 +76,9 @@ export async function createNewProject(toolchain: SwiftToolchain | undefined): P
     }
 
     // Prompt the user for the project name
-    const existingNames = await fs.readdir(selectedFolder[0].fsPath, { encoding: "utf-8" });
+    const existingNames = (await vscode.workspace.fs.readDirectory(selectedFolder[0])).map(
+        d => d[0]
+    );
     let initialValue = `swift-${projectType}`;
     for (let i = 1; ; i++) {
         if (!existingNames.includes(initialValue)) {
@@ -111,7 +112,7 @@ export async function createNewProject(toolchain: SwiftToolchain | undefined): P
 
     // Create the folder that will store the new project
     const projectUri = vscode.Uri.joinPath(selectedFolder[0], projectName);
-    await fs.mkdir(projectUri.fsPath);
+    await vscode.workspace.fs.createDirectory(projectUri);
 
     // Use swift package manager to initialize the swift project
     await withDelayedProgress(

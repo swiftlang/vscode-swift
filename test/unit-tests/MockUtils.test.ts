@@ -15,7 +15,6 @@
 import { expect } from "chai";
 import { stub } from "sinon";
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
 import {
     AsyncEventEmitter,
     mockFn,
@@ -206,16 +205,8 @@ suite("MockUtils Test Suite", () => {
     });
 
     suite("mockGlobalModule()", () => {
-        const mockedFS = mockGlobalModule(fs);
         const mockedContextKeys = mockGlobalModule(contextKeys);
         const mockedConfiguration = mockGlobalModule(configuration);
-
-        test("can mock the fs/promises module", async () => {
-            mockedFS.readFile.resolves("file contents");
-
-            await expect(fs.readFile("some_file")).to.eventually.equal("file contents");
-            expect(mockedFS.readFile).to.have.been.calledOnceWithExactly("some_file");
-        });
 
         test("can mock the contextKeys module", () => {
             // Initial value should match default value in context keys

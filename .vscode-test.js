@@ -55,7 +55,7 @@ if (vsixPath) {
     if (!path.isAbsolute(vsixPath)) {
         vsixPath = path.join(__dirname, vsixPath);
     }
-    console.log("Installing VSIX " + vsixPath);
+    !isDebugRun && console.log("Installing VSIX " + vsixPath);
     installExtensions.push(vsixPath);
 
     // Determine version to use
@@ -63,16 +63,17 @@ if (vsixPath) {
     if (match) {
         versionStr = match[1];
     }
-    console.log("Running tests against extension version " + versionStr);
+    !isDebugRun && console.log("Running tests against extension version " + versionStr);
 
     extensionDevelopmentPath = `${__dirname}/.vscode-test/extensions/${publisher}.${name}-${versionStr}`;
-    console.log("Running tests against extension development path " + extensionDevelopmentPath);
+    !isDebugRun &&
+        console.log("Running tests against extension development path " + extensionDevelopmentPath);
 } else {
     extensionDependencies.push("vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap");
 }
 
 const vscodeVersion = process.env["VSCODE_VERSION"] ?? "stable";
-console.log("Running tests against VS Code version " + vscodeVersion);
+!isDebugRun && console.log("Running tests against VS Code version " + vscodeVersion);
 
 const installConfigs = [];
 for (const ext of installExtensions) {
@@ -91,7 +92,8 @@ const env = {
     ...process.env,
     RUNNING_UNDER_VSCODE_TEST_CLI: "1",
 };
-console.log("Running tests against environment:\n" + JSON.stringify(env, undefined, 2));
+!isDebugRun &&
+    console.log("Running tests against environment:\n" + JSON.stringify(env, undefined, 2));
 
 module.exports = defineConfig({
     tests: [

@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as path from "path";
-import * as fs from "fs/promises";
 import * as vscode from "vscode";
 import { FolderContext } from "./FolderContext";
 import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
@@ -151,10 +150,12 @@ export class PackageWatcher {
     private async readSwiftVersionFile() {
         const versionFile = path.join(this.folderContext.folder.fsPath, ".swift-version");
         try {
-            const contents = await fs.readFile(versionFile);
-            return Version.fromString(contents.toString().trim());
+            const contents = Buffer.from(
+                await vscode.workspace.fs.readFile(vscode.Uri.file(versionFile))
+            );
+            return Version.fromString(contents.toString("utf-8").trim());
         } catch (error) {
-            if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+            if ((error as vscode.FileSystemError).code !== "FileNotFound") {
                 this.workspaceContext.logger.error(
                     `Failed to read .swift-version file at ${versionFile}: ${error}`
                 );

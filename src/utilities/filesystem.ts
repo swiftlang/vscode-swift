@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import { contains } from "micromatch";
-import * as fs from "fs/promises";
 import * as path from "path";
 import * as vscode from "vscode";
 import { convertPathToPattern, glob as fastGlob, Options } from "fast-glob";
@@ -28,7 +27,7 @@ export const validFileTypes = ["swift", "c", "cpp", "h", "hpp", "m", "mm"];
  */
 export async function pathExists(...pathComponents: string[]): Promise<boolean> {
     try {
-        await fs.access(path.join(...pathComponents));
+        await vscode.workspace.fs.stat(vscode.Uri.file(path.join(...pathComponents)));
         return true;
     } catch {
         return false;
@@ -42,7 +41,10 @@ export async function pathExists(...pathComponents: string[]): Promise<boolean> 
  */
 export async function fileExists(...pathComponents: string[]): Promise<boolean> {
     try {
-        return (await fs.stat(path.join(...pathComponents))).isFile();
+        return (
+            (await vscode.workspace.fs.stat(vscode.Uri.file(path.join(...pathComponents)))).type ===
+            vscode.FileType.File
+        );
     } catch (e) {
         return false;
     }

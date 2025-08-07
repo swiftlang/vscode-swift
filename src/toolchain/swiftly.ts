@@ -14,7 +14,6 @@
 
 import * as path from "path";
 import { SwiftlyConfig } from "./ToolchainVersion";
-import * as fs from "fs/promises";
 import { execFile, ExecFileError } from "../utilities/utilities";
 import * as vscode from "vscode";
 import { Version } from "../utilities/version";
@@ -229,10 +228,11 @@ export class Swiftly {
         if (!swiftlyHomeDir) {
             return;
         }
-        const swiftlyConfigRaw = await fs.readFile(
-            path.join(swiftlyHomeDir, "config.json"),
-            "utf-8"
+        const swiftlyConfigRaw = Buffer.from(
+            await vscode.workspace.fs.readFile(
+                vscode.Uri.file(path.join(swiftlyHomeDir, "config.json"))
+            )
         );
-        return JSON.parse(swiftlyConfigRaw);
+        return JSON.parse(swiftlyConfigRaw.toString("utf-8"));
     }
 }
