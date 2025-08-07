@@ -73,13 +73,10 @@ jobs:
       # macOS
       enable_macos_checks: true
       macos_env_vars: |
-        NODE_VERSION=v20.18.2
-        NODE_PATH=/usr/local/nvm/versions/node/v20.18.2/bin
-        NVM_DIR=/usr/local/nvm
         CI=1
         FAST_TEST_RUN=${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && '0' || '1'}}
-      macos_pre_build_command: . .github/workflows/scripts/setup-linux.sh
-      macos_build_command: ./scripts/test.sh
+      macos_pre_build_command: . .github/workflows/scripts/setup-macos.sh
+      macos_build_command: ./scripts/test_macos.sh
 
   soundness:
     name: Soundness
