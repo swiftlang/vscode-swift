@@ -1851,7 +1851,7 @@
     "@types/sinon-chai": "^3.2.12",
     "@types/vscode": "^1.88.0",
     "@types/xml2js": "^0.4.14",
-    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
     "@typescript-eslint/parser": "^8.32.1",
     "@vscode/debugprotocol": "^1.68.0",
     "@vscode/test-cli": "^0.0.11",
@@ -1867,7 +1867,7 @@
     "eslint-config-prettier": "^10.1.8",
     "fantasticon": "^3.0.0",
     "husky": "^9.1.7",
-    "lint-staged": "^16.1.2",
+    "lint-staged": "^16.1.4",
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
     "micromatch": "^4.0.8",
@@ -1885,18 +1885,18 @@
     "strip-ansi": "^6.0.1",
     "svgo": "^4.0.0",
     "tsx": "^4.20.3",
-    "typescript": "^5.8.3",
+    "typescript": "^5.9.2",
     "winston": "^3.17.0",
     "winston-transport": "^4.9.0"
   },
   "dependencies": {
-    "@vscode/codicons": "^0.0.38",
+    "@vscode/codicons": "^0.0.39",
     "archiver": "^7.0.1",
     "fast-glob": "^3.3.3",
     "lcov-parse": "^1.0.0",
     "plist": "^3.1.0",
     "vscode-languageclient": "^9.0.1",
     "xml2js": "^0.6.2",
-    "zod": "^4.0.5"
+    "zod": "^4.0.14"
   }
 }
