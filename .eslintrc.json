@@ -27,7 +27,7 @@
         "caughtErrors": "none"
       }
     ],
-    "no-restricted-imports": ["warn", "fs", "fs/promises"]
+    "no-restricted-imports": ["warn", "fs", "fs/promises", "node:fs"]
   },
   "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended", "prettier"],
   "ignorePatterns": ["assets", "out", "dist", "**/*.d.ts"]
