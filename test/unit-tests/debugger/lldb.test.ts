@@ -25,7 +25,6 @@ import {
     mockObject,
     MockedFunction,
     mockGlobalValue,
-    mockGlobalObject,
 } from "../../MockUtils";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 
