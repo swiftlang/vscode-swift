@@ -21,7 +21,7 @@ import { testAssetUri } from "../../fixtures";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
 import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
-import { waitForClientState, waitForIndex } from "../utilities/lsputilities";
+import { waitForClientState } from "../utilities/lsputilities";
 import { FolderContext } from "../../../src/FolderContext";
 
 async function buildProject(ctx: WorkspaceContext, name: string) {
@@ -51,12 +51,12 @@ suite("Language Client Integration Suite @slow", function () {
             clientManager = ctx.languageClientManager.get(folderContext);
             await clientManager.restart();
             await waitForClientState(clientManager, langclient.State.Running);
-            await waitForIndex(clientManager, folderContext.swiftVersion);
+            await clientManager.waitForIndex();
         },
     });
 
     setup(async () => {
-        await waitForIndex(clientManager, folderContext.swiftVersion);
+        await clientManager.waitForIndex();
     });
 
     suite("Symbols", () => {

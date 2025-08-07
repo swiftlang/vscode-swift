@@ -49,7 +49,7 @@ suite("Extension Test Suite", function () {
         /** Verify tasks.json is being loaded */
         test("Tasks.json", async () => {
             const folder = findWorkspaceFolder("defaultPackage", workspaceContext);
-            assert(folder);
+            assert.ok(folder);
             const buildAllTask = await getBuildAllTask(folder);
             const execution = buildAllTask.execution as SwiftExecution;
             expect(buildAllTask.definition.type).to.equal("swift");
@@ -60,7 +60,7 @@ suite("Extension Test Suite", function () {
             for (const arg of ["build", "--build-tests", "--verbose"].concat([
                 vscode.workspace.workspaceFile ? "-DBAR" : "-DFOO",
             ])) {
-                assert(execution?.args.find(item => item === arg));
+                assert.ok(execution?.args.find(item => item === arg));
             }
         }).timeout(60000);
     });

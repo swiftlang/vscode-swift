@@ -25,6 +25,8 @@ import { Version } from "../utilities/version";
 import { destructuredPromise, execFileStreamOutput } from "../utilities/utilities";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
+import { Extension } from "../utilities/extensions";
+import { DebugAdapter } from "../debugger/debugAdapter";
 
 export async function captureDiagnostics(
     ctx: WorkspaceContext,
@@ -44,12 +46,25 @@ export async function captureDiagnostics(
         );
 
         await fsPromises.mkdir(diagnosticsDir);
-        await copyLogFile(diagnosticsDir, extensionLogFile(ctx));
 
         const singleFolderWorkspace = ctx.folders.length === 1;
         const zipDir = await createDiagnosticsZipDir();
         const zipFilePath = path.join(zipDir, `${path.basename(diagnosticsDir)}.zip`);
         const { archive, done: archivingDone } = configureZipArchiver(zipFilePath);
+
+        const archivedLldbDapLogFolders = new Set<string>();
+        const includeLldbDapLogs = DebugAdapter.getLaunchConfigType(
+            ctx.globalToolchainSwiftVersion
+        );
+        if (captureMode === "Full" && includeLldbDapLogs) {
+            for (const defaultLldbDapLogs of [defaultLldbDapLogFolder(ctx), lldbDapLogFolder()]) {
+                if (!defaultLldbDapLogs || archivedLldbDapLogFolders.has(defaultLldbDapLogs)) {
+                    continue;
+                }
+                archivedLldbDapLogFolders.add(defaultLldbDapLogs);
+                await copyLogFolder(ctx, diagnosticsDir, defaultLldbDapLogs);
+            }
+        }
 
         for (const folder of ctx.folders) {
             const baseName = path.basename(folder.folder.fsPath);
@@ -70,14 +85,31 @@ export async function captureDiagnostics(
                 // The `sourcekit-lsp diagnose` command is only available in 6.0 and higher.
                 if (folder.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
                     await sourcekitDiagnose(folder, outputDir);
-                } else {
+                } else if (
+                    vscode.workspace
+                        .getConfiguration("sourcekit-lsp")
+                        .get<string>("trace.server", "off") !== "off"
+                ) {
                     const logFile = sourceKitLogFile(folder);
                     if (logFile) {
                         await copyLogFile(outputDir, logFile);
                     }
                 }
+
+                const includeLldbDapLogs = DebugAdapter.getLaunchConfigType(folder.swiftVersion);
+                if (!includeLldbDapLogs) {
+                    continue;
+                }
+                // Copy lldb-dap logs
+                const lldbDapLogs = lldbDapLogFolder(folder.workspaceFolder);
+                if (lldbDapLogs && !archivedLldbDapLogFolders.has(lldbDapLogs)) {
+                    archivedLldbDapLogFolders.add(lldbDapLogs);
+                    await copyLogFolder(ctx, outputDir, lldbDapLogs);
+                }
             }
         }
+        // Leave at end in case log above
+        await copyLogFile(diagnosticsDir, extensionLogFile(ctx));
 
         archive.directory(diagnosticsDir, false);
         void archive.finalize();
@@ -137,24 +169,24 @@ async function captureDiagnosticsMode(
     ctx: WorkspaceContext,
     allowMinimalCapture: boolean
 ): Promise<"Minimal" | "Full" | undefined> {
-    if (
-        ctx.globalToolchainSwiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) ||
-        vscode.workspace.getConfiguration("sourcekit-lsp").get<string>("trace.server", "off") !==
-            "off"
-    ) {
-        const fullButton = allowMinimalCapture ? "Capture Full Diagnostics" : "Capture Diagnostics";
+    if (ctx.globalToolchainSwiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
+        const fullButton = "Capture Full Diagnostics";
         const minimalButton = "Capture Minimal Diagnostics";
         const buttons = allowMinimalCapture ? [fullButton, minimalButton] : [fullButton];
         const fullCaptureResult = await vscode.window.showInformationMessage(
             `A Diagnostic Bundle collects information that helps the developers of the Swift for VS Code extension diagnose and fix issues.
 
-This information contains:
+This information includes:
 - Extension logs
+- Extension settings
 - Versions of Swift installed on your system
+
+If you allow capturing a Full Diagnostic Bundle, the information will also include:
 - Crash logs from SourceKit
 - Log messages emitted by SourceKit
 - If possible, a minimized project that caused SourceKit to crash
 - If possible, a minimized project that caused the Swift compiler to crash
+- If available, log messages emitted by LLDB DAP
 
 All information is collected locally and you can inspect the diagnose bundle before sharing it with developers of the Swift for VS Code extension.
 
@@ -211,6 +243,19 @@ async function copyLogFile(dir: string, filePath: string) {
     await fsPromises.copyFile(filePath, path.join(dir, path.basename(filePath)));
 }
 
+async function copyLogFolder(ctx: WorkspaceContext, dir: string, folderPath: string) {
+    try {
+        const lldbLogFiles = await fsPromises.readdir(folderPath);
+        for (const log of lldbLogFiles) {
+            await copyLogFile(dir, path.join(folderPath, log));
+        }
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+            ctx.logger.error(`Failed to read log files from ${folderPath}: ${error}`);
+        }
+    }
+}
+
 /**
  * Creates a directory for diagnostics zip files, located in the system's temporary directory.
  */
@@ -222,6 +267,31 @@ async function createDiagnosticsZipDir(): Promise<string> {
 
 function extensionLogFile(ctx: WorkspaceContext): string {
     return ctx.logger.logFilePath;
+}
+
+function defaultLldbDapLogFolder(ctx: WorkspaceContext): string {
+    const rootLogFolder = path.dirname(ctx.loggerFactory.logFolderUri.fsPath);
+    return path.join(rootLogFolder, Extension.LLDBDAP);
+}
+
+function lldbDapLogFolder(workspaceFolder?: vscode.WorkspaceFolder): string | undefined {
+    const config = vscode.workspace.workspaceFile
+        ? vscode.workspace.getConfiguration("lldb-dap")
+        : vscode.workspace.getConfiguration("lldb-dap", workspaceFolder);
+    let logFolder = config.get<string>("logFolder");
+    if (!logFolder) {
+        return;
+    } else if (!path.isAbsolute(logFolder)) {
+        const logFolderSettingInfo = config.inspect<string>("logFolder");
+        if (logFolderSettingInfo?.workspaceFolderValue && workspaceFolder) {
+            logFolder = path.join(workspaceFolder.uri.fsPath, logFolder);
+        } else if (logFolderSettingInfo?.workspaceValue && vscode.workspace.workspaceFile) {
+            logFolder = path.join(path.dirname(vscode.workspace.workspaceFile.fsPath), logFolder);
+        } else if (vscode.workspace.workspaceFolders?.length) {
+            logFolder = path.join(vscode.workspace.workspaceFolders[0].uri.fsPath, logFolder);
+        }
+    }
+    return logFolder;
 }
 
 function settingsLogs(ctx: FolderContext): string {

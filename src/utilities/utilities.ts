@@ -29,19 +29,26 @@ import { SwiftToolchain } from "../toolchain/toolchain";
 export const IS_PRODUCTION_BUILD = process.env.NODE_ENV === "production";
 
 /**
- * Whether or not the code is being run in CI.
- *
- * Code that checks for this will be removed completely when the extension is packaged into
- * a VSIX.
+ * Whether or not the code is being run in a Github Actions workflow.
  */
-export const IS_RUNNING_IN_CI = process.env.CI === "1";
+export const IS_RUNNING_UNDER_GITHUB_ACTIONS = process.env.GITHUB_ACTIONS === "true";
+
+/**
+ * Whether or not the code is being run by `act` CLT.
+ */
+export const IS_RUNNING_UNDER_ACT = process.env.ACT === "true";
+
+/**
+ * Whether or not the code is being run in a docker container.
+ */
+export const IS_RUNNING_UNDER_DOCKER = IS_RUNNING_UNDER_ACT || IS_RUNNING_UNDER_GITHUB_ACTIONS;
 
 /**
  * Whether or not the code is being run as part of a test suite.
  *
- * This will NOT be removed when the extension is packaged into a VSIX.
+ * This will NOT be removed when the extension is packaged into a VSIX, unlike "CI" variable.
  */
-export const IS_RUNNING_UNDER_TEST = process.env.VSCODE_TEST === "1";
+export const IS_RUNNING_UNDER_TEST = process.env.RUNNING_UNDER_VSCODE_TEST_CLI === "1";
 
 /**
  * Get required environment variable for Swift product

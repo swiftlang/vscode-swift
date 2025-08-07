@@ -15,7 +15,6 @@
 const { defineConfig } = require("@vscode/test-cli");
 const path = require("path");
 const { version, publisher, name } = require("./package.json");
-const { preview } = require("./scripts/versions");
 
 const isCIBuild = process.env["CI"] === "1";
 const isFastTestRun = process.env["FAST_TEST_RUN"] === "1";
@@ -41,51 +40,70 @@ if (dataDir) {
 if (process.platform === "darwin" && process.arch === "x64") {
     launchArgs.push("--disable-gpu");
 }
-const isStableRun = process.env["VSCODE_VERSION"] !== "insiders";
+
+const installExtensions = [];
+const extensionDependencies = [];
+let vsixPath = process.env["VSCODE_SWIFT_VSIX"];
 let versionStr = version;
-if (!isStableRun) {
-    const segments = version.split(".").map(v => parseInt(v, 10));
-    versionStr = preview({ major: segments[0], minor: segments[1], patch: segments[2] });
-}
-let vsixPath = isStableRun
-    ? process.env["VSCODE_SWIFT_VSIX"]
-    : process.env["VSCODE_SWIFT_PRERELEASE_VSIX"];
-const install = [];
-const installExtensions = ["vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap"];
+let extensionDevelopmentPath;
 if (vsixPath) {
+    // https://github.com/swiftlang/vscode-swift/issues/1751
+    // Will install extensions before CI tests run
+    installExtensions.push("vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap");
+
+    // Absolute path to vsix needed
     if (!path.isAbsolute(vsixPath)) {
         vsixPath = path.join(__dirname, vsixPath);
     }
-    console.log("Installing " + vsixPath);
+    console.log("Installing VSIX " + vsixPath);
     installExtensions.push(vsixPath);
+
+    // Determine version to use
+    const match = /swift-vscode-(\d+.\d+.\d+(-dev)?)(-\d+)?.vsix/g.exec(path.basename(vsixPath));
+    if (match) {
+        versionStr = match[1];
+    }
+    console.log("Running tests against extension version " + versionStr);
+
+    extensionDevelopmentPath = `${__dirname}/.vscode-test/extensions/${publisher}.${name}-${versionStr}`;
+    console.log("Running tests against extension development path " + extensionDevelopmentPath);
+} else {
+    extensionDependencies.push("vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap");
 }
 
+const vscodeVersion = process.env["VSCODE_VERSION"] ?? "stable";
+console.log("Running tests against VS Code version " + vscodeVersion);
+
+const installConfigs = [];
 for (const ext of installExtensions) {
-    install.push({
+    installConfigs.push({
         label: `installExtension-${ext}`,
         installExtensions: [ext],
-        launchArgs,
+        launchArgs: launchArgs.concat("--disable-extensions"),
         files: ["dist/test/sleep.test.js"],
-        version: process.env["VSCODE_VERSION"] ?? "stable",
+        version: vscodeVersion,
+        skipExtensionDependencies: true,
         reuseMachineInstall: !isCIBuild,
     });
 }
 
+const env = {
+    ...process.env,
+    RUNNING_UNDER_VSCODE_TEST_CLI: "1",
+};
+console.log("Running tests against environment:\n" + JSON.stringify(env, undefined, 2));
+
 module.exports = defineConfig({
     tests: [
-        ...install,
+        ...installConfigs,
         {
             label: "integrationTests",
             files: ["dist/test/common.js", "dist/test/integration-tests/**/*.test.js"],
-            version: process.env["VSCODE_VERSION"] ?? "stable",
+            version: vscodeVersion,
             workspaceFolder: "./assets/test",
             launchArgs,
-            extensionDevelopmentPath: vsixPath
-                ? [`${__dirname}/.vscode-test/extensions/${publisher}.${name}-${versionStr}`]
-                : undefined,
-            env: {
-                VSCODE_TEST: "1",
-            },
+            extensionDevelopmentPath,
+            env,
             mocha: {
                 ui: "tdd",
                 color: true,
@@ -102,7 +120,8 @@ module.exports = defineConfig({
                     },
                 },
             },
-            skipExtensionDependencies: install.length > 0,
+            installExtensions: extensionDependencies,
+            skipExtensionDependencies: installConfigs.length > 0,
             reuseMachineInstall: !isCIBuild,
         },
         {
@@ -116,15 +135,11 @@ module.exports = defineConfig({
                 "dist/test/integration-tests/testexplorer/TestExplorerIntegration.test.js",
                 "dist/test/integration-tests/commands/dependency.test.js",
             ],
-            version: process.env["VSCODE_VERSION"] ?? "stable",
+            version: vscodeVersion,
             workspaceFolder: "./assets/test.code-workspace",
             launchArgs,
-            extensionDevelopmentPath: vsixPath
-                ? [`${__dirname}/.vscode-test/extensions/${publisher}.${name}-${versionStr}`]
-                : undefined,
-            env: {
-                VSCODE_TEST: "1",
-            },
+            extensionDevelopmentPath,
+            env,
             mocha: {
                 ui: "tdd",
                 color: true,
@@ -141,17 +156,16 @@ module.exports = defineConfig({
                     },
                 },
             },
-            skipExtensionDependencies: install.length > 0,
+            installExtensions: extensionDependencies,
+            skipExtensionDependencies: installConfigs.length > 0,
             reuseMachineInstall: !isCIBuild,
         },
         {
             label: "unitTests",
             files: ["dist/test/common.js", "dist/test/unit-tests/**/*.test.js"],
-            version: process.env["VSCODE_VERSION"] ?? "stable",
+            version: vscodeVersion,
             launchArgs: launchArgs.concat("--disable-extensions"),
-            env: {
-                VSCODE_TEST: "1",
-            },
+            env,
             mocha: {
                 ui: "tdd",
                 color: true,
