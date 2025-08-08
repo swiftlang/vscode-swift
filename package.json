@@ -726,7 +726,7 @@
             "items": {
               "type": "string"
             },
-            "markdownDescription": "Arguments to pass to SourceKit-LSP. Keys and values should be provided as individual entries in the list. e.g. `['--log-level', 'debug']`",
+            "markdownDescription": "Arguments to pass to SourceKit-LSP. Keys and values should be provided as individual entries in the list. e.g. `[\"--experimental-feature\", \"show-macro-expansions\"]`",
             "order": 2
           },
           "swift.sourcekit-lsp.supported-languages": {
@@ -816,7 +816,7 @@
             "items": {
               "type": "string"
             },
-            "markdownDescription": "Arguments to pass to SourceKit-LSP. Keys and values should be provided as individual entries in the list. e.g. `['--log-level', 'debug']`",
+            "markdownDescription": "Arguments to pass to SourceKit-LSP. Keys and values should be provided as individual entries in the list. e.g. `[\"--experimental-feature\", \"show-macro-expansions\"]`",
             "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.serverArguments#` instead."
           },
           "sourcekit-lsp.trace.server": {
