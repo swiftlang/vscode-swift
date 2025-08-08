@@ -541,7 +541,7 @@ suite("Test Explorer Suite", function () {
                 const initialTokenSource = new vscode.CancellationTokenSource();
                 const secondRunTokenSource = new vscode.CancellationTokenSource();
 
-                mockWindow.showInformationMessage.resolves("Cancel Running Test" as any);
+                mockWindow.showInformationMessage.resolves("Replace Running Test" as any);
 
                 const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
 
