@@ -24,6 +24,12 @@ const dataDir = process.env["VSCODE_DATA_DIR"];
 // "env" in launch.json doesn't seem to work with vscode-test
 const isDebugRun = !(process.env["_"] ?? "").endsWith("node_modules/.bin/vscode-test");
 
+function log(...args) {
+    if (!isDebugRun) {
+        console.log(...args);
+    }
+}
+
 // so tests don't timeout when a breakpoint is hit
 const timeout = isDebugRun ? Number.MAX_SAFE_INTEGER : 3000;
 
@@ -55,7 +61,7 @@ if (vsixPath) {
     if (!path.isAbsolute(vsixPath)) {
         vsixPath = path.join(__dirname, vsixPath);
     }
-    console.log("Installing VSIX " + vsixPath);
+    log("Installing VSIX " + vsixPath);
     installExtensions.push(vsixPath);
 
     // Determine version to use
@@ -63,16 +69,16 @@ if (vsixPath) {
     if (match) {
         versionStr = match[1];
     }
-    console.log("Running tests against extension version " + versionStr);
+    log("Running tests against extension version " + versionStr);
 
     extensionDevelopmentPath = `${__dirname}/.vscode-test/extensions/${publisher}.${name}-${versionStr}`;
-    console.log("Running tests against extension development path " + extensionDevelopmentPath);
+    log("Running tests against extension development path " + extensionDevelopmentPath);
 } else {
     extensionDependencies.push("vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap");
 }
 
 const vscodeVersion = process.env["VSCODE_VERSION"] ?? "stable";
-console.log("Running tests against VS Code version " + vscodeVersion);
+log("Running tests against VS Code version " + vscodeVersion);
 
 const installConfigs = [];
 for (const ext of installExtensions) {
@@ -91,7 +97,7 @@ const env = {
     ...process.env,
     RUNNING_UNDER_VSCODE_TEST_CLI: "1",
 };
-console.log("Running tests against environment:\n" + JSON.stringify(env, undefined, 2));
+log("Running tests against environment:\n" + JSON.stringify(env, undefined, 2));
 
 module.exports = defineConfig({
     tests: [
