@@ -1,0 +1,55 @@
+<svg viewBox="0 0 520 230" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="520" height="230" fill="var(--vscode-editor-background, #1e1e1e)"/>
+<g clip-path="url(#clip0)">
+<rect width="520" height="39" fill="var(--vscode-editorGroupHeader-tabsBackground, #252526)"/>
+<g clip-path="url(#clip1)">
+<rect width="115.654" height="39.2998" fill="var(--vscode-tab-activeBackground, #1e1e1e)"/>
+<rect x="13.4742" y="15.7199" width="88.7052" height="7.85995" rx="3.92998" fill="var(--vscode-tab-unfocusedInactiveForeground, #454545)"/>
+</g>
+</g>
+<g filter="url(#filter0_d)">
+<rect width="425" height="186" transform="translate(48 20)" fill="var(--vscode-quickInput-background, #252526)"/>
+<rect x="55.5" y="27.5" width="410" height="25" fill="var(--vscode-input-background, #3c3c3c)"/>
+<text x="61" y="42" fill="var(--vscode-input-foreground, #cccccc)" font-family="Segoe UI, Arial, sans-serif" font-size="14" alignment-baseline="middle">&gt; Swift:</text>
+<rect x="55.5" y="27.5" width="410" height="25" stroke="var(--vscode-focusBorder, #0078d4)"/>
+<rect x="60" y="66" width="38" height="6" rx="3" fill="var(--vscode-foreground)" fill-opacity="0.25"/>
+<rect x="135" y="66" width="105" height="6" rx="3" fill="var(--vscode-foreground)" fill-opacity="0.25"/>
+<rect x="102" y="66" width="29" height="6" rx="3" fill="var(--vscode-pickerGroup-foreground)"/>
+<rect width="425" height="24" transform="translate(48 59)" fill="var(--vscode-quickInputList-focusBackground, #062F4A)"/>
+<path d="M63.0278 99V95.3945H66.7539V93.8774H63.0278V91.4209H67.1094V89.8403H61.1108V99H63.0278ZM69.6357 90.9385C70.207 90.9385 70.6768 90.4814 70.6768 89.9102C70.6768 89.3325 70.207 88.8755 69.6357 88.8755C69.0645 88.8755 68.5884 89.3325 68.5884 89.9102C68.5884 90.4814 69.0645 90.9385 69.6357 90.9385ZM68.709 99H70.5562V92.0112H68.709V99ZM72.4922 99H74.3394V89.3389H72.4922V99ZM80.7886 97.0259C80.5918 97.502 80.0903 97.7686 79.3604 97.7686C78.3955 97.7686 77.7861 97.1021 77.7607 96.0356V95.9404H82.5659V95.3882C82.5659 93.1792 81.3472 91.8589 79.2842 91.8589C77.2021 91.8589 75.9199 93.2681 75.9199 95.5405C75.9199 97.8003 77.1768 99.146 79.3096 99.146C81.0234 99.146 82.2358 98.3271 82.5088 97.0259H80.7886ZM79.2905 93.2363C80.1538 93.2363 80.7124 93.833 80.7505 94.7915H77.7671C77.8306 93.8521 78.4336 93.2363 79.2905 93.2363Z" fill="var(--vscode-list-focusHighlightForeground)"/>
+<text x="66" y="72" fill="var(--vscode-quickInputList-focusForeground, #E3E3E3)" font-family="Segoe UI, Arial, sans-serif" font-size="12" alignment-baseline="middle">Swift: Create New Project...</text>
+<text x="66" y="96" fill="var(--vscode-quickInputList-focusForeground, #E3E3E3)" font-family="Segoe UI, Arial, sans-serif" font-size="12" alignment-baseline="middle">Swift: Create New Swift File...</text>
+<text x="66" y="120" fill="var(--vscode-quickInputList-focusForeground, #E3E3E3)" font-family="Segoe UI, Arial, sans-serif" font-size="12" alignment-baseline="middle">Swift: Select Toolchain...</text>
+<text x="66" y="144" fill="var(--vscode-quickInputList-focusForeground, #E3E3E3)" font-family="Segoe UI, Arial, sans-serif" font-size="12" alignment-baseline="middle">Swift: Open Documentation</text>
+<text x="66" y="168" fill="var(--vscode-quickInputList-focusForeground, #E3E3E3)" font-family="Segoe UI, Arial, sans-serif" font-size="12" alignment-baseline="middle">Swift: Preview Documentation</text>
+<text x="66" y="192" fill="var(--vscode-quickInputList-focusForeground, #E3E3E3)" font-family="Segoe UI, Arial, sans-serif" font-size="12" alignment-baseline="middle">Swift: Open Package.swift</text>
+<rect x="60" y="116" width="62.5" height="6" rx="3" fill="var(--vscode-foreground)" fill-opacity="0.25"/>
+<rect x="126.5" y="116" width="29" height="6" rx="3" fill="var(--vscode-pickerGroup-foreground)"/>
+<rect x="159.5" y="116" width="62.5" height="6" rx="3" fill="var(--vscode-foreground)" fill-opacity="0.25"/>
+<rect x="60" y="138" width="41" height="6" rx="3" fill="var(--vscode-foreground)" fill-opacity="0.25"/>
+<rect x="105" y="138" width="69" height="6" rx="3" fill="var(--vscode-foreground)" fill-opacity="0.25"/>
+<rect x="178" y="138" width="26" height="6" rx="3" fill="var(--vscode-pickerGroup-foreground)"/>
+<rect x="60" y="160" width="26" height="6" rx="3" fill="var(--vscode-pickerGroup-foreground)"/>
+<rect x="90" y="160" width="164" height="6" rx="3" fill="var(--vscode-foreground)" fill-opacity="0.25"/>
+<rect x="60" y="182" width="46" height="6" rx="3" fill="var(--vscode-foreground)" fill-opacity="0.25"/>
+<rect x="110" y="182" width="29" height="6" rx="3" fill="var(--vscode-pickerGroup-foreground)"/>
+<rect x="143" y="182" width="46" height="6" rx="3" fill="var(--vscode-foreground)" fill-opacity="0.25"/>
+</g>
+<defs>
+<filter id="filter0_d" x="36" y="10" width="449" height="206" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
+<feOffset dy="2"/>
+<feGaussianBlur stdDeviation="6"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
+</filter>
+<clipPath id="clip0">
+<rect width="520" height="220" fill="white"/>
+</clipPath>
+<clipPath id="clip1">
+<rect width="115.654" height="39.2998" fill="white"/>
+</clipPath>
+</defs>
+</svg>
