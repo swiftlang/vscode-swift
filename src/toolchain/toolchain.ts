@@ -495,6 +495,7 @@ export class SwiftToolchain {
         let str = "";
         str += this.swiftVersionString;
         str += `\nPlatform: ${process.platform}`;
+        str += `\nVS Code Version: ${vscode.version}`;
         str += `\nSwift Path: ${this.swiftFolderPath}`;
         str += `\nToolchain Path: ${this.toolchainPath}`;
         if (this.runtimePath) {
