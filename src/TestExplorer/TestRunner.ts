@@ -48,7 +48,10 @@ import {
 } from "../debugger/buildConfig";
 import { TestKind, isDebugging, isRelease } from "./TestKind";
 import { reduceTestItemChildren } from "./TestUtils";
-import { CompositeCancellationToken } from "../utilities/cancellation";
+import {
+    CompositeCancellationToken,
+    CompositeCancellationTokenSource,
+} from "../utilities/cancellation";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
 import { packageName, resolveScope } from "../utilities/tasks";
@@ -429,7 +432,7 @@ export class TestRunner {
     private testArgs: TestRunArguments;
     private xcTestOutputParser: IXCTestOutputParser;
     private swiftTestOutputParser: SwiftTestingOutputParser;
-    private static CANCELLATION_ERROR = "Test run cancelled";
+    private static CANCELLATION_ERROR = "Test run cancelled.";
 
     /**
      * Constructor for TestRunner
@@ -517,15 +520,14 @@ export class TestRunner {
                 TestKind.standard,
                 vscode.TestRunProfileKind.Run,
                 async (request, token) => {
-                    const runner = new TestRunner(
+                    await this.handleTestRunRequest(
                         TestKind.standard,
                         request,
                         folderContext,
                         controller,
-                        token
+                        token,
+                        onCreateTestRun
                     );
-                    onCreateTestRun.fire(runner.testRun);
-                    await runner.runHandler();
                 },
                 true,
                 runnableTag
@@ -534,15 +536,14 @@ export class TestRunner {
                 TestKind.parallel,
                 vscode.TestRunProfileKind.Run,
                 async (request, token) => {
-                    const runner = new TestRunner(
+                    await this.handleTestRunRequest(
                         TestKind.parallel,
                         request,
                         folderContext,
                         controller,
-                        token
+                        token,
+                        onCreateTestRun
                     );
-                    onCreateTestRun.fire(runner.testRun);
-                    await runner.runHandler();
                 },
                 false,
                 runnableTag
@@ -551,15 +552,14 @@ export class TestRunner {
                 TestKind.release,
                 vscode.TestRunProfileKind.Run,
                 async (request, token) => {
-                    const runner = new TestRunner(
+                    await this.handleTestRunRequest(
                         TestKind.release,
                         request,
                         folderContext,
                         controller,
-                        token
+                        token,
+                        onCreateTestRun
                     );
-                    onCreateTestRun.fire(runner.testRun);
-                    await runner.runHandler();
                 },
                 false,
                 runnableTag
@@ -569,21 +569,27 @@ export class TestRunner {
                 TestKind.coverage,
                 vscode.TestRunProfileKind.Coverage,
                 async (request, token) => {
-                    const runner = new TestRunner(
+                    await this.handleTestRunRequest(
                         TestKind.coverage,
                         request,
                         folderContext,
                         controller,
-                        token
+                        token,
+                        onCreateTestRun,
+                        async runner => {
+                            if (request.profile) {
+                                request.profile.loadDetailedCoverage = async (
+                                    _testRun,
+                                    fileCoverage
+                                ) => {
+                                    return runner.testRun.coverage.loadDetailedCoverage(
+                                        fileCoverage.uri
+                                    );
+                                };
+                            }
+                            await vscode.commands.executeCommand("testing.openCoverage");
+                        }
                     );
-                    onCreateTestRun.fire(runner.testRun);
-                    if (request.profile) {
-                        request.profile.loadDetailedCoverage = async (_testRun, fileCoverage) => {
-                            return runner.testRun.coverage.loadDetailedCoverage(fileCoverage.uri);
-                        };
-                    }
-                    await runner.runHandler();
-                    await vscode.commands.executeCommand("testing.openCoverage");
                 },
                 false,
                 runnableTag
@@ -593,15 +599,14 @@ export class TestRunner {
                 TestKind.debug,
                 vscode.TestRunProfileKind.Debug,
                 async (request, token) => {
-                    const runner = new TestRunner(
+                    await this.handleTestRunRequest(
                         TestKind.debug,
                         request,
                         folderContext,
                         controller,
-                        token
+                        token,
+                        onCreateTestRun
                     );
-                    onCreateTestRun.fire(runner.testRun);
-                    await runner.runHandler();
                 },
                 false,
                 runnableTag
@@ -610,20 +615,82 @@ export class TestRunner {
                 TestKind.debugRelease,
                 vscode.TestRunProfileKind.Debug,
                 async (request, token) => {
-                    const runner = new TestRunner(
+                    await this.handleTestRunRequest(
                         TestKind.debugRelease,
                         request,
                         folderContext,
                         controller,
-                        token
+                        token,
+                        onCreateTestRun
                     );
-                    onCreateTestRun.fire(runner.testRun);
-                    await runner.runHandler();
                 },
                 false,
                 runnableTag
             ),
         ];
+    }
+
+    /**
+     * Handle a test run request, checking if a test run is already in progress
+     * @param testKind The kind of test run
+     * @param request The test run request
+     * @param folderContext The folder context
+     * @param controller The test controller
+     * @param token The cancellation token
+     * @param onCreateTestRun Event emitter for test run creation
+     * @param postRunHandler Optional handler to run after the test run completes
+     */
+    private static async handleTestRunRequest(
+        testKind: TestKind,
+        request: vscode.TestRunRequest,
+        folderContext: FolderContext,
+        controller: vscode.TestController,
+        token: vscode.CancellationToken,
+        onCreateTestRun: vscode.EventEmitter<TestRunProxy>,
+        postRunHandler?: (runner: TestRunner) => Promise<void>
+    ): Promise<void> {
+        // If there's an active test run, prompt the user to cancel
+        if (folderContext.hasActiveTestRun()) {
+            const cancelOption = "Replace Running Test";
+            const result = await vscode.window.showInformationMessage(
+                "A test run is already in progress. Would you like to cancel and replace the active test run?",
+                { modal: true },
+                cancelOption
+            );
+
+            if (result === cancelOption) {
+                // Cancel the active test run
+                folderContext.cancelTestRun();
+            } else {
+                return;
+            }
+        }
+
+        // Create a cancellation token source for this test run
+        const compositeToken = new CompositeCancellationTokenSource(token);
+
+        // Create and run the test runner
+        const runner = new TestRunner(
+            testKind,
+            request,
+            folderContext,
+            controller,
+            compositeToken.token
+        );
+
+        // Register the test run with the manager
+        folderContext.registerTestRun(runner.testRun, compositeToken);
+
+        // Fire the event to notify that a test run was created
+        onCreateTestRun.fire(runner.testRun);
+
+        // Run the tests
+        await runner.runHandler();
+
+        // Run the post-run handler if provided
+        if (postRunHandler) {
+            await postRunHandler(runner);
+        }
     }
 
     /**

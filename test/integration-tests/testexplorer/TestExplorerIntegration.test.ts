@@ -52,6 +52,7 @@ import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
 import { FolderContext } from "../../../src/FolderContext";
 import { lineBreakRegex } from "../../../src/utilities/tasks";
 import { randomString } from "../../../src/utilities/utilities";
+import { mockGlobalObject } from "../../MockUtils";
 
 suite("Test Explorer Suite", function () {
     const MAX_TEST_RUN_TIME_MINUTES = 6;
@@ -458,6 +459,8 @@ suite("Test Explorer Suite", function () {
         });
 
         suite("XCTest", () => {
+            const mockWindow = mockGlobalObject(vscode, "window");
+
             test("Only runs specified test", async function () {
                 const passingRun = await runTest(
                     testExplorer,
@@ -516,6 +519,51 @@ suite("Test Explorer Suite", function () {
                 await new Promise<void>(resolve => {
                     setImmediate(() => {
                         tokenSource.cancel();
+                        resolve();
+                    });
+                });
+
+                assertContains(testRun.runState.output, "\r\nTest run cancelled.");
+            });
+
+            test("Cancellation during build", async function () {
+                const targetProfile = testExplorer.testRunProfiles.find(
+                    profile => profile.label === TestKind.standard
+                );
+                if (!targetProfile) {
+                    throw new Error(`Unable to find run profile named ${TestKind.standard}`);
+                }
+                const testItems = gatherTests(
+                    testExplorer.controller,
+                    "PackageTests.DuplicateSuffixTests/testPassing"
+                );
+                const request = new vscode.TestRunRequest(testItems);
+                const initialTokenSource = new vscode.CancellationTokenSource();
+                const secondRunTokenSource = new vscode.CancellationTokenSource();
+
+                mockWindow.showInformationMessage.resolves("Cancel Running Test" as any);
+
+                const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
+
+                // Deliberately don't await this so we can cancel it.
+                void targetProfile.runHandler(request, initialTokenSource.token);
+
+                const testRun = await testRunPromise;
+
+                // Wait for the next tick to cancel the test run so that
+                // handlers have time to set up.
+                await new Promise<void>(resolve => {
+                    setTimeout(async () => {
+                        void targetProfile.runHandler(request, secondRunTokenSource.token);
+                        resolve();
+                    });
+                });
+
+                // Wait for the next tick to cancel the test run so that
+                // handlers have time to set up.
+                await new Promise<void>(resolve => {
+                    setImmediate(() => {
+                        secondRunTokenSource.cancel();
                         resolve();
                     });
                 });
