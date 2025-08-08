@@ -38,6 +38,7 @@ import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
 import { LLDBDebugConfigurationProvider } from "./debugger/debugAdapterFactory";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
+import { TestRunManager } from "./TestExplorer/TestRunManager";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -58,6 +59,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public subscriptions: vscode.Disposable[];
     public commentCompletionProvider: CommentCompletionProviders;
     public documentation: DocumentationManager;
+    public testRunManager: TestRunManager;
     private lastFocusUri: vscode.Uri | undefined;
     private initialisationFinished = false;
 
@@ -80,6 +82,7 @@ export class WorkspaceContext implements vscode.Disposable {
         public logger: SwiftLogger,
         public globalToolchain: SwiftToolchain
     ) {
+        this.testRunManager = new TestRunManager();
         this.loggerFactory = new SwiftLoggerFactory(extensionContext.logUri);
         this.statusItem = new StatusItem();
         this.buildStatus = new SwiftBuildStatus(this.statusItem);
