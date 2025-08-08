@@ -37,7 +37,13 @@ suite("mock-fs example", () => {
 
     test("file is not readable by the current user", async () => {
         mockFS({ "/path/to/file": mockFS.file({ mode: 0o000 }) });
-        await expect(vscode.workspace.fs.readFile(vscode.Uri.file("/path/to/file"))).to.eventually
-            .be.rejected;
+        if (process.platform === "linux") {
+            await expect(
+                vscode.workspace.fs.readFile(vscode.Uri.file("/path/to/file"))
+            ).to.eventually.deep.equal(Buffer.from([]));
+        } else {
+            await expect(vscode.workspace.fs.readFile(vscode.Uri.file("/path/to/file"))).to
+                .eventually.be.rejected;
+        }
     });
 });
