@@ -102,4 +102,48 @@ suite("Swiftly Unit Tests", () => {
             expect(mockUtilities.execFile).not.have.been.called;
         });
     });
+
+    suite("isInstalled", () => {
+        test("should return true when swiftly is found", async () => {
+            mockUtilities.execFile.withArgs("which", ["swiftly"]).resolves({
+                stdout: "/usr/local/bin/swiftly\n",
+                stderr: "",
+            });
+
+            const result = await Swiftly.isInstalled();
+
+            expect(result).to.be.true;
+            expect(mockUtilities.execFile).to.have.been.calledWith("which", ["swiftly"]);
+        });
+
+        test("should return false when swiftly is not found", async () => {
+            mockUtilities.execFile.withArgs("which", ["swiftly"]).rejects(new Error("not found"));
+
+            const result = await Swiftly.isInstalled();
+
+            expect(result).to.be.false;
+            expect(mockUtilities.execFile).to.have.been.calledWith("which", ["swiftly"]);
+        });
+
+        test("should return false when which returns empty output", async () => {
+            mockUtilities.execFile.withArgs("which", ["swiftly"]).resolves({
+                stdout: "",
+                stderr: "",
+            });
+
+            const result = await Swiftly.isInstalled();
+
+            expect(result).to.be.false;
+            expect(mockUtilities.execFile).to.have.been.calledWith("which", ["swiftly"]);
+        });
+
+        test("should return false when platform is not supported", async () => {
+            mockedPlatform.setValue("win32");
+
+            const result = await Swiftly.isInstalled();
+
+            expect(result).to.be.false;
+            expect(mockUtilities.execFile).not.to.have.been.called;
+        });
+    });
 });

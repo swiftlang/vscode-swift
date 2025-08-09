@@ -148,7 +148,7 @@ export class Swiftly {
         }
     }
 
-    private static isSupported() {
+    public static isSupported() {
         return process.platform === "linux" || process.platform === "darwin";
     }
 
@@ -234,5 +234,17 @@ export class Swiftly {
             "utf-8"
         );
         return JSON.parse(swiftlyConfigRaw);
+    }
+
+    public static async isInstalled(): Promise<boolean> {
+        if (!this.isSupported()) {
+            return false;
+        }
+        try {
+            const { stdout } = await execFile("which", ["swiftly"]);
+            return stdout.trim().length > 0;
+        } catch (error) {
+            return false;
+        }
     }
 }
