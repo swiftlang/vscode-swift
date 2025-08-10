@@ -18,7 +18,12 @@ import * as stream from "stream";
 import * as os from "os";
 import * as asyncfs from "fs/promises";
 import { FolderContext } from "../FolderContext";
-import { compactMap, execFile, getErrorDescription } from "../utilities/utilities";
+import {
+    compactMap,
+    execFile,
+    getErrorDescription,
+    IS_RUNNING_UNDER_TEST,
+} from "../utilities/utilities";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
@@ -652,13 +657,15 @@ export class TestRunner {
         // If there's an active test run, prompt the user to cancel
         if (folderContext.hasActiveTestRun()) {
             const cancelOption = "Replace Running Test";
-            const result = await vscode.window.showInformationMessage(
-                "A test run is already in progress. Would you like to cancel and replace the active test run?",
-                { modal: true },
-                cancelOption
-            );
+            const result = IS_RUNNING_UNDER_TEST
+                ? cancelOption
+                : await vscode.window.showInformationMessage(
+                      "A test run is already in progress. Would you like to cancel and replace the active test run?",
+                      { modal: true },
+                      cancelOption
+                  );
 
-            if (result === cancelOption) {
+            if (result === cancelOption && !token.isCancellationRequested) {
                 // Cancel the active test run
                 folderContext.cancelTestRun();
             } else {
@@ -712,6 +719,10 @@ export class TestRunner {
      * @returns When complete
      */
     async runHandler() {
+        if (this.testRun.token.isCancellationRequested) {
+            return;
+        }
+
         const testTargets = this.testTargets(this.testArgs.testItems);
         this.workspaceContext.testsStarted(this.folderContext, this.testKind, testTargets);
 
