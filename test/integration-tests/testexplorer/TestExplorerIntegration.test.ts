@@ -553,16 +553,9 @@ suite("Test Explorer Suite", function () {
                 // Wait for the next tick to cancel the test run so that
                 // handlers have time to set up.
                 await new Promise<void>(resolve => {
-                    setTimeout(async () => {
+                    setImmediate(async () => {
                         void targetProfile.runHandler(request, secondRunTokenSource.token);
-                        resolve();
-                    });
-                });
-
-                // Wait for the next tick to cancel the test run so that
-                // handlers have time to set up.
-                await new Promise<void>(resolve => {
-                    setImmediate(() => {
+                        await eventPromise(testExplorer.onCreateTestRun);
                         secondRunTokenSource.cancel();
                         resolve();
                     });
