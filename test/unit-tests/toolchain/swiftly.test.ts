@@ -15,10 +15,12 @@
 import { expect } from "chai";
 import { Swiftly } from "../../../src/toolchain/swiftly";
 import * as utilities from "../../../src/utilities/utilities";
+import * as shell from "../../../src/utilities/shell";
 import { mockGlobalModule, mockGlobalValue } from "../../MockUtils";
 
 suite("Swiftly Unit Tests", () => {
     const mockUtilities = mockGlobalModule(utilities);
+    const mockShell = mockGlobalModule(shell);
     const mockedPlatform = mockGlobalValue(process, "platform");
 
     setup(() => {
@@ -105,36 +107,21 @@ suite("Swiftly Unit Tests", () => {
 
     suite("isInstalled", () => {
         test("should return true when swiftly is found", async () => {
-            mockUtilities.execFile.withArgs("which", ["swiftly"]).resolves({
-                stdout: "/usr/local/bin/swiftly\n",
-                stderr: "",
-            });
+            mockShell.findBinaryPath.withArgs("swiftly").resolves("/usr/local/bin/swiftly");
 
             const result = await Swiftly.isInstalled();
 
             expect(result).to.be.true;
-            expect(mockUtilities.execFile).to.have.been.calledWith("which", ["swiftly"]);
+            expect(mockShell.findBinaryPath).to.have.been.calledWith("swiftly");
         });
 
         test("should return false when swiftly is not found", async () => {
-            mockUtilities.execFile.withArgs("which", ["swiftly"]).rejects(new Error("not found"));
+            mockShell.findBinaryPath.withArgs("swiftly").rejects(new Error("not found"));
 
             const result = await Swiftly.isInstalled();
 
             expect(result).to.be.false;
-            expect(mockUtilities.execFile).to.have.been.calledWith("which", ["swiftly"]);
-        });
-
-        test("should return false when which returns empty output", async () => {
-            mockUtilities.execFile.withArgs("which", ["swiftly"]).resolves({
-                stdout: "",
-                stderr: "",
-            });
-
-            const result = await Swiftly.isInstalled();
-
-            expect(result).to.be.false;
-            expect(mockUtilities.execFile).to.have.been.calledWith("which", ["swiftly"]);
+            expect(mockShell.findBinaryPath).to.have.been.calledWith("swiftly");
         });
 
         test("should return false when platform is not supported", async () => {
@@ -143,7 +130,7 @@ suite("Swiftly Unit Tests", () => {
             const result = await Swiftly.isInstalled();
 
             expect(result).to.be.false;
-            expect(mockUtilities.execFile).not.to.have.been.called;
+            expect(mockShell.findBinaryPath).not.to.have.been.called;
         });
     });
 });

@@ -20,6 +20,7 @@ import * as vscode from "vscode";
 import { Version } from "../utilities/version";
 import { z } from "zod/v4/mini";
 import { SwiftLogger } from "../logging/SwiftLogger";
+import { findBinaryPath } from "../utilities/shell";
 
 const ListResult = z.object({
     toolchains: z.array(
@@ -241,8 +242,8 @@ export class Swiftly {
             return false;
         }
         try {
-            const { stdout } = await execFile("which", ["swiftly"]);
-            return stdout.trim().length > 0;
+            await findBinaryPath("swiftly");
+            return true;
         } catch (error) {
             return false;
         }
