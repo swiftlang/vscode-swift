@@ -25,12 +25,14 @@ import {
 import { closeAllEditors } from "../../utilities/commands";
 import {
     determineSchemaURL,
+    handleConfigFileChange,
     handleSchemaUpdate,
     sourcekitConfigFilePath,
     sourcekitFolderPath,
 } from "../../../src/commands/generateSourcekitConfiguration";
 import { Version } from "../../../src/utilities/version";
-import { mockGlobalObject } from "../../MockUtils";
+import { mockGlobalObject, mockGlobalModule } from "../../MockUtils";
+import * as restartLSPServerModule from "../../../src/commands/restartLSPServer";
 
 suite("Generate SourceKit-LSP configuration Command", function () {
     let folderContext: FolderContext;
@@ -112,6 +114,7 @@ suite("Generate SourceKit-LSP configuration Command", function () {
 
     suite("handleSchemaUpdate", async () => {
         const mockWindow = mockGlobalObject(vscode, "window");
+        const mockRestartLSPServerModule = mockGlobalModule(restartLSPServerModule);
 
         test("Updates to new schema version", async () => {
             await vscode.workspace.fs.writeFile(
@@ -156,7 +159,12 @@ suite("Generate SourceKit-LSP configuration Command", function () {
 
             await handleSchemaUpdate(document, workspaceContext);
 
-            expect(mockWindow.showInformationMessage).to.have.not.been.called;
+            expect(mockWindow.showInformationMessage).to.have.not.been.calledWith(
+                `The $schema property for ${configFileUri.fsPath} is not set to the version of the Swift toolchain that you are using. Would you like to update the $schema property?`,
+                "Yes",
+                "No",
+                "Don't Ask Again"
+            );
         });
 
         test("Don't update schema version", async () => {
@@ -179,6 +187,30 @@ suite("Generate SourceKit-LSP configuration Command", function () {
                 "$schema",
                 "https://raw.githubusercontent.com/swiftlang/sourcekit-lsp/refs/heads/main/config.schema.json"
             );
+        });
+
+        test("Check LSP restart prompt for config.json modifications", async () => {
+            await vscode.workspace.fs.writeFile(
+                configFileUri,
+                Buffer.from(
+                    JSON.stringify({
+                        $schema: "invalid schema",
+                    })
+                )
+            );
+            await handleConfigFileChange(configFileUri, workspaceContext);
+
+            expect(mockWindow.showInformationMessage).to.have.been.called;
+            expect(mockWindow.showInformationMessage).to.have.been.calledWith(
+                `The SourceKit-LSP configuration file has been modified. Would you like to restart the language server to apply the changes?`,
+                "Restart LSP Server",
+                "Not Now"
+            );
+
+            mockWindow.showInformationMessage.resolves("Restart LSP Server" as any);
+
+            await handleConfigFileChange(configFileUri, workspaceContext);
+            expect(mockRestartLSPServerModule.default).to.have.been.calledWith(workspaceContext);
         });
     });
 });

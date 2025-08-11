@@ -247,7 +247,7 @@ export function registerSourceKitSchemaWatcher(
     );
 }
 
-async function handleConfigFileChange(
+export async function handleConfigFileChange(
     configUri: vscode.Uri,
     workspaceContext: WorkspaceContext
 ): Promise<void> {
