@@ -19,7 +19,7 @@ import { PackageWatcher } from "./PackageWatcher";
 import { SwiftPackage, Target, TargetType } from "./SwiftPackage";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { TestRunManager } from "./TestExplorer/TestRunManager";
-import { WorkspaceContext, FolderOperation } from "./WorkspaceContext";
+import { FolderOperation } from "./WorkspaceContext";
 import { BackgroundCompilation } from "./BackgroundCompilation";
 import { TaskQueue } from "./tasks/TaskQueue";
 import { isPathInsidePath } from "./utilities/filesystem";
@@ -36,23 +36,38 @@ export class FolderContext implements vscode.Disposable {
     private testRunManager: TestRunManager;
 
     /**
-     * FolderContext constructor
-     * @param folder Workspace Folder
-     * @param swiftPackage Swift Package inside the folder
-     * @param workspaceContext Workspace context
+     * Constructs a new instance of the FolderContext class.
+     *
+     * @param folder - The URI of the folder associated with this context.
+     * @param toolchain - The Swift toolchain used for building and running Swift code.
+     * @param linuxMain - The LinuxMain configuration for the Swift package.
+     * @param swiftPackage - The Swift package information for this context.
+     * @param workspaceFolder - The VS Code workspace folder associated with this context.
+     * @param logger - The logger instance for logging operations and events.
+     * @param _fireEvent - A callback function to fire events related to folder operations.
+     *
+     * Initializes the package watcher, background compilation, task queue, and test run manager for the folder context.
      */
-    private constructor(
+    constructor(
         public folder: vscode.Uri,
         public toolchain: SwiftToolchain,
         public linuxMain: LinuxMain,
         public swiftPackage: SwiftPackage,
         public workspaceFolder: vscode.WorkspaceFolder,
-        public workspaceContext: WorkspaceContext
+        logger: SwiftLogger,
+        private _fireEvent: (folder: FolderContext, event: FolderOperation) => Promise<void>
     ) {
-        this.packageWatcher = new PackageWatcher(this, workspaceContext);
+        this.packageWatcher = new PackageWatcher(this, logger);
         this.backgroundCompilation = new BackgroundCompilation(this);
         this.taskQueue = new TaskQueue(this);
         this.testRunManager = new TestRunManager();
+    }
+
+    /**
+     * Install watchers on the folder.
+     */
+    public async installWatchers() {
+        await this.packageWatcher.install();
     }
 
     /** dispose of any thing FolderContext holds */
@@ -61,55 +76,6 @@ export class FolderContext implements vscode.Disposable {
         this.packageWatcher.dispose();
         this.testExplorer?.dispose();
         this.backgroundCompilation.dispose();
-    }
-
-    /**
-     * Create FolderContext
-     * @param folder Folder that Folder Context is being created for
-     * @param workspaceContext Workspace context for extension
-     * @returns a new FolderContext
-     */
-    static async create(
-        folder: vscode.Uri,
-        workspaceFolder: vscode.WorkspaceFolder,
-        workspaceContext: WorkspaceContext
-    ): Promise<FolderContext> {
-        const statusItemText = `Loading Package (${FolderContext.uriName(folder)})`;
-        workspaceContext.statusItem.start(statusItemText);
-
-        const toolchain = await SwiftToolchain.create(folder);
-        const { linuxMain, swiftPackage } =
-            await workspaceContext.statusItem.showStatusWhileRunning(statusItemText, async () => {
-                const linuxMain = await LinuxMain.create(folder);
-                const swiftPackage = await SwiftPackage.create(folder, toolchain);
-                return { linuxMain, swiftPackage };
-            });
-        workspaceContext.statusItem.end(statusItemText);
-
-        const folderContext = new FolderContext(
-            folder,
-            toolchain,
-            linuxMain,
-            swiftPackage,
-            workspaceFolder,
-            workspaceContext
-        );
-
-        const error = await swiftPackage.error;
-        if (error) {
-            void vscode.window.showErrorMessage(
-                `Failed to load ${folderContext.name}/Package.swift: ${error.message}`
-            );
-            workspaceContext.logger.info(
-                `Failed to load Package.swift: ${error.message}`,
-                folderContext.name
-            );
-        }
-
-        // Start watching for changes to Package.swift, Package.resolved and .swift-version
-        await folderContext.packageWatcher.install();
-
-        return folderContext;
     }
 
     get name(): string {
@@ -158,7 +124,7 @@ export class FolderContext implements vscode.Disposable {
      * @param event event type
      */
     async fireEvent(event: FolderOperation) {
-        await this.workspaceContext.fireEvent(this, event);
+        await this._fireEvent(this, event);
     }
 
     /** Return edited Packages folder */
