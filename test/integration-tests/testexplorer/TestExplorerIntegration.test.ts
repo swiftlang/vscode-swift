@@ -523,6 +523,45 @@ suite("Test Explorer Suite", function () {
                 assertContains(testRun.runState.output, "\r\nTest run cancelled.");
             });
 
+            test("Cancellation during build", async function () {
+                const targetProfile = testExplorer.testRunProfiles.find(
+                    profile => profile.label === TestKind.standard
+                );
+                if (!targetProfile) {
+                    throw new Error(`Unable to find run profile named ${TestKind.standard}`);
+                }
+                const testItems = gatherTests(
+                    testExplorer.controller,
+                    "PackageTests.DuplicateSuffixTests/testPassing"
+                );
+                const request = new vscode.TestRunRequest(testItems);
+                const initialTokenSource = new vscode.CancellationTokenSource();
+
+                const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
+
+                // Deliberately don't await this so we can cancel it.
+                void targetProfile.runHandler(request, initialTokenSource.token);
+                const testRun = await testRunPromise;
+
+                const secondRunTokenSource = new vscode.CancellationTokenSource();
+                // Wait for the next tick to cancel the test run so that
+                // handlers have time to set up.
+                await new Promise<void>(resolve => {
+                    setImmediate(async () => {
+                        const secondRunOnCreate = eventPromise(testExplorer.onCreateTestRun);
+                        // Start the second test run, which will trigger the mockWindow to resolve with
+                        // the request to cancel and start a new run. Then wait for the second run to start,
+                        // and cancel it as if VS Code requested it.
+                        void targetProfile.runHandler(request, secondRunTokenSource.token);
+                        await secondRunOnCreate;
+                        secondRunTokenSource.cancel();
+                        resolve();
+                    });
+                });
+
+                assertContains(testRun.runState.output, "\r\nTest run cancelled.");
+            });
+
             test("tests run in debug mode @slow", async function () {
                 const testRun = await runTest(
                     testExplorer,
