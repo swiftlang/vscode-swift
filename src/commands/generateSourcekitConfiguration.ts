@@ -18,6 +18,10 @@ import { FolderContext } from "../FolderContext";
 import { selectFolder } from "../ui/SelectFolderQuickPick";
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
+import restartLSPServer from "./restartLSPServer";
+
+export const sourcekitDotFolder: string = ".sourcekit-lsp";
+export const sourcekitConfigFileName: string = "config.json";
 
 export async function generateSourcekitConfiguration(ctx: WorkspaceContext): Promise<boolean> {
     if (ctx.folders.length === 0) {
@@ -46,9 +50,9 @@ export async function generateSourcekitConfiguration(ctx: WorkspaceContext): Pro
     ).reduceRight((prev, curr) => prev || curr);
 }
 
-export const sourcekitFolderPath = (f: FolderContext) => join(f.folder.fsPath, ".sourcekit-lsp");
+export const sourcekitFolderPath = (f: FolderContext) => join(f.folder.fsPath, sourcekitDotFolder);
 export const sourcekitConfigFilePath = (f: FolderContext) =>
-    join(sourcekitFolderPath(f), "config.json");
+    join(sourcekitFolderPath(f), sourcekitConfigFileName);
 
 async function createSourcekitConfiguration(
     workspaceContext: WorkspaceContext,
@@ -134,14 +138,33 @@ export async function determineSchemaURL(folderContext: FolderContext): Promise<
     return schemaURL(branch);
 }
 
-async function checkDocumentSchema(doc: vscode.TextDocument, workspaceContext: WorkspaceContext) {
-    const folder = await workspaceContext.getPackageFolder(doc.uri);
+async function getValidatedFolderContext(
+    uri: vscode.Uri,
+    workspaceContext: WorkspaceContext
+): Promise<FolderContext | null> {
+    const folder = await workspaceContext.getPackageFolder(uri);
     if (!folder) {
-        return;
+        return null;
     }
     const folderContext = folder as FolderContext;
     if (!folderContext.name) {
-        return; // Not a FolderContext if no "name"
+        return null; // Not a FolderContext if no "name"
+    }
+    if (
+        !(
+            basename(dirname(uri.fsPath)) === sourcekitDotFolder &&
+            basename(uri.fsPath) === sourcekitConfigFileName
+        )
+    ) {
+        return null;
+    }
+    return folderContext;
+}
+
+async function checkDocumentSchema(doc: vscode.TextDocument, workspaceContext: WorkspaceContext) {
+    const folderContext = await getValidatedFolderContext(doc.uri, workspaceContext);
+    if (!folderContext) {
+        return;
     }
     let buffer: Uint8Array;
     try {
@@ -191,13 +214,7 @@ export async function handleSchemaUpdate(
     doc: vscode.TextDocument,
     workspaceContext: WorkspaceContext
 ) {
-    if (
-        !configuration.checkLspConfigurationSchema ||
-        !(
-            basename(dirname(doc.uri.fsPath)) === ".sourcekit-lsp" &&
-            basename(doc.uri.fsPath) === "config.json"
-        )
-    ) {
+    if (!configuration.checkLspConfigurationSchema) {
         return;
     }
     await checkDocumentSchema(doc, workspaceContext);
@@ -206,7 +223,44 @@ export async function handleSchemaUpdate(
 export function registerSourceKitSchemaWatcher(
     workspaceContext: WorkspaceContext
 ): vscode.Disposable {
-    return vscode.workspace.onDidOpenTextDocument(doc => {
+    const onDidOpenDisposable = vscode.workspace.onDidOpenTextDocument(doc => {
         void handleSchemaUpdate(doc, workspaceContext);
     });
+    const configFileWatcher = vscode.workspace.createFileSystemWatcher(
+        `**/${sourcekitDotFolder}/${sourcekitConfigFileName}`
+    );
+    const onDidChangeDisposable = configFileWatcher.onDidChange(async uri => {
+        await handleConfigFileChange(uri, workspaceContext);
+    });
+    const onDidDeleteDisposable = configFileWatcher.onDidDelete(async uri => {
+        await handleConfigFileChange(uri, workspaceContext);
+    });
+    const onDidCreateDisposable = configFileWatcher.onDidCreate(async uri => {
+        await handleConfigFileChange(uri, workspaceContext);
+    });
+    return vscode.Disposable.from(
+        onDidOpenDisposable,
+        configFileWatcher,
+        onDidChangeDisposable,
+        onDidDeleteDisposable,
+        onDidCreateDisposable
+    );
+}
+
+export async function handleConfigFileChange(
+    configUri: vscode.Uri,
+    workspaceContext: WorkspaceContext
+): Promise<void> {
+    const folderContext = await getValidatedFolderContext(configUri, workspaceContext);
+    if (!folderContext) {
+        return;
+    }
+    const result = await vscode.window.showInformationMessage(
+        `The SourceKit-LSP configuration file has been modified. Would you like to restart the language server to apply the changes?`,
+        "Restart LSP Server",
+        "Not Now"
+    );
+    if (result === "Restart LSP Server") {
+        await restartLSPServer(workspaceContext);
+    }
 }

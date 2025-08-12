@@ -8,6 +8,7 @@
 - New `swift.outputChannelLogLevel` setting to control the verbosity of the `Swift` output channel ([#1746](https://github.com/swiftlang/vscode-swift/pull/1746))
 - New `swift.debugTestsMultipleTimes` and `swift.debugTestsUntilFailure` commands for debugging tests over multiple runs ([#1763](https://github.com/swiftlang/vscode-swift/pull/1763))
 - Optionally include LLDB DAP logs in the Swift diagnostics bundle ([#1768](https://github.com/swiftlang/vscode-swift/pull/1758))
+- Prompt to restart `SourceKit-LSP` after changing `.sourcekit-lsp/config.json` files ([#1744](https://github.com/swiftlang/vscode-swift/issues/1744))
 - Prompt to cancel and replace the active test run if one is in flight ([#1774](https://github.com/swiftlang/vscode-swift/pull/1774))
 
 ### Changed
