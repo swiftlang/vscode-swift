@@ -18,19 +18,22 @@ import { LinuxMain } from "./LinuxMain";
 import { PackageWatcher } from "./PackageWatcher";
 import { SwiftPackage, Target, TargetType } from "./SwiftPackage";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
+import { TestRunManager } from "./TestExplorer/TestRunManager";
 import { WorkspaceContext, FolderOperation } from "./WorkspaceContext";
 import { BackgroundCompilation } from "./BackgroundCompilation";
 import { TaskQueue } from "./tasks/TaskQueue";
 import { isPathInsidePath } from "./utilities/filesystem";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { SwiftLogger } from "./logging/SwiftLogger";
+import { TestRunProxy } from "./TestExplorer/TestRunner";
 
 export class FolderContext implements vscode.Disposable {
-    private packageWatcher: PackageWatcher;
     public backgroundCompilation: BackgroundCompilation;
     public hasResolveErrors = false;
     public testExplorer?: TestExplorer;
     public taskQueue: TaskQueue;
+    private packageWatcher: PackageWatcher;
+    private testRunManager: TestRunManager;
 
     /**
      * FolderContext constructor
@@ -49,6 +52,7 @@ export class FolderContext implements vscode.Disposable {
         this.packageWatcher = new PackageWatcher(this, workspaceContext);
         this.backgroundCompilation = new BackgroundCompilation(this);
         this.taskQueue = new TaskQueue(this);
+        this.testRunManager = new TestRunManager();
     }
 
     /** dispose of any thing FolderContext holds */
@@ -210,6 +214,34 @@ export class FolderContext implements vscode.Disposable {
             return element.sources.find(file => file === relativeUri) !== undefined;
         });
         return target;
+    }
+
+    /**
+     * Register a new test run
+     * @param testRun The test run to register
+     * @param folder The folder context
+     * @param testKind The kind of test run
+     * @param tokenSource The cancellation token source
+     */
+    public registerTestRun(testRun: TestRunProxy, tokenSource: vscode.CancellationTokenSource) {
+        this.testRunManager.registerTestRun(testRun, this, tokenSource);
+    }
+
+    /**
+     * Returns true if there is an active test run for the given test kind
+     * @param testKind The kind of test
+     * @returns True if there is an active test run, false otherwise
+     */
+    hasActiveTestRun() {
+        return this.testRunManager.getActiveTestRun(this) !== undefined;
+    }
+
+    /**
+     * Cancels the active test run for the given test kind
+     * @param testKind The kind of test run
+     */
+    cancelTestRun() {
+        this.testRunManager.cancelTestRun(this);
     }
 
     /**
