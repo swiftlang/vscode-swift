@@ -82,7 +82,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             };
         }
 
-        const workspaceContext = await WorkspaceContext.create(context, logger, toolchain);
+        const workspaceContext = new WorkspaceContext(context, logger, toolchain);
         context.subscriptions.push(workspaceContext);
 
         context.subscriptions.push(new SwiftEnvironmentVariablesManager(context));

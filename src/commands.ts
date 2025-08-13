@@ -213,7 +213,15 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             Commands.RESET_PACKAGE,
             async (_ /* Ignore context */, folder) => await resetPackage(ctx, folder)
         ),
-        vscode.commands.registerCommand("swift.runScript", async () => await runSwiftScript(ctx)),
+        vscode.commands.registerCommand("swift.runScript", async () => {
+            if (ctx.currentFolder && vscode.window.activeTextEditor?.document) {
+                await runSwiftScript(
+                    vscode.window.activeTextEditor.document,
+                    ctx.tasks,
+                    ctx.currentFolder.toolchain
+                );
+            }
+        }),
         vscode.commands.registerCommand("swift.openPackage", async () => {
             if (ctx.currentFolder) {
                 return await openPackage(ctx.currentFolder.swiftVersion, ctx.currentFolder.folder);
