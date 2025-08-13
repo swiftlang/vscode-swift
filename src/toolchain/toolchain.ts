@@ -26,6 +26,7 @@ import { Sanitizer } from "./Sanitizer";
 import { lineBreakRegex } from "../utilities/tasks";
 import { Swiftly } from "./swiftly";
 import { SwiftLogger } from "../logging/SwiftLogger";
+import { findBinaryPath } from "../utilities/shell";
 /**
  * Contents of **Info.plist** on Windows.
  */
@@ -548,21 +549,7 @@ export class SwiftToolchain {
                         break;
                     }
                     default: {
-                        // use `type swift` to find `swift`. Run inside /bin/sh to ensure
-                        // we get consistent output as different shells output a different
-                        // format. Tried running with `-p` but that is not available in /bin/sh
-                        const { stdout, stderr } = await execFile("/bin/sh", [
-                            "-c",
-                            "LC_MESSAGES=C type swift",
-                        ]);
-                        const swiftMatch = /^swift is (.*)$/.exec(stdout.trimEnd());
-                        if (swiftMatch) {
-                            swift = swiftMatch[1];
-                        } else {
-                            throw Error(
-                                `/bin/sh -c LC_MESSAGES=C type swift: stdout: ${stdout}, stderr: ${stderr}`
-                            );
-                        }
+                        swift = await findBinaryPath("swift");
                         break;
                     }
                 }

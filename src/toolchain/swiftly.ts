@@ -20,6 +20,7 @@ import * as vscode from "vscode";
 import { Version } from "../utilities/version";
 import { z } from "zod/v4/mini";
 import { SwiftLogger } from "../logging/SwiftLogger";
+import { findBinaryPath } from "../utilities/shell";
 
 const ListResult = z.object({
     toolchains: z.array(
@@ -148,7 +149,7 @@ export class Swiftly {
         }
     }
 
-    private static isSupported() {
+    public static isSupported() {
         return process.platform === "linux" || process.platform === "darwin";
     }
 
@@ -234,5 +235,17 @@ export class Swiftly {
             "utf-8"
         );
         return JSON.parse(swiftlyConfigRaw);
+    }
+
+    public static async isInstalled(): Promise<boolean> {
+        if (!this.isSupported()) {
+            return false;
+        }
+        try {
+            await findBinaryPath("swiftly");
+            return true;
+        } catch (error) {
+            return false;
+        }
     }
 }
