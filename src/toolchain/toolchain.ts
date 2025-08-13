@@ -548,9 +548,6 @@ export class SwiftToolchain {
                         break;
                     }
                     default: {
-                        // use `type swift` to find `swift`. Run inside /bin/sh to ensure
-                        // we get consistent output as different shells output a different
-                        // format. Tried running with `-p` but that is not available in /bin/sh
                         swift = await findBinaryPath("swift");
                         break;
                     }
