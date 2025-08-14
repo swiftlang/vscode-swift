@@ -19,7 +19,6 @@ import { StatusItem } from "./ui/StatusItem";
 import { swiftLibraryPathKey } from "./utilities/utilities";
 import { isExcluded, isPathInsidePath } from "./utilities/filesystem";
 import { LanguageClientToolchainCoordinator } from "./sourcekit-lsp/LanguageClientToolchainCoordinator";
-import { TemporaryFolder } from "./utilities/tempFolder";
 import { TaskManager } from "./tasks/TaskManager";
 import { makeDebugConfigurations } from "./debugger/launch";
 import configuration from "./configuration";
@@ -76,9 +75,8 @@ export class WorkspaceContext implements vscode.Disposable {
 
     public loggerFactory: SwiftLoggerFactory;
 
-    private constructor(
+    constructor(
         extensionContext: vscode.ExtensionContext,
-        public tempFolder: TemporaryFolder,
         public logger: SwiftLogger,
         public globalToolchain: SwiftToolchain
     ) {
@@ -228,16 +226,6 @@ export class WorkspaceContext implements vscode.Disposable {
 
     get globalToolchainSwiftVersion() {
         return this.globalToolchain.swiftVersion;
-    }
-
-    /** Get swift version and create WorkspaceContext */
-    static async create(
-        extensionContext: vscode.ExtensionContext,
-        logger: SwiftLogger,
-        toolchain: SwiftToolchain
-    ): Promise<WorkspaceContext> {
-        const tempFolder = await TemporaryFolder.create();
-        return new WorkspaceContext(extensionContext, tempFolder, logger, toolchain);
     }
 
     /**

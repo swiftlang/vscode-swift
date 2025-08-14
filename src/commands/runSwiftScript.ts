@@ -15,38 +15,58 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs/promises";
-import { createSwiftTask } from "../tasks/SwiftTaskProvider";
-import { WorkspaceContext } from "../WorkspaceContext";
-import { Version } from "../utilities/version";
 import configuration from "../configuration";
+import { createSwiftTask } from "../tasks/SwiftTaskProvider";
+import { TemporaryFolder } from "../utilities/tempFolder";
+import { TaskManager } from "../tasks/TaskManager";
+import { SwiftToolchain } from "../toolchain/toolchain";
 
 /**
- * Run the active document through the Swift REPL
+ * Runs the Swift code in the supplied document.
+ *
+ * This function checks for a valid document and Swift version, then creates and executes
+ * a Swift task to run the script file. The task is configured to always reveal its output
+ * and clear previous output. The working directory is set to the script's location.
+ *
+ * @param document - The text document containing the Swift script to run. If undefined, the function returns early.
+ * @param tasks - The TaskManager instance used to execute and manage the Swift task.
+ * @param toolchain - The SwiftToolchain to use for running the script.
+ * @returns A promise that resolves when the script has finished running, or returns early if the user is prompted
+ * for which swift version to use and they exit the dialog without choosing one.
  */
-export async function runSwiftScript(ctx: WorkspaceContext) {
-    const document = vscode.window.activeTextEditor?.document;
-    if (!document) {
+export async function runSwiftScript(
+    document: vscode.TextDocument,
+    tasks: TaskManager,
+    toolchain: SwiftToolchain
+) {
+    const targetVersion = await targetSwiftVersion();
+    if (!targetVersion) {
         return;
     }
 
-    if (!ctx.currentFolder) {
-        return;
-    }
-
-    // Swift scripts require new swift driver to work on Windows. Swift driver is available
-    // from v5.7 of Windows Swift
-    if (
-        process.platform === "win32" &&
-        ctx.currentFolder.swiftVersion.isLessThan(new Version(5, 7, 0))
-    ) {
-        void vscode.window.showErrorMessage(
-            "Run Swift Script is unavailable with the legacy driver on Windows."
+    await withDocumentFile(document, async filename => {
+        const runTask = createSwiftTask(
+            ["-swift-version", targetVersion, filename],
+            `Run ${filename}`,
+            {
+                scope: vscode.TaskScope.Global,
+                cwd: vscode.Uri.file(path.dirname(filename)),
+                presentationOptions: { reveal: vscode.TaskRevealKind.Always, clear: true },
+            },
+            toolchain
         );
-        return;
-    }
+        await tasks.executeTaskAndWait(runTask);
+    });
+}
 
-    let target: string;
-
+/**
+ * Determines the target Swift language version to use for script execution.
+ * If the configuration is set to "Ask Every Run", prompts the user to select a version.
+ * Otherwise, returns the default version from the user's settings.
+ *
+ * @returns {Promise<string | undefined>} The selected Swift version, or undefined if no selection was made.
+ */
+async function targetSwiftVersion() {
     const defaultVersion = configuration.scriptSwiftLanguageVersion;
     if (defaultVersion === "Ask Every Run") {
         const picked = await vscode.window.showQuickPick(
@@ -59,41 +79,36 @@ export async function runSwiftScript(ctx: WorkspaceContext) {
                 placeHolder: "Select a target Swift version",
             }
         );
-
-        if (!picked) {
-            return;
-        }
-        target = picked.value;
+        return picked?.value;
     } else {
-        target = defaultVersion;
+        return defaultVersion;
     }
+}
 
-    let filename = document.fileName;
-    let isTempFile = false;
+/**
+ * Executes a callback with the filename of the given `vscode.TextDocument`.
+ * If the document is untitled (not yet saved to disk), it creates a temporary file,
+ * writes the document's content to it, and passes its filename to the callback.
+ * Otherwise, it ensures the document is saved and passes its actual filename.
+ *
+ * The temporary file is automatically deleted when the callback completes.
+ *
+ * @param document - The VSCode text document to operate on.
+ * @param callback - An async function that receives the filename of the document or temporary file.
+ * @returns A promise that resolves when the callback has completed.
+ */
+async function withDocumentFile(
+    document: vscode.TextDocument,
+    callback: (filename: string) => Promise<void>
+) {
     if (document.isUntitled) {
-        // if document hasn't been saved, save it to a temporary file
-        isTempFile = true;
-        filename = ctx.tempFolder.filename(document.fileName, "swift");
-        const text = document.getText();
-        await fs.writeFile(filename, text);
+        const tmpFolder = await TemporaryFolder.create();
+        await tmpFolder.withTemporaryFile("swift", async filename => {
+            await fs.writeFile(filename, document.getText());
+            await callback(filename);
+        });
     } else {
-        // otherwise save document
         await document.save();
-    }
-    const runTask = createSwiftTask(
-        ["-swift-version", target, filename],
-        `Run ${filename}`,
-        {
-            scope: vscode.TaskScope.Global,
-            cwd: vscode.Uri.file(path.dirname(filename)),
-            presentationOptions: { reveal: vscode.TaskRevealKind.Always, clear: true },
-        },
-        ctx.currentFolder.toolchain
-    );
-    await ctx.tasks.executeTaskAndWait(runTask);
-
-    // delete file after running swift
-    if (isTempFile) {
-        await fs.rm(filename);
+        await callback(document.fileName);
     }
 }

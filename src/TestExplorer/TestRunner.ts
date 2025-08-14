@@ -981,7 +981,8 @@ export class TestRunner {
         testBuildConfig: vscode.DebugConfiguration,
         runState: TestRunnerTestRunState
     ) {
-        await this.workspaceContext.tempFolder.withTemporaryFile("xml", async filename => {
+        const tempFolder = await TemporaryFolder.create();
+        await tempFolder.withTemporaryFile("xml", async filename => {
             const args = [...(testBuildConfig.args ?? []), "--xunit-output", filename];
 
             try {
