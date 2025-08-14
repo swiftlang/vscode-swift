@@ -146,7 +146,11 @@ export async function updateChangelog(version: string): Promise<string> {
     return tempChangelog;
 }
 
-export async function packageExtension(version: string) {
+export interface PackageExtensionOptions {
+    preRelease?: boolean;
+}
+
+export async function packageExtension(version: string, options: PackageExtensionOptions = {}) {
     // Update version in a temporary CHANGELOG
     const changelogPath = await updateChangelog(version);
 
@@ -160,6 +164,7 @@ export async function packageExtension(version: string) {
         [
             "vsce",
             "package",
+            ...(options.preRelease === true ? ["--pre-release"] : []),
             "--allow-package-secrets",
             "sendgrid",
             "--no-update-package-json",

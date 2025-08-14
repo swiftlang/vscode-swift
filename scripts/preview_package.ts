@@ -41,5 +41,5 @@ main(async () => {
                 " The version in the package.json has probably been incorrectly set to an odd minor version."
         );
     }
-    await packageExtension(previewVersion);
+    await packageExtension(previewVersion, { preRelease: true });
 });
