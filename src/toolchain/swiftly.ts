@@ -15,6 +15,9 @@
 import * as path from "path";
 import { SwiftlyConfig } from "./ToolchainVersion";
 import * as fs from "fs/promises";
+import * as fsSync from "fs";
+import * as os from "os";
+import * as readline from "readline";
 import { execFile, ExecFileError } from "../utilities/utilities";
 import * as vscode from "vscode";
 import { Version } from "../utilities/version";
@@ -51,6 +54,45 @@ const ListResult = z.object({
 const InUseVersionResult = z.object({
     version: z.string(),
 });
+
+const ListAvailableResult = z.object({
+    toolchains: z.array(
+        z.object({
+            version: z.discriminatedUnion("type", [
+                z.object({
+                    major: z.union([z.number(), z.undefined()]),
+                    minor: z.union([z.number(), z.undefined()]),
+                    patch: z.union([z.number(), z.undefined()]),
+                    name: z.string(),
+                    type: z.literal("stable"),
+                }),
+                z.object({
+                    major: z.union([z.number(), z.undefined()]),
+                    minor: z.union([z.number(), z.undefined()]),
+                    branch: z.string(),
+                    date: z.string(),
+                    name: z.string(),
+                    type: z.literal("snapshot"),
+                }),
+            ]),
+        })
+    ),
+});
+
+export interface AvailableToolchain {
+    name: string;
+    type: "stable" | "snapshot";
+    version: string;
+    isInstalled: boolean;
+}
+
+export interface SwiftlyProgressData {
+    step?: {
+        text?: string;
+        timestamp?: number;
+        percent?: number;
+    };
+}
 
 export class Swiftly {
     /**
@@ -218,6 +260,147 @@ export class Swiftly {
             }
         }
         return undefined;
+    }
+
+    /**
+     * Lists all toolchains available for installation from swiftly
+     *
+     * @param logger Optional logger for error reporting
+     * @returns Array of available toolchains
+     */
+    public static async listAvailable(logger?: SwiftLogger): Promise<AvailableToolchain[]> {
+        if (!this.isSupported()) {
+            return [];
+        }
+
+        const version = await Swiftly.version(logger);
+        if (!version) {
+            logger?.warn("Swiftly is not installed");
+            return [];
+        }
+
+        if (!(await Swiftly.supportsJsonOutput(logger))) {
+            logger?.warn("Swiftly version does not support JSON output for list-available");
+            return [];
+        }
+
+        try {
+            const { stdout: availableStdout } = await execFile("swiftly", [
+                "list-available",
+                "--format=json",
+            ]);
+            const availableResponse = ListAvailableResult.parse(JSON.parse(availableStdout));
+
+            const { stdout: installedStdout } = await execFile("swiftly", [
+                "list",
+                "--format=json",
+            ]);
+            const installedResponse = ListResult.parse(JSON.parse(installedStdout));
+            const installedNames = new Set(installedResponse.toolchains.map(t => t.version.name));
+
+            return availableResponse.toolchains.map(toolchain => ({
+                name: toolchain.version.name,
+                type: toolchain.version.type,
+                version: toolchain.version.name,
+                isInstalled: installedNames.has(toolchain.version.name),
+            }));
+        } catch (error) {
+            logger?.error(`Failed to retrieve available Swiftly toolchains: ${error}`);
+            return [];
+        }
+    }
+
+    /**
+     * Installs a toolchain via swiftly with optional progress tracking
+     *
+     * @param version The toolchain version to install
+     * @param progressCallback Optional callback that receives progress data as JSON objects
+     * @param logger Optional logger for error reporting
+     */
+    public static async installToolchain(
+        version: string,
+        progressCallback?: (progressData: SwiftlyProgressData) => void,
+        logger?: SwiftLogger
+    ): Promise<void> {
+        if (!this.isSupported()) {
+            throw new Error("Swiftly is not supported on this platform");
+        }
+
+        if (process.platform === "linux") {
+            logger?.info(
+                `Skipping toolchain installation on Linux as it requires PostInstall steps`
+            );
+            return;
+        }
+
+        logger?.info(`Installing toolchain ${version} via swiftly`);
+
+        const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vscode-swift-"));
+        const postInstallFilePath = path.join(tmpDir, `post-install-${version}.sh`);
+
+        let progressPipePath: string | undefined;
+        let progressPromise: Promise<void> | undefined;
+
+        if (progressCallback) {
+            progressPipePath = path.join(tmpDir, `progress-${version}.pipe`);
+
+            await execFile("mkfifo", [progressPipePath]);
+
+            progressPromise = new Promise<void>((resolve, reject) => {
+                const rl = readline.createInterface({
+                    input: fsSync.createReadStream(progressPipePath!),
+                    crlfDelay: Infinity,
+                });
+
+                rl.on("line", (line: string) => {
+                    try {
+                        const progressData = JSON.parse(line.trim()) as SwiftlyProgressData;
+                        progressCallback(progressData);
+                    } catch (err) {
+                        logger?.error(`Failed to parse progress line: ${err}`);
+                    }
+                });
+
+                rl.on("close", () => {
+                    resolve();
+                });
+
+                rl.on("error", err => {
+                    reject(err);
+                });
+            });
+        }
+
+        const installArgs = [
+            "install",
+            version,
+            "--use",
+            "--assume-yes",
+            "--post-install-file",
+            postInstallFilePath,
+        ];
+
+        if (progressPipePath) {
+            installArgs.push("--progress-file", progressPipePath);
+        }
+
+        try {
+            const installPromise = execFile("swiftly", installArgs);
+
+            if (progressPromise) {
+                await Promise.all([installPromise, progressPromise]);
+            } else {
+                await installPromise;
+            }
+        } finally {
+            if (progressPipePath) {
+                try {
+                    await fs.unlink(progressPipePath);
+                } catch {
+                    // Ignore errors if the pipe file doesn't exist
+                }
+            }
+        }
     }
 
     /**
