@@ -4,16 +4,22 @@
 
 ### Added
 
+- Prompt to restart `SourceKit-LSP` after changing `.sourcekit-lsp/config.json` files ([#1744](https://github.com/swiftlang/vscode-swift/issues/1744))
+- Prompt to cancel and replace the active test run if one is in flight ([#1774](https://github.com/swiftlang/vscode-swift/pull/1774))
+- A walkthrough for first time extension users ([#1560](https://github.com/swiftlang/vscode-swift/issues/1560))
+
+## 2.11.20250806 - 2025-08-06
+
+### Added
+
 - New `swift.createTasksForLibraryProducts` setting that when enabled causes the extension to automatically create and provide tasks for library products ([#1741](https://github.com/swiftlang/vscode-swift/pull/1741))
 - New `swift.outputChannelLogLevel` setting to control the verbosity of the `Swift` output channel ([#1746](https://github.com/swiftlang/vscode-swift/pull/1746))
 - New `swift.debugTestsMultipleTimes` and `swift.debugTestsUntilFailure` commands for debugging tests over multiple runs ([#1763](https://github.com/swiftlang/vscode-swift/pull/1763))
 - Optionally include LLDB DAP logs in the Swift diagnostics bundle ([#1768](https://github.com/swiftlang/vscode-swift/pull/1758))
-- Prompt to restart `SourceKit-LSP` after changing `.sourcekit-lsp/config.json` files ([#1744](https://github.com/swiftlang/vscode-swift/issues/1744))
-- Prompt to cancel and replace the active test run if one is in flight ([#1774](https://github.com/swiftlang/vscode-swift/pull/1774))
 
 ### Changed
+
 - Added log levels and improved Swift extension logging so a logfile is produced in addition to logging messages to the existing `Swift` output channel. Deprecated the `swift.diagnostics` setting in favour of the new `swift.outputChannelLogLevel` setting ([#1746](https://github.com/swiftlang/vscode-swift/pull/1746))
-- A walkthrough for first time extension users ([#1560](https://github.com/swiftlang/vscode-swift/issues/1560))
 
 ## 2.10.0 - 2025-07-28
 
