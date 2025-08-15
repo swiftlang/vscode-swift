@@ -22,10 +22,12 @@ import {
     mockGlobalObject,
     mockGlobalValue,
     mockObject,
+    mockGlobalModule,
 } from "../../MockUtils";
 import configuration from "../../../src/configuration";
 import { Commands } from "../../../src/commands";
 import { SwiftLogger } from "../../../src/logging/SwiftLogger";
+import * as ReloadExtension from "../../../src/ui/ReloadExtension";
 
 suite("Selected Xcode Watcher", () => {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
@@ -35,6 +37,7 @@ suite("Selected Xcode Watcher", () => {
     const mockWorkspace = mockGlobalObject(vscode, "workspace");
     const mockCommands = mockGlobalObject(vscode, "commands");
     let mockSwiftConfig: MockedObject<vscode.WorkspaceConfiguration>;
+    const mockReloadExtension = mockGlobalModule(ReloadExtension);
 
     setup(function () {
         // Xcode only exists on macOS, so the SelectedXcodeWatcher is macOS-only.
@@ -48,12 +51,17 @@ suite("Selected Xcode Watcher", () => {
         });
 
         pathConfig.setValue("");
+        envConfig.setValue({});
 
         mockSwiftConfig = mockObject<vscode.WorkspaceConfiguration>({
             inspect: mockFn(),
             update: mockFn(),
         });
         mockWorkspace.getConfiguration.returns(instance(mockSwiftConfig));
+
+        mockReloadExtension.showReloadExtensionNotification.callsFake(async (message: string) => {
+            return vscode.window.showWarningMessage(message, "Reload Extensions");
+        });
     });
 
     async function run(symLinksOnCallback: (string | undefined)[]) {

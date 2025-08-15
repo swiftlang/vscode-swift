@@ -18,12 +18,14 @@ import * as fs from "fs/promises";
 import * as fsSync from "fs";
 import * as os from "os";
 import * as readline from "readline";
-import { execFile, ExecFileError } from "../utilities/utilities";
+import * as Stream from "stream";
+import { execFile, ExecFileError, execFileStreamOutput } from "../utilities/utilities";
 import * as vscode from "vscode";
 import { Version } from "../utilities/version";
 import { z } from "zod/v4/mini";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { findBinaryPath } from "../utilities/shell";
+import { SwiftOutputChannel } from "../logging/SwiftOutputChannel";
 
 const ListResult = z.object({
     toolchains: z.array(
@@ -92,6 +94,12 @@ export interface SwiftlyProgressData {
         timestamp?: number;
         percent?: number;
     };
+}
+
+export interface PostInstallValidationResult {
+    isValid: boolean;
+    summary: string;
+    invalidCommands?: string[];
 }
 
 export class Swiftly {
@@ -326,13 +334,6 @@ export class Swiftly {
             throw new Error("Swiftly is not supported on this platform");
         }
 
-        if (process.platform === "linux") {
-            logger?.info(
-                `Skipping toolchain installation on Linux as it requires PostInstall steps`
-            );
-            return;
-        }
-
         logger?.info(`Installing toolchain ${version} via swiftly`);
 
         const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vscode-swift-"));
@@ -392,6 +393,10 @@ export class Swiftly {
             } else {
                 await installPromise;
             }
+
+            if (process.platform === "linux") {
+                await this.handlePostInstallFile(postInstallFilePath, version, logger);
+            }
         } finally {
             if (progressPipePath) {
                 try {
@@ -400,6 +405,210 @@ export class Swiftly {
                     // Ignore errors if the pipe file doesn't exist
                 }
             }
+            try {
+                await fs.unlink(postInstallFilePath);
+            } catch {
+                // Ignore errors if the post-install file doesn't exist
+            }
+        }
+    }
+
+    /**
+     * Handles post-install file created by swiftly installation (Linux only)
+     *
+     * @param postInstallFilePath Path to the post-install script
+     * @param version The toolchain version being installed
+     * @param logger Optional logger for error reporting
+     */
+    private static async handlePostInstallFile(
+        postInstallFilePath: string,
+        version: string,
+        logger?: SwiftLogger
+    ): Promise<void> {
+        try {
+            await fs.access(postInstallFilePath);
+        } catch {
+            logger?.info(`No post-install steps required for toolchain ${version}`);
+            return;
+        }
+
+        logger?.info(`Post-install file found for toolchain ${version}`);
+
+        const validation = await this.validatePostInstallScript(postInstallFilePath, logger);
+
+        if (!validation.isValid) {
+            const errorMessage = `Post-install script contains unsafe commands. Invalid commands: ${validation.invalidCommands?.join(", ")}`;
+            logger?.error(errorMessage);
+            void vscode.window.showErrorMessage(
+                `Installation of Swift ${version} requires additional system packages, but the post-install script contains commands that are not allowed for security reasons.`
+            );
+            return;
+        }
+
+        const shouldExecute = await this.showPostInstallConfirmation(version, validation);
+
+        if (shouldExecute) {
+            await this.executePostInstallScript(postInstallFilePath, version, logger);
+        } else {
+            void vscode.window.showWarningMessage(
+                `Swift ${version} installation is incomplete. You may need to manually install additional system packages.`
+            );
+        }
+    }
+
+    /**
+     * Validates post-install script commands against allow-list patterns.
+     * Supports apt-get and yum package managers only.
+     *
+     * @param postInstallFilePath Path to the post-install script
+     * @param logger Optional logger for error reporting
+     * @returns Validation result with command summary
+     */
+    private static async validatePostInstallScript(
+        postInstallFilePath: string,
+        logger?: SwiftLogger
+    ): Promise<PostInstallValidationResult> {
+        try {
+            const scriptContent = await fs.readFile(postInstallFilePath, "utf-8");
+            const lines = scriptContent
+                .split("\n")
+                .filter(line => line.trim() && !line.trim().startsWith("#"));
+
+            const allowedPatterns = [
+                /^apt-get\s+-y\s+install(\s+[A-Za-z0-9\-_.+]+)+\s*$/, // apt-get -y install packages
+                /^yum\s+install(\s+[A-Za-z0-9\-_.+]+)+\s*$/, // yum install packages
+                /^\s*$|^#.*$/, // empty lines and comments
+            ];
+
+            const invalidCommands: string[] = [];
+            const packageInstallCommands: string[] = [];
+
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+                if (!trimmedLine) {
+                    continue;
+                }
+
+                const isValid = allowedPatterns.some(pattern => pattern.test(trimmedLine));
+
+                if (!isValid) {
+                    invalidCommands.push(trimmedLine);
+                } else if (trimmedLine.includes("install")) {
+                    packageInstallCommands.push(trimmedLine);
+                }
+            }
+
+            const isValid = invalidCommands.length === 0;
+
+            let summary = "The script will perform the following actions:\n";
+            if (packageInstallCommands.length > 0) {
+                summary += `• Install system packages using package manager\n`;
+                summary += `• Commands: ${packageInstallCommands.join("; ")}`;
+            } else {
+                summary += "• No package installations detected";
+            }
+
+            return {
+                isValid,
+                summary,
+                invalidCommands: invalidCommands.length > 0 ? invalidCommands : undefined,
+            };
+        } catch (error) {
+            logger?.error(`Failed to validate post-install script: ${error}`);
+            return {
+                isValid: false,
+                summary: "Failed to read post-install script",
+                invalidCommands: ["Unable to read script file"],
+            };
+        }
+    }
+
+    /**
+     * Shows confirmation dialog to user for executing post-install script
+     *
+     * @param version The toolchain version being installed
+     * @param validation The validation result
+     * @returns Promise resolving to user's decision
+     */
+    private static async showPostInstallConfirmation(
+        version: string,
+        validation: PostInstallValidationResult
+    ): Promise<boolean> {
+        const message =
+            `Swift ${version} installation requires additional system packages to be installed. ` +
+            `This will require administrator privileges.\n\n${validation.summary}\n\n` +
+            `Do you want to proceed with running the post-install script?`;
+
+        const choice = await vscode.window.showWarningMessage(
+            message,
+            { modal: true },
+            "Execute Script",
+            "Cancel"
+        );
+
+        return choice === "Execute Script";
+    }
+
+    /**
+     * Executes post-install script with elevated permissions (Linux only)
+     *
+     * @param postInstallFilePath Path to the post-install script
+     * @param version The toolchain version being installed
+     * @param logger Optional logger for error reporting
+     */
+    private static async executePostInstallScript(
+        postInstallFilePath: string,
+        version: string,
+        logger?: SwiftLogger
+    ): Promise<void> {
+        logger?.info(`Executing post-install script for toolchain ${version}`);
+
+        const outputChannel = new SwiftOutputChannel(
+            `Swift ${version} Post-Install`,
+            path.join(os.tmpdir(), `swift-post-install-${version}.log`)
+        );
+
+        try {
+            outputChannel.show(true);
+            outputChannel.appendLine(`Executing post-install script for Swift ${version}...`);
+            outputChannel.appendLine(`Script location: ${postInstallFilePath}`);
+            outputChannel.appendLine("");
+
+            await execFile("chmod", ["+x", postInstallFilePath]);
+
+            const command = "pkexec";
+            const args = [postInstallFilePath];
+
+            outputChannel.appendLine(`Executing: ${command} ${args.join(" ")}`);
+            outputChannel.appendLine("");
+
+            const outputStream = new Stream.Writable({
+                write(chunk, _encoding, callback) {
+                    const text = chunk.toString();
+                    outputChannel.append(text);
+                    callback();
+                },
+            });
+
+            await execFileStreamOutput(command, args, outputStream, outputStream, null, {});
+
+            outputChannel.appendLine("");
+            outputChannel.appendLine(
+                `Post-install script completed successfully for Swift ${version}`
+            );
+
+            void vscode.window.showInformationMessage(
+                `Swift ${version} post-install script executed successfully. Additional system packages have been installed.`
+            );
+        } catch (error) {
+            const errorMsg = `Failed to execute post-install script: ${error}`;
+            logger?.error(errorMsg);
+            outputChannel.appendLine("");
+            outputChannel.appendLine(`Error: ${errorMsg}`);
+
+            void vscode.window.showErrorMessage(
+                `Failed to execute post-install script for Swift ${version}. Check the output channel for details.`
+            );
         }
     }
 
