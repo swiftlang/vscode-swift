@@ -16,11 +16,12 @@ import * as path from "path";
 import * as fs from "fs/promises";
 import * as vscode from "vscode";
 import { FolderContext } from "./FolderContext";
-import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
+import { FolderOperation } from "./WorkspaceContext";
 import { BuildFlags } from "./toolchain/BuildFlags";
 import { Version } from "./utilities/version";
 import { fileExists } from "./utilities/filesystem";
 import { showReloadExtensionNotification } from "./ui/ReloadExtension";
+import { SwiftLogger } from "./logging/SwiftLogger";
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
@@ -39,7 +40,7 @@ export class PackageWatcher {
 
     constructor(
         private folderContext: FolderContext,
-        private workspaceContext: WorkspaceContext
+        private logger: SwiftLogger
     ) {}
 
     /**
@@ -136,11 +137,8 @@ export class PackageWatcher {
 
     async handleSwiftVersionFileChange() {
         const version = await this.readSwiftVersionFile();
-        if (version && version.toString() !== this.currentVersion?.toString()) {
-            await this.workspaceContext.fireEvent(
-                this.folderContext,
-                FolderOperation.swiftVersionUpdated
-            );
+        if (version?.toString() !== this.currentVersion?.toString()) {
+            await this.folderContext.fireEvent(FolderOperation.swiftVersionUpdated);
             await showReloadExtensionNotification(
                 "Changing the swift toolchain version requires the extension to be reloaded"
             );
@@ -155,9 +153,7 @@ export class PackageWatcher {
             return Version.fromString(contents.toString().trim());
         } catch (error) {
             if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-                this.workspaceContext.logger.error(
-                    `Failed to read .swift-version file at ${versionFile}: ${error}`
-                );
+                this.logger.error(`Failed to read .swift-version file at ${versionFile}: ${error}`);
             }
         }
         return undefined;
@@ -173,7 +169,7 @@ export class PackageWatcher {
     async handlePackageSwiftChange() {
         // Load SwiftPM Package.swift description
         await this.folderContext.reload();
-        await this.workspaceContext.fireEvent(this.folderContext, FolderOperation.packageUpdated);
+        await this.folderContext.fireEvent(FolderOperation.packageUpdated);
     }
 
     /**
@@ -186,10 +182,7 @@ export class PackageWatcher {
         await this.folderContext.reloadPackageResolved();
         // if file contents has changed then send resolve updated message
         if (this.folderContext.swiftPackage.resolved?.fileHash !== packageResolvedHash) {
-            await this.workspaceContext.fireEvent(
-                this.folderContext,
-                FolderOperation.resolvedUpdated
-            );
+            await this.folderContext.fireEvent(FolderOperation.resolvedUpdated);
         }
     }
 
@@ -200,9 +193,6 @@ export class PackageWatcher {
      */
     private async handleWorkspaceStateChange() {
         await this.folderContext.reloadWorkspaceState();
-        await this.workspaceContext.fireEvent(
-            this.folderContext,
-            FolderOperation.workspaceStateUpdated
-        );
+        await this.folderContext.fireEvent(FolderOperation.workspaceStateUpdated);
     }
 }
