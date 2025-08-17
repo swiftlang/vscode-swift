@@ -18,8 +18,9 @@ import { showReloadExtensionNotification } from "./ReloadExtension";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import configuration from "../configuration";
 import { Commands } from "../commands";
-import { Swiftly, SwiftlyProgressData } from "../toolchain/swiftly";
+import { Swiftly } from "../toolchain/swiftly";
 import { SwiftLogger } from "../logging/SwiftLogger";
+import { ToolchainVersion } from "../toolchain/ToolchainVersion";
 
 /**
  * Open the installation page on Swift.org
@@ -133,12 +134,6 @@ interface SwiftlyToolchainItem extends BaseSwiftToolchainItem {
     version: string;
 }
 
-interface InstallableToolchainItem extends BaseSwiftToolchainItem {
-    category: "installable";
-    version: string;
-    toolchainType: "stable" | "snapshot";
-}
-
 /** A {@link vscode.QuickPickItem} that separates items in the UI */
 class SeparatorItem implements vscode.QuickPickItem {
     readonly type = "separator";
@@ -151,11 +146,122 @@ class SeparatorItem implements vscode.QuickPickItem {
 }
 
 /** The possible types of {@link vscode.QuickPickItem} in the toolchain selection dialog */
-type SelectToolchainItem =
-    | SwiftToolchainItem
-    | InstallableToolchainItem
-    | ActionItem
-    | SeparatorItem;
+type SelectToolchainItem = SwiftToolchainItem | ActionItem | SeparatorItem;
+
+/**
+ * Sorts toolchains by version with most recent first
+ */
+function sortToolchainsByVersion<T extends { label: string }>(toolchains: T[]): T[] {
+    return toolchains.sort((a, b) => {
+        try {
+            const versionA = extractVersionFromLabel(a.label);
+            const versionB = extractVersionFromLabel(b.label);
+
+            if (!versionA && !versionB) {
+                return a.label.localeCompare(b.label);
+            }
+            if (!versionA) {
+                return 1;
+            }
+            if (!versionB) {
+                return -1;
+            }
+
+            return compareVersions(versionB, versionA); // Reverse for descending order
+        } catch {
+            return a.label.localeCompare(b.label);
+        }
+    });
+}
+
+/**
+ * Extracts version information from toolchain label
+ */
+function extractVersionFromLabel(label: string): ToolchainVersion | null {
+    try {
+        // Remove download icon and type suffix
+        const cleanLabel = label
+            .replace(/^\$\(cloud-download\)\s*/, "")
+            .replace(/\s*\([^)]*\)$/, "");
+
+        // Try to parse various version formats
+        const patterns = [
+            /^(\d+\.\d+\.\d+)$/, // 6.1.1
+            /^Swift (\d+\.\d+\.\d+)$/, // Swift 6.1.1
+            /^(\d+\.\d+-snapshot-\d{4}-\d{2}-\d{2})$/, // 6.1-snapshot-2024-11-15
+            /^(main-snapshot-\d{4}-\d{2}-\d{2})$/, // main-snapshot-2024-11-15
+        ];
+
+        for (const pattern of patterns) {
+            const match = cleanLabel.match(pattern);
+            if (match) {
+                return ToolchainVersion.parse(match[1]);
+            }
+        }
+
+        // Try parsing the label directly
+        return ToolchainVersion.parse(cleanLabel);
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Compares two ToolchainVersion objects
+ */
+function compareVersions(a: ToolchainVersion, b: ToolchainVersion): number {
+    // Parse version information from names
+    const aStable = parseStableVersion(a.name);
+    const bStable = parseStableVersion(b.name);
+
+    // Both are stable versions
+    if (aStable && bStable) {
+        if (aStable.major !== bStable.major) {
+            return aStable.major - bStable.major;
+        }
+        if (aStable.minor !== bStable.minor) {
+            return aStable.minor - bStable.minor;
+        }
+        return aStable.patch - bStable.patch;
+    }
+
+    // Stable versions come before snapshots
+    if (aStable && !bStable) {
+        return 1;
+    }
+    if (!aStable && bStable) {
+        return -1;
+    }
+
+    // Both are snapshots - sort by date
+    const aDate = extractSnapshotDate(a.name);
+    const bDate = extractSnapshotDate(b.name);
+
+    if (aDate && bDate) {
+        return aDate.localeCompare(bDate);
+    }
+
+    return a.name.localeCompare(b.name);
+}
+
+function parseStableVersion(
+    version: string
+): { major: number; minor: number; patch: number } | null {
+    const match = version.match(/^(\d+)\.(\d+)\.(\d+)$/);
+    if (match) {
+        return {
+            major: parseInt(match[1], 10),
+            minor: parseInt(match[2], 10),
+            patch: parseInt(match[3], 10),
+        };
+    }
+    return null;
+}
+
+function extractSnapshotDate(version: string): string | null {
+    const match = version.match(/(\d{4}-\d{2}-\d{2})/);
+    return match ? match[1] : null;
+}
 
 /**
  * Retrieves all {@link SelectToolchainItem} that are available on the system.
@@ -169,31 +275,28 @@ async function getQuickPickItems(
     cwd?: vscode.Uri
 ): Promise<SelectToolchainItem[]> {
     // Find any Xcode installations on the system
-    const xcodes = (await SwiftToolchain.findXcodeInstalls())
-        .reverse()
-        .map<SwiftToolchainItem>(xcodePath => {
-            const toolchainPath = path.join(
-                xcodePath,
-                "Contents",
-                "Developer",
-                "Toolchains",
-                "XcodeDefault.xctoolchain",
-                "usr"
-            );
-            return {
-                type: "toolchain",
-                category: "xcode",
-                label: path.basename(xcodePath, ".app"),
-                detail: xcodePath,
-                xcodePath,
-                toolchainPath,
-                swiftFolderPath: path.join(toolchainPath, "bin"),
-            };
-        });
+    const xcodes = (await SwiftToolchain.findXcodeInstalls()).map<SwiftToolchainItem>(xcodePath => {
+        const toolchainPath = path.join(
+            xcodePath,
+            "Contents",
+            "Developer",
+            "Toolchains",
+            "XcodeDefault.xctoolchain",
+            "usr"
+        );
+        return {
+            type: "toolchain",
+            category: "xcode",
+            label: path.basename(xcodePath, ".app"),
+            detail: xcodePath,
+            xcodePath,
+            toolchainPath,
+            swiftFolderPath: path.join(toolchainPath, "bin"),
+        };
+    });
     // Find any public Swift toolchains on the system
-    const toolchains = (await SwiftToolchain.getToolchainInstalls())
-        .reverse()
-        .map<SwiftToolchainItem>(toolchainPath => {
+    const toolchains = (await SwiftToolchain.getToolchainInstalls()).map<SwiftToolchainItem>(
+        toolchainPath => {
             const result: SwiftToolchainItem = {
                 type: "toolchain",
                 category: "public",
@@ -211,117 +314,61 @@ async function getQuickPickItems(
                 };
             }
             return result;
-        });
+        }
+    );
+
+    // Sort toolchains by version (most recent first)
+    const sortedToolchains = sortToolchainsByVersion(toolchains);
+
     // Find any Swift toolchains installed via Swiftly
-    const swiftlyToolchains = (await Swiftly.listAvailableToolchains(logger))
-        .reverse()
-        .map<SwiftlyToolchainItem>(toolchainPath => ({
-            type: "toolchain",
-            label: path.basename(toolchainPath),
-            category: "swiftly",
-            version: path.basename(toolchainPath),
-            onDidSelect: async () => {
-                try {
-                    await Swiftly.use(toolchainPath);
-                    void showReloadExtensionNotification(
-                        "Changing the Swift path requires Visual Studio Code be reloaded."
-                    );
-                } catch (error) {
-                    void vscode.window.showErrorMessage(
-                        `Failed to switch Swiftly toolchain: ${error}`
-                    );
-                }
-            },
-        }));
+    const swiftlyToolchains = sortToolchainsByVersion(
+        (await Swiftly.listAvailableToolchains(logger)).map<SwiftlyToolchainItem>(
+            toolchainPath => ({
+                type: "toolchain",
+                label: path.basename(toolchainPath),
+                category: "swiftly",
+                version: path.basename(toolchainPath),
+                onDidSelect: async () => {
+                    try {
+                        await Swiftly.use(toolchainPath);
+                        void showReloadExtensionNotification(
+                            "Changing the Swift path requires Visual Studio Code be reloaded."
+                        );
+                    } catch (error) {
+                        void vscode.window.showErrorMessage(
+                            `Failed to switch Swiftly toolchain: ${error}`
+                        );
+                    }
+                },
+            })
+        )
+    );
 
-    const installableToolchains =
-        process.platform === "linux"
-            ? []
-            : (await Swiftly.listAvailable(logger))
-                  .filter(toolchain => !toolchain.isInstalled)
-                  .reverse()
-                  .map<InstallableToolchainItem>(toolchain => ({
-                      type: "toolchain",
-                      label: `$(cloud-download) ${toolchain.name} (${toolchain.type})`,
-                      // detail: `Install ${toolchain.type} release`,
-                      category: "installable",
-                      version: toolchain.name,
-                      toolchainType: toolchain.type,
-                      onDidSelect: async () => {
-                          try {
-                              await vscode.window.withProgress(
-                                  {
-                                      location: vscode.ProgressLocation.Notification,
-                                      title: `Installing Swift ${toolchain.name}`,
-                                      cancellable: false,
-                                  },
-                                  async progress => {
-                                      progress.report({ message: "Starting installation..." });
-
-                                      let lastProgress = 0;
-
-                                      await Swiftly.installToolchain(
-                                          toolchain.name,
-                                          (progressData: SwiftlyProgressData) => {
-                                              if (
-                                                  progressData.step?.percent !== undefined &&
-                                                  progressData.step.percent > lastProgress
-                                              ) {
-                                                  const increment =
-                                                      progressData.step.percent - lastProgress;
-                                                  progress.report({
-                                                      increment,
-                                                      message:
-                                                          progressData.step.text ||
-                                                          `${progressData.step.percent}% complete`,
-                                                  });
-                                                  lastProgress = progressData.step.percent;
-                                              }
-                                          },
-                                          logger
-                                      );
-
-                                      progress.report({
-                                          increment: 100 - lastProgress,
-                                          message: "Installation complete",
-                                      });
-                                  }
-                              );
-
-                              void showReloadExtensionNotification(
-                                  `Swift ${toolchain.name} has been installed and activated. Visual Studio Code needs to be reloaded.`
-                              );
-                          } catch (error) {
-                              logger?.error(`Failed to install Swift ${toolchain.name}: ${error}`);
-                              void vscode.window.showErrorMessage(
-                                  `Failed to install Swift ${toolchain.name}: ${error}`
-                              );
-                          }
-                      },
-                  }));
     if (activeToolchain) {
         const currentSwiftlyVersion = activeToolchain.isSwiftlyManaged
             ? await Swiftly.inUseVersion("swiftly", cwd)
             : undefined;
-        const toolchainInUse = [...xcodes, ...toolchains, ...swiftlyToolchains].find(toolchain => {
-            if (currentSwiftlyVersion) {
-                if (toolchain.category !== "swiftly") {
-                    return false;
-                }
+        const toolchainInUse = [...xcodes, ...sortedToolchains, ...swiftlyToolchains].find(
+            toolchain => {
+                if (currentSwiftlyVersion) {
+                    if (toolchain.category !== "swiftly") {
+                        return false;
+                    }
 
-                // For Swiftly toolchains, check if the label matches the active toolchain version
-                return currentSwiftlyVersion === toolchain.label;
+                    // For Swiftly toolchains, check if the label matches the active toolchain version
+                    return currentSwiftlyVersion === toolchain.label;
+                }
+                // For non-Swiftly toolchains, check if the toolchain path matches
+                return (
+                    (toolchain as PublicSwiftToolchainItem | XcodeToolchainItem).toolchainPath ===
+                    activeToolchain.toolchainPath
+                );
             }
-            // For non-Swiftly toolchains, check if the toolchain path matches
-            return (
-                (toolchain as PublicSwiftToolchainItem | XcodeToolchainItem).toolchainPath ===
-                activeToolchain.toolchainPath
-            );
-        });
+        );
         if (toolchainInUse) {
             toolchainInUse.description = "$(check) in use";
         } else {
-            toolchains.splice(0, 0, {
+            sortedToolchains.splice(0, 0, {
                 type: "toolchain",
                 category: "public",
                 label: `Swift ${activeToolchain.swiftVersion.toString()}`,
@@ -343,6 +390,19 @@ async function getQuickPickItems(
             run: installSwiftly,
         });
     }
+
+    // Add install Swiftly toolchain action if Swiftly is installed
+    if (Swiftly.isSupported() && (await Swiftly.isInstalled())) {
+        actionItems.push({
+            type: "action",
+            label: "$(cloud-download) Install Swiftly toolchain...",
+            detail: "Install a Swift toolchain via Swiftly from available releases",
+            run: async () => {
+                await vscode.commands.executeCommand(Commands.INSTALL_SWIFTLY_TOOLCHAIN);
+            },
+        });
+    }
+
     actionItems.push({
         type: "action",
         label: "$(cloud-download) Download from Swift.org...",
@@ -357,12 +417,11 @@ async function getQuickPickItems(
     });
     return [
         ...(xcodes.length > 0 ? [new SeparatorItem("Xcode"), ...xcodes] : []),
-        ...(toolchains.length > 0 ? [new SeparatorItem("toolchains"), ...toolchains] : []),
+        ...(sortedToolchains.length > 0
+            ? [new SeparatorItem("toolchains"), ...sortedToolchains]
+            : []),
         ...(swiftlyToolchains.length > 0
             ? [new SeparatorItem("swiftly"), ...swiftlyToolchains]
-            : []),
-        ...(installableToolchains.length > 0
-            ? [new SeparatorItem("available for install"), ...installableToolchains]
             : []),
         new SeparatorItem("actions"),
         ...actionItems,
@@ -423,7 +482,7 @@ export async function showToolchainSelectionQuickPick(
         // Update the toolchain path`
         let swiftPath: string | undefined;
 
-        if (selected.category === "swiftly" || selected.category === "installable") {
+        if (selected.category === "swiftly") {
             swiftPath = undefined;
         } else {
             // For non-Swiftly toolchains, use the swiftFolderPath

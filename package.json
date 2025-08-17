@@ -334,6 +334,11 @@
         "category": "Swift"
       },
       {
+        "command": "swift.installSwiftlyToolchain",
+        "title": "Install Swiftly Toolchain...",
+        "category": "Swift"
+      },
+      {
         "command": "swift.runSnippet",
         "title": "Run Swift Snippet",
         "category": "Swift",
