@@ -30,8 +30,10 @@ import { TestRunProxy } from "./TestExplorer/TestRunner";
 export class FolderContext implements vscode.Disposable {
     public backgroundCompilation: BackgroundCompilation;
     public hasResolveErrors = false;
-    public testExplorer?: TestExplorer;
     public taskQueue: TaskQueue;
+    public testExplorer?: TestExplorer;
+    public resolvedTestExplorer: Promise<TestExplorer>;
+    private testExplorerResolver?: (testExplorer: TestExplorer) => void;
     private packageWatcher: PackageWatcher;
     private testRunManager: TestRunManager;
 
@@ -53,6 +55,12 @@ export class FolderContext implements vscode.Disposable {
         this.backgroundCompilation = new BackgroundCompilation(this);
         this.taskQueue = new TaskQueue(this);
         this.testRunManager = new TestRunManager();
+
+        // Tests often need to wait for the test explorer to be created before they can run.
+        // This promise resolves when the test explorer is created, allowing them to wait for it before starting.
+        this.resolvedTestExplorer = new Promise<TestExplorer>(resolve => {
+            this.testExplorerResolver = resolve;
+        });
     }
 
     /** dispose of any thing FolderContext holds */
@@ -177,8 +185,9 @@ export class FolderContext implements vscode.Disposable {
                 this,
                 this.workspaceContext.tasks,
                 this.workspaceContext.logger,
-                this.workspaceContext.onDidChangeSwiftFiles
+                this.workspaceContext.onDidChangeSwiftFiles.bind(this.workspaceContext)
             );
+            this.testExplorerResolver?.(this.testExplorer);
         }
         return this.testExplorer;
     }

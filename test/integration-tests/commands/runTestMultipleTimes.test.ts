@@ -27,12 +27,9 @@ suite("Test Multiple Times Command Test Suite", () => {
     activateExtensionForSuite({
         async setup(ctx) {
             folderContext = await folderInRootWorkspace("defaultPackage", ctx);
-            folderContext.addTestExplorer();
+            const testExplorer = await folderContext.resolvedTestExplorer;
 
-            const item = folderContext.testExplorer?.controller.createTestItem(
-                "testId",
-                "Test Item For Testing"
-            );
+            const item = testExplorer.controller.createTestItem("testId", "Test Item For Testing");
 
             expect(item).to.not.be.undefined;
             testItem = item!;
