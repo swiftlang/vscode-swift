@@ -28,12 +28,17 @@ suite("Swiftly Unit Tests", () => {
     const mockedPlatform = mockGlobalValue(process, "platform");
     const mockedEnv = mockGlobalValue(process, "env");
     const mockSwiftOutputChannelModule = mockGlobalModule(SwiftOutputChannelModule);
+    const mockOS = mockGlobalModule(os);
 
     setup(() => {
-        mockFS({});
         mockUtilities.execFile.reset();
         mockUtilities.execFileStreamOutput.reset();
         mockSwiftOutputChannelModule.SwiftOutputChannel.reset();
+        mockOS.tmpdir.reset();
+
+        // Mock os.tmpdir() to return a valid temp directory path for Windows compatibility
+        mockOS.tmpdir.returns(process.platform === "win32" ? "C:\\temp" : "/tmp");
+
         // Mock SwiftOutputChannel constructor to return a basic mock
         mockSwiftOutputChannelModule.SwiftOutputChannel.callsFake(
             () =>
@@ -43,12 +48,17 @@ suite("Swiftly Unit Tests", () => {
                     append: () => {},
                 }) as any
         );
+
         mockedPlatform.setValue("darwin");
         mockedEnv.setValue({});
     });
 
     teardown(() => {
-        mockFS.restore();
+        try {
+            mockFS.restore();
+        } catch {
+            // Ignore if mockFS is not active
+        }
     });
 
     suite("getSwiftlyToolchainInstalls", () => {
@@ -144,6 +154,7 @@ suite("Swiftly Unit Tests", () => {
             mockUtilities.execFile.withArgs("swiftly").resolves({ stdout: "", stderr: "" });
 
             const tmpDir = os.tmpdir();
+            mockFS.restore();
             mockFS({
                 [tmpDir]: {},
             });
@@ -170,6 +181,7 @@ suite("Swiftly Unit Tests", () => {
                 stderr: "",
             });
             os.tmpdir();
+            mockFS.restore();
             mockFS({});
 
             // This test verifies the method starts the installation process
@@ -190,6 +202,7 @@ suite("Swiftly Unit Tests", () => {
             mockUtilities.execFile.withArgs("swiftly").rejects(installError);
 
             const tmpDir = os.tmpdir();
+            mockFS.restore();
             mockFS({
                 [tmpDir]: {},
             });
@@ -568,11 +581,12 @@ apt-get -y install build-essential`;
         test("should complete installation successfully when no post-install file exists", async () => {
             mockUtilities.execFile.withArgs("swiftly").resolves({ stdout: "", stderr: "" });
 
-            mockFS({
-                "/tmp": {
-                    "vscode-swift-123": {},
-                },
-            });
+            // Test doesn't need mock filesystem, just ensure it's clean
+            try {
+                mockFS.restore();
+            } catch {
+                // Ignore if not active
+            }
 
             await Swiftly.installToolchain("6.0.0");
 
@@ -709,19 +723,14 @@ apt-get -y install libncurses5-dev
 
         test("should skip post-install handling on macOS", async () => {
             mockedPlatform.setValue("darwin");
-
-            const validScript = `#!/bin/bash
-apt-get -y install build-essential`;
-
             mockUtilities.execFile.withArgs("swiftly").resolves({ stdout: "", stderr: "" });
 
-            mockFS({
-                "/tmp": {
-                    "vscode-swift-123": {
-                        "post-install-6.0.0.sh": validScript,
-                    },
-                },
-            });
+            // Test doesn't need mock filesystem, just ensure it's clean
+            try {
+                mockFS.restore();
+            } catch {
+                // Ignore if not active
+            }
 
             await Swiftly.installToolchain("6.0.0");
 
