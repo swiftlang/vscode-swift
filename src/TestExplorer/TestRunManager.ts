@@ -54,6 +54,7 @@ export class TestRunManager {
         const key = this.getTestRunKey(folder);
         const activeRun = this.activeTestRuns.get(key);
         if (activeRun) {
+            activeRun.testRun.skipPendingTests();
             activeRun.tokenSource.cancel();
         }
     }

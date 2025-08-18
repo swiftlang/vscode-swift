@@ -309,6 +309,18 @@ export class TestRunProxy {
         this.testRun?.errored(test, message, this.recordDuration ? duration : undefined);
     }
 
+    /**
+     * Skip any pending tests.
+     * Call this method when a test run is cancelled to mark the pending tests as skipped.
+     * Otherwise, pending tests will be marked as failing as we assume they crashed.
+     */
+    public skipPendingTests() {
+        this.runState.pending.forEach(test => {
+            this.skipped(test);
+        });
+        this.runState.pending = [];
+    }
+
     public async end() {
         // If the test run never started (typically due to a build error)
         // start it to flush any queued output, and then immediately end it.
