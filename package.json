@@ -110,7 +110,7 @@
           {
             "id": "selecting-toolchain",
             "title": "Select a toolchain",
-            "description": "If you have more than one Swift toolchain installed you can switch between them. \n[Select Toolchain](command:swift.selectToolchain)",
+            "description": "If you have more than one Swift toolchain installed you can switch between them with \n``Swift: Select Toolchain...``\n in the Command Palette.\n[Select Toolchain](command:swift.selectToolchain)",
             "markdown": "",
             "media": {
               "markdown": "assets/walkthrough/swiftToolchains.md"
