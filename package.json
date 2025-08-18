@@ -94,7 +94,7 @@
           {
             "id": "documentation",
             "title": "Preview DocC documentation",
-            "description": "Preview documentation written in DocC.",
+            "description": "Preview documentation written in [DocC](https://www.swift.org/documentation/docc/).",
             "media": {
               "markdown": "assets/walkthrough/previewDocs.md"
             }
@@ -102,7 +102,7 @@
           {
             "id": "swift-commands",
             "title": "Swift commands",
-            "description": "Explore commands available in the Command Palette prefixed with ``> Swift:``\n See documentation for [available commands](https://docs.swift.org/vscode/documentation/userdocs/commands/). \n[Open Command Palette](command:workbench.action.showCommands)",
+            "description": "Explore commands available in the Command Palette prefixed with ``> Swift:``\n See documentation for [available commands](https://docs.swift.org/vscode/documentation/userdocs/commands/). \n[Show Swift Commands](command:swift.showCommands)",
             "media": {
               "markdown": "assets/walkthrough/swiftCommands.md"
             }
@@ -119,7 +119,7 @@
           {
             "id": "customize",
             "title": "Customize settings",
-            "description": "Customize language and extension settings. \n[Open Settings](command:workbench.action.openSettings)",
+            "description": "The Swift extensions contributes numerous settings that you can configure to customize how your project builds and how the extension operates.\n[Configure Swift Settings](command:swift.configureSettings)",
             "media": {
               "markdown": "assets/walkthrough/customizeSettings.md"
             }
@@ -194,6 +194,16 @@
       }
     ],
     "commands": [
+      {
+        "command": "swift.showCommands",
+        "title": "Show Commands",
+        "category": "Swift"
+      },
+      {
+        "command": "swift.configureSettings",
+        "title": "Configure Settings",
+        "category": "Swift"
+      },
       {
         "command": "swift.generateLaunchConfigurations",
         "title": "Generate Launch Configurations",

@@ -335,6 +335,19 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             Commands.GENERATE_SOURCEKIT_CONFIG,
             async () => await generateSourcekitConfiguration(ctx)
         ),
+        vscode.commands.registerCommand(
+            "swift.showCommands",
+            async () =>
+                await vscode.commands.executeCommand("workbench.action.quickOpen", ">Swift: ")
+        ),
+        vscode.commands.registerCommand(
+            "swift.configureSettings",
+            async () =>
+                await vscode.commands.executeCommand(
+                    "workbench.action.openSettings",
+                    "@ext:swiftlang.swift-vscode "
+                )
+        ),
     ];
 }
 
