@@ -144,7 +144,11 @@ export async function execFile(
         maxBuffer: options.maxBuffer ?? 1024 * 1024 * 64, // 64MB
     };
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-        cp.execFile(executable, args, options, (error, stdout, stderr) => {
+        cp.execFile(executable, args, options, (error, stdoutBuffer, stderrBuffer) => {
+            const stdout =
+                typeof stdoutBuffer === "string" ? stdoutBuffer : stdoutBuffer.toString("utf-8");
+            const stderr =
+                typeof stderrBuffer === "string" ? stderrBuffer : stderrBuffer.toString("utf-8");
             if (error) {
                 reject(new ExecFileError(error, stdout, stderr));
             } else {
