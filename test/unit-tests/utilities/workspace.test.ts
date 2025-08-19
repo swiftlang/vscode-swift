@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
 import * as vscode from "vscode";
+import { Version } from "@src/utilities/version";
 
 import { searchForPackages } from "@src/utilities/workspace";
 
@@ -23,15 +24,16 @@ suite("Workspace Utilities Unit Test Suite", () => {
         const packageFolder = testAssetUri("ModularPackage");
         const firstModuleFolder = vscode.Uri.joinPath(packageFolder, "Module1");
         const secondModuleFolder = vscode.Uri.joinPath(packageFolder, "Module2");
+        const testSwiftVersion = new Version(5, 9, 0);
 
         test("returns only root package when search for subpackages disabled", async () => {
-            const folders = await searchForPackages(packageFolder, false, false);
+            const folders = await searchForPackages(packageFolder, false, false, testSwiftVersion);
 
             expect(folders.map(folder => folder.fsPath)).eql([packageFolder.fsPath]);
         });
 
         test("returns subpackages when search for subpackages enabled", async () => {
-            const folders = await searchForPackages(packageFolder, false, true);
+            const folders = await searchForPackages(packageFolder, false, true, testSwiftVersion);
 
             expect(folders.map(folder => folder.fsPath).sort()).deep.equal([
                 packageFolder.fsPath,
