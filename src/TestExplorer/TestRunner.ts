@@ -449,6 +449,8 @@ export class TestRunner {
     private testArgs: TestRunArguments;
     private xcTestOutputParser: IXCTestOutputParser;
     private swiftTestOutputParser: SwiftTestingOutputParser;
+    private debugSessionTerminatedEmitter = new vscode.EventEmitter<void>();
+    public onDebugSessionTerminated: vscode.Event<void>;
     private static CANCELLATION_ERROR = "Test run cancelled.";
 
     /**
@@ -487,6 +489,7 @@ export class TestRunner {
             this.testRun.addParameterizedTestCase,
             this.testRun.addAttachment
         );
+        this.onDebugSessionTerminated = this.debugSessionTerminatedEmitter.event;
     }
 
     /**
@@ -1158,8 +1161,13 @@ export class TestRunner {
                             LoggingDebugAdapterTracker.setDebugSessionCallback(
                                 session,
                                 this.workspaceContext.logger,
-                                output => {
-                                    outputHandler(output);
+                                output => outputHandler(output),
+                                exitCode => {
+                                    // Debug session is stopped with exitCode 9 (SIGKILL)
+                                    // when the user terminates it manually.
+                                    if (exitCode === 9) {
+                                        this.debugSessionTerminatedEmitter.fire();
+                                    }
                                 }
                             );
 

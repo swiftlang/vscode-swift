@@ -59,6 +59,10 @@ export async function runTestMultipleTimes(
         token.token
     );
 
+    // If the user terminates a debugging session we want
+    // to cancel the remaining iterations.
+    const terminationListener = runner.onDebugSessionTerminated(() => token.cancel());
+
     testExplorer.onDidCreateTestRunEmitter.fire(runner.testRun);
 
     const testRunState = new TestRunnerTestRunState(runner.testRun);
@@ -91,6 +95,7 @@ export async function runTestMultipleTimes(
         }
     }
     await runner.testRun.end();
+    terminationListener.dispose();
 
     return runStates;
 }
