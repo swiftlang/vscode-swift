@@ -700,6 +700,10 @@ export class TestRunner {
             compositeToken.token
         );
 
+        // If the user terminates a debugging session for swift-testing
+        // we want to prevent XCTest from starting.
+        const terminationListener = runner.onDebugSessionTerminated(() => compositeToken.cancel());
+
         // Register the test run with the manager
         folderContext.registerTestRun(runner.testRun, compositeToken);
 
@@ -708,6 +712,8 @@ export class TestRunner {
 
         // Run the tests
         await runner.runHandler();
+
+        terminationListener.dispose();
 
         // Run the post-run handler if provided
         if (postRunHandler) {

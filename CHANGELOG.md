@@ -8,6 +8,10 @@
 - Prompt to cancel and replace the active test run if one is in flight ([#1774](https://github.com/swiftlang/vscode-swift/pull/1774))
 - A walkthrough for first time extension users ([#1560](https://github.com/swiftlang/vscode-swift/issues/1560))
 
+### Fixed
+
+- Don't start debugging XCTest cases if the swift-testing debug session was stopped ([#1797](https://github.com/swiftlang/vscode-swift/pull/1797))
+
 ## 2.11.20250806 - 2025-08-06
 
 ### Added
