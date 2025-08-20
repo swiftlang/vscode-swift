@@ -20,7 +20,6 @@ import configuration from "../configuration";
 import { Commands } from "../commands";
 import { Swiftly } from "../toolchain/swiftly";
 import { SwiftLogger } from "../logging/SwiftLogger";
-import { ToolchainVersion } from "../toolchain/ToolchainVersion";
 
 /**
  * Open the installation page on Swift.org
@@ -149,125 +148,12 @@ class SeparatorItem implements vscode.QuickPickItem {
 type SelectToolchainItem = SwiftToolchainItem | ActionItem | SeparatorItem;
 
 /**
- * Sorts toolchains by version with most recent first
- */
-function sortToolchainsByVersion<T extends { label: string }>(toolchains: T[]): T[] {
-    return toolchains.sort((a, b) => {
-        try {
-            const versionA = extractVersionFromLabel(a.label);
-            const versionB = extractVersionFromLabel(b.label);
-
-            if (!versionA && !versionB) {
-                return a.label.localeCompare(b.label);
-            }
-            if (!versionA) {
-                return 1;
-            }
-            if (!versionB) {
-                return -1;
-            }
-
-            return compareVersions(versionB, versionA); // Reverse for descending order
-        } catch {
-            return a.label.localeCompare(b.label);
-        }
-    });
-}
-
-/**
- * Extracts version information from toolchain label
- */
-function extractVersionFromLabel(label: string): ToolchainVersion | null {
-    try {
-        // Remove download icon and type suffix
-        const cleanLabel = label
-            .replace(/^\$\(cloud-download\)\s*/, "")
-            .replace(/\s*\([^)]*\)$/, "");
-
-        // Try to parse various version formats
-        const patterns = [
-            /^(\d+\.\d+\.\d+)$/, // 6.1.1
-            /^Swift (\d+\.\d+\.\d+)$/, // Swift 6.1.1
-            /^(\d+\.\d+-snapshot-\d{4}-\d{2}-\d{2})$/, // 6.1-snapshot-2024-11-15
-            /^(main-snapshot-\d{4}-\d{2}-\d{2})$/, // main-snapshot-2024-11-15
-        ];
-
-        for (const pattern of patterns) {
-            const match = cleanLabel.match(pattern);
-            if (match) {
-                return ToolchainVersion.parse(match[1]);
-            }
-        }
-
-        // Try parsing the label directly
-        return ToolchainVersion.parse(cleanLabel);
-    } catch {
-        return null;
-    }
-}
-
-/**
- * Compares two ToolchainVersion objects
- */
-function compareVersions(a: ToolchainVersion, b: ToolchainVersion): number {
-    // Parse version information from names
-    const aStable = parseStableVersion(a.name);
-    const bStable = parseStableVersion(b.name);
-
-    // Both are stable versions
-    if (aStable && bStable) {
-        if (aStable.major !== bStable.major) {
-            return aStable.major - bStable.major;
-        }
-        if (aStable.minor !== bStable.minor) {
-            return aStable.minor - bStable.minor;
-        }
-        return aStable.patch - bStable.patch;
-    }
-
-    // Stable versions come before snapshots
-    if (aStable && !bStable) {
-        return 1;
-    }
-    if (!aStable && bStable) {
-        return -1;
-    }
-
-    // Both are snapshots - sort by date
-    const aDate = extractSnapshotDate(a.name);
-    const bDate = extractSnapshotDate(b.name);
-
-    if (aDate && bDate) {
-        return aDate.localeCompare(bDate);
-    }
-
-    return a.name.localeCompare(b.name);
-}
-
-function parseStableVersion(
-    version: string
-): { major: number; minor: number; patch: number } | null {
-    const match = version.match(/^(\d+)\.(\d+)\.(\d+)$/);
-    if (match) {
-        return {
-            major: parseInt(match[1], 10),
-            minor: parseInt(match[2], 10),
-            patch: parseInt(match[3], 10),
-        };
-    }
-    return null;
-}
-
-function extractSnapshotDate(version: string): string | null {
-    const match = version.match(/(\d{4}-\d{2}-\d{2})/);
-    return match ? match[1] : null;
-}
-
-/**
  * Retrieves all {@link SelectToolchainItem} that are available on the system.
  *
- * @param ctx the {@link WorkspaceContext}
  * @returns an array of {@link SelectToolchainItem}
+ * @param activeToolchain
+ * @param logger
+ * @param cwd
  */
 async function getQuickPickItems(
     activeToolchain: SwiftToolchain | undefined,
@@ -317,32 +203,28 @@ async function getQuickPickItems(
         }
     );
 
-    // Sort toolchains by version (most recent first)
-    const sortedToolchains = sortToolchainsByVersion(toolchains);
+    // Sort toolchains by label (alphabetically)
+    const sortedToolchains = toolchains.sort((a, b) => b.label.localeCompare(a.label));
 
     // Find any Swift toolchains installed via Swiftly
-    const swiftlyToolchains = sortToolchainsByVersion(
-        (await Swiftly.listAvailableToolchains(logger)).map<SwiftlyToolchainItem>(
-            toolchainPath => ({
-                type: "toolchain",
-                label: path.basename(toolchainPath),
-                category: "swiftly",
-                version: path.basename(toolchainPath),
-                onDidSelect: async () => {
-                    try {
-                        await Swiftly.use(toolchainPath);
-                        void showReloadExtensionNotification(
-                            "Changing the Swift path requires Visual Studio Code be reloaded."
-                        );
-                    } catch (error) {
-                        void vscode.window.showErrorMessage(
-                            `Failed to switch Swiftly toolchain: ${error}`
-                        );
-                    }
-                },
-            })
-        )
-    );
+    const swiftlyToolchains = (
+        await Swiftly.listAvailableToolchains(logger)
+    ).map<SwiftlyToolchainItem>(toolchainPath => ({
+        type: "toolchain",
+        label: path.basename(toolchainPath),
+        category: "swiftly",
+        version: path.basename(toolchainPath),
+        onDidSelect: async () => {
+            try {
+                await Swiftly.use(toolchainPath);
+                void showReloadExtensionNotification(
+                    "Changing the Swift path requires Visual Studio Code be reloaded."
+                );
+            } catch (error) {
+                void vscode.window.showErrorMessage(`Failed to switch Swiftly toolchain: ${error}`);
+            }
+        },
+    }));
 
     if (activeToolchain) {
         const currentSwiftlyVersion = activeToolchain.isSwiftlyManaged
@@ -391,14 +273,23 @@ async function getQuickPickItems(
         });
     }
 
-    // Add install Swiftly toolchain action if Swiftly is installed
+    // Add install Swiftly toolchain actions if Swiftly is installed
     if (Swiftly.isSupported() && (await Swiftly.isInstalled())) {
         actionItems.push({
             type: "action",
             label: "$(cloud-download) Install Swiftly toolchain...",
-            detail: "Install a Swift toolchain via Swiftly from available releases",
+            detail: "Install a Swift stable release toolchain via Swiftly",
             run: async () => {
                 await vscode.commands.executeCommand(Commands.INSTALL_SWIFTLY_TOOLCHAIN);
+            },
+        });
+
+        actionItems.push({
+            type: "action",
+            label: "$(beaker) Install Swiftly snapshot toolchain...",
+            detail: "Install a Swift snapshot toolchain via Swiftly from development builds",
+            run: async () => {
+                await vscode.commands.executeCommand(Commands.INSTALL_SWIFTLY_SNAPSHOT_TOOLCHAIN);
             },
         });
     }
@@ -433,6 +324,8 @@ async function getQuickPickItems(
  * with the user's selection.
  *
  * @param activeToolchain the {@link WorkspaceContext}
+ * @param logger
+ * @param cwd
  */
 export async function showToolchainSelectionQuickPick(
     activeToolchain: SwiftToolchain | undefined,

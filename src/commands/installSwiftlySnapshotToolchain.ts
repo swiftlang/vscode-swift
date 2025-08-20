@@ -14,19 +14,13 @@
 
 import * as vscode from "vscode";
 import { WorkspaceContext } from "../WorkspaceContext";
-import {
-    Swiftly,
-    SwiftlyProgressData,
-    AvailableToolchain,
-    isStableVersion,
-    isSnapshotVersion,
-} from "../toolchain/swiftly";
+import { Swiftly, SwiftlyProgressData, ListAvailableResult } from "../toolchain/swiftly";
 import { showReloadExtensionNotification } from "../ui/ReloadExtension";
 
 /**
- * Shows a quick pick dialog to install available Swiftly toolchains
+ * Shows a quick pick dialog to install available Swiftly snapshot toolchains
  */
-export async function installSwiftlyToolchain(ctx: WorkspaceContext): Promise<void> {
+export async function installSwiftlySnapshotToolchain(ctx: WorkspaceContext): Promise<void> {
     if (!Swiftly.isSupported()) {
         void vscode.window.showErrorMessage(
             "Swiftly is not supported on this platform. Only macOS and Linux are supported."
@@ -50,28 +44,31 @@ export async function installSwiftlyToolchain(ctx: WorkspaceContext): Promise<vo
         return;
     }
 
-    const uninstalledToolchains = availableToolchains.filter(toolchain => !toolchain.isInstalled);
+    // Filter for only uninstalled snapshot toolchains
+    const uninstalledSnapshotToolchains = availableToolchains.filter(
+        toolchain => !toolchain.isInstalled && toolchain.version.type === "snapshot"
+    );
 
-    if (uninstalledToolchains.length === 0) {
+    if (uninstalledSnapshotToolchains.length === 0) {
         void vscode.window.showInformationMessage(
-            "All available toolchains are already installed."
+            "All available snapshot toolchains are already installed."
         );
         return;
     }
 
-    // Sort toolchains with most recent versions first and filter only stable releases
-    const sortedToolchains = sortToolchainsByVersion(
-        uninstalledToolchains.filter(toolchain => toolchain.version.type === "stable")
-    );
+    // Sort toolchains with most recent versions first
+    const sortedToolchains = sortToolchainsByVersion(uninstalledSnapshotToolchains);
 
     const quickPickItems = sortedToolchains.map(toolchain => ({
         label: `$(cloud-download) ${toolchain.version.name}`,
+        description: "snapshot",
+        detail: `Install snapshot version • Date: ${toolchain.version.type === "snapshot" ? toolchain.version.date || "Unknown" : "Unknown"} • Branch: ${toolchain.version.type === "snapshot" ? toolchain.version.branch || "Unknown" : "Unknown"}`,
         toolchain: toolchain,
     }));
 
     const selected = await vscode.window.showQuickPick(quickPickItems, {
-        title: "Install Swift Toolchain via Swiftly",
-        placeHolder: "Pick a Swift toolchain to install",
+        title: "Install Swift Snapshot Toolchain via Swiftly",
+        placeHolder: "Pick a Swift snapshot toolchain to install",
         canPickMany: false,
     });
 
@@ -119,7 +116,7 @@ export async function installSwiftlyToolchain(ctx: WorkspaceContext): Promise<vo
         );
 
         void showReloadExtensionNotification(
-            `Swift ${selected.toolchain.version} has been installed and selected as the active toolchain. Visual Studio Code needs to be reloaded.`
+            `Swift ${selected.toolchain.version.name} has been installed and activated. Visual Studio Code needs to be reloaded.`
         );
     } catch (error) {
         ctx.logger?.error(`Failed to install Swift ${selected.toolchain.version.name}: ${error}`);
@@ -130,35 +127,16 @@ export async function installSwiftlyToolchain(ctx: WorkspaceContext): Promise<vo
 }
 
 /**
- * Sorts toolchains by version with most recent first
+ * Sorts snapshot toolchains by version with most recent first
  */
-function sortToolchainsByVersion(toolchains: AvailableToolchain[]): AvailableToolchain[] {
+function sortToolchainsByVersion(
+    toolchains: (ListAvailableResult["toolchains"][0] & { isInstalled: boolean })[]
+): (ListAvailableResult["toolchains"][0] & { isInstalled: boolean })[] {
     return toolchains.sort((a, b) => {
-        // First sort by type (stable before snapshot)
-        if (a.version.type !== b.version.type) {
-            return isStableVersion(a.version) ? -1 : 1;
-        }
-
-        // For stable releases, sort by semantic version
-        if (isStableVersion(a.version) && isStableVersion(b.version)) {
-            const versionA = a.version;
-            const versionB = b.version;
-
-            if (versionA && versionB) {
-                if (versionA.major !== versionB.major) {
-                    return versionB.major - versionA.major;
-                }
-                if (versionA.minor !== versionB.minor) {
-                    return versionB.minor - versionA.minor;
-                }
-                return versionB.patch - versionA.patch;
-            }
-        }
-
         // For snapshots, sort by date (newer first)
-        if (isSnapshotVersion(a.version) && isSnapshotVersion(b.version)) {
-            const dateA = a.version.date;
-            const dateB = b.version.date;
+        if (a.version.type === "snapshot" && b.version.type === "snapshot") {
+            const dateA = extractSnapshotDate(a.version.name);
+            const dateB = extractSnapshotDate(b.version.name);
 
             if (dateA && dateB) {
                 return dateB.localeCompare(dateA);
@@ -168,4 +146,9 @@ function sortToolchainsByVersion(toolchains: AvailableToolchain[]): AvailableToo
         // Fallback to string comparison
         return b.version.name.localeCompare(a.version.name);
     });
+}
+
+function extractSnapshotDate(version: string): string | null {
+    const match = version.match(/(\d{4}-\d{2}-\d{2})/);
+    return match ? match[1] : null;
 }

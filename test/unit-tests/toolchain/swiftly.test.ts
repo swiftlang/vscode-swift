@@ -256,6 +256,9 @@ suite("Swiftly Unit Tests", () => {
             const availableResponse = {
                 toolchains: [
                     {
+                        inUse: false,
+                        installed: false,
+                        isDefault: false,
                         version: {
                             type: "stable",
                             major: 6,
@@ -265,6 +268,9 @@ suite("Swiftly Unit Tests", () => {
                         },
                     },
                     {
+                        inUse: false,
+                        installed: false,
+                        isDefault: false,
                         version: {
                             type: "snapshot",
                             major: 6,
@@ -308,15 +314,30 @@ suite("Swiftly Unit Tests", () => {
             const result = await Swiftly.listAvailable();
             expect(result).to.deep.equal([
                 {
-                    name: "6.0.0",
-                    type: "stable",
-                    version: "6.0.0",
+                    inUse: false,
+                    installed: false,
+                    isDefault: false,
+                    version: {
+                        type: "stable",
+                        major: 6,
+                        minor: 0,
+                        patch: 0,
+                        name: "6.0.0",
+                    },
                     isInstalled: true,
                 },
                 {
-                    name: "main-snapshot-2025-01-15",
-                    type: "snapshot",
-                    version: "main-snapshot-2025-01-15",
+                    inUse: false,
+                    installed: false,
+                    isDefault: false,
+                    version: {
+                        type: "snapshot",
+                        major: 6,
+                        minor: 1,
+                        branch: "main",
+                        date: "2025-01-15",
+                        name: "main-snapshot-2025-01-15",
+                    },
                     isInstalled: false,
                 },
             ]);

@@ -57,36 +57,52 @@ const InUseVersionResult = z.object({
     version: z.string(),
 });
 
-const ListAvailableResult = z.object({
-    toolchains: z.array(
-        z.object({
-            version: z.discriminatedUnion("type", [
-                z.object({
-                    major: z.union([z.number(), z.undefined()]),
-                    minor: z.union([z.number(), z.undefined()]),
-                    patch: z.union([z.number(), z.undefined()]),
-                    name: z.string(),
-                    type: z.literal("stable"),
-                }),
-                z.object({
-                    major: z.union([z.number(), z.undefined()]),
-                    minor: z.union([z.number(), z.undefined()]),
-                    branch: z.string(),
-                    date: z.string(),
-                    name: z.string(),
-                    type: z.literal("snapshot"),
-                }),
-            ]),
-        })
-    ),
+const StableVersion = z.object({
+    major: z.number(),
+    minor: z.number(),
+    patch: z.number(),
+    name: z.string(),
+    type: z.literal("stable"),
 });
 
-export interface AvailableToolchain {
-    name: string;
-    type: "stable" | "snapshot";
-    version: string;
-    isInstalled: boolean;
+export type StableVersion = z.infer<typeof StableVersion>;
+
+const SnapshotVersion = z.object({
+    major: z.number(),
+    minor: z.number(),
+    branch: z.string(),
+    date: z.string(),
+    name: z.string(),
+    type: z.literal("snapshot"),
+});
+
+export type SnapshotVersion = z.infer<typeof SnapshotVersion>;
+
+const AvailableToolchain = z.object({
+    inUse: z.boolean(),
+    installed: z.boolean(),
+    isDefault: z.boolean(),
+    version: z.discriminatedUnion("type", [StableVersion, SnapshotVersion]),
+});
+
+export function isStableVersion(
+    version: StableVersion | SnapshotVersion
+): version is StableVersion {
+    return version.type === "stable";
 }
+
+export function isSnapshotVersion(
+    version: StableVersion | SnapshotVersion
+): version is SnapshotVersion {
+    return version.type === "snapshot";
+}
+
+const ListAvailableResult = z.object({
+    toolchains: z.array(AvailableToolchain),
+});
+
+export type ListAvailableResult = z.infer<typeof ListAvailableResult>;
+export type AvailableToolchain = z.infer<typeof AvailableToolchain>;
 
 export interface SwiftlyProgressData {
     step?: {
@@ -276,7 +292,9 @@ export class Swiftly {
      * @param logger Optional logger for error reporting
      * @returns Array of available toolchains
      */
-    public static async listAvailable(logger?: SwiftLogger): Promise<AvailableToolchain[]> {
+    public static async listAvailable(
+        logger?: SwiftLogger
+    ): Promise<(ListAvailableResult["toolchains"][0] & { isInstalled: boolean })[]> {
         if (!this.isSupported()) {
             return [];
         }
@@ -307,9 +325,7 @@ export class Swiftly {
             const installedNames = new Set(installedResponse.toolchains.map(t => t.version.name));
 
             return availableResponse.toolchains.map(toolchain => ({
-                name: toolchain.version.name,
-                type: toolchain.version.type,
-                version: toolchain.version.name,
+                ...toolchain,
                 isInstalled: installedNames.has(toolchain.version.name),
             }));
         } catch (error) {
