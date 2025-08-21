@@ -688,8 +688,10 @@ export class TestRunner {
             }
         }
 
+        const compositeToken = new CompositeCancellationToken(token);
+
         // Create a cancellation token source for this test run
-        const compositeToken = new CompositeCancellationTokenSource(token);
+        const compositeTokenSource = new CompositeCancellationTokenSource(token);
 
         // Create and run the test runner
         const runner = new TestRunner(
@@ -697,15 +699,24 @@ export class TestRunner {
             request,
             folderContext,
             controller,
-            compositeToken.token
+            compositeTokenSource.token
         );
 
         // If the user terminates a debugging session for swift-testing
         // we want to prevent XCTest from starting.
-        const terminationListener = runner.onDebugSessionTerminated(() => compositeToken.cancel());
+        const terminationListener = runner.onDebugSessionTerminated(() =>
+            compositeTokenSource.cancel()
+        );
+
+        // If the user cancels the test run via the VS Code UI, skip the pending tests
+        // so they don't appear as failed. Any pending tests left over at the end of a run
+        // are assumed to have crashed.
+        const cancellationListener = compositeToken.onCancellationRequested(() =>
+            runner.testRun.skipPendingTests()
+        );
 
         // Register the test run with the manager
-        folderContext.registerTestRun(runner.testRun, compositeToken);
+        folderContext.registerTestRun(runner.testRun, compositeTokenSource);
 
         // Fire the event to notify that a test run was created
         onCreateTestRun.fire(runner.testRun);
@@ -714,6 +725,7 @@ export class TestRunner {
         await runner.runHandler();
 
         terminationListener.dispose();
+        cancellationListener.dispose();
 
         // Run the post-run handler if provided
         if (postRunHandler) {
