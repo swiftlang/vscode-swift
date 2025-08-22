@@ -71,15 +71,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         // This can happen if the user has not installed Swift or if the toolchain is not
         // properly configured.
         if (!toolchain) {
-            void showToolchainError();
-            return {
-                workspaceContext: undefined,
-                logger,
-                activate: () => activate(context),
-                deactivate: async () => {
-                    await deactivate(context);
-                },
-            };
+            // In order to select a toolchain we need to register the command first.
+            const subscriptions = commands.registerToolchainCommands(undefined, logger, undefined);
+            const choseRemediation = await showToolchainError();
+            subscriptions.forEach(sub => sub.dispose());
+
+            // If they tried to fix the improperly configured toolchain, re-initialize the extension.
+            if (choseRemediation) {
+                return activate(context);
+            } else {
+                return {
+                    workspaceContext: undefined,
+                    logger,
+                    activate: () => activate(context),
+                    deactivate: async () => {
+                        await deactivate(context);
+                    },
+                };
+            }
         }
 
         const workspaceContext = new WorkspaceContext(context, logger, toolchain);
