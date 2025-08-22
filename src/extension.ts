@@ -73,11 +73,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         if (!toolchain) {
             // In order to select a toolchain we need to register the command first.
             const subscriptions = commands.registerToolchainCommands(undefined, logger, undefined);
-            const choseRemediation = await showToolchainError();
+            const chosenRemediation = await showToolchainError();
             subscriptions.forEach(sub => sub.dispose());
 
             // If they tried to fix the improperly configured toolchain, re-initialize the extension.
-            if (choseRemediation) {
+            if (chosenRemediation) {
                 return activate(context);
             } else {
                 return {

@@ -20,6 +20,7 @@ import configuration from "../configuration";
 import { Commands } from "../commands";
 import { Swiftly } from "../toolchain/swiftly";
 import { SwiftLogger } from "../logging/SwiftLogger";
+import { FolderContext } from "../FolderContext";
 
 /**
  * Open the installation page on Swift.org
@@ -75,15 +76,16 @@ export async function selectToolchainFolder() {
  */
 export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> {
     let selected: "Remove From Settings" | "Select Toolchain" | undefined;
+    const folderName = folder ? `${FolderContext.uriName(folder)}: ` : "";
     if (configuration.path) {
         selected = await vscode.window.showErrorMessage(
-            `${folder ? `${path.basename(folder.path)}: ` : ""}The Swift executable at "${configuration.path}" either could not be found or failed to launch. Please select a new toolchain.`,
+            `${folderName}The Swift executable at "${configuration.path}" either could not be found or failed to launch. Please select a new toolchain.`,
             "Remove From Settings",
             "Select Toolchain"
         );
     } else {
         selected = await vscode.window.showErrorMessage(
-            `${folder ? `${path.basename(folder.path)}: ` : ""}Unable to automatically discover your Swift toolchain. Either install a toolchain from Swift.org or provide the path to an existing toolchain.`,
+            `${folderName}Unable to automatically discover your Swift toolchain. Either install a toolchain from Swift.org or provide the path to an existing toolchain.`,
             "Select Toolchain"
         );
     }
