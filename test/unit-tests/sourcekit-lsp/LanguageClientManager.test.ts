@@ -36,6 +36,7 @@ import {
     DidChangeWorkspaceFoldersNotification,
     DidChangeWorkspaceFoldersParams,
     LanguageClient,
+    Middleware,
     State,
     StateChangeEvent,
 } from "vscode-languageclient/node";
@@ -595,6 +596,213 @@ suite("LanguageClientManager Suite", () => {
                 isResolved: true,
             },
         ]);
+    });
+
+    suite("provideCompletionItem middleware", () => {
+        const mockParameterHintsEnabled = mockGlobalValue(configuration, "parameterHintsEnabled");
+        let document: MockedObject<vscode.TextDocument>;
+        let middleware: Middleware;
+
+        setup(async () => {
+            mockParameterHintsEnabled.setValue(() => true);
+
+            document = mockObject<vscode.TextDocument>({
+                uri: vscode.Uri.file("/test/file.swift"),
+            });
+
+            new LanguageClientToolchainCoordinator(
+                instance(mockedWorkspace),
+                {},
+                languageClientFactoryMock
+            );
+
+            await waitForReturnedPromises(languageClientMock.start);
+
+            middleware = languageClientFactoryMock.createLanguageClient.args[0][3].middleware!;
+        });
+
+        test("adds parameter hints command to function completion items when enabled", async () => {
+            const completionItemsFromLSP = async (): Promise<vscode.CompletionItem[]> => {
+                return [
+                    {
+                        label: "post(endpoint: String, body: [String : Any]?)",
+                        detail: "NetworkRequest",
+                        kind: vscode.CompletionItemKind.EnumMember,
+                    },
+                    {
+                        label: "defaultHeaders",
+                        detail: "[String : String]",
+                        kind: vscode.CompletionItemKind.Property,
+                    },
+                    {
+                        label: "makeRequest(for: NetworkRequest)",
+                        detail: "String",
+                        kind: vscode.CompletionItemKind.Function,
+                    },
+                    {
+                        label: "[endpoint: String]",
+                        detail: "NetworkRequest",
+                        kind: vscode.CompletionItemKind.Method,
+                    },
+                    {
+                        label: "(endpoint: String, method: String)",
+                        detail: "NetworkRequest",
+                        kind: vscode.CompletionItemKind.Constructor,
+                    },
+                ];
+            };
+
+            expect(middleware).to.have.property("provideCompletionItem");
+
+            const result = await middleware.provideCompletionItem!(
+                instance(document),
+                new vscode.Position(0, 0),
+                {} as any,
+                {} as any,
+                completionItemsFromLSP
+            );
+
+            expect(result).to.deep.equal([
+                {
+                    label: "post(endpoint: String, body: [String : Any]?)",
+                    detail: "NetworkRequest",
+                    kind: vscode.CompletionItemKind.EnumMember,
+                    command: {
+                        title: "Trigger Parameter Hints",
+                        command: "editor.action.triggerParameterHints",
+                    },
+                },
+                {
+                    label: "defaultHeaders",
+                    detail: "[String : String]",
+                    kind: vscode.CompletionItemKind.Property,
+                },
+                {
+                    label: "makeRequest(for: NetworkRequest)",
+                    detail: "String",
+                    kind: vscode.CompletionItemKind.Function,
+                    command: {
+                        title: "Trigger Parameter Hints",
+                        command: "editor.action.triggerParameterHints",
+                    },
+                },
+                {
+                    label: "[endpoint: String]",
+                    detail: "NetworkRequest",
+                    kind: vscode.CompletionItemKind.Method,
+                    command: {
+                        title: "Trigger Parameter Hints",
+                        command: "editor.action.triggerParameterHints",
+                    },
+                },
+                {
+                    label: "(endpoint: String, method: String)",
+                    detail: "NetworkRequest",
+                    kind: vscode.CompletionItemKind.Constructor,
+                    command: {
+                        title: "Trigger Parameter Hints",
+                        command: "editor.action.triggerParameterHints",
+                    },
+                },
+            ]);
+        });
+
+        test("does not add parameter hints command when disabled", async () => {
+            mockParameterHintsEnabled.setValue(() => false);
+
+            const completionItems = [
+                {
+                    label: "makeRequest(for: NetworkRequest)",
+                    detail: "String",
+                    kind: vscode.CompletionItemKind.Function,
+                },
+                {
+                    label: "[endpoint: String]",
+                    detail: "NetworkRequest",
+                    kind: vscode.CompletionItemKind.Method,
+                },
+            ];
+
+            const completionItemsFromLSP = async (): Promise<vscode.CompletionItem[]> => {
+                return completionItems;
+            };
+
+            const result = await middleware.provideCompletionItem!(
+                instance(document),
+                new vscode.Position(0, 0),
+                {} as any,
+                {} as any,
+                completionItemsFromLSP
+            );
+
+            expect(result).to.deep.equal(completionItems);
+        });
+
+        test("handles CompletionList result format", async () => {
+            const completionListFromLSP = async (): Promise<vscode.CompletionList> => {
+                return {
+                    isIncomplete: false,
+                    items: [
+                        {
+                            label: "defaultHeaders",
+                            detail: "[String : String]",
+                            kind: vscode.CompletionItemKind.Property,
+                        },
+                        {
+                            label: "makeRequest(for: NetworkRequest)",
+                            detail: "String",
+                            kind: vscode.CompletionItemKind.Function,
+                        },
+                    ],
+                };
+            };
+
+            const result = await middleware.provideCompletionItem!(
+                instance(document),
+                new vscode.Position(0, 0),
+                {} as any,
+                {} as any,
+                completionListFromLSP
+            );
+
+            expect(result).to.deep.equal({
+                isIncomplete: false,
+                items: [
+                    {
+                        label: "defaultHeaders",
+                        detail: "[String : String]",
+                        kind: vscode.CompletionItemKind.Property,
+                    },
+                    {
+                        label: "makeRequest(for: NetworkRequest)",
+                        detail: "String",
+                        kind: vscode.CompletionItemKind.Function,
+                        command: {
+                            title: "Trigger Parameter Hints",
+                            command: "editor.action.triggerParameterHints",
+                        },
+                    },
+                ],
+            });
+        });
+
+        test("handles null/undefined result from next middleware", async () => {
+            mockParameterHintsEnabled.setValue(() => true);
+
+            const nullCompletionResult = async (): Promise<null> => {
+                return null;
+            };
+
+            const result = await middleware.provideCompletionItem!(
+                instance(document),
+                new vscode.Position(0, 0),
+                {} as any,
+                {} as any,
+                nullCompletionResult
+            );
+
+            expect(result).to.be.null;
+        });
     });
 
     suite("active document changes", () => {

@@ -176,6 +176,33 @@ export class LanguagerClientDocumentSelectors {
     }
 }
 
+function addParameterHintsCommandsIfNeeded(
+    items: vscode.CompletionItem[],
+    documentUri: vscode.Uri
+): vscode.CompletionItem[] {
+    if (!configuration.parameterHintsEnabled(documentUri)) {
+        return items;
+    }
+
+    return items.map(item => {
+        switch (item.kind) {
+            case vscode.CompletionItemKind.Function:
+            case vscode.CompletionItemKind.Method:
+            case vscode.CompletionItemKind.Constructor:
+            case vscode.CompletionItemKind.EnumMember:
+                return {
+                    command: {
+                        title: "Trigger Parameter Hints",
+                        command: "editor.action.triggerParameterHints",
+                    },
+                    ...item,
+                };
+            default:
+                return item;
+        }
+    });
+}
+
 export function lspClientOptions(
     swiftVersion: Version,
     workspaceContext: WorkspaceContext,
@@ -199,6 +226,22 @@ export function lspClientOptions(
         middleware: {
             didOpen: activeDocumentManager.didOpen.bind(activeDocumentManager),
             didClose: activeDocumentManager.didClose.bind(activeDocumentManager),
+            provideCompletionItem: async (document, position, context, token, next) => {
+                const result = await next(document, position, context, token);
+
+                if (!result) {
+                    return result;
+                }
+
+                if (Array.isArray(result)) {
+                    return addParameterHintsCommandsIfNeeded(result, document.uri);
+                }
+
+                return {
+                    ...result,
+                    items: addParameterHintsCommandsIfNeeded(result.items, document.uri),
+                };
+            },
             provideCodeLenses: async (document, token, next) => {
                 const result = await next(document, token);
                 return result?.map(codelens => {

@@ -525,6 +525,16 @@ const configuration = {
     get outputChannelLogLevel(): string {
         return vscode.workspace.getConfiguration("swift").get("outputChannelLogLevel", "info");
     },
+    parameterHintsEnabled(documentUri: vscode.Uri): boolean {
+        const enabled = vscode.workspace
+            .getConfiguration("editor.parameterHints", {
+                uri: documentUri,
+                languageId: "swift",
+            })
+            .get<boolean>("enabled");
+
+        return enabled === true;
+    },
 };
 
 const vsCodeVariableRegex = new RegExp(/\$\{(.+?)\}/g);
