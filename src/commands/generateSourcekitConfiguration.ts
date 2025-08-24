@@ -65,7 +65,7 @@ async function createSourcekitConfiguration(
         await vscode.workspace.fs.stat(sourcekitConfigFile);
         return true;
     } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        if ((error as vscode.FileSystemError).code !== "FileNotFound") {
             workspaceContext.logger.error(
                 `Failed to read file at ${sourcekitConfigFile.fsPath}: ${error}`
             );
@@ -82,7 +82,7 @@ async function createSourcekitConfiguration(
             return false;
         }
     } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        if ((error as vscode.FileSystemError).code !== "FileNotFound") {
             workspaceContext.logger.error(
                 `Failed to read folder at ${sourcekitFolder.fsPath}: ${error}`
             );
@@ -170,7 +170,7 @@ async function checkDocumentSchema(doc: vscode.TextDocument, workspaceContext: W
     try {
         buffer = await vscode.workspace.fs.readFile(doc.uri);
     } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        if ((error as vscode.FileSystemError).code !== "FileNotFound") {
             workspaceContext.logger.error(`Failed to read file at ${doc.uri.fsPath}: ${error}`);
         }
         return;

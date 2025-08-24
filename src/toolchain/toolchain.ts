@@ -12,7 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as fs from "fs/promises";
+// TODO vscode.workspace.fs APIs cannot resolve symlinks
+// eslint-disable-next-line no-restricted-imports
+import { realpath } from "fs/promises";
 import * as path from "path";
 import * as os from "os";
 import * as plist from "plist";
@@ -281,10 +283,10 @@ export class SwiftToolchain {
     public static async findToolchainsIn(directory: string): Promise<string[]> {
         try {
             const toolchains = await Promise.all(
-                (await fs.readdir(directory, { withFileTypes: true }))
-                    .filter(dirent => dirent.name.startsWith("swift-"))
+                (await vscode.workspace.fs.readDirectory(vscode.Uri.file(directory)))
+                    .filter(dirent => dirent[0].startsWith("swift-"))
                     .map(async dirent => {
-                        const toolchainPath = path.join(dirent.path, dirent.name);
+                        const toolchainPath = path.join(directory, dirent[0]);
                         const toolchainSwiftPath = path.join(toolchainPath, "usr", "bin", "swift");
                         if (!(await pathExists(toolchainSwiftPath))) {
                             return null;
@@ -555,7 +557,7 @@ export class SwiftToolchain {
                 }
             }
             // swift may be a symbolic link
-            let realSwift = await fs.realpath(swift);
+            let realSwift = await realpath(swift);
             let isSwiftlyManaged = false;
 
             if (path.basename(realSwift) === "swiftly") {
@@ -717,7 +719,7 @@ export class SwiftToolchain {
             // a unified binary and we need to use this utility to run the swift-testing tests
             // on macOS. XCTests are still run with the xctest utility on macOS. The test binaries
             // can be invoked directly on Linux/Windows.
-            if (await this.fileExists(toolchainSwiftPMHelperPath)) {
+            if (await fileExists(toolchainSwiftPMHelperPath)) {
                 return toolchainSwiftPMHelperPath;
             }
         }
@@ -819,7 +821,9 @@ export class SwiftToolchain {
             );
             return undefined;
         }
-        const data = await fs.readFile(platformManifest, "utf8");
+        const data = Buffer.from(
+            await vscode.workspace.fs.readFile(vscode.Uri.file(platformManifest))
+        ).toString("utf-8");
         let infoPlist;
         try {
             infoPlist = plist.parse(data) as unknown as InfoPlist;
@@ -906,18 +910,5 @@ export class SwiftToolchain {
             version = Version.fromString(match[1]);
         }
         return version ?? new Version(0, 0, 0);
-    }
-
-    /**
-     * Check if a file exists.
-     * @returns true if the file exists at the supplied path
-     */
-    private static async fileExists(path: string): Promise<boolean> {
-        try {
-            await fs.access(path, fs.constants.F_OK);
-            return true;
-        } catch {
-            return false;
-        }
     }
 }

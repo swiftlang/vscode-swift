@@ -17,7 +17,6 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
-import * as fs from "fs/promises";
 import { execFile, IS_RUNNING_UNDER_TEST } from "../utilities/utilities";
 import { Result } from "../utilities/result";
 import { SwiftToolchain } from "../toolchain/toolchain";
@@ -81,8 +80,8 @@ export async function getLLDBLibPath(toolchain: SwiftToolchain): Promise<Result<
 }
 
 export async function findLibLLDB(pathHint: string): Promise<string | undefined> {
-    const stat = await fs.stat(pathHint);
-    if (stat.isFile()) {
+    const stat = await vscode.workspace.fs.stat(vscode.Uri.file(pathHint));
+    if (stat.type === vscode.FileType.File) {
         return pathHint;
     }
 
@@ -112,10 +111,12 @@ export async function findLibLLDB(pathHint: string): Promise<string | undefined>
 
 export async function findFileByPattern(path: string, pattern: RegExp): Promise<string | null> {
     try {
-        const files = await fs.readdir(path);
+        const uri = vscode.Uri.file(path);
+        await vscode.workspace.fs.stat(uri);
+        const files = await vscode.workspace.fs.readDirectory(uri);
         for (const file of files) {
-            if (pattern.test(file)) {
-                return file;
+            if (pattern.test(file[0])) {
+                return file[0];
             }
         }
     } catch (err) {

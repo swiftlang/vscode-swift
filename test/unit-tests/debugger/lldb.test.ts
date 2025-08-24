@@ -14,8 +14,7 @@
 
 import * as util from "../../../src/utilities/utilities";
 import * as lldb from "../../../src/debugger/lldb";
-import * as fs from "fs/promises";
-import * as sinon from "sinon";
+import * as vscode from "vscode";
 import { expect } from "chai";
 import {
     instance,
@@ -23,20 +22,24 @@ import {
     mockFn,
     mockGlobalModule,
     mockObject,
-    MockedFunction,
     mockGlobalValue,
 } from "../../MockUtils";
 import { SwiftToolchain } from "../../../src/toolchain/toolchain";
 
 suite("debugger.lldb Tests", () => {
+    const wsMock = mockGlobalValue(vscode.workspace, "fs");
+    const fsMock = mockObject<vscode.FileSystem>({ readDirectory: mockFn(), stat: mockFn() });
+
+    setup(() => {
+        wsMock.setValue(fsMock);
+    });
+
     suite("getLLDBLibPath Tests", () => {
         let mockToolchain: MockedObject<SwiftToolchain>;
-        let mockFindLibLLDB: MockedFunction<(typeof lldb)["findLibLLDB"]>;
         const mockedPlatform = mockGlobalValue(process, "platform");
         const mockUtil = mockGlobalModule(util);
 
         setup(() => {
-            mockFindLibLLDB = sinon.stub();
             mockToolchain = mockObject<SwiftToolchain>({
                 getLLDB: mockFn(),
                 swiftFolderPath: "",
@@ -62,25 +65,28 @@ suite("debugger.lldb Tests", () => {
         test("should return failure if findLibLLDB returns falsy values", async () => {
             mockToolchain.getLLDB.resolves("/path/to/lldb");
             mockUtil.execFile.resolves({ stdout: "", stderr: "" });
-            mockFindLibLLDB.onFirstCall().resolves(undefined);
+            fsMock.stat.resolves({ type: vscode.FileType.Directory } as any);
 
-            let result = await lldb.getLLDBLibPath(instance(mockToolchain));
-            expect(result.failure).to.not.equal(undefined);
-
-            mockFindLibLLDB.onSecondCall().resolves("");
-
-            result = await lldb.getLLDBLibPath(instance(mockToolchain));
+            const result = await lldb.getLLDBLibPath(instance(mockToolchain));
             expect(result.failure).to.not.equal(undefined);
         });
         // NB(separate itest): contract test with toolchains of various platforms
     });
 
     suite("findLibLLDB Tests", () => {
-        const fsMock = mockGlobalModule(fs);
+        const wsMock = mockGlobalValue(vscode.workspace, "fs");
+        const fsMock = mockObject<vscode.FileSystem>({ readDirectory: mockFn(), stat: mockFn() });
+
+        setup(() => {
+            wsMock.setValue(fsMock);
+        });
 
         test("should return undefined if no file matches the pattern", async () => {
-            fsMock.readdir.resolves(["file1", "file2"] as any);
-            fsMock.stat.resolves({ isFile: () => false } as any);
+            fsMock.readDirectory.resolves([
+                ["file1", vscode.FileType.Directory],
+                ["file2", vscode.FileType.Directory],
+            ] as any);
+            fsMock.stat.resolves({ type: vscode.FileType.Directory } as any);
 
             const result = await lldb.findLibLLDB("/path/hint");
 
@@ -88,7 +94,7 @@ suite("debugger.lldb Tests", () => {
         });
 
         test("should return path if file exists", async () => {
-            fsMock.stat.resolves({ isFile: () => true } as any);
+            fsMock.stat.resolves({ type: vscode.FileType.File } as any);
 
             const result = await lldb.findLibLLDB("/path/hint");
 
@@ -98,10 +104,11 @@ suite("debugger.lldb Tests", () => {
     });
 
     suite("findFileByPattern Tests", () => {
-        const fsMock = mockGlobalModule(fs);
-
         test("should return null if no file matches the pattern", async () => {
-            fsMock.readdir.resolves(["file1", "file2"] as any);
+            fsMock.readDirectory.resolves([
+                ["file1", vscode.FileType.File],
+                ["file2", vscode.FileType.File],
+            ] as any);
 
             const result = await lldb.findFileByPattern("/some/path", /pattern/);
 
@@ -109,7 +116,10 @@ suite("debugger.lldb Tests", () => {
         });
 
         test("should return the first match if one file matches the pattern", async () => {
-            fsMock.readdir.resolves(["match1", "nomatch"] as any);
+            fsMock.readDirectory.resolves([
+                ["match1", vscode.FileType.File],
+                ["nomatch", vscode.FileType.File],
+            ] as any);
 
             const result = await lldb.findFileByPattern("/some/path", /match1/);
 
@@ -117,7 +127,10 @@ suite("debugger.lldb Tests", () => {
         });
 
         test("should return the first match if multiple files match the pattern", async () => {
-            fsMock.readdir.resolves(["match1", "match2"] as any);
+            fsMock.readDirectory.resolves([
+                ["match1", vscode.FileType.File],
+                ["match2", vscode.FileType.File],
+            ] as any);
 
             const result = await lldb.findFileByPattern("/some/path", /match/);
 
@@ -125,7 +138,7 @@ suite("debugger.lldb Tests", () => {
         });
 
         test("should return null if directory reading fails", async () => {
-            fsMock.readdir.rejects(new Error("Some error"));
+            fsMock.readDirectory.rejects(new Error("Some error"));
 
             const result = await lldb.findFileByPattern("/some/path", /pattern/);
 

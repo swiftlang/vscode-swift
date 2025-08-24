@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
 import * as path from "path";
 import { execSwift, getErrorDescription, hashString } from "./utilities/utilities";
 import { isPathInsidePath } from "./utilities/filesystem";
@@ -301,8 +300,8 @@ export class SwiftPackage {
     ): Promise<PackageResolved | undefined> {
         try {
             const uri = vscode.Uri.joinPath(folder, "Package.resolved");
-            const contents = await fs.readFile(uri.fsPath, "utf8");
-            return new PackageResolved(contents);
+            const contents = Buffer.from(await vscode.workspace.fs.readFile(uri));
+            return new PackageResolved(contents.toString("utf-8"));
         } catch {
             // failed to load resolved file return undefined
             return undefined;
@@ -351,8 +350,8 @@ export class SwiftPackage {
                 vscode.Uri.file(BuildFlags.buildDirectoryFromWorkspacePath(folder.fsPath, true)),
                 "workspace-state.json"
             );
-            const contents = await fs.readFile(uri.fsPath, "utf8");
-            return JSON.parse(contents);
+            const contents = Buffer.from(await vscode.workspace.fs.readFile(uri));
+            return JSON.parse(contents.toString("utf8"));
         } catch {
             // failed to load resolved file return undefined
             return undefined;

@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
 import { FolderOperation, WorkspaceContext } from "../../WorkspaceContext";
 import { SwiftExecOperation } from "../../tasks/TaskQueue";
 import { FolderContext } from "../../FolderContext";
@@ -72,7 +71,7 @@ async function uneditFolderDependency(
         if (folderIndex) {
             try {
                 // check folder exists. if error thrown remove folder
-                await fs.stat(vscode.workspace.workspaceFolders![folderIndex].uri.fsPath);
+                await vscode.workspace.fs.stat(vscode.workspace.workspaceFolders![folderIndex].uri);
             } catch {
                 vscode.workspace.updateWorkspaceFolders(folderIndex, 1);
             }

@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
 import * as path from "path";
 import { RenderNode, WebviewContent, WebviewMessage } from "./webview/WebviewMessage";
 import { WorkspaceContext } from "../WorkspaceContext";
@@ -36,6 +35,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
         const swiftDoccRenderPath = extension.asAbsolutePath(
             path.join("assets", "swift-docc-render")
         );
+        const swiftDoccRenderFile = vscode.Uri.file(swiftDoccRenderPath);
         const webviewPanel = vscode.window.createWebviewPanel(
             PreviewEditorConstant.VIEW_TYPE,
             PreviewEditorConstant.TITLE,
@@ -51,7 +51,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                     vscode.Uri.file(
                         extension.asAbsolutePath(path.join("assets", "documentation-webview"))
                     ),
-                    vscode.Uri.file(swiftDoccRenderPath),
+                    swiftDoccRenderFile,
                     ...context.folders.map(f => f.folder),
                 ],
             }
@@ -68,18 +68,17 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                 )
             ),
         };
-        const webviewBaseURI = webviewPanel.webview.asWebviewUri(
-            vscode.Uri.file(swiftDoccRenderPath)
-        );
+        const webviewBaseURI = webviewPanel.webview.asWebviewUri(swiftDoccRenderFile);
         const scriptURI = webviewPanel.webview.asWebviewUri(
             vscode.Uri.file(
                 extension.asAbsolutePath(path.join("assets", "documentation-webview", "index.js"))
             )
         );
-        let doccRenderHTML = await fs.readFile(
-            path.join(swiftDoccRenderPath, "index.html"),
-            "utf-8"
-        );
+        let doccRenderHTML = Buffer.from(
+            await vscode.workspace.fs.readFile(
+                vscode.Uri.joinPath(swiftDoccRenderFile, "index.html")
+            )
+        ).toString("utf-8");
         const codiconsUri = webviewPanel.webview.asWebviewUri(
             vscode.Uri.file(
                 extension.asAbsolutePath(
