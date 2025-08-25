@@ -339,6 +339,11 @@
         "category": "Swift"
       },
       {
+        "command": "swift.installSwiftlySnapshotToolchain",
+        "title": "Install Swiftly Snapshot Toolchain...",
+        "category": "Swift"
+      },
+      {
         "command": "swift.runSnippet",
         "title": "Run Swift Snippet",
         "category": "Swift",

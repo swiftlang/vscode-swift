@@ -324,7 +324,6 @@ suite("Swiftly Unit Tests", () => {
                         patch: 0,
                         name: "6.0.0",
                     },
-                    isInstalled: true,
                 },
                 {
                     inUse: false,
@@ -338,7 +337,6 @@ suite("Swiftly Unit Tests", () => {
                         date: "2025-01-15",
                         name: "main-snapshot-2025-01-15",
                     },
-                    isInstalled: false,
                 },
             ]);
         });
@@ -435,6 +433,19 @@ suite("Swiftly Unit Tests", () => {
             mockVscodeWindow.showWarningMessage.reset();
             mockVscodeWindow.showInformationMessage.reset();
             mockVscodeWindow.showErrorMessage.reset();
+            mockVscodeWindow.createOutputChannel.reset();
+
+            // Mock createOutputChannel to return a basic output channel mock
+            mockVscodeWindow.createOutputChannel.returns({
+                show: () => {},
+                appendLine: () => {},
+                append: () => {},
+                hide: () => {},
+                dispose: () => {},
+                name: "test-channel",
+                replace: () => {},
+                clear: () => {},
+            } as any);
         });
 
         test("should execute post-install script when user confirms and script is valid", async () => {
