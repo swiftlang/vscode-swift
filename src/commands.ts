@@ -51,8 +51,10 @@ import { generateLaunchConfigurations } from "./commands/generateLaunchConfigura
 import { runTest } from "./commands/runTest";
 import { generateSourcekitConfiguration } from "./commands/generateSourcekitConfiguration";
 import { SwiftLogger } from "./logging/SwiftLogger";
-import { installSwiftlyToolchain } from "./commands/installSwiftlyToolchain";
-import { installSwiftlySnapshotToolchain } from "./commands/installSwiftlySnapshotToolchain";
+import {
+    installSwiftlyToolchain,
+    installSwiftlySnapshotToolchain,
+} from "./commands/installSwiftlyToolchain";
 
 /**
  * References:

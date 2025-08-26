@@ -25,7 +25,6 @@ import { Version } from "../utilities/version";
 import { z } from "zod/v4/mini";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { findBinaryPath } from "../utilities/shell";
-import { SwiftOutputChannel } from "../logging/SwiftOutputChannel";
 
 const ListResult = z.object({
     toolchains: z.array(
@@ -100,8 +99,6 @@ export function isSnapshotVersion(
 const ListAvailableResult = z.object({
     toolchains: z.array(AvailableToolchain),
 });
-
-export type ListAvailableResult = z.infer<typeof ListAvailableResult>;
 export type AvailableToolchain = z.infer<typeof AvailableToolchain>;
 
 export interface SwiftlyProgressData {
@@ -289,12 +286,14 @@ export class Swiftly {
     /**
      * Lists all toolchains available for installation from swiftly
      *
+     * @param branch Optional branch to filter available toolchains (e.g., "main" for snapshots)
      * @param logger Optional logger for error reporting
      * @returns Array of available toolchains
      */
     public static async listAvailable(
-        logger?: SwiftLogger
-    ): Promise<(ListAvailableResult["toolchains"][0] & { isInstalled: boolean })[]> {
+        logger?: SwiftLogger,
+        branch?: string
+    ): Promise<AvailableToolchain[]> {
         if (!this.isSupported()) {
             return [];
         }
@@ -311,23 +310,12 @@ export class Swiftly {
         }
 
         try {
-            const { stdout: availableStdout } = await execFile("swiftly", [
-                "list-available",
-                "--format=json",
-            ]);
-            const availableResponse = ListAvailableResult.parse(JSON.parse(availableStdout));
-
-            const { stdout: installedStdout } = await execFile("swiftly", [
-                "list",
-                "--format=json",
-            ]);
-            const installedResponse = ListResult.parse(JSON.parse(installedStdout));
-            const installedNames = new Set(installedResponse.toolchains.map(t => t.version.name));
-
-            return availableResponse.toolchains.map(toolchain => ({
-                ...toolchain,
-                isInstalled: installedNames.has(toolchain.version.name),
-            }));
+            const args = ["list-available", "--format=json"];
+            if (branch) {
+                args.push(branch);
+            }
+            const { stdout: availableStdout } = await execFile("swiftly", args);
+            return ListAvailableResult.parse(JSON.parse(availableStdout)).toolchains;
         } catch (error) {
             logger?.error(`Failed to retrieve available Swiftly toolchains: ${error}`);
             return [];
@@ -461,11 +449,12 @@ export class Swiftly {
             return;
         }
 
-        const shouldExecute = await this.showPostInstallConfirmation(version, validation);
+        const shouldExecute = await this.showPostInstallConfirmation(version, validation, logger);
 
         if (shouldExecute) {
             await this.executePostInstallScript(postInstallFilePath, version, logger);
         } else {
+            logger?.warn(`Swift ${version} post-install script execution cancelled by user`);
             void vscode.window.showWarningMessage(
                 `Swift ${version} installation is incomplete. You may need to manually install additional system packages.`
             );
@@ -544,17 +533,26 @@ export class Swiftly {
      *
      * @param version The toolchain version being installed
      * @param validation The validation result
+     * @param logger
      * @returns Promise resolving to user's decision
      */
     private static async showPostInstallConfirmation(
         version: string,
-        validation: PostInstallValidationResult
+        validation: PostInstallValidationResult,
+        logger?: SwiftLogger
     ): Promise<boolean> {
+        const summaryLines = validation.summary.split("\n");
+        const firstTwoLines = summaryLines.slice(0, 2).join("\n");
+
         const message =
             `Swift ${version} installation requires additional system packages to be installed. ` +
-            `This will require administrator privileges.\n\n${validation.summary}\n\n` +
+            `This will require administrator privileges.\n\n${firstTwoLines}\n\n` +
             `Do you want to proceed with running the post-install script?`;
 
+        logger?.warn(
+            `User confirmation required to execute post-install script for Swift ${version} installation,
+            this requires ${firstTwoLines} permissions.`
+        );
         const choice = await vscode.window.showWarningMessage(
             message,
             { modal: true },
@@ -579,10 +577,7 @@ export class Swiftly {
     ): Promise<void> {
         logger?.info(`Executing post-install script for toolchain ${version}`);
 
-        const outputChannel = new SwiftOutputChannel(
-            `Swift ${version} Post-Install`,
-            path.join(os.tmpdir(), `swift-post-install-${version}.log`)
-        );
+        const outputChannel = vscode.window.createOutputChannel(`Swift ${version} Post-Install`);
 
         try {
             outputChannel.show(true);
