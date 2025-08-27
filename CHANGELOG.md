@@ -4,6 +4,7 @@
 
 ### Added
 
+- Swiftly toolchain installation support with commands to install stable and snapshot releases, progress tracking, and secure post-install script handling ([#1780](https://github.com/swiftlang/vscode-swift/pull/1780))
 - Prompt to restart `SourceKit-LSP` after changing `.sourcekit-lsp/config.json` files ([#1744](https://github.com/swiftlang/vscode-swift/issues/1744))
 - Prompt to cancel and replace the active test run if one is in flight ([#1774](https://github.com/swiftlang/vscode-swift/pull/1774))
 - A walkthrough for first time extension users ([#1560](https://github.com/swiftlang/vscode-swift/issues/1560))

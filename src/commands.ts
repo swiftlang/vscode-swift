@@ -51,6 +51,10 @@ import { generateLaunchConfigurations } from "./commands/generateLaunchConfigura
 import { runTest } from "./commands/runTest";
 import { generateSourcekitConfiguration } from "./commands/generateSourcekitConfiguration";
 import { SwiftLogger } from "./logging/SwiftLogger";
+import {
+    installSwiftlyToolchain,
+    installSwiftlySnapshotToolchain,
+} from "./commands/installSwiftlyToolchain";
 
 /**
  * References:
@@ -111,6 +115,8 @@ export enum Commands {
     OPEN_MANIFEST = "swift.openManifest",
     RESTART_LSP = "swift.restartLSPServer",
     SELECT_TOOLCHAIN = "swift.selectToolchain",
+    INSTALL_SWIFTLY_TOOLCHAIN = "swift.installSwiftlyToolchain",
+    INSTALL_SWIFTLY_SNAPSHOT_TOOLCHAIN = "swift.installSwiftlySnapshotToolchain",
     GENERATE_SOURCEKIT_CONFIG = "swift.generateSourcekitConfiguration",
 }
 
@@ -347,6 +353,14 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
                     "workbench.action.openSettings",
                     "@ext:swiftlang.swift-vscode "
                 )
+        ),
+        vscode.commands.registerCommand(
+            Commands.INSTALL_SWIFTLY_TOOLCHAIN,
+            async () => await installSwiftlyToolchain(ctx)
+        ),
+        vscode.commands.registerCommand(
+            Commands.INSTALL_SWIFTLY_SNAPSHOT_TOOLCHAIN,
+            async () => await installSwiftlySnapshotToolchain(ctx)
         ),
     ];
 }
