@@ -21,6 +21,7 @@ import { BuildFlags } from "./toolchain/BuildFlags";
 import { Version } from "./utilities/version";
 import { fileExists } from "./utilities/filesystem";
 import { showReloadExtensionNotification } from "./ui/ReloadExtension";
+import { Swiftly } from "./toolchain/swiftly";
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
@@ -137,6 +138,27 @@ export class PackageWatcher {
     async handleSwiftVersionFileChange() {
         const version = await this.readSwiftVersionFile();
         if (version && version.toString() !== this.currentVersion?.toString()) {
+            // Check if this is a new .swift-version file and Swiftly is missing
+            if (!this.currentVersion && (await this.shouldPromptSwiftlyInstallForVersion())) {
+                const choice = await vscode.window.showInformationMessage(
+                    `Detected .swift-version file requesting Swift ${version.toString()}. Swiftly (Swift toolchain manager) is not installed. Would you like to install it to manage Swift versions automatically?`,
+                    "Install Swiftly",
+                    "Don't show again",
+                    "Later"
+                );
+
+                if (choice === "Install Swiftly") {
+                    await Swiftly.promptInstallSwiftly(this.workspaceContext.logger);
+                    return; // Extension will reload after Swiftly installation
+                } else if (choice === "Don't show again") {
+                    // Store user preference to not show again
+                    await this.workspaceContext.extensionContext.globalState.update(
+                        "swift.suppressSwiftlyPrompt",
+                        true
+                    );
+                }
+            }
+
             await this.workspaceContext.fireEvent(
                 this.folderContext,
                 FolderOperation.swiftVersionUpdated
@@ -146,6 +168,20 @@ export class PackageWatcher {
             );
         }
         this.currentVersion = version ?? this.folderContext.toolchain.swiftVersion;
+    }
+
+    private async shouldPromptSwiftlyInstallForVersion(): Promise<boolean> {
+        // Check if user has suppressed the prompt
+        const suppressPrompt = this.workspaceContext.extensionContext.globalState.get(
+            "swift.suppressSwiftlyPrompt",
+            false
+        );
+        if (suppressPrompt) {
+            return false;
+        }
+
+        // Check if Swiftly is supported and missing
+        return Swiftly.isSupported() && (await Swiftly.isMissing(this.workspaceContext.logger));
     }
 
     private async readSwiftVersionFile() {

@@ -175,11 +175,21 @@ suite("Swiftly Unit Tests", () => {
             mockedPlatform.setValue("darwin");
             const progressCallback = () => {};
 
-            mockUtilities.execFile.withArgs("mkfifo").resolves({ stdout: "", stderr: "" });
-            mockUtilities.execFile.withArgs("swiftly", match.array).resolves({
-                stdout: "",
+            // Mock version check to return 1.1.0 (supports progress files)
+            mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
+                stdout: "1.1.0\n",
                 stderr: "",
             });
+            mockUtilities.execFile
+                .withArgs("mkfifo", match.array)
+                .resolves({ stdout: "", stderr: "" });
+            // Mock swiftly install command - be more specific to avoid catching version check
+            mockUtilities.execFile
+                .withArgs("swiftly", match.array.and(match.hasNested("0", "install")))
+                .resolves({
+                    stdout: "",
+                    stderr: "",
+                });
             os.tmpdir();
             mockFS.restore();
             mockFS({});
@@ -193,7 +203,34 @@ suite("Swiftly Unit Tests", () => {
                 expect((error as Error).message).to.include("ENOENT");
             }
 
+            // Verify version was checked
+            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["--version"]);
+            // Verify mkfifo was called when progress callback is provided and version supports it
             expect(mockUtilities.execFile).to.have.been.calledWith("mkfifo", match.array);
+        });
+
+        test("should not create progress pipe when Swiftly version is too old", async () => {
+            mockedPlatform.setValue("darwin");
+            const progressCallback = () => {};
+
+            // Mock version check to return 1.0.0 (does NOT support progress files)
+            mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
+                stdout: "1.0.0\n",
+                stderr: "",
+            });
+            mockUtilities.execFile
+                .withArgs("swiftly", match.array.and(match.hasNested("0", "install")))
+                .resolves({
+                    stdout: "",
+                    stderr: "",
+                });
+
+            await Swiftly.installToolchain("6.0.0", progressCallback);
+
+            // Verify version was checked
+            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["--version"]);
+            // Verify mkfifo was NOT called for older versions
+            expect(mockUtilities.execFile).to.not.have.been.calledWith("mkfifo", match.array);
         });
 
         test("should handle installation error properly", async () => {
@@ -362,7 +399,9 @@ suite("Swiftly Unit Tests", () => {
 
         test("should call installToolchain with correct parameters", async () => {
             mockUtilities.execFile.withArgs("swiftly").resolves({ stdout: "", stderr: "" });
-            mockUtilities.execFile.withArgs("mkfifo").resolves({ stdout: "", stderr: "" });
+            mockUtilities.execFile
+                .withArgs("mkfifo", match.array)
+                .resolves({ stdout: "", stderr: "" });
 
             await Swiftly.installToolchain("6.0.0");
 
@@ -380,7 +419,9 @@ suite("Swiftly Unit Tests", () => {
         test("should handle swiftly installation errors", async () => {
             const installError = new Error("Swiftly installation failed");
             mockUtilities.execFile.withArgs("swiftly").rejects(installError);
-            mockUtilities.execFile.withArgs("mkfifo").resolves({ stdout: "", stderr: "" });
+            mockUtilities.execFile
+                .withArgs("mkfifo", match.array)
+                .resolves({ stdout: "", stderr: "" });
 
             await expect(Swiftly.installToolchain("6.0.0")).to.eventually.be.rejectedWith(
                 "Swiftly installation failed"
@@ -388,8 +429,13 @@ suite("Swiftly Unit Tests", () => {
         });
 
         test("should handle mkfifo creation errors", async () => {
+            // Mock version check to return 1.1.0 (supports progress files)
+            mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
+                stdout: "1.1.0\n",
+                stderr: "",
+            });
             const mkfifoError = new Error("Cannot create named pipe");
-            mockUtilities.execFile.withArgs("mkfifo").rejects(mkfifoError);
+            mockUtilities.execFile.withArgs("mkfifo", match.array).rejects(mkfifoError);
 
             const progressCallback = () => {};
 
@@ -409,8 +455,15 @@ suite("Swiftly Unit Tests", () => {
         });
 
         test("should create progress pipe when progress callback is provided", async () => {
+            // Mock version check to return 1.1.0 (supports progress files)
+            mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
+                stdout: "1.1.0\n",
+                stderr: "",
+            });
             mockUtilities.execFile.withArgs("swiftly").resolves({ stdout: "", stderr: "" });
-            mockUtilities.execFile.withArgs("mkfifo").resolves({ stdout: "", stderr: "" });
+            mockUtilities.execFile
+                .withArgs("mkfifo", match.array)
+                .resolves({ stdout: "", stderr: "" });
 
             const progressCallback = () => {};
 
