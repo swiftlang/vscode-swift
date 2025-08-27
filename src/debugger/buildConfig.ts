@@ -334,6 +334,14 @@ export class TestingConfigurationFactory {
                         const libraryPath = toolchain.swiftTestingLibraryPath();
                         const frameworkPath = toolchain.swiftTestingFrameworkPath();
                         const swiftPMTestingHelperPath = toolchain.swiftPMTestingHelperPath;
+                        const env = {
+                            ...this.testEnv,
+                            ...this.sanitizerRuntimeEnvironment,
+                            DYLD_FRAMEWORK_PATH: frameworkPath,
+                            DYLD_LIBRARY_PATH: libraryPath,
+                            SWT_SF_SYMBOLS_ENABLED: "0",
+                            SWT_ENABLE_EXPERIMENTAL_EVENT_STREAM_TEST_CASE_ENCODING: "1",
+                        };
 
                         // Toolchains that contain https://github.com/swiftlang/swift-package-manager/commit/844bd137070dcd18d0f46dd95885ef7907ea0697
                         // produce a single testing binary for both xctest and swift-testing (called <ProductName>.xctest).
@@ -354,13 +362,7 @@ export class TestingConfigurationFactory {
                                         ])
                                     )
                                 ),
-                                env: {
-                                    ...this.testEnv,
-                                    ...this.sanitizerRuntimeEnvironment,
-                                    DYLD_FRAMEWORK_PATH: frameworkPath,
-                                    DYLD_LIBRARY_PATH: libraryPath,
-                                    SWT_SF_SYMBOLS_ENABLED: "0",
-                                },
+                                env,
                             };
                             return result;
                         }
@@ -369,13 +371,7 @@ export class TestingConfigurationFactory {
                             ...baseConfig,
                             program: await this.testExecutableOutputPath(),
                             args: this.debuggingTestExecutableArgs(),
-                            env: {
-                                ...this.testEnv,
-                                ...this.sanitizerRuntimeEnvironment,
-                                DYLD_FRAMEWORK_PATH: frameworkPath,
-                                DYLD_LIBRARY_PATH: libraryPath,
-                                SWT_SF_SYMBOLS_ENABLED: "0",
-                            },
+                            env,
                         };
                         return result;
                     default:
@@ -398,6 +394,7 @@ export class TestingConfigurationFactory {
                                 ...this.testEnv,
                                 ...this.sanitizerRuntimeEnvironment,
                                 SWT_SF_SYMBOLS_ENABLED: "0",
+                                SWT_ENABLE_EXPERIMENTAL_EVENT_STREAM_TEST_CASE_ENCODING: "1",
                             },
                             // For coverage we need to rebuild so do the build/test all in one step,
                             // otherwise we do a build, then test, to give better progress.
