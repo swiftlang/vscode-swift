@@ -25,6 +25,7 @@ import { Version } from "../utilities/version";
 import { z } from "zod/v4/mini";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { findBinaryPath } from "../utilities/shell";
+import { downloadFile } from "../utilities/utilities";
 
 const ListResult = z.object({
     toolchains: z.array(
@@ -343,10 +344,15 @@ export class Swiftly {
         const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vscode-swift-"));
         const postInstallFilePath = path.join(tmpDir, `post-install-${version}.sh`);
 
+        // Check if Swiftly version supports --progress-file option (requires version >= 1.1.0)
+        const swiftlyVersion = await this.version(logger);
+        const supportsProgressFile =
+            swiftlyVersion?.isGreaterThanOrEqual(new Version(1, 1, 0)) ?? false;
+
         let progressPipePath: string | undefined;
         let progressPromise: Promise<void> | undefined;
 
-        if (progressCallback) {
+        if (progressCallback && supportsProgressFile) {
             progressPipePath = path.join(tmpDir, `progress-${version}.pipe`);
 
             await execFile("mkfifo", [progressPipePath]);
@@ -385,11 +391,13 @@ export class Swiftly {
             postInstallFilePath,
         ];
 
-        if (progressPipePath) {
+        // Only add --progress-file if the Swiftly version supports it
+        if (progressPipePath && supportsProgressFile) {
             installArgs.push("--progress-file", progressPipePath);
         }
 
         try {
+            logger?.info(`Running swiftly with args: ${installArgs.join(" ")}`);
             const installPromise = execFile("swiftly", installArgs);
 
             if (progressPromise) {
@@ -401,19 +409,44 @@ export class Swiftly {
             if (process.platform === "linux") {
                 await this.handlePostInstallFile(postInstallFilePath, version, logger);
             }
+
+            logger?.info(`Successfully installed Swift toolchain ${version}`);
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            logger?.error(`Failed to install Swift toolchain ${version}: ${errorMsg}`);
+
+            // Show user-friendly error message
+            void vscode.window.showErrorMessage(
+                `Failed to install Swift ${version}: ${errorMsg}. Please check the output channel for details.`
+            );
+
+            throw error;
         } finally {
-            if (progressPipePath) {
-                try {
-                    await fs.unlink(progressPipePath);
-                } catch {
-                    // Ignore errors if the pipe file doesn't exist
+            // Clean up temporary files
+            const cleanup = async () => {
+                if (progressPipePath) {
+                    try {
+                        await fs.unlink(progressPipePath);
+                        logger?.debug(`Cleaned up progress pipe: ${progressPipePath}`);
+                    } catch (cleanupError) {
+                        logger?.debug(`Could not clean up progress pipe: ${cleanupError}`);
+                    }
                 }
-            }
-            try {
-                await fs.unlink(postInstallFilePath);
-            } catch {
-                // Ignore errors if the post-install file doesn't exist
-            }
+                try {
+                    await fs.unlink(postInstallFilePath);
+                    logger?.debug(`Cleaned up post-install file: ${postInstallFilePath}`);
+                } catch (cleanupError) {
+                    logger?.debug(`Could not clean up post-install file: ${cleanupError}`);
+                }
+                try {
+                    await fs.rmdir(tmpDir);
+                    logger?.debug(`Cleaned up temp directory: ${tmpDir}`);
+                } catch (cleanupError) {
+                    logger?.debug(`Could not clean up temp directory: ${cleanupError}`);
+                }
+            };
+
+            await cleanup();
         }
     }
 
@@ -650,5 +683,322 @@ export class Swiftly {
         } catch (error) {
             return false;
         }
+    }
+
+    /**
+     * Detects if Swiftly is missing by attempting to run swiftly --version
+     *
+     * @param logger Optional logger for error reporting
+     * @returns true if Swiftly is missing (error code 127), false otherwise
+     */
+    public static async isMissing(logger?: SwiftLogger): Promise<boolean> {
+        if (!this.isSupported()) {
+            return false;
+        }
+        try {
+            await execFile("swiftly", ["--version"]);
+            return false;
+        } catch (error: unknown) {
+            if ((error as { code?: number }).code === 127) {
+                logger?.info("Swiftly not found (error code 127)");
+                return true;
+            }
+            logger?.error(`Error checking Swiftly: ${error}`);
+            return false;
+        }
+    }
+
+    /**
+     * Gets the install URL for automated Swiftly installation based on platform
+     *
+     * @returns The install URL
+     */
+    public static getInstallUrl(): string {
+        if (process.platform === "linux") {
+            // Determine architecture dynamically
+            const arch = process.arch === "arm64" ? "arm64" : "x86_64";
+            return `https://download.swift.org/swiftly/linux/swiftly-${arch}.tar.gz`;
+        } else if (process.platform === "darwin") {
+            return "https://download.swift.org/swiftly/darwin/swiftly.pkg";
+        }
+        throw new Error(`Unsupported platform: ${process.platform}`);
+    }
+
+    /**
+     * Installs Swiftly automatically using the official installation method
+     *
+     * @param logger Optional logger for error reporting
+     * @returns Promise that resolves when installation is complete
+     */
+    public static async installSwiftly(logger?: SwiftLogger): Promise<void> {
+        if (!this.isSupported()) {
+            throw new Error("Swiftly is not supported on this platform");
+        }
+
+        logger?.info("Starting Swiftly installation using official method");
+
+        return vscode.window.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: "Installing Swiftly",
+                cancellable: false,
+            },
+            async progress => {
+                let tmpDir: string | undefined;
+                try {
+                    progress.report({ increment: 10, message: "Downloading Swiftly..." });
+
+                    const installUrl = this.getInstallUrl();
+                    logger?.info(`Install URL: ${installUrl}`);
+
+                    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vscode-swift-swiftly-"));
+                    const filename = path.basename(installUrl);
+                    const downloadPath = path.join(tmpDir, filename);
+
+                    await downloadFile(installUrl, downloadPath);
+
+                    progress.report({ increment: 30, message: "Installing Swiftly..." });
+
+                    const outputChannel = vscode.window.createOutputChannel("Swiftly Installation");
+                    outputChannel.show(true);
+                    outputChannel.appendLine("Installing Swiftly...");
+                    outputChannel.appendLine("");
+
+                    const outputStream = new Stream.Writable({
+                        write(chunk, _encoding, callback) {
+                            const text = chunk.toString();
+                            outputChannel.append(text);
+                            callback();
+                        },
+                    });
+
+                    if (process.platform === "linux") {
+                        // Extract tar.gz file
+                        await execFileStreamOutput(
+                            "tar",
+                            ["-zxf", downloadPath, "-C", tmpDir],
+                            outputStream,
+                            outputStream,
+                            null,
+                            {}
+                        );
+
+                        // Move binary to appropriate location
+                        const binDir = path.join(os.homedir(), ".local", "bin");
+                        await fs.mkdir(binDir, { recursive: true });
+                        const swiftlyBin = path.join(tmpDir, "swiftly");
+                        const targetPath = path.join(binDir, "swiftly");
+                        await fs.copyFile(swiftlyBin, targetPath);
+                        await fs.chmod(targetPath, 0o755);
+
+                        outputChannel.appendLine(`Swiftly binary installed to ${targetPath}`);
+                    } else if (process.platform === "darwin") {
+                        // Install pkg file
+                        await execFileStreamOutput(
+                            "installer",
+                            ["-pkg", downloadPath, "-target", "CurrentUserHomeDirectory"],
+                            outputStream,
+                            outputStream,
+                            null,
+                            {}
+                        );
+                        outputChannel.appendLine("Swiftly pkg installer completed");
+                    }
+
+                    progress.report({ increment: 30, message: "Initializing Swiftly..." });
+
+                    // Run swiftly init
+                    await this.initializeSwiftly(logger);
+
+                    progress.report({ increment: 20, message: "Installation complete!" });
+
+                    outputChannel.appendLine("");
+                    outputChannel.appendLine("Swiftly installation completed successfully");
+
+                    // Clean up temp directory
+                    await fs.rm(tmpDir, { recursive: true, force: true });
+
+                    logger?.info("Swiftly installation completed successfully");
+                } catch (error) {
+                    const errorMsg = error instanceof Error ? error.message : String(error);
+                    logger?.error(`Swiftly installation failed: ${errorMsg}`);
+
+                    // Show user-friendly error message
+                    void vscode.window.showErrorMessage(
+                        `Failed to install Swiftly: ${errorMsg}. Please check the output channel for details.`
+                    );
+
+                    // Clean up temp directory on error
+                    try {
+                        if (tmpDir) {
+                            await fs.rm(tmpDir, { recursive: true, force: true });
+                        }
+                    } catch (cleanupError) {
+                        logger?.error(`Failed to clean up temp directory: ${cleanupError}`);
+                    }
+
+                    throw error;
+                }
+            }
+        );
+    }
+
+    /**
+     * Initializes Swiftly after installation
+     *
+     * @param logger Optional logger for error reporting
+     */
+    private static async initializeSwiftly(logger?: SwiftLogger): Promise<void> {
+        logger?.info("Initializing Swiftly");
+
+        const outputChannel = vscode.window.createOutputChannel("Swiftly Initialization");
+        outputChannel.show(true);
+        outputChannel.appendLine("Initializing Swiftly...");
+
+        try {
+            // Determine the swiftly binary path based on platform
+            let swiftlyPath: string;
+            if (process.platform === "linux") {
+                const binDir = path.join(os.homedir(), ".local", "bin");
+                swiftlyPath = path.join(binDir, "swiftly");
+            } else if (process.platform === "darwin") {
+                const homeDir = path.join(os.homedir(), ".swiftly");
+                swiftlyPath = path.join(homeDir, "bin", "swiftly");
+            } else {
+                throw new Error(`Unsupported platform: ${process.platform}`);
+            }
+
+            const { stdout, stderr } = await execFile(swiftlyPath, [
+                "init",
+                "--verbose",
+                "--assume-yes",
+                "--skip-install",
+            ]);
+
+            outputChannel.appendLine(stdout);
+            if (stderr) {
+                outputChannel.appendLine("Stderr:");
+                outputChannel.appendLine(stderr);
+            }
+
+            outputChannel.appendLine("Swiftly initialization completed successfully");
+        } catch (error) {
+            logger?.error(`Failed to initialize Swiftly: ${error}`);
+            outputChannel.appendLine(`Error: ${error}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Installs Swift toolchain using Swiftly after it has been installed
+     *
+     * @param version The Swift version to install (defaults to "latest")
+     * @param logger Optional logger for error reporting
+     */
+    public static async installSwiftWithSwiftly(
+        version: string = "latest",
+        logger?: SwiftLogger
+    ): Promise<void> {
+        logger?.info(`Installing Swift ${version} using Swiftly`);
+
+        return vscode.window.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: `Installing Swift ${version}`,
+                cancellable: false,
+            },
+            async progress => {
+                try {
+                    progress.report({ increment: 10, message: "Preparing installation..." });
+
+                    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vscode-swift-"));
+                    progress.report({ increment: 10, message: `Installing Swift ${version}...` });
+
+                    let lastProgressTime = Date.now();
+                    let totalProgress = 20; // Already used 20% for preparation
+
+                    await this.installToolchain(
+                        version,
+                        progressData => {
+                            const now = Date.now();
+                            // Only update progress every 2 seconds to avoid too frequent updates
+                            if (progressData.step?.text && now - lastProgressTime > 2000) {
+                                const remainingProgress = 70; // Leave 10% for completion
+                                const incrementAmount = progressData.step.percent
+                                    ? Math.min(progressData.step.percent / 10, 5)
+                                    : Math.min(remainingProgress - totalProgress, 5);
+
+                                if (totalProgress < 70) {
+                                    totalProgress += incrementAmount;
+                                    progress.report({
+                                        increment: incrementAmount,
+                                        message: progressData.step.text,
+                                    });
+                                    lastProgressTime = now;
+                                }
+                            }
+                        },
+                        logger
+                    );
+
+                    progress.report({
+                        increment: 100 - totalProgress,
+                        message: "Installation complete!",
+                    });
+
+                    // Clean up temp directory
+                    await fs.rm(tmpDir, { recursive: true, force: true });
+                } catch (error) {
+                    logger?.error(`Failed to install Swift ${version}: ${error}`);
+                    throw error;
+                }
+            }
+        );
+    }
+
+    /**
+     * Shows a prompt to install Swiftly and handles the user's choice
+     *
+     * @param logger Optional logger for error reporting
+     * @returns Promise that resolves when the user makes a choice
+     */
+    public static async promptInstallSwiftly(logger?: SwiftLogger): Promise<void> {
+        const message =
+            "Swiftly (Swift toolchain manager) is not installed. Would you like to install it automatically? This will allow you to easily manage Swift versions.";
+
+        const choice = await vscode.window.showInformationMessage(
+            message,
+            { modal: true },
+            "Install Swiftly",
+            "Cancel"
+        );
+
+        if (choice === "Install Swiftly") {
+            try {
+                await this.installSwiftly(logger);
+                await this.installSwiftWithSwiftly("latest", logger);
+
+                void vscode.window.showInformationMessage(
+                    "Swiftly and Swift have been installed successfully! Please restart any terminal windows to use the new toolchain."
+                );
+
+                // Prompt to restart extension
+                const restartChoice = await vscode.window.showInformationMessage(
+                    "The Swift extension should be reloaded to use the new toolchain.",
+                    "Reload Extension",
+                    "Later"
+                );
+
+                if (restartChoice === "Reload Extension") {
+                    await vscode.commands.executeCommand("workbench.action.reloadWindow");
+                }
+            } catch (error) {
+                logger?.error(`Failed to install Swiftly: ${error}`);
+                void vscode.window.showErrorMessage(
+                    `Failed to install Swiftly: ${error instanceof Error ? error.message : String(error)}`
+                );
+            }
+        }
+        // If "Cancel" or no choice, do nothing
     }
 }

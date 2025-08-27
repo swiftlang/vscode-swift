@@ -73,7 +73,7 @@ export async function selectToolchainFolder() {
  * Displays an error notification to the user that toolchain discovery failed.
  */
 export async function showToolchainError(): Promise<void> {
-    let selected: "Remove From Settings" | "Select Toolchain" | undefined;
+    let selected: "Remove From Settings" | "Select Toolchain" | "Install Swiftly" | undefined;
     if (configuration.path) {
         selected = await vscode.window.showErrorMessage(
             `The Swift executable at "${configuration.path}" either could not be found or failed to launch. Please select a new toolchain.`,
@@ -81,16 +81,28 @@ export async function showToolchainError(): Promise<void> {
             "Select Toolchain"
         );
     } else {
-        selected = await vscode.window.showErrorMessage(
-            "Unable to automatically discover your Swift toolchain. Either install a toolchain from Swift.org or provide the path to an existing toolchain.",
-            "Select Toolchain"
-        );
+        const isSwiftlyMissing = Swiftly.isSupported() && (await Swiftly.isMissing());
+
+        if (isSwiftlyMissing) {
+            selected = await vscode.window.showErrorMessage(
+                "Unable to automatically discover your Swift toolchain. Would you like to install Swiftly (Swift toolchain manager) to easily manage Swift versions, or manually select a toolchain?",
+                "Install Swiftly",
+                "Select Toolchain"
+            );
+        } else {
+            selected = await vscode.window.showErrorMessage(
+                "Unable to automatically discover your Swift toolchain. Either install a toolchain from Swift.org or provide the path to an existing toolchain.",
+                "Select Toolchain"
+            );
+        }
     }
 
     if (selected === "Remove From Settings") {
         await removeToolchainPath();
     } else if (selected === "Select Toolchain") {
         await selectToolchain();
+    } else if (selected === "Install Swiftly") {
+        await Swiftly.promptInstallSwiftly();
     }
 }
 
@@ -267,9 +279,11 @@ async function getQuickPickItems(
         const platformName = process.platform === "linux" ? "Linux" : "macOS";
         actionItems.push({
             type: "action",
-            label: "$(swift-icon) Install Swiftly for toolchain management...",
-            detail: `Install https://swiftlang.github.io/swiftly to manage your toolchains on ${platformName}`,
-            run: installSwiftly,
+            label: "$(cloud-download) Install Swiftly automatically",
+            detail: `Automatically install and configure Swiftly (Swift toolchain manager) on ${platformName}`,
+            run: async () => {
+                await Swiftly.promptInstallSwiftly();
+            },
         });
     }
 

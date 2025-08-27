@@ -16,6 +16,9 @@ import * as vscode from "vscode";
 import * as cp from "child_process";
 import * as path from "path";
 import * as Stream from "stream";
+import * as https from "https";
+import * as fsSync from "fs";
+import * as tar from "tar";
 import configuration from "../configuration";
 import { FolderContext } from "../FolderContext";
 import { SwiftToolchain } from "../toolchain/toolchain";
@@ -443,3 +446,71 @@ export function destructuredPromise<T>(): {
     return { promise: p, resolve: resolve!, reject: reject! };
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
+
+/**
+ * Downloads a file from a URL
+ *
+ * @param url The URL to download from
+ * @param destination The local file path to save to
+ * @returns Promise that resolves when download is complete
+ */
+export function downloadFile(url: string, destination: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const file = fsSync.createWriteStream(destination);
+        const options = {
+            headers: {
+                "User-Agent": "vscode-swift-extension/1.0",
+                Accept: "*/*",
+            },
+        };
+        https
+            .get(url, options, response => {
+                if (response.statusCode === 302 || response.statusCode === 301) {
+                    if (response.headers.location) {
+                        return downloadFile(response.headers.location, destination)
+                            .then(resolve)
+                            .catch(reject);
+                    }
+                }
+
+                if (response.statusCode !== 200) {
+                    reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
+                    return;
+                }
+
+                response.pipe(file);
+
+                file.on("finish", () => {
+                    file.close();
+                    resolve();
+                });
+
+                file.on("error", err => {
+                    fsSync.unlink(destination, () => {}); // Delete partial file
+                    reject(err);
+                });
+
+                response.on("error", err => {
+                    fsSync.unlink(destination, () => {}); // Delete partial file
+                    reject(err);
+                });
+            })
+            .on("error", err => {
+                reject(err);
+            });
+    });
+}
+
+/**
+ * Extracts a tar.gz file
+ *
+ * @param tarPath Path to the tar.gz file
+ * @param extractTo Directory to extract to
+ * @returns Promise that resolves when extraction is complete
+ */
+export async function extractTarGz(tarPath: string, extractTo: string): Promise<void> {
+    return tar.extract({
+        file: tarPath,
+        cwd: extractTo,
+    });
+}
