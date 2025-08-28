@@ -67,8 +67,8 @@ const StableVersion = z.object({
 export type StableVersion = z.infer<typeof StableVersion>;
 
 const SnapshotVersion = z.object({
-    major: z.number(),
-    minor: z.number(),
+    major: z.union([z.number(), z.undefined()]),
+    minor: z.union([z.number(), z.undefined()]),
     branch: z.string(),
     date: z.string(),
     name: z.string(),
