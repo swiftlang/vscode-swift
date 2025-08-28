@@ -22,7 +22,7 @@ import { LanguageClientToolchainCoordinator } from "./sourcekit-lsp/LanguageClie
 import { TaskManager } from "./tasks/TaskManager";
 import { makeDebugConfigurations } from "./debugger/launch";
 import configuration from "./configuration";
-import contextKeys from "./contextKeys";
+import { ContextKeys } from "./contextKeys";
 import { setSnippetContextKey } from "./SwiftSnippets";
 import { CommentCompletionProviders } from "./editor/CommentCompletion";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
@@ -77,6 +77,7 @@ export class WorkspaceContext implements vscode.Disposable {
 
     constructor(
         extensionContext: vscode.ExtensionContext,
+        public contextKeys: ContextKeys,
         public logger: SwiftLogger,
         public globalToolchain: SwiftToolchain
     ) {
@@ -233,9 +234,9 @@ export class WorkspaceContext implements vscode.Disposable {
      */
     updateContextKeys(folderContext: FolderContext | null) {
         if (!folderContext) {
-            contextKeys.hasPackage = false;
-            contextKeys.hasExecutableProduct = false;
-            contextKeys.packageHasDependencies = false;
+            this.contextKeys.hasPackage = false;
+            this.contextKeys.hasExecutableProduct = false;
+            this.contextKeys.packageHasDependencies = false;
             return;
         }
 
@@ -244,9 +245,9 @@ export class WorkspaceContext implements vscode.Disposable {
             folderContext.swiftPackage.executableProducts,
             folderContext.swiftPackage.dependencies,
         ]).then(([foundPackage, executableProducts, dependencies]) => {
-            contextKeys.hasPackage = foundPackage;
-            contextKeys.hasExecutableProduct = executableProducts.length > 0;
-            contextKeys.packageHasDependencies = dependencies.length > 0;
+            this.contextKeys.hasPackage = foundPackage;
+            this.contextKeys.hasExecutableProduct = executableProducts.length > 0;
+            this.contextKeys.packageHasDependencies = dependencies.length > 0;
         });
     }
 
@@ -258,9 +259,9 @@ export class WorkspaceContext implements vscode.Disposable {
             const target = await this.currentFolder?.swiftPackage.getTarget(
                 this.currentDocument?.fsPath
             );
-            contextKeys.currentTargetType = target?.type;
+            this.contextKeys.currentTargetType = target?.type;
         } else {
-            contextKeys.currentTargetType = undefined;
+            this.contextKeys.currentTargetType = undefined;
         }
 
         if (this.currentFolder) {
@@ -268,13 +269,13 @@ export class WorkspaceContext implements vscode.Disposable {
             await languageClient.useLanguageClient(async client => {
                 const experimentalCaps = client.initializeResult?.capabilities.experimental;
                 if (!experimentalCaps) {
-                    contextKeys.supportsReindexing = false;
-                    contextKeys.supportsDocumentationLivePreview = false;
+                    this.contextKeys.supportsReindexing = false;
+                    this.contextKeys.supportsDocumentationLivePreview = false;
                     return;
                 }
-                contextKeys.supportsReindexing =
+                this.contextKeys.supportsReindexing =
                     experimentalCaps[ReIndexProjectRequest.method] !== undefined;
-                contextKeys.supportsDocumentationLivePreview =
+                this.contextKeys.supportsDocumentationLivePreview =
                     experimentalCaps[DocCDocumentationRequest.method] !== undefined;
             });
         }
@@ -293,7 +294,7 @@ export class WorkspaceContext implements vscode.Disposable {
                 break;
             }
         }
-        contextKeys.packageHasPlugins = hasPlugins;
+        this.contextKeys.packageHasPlugins = hasPlugins;
     }
 
     /** Setup the vscode event listeners to catch folder changes and active window changes */

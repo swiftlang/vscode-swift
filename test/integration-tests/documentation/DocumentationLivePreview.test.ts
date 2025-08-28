@@ -14,7 +14,6 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
-import contextKeys from "../../../src/contextKeys";
 import { expect } from "chai";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
@@ -46,7 +45,7 @@ suite("Documentation Live Preview", function () {
     });
 
     setup(function () {
-        if (!contextKeys.supportsDocumentationLivePreview) {
+        if (!workspaceContext.contextKeys.supportsDocumentationLivePreview) {
             this.skip();
         }
     });

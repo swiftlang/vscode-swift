@@ -30,7 +30,6 @@ import {
     folderInRootWorkspace,
     updateSettings,
 } from "../utilities/testutilities";
-import contextKeys from "../../../src/contextKeys";
 import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Version } from "../../../src/utilities/version";
 import { wait } from "../../../src/utilities/utilities";
@@ -58,7 +57,7 @@ suite("ProjectPanelProvider Test Suite", function () {
             await executeTaskAndWaitForResult(buildAllTask);
         },
         async teardown() {
-            contextKeys.flatDependenciesList = false;
+            workspaceContext.contextKeys.flatDependenciesList = false;
             treeProvider.dispose();
         },
         testAssets: ["targets"],
@@ -301,7 +300,7 @@ suite("ProjectPanelProvider Test Suite", function () {
 
     suite("Dependencies", () => {
         test("Includes remote dependency", async () => {
-            contextKeys.flatDependenciesList = false;
+            workspaceContext.contextKeys.flatDependenciesList = false;
             const items = await getHeaderChildren("Dependencies");
             const dep = items.find(n => n.name === "swift-markdown") as PackageNode;
             expect(dep, `${JSON.stringify(items, null, 2)}`).to.not.be.undefined;
@@ -324,7 +323,7 @@ suite("ProjectPanelProvider Test Suite", function () {
         });
 
         test("Lists local dependency file structure", async () => {
-            contextKeys.flatDependenciesList = false;
+            workspaceContext.contextKeys.flatDependenciesList = false;
             const children = await getHeaderChildren("Dependencies");
             const dep = children.find(n => n.name === "defaultpackage") as PackageNode;
             expect(
@@ -358,7 +357,7 @@ suite("ProjectPanelProvider Test Suite", function () {
         });
 
         test("Lists remote dependency file structure", async () => {
-            contextKeys.flatDependenciesList = false;
+            workspaceContext.contextKeys.flatDependenciesList = false;
             const children = await getHeaderChildren("Dependencies");
             const dep = children.find(n => n.name === "swift-markdown") as PackageNode;
             expect(dep, `${JSON.stringify(children, null, 2)}`).to.not.be.undefined;
@@ -384,7 +383,7 @@ suite("ProjectPanelProvider Test Suite", function () {
         });
 
         test("Shows a flat dependency list", async () => {
-            contextKeys.flatDependenciesList = true;
+            workspaceContext.contextKeys.flatDependenciesList = true;
             const items = await getHeaderChildren("Dependencies");
             expect(items.length).to.equal(3);
             expect(items.find(n => n.name === "swift-markdown")).to.not.be.undefined;
@@ -393,7 +392,7 @@ suite("ProjectPanelProvider Test Suite", function () {
         });
 
         test("Shows a nested dependency list", async () => {
-            contextKeys.flatDependenciesList = false;
+            workspaceContext.contextKeys.flatDependenciesList = false;
             const items = await getHeaderChildren("Dependencies");
             expect(items.length).to.equal(2);
             expect(items.find(n => n.name === "swift-markdown")).to.not.be.undefined;
@@ -419,7 +418,7 @@ suite("ProjectPanelProvider Test Suite", function () {
             });
 
             test("Excludes files based on settings", async () => {
-                contextKeys.flatDependenciesList = false;
+                workspaceContext.contextKeys.flatDependenciesList = false;
                 const children = await getHeaderChildren("Dependencies");
                 const dep = children.find(n => n.name === "swift-markdown") as PackageNode;
                 expect(dep, `${JSON.stringify(children, null, 2)}`).to.not.be.undefined;

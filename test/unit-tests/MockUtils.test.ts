@@ -27,7 +27,6 @@ import {
     waitForReturnedPromises,
 } from "../MockUtils";
 import { Version } from "../../src/utilities/version";
-import contextKeys from "../../src/contextKeys";
 import configuration from "../../src/configuration";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -207,7 +206,6 @@ suite("MockUtils Test Suite", () => {
 
     suite("mockGlobalModule()", () => {
         const mockedFS = mockGlobalModule(fs);
-        const mockedContextKeys = mockGlobalModule(contextKeys);
         const mockedConfiguration = mockGlobalModule(configuration);
 
         test("can mock the fs/promises module", async () => {
@@ -215,17 +213,6 @@ suite("MockUtils Test Suite", () => {
 
             await expect(fs.readFile("some_file")).to.eventually.equal("file contents");
             expect(mockedFS.readFile).to.have.been.calledOnceWithExactly("some_file");
-        });
-
-        test("can mock the contextKeys module", () => {
-            // Initial value should match default value in context keys
-            expect(contextKeys.isActivated).to.be.false;
-            // Make sure that you can set the value of contextKeys using the mock
-            mockedContextKeys.isActivated = true;
-            expect(contextKeys.isActivated).to.be.true;
-            // Make sure that setting isActivated via contextKeys is also possible
-            contextKeys.isActivated = false;
-            expect(contextKeys.isActivated).to.be.false;
         });
 
         test("can mock the configuration module", () => {

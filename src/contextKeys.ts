@@ -23,7 +23,7 @@ import { Version } from "./utilities/version";
  */
 
 /** Interface for getting and setting the VS Code Swift extension's context keys */
-interface ContextKeys {
+export interface ContextKeys {
     /**
      * Whether or not the swift extension is activated.
      */
@@ -96,7 +96,7 @@ interface ContextKeys {
 }
 
 /** Creates the getters and setters for the VS Code Swift extension's context keys. */
-function createContextKeys(): ContextKeys {
+export function createContextKeys(): ContextKeys {
     let isActivated: boolean = false;
     let hasPackage: boolean = false;
     let hasExecutableProduct: boolean = false;
@@ -292,10 +292,3 @@ function createContextKeys(): ContextKeys {
         },
     };
 }
-
-/**
- * Type-safe wrapper around context keys used in `when` clauses.
- */
-const contextKeys: ContextKeys = createContextKeys();
-
-export default contextKeys;

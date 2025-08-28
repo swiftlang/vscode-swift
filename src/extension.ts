@@ -34,10 +34,10 @@ import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 import { SelectedXcodeWatcher } from "./toolchain/SelectedXcodeWatcher";
 import configuration, { handleConfigurationChangeEvent } from "./configuration";
-import contextKeys from "./contextKeys";
 import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConfiguration";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
+import { ContextKeys, createContextKeys } from "./contextKeys";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -65,7 +65,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
 
         checkAndWarnAboutWindowsSymlinks(logger);
 
-        const toolchain = await createActiveToolchain(logger);
+        const contextKeys = createContextKeys();
+        const toolchain = await createActiveToolchain(contextKeys, logger);
 
         // If we don't have a toolchain, show an error and stop initializing the extension.
         // This can happen if the user has not installed Swift or if the toolchain is not
@@ -82,7 +83,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             };
         }
 
-        const workspaceContext = new WorkspaceContext(context, logger, toolchain);
+        const workspaceContext = new WorkspaceContext(context, contextKeys, logger, toolchain);
         context.subscriptions.push(workspaceContext);
 
         context.subscriptions.push(new SwiftEnvironmentVariablesManager(context));
@@ -239,7 +240,10 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
     };
 }
 
-async function createActiveToolchain(logger: SwiftLogger): Promise<SwiftToolchain | undefined> {
+async function createActiveToolchain(
+    contextKeys: ContextKeys,
+    logger: SwiftLogger
+): Promise<SwiftToolchain | undefined> {
     try {
         const toolchain = await SwiftToolchain.create(undefined, logger);
         toolchain.logDiagnostics(logger);
@@ -252,7 +256,10 @@ async function createActiveToolchain(logger: SwiftLogger): Promise<SwiftToolchai
 }
 
 async function deactivate(context: vscode.ExtensionContext): Promise<void> {
-    contextKeys.isActivated = false;
+    const workspaceContext = (context.extension.exports as Api).workspaceContext;
+    if (workspaceContext) {
+        workspaceContext.contextKeys.isActivated = false;
+    }
     context.subscriptions.forEach(subscription => subscription.dispose());
     context.subscriptions.length = 0;
 }
