@@ -27,7 +27,6 @@ function formatDate(date: Date): string {
     return year + month + day;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
 main(async () => {
     const version = await getExtensionVersion();
     // Decrement the minor version and set the patch version to today's date

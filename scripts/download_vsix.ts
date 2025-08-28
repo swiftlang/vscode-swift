@@ -13,14 +13,12 @@
 //===----------------------------------------------------------------------===//
 /* eslint-disable no-console */
 
-import * as DecompressType from "decompress";
+import decompress from "decompress";
 import { createWriteStream } from "node:fs";
 import { appendFile, unlink } from "node:fs/promises";
 import { pipeline } from "node:stream/promises";
 import { Octokit } from "octokit";
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const decompress: typeof DecompressType = require("decompress");
+import { main } from "./lib/utilities";
 
 const artifact_id = process.env["VSCODE_SWIFT_VSIX_ID"];
 if (!artifact_id) {
@@ -41,8 +39,7 @@ const repository = process.env["GITHUB_REPOSITORY"] || "swiftlang/vscode-swift";
 const owner = repository.split("/")[0];
 const repo = repository.split("/")[1];
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
-(async function () {
+main(async function () {
     const octokit = new Octokit({
         auth: token,
     });
@@ -90,4 +87,4 @@ const repo = repository.split("/")[1];
         }
     }
     await unlink("artifacts.zip");
-})();
+});
