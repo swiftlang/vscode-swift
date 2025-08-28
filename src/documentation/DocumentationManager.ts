@@ -16,7 +16,6 @@ import * as vscode from "vscode";
 import { DocumentationPreviewEditor } from "./DocumentationPreviewEditor";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { WebviewContent } from "./webview/WebviewMessage";
-import contextKeys from "../contextKeys";
 
 export class DocumentationManager implements vscode.Disposable {
     private previewEditor?: DocumentationPreviewEditor;
@@ -25,26 +24,26 @@ export class DocumentationManager implements vscode.Disposable {
 
     constructor(
         private readonly extension: vscode.ExtensionContext,
-        private readonly context: WorkspaceContext
+        private readonly workspaceContext: WorkspaceContext
     ) {}
 
     onPreviewDidUpdateContent = this.editorUpdatedContentEmitter.event;
     onPreviewDidRenderContent = this.editorRenderedEmitter.event;
 
     async launchDocumentationPreview(): Promise<boolean> {
-        if (!contextKeys.supportsDocumentationLivePreview) {
+        if (!this.workspaceContext.contextKeys.supportsDocumentationLivePreview) {
             return false;
         }
 
         if (!this.previewEditor) {
-            const folderContext = this.context.currentFolder;
+            const folderContext = this.workspaceContext.currentFolder;
             if (!folderContext) {
                 return false;
             }
 
             this.previewEditor = await DocumentationPreviewEditor.create(
                 this.extension,
-                this.context
+                this.workspaceContext
             );
             const subscriptions: vscode.Disposable[] = [
                 this.previewEditor.onDidUpdateContent(content => {

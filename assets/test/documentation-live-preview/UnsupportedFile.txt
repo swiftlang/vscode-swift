@@ -1,0 +1,1 @@
+Used to test Live Preview with an unsupported file.

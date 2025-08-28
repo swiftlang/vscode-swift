@@ -14,7 +14,6 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
-import contextKeys from "./contextKeys";
 import { createSwiftTask } from "./tasks/SwiftTaskProvider";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { createSnippetConfiguration, debugLaunchConfig } from "./debugger/launch";
@@ -30,16 +29,16 @@ export function setSnippetContextKey(ctx: WorkspaceContext) {
         !ctx.currentDocument ||
         ctx.currentFolder.swiftVersion.isLessThan({ major: 5, minor: 7, patch: 0 })
     ) {
-        contextKeys.fileIsSnippet = false;
+        ctx.contextKeys.fileIsSnippet = false;
         return;
     }
 
     const filename = ctx.currentDocument.fsPath;
     const snippetsFolder = path.join(ctx.currentFolder.folder.fsPath, "Snippets");
     if (filename.startsWith(snippetsFolder)) {
-        contextKeys.fileIsSnippet = true;
+        ctx.contextKeys.fileIsSnippet = true;
     } else {
-        contextKeys.fileIsSnippet = false;
+        ctx.contextKeys.fileIsSnippet = false;
     }
     return;
 }

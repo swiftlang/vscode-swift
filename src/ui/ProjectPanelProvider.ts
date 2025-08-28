@@ -18,7 +18,6 @@ import * as path from "path";
 import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderOperation } from "../WorkspaceContext";
-import contextKeys from "../contextKeys";
 import { Dependency, ResolvedDependency, Target } from "../SwiftPackage";
 import { FolderContext } from "../FolderContext";
 import { getPlatformConfig, resolveTaskCwd } from "../utilities/tasks";
@@ -485,9 +484,9 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
 
     constructor(private workspaceContext: WorkspaceContext) {
         // default context key to false. These will be updated as folders are given focus
-        contextKeys.hasPackage = false;
-        contextKeys.hasExecutableProduct = false;
-        contextKeys.packageHasDependencies = false;
+        workspaceContext.contextKeys.hasPackage = false;
+        workspaceContext.contextKeys.hasExecutableProduct = false;
+        workspaceContext.contextKeys.packageHasDependencies = false;
 
         this.observeTasks(workspaceContext);
     }
@@ -688,7 +687,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         }
         const pkg = folderContext.swiftPackage;
         const rootDeps = await pkg.rootDependencies;
-        if (contextKeys.flatDependenciesList) {
+        if (this.workspaceContext.contextKeys.flatDependenciesList) {
             const existenceMap = new Map<string, boolean>();
             const gatherChildren = (dependencies: ResolvedDependency[]): ResolvedDependency[] => {
                 const result: ResolvedDependency[] = [];
