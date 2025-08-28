@@ -76,7 +76,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public loggerFactory: SwiftLoggerFactory;
 
     constructor(
-        extensionContext: vscode.ExtensionContext,
+        public extensionContext: vscode.ExtensionContext,
         public logger: SwiftLogger,
         public globalToolchain: SwiftToolchain
     ) {

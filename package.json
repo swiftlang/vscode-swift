@@ -2002,6 +2002,7 @@
     "@types/semver": "^7.7.0",
     "@types/sinon": "^17.0.4",
     "@types/sinon-chai": "^3.2.12",
+    "@types/tar": "^6.1.13",
     "@types/vscode": "^1.88.0",
     "@types/xml2js": "^0.4.14",
     "@typescript-eslint/eslint-plugin": "^8.39.1",
@@ -2048,6 +2049,7 @@
     "fast-glob": "^3.3.3",
     "lcov-parse": "^1.0.0",
     "plist": "^3.1.0",
+    "tar": "^7.0.1",
     "vscode-languageclient": "^9.0.1",
     "xml2js": "^0.6.2",
     "zod": "^4.0.17"
