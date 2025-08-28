@@ -162,7 +162,19 @@ export async function installSwiftlySnapshotToolchain(ctx: WorkspaceContext): Pr
         return;
     }
 
-    const availableToolchains = await Swiftly.listAvailable(ctx.logger);
+    // Prompt user to enter the branch for snapshot toolchains
+    const branch = await vscode.window.showInputBox({
+        title: "Enter Swift Snapshot Branch",
+        prompt: "Enter the branch name to list snapshot toolchains (e.g., 'main-snapshot', '6.1-snapshot')",
+        placeHolder: "main-snapshot",
+        value: "main-snapshot",
+    });
+
+    if (!branch) {
+        return; // User cancelled input
+    }
+
+    const availableToolchains = await Swiftly.listAvailable(ctx.logger, branch);
 
     if (availableToolchains.length === 0) {
         ctx.logger?.debug("No toolchains available for installation via Swiftly.");

@@ -353,6 +353,75 @@ suite("Swiftly Unit Tests", () => {
             const result = await Swiftly.listAvailable();
             expect(result).to.deep.equal([]);
         });
+
+        test("should handle snapshot toolchains without major/minor fields", async () => {
+            mockedPlatform.setValue("darwin");
+
+            mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
+                stdout: "1.1.0\n",
+                stderr: "",
+            });
+
+            const snapshotResponse = {
+                toolchains: [
+                    {
+                        inUse: false,
+                        installed: false,
+                        isDefault: false,
+                        version: {
+                            type: "snapshot",
+                            branch: "main",
+                            date: "2025-08-26",
+                            name: "main-snapshot-2025-08-26",
+                        },
+                    },
+                    {
+                        inUse: false,
+                        installed: true,
+                        isDefault: false,
+                        version: {
+                            type: "snapshot",
+                            branch: "main",
+                            date: "2025-08-25",
+                            name: "main-snapshot-2025-08-25",
+                        },
+                    },
+                ],
+            };
+
+            mockUtilities.execFile
+                .withArgs("swiftly", ["list-available", "--format=json", "main-snapshot"])
+                .resolves({
+                    stdout: JSON.stringify(snapshotResponse),
+                    stderr: "",
+                });
+
+            const result = await Swiftly.listAvailable(undefined, "main-snapshot");
+            expect(result).to.deep.equal([
+                {
+                    inUse: false,
+                    installed: false,
+                    isDefault: false,
+                    version: {
+                        type: "snapshot",
+                        branch: "main",
+                        date: "2025-08-26",
+                        name: "main-snapshot-2025-08-26",
+                    },
+                },
+                {
+                    inUse: false,
+                    installed: true,
+                    isDefault: false,
+                    version: {
+                        type: "snapshot",
+                        branch: "main",
+                        date: "2025-08-25",
+                        name: "main-snapshot-2025-08-25",
+                    },
+                },
+            ]);
+        });
     });
 
     suite("Post-Install", () => {
