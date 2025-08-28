@@ -228,7 +228,7 @@ async function getQuickPickItems(
         version: path.basename(toolchainPath),
         onDidSelect: async () => {
             try {
-                await Swiftly.use(toolchainPath);
+                await Swiftly.use(path.basename(toolchainPath));
                 void showReloadExtensionNotification(
                     "Changing the Swift path requires Visual Studio Code be reloaded."
                 );

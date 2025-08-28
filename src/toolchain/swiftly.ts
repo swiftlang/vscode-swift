@@ -306,8 +306,8 @@ export class Swiftly {
         }
 
         if (!(await Swiftly.supportsJsonOutput(logger))) {
-            logger?.warn("Swiftly version does not support JSON output for list-available");
-            return [];
+            logger?.info("Using legacy text parsing for older Swiftly version");
+            return await this.listAvailableLegacy(logger, branch);
         }
 
         try {
@@ -319,6 +319,83 @@ export class Swiftly {
             return ListAvailableResult.parse(JSON.parse(availableStdout)).toolchains;
         } catch (error) {
             logger?.error(`Failed to retrieve available Swiftly toolchains: ${error}`);
+            return [];
+        }
+    }
+
+    /**
+     * Legacy method to parse plain text output from older Swiftly versions
+     *
+     * @param logger Optional logger for error reporting
+     * @param branch Optional branch to filter available toolchains
+     * @returns Array of available toolchains parsed from text output
+     */
+    private static async listAvailableLegacy(
+        logger?: SwiftLogger,
+        branch?: string
+    ): Promise<AvailableToolchain[]> {
+        try {
+            const args = ["list-available"];
+            if (branch) {
+                args.push(branch);
+            }
+            const { stdout } = await execFile("swiftly", args);
+
+            // Get list of installed toolchains to mark them as installed
+            const installedToolchains = new Set(await this.listAvailableToolchains(logger));
+
+            // Parse the text output
+            const toolchains: AvailableToolchain[] = [];
+            const lines = stdout.split("\n");
+
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+
+                // Skip headers and empty lines
+                if (
+                    !trimmedLine ||
+                    trimmedLine.startsWith("Available") ||
+                    trimmedLine.startsWith("---")
+                ) {
+                    continue;
+                }
+
+                // Parse Swift version line (e.g., "Swift 6.1.2 (installed) (in use) (default)")
+                const match = trimmedLine.match(/^Swift\s+(\d+\.\d+(?:\.\d+)?)/);
+                if (match) {
+                    const versionString = match[1];
+                    const fullLine = trimmedLine;
+
+                    // Check if this toolchain is installed, in use, or default
+                    const installed =
+                        installedToolchains.has(versionString) || fullLine.includes("(installed)");
+                    const inUse = fullLine.includes("(in use)");
+                    const isDefault = fullLine.includes("(default)");
+
+                    // Parse version components
+                    const versionParts = versionString.split(".").map(Number);
+                    const major = versionParts[0] || 0;
+                    const minor = versionParts[1] || 0;
+                    const patch = versionParts[2] || 0;
+
+                    toolchains.push({
+                        inUse,
+                        installed,
+                        isDefault,
+                        version: {
+                            type: "stable",
+                            major,
+                            minor,
+                            patch,
+                            name: versionString,
+                        },
+                    });
+                }
+            }
+
+            return toolchains;
+        } catch (error) {
+            logger?.error(`Failed to retrieve available toolchains using legacy parsing: ${error}`);
             return [];
         }
     }
@@ -700,7 +777,7 @@ export class Swiftly {
             return false;
         } catch (error: unknown) {
             if ((error as { code?: number }).code === 127) {
-                logger?.info("Swiftly not found (error code 127)");
+                logger?.warn("Swiftly not found (error code 127)");
                 return true;
             }
             logger?.error(`Error checking Swiftly: ${error}`);

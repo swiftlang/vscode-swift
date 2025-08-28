@@ -270,16 +270,56 @@ suite("Swiftly Unit Tests", () => {
             expect(result).to.deep.equal([]);
         });
 
-        test("should return empty array when Swiftly version doesn't support JSON output", async () => {
+        test("should use legacy parsing when Swiftly version doesn't support JSON output", async () => {
             mockedPlatform.setValue("darwin");
             mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
                 stdout: "1.0.0\n",
                 stderr: "",
             });
 
+            // Mock legacy list-available command
+            mockUtilities.execFile.withArgs("swiftly", ["list-available"]).resolves({
+                stdout: `Available release toolchains
+----------------------------
+Swift 6.1.2 (installed) (in use) (default)
+Swift 6.1.1
+Swift 6.0.0`,
+                stderr: "",
+            });
+
+            // Mock listAvailableToolchains for installed check
+            mockUtilities.execFile.withArgs("swiftly", ["list"]).resolves({
+                stdout: "6.1.2\n",
+                stderr: "",
+            });
+
             const result = await Swiftly.listAvailable();
 
-            expect(result).to.deep.equal([]);
+            expect(result).to.have.lengthOf(3);
+            expect(result[0]).to.deep.include({
+                installed: true,
+                inUse: true,
+                isDefault: true,
+                version: {
+                    type: "stable",
+                    major: 6,
+                    minor: 1,
+                    patch: 2,
+                    name: "6.1.2",
+                },
+            });
+            expect(result[1]).to.deep.include({
+                installed: false,
+                inUse: false,
+                isDefault: false,
+                version: {
+                    type: "stable",
+                    major: 6,
+                    minor: 1,
+                    patch: 1,
+                    name: "6.1.1",
+                },
+            });
         });
 
         test("should return available toolchains with installation status", async () => {
