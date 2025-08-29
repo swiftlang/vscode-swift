@@ -29,10 +29,9 @@ import {
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { closeAllEditors } from "../utilities/commands";
 import { Commands } from "../../src/commands";
+import { tag } from "../tags";
 
-suite("SwiftSnippet Test Suite @slow", function () {
-    this.timeout(180000);
-
+tag("large").suite("SwiftSnippet Test Suite", function () {
     const uri = testAssetUri("defaultPackage/Snippets/hello.swift");
     const breakpoints = [
         new vscode.SourceBreakpoint(new vscode.Location(uri, new vscode.Position(2, 0))),

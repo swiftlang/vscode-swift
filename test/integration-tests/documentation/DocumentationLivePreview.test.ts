@@ -27,11 +27,9 @@ import {
     WebviewContent,
 } from "../../../src/documentation/webview/WebviewMessage";
 import { PreviewEditorConstant } from "../../../src/documentation/DocumentationPreviewEditor";
+import { tag } from "../../tags";
 
-suite("Documentation Live Preview", function () {
-    // Tests are short, but rely on SourceKit-LSP: give 30 seconds for each one
-    this.timeout(30 * 1000);
-
+tag("medium").suite("Documentation Live Preview", function () {
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
 

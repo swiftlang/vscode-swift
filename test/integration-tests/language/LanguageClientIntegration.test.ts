@@ -23,6 +23,7 @@ import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import { waitForClientState } from "../utilities/lsputilities";
 import { FolderContext } from "../../../src/FolderContext";
+import { tag } from "../../tags";
 
 async function buildProject(ctx: WorkspaceContext, name: string) {
     await waitForNoRunningTasks();
@@ -33,9 +34,7 @@ async function buildProject(ctx: WorkspaceContext, name: string) {
     return folderContext;
 }
 
-suite("Language Client Integration Suite @slow", function () {
-    this.timeout(3 * 60 * 1000);
-
+tag("large").suite("Language Client Integration Suite", function () {
     let clientManager: LanguageClientManager;
     let folderContext: FolderContext;
 

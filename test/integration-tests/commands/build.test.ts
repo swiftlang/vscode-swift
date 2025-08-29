@@ -23,11 +23,9 @@ import { Commands } from "../../../src/commands";
 import { continueSession, waitForDebugAdapterRequest } from "../../utilities/debug";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import { Version } from "../../../src/utilities/version";
+import { tag } from "../../tags";
 
-suite("Build Commands @slow", function () {
-    // Default timeout is a bit too short, give it a little bit more time
-    this.timeout(3 * 60 * 1000);
-
+tag("large").suite("Build Commands", function () {
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
     const uri = testAssetUri("defaultPackage/Sources/PackageExe/main.swift");

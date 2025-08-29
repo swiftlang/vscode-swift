@@ -34,11 +34,11 @@ import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Version } from "../../../src/utilities/version";
 import { wait } from "../../../src/utilities/utilities";
 import { Commands } from "../../../src/commands";
+import { tag } from "../../tags";
 
-suite("ProjectPanelProvider Test Suite", function () {
+tag("medium").suite("ProjectPanelProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;
     let treeProvider: ProjectPanelProvider;
-    this.timeout(5 * 60 * 1000); // Allow up to 5 minutes to build
 
     activateExtensionForSuite({
         async setup(ctx) {

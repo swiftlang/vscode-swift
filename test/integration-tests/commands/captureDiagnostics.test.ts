@@ -27,6 +27,7 @@ import {
     updateSettings,
 } from "../utilities/testutilities";
 import { Version } from "../../../src/utilities/version";
+import { tag } from "../../tags";
 
 suite("captureDiagnostics Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -88,9 +89,7 @@ suite("captureDiagnostics Test Suite", () => {
         });
     });
 
-    suite("Full @slow", function () {
-        this.timeout(2 * 60 * 1000);
-
+    tag("large").suite("Full", function () {
         activateExtensionForSuite({
             async setup(ctx) {
                 workspaceContext = ctx;

@@ -21,12 +21,9 @@ import { WorkspaceContext } from "../../../src/WorkspaceContext";
 import { Commands } from "../../../src/commands";
 import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
+import { tag } from "../../tags";
 
-suite("Dependency Commmands Test Suite @slow", function () {
-    // full workflow's interaction with spm is longer than the default timeout
-    // 3 minutes for each test should be more than enough
-    this.timeout(3 * 60 * 1000);
-
+tag("large").suite("Dependency Commmands Test Suite", function () {
     let depsContext: FolderContext;
     let workspaceContext: WorkspaceContext;
 

@@ -33,6 +33,7 @@ import {
 } from "./utilities/testutilities";
 import { DiagnosticStyle } from "../../src/configuration";
 import { expect } from "chai";
+import { tag } from "../tags";
 
 const isEqual = (d1: vscode.Diagnostic, d2: vscode.Diagnostic) => {
     return (
@@ -66,9 +67,7 @@ function assertWithoutDiagnostic(uri: vscode.Uri, expected: vscode.Diagnostic) {
     );
 }
 
-suite("DiagnosticsManager Test Suite", function () {
-    this.timeout(60 * 1000 * 5); // Allow up to 5 minutes for build
-
+tag("medium").suite("DiagnosticsManager Test Suite", function () {
     let workspaceContext: WorkspaceContext;
     let folderContext: FolderContext;
     let cFolderContext: FolderContext;

@@ -37,8 +37,6 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;
     let folderContext: FolderContext;
 
-    this.timeout(120000); // Mostly only when running suite with .only
-
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;

@@ -18,8 +18,9 @@ import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { testAssetUri } from "../fixtures";
 import { activateExtensionForTest, updateSettings } from "./utilities/testutilities";
 import { closeAllEditors } from "../utilities/commands";
+import { tag } from "../tags";
 
-suite("BackgroundCompilation Test Suite", () => {
+tag("large").suite("BackgroundCompilation Test Suite", () => {
     let workspaceContext: WorkspaceContext;
 
     activateExtensionForTest({
@@ -36,7 +37,7 @@ suite("BackgroundCompilation Test Suite", () => {
         await closeAllEditors();
     });
 
-    test("build all on save @slow", async () => {
+    test("build all on save", async () => {
         const taskPromise = new Promise<void>(res => {
             vscode.tasks.onDidStartTask(e => {
                 const task = e.execution.task;
@@ -56,5 +57,5 @@ suite("BackgroundCompilation Test Suite", () => {
         await vscode.workspace.save(uri);
 
         await taskPromise;
-    }).timeout(180000);
+    });
 });

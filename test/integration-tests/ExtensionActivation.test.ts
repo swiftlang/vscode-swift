@@ -24,6 +24,7 @@ import {
 import { WorkspaceContext } from "../../src/WorkspaceContext";
 import { testAssetUri } from "../fixtures";
 import { assertContains } from "./testexplorer/utilities";
+import { tag } from "../tags";
 
 suite("Extension Activation/Deactivation Tests", () => {
     suite("Extension Activation", () => {
@@ -101,9 +102,7 @@ suite("Extension Activation/Deactivation Tests", () => {
         });
     });
 
-    suite("Activates for cmake projects", function () {
-        this.timeout(60000);
-
+    tag("medium").suite("Activates for cmake projects", function () {
         let workspaceContext: WorkspaceContext;
 
         activateExtensionForTest({

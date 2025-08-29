@@ -17,9 +17,9 @@ import { testAssetUri } from "../fixtures";
 import { SwiftPackage } from "../../src/SwiftPackage";
 import { SwiftToolchain } from "../../src/toolchain/toolchain";
 import { Version } from "../../src/utilities/version";
+import { tag } from "../tags";
 
-suite("SwiftPackage Test Suite", function () {
-    this.timeout(5 * 60 * 1000); // 5 minute timeout
+tag("medium").suite("SwiftPackage Test Suite", function () {
     let toolchain: SwiftToolchain;
 
     setup(async () => {

@@ -28,6 +28,7 @@ import {
 import { FolderContext } from "../../src/FolderContext";
 import { assertContains } from "./testexplorer/utilities";
 import { resolveScope } from "../../src/utilities/tasks";
+import { tag } from "../tags";
 
 function assertContainsArg(execution: SwiftExecution, arg: string) {
     assert(execution?.args.find(a => a === arg));
@@ -40,7 +41,7 @@ function assertNotContainsArg(execution: SwiftExecution, arg: string) {
     );
 }
 
-suite("WorkspaceContext Test Suite", () => {
+tag("medium").suite("WorkspaceContext Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     const packageFolder: vscode.Uri = testAssetUri("defaultPackage");
 
@@ -88,7 +89,7 @@ suite("WorkspaceContext Test Suite", () => {
             } finally {
                 observer?.dispose();
             }
-        }).timeout(60000 * 2);
+        });
     });
 
     suite("Tasks", function () {
@@ -105,9 +106,6 @@ suite("WorkspaceContext Test Suite", () => {
                 resetSettings = undefined;
             }
         });
-
-        // Was hitting a timeout in suiteSetup during CI build once in a while
-        this.timeout(15000);
 
         test("Default Task values", async () => {
             const folder = workspaceContext.folders.find(
@@ -190,32 +188,16 @@ suite("WorkspaceContext Test Suite", () => {
             const execution = buildAllTask.execution as SwiftExecution;
             assertContainsArg(execution, "--replace-scm-with-registry");
         });
-
-        test("Swift Path", async () => {
-            /* Temporarily disabled (need swift path to update immediately for this to work)
-            const folder = workspaceContext.folders.find(
-                f => f.folder.fsPath === packageFolder.fsPath
-            );
-            assert(folder);
-            await swiftConfig.update("path", "/usr/bin/swift");
-            const buildAllTask = createBuildAllTask(folder);
-            const execution = buildAllTask.execution as SwiftExecution;
-            assert.strictEqual(execution?.command, "/usr/bin/swift");
-            await swiftConfig.update("path", "");*/
-        });
     });
 
     suite("Toolchain", function () {
-        // Increase the timeout as this takes several seconds longer for the codeWorkspaceTests variant
-        this.timeout(60000);
-
         activateExtensionForSuite({
             async setup(ctx) {
                 workspaceContext = ctx;
             },
         });
 
-        test("get project templates", async () => {
+        tag("small").test("get project templates", async () => {
             // This is only supported in swift versions >=5.8.0
             const swiftVersion = workspaceContext.globalToolchain.swiftVersion;
             if (swiftVersion.isLessThan(new Version(5, 8, 0))) {
@@ -248,6 +230,6 @@ suite("WorkspaceContext Test Suite", () => {
                 name: "Build Tool Plugin",
                 description: "A package that vends a build tool plugin.",
             });
-        }).timeout(1000);
+        });
     });
-}).timeout(15000);
+});

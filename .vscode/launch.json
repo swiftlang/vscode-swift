@@ -17,7 +17,7 @@
       "preLaunchTask": "Build Extension"
     },
     {
-      "name": "Extension Tests",
+      "name": "Integration Tests",
       "type": "extensionHost",
       "request": "launch",
       "testConfiguration": "${workspaceFolder}/.vscode-test.js",

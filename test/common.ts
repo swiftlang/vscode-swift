@@ -19,7 +19,10 @@ import * as chai from "chai";
 import * as sinonChai from "sinon-chai";
 import * as chaiAsPromised from "chai-as-promised";
 import * as chaiSubset from "chai-subset";
+import { installTagSupport } from "./tags";
 
 chai.use(sinonChai);
 chai.use(chaiAsPromised);
 chai.use(chaiSubset);
+
+installTagSupport();

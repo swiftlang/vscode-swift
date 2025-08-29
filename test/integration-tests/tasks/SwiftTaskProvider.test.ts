@@ -31,6 +31,7 @@ import {
     folderInRootWorkspace,
     updateSettings,
 } from "../utilities/testutilities";
+import { tag } from "../../tags";
 
 suite("SwiftTaskProvider Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -115,13 +116,13 @@ suite("SwiftTaskProvider Test Suite", () => {
                 expect(task?.detail).to.include("swift build --build-tests");
             });
 
-            test("executes @slow", async () => {
+            tag("large").test("executes", async () => {
                 assert(task);
                 const exitPromise = waitForEndTaskProcess(task);
                 await vscode.tasks.executeTask(task);
                 const exitCode = await exitPromise;
                 expect(exitCode).to.equal(0);
-            }).timeout(180000); // 3 minutes to build
+            });
         });
 
         suite("includes build all task from tasks.json", () => {
