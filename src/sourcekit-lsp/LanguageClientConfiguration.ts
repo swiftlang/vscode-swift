@@ -110,6 +110,7 @@ export class LanguagerClientDocumentSelectors {
         { scheme: "sourcekit-lsp", language: "swift" },
         { scheme: "file", language: "swift" },
         { scheme: "untitled", language: "swift" },
+        { scheme: "fba", language: "swift" },
         { scheme: "file", language: "objective-c" },
         { scheme: "untitled", language: "objective-c" },
         { scheme: "file", language: "objective-cpp" },
