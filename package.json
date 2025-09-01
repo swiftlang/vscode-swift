@@ -559,7 +559,7 @@
           },
           "swift.diagnosticsCollection": {
             "type": "string",
-            "default": "keepSourceKit",
+            "default": "onlySwiftc",
             "markdownDescription": "Controls how diagnostics from the various providers are merged into the collection of `swift` errors and warnings shown in the Problems pane.",
             "enum": [
               "onlySwiftc",

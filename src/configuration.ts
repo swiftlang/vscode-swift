@@ -388,7 +388,7 @@ const configuration = {
     get diagnosticsCollection(): DiagnosticCollectionOptions {
         return vscode.workspace
             .getConfiguration("swift")
-            .get<DiagnosticCollectionOptions>("diagnosticsCollection", "keepSourceKit");
+            .get<DiagnosticCollectionOptions>("diagnosticsCollection", "onlySwiftc");
     },
     /** set the -diagnostic-style option when running `swift` tasks */
     get diagnosticsStyle(): DiagnosticStyle {
