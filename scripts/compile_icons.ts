@@ -51,7 +51,6 @@ function minifyIcon(icon: string, color: string = "#424242"): string {
     }).data;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
 main(async () => {
     const iconsSourceDirectory = path.join(__dirname, "../src/icons");
     const iconAssetsDirectory = path.join(__dirname, "../assets/icons");

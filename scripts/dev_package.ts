@@ -15,7 +15,6 @@
 
 import { getExtensionVersion, main, packageExtension } from "./lib/utilities";
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
 main(async () => {
     const version = await getExtensionVersion();
     const devVersion = `${version.major}.${version.minor}.${version.patch}-dev`;

@@ -27,13 +27,11 @@ import { replaceInFile } from "replace-in-file";
  *
  * @param mainFn The main function of the script that will be run.
  */
-export async function main(mainFn: () => Promise<void>): Promise<void> {
-    try {
-        await mainFn();
-    } catch (error) {
+export function main(mainFn: () => Promise<void>) {
+    mainFn().catch(error => {
         console.error(error);
         process.exit(1);
-    }
+    });
 }
 
 /**
