@@ -290,6 +290,12 @@
         "icon": "$(play)"
       },
       {
+        "command": "swift.play",
+        "title": "Run Swift playground",
+        "category": "Swift",
+        "icon": "$(play)"
+      },
+      {
         "command": "swift.debug",
         "title": "Debug Swift executable",
         "category": "Swift",
@@ -1371,6 +1377,10 @@
         },
         {
           "command": "swift.openEducationalNote",
+          "when": "false"
+        },
+        {
+          "command": "swift.play",
           "when": "false"
         }
       ],
