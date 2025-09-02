@@ -20,6 +20,7 @@ import configuration from "../configuration";
 import { Commands } from "../commands";
 import { Swiftly } from "../toolchain/swiftly";
 import { SwiftLogger } from "../logging/SwiftLogger";
+import { FolderContext } from "../FolderContext";
 
 /**
  * Open the installation page on Swift.org
@@ -71,27 +72,32 @@ export async function selectToolchainFolder() {
 
 /**
  * Displays an error notification to the user that toolchain discovery failed.
+ * @returns true if the user made a selection (and potentially updated toolchain settings), false if they dismissed the dialog
  */
-export async function showToolchainError(): Promise<void> {
+export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> {
     let selected: "Remove From Settings" | "Select Toolchain" | undefined;
+    const folderName = folder ? `${FolderContext.uriName(folder)}: ` : "";
     if (configuration.path) {
         selected = await vscode.window.showErrorMessage(
-            `The Swift executable at "${configuration.path}" either could not be found or failed to launch. Please select a new toolchain.`,
+            `${folderName}The Swift executable at "${configuration.path}" either could not be found or failed to launch. Please select a new toolchain.`,
             "Remove From Settings",
             "Select Toolchain"
         );
     } else {
         selected = await vscode.window.showErrorMessage(
-            "Unable to automatically discover your Swift toolchain. Either install a toolchain from Swift.org or provide the path to an existing toolchain.",
+            `${folderName}Unable to automatically discover your Swift toolchain. Either install a toolchain from Swift.org or provide the path to an existing toolchain.`,
             "Select Toolchain"
         );
     }
 
     if (selected === "Remove From Settings") {
         await removeToolchainPath();
+        return true;
     } else if (selected === "Select Toolchain") {
         await selectToolchain();
+        return true;
     }
+    return false;
 }
 
 export async function selectToolchain() {
