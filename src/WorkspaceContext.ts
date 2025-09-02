@@ -73,6 +73,9 @@ export class WorkspaceContext implements vscode.Disposable {
     public onDidStartBuild = this.buildStartEmitter.event;
     public onDidFinishBuild = this.buildFinishEmitter.event;
 
+    private observers = new Set<(listener: FolderEvent) => unknown>();
+    private swiftFileObservers = new Set<(listener: SwiftFileEvent) => unknown>();
+
     public loggerFactory: SwiftLoggerFactory;
 
     constructor(
@@ -628,9 +631,6 @@ export class WorkspaceContext implements vscode.Disposable {
         }
         return autoGenerate;
     }
-
-    private observers = new Set<(listener: FolderEvent) => unknown>();
-    private swiftFileObservers = new Set<(listener: SwiftFileEvent) => unknown>();
 }
 
 /** Test events for test run begin/end */

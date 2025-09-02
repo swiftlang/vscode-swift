@@ -71,7 +71,7 @@ suite("Test Explorer Suite", function () {
                 throw new Error("Unable to find test explorer");
             }
 
-            testExplorer = folderContext.addTestExplorer();
+            testExplorer = await folderContext.resolvedTestExplorer;
 
             await executeTaskAndWaitForResult(await createBuildAllTask(folderContext));
 
