@@ -16,6 +16,10 @@ import * as vscode from "vscode";
 
 export const uriConverters = {
     protocol2Code: (value: string): vscode.Uri => {
+		if (value.startsWith("fba:")) {
+			// SourceKit-LSP does not support non-file schemes, so we need to convert it.
+			return vscode.Uri.file(vscode.Uri.parse(value).fsPath);
+		}
         if (!value.startsWith("sourcekit-lsp:")) {
             // Use the default implementation for all schemes other than sourcekit-lsp, as defined here:
             // https://github.com/microsoft/vscode-languageserver-node/blob/14ddabfc22187b698e83ecde072247aa40727308/client/src/common/protocolConverter.ts#L286
@@ -69,6 +73,10 @@ export const uriConverters = {
         });
     },
     code2Protocol: (value: vscode.Uri): string => {
+		if (value.scheme === "fba") {
+			// SourceKit-LSP does not support non-file schemes, so we need to convert it.
+			return vscode.Uri.file(value.fsPath).toString();
+		}
         if (value.scheme !== "sourcekit-lsp") {
             // Use the default implementation for all schemes other than sourcekit-lsp, as defined here:
             // https://github.com/microsoft/vscode-languageserver-node/blob/14ddabfc22187b698e83ecde072247aa40727308/client/src/common/codeConverter.ts#L155
