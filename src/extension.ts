@@ -61,7 +61,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             "swift-vscode-extension.log"
         );
         context.subscriptions.push(logger);
-        logger.info("Activating Swift for Visual Studio Code...");
+        logger.info(
+            `Activating Swift for Visual Studio Code ${context.extension.packageJSON.version}...`
+        );
 
         checkAndWarnAboutWindowsSymlinks(logger);
 
