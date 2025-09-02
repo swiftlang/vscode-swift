@@ -42,6 +42,7 @@ import { reindexProject } from "./commands/reindexProject";
 import { resetPackage } from "./commands/resetPackage";
 import restartLSPServer from "./commands/restartLSPServer";
 import { runAllTests } from "./commands/runAllTests";
+import { runPlayground } from "./commands/runPlayground";
 import { runPluginTask } from "./commands/runPluginTask";
 import { runSwiftScript } from "./commands/runSwiftScript";
 import { runTask } from "./commands/runTask";
@@ -88,6 +89,7 @@ export function registerToolchainCommands(
 export enum Commands {
     RUN = "swift.run",
     DEBUG = "swift.debug",
+    PLAY = "swift.play",
     CLEAN_BUILD = "swift.cleanBuild",
     RESOLVE_DEPENDENCIES = "swift.resolveDependencies",
     SHOW_FLAT_DEPENDENCIES_LIST = "swift.flatDependenciesList",
@@ -145,6 +147,10 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand(
             Commands.DEBUG,
             async target => await debugBuild(ctx, ...unwrapTreeItem(target))
+        ),
+        vscode.commands.registerCommand(
+            Commands.PLAY,
+            async target => await runPlayground(ctx, target)
         ),
         vscode.commands.registerCommand(Commands.CLEAN_BUILD, async () => await cleanBuild(ctx)),
         vscode.commands.registerCommand(
