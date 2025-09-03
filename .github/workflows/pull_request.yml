@@ -68,7 +68,7 @@ jobs:
         VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
         GITHUB_REPOSITORY=${{github.repository}}
       windows_pre_build_command: . .github\workflows\scripts\windows\setup.ps1
-      windows_build_command: scripts\test_windows.ps1
+      windows_build_command: Invoke-Program scripts\test_windows.ps1
       enable_windows_docker: false
 
   soundness:
