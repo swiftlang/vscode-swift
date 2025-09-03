@@ -21,19 +21,19 @@ import {
     PackageNode,
     FileNode,
     TreeNode,
-} from "../../../src/ui/ProjectPanelProvider";
+} from "@src/ui/ProjectPanelProvider";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
-import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
+import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
 import { testAssetPath } from "../../fixtures";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
     updateSettings,
 } from "../utilities/testutilities";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { Version } from "../../../src/utilities/version";
-import { wait } from "../../../src/utilities/utilities";
-import { Commands } from "../../../src/commands";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { Version } from "@src/utilities/version";
+import { wait } from "@src/utilities/utilities";
+import { Commands } from "@src/commands";
 import { tag } from "../../tags";
 
 tag("medium").suite("ProjectPanelProvider Test Suite", function () {

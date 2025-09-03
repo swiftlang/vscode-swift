@@ -15,16 +15,12 @@
 import { expect } from "chai";
 import * as vscode from "vscode";
 import * as assert from "assert";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import {
-    createSwiftTask,
-    createBuildAllTask,
-    getBuildAllTask,
-} from "../../../src/tasks/SwiftTaskProvider";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { createSwiftTask, createBuildAllTask, getBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
 import { executeTaskAndWaitForResult, waitForEndTaskProcess } from "../../utilities/tasks";
-import { Version } from "../../../src/utilities/version";
-import { FolderContext } from "../../../src/FolderContext";
+import { Version } from "@src/utilities/version";
+import { FolderContext } from "@src/FolderContext";
 import { mockGlobalObject } from "../../MockUtils";
 import {
     activateExtensionForSuite,

@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { ITestRunState, TestIssueDiff } from "../../../src/TestExplorer/TestParsers/TestRunState";
+import { ITestRunState, TestIssueDiff } from "@src/TestExplorer/TestParsers/TestRunState";
 
 /** TestStatus */
 export enum TestStatus {

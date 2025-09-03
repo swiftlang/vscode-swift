@@ -14,11 +14,11 @@
 
 import * as vscode from "vscode";
 import * as assert from "assert";
-import { reduceTestItemChildren } from "../../../src/TestExplorer/TestUtils";
-import { TestRunProxy } from "../../../src/TestExplorer/TestRunner";
-import { TestExplorer } from "../../../src/TestExplorer/TestExplorer";
-import { TestKind } from "../../../src/TestExplorer/TestKind";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import { reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
+import { TestRunProxy } from "@src/TestExplorer/TestRunner";
+import { TestExplorer } from "@src/TestExplorer/TestExplorer";
+import { TestKind } from "@src/TestExplorer/TestKind";
+import { WorkspaceContext } from "@src/WorkspaceContext";
 import { testAssetUri } from "../../fixtures";
 import {
     activateExtension,

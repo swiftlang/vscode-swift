@@ -21,7 +21,7 @@ import {
     activateExtensionForTest,
     deactivateExtension,
 } from "./utilities/testutilities";
-import { WorkspaceContext } from "../../src/WorkspaceContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
 import { testAssetUri } from "../fixtures";
 import { assertContains } from "./testexplorer/utilities";
 import { tag } from "../tags";

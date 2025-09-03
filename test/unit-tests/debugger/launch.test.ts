@@ -14,9 +14,9 @@
 
 import * as vscode from "vscode";
 import { expect } from "chai";
-import configuration, { FolderConfiguration } from "../../../src/configuration";
-import { makeDebugConfigurations } from "../../../src/debugger/launch";
-import { FolderContext } from "../../../src/FolderContext";
+import configuration, { FolderConfiguration } from "@src/configuration";
+import { makeDebugConfigurations } from "@src/debugger/launch";
+import { FolderContext } from "@src/FolderContext";
 import {
     instance,
     MockedObject,
@@ -25,8 +25,8 @@ import {
     mockGlobalObject,
     mockObject,
 } from "../../MockUtils";
-import { Product, SwiftPackage } from "../../../src/SwiftPackage";
-import { SWIFT_LAUNCH_CONFIG_TYPE } from "../../../src/debugger/debugAdapter";
+import { Product, SwiftPackage } from "@src/SwiftPackage";
+import { SWIFT_LAUNCH_CONFIG_TYPE } from "@src/debugger/debugAdapter";
 
 suite("Launch Configurations Test", () => {
     const mockConfiguration = mockGlobalModule(configuration);

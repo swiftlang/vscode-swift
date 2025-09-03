@@ -26,11 +26,11 @@ import {
     DarwinCompatibleTarget,
     SwiftToolchain,
     getDarwinTargetTriple,
-} from "../../../src/toolchain/toolchain";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { switchPlatform } from "../../../src/commands/switchPlatform";
-import { StatusItem } from "../../../src/ui/StatusItem";
-import configuration from "../../../src/configuration";
+} from "@src/toolchain/toolchain";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { switchPlatform } from "@src/commands/switchPlatform";
+import { StatusItem } from "@src/ui/StatusItem";
+import configuration from "@src/configuration";
 
 suite("Switch Target Platform Unit Tests", () => {
     const mockedConfiguration = mockGlobalModule(configuration);

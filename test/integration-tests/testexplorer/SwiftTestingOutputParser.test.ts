@@ -24,7 +24,7 @@ import {
     SourceLocation,
     TestSymbol,
     MessageRenderer,
-} from "../../../src/TestExplorer/TestParsers/SwiftTestingOutputParser";
+} from "@src/TestExplorer/TestParsers/SwiftTestingOutputParser";
 import { TestRunState, TestStatus } from "./MockTestRunState";
 import { Readable } from "stream";
 

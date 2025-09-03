@@ -16,18 +16,18 @@ import * as vscode from "vscode";
 import * as assert from "assert";
 import { afterEach } from "mocha";
 import { testAssetUri } from "../fixtures";
-import { FolderOperation, WorkspaceContext } from "../../src/WorkspaceContext";
-import { createBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
-import { Version } from "../../src/utilities/version";
-import { SwiftExecution } from "../../src/tasks/SwiftExecution";
+import { FolderOperation, WorkspaceContext } from "@src/WorkspaceContext";
+import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+import { Version } from "@src/utilities/version";
+import { SwiftExecution } from "@src/tasks/SwiftExecution";
 import {
     activateExtensionForSuite,
     getRootWorkspaceFolder,
     updateSettings,
 } from "./utilities/testutilities";
-import { FolderContext } from "../../src/FolderContext";
+import { FolderContext } from "@src/FolderContext";
 import { assertContains } from "./testexplorer/utilities";
-import { resolveScope } from "../../src/utilities/tasks";
+import { resolveScope } from "@src/utilities/tasks";
 import { tag } from "../tags";
 
 function assertContainsArg(execution: SwiftExecution, arg: string) {

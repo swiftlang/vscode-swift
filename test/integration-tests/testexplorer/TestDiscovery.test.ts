@@ -20,11 +20,11 @@ import {
     updateTests,
     updateTestsForTarget,
     updateTestsFromClasses,
-} from "../../../src/TestExplorer/TestDiscovery";
-import { reduceTestItemChildren } from "../../../src/TestExplorer/TestUtils";
-import { SwiftPackage, Target, TargetType } from "../../../src/SwiftPackage";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
-import { TestStyle } from "../../../src/sourcekit-lsp/extensions";
+} from "@src/TestExplorer/TestDiscovery";
+import { reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
+import { SwiftPackage, Target, TargetType } from "@src/SwiftPackage";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { TestStyle } from "@src/sourcekit-lsp/extensions";
 
 suite("TestDiscovery Suite", () => {
     let testController: vscode.TestController;

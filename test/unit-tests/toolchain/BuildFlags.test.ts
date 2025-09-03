@@ -14,10 +14,10 @@
 
 import * as path from "path";
 import { expect } from "chai";
-import { DarwinCompatibleTarget, SwiftToolchain } from "../../../src/toolchain/toolchain";
-import { ArgumentFilter, BuildFlags } from "../../../src/toolchain/BuildFlags";
-import { Version } from "../../../src/utilities/version";
-import configuration from "../../../src/configuration";
+import { DarwinCompatibleTarget, SwiftToolchain } from "@src/toolchain/toolchain";
+import { ArgumentFilter, BuildFlags } from "@src/toolchain/BuildFlags";
+import { Version } from "@src/utilities/version";
+import configuration from "@src/configuration";
 import { mockObject, mockGlobalValue, MockedObject, instance } from "../../MockUtils";
 
 suite("BuildFlags Test Suite", () => {

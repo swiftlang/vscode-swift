@@ -15,8 +15,8 @@
 import * as vscode from "vscode";
 import * as assert from "assert";
 import { beforeEach, afterEach } from "mocha";
-import { TestRunArguments } from "../../../src/TestExplorer/TestRunArguments";
-import { flattenTestItemCollection } from "../../../src/TestExplorer/TestUtils";
+import { TestRunArguments } from "@src/TestExplorer/TestRunArguments";
+import { flattenTestItemCollection } from "@src/TestExplorer/TestUtils";
 
 suite("TestRunArguments Suite", () => {
     // Helper function to create a test item tree from a DSL string.

@@ -14,12 +14,12 @@
 
 import * as vscode from "vscode";
 import * as sinon from "sinon";
-import * as TestUtils from "../../../src/TestExplorer/TestUtils";
+import * as TestUtils from "@src/TestExplorer/TestUtils";
 import { expect } from "chai";
-import { TestCodeLensProvider } from "../../../src/TestExplorer/TestCodeLensProvider";
-import { TestExplorer } from "../../../src/TestExplorer/TestExplorer";
+import { TestCodeLensProvider } from "@src/TestExplorer/TestCodeLensProvider";
+import { TestExplorer } from "@src/TestExplorer/TestExplorer";
 import { instance, mockObject } from "../../MockUtils";
-import configuration from "../../../src/configuration";
+import configuration from "@src/configuration";
 
 suite("TestCodeLensProvider", () => {
     let sandbox: sinon.SinonSandbox;

@@ -15,11 +15,11 @@
 import { expect } from "chai";
 import * as path from "path";
 import * as mockFS from "mock-fs";
-import * as utilities from "../../../src/utilities/utilities";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
-import { Version } from "../../../src/utilities/version";
+import * as utilities from "@src/utilities/utilities";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { Version } from "@src/utilities/version";
 import { mockGlobalModule, mockGlobalValue } from "../../MockUtils";
-import { Swiftly } from "../../../src/toolchain/swiftly";
+import { Swiftly } from "@src/toolchain/swiftly";
 
 suite("SwiftToolchain Unit Test Suite", () => {
     const mockedUtilities = mockGlobalModule(utilities);

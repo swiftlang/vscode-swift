@@ -19,7 +19,7 @@ import {
     expandFilePathTilde,
     isExcluded,
     isIncluded,
-} from "../../../src/utilities/filesystem";
+} from "@src/utilities/filesystem";
 import { expect } from "chai";
 
 suite("File System Utilities Unit Test Suite", () => {

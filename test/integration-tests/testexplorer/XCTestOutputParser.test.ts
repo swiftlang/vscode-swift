@@ -18,13 +18,13 @@ import {
     darwinTestRegex,
     nonDarwinTestRegex,
     XCTestOutputParser,
-} from "../../../src/TestExplorer/TestParsers/XCTestOutputParser";
+} from "@src/TestExplorer/TestParsers/XCTestOutputParser";
 import { TestRunState, TestRunTestItem, TestStatus } from "./MockTestRunState";
-import { sourceLocationToVSCodeLocation } from "../../../src/utilities/utilities";
-import { TestXUnitParser } from "../../../src/TestExplorer/TestXUnitParser";
+import { sourceLocationToVSCodeLocation } from "@src/utilities/utilities";
+import { TestXUnitParser } from "@src/TestExplorer/TestXUnitParser";
 import { activateExtensionForSuite } from "../utilities/testutilities";
-import { lineBreakRegex } from "../../../src/utilities/tasks";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import { lineBreakRegex } from "@src/utilities/tasks";
+import { WorkspaceContext } from "@src/WorkspaceContext";
 
 enum ParserTestKind {
     Regular = "Regular Test Run",

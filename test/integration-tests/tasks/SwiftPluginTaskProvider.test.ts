@@ -16,9 +16,9 @@ import * as vscode from "vscode";
 import * as assert from "assert";
 import { beforeEach, afterEach } from "mocha";
 import { expect } from "chai";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { SwiftPluginTaskProvider } from "../../../src/tasks/SwiftPluginTaskProvider";
-import { FolderContext } from "../../../src/FolderContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { SwiftPluginTaskProvider } from "@src/tasks/SwiftPluginTaskProvider";
+import { FolderContext } from "@src/FolderContext";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
@@ -30,8 +30,8 @@ import {
     waitForEndTaskProcess,
 } from "../../utilities/tasks";
 import { mutable } from "../../utilities/types";
-import { SwiftExecution } from "../../../src/tasks/SwiftExecution";
-import { SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
+import { SwiftExecution } from "@src/tasks/SwiftExecution";
+import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
 
 suite("SwiftPluginTaskProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;

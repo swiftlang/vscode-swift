@@ -18,15 +18,12 @@ import { expect } from "chai";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
 import { testAssetUri } from "../../fixtures";
-import { FolderContext } from "../../../src/FolderContext";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { Commands } from "../../../src/commands";
-import { Workbench } from "../../../src/utilities/commands";
-import {
-    RenderNodeContent,
-    WebviewContent,
-} from "../../../src/documentation/webview/WebviewMessage";
-import { PreviewEditorConstant } from "../../../src/documentation/DocumentationPreviewEditor";
+import { FolderContext } from "@src/FolderContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { Commands } from "@src/commands";
+import { Workbench } from "@src/utilities/commands";
+import { RenderNodeContent, WebviewContent } from "@src/documentation/webview/WebviewMessage";
+import { PreviewEditorConstant } from "@src/documentation/DocumentationPreviewEditor";
 import { tag } from "../../tags";
 
 tag("medium").suite("Documentation Live Preview", function () {

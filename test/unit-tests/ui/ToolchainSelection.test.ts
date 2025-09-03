@@ -17,13 +17,13 @@ import * as vscode from "vscode";
 import * as mockFS from "mock-fs";
 import * as sinon from "sinon";
 import { match, stub } from "sinon";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
-import { SwiftLogger } from "../../../src/logging/SwiftLogger";
-import { Swiftly } from "../../../src/toolchain/swiftly";
-import { Version } from "../../../src/utilities/version";
-import * as utilities from "../../../src/utilities/utilities";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { SwiftLogger } from "@src/logging/SwiftLogger";
+import { Swiftly } from "@src/toolchain/swiftly";
+import { Version } from "@src/utilities/version";
+import * as utilities from "@src/utilities/utilities";
 import { mockGlobalModule, mockGlobalValue, mockGlobalObject } from "../../MockUtils";
-import * as ToolchainSelectionModule from "../../../src/ui/ToolchainSelection";
+import * as ToolchainSelectionModule from "@src/ui/ToolchainSelection";
 
 suite("ToolchainSelection Unit Test Suite", () => {
     const mockedUtilities = mockGlobalModule(utilities);

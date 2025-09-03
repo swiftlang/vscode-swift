@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import { expect } from "chai";
-import { extractTestItemsAndCount } from "../../../src/commands/testMultipleTimes";
+import { extractTestItemsAndCount } from "@src/commands/testMultipleTimes";
 
 suite("Run Tests Multiple Times", () => {
     suite("extractTestItemsAndCount()", () => {

@@ -16,10 +16,10 @@ import * as vscode from "vscode";
 import { expect } from "chai";
 import { match } from "sinon";
 import * as path from "path";
-import { newSwiftFile } from "../../../src/commands/newFile";
+import { newSwiftFile } from "@src/commands/newFile";
 import { mockGlobalObject } from "../../MockUtils";
-import { TemporaryFolder } from "../../../src/utilities/tempFolder";
-import { fileExists } from "../../../src/utilities/filesystem";
+import { TemporaryFolder } from "@src/utilities/tempFolder";
+import { fileExists } from "@src/utilities/filesystem";
 
 suite("newSwiftFile Command Test Suite", () => {
     const workspaceMock = mockGlobalObject(vscode, "workspace");

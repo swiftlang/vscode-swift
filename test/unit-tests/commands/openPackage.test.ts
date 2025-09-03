@@ -18,9 +18,9 @@ import * as path from "path";
 import { expect } from "chai";
 import { match } from "sinon";
 import { mockGlobalModule, mockGlobalObject } from "../../MockUtils";
-import { openPackage } from "../../../src/commands/openPackage";
-import { Version } from "../../../src/utilities/version";
-import * as fs from "../../../src/utilities/filesystem";
+import { openPackage } from "@src/commands/openPackage";
+import { Version } from "@src/utilities/version";
+import * as fs from "@src/utilities/filesystem";
 
 suite("openPackage Command Test Suite", () => {
     const windowMock = mockGlobalObject(vscode, "window");

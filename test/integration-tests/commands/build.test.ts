@@ -17,12 +17,12 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { expect } from "chai";
 import { testAssetUri } from "../../fixtures";
-import { FolderContext } from "../../../src/FolderContext";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { Commands } from "../../../src/commands";
+import { FolderContext } from "@src/FolderContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { Commands } from "@src/commands";
 import { continueSession, waitForDebugAdapterRequest } from "../../utilities/debug";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
-import { Version } from "../../../src/utilities/version";
+import { Version } from "@src/utilities/version";
 import { tag } from "../../tags";
 
 tag("large").suite("Build Commands", function () {

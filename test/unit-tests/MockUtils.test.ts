@@ -26,8 +26,8 @@ import {
     mockObject,
     waitForReturnedPromises,
 } from "../MockUtils";
-import { Version } from "../../src/utilities/version";
-import configuration from "../../src/configuration";
+import { Version } from "@src/utilities/version";
+import configuration from "@src/configuration";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function emptyFunction(..._: any): any {

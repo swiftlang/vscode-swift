@@ -14,7 +14,7 @@
 
 import * as assert from "assert";
 import * as vscode from "vscode";
-import { WorkspaceContext } from "../../src/WorkspaceContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
 import { testAssetUri } from "../fixtures";
 import { activateExtensionForTest, updateSettings } from "./utilities/testutilities";
 import { closeAllEditors } from "../utilities/commands";

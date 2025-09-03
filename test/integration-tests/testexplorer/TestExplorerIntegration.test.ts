@@ -17,7 +17,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import { beforeEach, afterEach } from "mocha";
-import { TestExplorer } from "../../../src/TestExplorer/TestExplorer";
+import { TestExplorer } from "@src/TestExplorer/TestExplorer";
 import {
     assertContains,
     assertContainsTrimmed,
@@ -29,29 +29,26 @@ import {
     runTest,
     waitForTestExplorerReady,
 } from "./utilities";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { Version } from "../../../src/utilities/version";
-import { TestKind } from "../../../src/TestExplorer/TestKind";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { Version } from "@src/utilities/version";
+import { TestKind } from "@src/TestExplorer/TestKind";
 import {
     MessageRenderer,
     TestSymbol,
-} from "../../../src/TestExplorer/TestParsers/SwiftTestingOutputParser";
-import {
-    flattenTestItemCollection,
-    reduceTestItemChildren,
-} from "../../../src/TestExplorer/TestUtils";
-import { runnableTag } from "../../../src/TestExplorer/TestDiscovery";
+} from "@src/TestExplorer/TestParsers/SwiftTestingOutputParser";
+import { flattenTestItemCollection, reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
+import { runnableTag } from "@src/TestExplorer/TestDiscovery";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
     updateSettings,
 } from "../utilities/testutilities";
-import { Commands } from "../../../src/commands";
+import { Commands } from "@src/commands";
 import { executeTaskAndWaitForResult } from "../../utilities/tasks";
-import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
-import { FolderContext } from "../../../src/FolderContext";
-import { lineBreakRegex } from "../../../src/utilities/tasks";
-import { randomString } from "../../../src/utilities/utilities";
+import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+import { FolderContext } from "@src/FolderContext";
+import { lineBreakRegex } from "@src/utilities/tasks";
+import { randomString } from "@src/utilities/utilities";
 import { tag } from "../../tags";
 
 tag("large").suite("Test Explorer Suite", function () {

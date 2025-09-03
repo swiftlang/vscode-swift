@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import { mockGlobalObject } from "../../MockUtils";
 import { expect } from "chai";
 import { match } from "sinon";
-import { runPluginTask } from "../../../src/commands/runPluginTask";
+import { runPluginTask } from "@src/commands/runPluginTask";
 
 suite("runPluginTask Test Suite", () => {
     const commandsMock = mockGlobalObject(vscode, "commands");

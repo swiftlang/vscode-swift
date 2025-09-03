@@ -17,15 +17,15 @@ import * as assert from "assert";
 import * as os from "os";
 import * as path from "path";
 import { match } from "sinon";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { SwiftPluginTaskProvider } from "../../../src/tasks/SwiftPluginTaskProvider";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
-import { SwiftExecution } from "../../../src/tasks/SwiftExecution";
-import { Version } from "../../../src/utilities/version";
-import { BuildFlags } from "../../../src/toolchain/BuildFlags";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { SwiftPluginTaskProvider } from "@src/tasks/SwiftPluginTaskProvider";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { SwiftExecution } from "@src/tasks/SwiftExecution";
+import { Version } from "@src/utilities/version";
+import { BuildFlags } from "@src/toolchain/BuildFlags";
 import { instance, MockedObject, mockFn, mockGlobalValue, mockObject } from "../../MockUtils";
-import { FolderContext } from "../../../src/FolderContext";
-import configuration from "../../../src/configuration";
+import { FolderContext } from "@src/FolderContext";
+import configuration from "@src/configuration";
 
 suite("SwiftPluginTaskProvider Unit Test Suite", () => {
     let workspaceContext: MockedObject<WorkspaceContext>;

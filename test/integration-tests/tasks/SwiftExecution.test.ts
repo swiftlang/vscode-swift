@@ -15,9 +15,9 @@
 import * as vscode from "vscode";
 import * as assert from "assert";
 import { testSwiftTask } from "../../fixtures";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
 import { executeTaskAndWaitForResult, waitForStartTaskProcess } from "../../utilities/tasks";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
 import { activateExtensionForSuite } from "../utilities/testutilities";
 
 suite("SwiftExecution Tests Suite", () => {

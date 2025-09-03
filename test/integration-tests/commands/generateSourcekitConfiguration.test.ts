@@ -14,9 +14,9 @@
 
 import * as vscode from "vscode";
 import { expect } from "chai";
-import { FolderContext } from "../../../src/FolderContext";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { Commands } from "../../../src/commands";
+import { FolderContext } from "@src/FolderContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { Commands } from "@src/commands";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
@@ -29,10 +29,10 @@ import {
     handleSchemaUpdate,
     sourcekitConfigFilePath,
     sourcekitFolderPath,
-} from "../../../src/commands/generateSourcekitConfiguration";
-import { Version } from "../../../src/utilities/version";
+} from "@src/commands/generateSourcekitConfiguration";
+import { Version } from "@src/utilities/version";
 import { mockGlobalObject, mockGlobalModule } from "../../MockUtils";
-import * as restartLSPServerModule from "../../../src/commands/restartLSPServer";
+import * as restartLSPServerModule from "@src/commands/restartLSPServer";
 
 suite("Generate SourceKit-LSP configuration Command", function () {
     let folderContext: FolderContext;

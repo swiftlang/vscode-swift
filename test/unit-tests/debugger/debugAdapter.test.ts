@@ -15,9 +15,9 @@
 import { expect } from "chai";
 import * as mockFS from "mock-fs";
 import { MockedObject, mockObject, instance, mockGlobalModule } from "../../MockUtils";
-import configuration from "../../../src/configuration";
-import { DebugAdapter, LaunchConfigType } from "../../../src/debugger/debugAdapter";
-import { Version } from "../../../src/utilities/version";
+import configuration from "@src/configuration";
+import { DebugAdapter, LaunchConfigType } from "@src/debugger/debugAdapter";
+import { Version } from "@src/utilities/version";
 
 suite("DebugAdapter Unit Test Suite", () => {
     const mockConfiguration = mockGlobalModule(configuration);

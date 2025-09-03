@@ -21,8 +21,8 @@ import {
     instance,
     mockGlobalObject,
 } from "../MockUtils";
-import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "../../src/terminal";
-import configuration from "../../src/configuration";
+import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "@src/terminal";
+import configuration from "@src/configuration";
 
 suite("Terminal", () => {
     const mockedPlatform = mockGlobalValue(process, "platform");

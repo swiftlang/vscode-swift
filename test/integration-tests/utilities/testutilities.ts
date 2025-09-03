@@ -15,18 +15,18 @@
 import * as vscode from "vscode";
 import * as assert from "assert";
 import * as mocha from "mocha";
-import { Api } from "../../../src/extension";
+import { Api } from "@src/extension";
 import { testAssetPath, testAssetUri } from "../../fixtures";
-import { FolderOperation, WorkspaceContext } from "../../../src/WorkspaceContext";
-import { FolderContext } from "../../../src/FolderContext";
+import { FolderOperation, WorkspaceContext } from "@src/WorkspaceContext";
+import { FolderContext } from "@src/FolderContext";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
 import { closeAllEditors } from "../../utilities/commands";
 import { isDeepStrictEqual } from "util";
-import { Version } from "../../../src/utilities/version";
-import configuration from "../../../src/configuration";
-import { buildAllTaskName, resetBuildAllTaskCache } from "../../../src/tasks/SwiftTaskProvider";
-import { SwiftLogger } from "../../../src/logging/SwiftLogger";
-import { Extension } from "../../../src/utilities/extensions";
+import { Version } from "@src/utilities/version";
+import configuration from "@src/configuration";
+import { buildAllTaskName, resetBuildAllTaskCache } from "@src/tasks/SwiftTaskProvider";
+import { SwiftLogger } from "@src/logging/SwiftLogger";
+import { Extension } from "@src/utilities/extensions";
 
 export function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);

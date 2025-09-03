@@ -14,11 +14,11 @@
 
 import { expect } from "chai";
 import * as vscode from "vscode";
-import { PackageNode, ProjectPanelProvider } from "../../../src/ui/ProjectPanelProvider";
+import { PackageNode, ProjectPanelProvider } from "@src/ui/ProjectPanelProvider";
 import { testAssetUri } from "../../fixtures";
-import { FolderContext } from "../../../src/FolderContext";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { Commands } from "../../../src/commands";
+import { FolderContext } from "@src/FolderContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { Commands } from "@src/commands";
 import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
 import { tag } from "../../tags";

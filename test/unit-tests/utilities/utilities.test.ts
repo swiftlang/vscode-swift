@@ -22,7 +22,7 @@ import {
     swiftPlatformLibraryPathKey,
     runtimeEnv,
     sourceLocationToVSCodeLocation,
-} from "../../../src/utilities/utilities";
+} from "@src/utilities/utilities";
 import { Range } from "vscode";
 
 suite("Utilities Unit Test Suite", () => {

@@ -14,11 +14,11 @@
 
 import * as vscode from "vscode";
 import { expect } from "chai";
-import { runTestMultipleTimes } from "../../../src/commands/testMultipleTimes";
-import { FolderContext } from "../../../src/FolderContext";
-import { TestRunProxy } from "../../../src/TestExplorer/TestRunner";
+import { runTestMultipleTimes } from "@src/commands/testMultipleTimes";
+import { FolderContext } from "@src/FolderContext";
+import { TestRunProxy } from "@src/TestExplorer/TestRunner";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
-import { TestKind } from "../../../src/TestExplorer/TestKind";
+import { TestKind } from "@src/TestExplorer/TestKind";
 
 suite("Test Multiple Times Command Test Suite", () => {
     let folderContext: FolderContext;

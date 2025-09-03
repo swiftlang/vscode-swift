@@ -13,13 +13,13 @@
 //===----------------------------------------------------------------------===//
 
 import * as assert from "assert";
-import * as toolchain from "../../src/ui/ToolchainSelection";
+import * as toolchain from "@src/ui/ToolchainSelection";
 import { afterEach } from "mocha";
 import { stub, restore } from "sinon";
 import { testAssetUri } from "../fixtures";
-import { WorkspaceContext } from "../../src/WorkspaceContext";
-import { FolderContext } from "../../src/FolderContext";
-import { SwiftToolchain } from "../../src/toolchain/toolchain";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { FolderContext } from "@src/FolderContext";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
 import { activateExtensionForSuite, getRootWorkspaceFolder } from "./utilities/testutilities";
 import { MockedFunction, mockGlobalValue } from "../MockUtils";
 

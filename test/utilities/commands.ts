@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { Workbench } from "../../src/utilities/commands";
+import { Workbench } from "@src/utilities/commands";
 
 export async function closeAllEditors() {
     await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);

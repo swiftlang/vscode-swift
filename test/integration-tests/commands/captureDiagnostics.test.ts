@@ -18,15 +18,15 @@ import * as os from "os";
 import { mkdir, rm } from "fs/promises";
 import * as decompress from "decompress";
 import { expect } from "chai";
-import { captureDiagnostics } from "../../../src/commands/captureDiagnostics";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import { captureDiagnostics } from "@src/commands/captureDiagnostics";
+import { WorkspaceContext } from "@src/WorkspaceContext";
 import { mockGlobalObject } from "../../MockUtils";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
     updateSettings,
 } from "../utilities/testutilities";
-import { Version } from "../../../src/utilities/version";
+import { Version } from "@src/utilities/version";
 import { tag } from "../../tags";
 
 suite("captureDiagnostics Test Suite", () => {

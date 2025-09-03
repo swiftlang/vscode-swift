@@ -14,9 +14,9 @@
 
 import * as assert from "assert";
 import * as vscode from "vscode";
-import { WorkspaceContext } from "../../src/WorkspaceContext";
-import { getBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
-import { SwiftExecution } from "../../src/tasks/SwiftExecution";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { getBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+import { SwiftExecution } from "@src/tasks/SwiftExecution";
 import { activateExtensionForTest, findWorkspaceFolder } from "./utilities/testutilities";
 import { expect } from "chai";
 

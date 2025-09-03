@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import { expect } from "chai";
-import { Version } from "../../../src/utilities/version";
+import { Version } from "@src/utilities/version";
 
 suite("Version Suite", () => {
     suite("fromString", () => {

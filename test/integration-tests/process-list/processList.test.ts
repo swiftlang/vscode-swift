@@ -14,7 +14,7 @@
 
 import * as path from "path";
 import { expect } from "chai";
-import { createProcessList, Process } from "../../../src/process-list";
+import { createProcessList, Process } from "@src/process-list";
 
 suite("ProcessList Tests", () => {
     function expectProcessName(processes: Process[], command: string) {

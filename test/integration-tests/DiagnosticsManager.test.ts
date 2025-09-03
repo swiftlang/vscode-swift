@@ -14,24 +14,24 @@
 
 import * as assert from "assert";
 import * as vscode from "vscode";
-import { SwiftToolchain } from "../../src/toolchain/toolchain";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
 import {
     executeTaskAndWaitForResult,
     waitForNoRunningTasks,
     waitForStartTaskProcess,
 } from "../utilities/tasks";
-import { WorkspaceContext } from "../../src/WorkspaceContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
 import { testAssetUri, testSwiftTask } from "../fixtures";
-import { createBuildAllTask, resetBuildAllTaskCache } from "../../src/tasks/SwiftTaskProvider";
-import { DiagnosticsManager } from "../../src/DiagnosticsManager";
-import { FolderContext } from "../../src/FolderContext";
-import { Version } from "../../src/utilities/version";
+import { createBuildAllTask, resetBuildAllTaskCache } from "@src/tasks/SwiftTaskProvider";
+import { DiagnosticsManager } from "@src/DiagnosticsManager";
+import { FolderContext } from "@src/FolderContext";
+import { Version } from "@src/utilities/version";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
     updateSettings,
 } from "./utilities/testutilities";
-import { DiagnosticStyle } from "../../src/configuration";
+import { DiagnosticStyle } from "@src/configuration";
 import { expect } from "chai";
 import { tag } from "../tags";
 

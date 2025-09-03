@@ -14,8 +14,8 @@
 
 import * as vscode from "vscode";
 import * as assert from "assert";
-import { TaskManager } from "../../../src/tasks/TaskManager";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import { TaskManager } from "@src/tasks/TaskManager";
+import { WorkspaceContext } from "@src/WorkspaceContext";
 import { activateExtensionForSuite } from "../utilities/testutilities";
 
 suite("TaskManager Test Suite", () => {

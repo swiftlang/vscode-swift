@@ -15,8 +15,8 @@ import { beforeEach } from "mocha";
 import { expect } from "chai";
 import { mockGlobalObject } from "../../MockUtils";
 import * as vscode from "vscode";
-import { showReloadExtensionNotificationInstance } from "../../../src/ui/ReloadExtension";
-import { Workbench } from "../../../src/utilities/commands";
+import { showReloadExtensionNotificationInstance } from "@src/ui/ReloadExtension";
+import { Workbench } from "@src/utilities/commands";
 
 suite("showReloadExtensionNotification()", function () {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");

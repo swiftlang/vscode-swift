@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import * as vscode from "vscode";
-import { searchForPackages } from "../../../src/utilities/workspace";
+import { searchForPackages } from "@src/utilities/workspace";
 import { testAssetUri } from "../../fixtures";
 import { expect } from "chai";
 

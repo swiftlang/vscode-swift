@@ -14,9 +14,9 @@
 
 import * as assert from "assert";
 import { testAssetUri } from "../fixtures";
-import { SwiftPackage } from "../../src/SwiftPackage";
-import { SwiftToolchain } from "../../src/toolchain/toolchain";
-import { Version } from "../../src/utilities/version";
+import { SwiftPackage } from "@src/SwiftPackage";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { Version } from "@src/utilities/version";
 import { tag } from "../tags";
 
 tag("medium").suite("SwiftPackage Test Suite", function () {

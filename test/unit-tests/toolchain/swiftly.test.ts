@@ -16,12 +16,12 @@ import { expect } from "chai";
 import * as mockFS from "mock-fs";
 import * as os from "os";
 import { match } from "sinon";
-import { Swiftly } from "../../../src/toolchain/swiftly";
-import * as utilities from "../../../src/utilities/utilities";
+import { Swiftly } from "@src/toolchain/swiftly";
+import * as utilities from "@src/utilities/utilities";
 import { mockGlobalModule, mockGlobalValue, mockGlobalObject } from "../../MockUtils";
 import * as vscode from "vscode";
 import * as fs from "fs/promises";
-import * as SwiftOutputChannelModule from "../../../src/logging/SwiftOutputChannel";
+import * as SwiftOutputChannelModule from "@src/logging/SwiftOutputChannel";
 
 suite("Swiftly Unit Tests", () => {
     const mockUtilities = mockGlobalModule(utilities);

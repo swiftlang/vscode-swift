@@ -15,14 +15,14 @@
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 import { expect } from "chai";
-import { LanguageClientManager } from "../../../src/sourcekit-lsp/LanguageClientManager";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import { LanguageClientManager } from "@src/sourcekit-lsp/LanguageClientManager";
+import { WorkspaceContext } from "@src/WorkspaceContext";
 import { testAssetUri } from "../../fixtures";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
-import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
+import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import { waitForClientState } from "../utilities/lsputilities";
-import { FolderContext } from "../../../src/FolderContext";
+import { FolderContext } from "@src/FolderContext";
 import { tag } from "../../tags";
 
 async function buildProject(ctx: WorkspaceContext, name: string) {

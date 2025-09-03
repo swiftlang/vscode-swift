@@ -20,15 +20,15 @@ import {
     waitForDebugAdapterRequest,
     waitUntilDebugSessionTerminates,
 } from "../utilities/debug";
-import { Version } from "../../src/utilities/version";
+import { Version } from "@src/utilities/version";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
     updateSettings,
 } from "./utilities/testutilities";
-import { WorkspaceContext } from "../../src/WorkspaceContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
 import { closeAllEditors } from "../utilities/commands";
-import { Commands } from "../../src/commands";
+import { Commands } from "@src/commands";
 import { tag } from "../tags";
 
 tag("large").suite("SwiftSnippet Test Suite", function () {

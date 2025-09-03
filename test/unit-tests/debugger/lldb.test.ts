@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import * as util from "../../../src/utilities/utilities";
-import * as lldb from "../../../src/debugger/lldb";
+import * as util from "@src/utilities/utilities";
+import * as lldb from "@src/debugger/lldb";
 import * as fs from "fs/promises";
 import * as sinon from "sinon";
 import { expect } from "chai";
@@ -26,7 +26,7 @@ import {
     MockedFunction,
     mockGlobalValue,
 } from "../../MockUtils";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
 
 suite("debugger.lldb Tests", () => {
     suite("getLLDBLibPath Tests", () => {

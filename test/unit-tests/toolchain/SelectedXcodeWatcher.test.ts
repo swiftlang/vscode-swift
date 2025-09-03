@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode";
 import { expect } from "chai";
-import { SelectedXcodeWatcher } from "../../../src/toolchain/SelectedXcodeWatcher";
+import { SelectedXcodeWatcher } from "@src/toolchain/SelectedXcodeWatcher";
 import {
     instance,
     MockedObject,
@@ -24,10 +24,10 @@ import {
     mockObject,
     mockGlobalModule,
 } from "../../MockUtils";
-import configuration from "../../../src/configuration";
-import { Commands } from "../../../src/commands";
-import { SwiftLogger } from "../../../src/logging/SwiftLogger";
-import * as ReloadExtension from "../../../src/ui/ReloadExtension";
+import configuration from "@src/configuration";
+import { Commands } from "@src/commands";
+import { SwiftLogger } from "@src/logging/SwiftLogger";
+import * as ReloadExtension from "@src/ui/ReloadExtension";
 
 suite("Selected Xcode Watcher", () => {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");

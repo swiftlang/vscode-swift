@@ -16,7 +16,7 @@ import * as assert from "assert";
 import * as vscode from "vscode";
 import { TestSwiftProcess } from "../../fixtures";
 import { waitForClose, waitForWrite } from "../../utilities/tasks";
-import { SwiftPseudoterminal } from "../../../src/tasks/SwiftPseudoterminal";
+import { SwiftPseudoterminal } from "@src/tasks/SwiftPseudoterminal";
 
 suite("SwiftPseudoterminal Tests Suite", () => {
     test("Close event handler fires", async () => {

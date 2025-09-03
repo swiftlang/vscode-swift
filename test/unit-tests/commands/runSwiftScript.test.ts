@@ -17,11 +17,11 @@ import { beforeEach } from "mocha";
 import { expect } from "chai";
 import { match, stub } from "sinon";
 import { instance, mockFn, mockGlobalObject, mockGlobalValue, mockObject } from "../../MockUtils";
-import { runSwiftScript } from "../../../src/commands/runSwiftScript";
-import { TaskManager } from "../../../src/tasks/TaskManager";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
-import { BuildFlags } from "../../../src/toolchain/BuildFlags";
-import configuration from "../../../src/configuration";
+import { runSwiftScript } from "@src/commands/runSwiftScript";
+import { TaskManager } from "@src/tasks/TaskManager";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { BuildFlags } from "@src/toolchain/BuildFlags";
+import configuration from "@src/configuration";
 
 suite("runSwiftScript Test Suite", () => {
     const mockTaskManager = mockObject<TaskManager>({ executeTaskAndWait: stub().resolves() });

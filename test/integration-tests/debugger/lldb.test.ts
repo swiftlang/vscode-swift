@@ -13,11 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import { expect } from "chai";
-import { getLLDBLibPath } from "../../../src/debugger/lldb";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import { getLLDBLibPath } from "@src/debugger/lldb";
+import { WorkspaceContext } from "@src/WorkspaceContext";
 import { activateExtensionForTest } from "../utilities/testutilities";
-import { Version } from "../../../src/utilities/version";
-import { IS_RUNNING_UNDER_DOCKER } from "../../../src/utilities/utilities";
+import { Version } from "@src/utilities/version";
+import { IS_RUNNING_UNDER_DOCKER } from "@src/utilities/utilities";
 
 suite("lldb contract test suite", () => {
     let workspaceContext: WorkspaceContext;
