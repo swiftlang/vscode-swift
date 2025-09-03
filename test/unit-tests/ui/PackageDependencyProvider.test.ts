@@ -11,12 +11,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { expect } from "chai";
+import * as fs from "fs/promises";
 import * as path from "path";
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
+
 import { FileNode, PackageNode } from "@src/ui/ProjectPanelProvider";
+
 import { mockGlobalModule } from "../../MockUtils";
 
 suite("PackageDependencyProvider Unit Test Suite", function () {

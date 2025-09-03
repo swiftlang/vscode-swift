@@ -11,11 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import { makeDebugConfigurations } from "../debugger/launch";
 import { FolderContext } from "../FolderContext";
-import { selectFolder } from "../ui/SelectFolderQuickPick";
 import { WorkspaceContext } from "../WorkspaceContext";
+import { makeDebugConfigurations } from "../debugger/launch";
+import { selectFolder } from "../ui/SelectFolderQuickPick";
 
 export async function generateLaunchConfigurations(ctx: WorkspaceContext): Promise<boolean> {
     if (ctx.folders.length === 0) {

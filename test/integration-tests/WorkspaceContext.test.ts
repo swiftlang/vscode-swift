@@ -11,24 +11,25 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as assert from "assert";
 import { afterEach } from "mocha";
-import { testAssetUri } from "../fixtures";
+import * as vscode from "vscode";
+
+import { FolderContext } from "@src/FolderContext";
 import { FolderOperation, WorkspaceContext } from "@src/WorkspaceContext";
-import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
-import { Version } from "@src/utilities/version";
 import { SwiftExecution } from "@src/tasks/SwiftExecution";
+import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+import { resolveScope } from "@src/utilities/tasks";
+import { Version } from "@src/utilities/version";
+
+import { testAssetUri } from "../fixtures";
+import { tag } from "../tags";
+import { assertContains } from "./testexplorer/utilities";
 import {
     activateExtensionForSuite,
     getRootWorkspaceFolder,
     updateSettings,
 } from "./utilities/testutilities";
-import { FolderContext } from "@src/FolderContext";
-import { assertContains } from "./testexplorer/utilities";
-import { resolveScope } from "@src/utilities/tasks";
-import { tag } from "../tags";
 
 function assertContainsArg(execution: SwiftExecution, arg: string) {
     assert(execution?.args.find(a => a === arg));

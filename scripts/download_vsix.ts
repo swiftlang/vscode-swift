@@ -12,12 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 /* eslint-disable no-console */
-
 import decompress from "decompress";
 import { createWriteStream } from "node:fs";
 import { appendFile, unlink } from "node:fs/promises";
 import { pipeline } from "node:stream/promises";
 import { Octokit } from "octokit";
+
 import { main } from "./lib/utilities";
 
 const artifact_id = process.env["VSCODE_SWIFT_VSIX_ID"];

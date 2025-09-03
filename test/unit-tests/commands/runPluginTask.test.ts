@@ -11,12 +11,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
-import { mockGlobalObject } from "../../MockUtils";
 import { expect } from "chai";
 import { match } from "sinon";
+import * as vscode from "vscode";
+
 import { runPluginTask } from "@src/commands/runPluginTask";
+
+import { mockGlobalObject } from "../../MockUtils";
 
 suite("runPluginTask Test Suite", () => {
     const commandsMock = mockGlobalObject(vscode, "commands");

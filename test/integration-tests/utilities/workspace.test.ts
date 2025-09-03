@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
-import { searchForPackages } from "@src/utilities/workspace";
 import { expect } from "chai";
+import * as vscode from "vscode";
+
+import { searchForPackages } from "@src/utilities/workspace";
 
 suite("Workspace Utilities Test Suite", () => {
     suite("searchForPackages", () => {

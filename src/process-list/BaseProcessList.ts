@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as util from "util";
-import * as child_process from "child_process";
 import { Process, ProcessList } from ".";
+import * as child_process from "child_process";
+import * as util from "util";
+
 import { lineBreakRegex } from "../utilities/tasks";
 
 const exec = util.promisify(child_process.execFile);

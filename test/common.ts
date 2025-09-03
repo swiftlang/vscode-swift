@@ -11,18 +11,18 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 // Use source-map-support to get better stack traces
 import "source-map-support/register";
 
-import * as fs from "fs";
-import * as path from "path";
 import * as chai from "chai";
-import * as sinonChai from "sinon-chai";
 import * as chaiAsPromised from "chai-as-promised";
 import * as chaiSubset from "chai-subset";
-import { installTagSupport } from "./tags";
+import * as fs from "fs";
+import * as path from "path";
+import * as sinonChai from "sinon-chai";
 import * as tsConfigPaths from "tsconfig-paths";
+
+import { installTagSupport } from "./tags";
 
 const tsConfig = JSON.parse(
     // __dirname points to dist/test when transpiled, but we need the tsconfig.json in the real test/

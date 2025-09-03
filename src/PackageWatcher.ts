@@ -11,17 +11,17 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as path from "path";
 import * as fs from "fs/promises";
+import * as path from "path";
 import * as vscode from "vscode";
+
 import { FolderContext } from "./FolderContext";
 import { FolderOperation } from "./WorkspaceContext";
-import { BuildFlags } from "./toolchain/BuildFlags";
-import { Version } from "./utilities/version";
-import { fileExists } from "./utilities/filesystem";
-import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 import { SwiftLogger } from "./logging/SwiftLogger";
+import { BuildFlags } from "./toolchain/BuildFlags";
+import { showReloadExtensionNotification } from "./ui/ReloadExtension";
+import { fileExists } from "./utilities/filesystem";
+import { Version } from "./utilities/version";
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.

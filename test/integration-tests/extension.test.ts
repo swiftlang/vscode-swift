@@ -11,14 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
-import * as vscode from "vscode";
-import { WorkspaceContext } from "@src/WorkspaceContext";
-import { getBuildAllTask } from "@src/tasks/SwiftTaskProvider";
-import { SwiftExecution } from "@src/tasks/SwiftExecution";
-import { activateExtensionForTest, findWorkspaceFolder } from "./utilities/testutilities";
 import { expect } from "chai";
+import * as vscode from "vscode";
+
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { SwiftExecution } from "@src/tasks/SwiftExecution";
+import { getBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+
+import { activateExtensionForTest, findWorkspaceFolder } from "./utilities/testutilities";
 
 suite("Extension Test Suite", function () {
     let workspaceContext: WorkspaceContext;

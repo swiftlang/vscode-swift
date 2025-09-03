@@ -11,31 +11,32 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
-import * as vscode from "vscode";
 import { beforeEach } from "mocha";
+import * as vscode from "vscode";
+import * as p2c from "vscode-languageclient/lib/common/protocolConverter";
 import {
     LanguageClient,
+    Location,
     MessageSignature,
+    Position,
+    Range,
     RequestType0,
     RequestType,
-    Location,
-    Range,
-    Position,
 } from "vscode-languageclient/node";
-import * as p2c from "vscode-languageclient/lib/common/protocolConverter";
-import { LSPTestDiscovery } from "@src/TestExplorer/LSPTestDiscovery";
+
 import { SwiftPackage, Target, TargetType } from "@src/SwiftPackage";
+import { LSPTestDiscovery } from "@src/TestExplorer/LSPTestDiscovery";
 import { TestClass } from "@src/TestExplorer/TestDiscovery";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { LanguageClientManager } from "@src/sourcekit-lsp/LanguageClientManager";
 import {
     LSPTestItem,
     TextDocumentTestsRequest,
     WorkspaceTestsRequest,
 } from "@src/sourcekit-lsp/extensions";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
+
 import { instance, mockFn, mockObject } from "../../MockUtils";
-import { LanguageClientManager } from "@src/sourcekit-lsp/LanguageClientManager";
 
 class TestLanguageClient {
     private responses = new Map<string, unknown>();

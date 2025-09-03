@@ -11,12 +11,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import { beforeEach } from "mocha";
 import { expect } from "chai";
-import { mockGlobalObject } from "../../MockUtils";
+import { beforeEach } from "mocha";
 import * as vscode from "vscode";
+
 import { showReloadExtensionNotificationInstance } from "@src/ui/ReloadExtension";
 import { Workbench } from "@src/utilities/commands";
+
+import { mockGlobalObject } from "../../MockUtils";
 
 suite("showReloadExtensionNotification()", function () {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");

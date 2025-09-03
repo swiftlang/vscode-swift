@@ -11,16 +11,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 // We use namespaces to store request information just like vscode-languageclient
 /* eslint-disable @typescript-eslint/no-namespace */
-
 import {
-    TextDocumentIdentifier,
-    Range,
-    Position,
     MessageDirection,
+    Position,
+    Range,
     RequestType,
+    TextDocumentIdentifier,
 } from "vscode-languageclient";
 
 /** Parameters used to make a {@link LegacyInlayHintRequest}. */

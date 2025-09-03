@@ -11,26 +11,27 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { expect } from "chai";
 import * as vscode from "vscode";
-import {
-    mockObject,
-    mockGlobalObject,
-    mockGlobalModule,
-    MockedObject,
-    mockFn,
-    instance,
-} from "../../MockUtils";
+
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { switchPlatform } from "@src/commands/switchPlatform";
+import configuration from "@src/configuration";
 import {
     DarwinCompatibleTarget,
     SwiftToolchain,
     getDarwinTargetTriple,
 } from "@src/toolchain/toolchain";
-import { WorkspaceContext } from "@src/WorkspaceContext";
-import { switchPlatform } from "@src/commands/switchPlatform";
 import { StatusItem } from "@src/ui/StatusItem";
-import configuration from "@src/configuration";
+
+import {
+    MockedObject,
+    instance,
+    mockFn,
+    mockGlobalModule,
+    mockGlobalObject,
+    mockObject,
+} from "../../MockUtils";
 
 suite("Switch Target Platform Unit Tests", () => {
     const mockedConfiguration = mockGlobalModule(configuration);

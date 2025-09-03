@@ -11,15 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
-import * as path from "path";
 import * as fs from "fs/promises";
+import * as path from "path";
+import * as vscode from "vscode";
+
 import configuration from "../configuration";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
-import { TemporaryFolder } from "../utilities/tempFolder";
 import { TaskManager } from "../tasks/TaskManager";
 import { SwiftToolchain } from "../toolchain/toolchain";
+import { TemporaryFolder } from "../utilities/tempFolder";
 
 /**
  * Runs the Swift code in the supplied document.

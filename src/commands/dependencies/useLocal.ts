@@ -11,12 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
 import { FolderOperation, WorkspaceContext } from "../../WorkspaceContext";
 import { createSwiftTask } from "../../tasks/SwiftTaskProvider";
-import { executeTaskWithUI } from "../utilities";
 import { packageName } from "../../utilities/tasks";
+import { executeTaskWithUI } from "../utilities";
 
 /**
  * Use local version of package dependency

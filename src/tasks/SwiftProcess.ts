@@ -11,12 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import type * as nodePty from "node-pty";
 import * as child_process from "child_process";
+import type * as nodePty from "node-pty";
 import * as vscode from "vscode";
 
 import { requireNativeModule } from "../utilities/native";
+
 const { spawn } = requireNativeModule<typeof nodePty>("node-pty");
 
 export interface SwiftProcess extends vscode.Disposable {

@@ -11,11 +11,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
-import { isDebugging, TestKind } from "../TestExplorer/TestKind";
-import { TestRunner, TestRunnerTestRunState, TestRunState } from "../TestExplorer/TestRunner";
+
 import { FolderContext } from "../FolderContext";
+import { TestKind, isDebugging } from "../TestExplorer/TestKind";
+import { TestRunState, TestRunner, TestRunnerTestRunState } from "../TestExplorer/TestRunner";
 import { colorize } from "../utilities/utilities";
 
 /**

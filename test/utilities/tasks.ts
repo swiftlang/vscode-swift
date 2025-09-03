@@ -11,12 +11,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
+import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
+
+import { SwiftTaskFixture } from "../fixtures";
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
-import { SwiftTaskFixture } from "../fixtures";
-import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
 
 export type Mutable<T> = {
     -readonly [K in keyof T]: T[K];

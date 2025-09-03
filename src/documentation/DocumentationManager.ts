@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
-import { DocumentationPreviewEditor } from "./DocumentationPreviewEditor";
+
 import { WorkspaceContext } from "../WorkspaceContext";
+import { DocumentationPreviewEditor } from "./DocumentationPreviewEditor";
 import { WebviewContent } from "./webview/WebviewMessage";
 
 export class DocumentationManager implements vscode.Disposable {

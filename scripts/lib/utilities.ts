@@ -12,13 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 /* eslint-disable no-console */
-
 import * as child_process from "child_process";
 import { copyFile, mkdtemp, readFile, rm } from "fs/promises";
-import * as path from "path";
 import * as os from "os";
-import * as semver from "semver";
+import * as path from "path";
 import { replaceInFile } from "replace-in-file";
+import * as semver from "semver";
 
 /**
  * Executes the provided main function for the script while logging any errors.

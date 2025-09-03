@@ -11,13 +11,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as assert from "assert";
-import { testSwiftTask } from "../../fixtures";
+import * as vscode from "vscode";
+
 import { WorkspaceContext } from "@src/WorkspaceContext";
-import { executeTaskAndWaitForResult, waitForStartTaskProcess } from "../../utilities/tasks";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
+
+import { testSwiftTask } from "../../fixtures";
+import { executeTaskAndWaitForResult, waitForStartTaskProcess } from "../../utilities/tasks";
 import { activateExtensionForSuite } from "../utilities/testutilities";
 
 suite("SwiftExecution Tests Suite", () => {

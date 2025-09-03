@@ -11,15 +11,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
-import * as sinon from "sinon";
-import * as TestUtils from "@src/TestExplorer/TestUtils";
 import { expect } from "chai";
+import * as sinon from "sinon";
+import * as vscode from "vscode";
+
 import { TestCodeLensProvider } from "@src/TestExplorer/TestCodeLensProvider";
 import { TestExplorer } from "@src/TestExplorer/TestExplorer";
-import { instance, mockObject } from "../../MockUtils";
+import * as TestUtils from "@src/TestExplorer/TestUtils";
 import configuration from "@src/configuration";
+
+import { instance, mockObject } from "../../MockUtils";
 
 suite("TestCodeLensProvider", () => {
     let sandbox: sinon.SinonSandbox;

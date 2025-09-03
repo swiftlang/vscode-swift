@@ -11,14 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import * as vscode from "vscode";
+
+import configuration, { ShowBuildStatusOptions } from "../configuration";
+import { SwiftExecution } from "../tasks/SwiftExecution";
+import { checkIfBuildComplete, lineBreakRegex } from "../utilities/tasks";
+import { RunningTask, StatusItem } from "./StatusItem";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
-import * as vscode from "vscode";
-import configuration, { ShowBuildStatusOptions } from "../configuration";
-import { RunningTask, StatusItem } from "./StatusItem";
-import { SwiftExecution } from "../tasks/SwiftExecution";
-import { checkIfBuildComplete, lineBreakRegex } from "../utilities/tasks";
 
 /**
  * Progress of `swift` build, parsed from the

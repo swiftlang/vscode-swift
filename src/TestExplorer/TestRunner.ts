@@ -11,39 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
+import * as asyncfs from "fs/promises";
+import * as os from "os";
 import * as path from "path";
 import * as stream from "stream";
-import * as os from "os";
-import * as asyncfs from "fs/promises";
+import * as vscode from "vscode";
+
 import { FolderContext } from "../FolderContext";
-import {
-    compactMap,
-    execFile,
-    getErrorDescription,
-    IS_RUNNING_UNDER_TEST,
-} from "../utilities/utilities";
-import { createSwiftTask } from "../tasks/SwiftTaskProvider";
-import configuration from "../configuration";
 import { WorkspaceContext } from "../WorkspaceContext";
-import {
-    IXCTestOutputParser,
-    ParallelXCTestOutputParser,
-    XCTestOutputParser,
-} from "./TestParsers/XCTestOutputParser";
-import {
-    SwiftTestingOutputParser,
-    SymbolRenderer,
-    TestSymbol,
-} from "./TestParsers/SwiftTestingOutputParser";
-import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
-import { TaskOperation } from "../tasks/TaskQueue";
-import { TestXUnitParser } from "./TestXUnitParser";
-import { ITestRunState, TestIssueDiff } from "./TestParsers/TestRunState";
-import { TestRunArguments } from "./TestRunArguments";
-import { TemporaryFolder } from "../utilities/tempFolder";
-import { TestClass, runnableTag, upsertTestItem } from "./TestDiscovery";
+import configuration from "../configuration";
 import { TestCoverage } from "../coverage/LcovResults";
 import {
     BuildConfigurationFactory,
@@ -51,15 +27,40 @@ import {
     SwiftTestingConfigurationSetup,
     TestingConfigurationFactory,
 } from "../debugger/buildConfig";
-import { TestKind, isDebugging, isRelease } from "./TestKind";
-import { reduceTestItemChildren } from "./TestUtils";
+import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
+import { createSwiftTask } from "../tasks/SwiftTaskProvider";
+import { TaskOperation } from "../tasks/TaskQueue";
 import {
     CompositeCancellationToken,
     CompositeCancellationTokenSource,
 } from "../utilities/cancellation";
+import { packageName, resolveScope } from "../utilities/tasks";
+import { TemporaryFolder } from "../utilities/tempFolder";
+import {
+    IS_RUNNING_UNDER_TEST,
+    compactMap,
+    execFile,
+    getErrorDescription,
+} from "../utilities/utilities";
+import { TestClass, runnableTag, upsertTestItem } from "./TestDiscovery";
+import { TestKind, isDebugging, isRelease } from "./TestKind";
+import {
+    SwiftTestingOutputParser,
+    SymbolRenderer,
+    TestSymbol,
+} from "./TestParsers/SwiftTestingOutputParser";
+import { ITestRunState, TestIssueDiff } from "./TestParsers/TestRunState";
+import {
+    IXCTestOutputParser,
+    ParallelXCTestOutputParser,
+    XCTestOutputParser,
+} from "./TestParsers/XCTestOutputParser";
+import { TestRunArguments } from "./TestRunArguments";
+import { reduceTestItemChildren } from "./TestUtils";
+import { TestXUnitParser } from "./TestXUnitParser";
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
-import { packageName, resolveScope } from "../utilities/tasks";
 
 export enum TestLibrary {
     xctest = "XCTest",

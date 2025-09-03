@@ -11,15 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
+import { WorkspaceContext } from "../WorkspaceContext";
+import configuration from "../configuration";
 import {
     DarwinCompatibleTarget,
     SwiftToolchain,
     getDarwinTargetTriple,
 } from "../toolchain/toolchain";
-import configuration from "../configuration";
-import { WorkspaceContext } from "../WorkspaceContext";
 
 /**
  * Switches the appropriate SDK setting to the platform selected in a QuickPick UI.

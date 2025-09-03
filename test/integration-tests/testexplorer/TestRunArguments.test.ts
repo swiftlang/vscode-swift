@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as assert from "assert";
-import { beforeEach, afterEach } from "mocha";
+import { afterEach, beforeEach } from "mocha";
+import * as vscode from "vscode";
+
 import { TestRunArguments } from "@src/TestExplorer/TestRunArguments";
 import { flattenTestItemCollection } from "@src/TestExplorer/TestUtils";
 

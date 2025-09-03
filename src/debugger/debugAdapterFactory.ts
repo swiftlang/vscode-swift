@@ -11,18 +11,18 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as path from "path";
+import * as vscode from "vscode";
+
 import { WorkspaceContext } from "../WorkspaceContext";
-import { DebugAdapter, LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
-import { registerLoggingDebugAdapterTracker } from "./logTracker";
-import { SwiftToolchain } from "../toolchain/toolchain";
-import { fileExists } from "../utilities/filesystem";
-import { updateLaunchConfigForCI, getLLDBLibPath } from "./lldb";
-import { getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
+import { SwiftToolchain } from "../toolchain/toolchain";
+import { fileExists } from "../utilities/filesystem";
+import { getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
+import { DebugAdapter, LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
+import { getLLDBLibPath, updateLaunchConfigForCI } from "./lldb";
+import { registerLoggingDebugAdapterTracker } from "./logTracker";
 
 /**
  * Registers the active debugger with the extension, and reregisters it

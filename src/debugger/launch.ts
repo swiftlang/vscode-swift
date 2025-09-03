@@ -11,16 +11,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as path from "path";
-import * as vscode from "vscode";
 import { isDeepStrictEqual } from "util";
+import * as vscode from "vscode";
+
 import { FolderContext } from "../FolderContext";
+import configuration from "../configuration";
 import { BuildFlags } from "../toolchain/BuildFlags";
 import { stringArrayInEnglish } from "../utilities/utilities";
-import { SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
 import { getFolderAndNameSuffix } from "./buildConfig";
-import configuration from "../configuration";
+import { SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
 
 /** Options used to configure {@link makeDebugConfigurations}. */
 export interface WriteLaunchConfigurationsOptions {

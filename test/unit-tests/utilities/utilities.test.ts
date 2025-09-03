@@ -11,19 +11,19 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { expect } from "chai";
+import { Range } from "vscode";
+
 import {
-    getRepositoryName,
-    stringArrayInEnglish,
-    regexEscapedString,
-    hashString,
     getErrorDescription,
-    swiftPlatformLibraryPathKey,
+    getRepositoryName,
+    hashString,
+    regexEscapedString,
     runtimeEnv,
     sourceLocationToVSCodeLocation,
+    stringArrayInEnglish,
+    swiftPlatformLibraryPathKey,
 } from "@src/utilities/utilities";
-import { Range } from "vscode";
 
 suite("Utilities Unit Test Suite", () => {
     suite("getRepositoryName", () => {

@@ -11,15 +11,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
-import { getBuildAllTask } from "./tasks/SwiftTaskProvider";
-import configuration from "./configuration";
+
 import { FolderContext } from "./FolderContext";
+import configuration from "./configuration";
+import { getBuildAllTask } from "./tasks/SwiftTaskProvider";
 import { TaskOperation } from "./tasks/TaskQueue";
+import { validFileTypes } from "./utilities/filesystem";
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import debounce = require("lodash.debounce");
-import { validFileTypes } from "./utilities/filesystem";
 
 export class BackgroundCompilation implements vscode.Disposable {
     private workspaceFileWatcher?: vscode.FileSystemWatcher;

@@ -11,8 +11,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
 import { DocumentParser } from "./DocumentParser";
 
 function isLineComment(document: vscode.TextDocument, line: number): boolean {

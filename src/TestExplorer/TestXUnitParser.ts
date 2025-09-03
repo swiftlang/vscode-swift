@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as xml2js from "xml2js";
-import { ITestRunState } from "./TestParsers/TestRunState";
+
 import { SwiftLogger } from "../logging/SwiftLogger";
+import { ITestRunState } from "./TestParsers/TestRunState";
 
 export interface TestResults {
     tests: number;

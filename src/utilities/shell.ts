@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { execFile } from "./utilities";
 
 // use `type swift` to find `swift`. Run inside /bin/sh to ensure

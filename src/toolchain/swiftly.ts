@@ -11,20 +11,20 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as path from "path";
-import { SwiftlyConfig } from "./ToolchainVersion";
-import * as fs from "fs/promises";
 import * as fsSync from "fs";
+import * as fs from "fs/promises";
 import * as os from "os";
+import * as path from "path";
 import * as readline from "readline";
 import * as Stream from "stream";
-import { execFile, ExecFileError, execFileStreamOutput } from "../utilities/utilities";
 import * as vscode from "vscode";
-import { Version } from "../utilities/version";
 import { z } from "zod/v4/mini";
+
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { findBinaryPath } from "../utilities/shell";
+import { ExecFileError, execFile, execFileStreamOutput } from "../utilities/utilities";
+import { Version } from "../utilities/version";
+import { SwiftlyConfig } from "./ToolchainVersion";
 
 const ListResult = z.object({
     toolchains: z.array(

@@ -11,11 +11,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
+import { join } from "path";
+
 import { SwiftOutputChannel } from "@src/logging/SwiftOutputChannel";
 import { TemporaryFolder } from "@src/utilities/tempFolder";
-import { join } from "path";
 
 suite("SwiftOutputChannel", function () {
     let channel: SwiftOutputChannel;

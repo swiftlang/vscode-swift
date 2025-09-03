@@ -11,20 +11,21 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as assert from "assert";
 import { afterEach } from "mocha";
+import * as vscode from "vscode";
+
+import { WorkspaceContext } from "@src/WorkspaceContext";
+
+import { testAssetUri } from "../fixtures";
+import { tag } from "../tags";
+import { assertContains } from "./testexplorer/utilities";
 import {
     activateExtension,
     activateExtensionForSuite,
     activateExtensionForTest,
     deactivateExtension,
 } from "./utilities/testutilities";
-import { WorkspaceContext } from "@src/WorkspaceContext";
-import { testAssetUri } from "../fixtures";
-import { assertContains } from "./testexplorer/utilities";
-import { tag } from "../tags";
 
 suite("Extension Activation/Deactivation Tests", () => {
     suite("Extension Activation", () => {

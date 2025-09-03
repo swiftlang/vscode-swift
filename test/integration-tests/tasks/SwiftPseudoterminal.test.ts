@@ -11,12 +11,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
 import * as vscode from "vscode";
+
+import { SwiftPseudoterminal } from "@src/tasks/SwiftPseudoterminal";
+
 import { TestSwiftProcess } from "../../fixtures";
 import { waitForClose, waitForWrite } from "../../utilities/tasks";
-import { SwiftPseudoterminal } from "@src/tasks/SwiftPseudoterminal";
 
 suite("SwiftPseudoterminal Tests Suite", () => {
     test("Close event handler fires", async () => {

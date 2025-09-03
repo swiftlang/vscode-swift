@@ -11,8 +11,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import { SinonStub, stub } from "sinon";
 import * as vscode from "vscode";
-import { stub, SinonStub } from "sinon";
 
 /**
  * Waits for all promises returned by a MockedFunction to resolve. Useful when

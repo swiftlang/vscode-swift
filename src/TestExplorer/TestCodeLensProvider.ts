@@ -11,11 +11,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
+import configuration, { ValidCodeLens } from "../configuration";
 import { TestExplorer } from "./TestExplorer";
 import { flattenTestItemCollection } from "./TestUtils";
-import configuration, { ValidCodeLens } from "../configuration";
 
 export class TestCodeLensProvider implements vscode.CodeLensProvider, vscode.Disposable {
     private onDidChangeCodeLensesEmitter = new vscode.EventEmitter<void>();

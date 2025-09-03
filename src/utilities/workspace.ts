@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
-import { globDirectory, pathExists } from "./filesystem";
 import { basename } from "path";
+import * as vscode from "vscode";
+
+import { globDirectory, pathExists } from "./filesystem";
 
 export async function searchForPackages(
     folder: vscode.Uri,

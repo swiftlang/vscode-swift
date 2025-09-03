@@ -11,13 +11,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import { Location, MarkdownString } from "vscode";
 
-import { ITestRunState, TestIssueDiff } from "./TestRunState";
+import { lineBreakRegex } from "../../utilities/tasks";
 import { sourceLocationToVSCodeLocation } from "../../utilities/utilities";
-import { MarkdownString, Location } from "vscode";
+import { ITestRunState, TestIssueDiff } from "./TestRunState";
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
-import { lineBreakRegex } from "../../utilities/tasks";
 
 /** Regex for parsing XCTest output */
 interface TestRegex {

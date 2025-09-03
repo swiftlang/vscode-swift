@@ -11,8 +11,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
+
 import { parseTestsFromSwiftTestListOutput } from "@src/TestExplorer/SPMTestDiscovery";
 import { TestClass } from "@src/TestExplorer/TestDiscovery";
 

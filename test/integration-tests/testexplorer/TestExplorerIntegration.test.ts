@@ -11,13 +11,35 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
-import * as vscode from "vscode";
-import * as path from "path";
 import * as fs from "fs";
-import { beforeEach, afterEach } from "mocha";
+import { afterEach, beforeEach } from "mocha";
+import * as path from "path";
+import * as vscode from "vscode";
+
+import { FolderContext } from "@src/FolderContext";
+import { runnableTag } from "@src/TestExplorer/TestDiscovery";
 import { TestExplorer } from "@src/TestExplorer/TestExplorer";
+import { TestKind } from "@src/TestExplorer/TestKind";
+import {
+    MessageRenderer,
+    TestSymbol,
+} from "@src/TestExplorer/TestParsers/SwiftTestingOutputParser";
+import { flattenTestItemCollection, reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { Commands } from "@src/commands";
+import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+import { lineBreakRegex } from "@src/utilities/tasks";
+import { randomString } from "@src/utilities/utilities";
+import { Version } from "@src/utilities/version";
+
+import { tag } from "../../tags";
+import { executeTaskAndWaitForResult } from "../../utilities/tasks";
+import {
+    activateExtensionForSuite,
+    folderInRootWorkspace,
+    updateSettings,
+} from "../utilities/testutilities";
 import {
     assertContains,
     assertContainsTrimmed,
@@ -29,27 +51,6 @@ import {
     runTest,
     waitForTestExplorerReady,
 } from "./utilities";
-import { WorkspaceContext } from "@src/WorkspaceContext";
-import { Version } from "@src/utilities/version";
-import { TestKind } from "@src/TestExplorer/TestKind";
-import {
-    MessageRenderer,
-    TestSymbol,
-} from "@src/TestExplorer/TestParsers/SwiftTestingOutputParser";
-import { flattenTestItemCollection, reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
-import { runnableTag } from "@src/TestExplorer/TestDiscovery";
-import {
-    activateExtensionForSuite,
-    folderInRootWorkspace,
-    updateSettings,
-} from "../utilities/testutilities";
-import { Commands } from "@src/commands";
-import { executeTaskAndWaitForResult } from "../../utilities/tasks";
-import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
-import { FolderContext } from "@src/FolderContext";
-import { lineBreakRegex } from "@src/utilities/tasks";
-import { randomString } from "@src/utilities/utilities";
-import { tag } from "../../tags";
 
 tag("large").suite("Test Explorer Suite", function () {
     let workspaceContext: WorkspaceContext;

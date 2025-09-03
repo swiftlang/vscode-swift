@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { FolderOperation, WorkspaceContext } from "../../WorkspaceContext";
 
 export function updateDependenciesViewList(ctx: WorkspaceContext, flatList: boolean) {

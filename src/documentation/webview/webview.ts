@@ -12,11 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 /* eslint-disable @typescript-eslint/no-floating-promises */
-
-import { RenderNode, WebviewContent, WebviewMessage } from "./WebviewMessage";
 import { createCommunicationBridge } from "./CommunicationBridge";
 import { ErrorMessage } from "./ErrorMessage";
 import { ThemeObserver } from "./ThemeObserver";
+import { RenderNode, WebviewContent, WebviewMessage } from "./WebviewMessage";
 
 // Remove VS Code's default styles as they conflict with swift-docc-render
 document.getElementById("_defaultStyles")?.remove();

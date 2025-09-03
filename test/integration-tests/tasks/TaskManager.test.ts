@@ -11,11 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as assert from "assert";
-import { TaskManager } from "@src/tasks/TaskManager";
+import * as vscode from "vscode";
+
 import { WorkspaceContext } from "@src/WorkspaceContext";
+import { TaskManager } from "@src/tasks/TaskManager";
+
 import { activateExtensionForSuite } from "../utilities/testutilities";
 
 suite("TaskManager Test Suite", () => {

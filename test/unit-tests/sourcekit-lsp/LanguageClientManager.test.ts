@@ -11,26 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
-import * as path from "path";
 import { expect } from "chai";
+import * as path from "path";
 import { match } from "sinon";
-import { FolderEvent, FolderOperation, WorkspaceContext } from "@src/WorkspaceContext";
-import { Version } from "@src/utilities/version";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
-import { BuildFlags } from "@src/toolchain/BuildFlags";
-import {
-    MockedObject,
-    mockObject,
-    instance,
-    mockGlobalModule,
-    waitForReturnedPromises,
-    AsyncEventEmitter,
-    mockGlobalObject,
-    mockGlobalValue,
-    mockFn,
-} from "../../MockUtils";
+import * as vscode from "vscode";
 import {
     Code2ProtocolConverter,
     DidChangeWorkspaceFoldersNotification,
@@ -40,19 +24,36 @@ import {
     State,
     StateChangeEvent,
 } from "vscode-languageclient/node";
+
+import { FolderContext } from "@src/FolderContext";
+import { FolderEvent, FolderOperation, WorkspaceContext } from "@src/WorkspaceContext";
+import configuration from "@src/configuration";
+import { SwiftLogger } from "@src/logging/SwiftLogger";
+import { SwiftLoggerFactory } from "@src/logging/SwiftLoggerFactory";
+import { SwiftOutputChannel } from "@src/logging/SwiftOutputChannel";
+import { LanguageClientFactory } from "@src/sourcekit-lsp/LanguageClientFactory";
 import { LanguageClientManager } from "@src/sourcekit-lsp/LanguageClientManager";
 import { LanguageClientToolchainCoordinator } from "@src/sourcekit-lsp/LanguageClientToolchainCoordinator";
-import configuration from "@src/configuration";
-import { FolderContext } from "@src/FolderContext";
-import { LanguageClientFactory } from "@src/sourcekit-lsp/LanguageClientFactory";
 import { LSPActiveDocumentManager } from "@src/sourcekit-lsp/didChangeActiveDocument";
 import {
     DidChangeActiveDocumentNotification,
     DidChangeActiveDocumentParams,
 } from "@src/sourcekit-lsp/extensions/DidChangeActiveDocumentRequest";
-import { SwiftLogger } from "@src/logging/SwiftLogger";
-import { SwiftOutputChannel } from "@src/logging/SwiftOutputChannel";
-import { SwiftLoggerFactory } from "@src/logging/SwiftLoggerFactory";
+import { BuildFlags } from "@src/toolchain/BuildFlags";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { Version } from "@src/utilities/version";
+
+import {
+    AsyncEventEmitter,
+    MockedObject,
+    instance,
+    mockFn,
+    mockGlobalModule,
+    mockGlobalObject,
+    mockGlobalValue,
+    mockObject,
+    waitForReturnedPromises,
+} from "../../MockUtils";
 
 suite("LanguageClientManager Suite", () => {
     let languageClientFactoryMock: MockedObject<LanguageClientFactory>;

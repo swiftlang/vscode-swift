@@ -11,22 +11,23 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as util from "@src/utilities/utilities";
-import * as lldb from "@src/debugger/lldb";
+import { expect } from "chai";
 import * as fs from "fs/promises";
 import * as sinon from "sinon";
-import { expect } from "chai";
+
+import * as lldb from "@src/debugger/lldb";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
+import * as util from "@src/utilities/utilities";
+
 import {
-    instance,
+    MockedFunction,
     MockedObject,
+    instance,
     mockFn,
     mockGlobalModule,
-    mockObject,
-    MockedFunction,
     mockGlobalValue,
+    mockObject,
 } from "../../MockUtils";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
 
 suite("debugger.lldb Tests", () => {
     suite("getLLDBLibPath Tests", () => {

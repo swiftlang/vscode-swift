@@ -11,12 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { join } from "path";
 import * as vscode from "vscode";
+
 import { TemporaryFolder } from "../utilities/tempFolder";
-import { SwiftOutputChannel } from "./SwiftOutputChannel";
 import { SwiftLogger } from "./SwiftLogger";
+import { SwiftOutputChannel } from "./SwiftOutputChannel";
 
 export class SwiftLoggerFactory {
     constructor(public readonly logFolderUri: vscode.Uri) {}

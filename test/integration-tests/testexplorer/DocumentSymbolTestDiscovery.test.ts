@@ -11,9 +11,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
 import * as vscode from "vscode";
+
 import { parseTestsFromDocumentSymbols } from "@src/TestExplorer/DocumentSymbolTestDiscovery";
 import { TestClass } from "@src/TestExplorer/TestDiscovery";
 

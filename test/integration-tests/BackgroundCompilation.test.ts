@@ -11,14 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
 import * as vscode from "vscode";
+
 import { WorkspaceContext } from "@src/WorkspaceContext";
+
 import { testAssetUri } from "../fixtures";
-import { activateExtensionForTest, updateSettings } from "./utilities/testutilities";
-import { closeAllEditors } from "../utilities/commands";
 import { tag } from "../tags";
+import { closeAllEditors } from "../utilities/commands";
+import { activateExtensionForTest, updateSettings } from "./utilities/testutilities";
 
 tag("large").suite("BackgroundCompilation Test Suite", () => {
     let workspaceContext: WorkspaceContext;

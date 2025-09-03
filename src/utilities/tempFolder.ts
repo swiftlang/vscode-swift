@@ -11,12 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
+import * as fs from "fs/promises";
 import { tmpdir } from "os";
 import * as path from "path";
-import * as fs from "fs/promises";
-import { randomString } from "./utilities";
 import { Disposable } from "vscode";
+
+import { randomString } from "./utilities";
 
 export class TemporaryFolder {
     private constructor(public path: string) {}

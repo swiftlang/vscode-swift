@@ -12,21 +12,23 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import configuration from "@src/configuration";
 import * as vscode from "vscode";
-import {
-    mockGlobalValue,
-    mockGlobalObject,
-    mockObject,
-    MockedObject,
-    mockGlobalEvent,
-    instance,
-    mockFn,
-} from "../../MockUtils";
+
+import configuration from "@src/configuration";
 import { SwiftExecution } from "@src/tasks/SwiftExecution";
-import { TestSwiftProcess } from "../../fixtures";
 import { StatusItem } from "@src/ui/StatusItem";
 import { SwiftBuildStatus } from "@src/ui/SwiftBuildStatus";
+
+import {
+    MockedObject,
+    instance,
+    mockFn,
+    mockGlobalEvent,
+    mockGlobalObject,
+    mockGlobalValue,
+    mockObject,
+} from "../../MockUtils";
+import { TestSwiftProcess } from "../../fixtures";
 
 suite("SwiftBuildStatus Unit Test Suite", function () {
     const windowMock = mockGlobalObject(vscode, "window");

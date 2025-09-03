@@ -11,12 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import { contains } from "micromatch";
+import { Options, convertPathToPattern, glob as fastGlob } from "fast-glob";
 import * as fs from "fs/promises";
+import { contains } from "micromatch";
 import * as path from "path";
 import * as vscode from "vscode";
-import { convertPathToPattern, glob as fastGlob, Options } from "fast-glob";
+
 import configuration from "../configuration";
 
 export const validFileTypes = ["swift", "c", "cpp", "h", "hpp", "m", "mm"];

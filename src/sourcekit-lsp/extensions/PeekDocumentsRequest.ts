@@ -11,15 +11,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 // We use namespaces to store request information just like vscode-languageclient
 /* eslint-disable @typescript-eslint/no-namespace */
-
 import {
     DocumentUri,
-    Position,
     Location,
     MessageDirection,
+    Position,
     RequestType,
 } from "vscode-languageclient";
 

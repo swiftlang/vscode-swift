@@ -11,9 +11,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { expect } from "chai";
 import * as vscode from "vscode";
+
 import { uriConverters } from "@src/sourcekit-lsp/uriConverters";
 
 /// Check that decoding the given URI string and re-encoding it results in the original string and that the decoded Uri

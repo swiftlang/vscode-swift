@@ -11,18 +11,18 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
-import * as TestDiscovery from "./TestDiscovery";
+import { LanguageClient } from "vscode-languageclient/node";
+
+import { SwiftPackage } from "../SwiftPackage";
+import { checkExperimentalCapability } from "../sourcekit-lsp/LanguageClientManager";
+import { LanguageClientManager } from "../sourcekit-lsp/LanguageClientManager";
 import {
     LSPTestItem,
     TextDocumentTestsRequest,
     WorkspaceTestsRequest,
 } from "../sourcekit-lsp/extensions";
-import { checkExperimentalCapability } from "../sourcekit-lsp/LanguageClientManager";
-import { SwiftPackage } from "../SwiftPackage";
-import { LanguageClientManager } from "../sourcekit-lsp/LanguageClientManager";
-import { LanguageClient } from "vscode-languageclient/node";
+import * as TestDiscovery from "./TestDiscovery";
 
 /**
  * Used to augment test discovery via `swift test --list-tests`.

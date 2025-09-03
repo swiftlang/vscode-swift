@@ -11,21 +11,21 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
-import { WorkspaceContext } from "../WorkspaceContext";
+
 import { FolderContext } from "../FolderContext";
-import { isAutomatic, Product } from "../SwiftPackage";
+import { Product, isAutomatic } from "../SwiftPackage";
+import { WorkspaceContext } from "../WorkspaceContext";
 import configuration, {
     ShowBuildStatusOptions,
     substituteVariablesInString,
 } from "../configuration";
+import { BuildConfigurationFactory } from "../debugger/buildConfig";
+import { SwiftExecution } from "../tasks/SwiftExecution";
+import { SwiftToolchain } from "../toolchain/toolchain";
+import { getPlatformConfig, packageName, resolveScope, resolveTaskCwd } from "../utilities/tasks";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { Version } from "../utilities/version";
-import { SwiftToolchain } from "../toolchain/toolchain";
-import { SwiftExecution } from "../tasks/SwiftExecution";
-import { getPlatformConfig, packageName, resolveScope, resolveTaskCwd } from "../utilities/tasks";
-import { BuildConfigurationFactory } from "../debugger/buildConfig";
 
 /**
  * References:

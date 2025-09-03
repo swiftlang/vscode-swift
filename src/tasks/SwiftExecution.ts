@@ -11,8 +11,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
 import { ReadOnlySwiftProcess, SwiftProcess, SwiftPtyProcess } from "./SwiftProcess";
 import { SwiftPseudoterminal } from "./SwiftPseudoterminal";
 

@@ -11,19 +11,20 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
+import { expect } from "chai";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { expect } from "chai";
-import { testAssetUri } from "../../fixtures";
+import * as vscode from "vscode";
+
 import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { Commands } from "@src/commands";
+import { Version } from "@src/utilities/version";
+
+import { testAssetUri } from "../../fixtures";
+import { tag } from "../../tags";
 import { continueSession, waitForDebugAdapterRequest } from "../../utilities/debug";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
-import { Version } from "@src/utilities/version";
-import { tag } from "../../tags";
 
 tag("large").suite("Build Commands", function () {
     let folderContext: FolderContext;

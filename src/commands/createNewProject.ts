@@ -11,11 +11,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as fs from "fs/promises";
+import * as vscode from "vscode";
+
 import configuration from "../configuration";
-import { SwiftToolchain, SwiftProjectTemplate } from "../toolchain/toolchain";
+import { SwiftProjectTemplate, SwiftToolchain } from "../toolchain/toolchain";
 import { showToolchainError } from "../ui/ToolchainSelection";
 import { withDelayedProgress } from "../ui/withDelayedProgress";
 import { execSwift } from "../utilities/utilities";

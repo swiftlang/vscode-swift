@@ -11,14 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as assert from "assert";
-import { testAssetPath } from "../../fixtures";
+import * as vscode from "vscode";
+
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { SwiftExecOperation, TaskOperation, TaskQueue } from "@src/tasks/TaskQueue";
-import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
+
+import { testAssetPath } from "../../fixtures";
 import { tag } from "../../tags";
+import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
 
 suite("TaskQueue Test Suite", () => {
     let workspaceContext: WorkspaceContext;

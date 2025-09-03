@@ -11,22 +11,22 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as path from "path";
+import * as vscode from "vscode";
+
+import { BackgroundCompilation } from "./BackgroundCompilation";
 import { LinuxMain } from "./LinuxMain";
 import { PackageWatcher } from "./PackageWatcher";
 import { SwiftPackage, Target, TargetType } from "./SwiftPackage";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { TestRunManager } from "./TestExplorer/TestRunManager";
-import { WorkspaceContext, FolderOperation } from "./WorkspaceContext";
-import { BackgroundCompilation } from "./BackgroundCompilation";
-import { TaskQueue } from "./tasks/TaskQueue";
-import { isPathInsidePath } from "./utilities/filesystem";
-import { SwiftToolchain } from "./toolchain/toolchain";
-import { SwiftLogger } from "./logging/SwiftLogger";
 import { TestRunProxy } from "./TestExplorer/TestRunner";
+import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
+import { SwiftLogger } from "./logging/SwiftLogger";
+import { TaskQueue } from "./tasks/TaskQueue";
+import { SwiftToolchain } from "./toolchain/toolchain";
 import { showToolchainError } from "./ui/ToolchainSelection";
+import { isPathInsidePath } from "./utilities/filesystem";
 
 export class FolderContext implements vscode.Disposable {
     public backgroundCompilation: BackgroundCompilation;

@@ -11,12 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as os from "os";
 import * as path from "path";
-import { showReloadExtensionNotification } from "./ui/ReloadExtension";
+import * as vscode from "vscode";
+
 import { WorkspaceContext } from "./WorkspaceContext";
+import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 
 export type DebugAdapters = "auto" | "lldb-dap" | "CodeLLDB";
 export type SetupCodeLLDBOptions =

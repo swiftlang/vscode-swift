@@ -1986,6 +1986,7 @@
     "**/*": "prettier --write --ignore-unknown"
   },
   "devDependencies": {
+    "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@types/archiver": "^6.0.3",
     "@types/chai": "^4.3.19",
     "@types/chai-as-promised": "^7.1.8",

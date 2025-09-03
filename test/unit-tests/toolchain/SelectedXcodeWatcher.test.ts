@@ -11,23 +11,24 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import { expect } from "chai";
+import * as vscode from "vscode";
+
+import { Commands } from "@src/commands";
+import configuration from "@src/configuration";
+import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { SelectedXcodeWatcher } from "@src/toolchain/SelectedXcodeWatcher";
+import * as ReloadExtension from "@src/ui/ReloadExtension";
+
 import {
-    instance,
     MockedObject,
+    instance,
     mockFn,
+    mockGlobalModule,
     mockGlobalObject,
     mockGlobalValue,
     mockObject,
-    mockGlobalModule,
 } from "../../MockUtils";
-import configuration from "@src/configuration";
-import { Commands } from "@src/commands";
-import { SwiftLogger } from "@src/logging/SwiftLogger";
-import * as ReloadExtension from "@src/ui/ReloadExtension";
 
 suite("Selected Xcode Watcher", () => {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");

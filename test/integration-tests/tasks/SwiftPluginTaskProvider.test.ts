@@ -11,27 +11,28 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as assert from "assert";
-import { beforeEach, afterEach } from "mocha";
 import { expect } from "chai";
-import { WorkspaceContext } from "@src/WorkspaceContext";
-import { SwiftPluginTaskProvider } from "@src/tasks/SwiftPluginTaskProvider";
+import { afterEach, beforeEach } from "mocha";
+import * as vscode from "vscode";
+
 import { FolderContext } from "@src/FolderContext";
-import {
-    activateExtensionForSuite,
-    folderInRootWorkspace,
-    updateSettings,
-} from "../utilities/testutilities";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { SwiftExecution } from "@src/tasks/SwiftExecution";
+import { SwiftPluginTaskProvider } from "@src/tasks/SwiftPluginTaskProvider";
+import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
+
 import {
     cleanOutput,
     executeTaskAndWaitForResult,
     waitForEndTaskProcess,
 } from "../../utilities/tasks";
 import { mutable } from "../../utilities/types";
-import { SwiftExecution } from "@src/tasks/SwiftExecution";
-import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
+import {
+    activateExtensionForSuite,
+    folderInRootWorkspace,
+    updateSettings,
+} from "../utilities/testutilities";
 
 suite("SwiftPluginTaskProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;

@@ -11,8 +11,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
 import { SwiftLogger } from "./SwiftLogger";
 
 export class SwiftOutputChannel extends SwiftLogger implements vscode.OutputChannel {

@@ -11,10 +11,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 // We use namespaces to store request information just like vscode-languageclient
 /* eslint-disable @typescript-eslint/no-namespace */
-
 import { LogMessageParams, MessageDirection, NotificationType } from "vscode-languageclient";
 
 /** Parameters sent in a {@link SourceKitLogMessageNotification}. */

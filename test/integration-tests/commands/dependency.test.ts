@@ -11,17 +11,18 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { expect } from "chai";
 import * as vscode from "vscode";
-import { PackageNode, ProjectPanelProvider } from "@src/ui/ProjectPanelProvider";
-import { testAssetUri } from "../../fixtures";
+
 import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { Commands } from "@src/commands";
-import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
-import { waitForNoRunningTasks } from "../../utilities/tasks";
+import { PackageNode, ProjectPanelProvider } from "@src/ui/ProjectPanelProvider";
+
+import { testAssetUri } from "../../fixtures";
 import { tag } from "../../tags";
+import { waitForNoRunningTasks } from "../../utilities/tasks";
+import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
 
 tag("large").suite("Dependency Commmands Test Suite", function () {
     let depsContext: FolderContext;

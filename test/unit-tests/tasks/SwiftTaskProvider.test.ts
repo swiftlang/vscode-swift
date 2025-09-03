@@ -11,12 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as assert from "assert";
 import * as os from "os";
 import { match } from "sinon";
+import * as vscode from "vscode";
+
+import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
+import configuration from "@src/configuration";
+import { SwiftExecution } from "@src/tasks/SwiftExecution";
 import {
     SwiftTaskProvider,
     buildOptions,
@@ -24,21 +27,19 @@ import {
     getBuildAllTask,
     platformDebugBuildOptions,
 } from "@src/tasks/SwiftTaskProvider";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
-import { SwiftExecution } from "@src/tasks/SwiftExecution";
-import { Version } from "@src/utilities/version";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
+import { Sanitizer } from "@src/toolchain/Sanitizer";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { Version } from "@src/utilities/version";
+
 import {
-    mockObject,
-    mockGlobalObject,
-    mockGlobalValue,
     MockedObject,
     instance,
     mockFn,
+    mockGlobalObject,
+    mockGlobalValue,
+    mockObject,
 } from "../../MockUtils";
-import configuration from "@src/configuration";
-import { Sanitizer } from "@src/toolchain/Sanitizer";
-import { FolderContext } from "@src/FolderContext";
 
 suite("SwiftTaskProvider Unit Test Suite", () => {
     let workspaceContext: MockedObject<WorkspaceContext>;

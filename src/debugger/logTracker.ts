@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
-import { LaunchConfigType } from "./debugAdapter";
+
 import { SwiftLogger } from "../logging/SwiftLogger";
+import { LaunchConfigType } from "./debugAdapter";
 
 /**
  * Factory class for building LoggingDebugAdapterTracker

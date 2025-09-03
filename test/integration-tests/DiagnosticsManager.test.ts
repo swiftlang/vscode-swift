@@ -11,29 +11,30 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
+import { expect } from "chai";
 import * as vscode from "vscode";
+
+import { DiagnosticsManager } from "@src/DiagnosticsManager";
+import { FolderContext } from "@src/FolderContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { DiagnosticStyle } from "@src/configuration";
+import { createBuildAllTask, resetBuildAllTaskCache } from "@src/tasks/SwiftTaskProvider";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { Version } from "@src/utilities/version";
+
+import { testAssetUri, testSwiftTask } from "../fixtures";
+import { tag } from "../tags";
 import {
     executeTaskAndWaitForResult,
     waitForNoRunningTasks,
     waitForStartTaskProcess,
 } from "../utilities/tasks";
-import { WorkspaceContext } from "@src/WorkspaceContext";
-import { testAssetUri, testSwiftTask } from "../fixtures";
-import { createBuildAllTask, resetBuildAllTaskCache } from "@src/tasks/SwiftTaskProvider";
-import { DiagnosticsManager } from "@src/DiagnosticsManager";
-import { FolderContext } from "@src/FolderContext";
-import { Version } from "@src/utilities/version";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
     updateSettings,
 } from "./utilities/testutilities";
-import { DiagnosticStyle } from "@src/configuration";
-import { expect } from "chai";
-import { tag } from "../tags";
 
 const isEqual = (d1: vscode.Diagnostic, d2: vscode.Diagnostic) => {
     return (

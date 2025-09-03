@@ -11,22 +11,23 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import { expect } from "chai";
-import configuration, { FolderConfiguration } from "@src/configuration";
-import { makeDebugConfigurations } from "@src/debugger/launch";
+import * as vscode from "vscode";
+
 import { FolderContext } from "@src/FolderContext";
+import { Product, SwiftPackage } from "@src/SwiftPackage";
+import configuration, { FolderConfiguration } from "@src/configuration";
+import { SWIFT_LAUNCH_CONFIG_TYPE } from "@src/debugger/debugAdapter";
+import { makeDebugConfigurations } from "@src/debugger/launch";
+
 import {
-    instance,
     MockedObject,
+    instance,
     mockFn,
     mockGlobalModule,
     mockGlobalObject,
     mockObject,
 } from "../../MockUtils";
-import { Product, SwiftPackage } from "@src/SwiftPackage";
-import { SWIFT_LAUNCH_CONFIG_TYPE } from "@src/debugger/debugAdapter";
 
 suite("Launch Configurations Test", () => {
     const mockConfiguration = mockGlobalModule(configuration);

@@ -11,14 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as path from "path";
 import { expect } from "chai";
-import { DarwinCompatibleTarget, SwiftToolchain } from "@src/toolchain/toolchain";
-import { ArgumentFilter, BuildFlags } from "@src/toolchain/BuildFlags";
-import { Version } from "@src/utilities/version";
+import * as path from "path";
+
 import configuration from "@src/configuration";
-import { mockObject, mockGlobalValue, MockedObject, instance } from "../../MockUtils";
+import { ArgumentFilter, BuildFlags } from "@src/toolchain/BuildFlags";
+import { DarwinCompatibleTarget, SwiftToolchain } from "@src/toolchain/toolchain";
+import { Version } from "@src/utilities/version";
+
+import { MockedObject, instance, mockGlobalValue, mockObject } from "../../MockUtils";
 
 suite("BuildFlags Test Suite", () => {
     const mockedPlatform = mockGlobalValue(process, "platform");

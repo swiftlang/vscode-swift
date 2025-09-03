@@ -11,12 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as fs from "fs/promises";
+import * as vscode from "vscode";
+
+import { FolderContext } from "../../FolderContext";
 import { FolderOperation, WorkspaceContext } from "../../WorkspaceContext";
 import { SwiftExecOperation } from "../../tasks/TaskQueue";
-import { FolderContext } from "../../FolderContext";
 
 /**
  * Stop local editing of package dependency

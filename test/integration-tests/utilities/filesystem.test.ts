@@ -11,9 +11,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
 import * as path from "path";
+
 import { fileExists, pathExists } from "@src/utilities/filesystem";
 
 suite("File System Utilities Test Suite", () => {

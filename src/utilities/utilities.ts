@@ -11,13 +11,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as cp from "child_process";
 import * as path from "path";
 import * as Stream from "stream";
-import configuration from "../configuration";
+import * as vscode from "vscode";
+
 import { FolderContext } from "../FolderContext";
+import configuration from "../configuration";
 import { SwiftToolchain } from "../toolchain/toolchain";
 
 /**
