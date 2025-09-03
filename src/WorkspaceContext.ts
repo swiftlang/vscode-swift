@@ -425,7 +425,8 @@ export class WorkspaceContext implements vscode.Disposable {
         const folders = await searchForPackages(
             workspaceFolder.uri,
             configuration.disableSwiftPMIntegration,
-            configuration.folder(workspaceFolder).searchSubfoldersForPackages
+            configuration.folder(workspaceFolder).searchSubfoldersForPackages,
+            this.globalToolchainSwiftVersion
         );
 
         for (const folder of folders) {
@@ -609,7 +610,7 @@ export class WorkspaceContext implements vscode.Disposable {
      * Package.swift or a CMake compile_commands.json, compile_flags.txt, or a BSP buildServer.json.
      */
     async isValidWorkspaceFolder(folder: string): Promise<boolean> {
-        return await isValidWorkspaceFolder(folder, configuration.disableSwiftPMIntegration);
+        return await isValidWorkspaceFolder(folder, configuration.disableSwiftPMIntegration, this.globalToolchainSwiftVersion);
     }
 
     /** send unfocus event to current focussed folder and clear current folder */
