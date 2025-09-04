@@ -614,6 +614,7 @@ suite("Test Explorer Suite", function () {
                     await vscode.commands.executeCommand(
                         Commands.RUN_TESTS_MULTIPLE_TIMES,
                         testItems[0],
+                        { preserveFocus: true }, // a trailing argument included on Linux
                         numIterations
                     );
 

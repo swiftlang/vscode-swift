@@ -51,9 +51,10 @@ export async function runTestMultipleTimes(
     }
     const token = new vscode.CancellationTokenSource();
     const testExplorer = currentFolder.testExplorer;
+    const request = new vscode.TestRunRequest(tests);
     const runner = new TestRunner(
         kind,
-        new vscode.TestRunRequest(tests),
+        request,
         currentFolder,
         testExplorer.controller,
         token.token
@@ -127,7 +128,9 @@ export function extractTestItemsAndCount(
                 result.count = arg ?? undefined;
                 return result;
             } else if (typeof arg === "object") {
-                result.testItems.push(arg);
+                if (arg.hasOwnProperty("id") && arg.hasOwnProperty("uri")) {
+                    result.testItems.push(arg);
+                }
                 return result;
             } else {
                 throw new Error(`Unexpected argument ${arg} at index ${index}`);
