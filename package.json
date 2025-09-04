@@ -2003,7 +2003,7 @@
     "@types/sinon": "^17.0.4",
     "@types/sinon-chai": "^3.2.12",
     "@types/svg2ttf": "^5.0.3",
-    "@types/svgicons2svgfont": "^14.0.0",
+    "@types/svgicons2svgfont": "^10.0.5",
     "@types/ttf2woff": "^2.0.4",
     "@types/vscode": "^1.88.0",
     "@types/xml2js": "^0.4.14",
