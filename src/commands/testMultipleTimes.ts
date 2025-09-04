@@ -128,7 +128,10 @@ export function extractTestItemsAndCount(
                 result.count = arg ?? undefined;
                 return result;
             } else if (typeof arg === "object") {
-                if (arg.hasOwnProperty("id") && arg.hasOwnProperty("uri")) {
+                if (
+                    Object.prototype.hasOwnProperty.call(arg, "id") &&
+                    Object.prototype.hasOwnProperty.call(arg, "uri")
+                ) {
                     result.testItems.push(arg);
                 }
                 return result;
