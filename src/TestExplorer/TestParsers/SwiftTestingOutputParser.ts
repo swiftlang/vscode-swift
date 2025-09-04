@@ -155,6 +155,8 @@ interface IssueRecorded extends BaseEvent, TestCaseEvent {
     issue: {
         isKnown: boolean;
         sourceLocation: SourceLocation;
+        isFailure?: boolean;
+        severity?: string;
     };
 }
 
@@ -162,6 +164,7 @@ export enum TestSymbol {
     default = "default",
     skip = "skip",
     passWithKnownIssue = "passWithKnownIssue",
+    passWithWarnings = "passWithWarnings",
     fail = "fail",
     pass = "pass",
     difference = "difference",
@@ -377,6 +380,10 @@ export class SwiftTestingOutputParser {
         const additionalDetails = details
             .map(message => MessageRenderer.render(message))
             .join("\n");
+
+        if (payload.issue.isFailure === false) {
+            return;
+        }
 
         issues.forEach(message => {
             runState.recordIssue(
@@ -601,6 +608,7 @@ export class SymbolRenderer {
                     return "\u{25CA}"; // Unicode: LOZENGE
                 case TestSymbol.skip:
                 case TestSymbol.passWithKnownIssue:
+                case TestSymbol.passWithWarnings:
                 case TestSymbol.fail:
                     return "\u{279C}"; // Unicode: HEAVY ROUND-TIPPED RIGHTWARDS ARROW
                 case TestSymbol.pass:
@@ -622,6 +630,7 @@ export class SymbolRenderer {
                     return "\u{25C7}"; // Unicode: WHITE DIAMOND
                 case TestSymbol.skip:
                 case TestSymbol.passWithKnownIssue:
+                case TestSymbol.passWithWarnings:
                 case TestSymbol.fail:
                     return "\u{279C}"; // Unicode: HEAVY ROUND-TIPPED RIGHTWARDS ARROW
                 case TestSymbol.pass:

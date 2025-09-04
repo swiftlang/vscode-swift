@@ -538,11 +538,17 @@ export class TestingConfigurationFactory {
             );
         }
 
+        // Starting in 6.3 the version string should match the toolchain version.
+        let versionString = "0";
+        if (this.ctx.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 3, 0))) {
+            versionString = `${this.ctx.toolchain.swiftVersion.major}.${this.ctx.toolchain.swiftVersion.minor}`;
+        }
+
         const swiftTestingArgs = [
             ...this.ctx.toolchain.buildFlags.withAdditionalFlags(args),
             "--enable-swift-testing",
-            "--event-stream-version",
-            "0",
+            "--experimental-event-stream-version",
+            versionString,
             "--event-stream-output-path",
             this.swiftTestingArguments.fifoPipePath,
         ];
