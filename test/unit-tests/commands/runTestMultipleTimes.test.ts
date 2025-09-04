@@ -19,7 +19,7 @@ import { extractTestItemsAndCount } from "../../../src/commands/testMultipleTime
 suite("Run Tests Multiple Times", () => {
     suite("extractTestItemsAndCount()", () => {
         function createDummyTestItem(label: string): vscode.TestItem {
-            return { label } as vscode.TestItem;
+            return { id: label, uri: vscode.Uri.file(`/dummy/path/${label}`) } as vscode.TestItem;
         }
 
         test("handles empty arguments", () => {
