@@ -19,6 +19,7 @@ updates:
       - dependency-name: "@vscode/vsce"
         update-types: ["version-update:semver-major"]
       - dependency-name: "@types/vscode"
+      - dependency-name: "@types/svgicons2svgfont"
       - dependency-name: "octokit"
         update-types: ["version-update:semver-major"]
     groups:
