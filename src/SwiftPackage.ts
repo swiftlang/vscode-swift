@@ -11,16 +11,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { execSwift, getErrorDescription, hashString } from "./utilities/utilities";
-import { isPathInsidePath } from "./utilities/filesystem";
-import { SwiftToolchain } from "./toolchain/toolchain";
-import { BuildFlags } from "./toolchain/BuildFlags";
-import { lineBreakRegex } from "./utilities/tasks";
+import * as vscode from "vscode";
+
 import { SwiftLogger } from "./logging/SwiftLogger";
+import { BuildFlags } from "./toolchain/BuildFlags";
+import { SwiftToolchain } from "./toolchain/toolchain";
+import { isPathInsidePath } from "./utilities/filesystem";
+import { lineBreakRegex } from "./utilities/tasks";
+import { execSwift, getErrorDescription, hashString } from "./utilities/utilities";
 
 /** Swift Package Manager contents */
 interface PackageContents {
@@ -75,9 +75,8 @@ export class PackageResolved {
     readonly version: number;
 
     constructor(fileContents: string) {
-        const json = JSON.parse(fileContents);
-        const version = <{ version: number }>json;
-        this.version = version.version;
+        const json = JSON.parse(fileContents) as { version: number };
+        this.version = json.version;
         this.fileHash = hashString(fileContents);
 
         if (this.version === 1) {

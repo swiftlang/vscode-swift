@@ -11,28 +11,29 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import { expect } from "chai";
-import { FolderContext } from "../../../src/FolderContext";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { Commands } from "../../../src/commands";
-import {
-    activateExtensionForSuite,
-    folderInRootWorkspace,
-    updateSettings,
-} from "../utilities/testutilities";
-import { closeAllEditors } from "../../utilities/commands";
+import * as vscode from "vscode";
+
+import { FolderContext } from "@src/FolderContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { Commands } from "@src/commands";
 import {
     determineSchemaURL,
     handleConfigFileChange,
     handleSchemaUpdate,
     sourcekitConfigFilePath,
     sourcekitFolderPath,
-} from "../../../src/commands/generateSourcekitConfiguration";
-import { Version } from "../../../src/utilities/version";
-import { mockGlobalObject, mockGlobalModule } from "../../MockUtils";
-import * as restartLSPServerModule from "../../../src/commands/restartLSPServer";
+} from "@src/commands/generateSourcekitConfiguration";
+import * as restartLSPServerModule from "@src/commands/restartLSPServer";
+import { Version } from "@src/utilities/version";
+
+import { mockGlobalModule, mockGlobalObject } from "../../MockUtils";
+import { closeAllEditors } from "../../utilities/commands";
+import {
+    activateExtensionForSuite,
+    folderInRootWorkspace,
+    updateSettings,
+} from "../utilities/testutilities";
 
 suite("Generate SourceKit-LSP configuration Command", function () {
     let folderContext: FolderContext;

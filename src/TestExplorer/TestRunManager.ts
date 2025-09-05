@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
-import { TestRunProxy } from "./TestRunner";
+
 import { FolderContext } from "../FolderContext";
+import { TestRunProxy } from "./TestRunner";
 
 /**
  * Manages active test runs and provides functionality to check if a test run is in progress

@@ -11,50 +11,50 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as path from "path";
 import * as vscode from "vscode";
-import { WorkspaceContext } from "./WorkspaceContext";
-import { PackageNode } from "./ui/ProjectPanelProvider";
-import { SwiftToolchain } from "./toolchain/toolchain";
+
 import { debugSnippet, runSnippet } from "./SwiftSnippets";
-import { showToolchainSelectionQuickPick } from "./ui/ToolchainSelection";
-import { captureDiagnostics } from "./commands/captureDiagnostics";
-import { attachDebugger } from "./commands/attachDebugger";
-import { reindexProject } from "./commands/reindexProject";
-import { cleanBuild, debugBuild, runBuild } from "./commands/build";
-import { runSwiftScript } from "./commands/runSwiftScript";
-import { useLocalDependency } from "./commands/dependencies/useLocal";
-import { editDependency } from "./commands/dependencies/edit";
-import { uneditDependency } from "./commands/dependencies/unedit";
-import { openInWorkspace } from "./commands/openInWorkspace";
-import { openInExternalEditor } from "./commands/openInExternalEditor";
-import { switchPlatform } from "./commands/switchPlatform";
-import { insertFunctionComment } from "./commands/insertFunctionComment";
-import { createNewProject } from "./commands/createNewProject";
-import { openEducationalNote } from "./commands/openEducationalNote";
-import { openPackage } from "./commands/openPackage";
-import { resolveDependencies } from "./commands/dependencies/resolve";
-import { resetPackage } from "./commands/resetPackage";
-import { updateDependencies } from "./commands/dependencies/update";
-import { runPluginTask } from "./commands/runPluginTask";
-import { extractTestItemsAndCount, runTestMultipleTimes } from "./commands/testMultipleTimes";
-import { newSwiftFile } from "./commands/newFile";
-import { runAllTests } from "./commands/runAllTests";
-import { updateDependenciesViewList } from "./commands/dependencies/updateDepViewList";
-import { runTask } from "./commands/runTask";
 import { TestKind } from "./TestExplorer/TestKind";
-import { pickProcess } from "./commands/pickProcess";
-import { openDocumentation } from "./commands/openDocumentation";
-import restartLSPServer from "./commands/restartLSPServer";
+import { WorkspaceContext } from "./WorkspaceContext";
+import { attachDebugger } from "./commands/attachDebugger";
+import { cleanBuild, debugBuild, runBuild } from "./commands/build";
+import { captureDiagnostics } from "./commands/captureDiagnostics";
+import { createNewProject } from "./commands/createNewProject";
+import { editDependency } from "./commands/dependencies/edit";
+import { resolveDependencies } from "./commands/dependencies/resolve";
+import { uneditDependency } from "./commands/dependencies/unedit";
+import { updateDependencies } from "./commands/dependencies/update";
+import { updateDependenciesViewList } from "./commands/dependencies/updateDepViewList";
+import { useLocalDependency } from "./commands/dependencies/useLocal";
 import { generateLaunchConfigurations } from "./commands/generateLaunchConfigurations";
-import { runTest } from "./commands/runTest";
 import { generateSourcekitConfiguration } from "./commands/generateSourcekitConfiguration";
-import { SwiftLogger } from "./logging/SwiftLogger";
+import { insertFunctionComment } from "./commands/insertFunctionComment";
 import {
-    installSwiftlyToolchain,
     installSwiftlySnapshotToolchain,
+    installSwiftlyToolchain,
 } from "./commands/installSwiftlyToolchain";
+import { newSwiftFile } from "./commands/newFile";
+import { openDocumentation } from "./commands/openDocumentation";
+import { openEducationalNote } from "./commands/openEducationalNote";
+import { openInExternalEditor } from "./commands/openInExternalEditor";
+import { openInWorkspace } from "./commands/openInWorkspace";
+import { openPackage } from "./commands/openPackage";
+import { pickProcess } from "./commands/pickProcess";
+import { reindexProject } from "./commands/reindexProject";
+import { resetPackage } from "./commands/resetPackage";
+import restartLSPServer from "./commands/restartLSPServer";
+import { runAllTests } from "./commands/runAllTests";
+import { runPluginTask } from "./commands/runPluginTask";
+import { runSwiftScript } from "./commands/runSwiftScript";
+import { runTask } from "./commands/runTask";
+import { runTest } from "./commands/runTest";
+import { switchPlatform } from "./commands/switchPlatform";
+import { extractTestItemsAndCount, runTestMultipleTimes } from "./commands/testMultipleTimes";
+import { SwiftLogger } from "./logging/SwiftLogger";
+import { SwiftToolchain } from "./toolchain/toolchain";
+import { PackageNode } from "./ui/ProjectPanelProvider";
+import { showToolchainSelectionQuickPick } from "./ui/ToolchainSelection";
 
 /**
  * References:

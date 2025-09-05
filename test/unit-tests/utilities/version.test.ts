@@ -11,9 +11,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { expect } from "chai";
-import { Version } from "../../../src/utilities/version";
+
+import { Version } from "@src/utilities/version";
 
 suite("Version Suite", () => {
     suite("fromString", () => {

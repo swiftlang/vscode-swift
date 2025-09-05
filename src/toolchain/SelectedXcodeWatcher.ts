@@ -11,13 +11,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as fs from "fs/promises";
 import * as vscode from "vscode";
-import { showReloadExtensionNotification } from "../ui/ReloadExtension";
+
 import configuration from "../configuration";
-import { removeToolchainPath, selectToolchain } from "../ui/ToolchainSelection";
 import { SwiftLogger } from "../logging/SwiftLogger";
+import { showReloadExtensionNotification } from "../ui/ReloadExtension";
+import { removeToolchainPath, selectToolchain } from "../ui/ToolchainSelection";
 
 export class SelectedXcodeWatcher implements vscode.Disposable {
     private xcodePath: string | undefined;

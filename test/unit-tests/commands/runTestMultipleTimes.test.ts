@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import { expect } from "chai";
-import { extractTestItemsAndCount } from "../../../src/commands/testMultipleTimes";
+import * as vscode from "vscode";
+
+import { extractTestItemsAndCount } from "@src/commands/testMultipleTimes";
 
 suite("Run Tests Multiple Times", () => {
     suite("extractTestItemsAndCount()", () => {

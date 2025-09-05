@@ -11,9 +11,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as path from "path";
 import * as vscode from "vscode";
+
 import { createProcessList } from "../process-list";
 
 interface ProcessQuickPick extends vscode.QuickPickItem {

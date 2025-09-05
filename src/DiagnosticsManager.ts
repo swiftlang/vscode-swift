@@ -11,17 +11,18 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-import stripAnsi = require("strip-ansi");
+import * as vscode from "vscode";
+
+import { WorkspaceContext } from "./WorkspaceContext";
 import configuration from "./configuration";
 import { SwiftExecution } from "./tasks/SwiftExecution";
-import { WorkspaceContext } from "./WorkspaceContext";
-import { checkIfBuildComplete, lineBreakRegex } from "./utilities/tasks";
 import { validFileTypes } from "./utilities/filesystem";
+import { checkIfBuildComplete, lineBreakRegex } from "./utilities/tasks";
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import stripAnsi = require("strip-ansi");
 
 interface ParsedDiagnostic {
     uri: string;

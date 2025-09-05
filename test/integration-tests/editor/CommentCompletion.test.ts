@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
 import * as vscode from "vscode";
-import { CommentCompletionProviders } from "../../../src/editor/CommentCompletion";
+
+import { CommentCompletionProviders } from "@src/editor/CommentCompletion";
 
 suite("CommentCompletion Test Suite", () => {
     let provider: CommentCompletionProviders;

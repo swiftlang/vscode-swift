@@ -11,24 +11,24 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
+import * as fs from "fs/promises";
 import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
-import configuration from "../configuration";
+
 import { FolderContext } from "../FolderContext";
-import { BuildFlags } from "../toolchain/BuildFlags";
-import { regexEscapedString, swiftRuntimeEnv } from "../utilities/utilities";
-import { SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
 import { TargetType } from "../SwiftPackage";
-import { Version } from "../utilities/version";
-import { TestLibrary } from "../TestExplorer/TestRunner";
 import { TestKind, isDebugging, isRelease } from "../TestExplorer/TestKind";
-import { buildOptions } from "../tasks/SwiftTaskProvider";
-import { updateLaunchConfigForCI } from "./lldb";
-import { packageName } from "../utilities/tasks";
+import { TestLibrary } from "../TestExplorer/TestRunner";
+import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
+import { buildOptions } from "../tasks/SwiftTaskProvider";
+import { BuildFlags } from "../toolchain/BuildFlags";
+import { packageName } from "../utilities/tasks";
+import { regexEscapedString, swiftRuntimeEnv } from "../utilities/utilities";
+import { Version } from "../utilities/version";
+import { SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
+import { updateLaunchConfigForCI } from "./lldb";
 
 export class BuildConfigurationFactory {
     public static buildAll(

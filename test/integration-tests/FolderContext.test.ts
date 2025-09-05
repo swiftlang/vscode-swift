@@ -11,17 +11,18 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
-import * as toolchain from "../../src/ui/ToolchainSelection";
 import { afterEach } from "mocha";
-import { stub, restore } from "sinon";
-import { testAssetUri } from "../fixtures";
-import { WorkspaceContext } from "../../src/WorkspaceContext";
-import { FolderContext } from "../../src/FolderContext";
-import { SwiftToolchain } from "../../src/toolchain/toolchain";
-import { activateExtensionForSuite, getRootWorkspaceFolder } from "./utilities/testutilities";
+import { restore, stub } from "sinon";
+
+import { FolderContext } from "@src/FolderContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
+import * as toolchain from "@src/ui/ToolchainSelection";
+
 import { MockedFunction, mockGlobalValue } from "../MockUtils";
+import { testAssetUri } from "../fixtures";
+import { activateExtensionForSuite, getRootWorkspaceFolder } from "./utilities/testutilities";
 
 suite("FolderContext Error Handling Test Suite", () => {
     let workspaceContext: WorkspaceContext;

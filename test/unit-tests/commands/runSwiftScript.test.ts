@@ -11,17 +11,18 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
-import { beforeEach } from "mocha";
 import { expect } from "chai";
+import { beforeEach } from "mocha";
 import { match, stub } from "sinon";
+import * as vscode from "vscode";
+
+import { runSwiftScript } from "@src/commands/runSwiftScript";
+import configuration from "@src/configuration";
+import { TaskManager } from "@src/tasks/TaskManager";
+import { BuildFlags } from "@src/toolchain/BuildFlags";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
+
 import { instance, mockFn, mockGlobalObject, mockGlobalValue, mockObject } from "../../MockUtils";
-import { runSwiftScript } from "../../../src/commands/runSwiftScript";
-import { TaskManager } from "../../../src/tasks/TaskManager";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
-import { BuildFlags } from "../../../src/toolchain/BuildFlags";
-import configuration from "../../../src/configuration";
 
 suite("runSwiftScript Test Suite", () => {
     const mockTaskManager = mockObject<TaskManager>({ executeTaskAndWait: stub().resolves() });

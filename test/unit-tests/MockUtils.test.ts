@@ -11,11 +11,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { expect } from "chai";
+import * as fs from "fs/promises";
 import { stub } from "sinon";
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
+
+import configuration from "@src/configuration";
+import { Version } from "@src/utilities/version";
+
 import {
     AsyncEventEmitter,
     mockFn,
@@ -26,8 +29,6 @@ import {
     mockObject,
     waitForReturnedPromises,
 } from "../MockUtils";
-import { Version } from "../../src/utilities/version";
-import configuration from "../../src/configuration";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function emptyFunction(..._: any): any {

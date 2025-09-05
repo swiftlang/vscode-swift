@@ -11,34 +11,35 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { expect } from "chai";
-import { beforeEach, afterEach } from "mocha";
-import * as vscode from "vscode";
+import { afterEach, beforeEach } from "mocha";
 import * as path from "path";
+import * as vscode from "vscode";
+
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { Commands } from "@src/commands";
+import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
 import {
-    ProjectPanelProvider,
-    PackageNode,
     FileNode,
+    PackageNode,
+    ProjectPanelProvider,
     TreeNode,
-} from "../../../src/ui/ProjectPanelProvider";
-import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
-import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
+} from "@src/ui/ProjectPanelProvider";
+import { wait } from "@src/utilities/utilities";
+import { Version } from "@src/utilities/version";
+
 import { testAssetPath } from "../../fixtures";
+import { tag } from "../../tags";
+import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
     updateSettings,
 } from "../utilities/testutilities";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { Version } from "../../../src/utilities/version";
-import { wait } from "../../../src/utilities/utilities";
-import { Commands } from "../../../src/commands";
 
-suite("ProjectPanelProvider Test Suite", function () {
+tag("medium").suite("ProjectPanelProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;
     let treeProvider: ProjectPanelProvider;
-    this.timeout(5 * 60 * 1000); // Allow up to 5 minutes to build
 
     activateExtensionForSuite({
         async setup(ctx) {

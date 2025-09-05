@@ -11,33 +11,33 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 // Use source-map-support to get better stack traces
 import "source-map-support/register";
 
 import * as vscode from "vscode";
-import * as commands from "./commands";
-import * as debug from "./debugger/launch";
-import { ProjectPanelProvider } from "./ui/ProjectPanelProvider";
-import { FolderEvent, FolderOperation, WorkspaceContext } from "./WorkspaceContext";
+
 import { FolderContext } from "./FolderContext";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
-import { LanguageStatusItems } from "./ui/LanguageStatusItems";
-import { getErrorDescription } from "./utilities/utilities";
-import { Version } from "./utilities/version";
-import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
-import { registerDebugger } from "./debugger/debugAdapterFactory";
-import { showToolchainError } from "./ui/ToolchainSelection";
-import { SwiftToolchain } from "./toolchain/toolchain";
-import { checkAndWarnAboutWindowsSymlinks } from "./ui/win32";
-import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "./terminal";
+import { FolderEvent, FolderOperation, WorkspaceContext } from "./WorkspaceContext";
+import * as commands from "./commands";
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
-import { SelectedXcodeWatcher } from "./toolchain/SelectedXcodeWatcher";
-import configuration, { handleConfigurationChangeEvent } from "./configuration";
 import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConfiguration";
+import configuration, { handleConfigurationChangeEvent } from "./configuration";
+import { ContextKeys, createContextKeys } from "./contextKeys";
+import { registerDebugger } from "./debugger/debugAdapterFactory";
+import * as debug from "./debugger/launch";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
-import { ContextKeys, createContextKeys } from "./contextKeys";
+import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "./terminal";
+import { SelectedXcodeWatcher } from "./toolchain/SelectedXcodeWatcher";
+import { SwiftToolchain } from "./toolchain/toolchain";
+import { LanguageStatusItems } from "./ui/LanguageStatusItems";
+import { ProjectPanelProvider } from "./ui/ProjectPanelProvider";
+import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
+import { showToolchainError } from "./ui/ToolchainSelection";
+import { checkAndWarnAboutWindowsSymlinks } from "./ui/win32";
+import { getErrorDescription } from "./utilities/utilities";
+import { Version } from "./utilities/version";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions

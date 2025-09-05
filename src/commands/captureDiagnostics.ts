@@ -11,22 +11,22 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as archiver from "archiver";
+import { exec } from "child_process";
 import * as fs from "fs";
 import * as fsPromises from "fs/promises";
-import * as path from "path";
-import * as vscode from "vscode";
 import { tmpdir } from "os";
-import { exec } from "child_process";
+import * as path from "path";
 import { Writable } from "stream";
-import { WorkspaceContext } from "../WorkspaceContext";
-import { Version } from "../utilities/version";
-import { destructuredPromise, execFileStreamOutput } from "../utilities/utilities";
-import configuration from "../configuration";
+import * as vscode from "vscode";
+
 import { FolderContext } from "../FolderContext";
-import { Extension } from "../utilities/extensions";
+import { WorkspaceContext } from "../WorkspaceContext";
+import configuration from "../configuration";
 import { DebugAdapter } from "../debugger/debugAdapter";
+import { Extension } from "../utilities/extensions";
+import { destructuredPromise, execFileStreamOutput } from "../utilities/utilities";
+import { Version } from "../utilities/version";
 
 export async function captureDiagnostics(
     ctx: WorkspaceContext,

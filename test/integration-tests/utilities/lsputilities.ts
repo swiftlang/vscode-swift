@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
-import { LanguageClientManager } from "../../../src/sourcekit-lsp/LanguageClientManager";
+
+import { LanguageClientManager } from "@src/sourcekit-lsp/LanguageClientManager";
 
 export async function waitForClient<Result>(
     languageClientManager: LanguageClientManager,

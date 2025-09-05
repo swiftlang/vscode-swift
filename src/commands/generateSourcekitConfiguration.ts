@@ -11,13 +11,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { basename, dirname, join } from "path";
 import * as vscode from "vscode";
+
 import { FolderContext } from "../FolderContext";
-import { selectFolder } from "../ui/SelectFolderQuickPick";
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
+import { selectFolder } from "../ui/SelectFolderQuickPick";
 import restartLSPServer from "./restartLSPServer";
 
 export const sourcekitDotFolder: string = ".sourcekit-lsp";

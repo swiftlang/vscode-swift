@@ -11,18 +11,20 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
+import { expect } from "chai";
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
-import { expect } from "chai";
-import { LanguageClientManager } from "../../../src/sourcekit-lsp/LanguageClientManager";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
+
+import { FolderContext } from "@src/FolderContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { LanguageClientManager } from "@src/sourcekit-lsp/LanguageClientManager";
+import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+
 import { testAssetUri } from "../../fixtures";
+import { tag } from "../../tags";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
-import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
-import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 import { waitForClientState } from "../utilities/lsputilities";
-import { FolderContext } from "../../../src/FolderContext";
+import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 
 async function buildProject(ctx: WorkspaceContext, name: string) {
     await waitForNoRunningTasks();
@@ -33,9 +35,7 @@ async function buildProject(ctx: WorkspaceContext, name: string) {
     return folderContext;
 }
 
-suite("Language Client Integration Suite @slow", function () {
-    this.timeout(3 * 60 * 1000);
-
+tag("large").suite("Language Client Integration Suite", function () {
     let clientManager: LanguageClientManager;
     let folderContext: FolderContext;
 

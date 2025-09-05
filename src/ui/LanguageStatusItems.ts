@@ -11,12 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
 import { Command } from "vscode-languageclient";
-import { WorkspaceContext, FolderOperation } from "../WorkspaceContext";
-import { LanguagerClientDocumentSelectors } from "../sourcekit-lsp/LanguageClientConfiguration";
+
+import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
 import { Commands } from "../commands";
+import { LanguagerClientDocumentSelectors } from "../sourcekit-lsp/LanguageClientConfiguration";
 
 export class LanguageStatusItems implements vscode.Disposable {
     constructor(workspaceContext: WorkspaceContext) {

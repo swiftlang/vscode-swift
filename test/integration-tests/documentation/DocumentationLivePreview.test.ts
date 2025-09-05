@@ -11,27 +11,23 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
-import * as path from "path";
 import { expect } from "chai";
-import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
-import { waitForNoRunningTasks } from "../../utilities/tasks";
+import * as path from "path";
+import * as vscode from "vscode";
+
+import { FolderContext } from "@src/FolderContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { Commands } from "@src/commands";
+import { PreviewEditorConstant } from "@src/documentation/DocumentationPreviewEditor";
+import { RenderNodeContent, WebviewContent } from "@src/documentation/webview/WebviewMessage";
+import { Workbench } from "@src/utilities/commands";
+
 import { testAssetUri } from "../../fixtures";
-import { FolderContext } from "../../../src/FolderContext";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { Commands } from "../../../src/commands";
-import { Workbench } from "../../../src/utilities/commands";
-import {
-    RenderNodeContent,
-    WebviewContent,
-} from "../../../src/documentation/webview/WebviewMessage";
-import { PreviewEditorConstant } from "../../../src/documentation/DocumentationPreviewEditor";
+import { tag } from "../../tags";
+import { waitForNoRunningTasks } from "../../utilities/tasks";
+import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 
-suite("Documentation Live Preview", function () {
-    // Tests are short, but rely on SourceKit-LSP: give 30 seconds for each one
-    this.timeout(30 * 1000);
-
+tag("medium").suite("Documentation Live Preview", function () {
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
 

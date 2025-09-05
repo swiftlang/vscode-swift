@@ -11,19 +11,20 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { expect } from "chai";
-import * as vscode from "vscode";
 import * as mockFS from "mock-fs";
 import * as sinon from "sinon";
 import { match, stub } from "sinon";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
-import { SwiftLogger } from "../../../src/logging/SwiftLogger";
-import { Swiftly } from "../../../src/toolchain/swiftly";
-import { Version } from "../../../src/utilities/version";
-import * as utilities from "../../../src/utilities/utilities";
-import { mockGlobalModule, mockGlobalValue, mockGlobalObject } from "../../MockUtils";
-import * as ToolchainSelectionModule from "../../../src/ui/ToolchainSelection";
+import * as vscode from "vscode";
+
+import { SwiftLogger } from "@src/logging/SwiftLogger";
+import { Swiftly } from "@src/toolchain/swiftly";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
+import * as ToolchainSelectionModule from "@src/ui/ToolchainSelection";
+import * as utilities from "@src/utilities/utilities";
+import { Version } from "@src/utilities/version";
+
+import { mockGlobalModule, mockGlobalObject, mockGlobalValue } from "../../MockUtils";
 
 suite("ToolchainSelection Unit Test Suite", () => {
     const mockedUtilities = mockGlobalModule(utilities);

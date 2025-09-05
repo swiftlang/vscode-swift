@@ -11,14 +11,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
-import { Version } from "../utilities/version";
+
 import { FolderContext } from "../FolderContext";
-import { LanguageClientFactory } from "./LanguageClientFactory";
-import { LanguageClientManager } from "./LanguageClientManager";
 import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
 import { isExcluded } from "../utilities/filesystem";
+import { Version } from "../utilities/version";
+import { LanguageClientFactory } from "./LanguageClientFactory";
+import { LanguageClientManager } from "./LanguageClientManager";
 
 /**
  * Manages the creation of LanguageClient instances for workspace folders.

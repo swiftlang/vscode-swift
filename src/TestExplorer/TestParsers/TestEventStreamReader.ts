@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as fs from "fs";
 import * as net from "net";
 import { Readable } from "stream";

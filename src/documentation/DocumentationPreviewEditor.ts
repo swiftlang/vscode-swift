@@ -11,14 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { RenderNode, WebviewContent, WebviewMessage } from "./webview/WebviewMessage";
+import * as vscode from "vscode";
+import { LSPErrorCodes, ResponseError } from "vscode-languageclient";
+
 import { WorkspaceContext } from "../WorkspaceContext";
 import { DocCDocumentationRequest, DocCDocumentationResponse } from "../sourcekit-lsp/extensions";
-import { LSPErrorCodes, ResponseError } from "vscode-languageclient";
+import { RenderNode, WebviewContent, WebviewMessage } from "./webview/WebviewMessage";
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import throttle = require("lodash.throttle");
 

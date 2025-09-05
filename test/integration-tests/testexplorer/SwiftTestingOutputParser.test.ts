@@ -11,22 +11,23 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
-import * as vscode from "vscode";
 import { beforeEach } from "mocha";
-import {
-    SwiftTestEvent,
-    EventRecord,
-    SwiftTestingOutputParser,
-    EventRecordPayload,
-    EventMessage,
-    SourceLocation,
-    TestSymbol,
-    MessageRenderer,
-} from "../../../src/TestExplorer/TestParsers/SwiftTestingOutputParser";
-import { TestRunState, TestStatus } from "./MockTestRunState";
 import { Readable } from "stream";
+import * as vscode from "vscode";
+
+import {
+    EventMessage,
+    EventRecord,
+    EventRecordPayload,
+    MessageRenderer,
+    SourceLocation,
+    SwiftTestEvent,
+    SwiftTestingOutputParser,
+    TestSymbol,
+} from "@src/TestExplorer/TestParsers/SwiftTestingOutputParser";
+
+import { TestRunState, TestStatus } from "./MockTestRunState";
 
 class TestEventStream {
     constructor(private items: SwiftTestEvent[]) {}

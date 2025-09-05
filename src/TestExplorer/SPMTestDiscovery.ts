@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { TestStyle } from "../sourcekit-lsp/extensions";
 import { TestClass } from "./TestDiscovery";
 

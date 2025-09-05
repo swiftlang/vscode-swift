@@ -11,22 +11,23 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as vscode from "vscode";
 import * as path from "path";
+import * as vscode from "vscode";
 import {
     DocumentSelector,
     LanguageClientOptions,
     RevealOutputChannelOn,
     vsdiag,
 } from "vscode-languageclient";
+
+import { DiagnosticsManager } from "../DiagnosticsManager";
+import { WorkspaceContext } from "../WorkspaceContext";
+import { promptForDiagnostics } from "../commands/captureDiagnostics";
 import configuration from "../configuration";
 import { Version } from "../utilities/version";
-import { WorkspaceContext } from "../WorkspaceContext";
-import { DiagnosticsManager } from "../DiagnosticsManager";
-import { promptForDiagnostics } from "../commands/captureDiagnostics";
-import { uriConverters } from "./uriConverters";
-import { LSPActiveDocumentManager } from "./didChangeActiveDocument";
 import { SourceKitLSPErrorHandler } from "./LanguageClientManager";
+import { LSPActiveDocumentManager } from "./didChangeActiveDocument";
+import { uriConverters } from "./uriConverters";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function initializationOptions(swiftVersion: Version): any {

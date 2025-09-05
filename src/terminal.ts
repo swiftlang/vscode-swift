@@ -11,8 +11,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
 import configuration from "./configuration";
 
 /** The separator to use between paths in the PATH environment variable */

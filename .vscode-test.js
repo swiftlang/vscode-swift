@@ -11,27 +11,29 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+// @ts-check
 
 const { defineConfig } = require("@vscode/test-cli");
 const path = require("path");
 const { version, publisher, name } = require("./package.json");
 
 const isCIBuild = process.env["CI"] === "1";
-const isFastTestRun = process.env["FAST_TEST_RUN"] === "1";
 
 const dataDir = process.env["VSCODE_DATA_DIR"];
 
-// "env" in launch.json doesn't seem to work with vscode-test
+// Check if we're debugging by looking at the process executable. Unfortunately, the VS Code debugger
+// doesn't seem to allow setting environment variables on a launched extension host.
 const isDebugRun = !(process.env["_"] ?? "").endsWith("node_modules/.bin/vscode-test");
 
-function log(...args) {
+function log(/** @type {string} */ message) {
     if (!isDebugRun) {
-        console.log(...args);
+        console.log(message);
     }
 }
 
-// so tests don't timeout when a breakpoint is hit
-const timeout = isDebugRun ? Number.MAX_SAFE_INTEGER : 3000;
+// Remove the default timeout when debugging to avoid test failures when a breakpoint is hit.
+// Keep this up to date with the timeout of a 'small' test in 'test/tags.ts'.
+const timeout = isDebugRun ? 0 : 2000;
 
 const launchArgs = [
     "--disable-updates",
@@ -96,6 +98,7 @@ for (const ext of installExtensions) {
 const env = {
     ...process.env,
     RUNNING_UNDER_VSCODE_TEST_CLI: "1",
+    VSCODE_DEBUG: isDebugRun ? "1" : "0",
 };
 log("Running tests against environment:\n" + JSON.stringify(env, undefined, 2));
 
@@ -115,8 +118,6 @@ module.exports = defineConfig({
                 color: true,
                 timeout,
                 forbidOnly: isCIBuild,
-                grep: isFastTestRun ? "@slow" : undefined,
-                invert: isFastTestRun,
                 slow: 10000,
                 retries: 1,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
@@ -128,7 +129,6 @@ module.exports = defineConfig({
             },
             installExtensions: extensionDependencies,
             skipExtensionDependencies: installConfigs.length > 0,
-            reuseMachineInstall: !isCIBuild,
         },
         {
             label: "codeWorkspaceTests",
@@ -151,8 +151,6 @@ module.exports = defineConfig({
                 color: true,
                 timeout,
                 forbidOnly: isCIBuild,
-                grep: isFastTestRun ? "@slow" : undefined,
-                invert: isFastTestRun,
                 slow: 10000,
                 retries: 1,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
@@ -164,7 +162,6 @@ module.exports = defineConfig({
             },
             installExtensions: extensionDependencies,
             skipExtensionDependencies: installConfigs.length > 0,
-            reuseMachineInstall: !isCIBuild,
         },
         {
             label: "unitTests",
@@ -186,7 +183,6 @@ module.exports = defineConfig({
                 },
             },
             skipExtensionDependencies: true,
-            reuseMachineInstall: !isCIBuild,
         },
         // you can specify additional test configurations, too
     ],

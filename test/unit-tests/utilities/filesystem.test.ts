@@ -11,16 +11,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
+import { expect } from "chai";
 import * as path from "path";
 import { Uri } from "vscode";
+
 import {
-    isPathInsidePath,
     expandFilePathTilde,
     isExcluded,
     isIncluded,
-} from "../../../src/utilities/filesystem";
-import { expect } from "chai";
+    isPathInsidePath,
+} from "@src/utilities/filesystem";
 
 suite("File System Utilities Unit Test Suite", () => {
     test("isPathInsidePath", () => {

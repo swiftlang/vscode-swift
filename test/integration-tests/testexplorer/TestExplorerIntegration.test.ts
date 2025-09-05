@@ -11,13 +11,35 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
-import * as vscode from "vscode";
-import * as path from "path";
 import * as fs from "fs";
-import { beforeEach, afterEach } from "mocha";
-import { TestExplorer } from "../../../src/TestExplorer/TestExplorer";
+import { afterEach, beforeEach } from "mocha";
+import * as path from "path";
+import * as vscode from "vscode";
+
+import { FolderContext } from "@src/FolderContext";
+import { runnableTag } from "@src/TestExplorer/TestDiscovery";
+import { TestExplorer } from "@src/TestExplorer/TestExplorer";
+import { TestKind } from "@src/TestExplorer/TestKind";
+import {
+    MessageRenderer,
+    TestSymbol,
+} from "@src/TestExplorer/TestParsers/SwiftTestingOutputParser";
+import { flattenTestItemCollection, reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { Commands } from "@src/commands";
+import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+import { lineBreakRegex } from "@src/utilities/tasks";
+import { randomString } from "@src/utilities/utilities";
+import { Version } from "@src/utilities/version";
+
+import { tag } from "../../tags";
+import { executeTaskAndWaitForResult } from "../../utilities/tasks";
+import {
+    activateExtensionForSuite,
+    folderInRootWorkspace,
+    updateSettings,
+} from "../utilities/testutilities";
 import {
     assertContains,
     assertContainsTrimmed,
@@ -29,35 +51,8 @@ import {
     runTest,
     waitForTestExplorerReady,
 } from "./utilities";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { Version } from "../../../src/utilities/version";
-import { TestKind } from "../../../src/TestExplorer/TestKind";
-import {
-    MessageRenderer,
-    TestSymbol,
-} from "../../../src/TestExplorer/TestParsers/SwiftTestingOutputParser";
-import {
-    flattenTestItemCollection,
-    reduceTestItemChildren,
-} from "../../../src/TestExplorer/TestUtils";
-import { runnableTag } from "../../../src/TestExplorer/TestDiscovery";
-import {
-    activateExtensionForSuite,
-    folderInRootWorkspace,
-    updateSettings,
-} from "../utilities/testutilities";
-import { Commands } from "../../../src/commands";
-import { executeTaskAndWaitForResult } from "../../utilities/tasks";
-import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
-import { FolderContext } from "../../../src/FolderContext";
-import { lineBreakRegex } from "../../../src/utilities/tasks";
-import { randomString } from "../../../src/utilities/utilities";
 
-suite("Test Explorer Suite", function () {
-    const MAX_TEST_RUN_TIME_MINUTES = 6;
-
-    this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES);
-
+tag("large").suite("Test Explorer Suite", function () {
     let workspaceContext: WorkspaceContext;
     let folderContext: FolderContext;
     let testExplorer: TestExplorer;
@@ -157,9 +152,7 @@ suite("Test Explorer Suite", function () {
                 }
             });
 
-            test("Debugs specified XCTest test @slow", async function () {
-                this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 2);
-
+            test("Debugs specified XCTest test", async function () {
                 // CodeLLDB tests stall out on 5.9 and below.
                 if (folderContext.swiftVersion.isLessThan(new Version(5, 10, 0))) {
                     this.skip();
@@ -373,7 +366,7 @@ suite("Test Explorer Suite", function () {
                 });
             });
 
-            test("tests run in debug mode @slow", async function () {
+            test("tests run in debug mode", async function () {
                 const testRun = await runTest(
                     testExplorer,
                     TestKind.standard,
@@ -385,10 +378,7 @@ suite("Test Explorer Suite", function () {
                 });
             });
 
-            test("test run in release mode @slow", async function () {
-                // Building in release takes a long time.
-                this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 2);
-
+            test("test run in release mode", async function () {
                 const passingRun = await runTest(
                     testExplorer,
                     TestKind.release,
@@ -426,9 +416,7 @@ suite("Test Explorer Suite", function () {
             suite("Runs multiple", function () {
                 const numIterations = 5;
 
-                this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 5);
-
-                test("@slow runs an swift-testing test multiple times", async function () {
+                test("runs an swift-testing test multiple times", async function () {
                     const testItems = gatherTests(
                         testExplorer.controller,
                         "PackageTests.MixedXCTestSuite/testPassing"
@@ -562,7 +550,7 @@ suite("Test Explorer Suite", function () {
                 assertContains(testRun.runState.output, "\r\nTest run cancelled.");
             });
 
-            test("tests run in debug mode @slow", async function () {
+            test("tests run in debug mode", async function () {
                 const testRun = await runTest(
                     testExplorer,
                     TestKind.standard,
@@ -577,10 +565,7 @@ suite("Test Explorer Suite", function () {
                 });
             });
 
-            test("tests run in release mode @slow", async function () {
-                // Building in release takes a long time.
-                this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 2);
-
+            test("tests run in release mode", async function () {
                 const passingRun = await runTest(
                     testExplorer,
                     TestKind.release,
@@ -598,9 +583,7 @@ suite("Test Explorer Suite", function () {
             suite("Runs multiple", function () {
                 const numIterations = 5;
 
-                this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 5);
-
-                test("@slow runs an XCTest multiple times", async function () {
+                test("runs an XCTest multiple times", async function () {
                     const testItems = gatherTests(
                         testExplorer.controller,
                         "PackageTests.PassingXCTestSuite/testPassing"

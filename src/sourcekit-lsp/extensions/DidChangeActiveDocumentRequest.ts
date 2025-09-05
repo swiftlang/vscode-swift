@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { MessageDirection, NotificationType, TextDocumentIdentifier } from "vscode-languageclient";
 
 // We use namespaces to store request information just like vscode-languageclient

@@ -11,20 +11,20 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
-import * as vscode from "vscode";
 import { beforeEach } from "mocha";
+import * as vscode from "vscode";
+
+import { SwiftPackage, Target, TargetType } from "@src/SwiftPackage";
 import {
     TestClass,
     updateTests,
     updateTestsForTarget,
     updateTestsFromClasses,
-} from "../../../src/TestExplorer/TestDiscovery";
-import { reduceTestItemChildren } from "../../../src/TestExplorer/TestUtils";
-import { SwiftPackage, Target, TargetType } from "../../../src/SwiftPackage";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
-import { TestStyle } from "../../../src/sourcekit-lsp/extensions";
+} from "@src/TestExplorer/TestDiscovery";
+import { reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
+import { TestStyle } from "@src/sourcekit-lsp/extensions";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
 
 suite("TestDiscovery Suite", () => {
     let testController: vscode.TestController;

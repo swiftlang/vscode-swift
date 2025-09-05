@@ -11,20 +11,20 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
+import { convertPathToPattern, glob } from "fast-glob";
+import { existsSync } from "fs";
 import * as fs from "fs/promises";
 import * as path from "path";
-import configuration from "../configuration";
+import * as vscode from "vscode";
+
+import { FolderContext } from "../FolderContext";
+import { Dependency, ResolvedDependency, Target } from "../SwiftPackage";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderOperation } from "../WorkspaceContext";
-import { Dependency, ResolvedDependency, Target } from "../SwiftPackage";
-import { FolderContext } from "../FolderContext";
-import { getPlatformConfig, resolveTaskCwd } from "../utilities/tasks";
+import configuration from "../configuration";
 import { SwiftTask, TaskPlatformSpecificConfig } from "../tasks/SwiftTaskProvider";
-import { convertPathToPattern, glob } from "fast-glob";
+import { getPlatformConfig, resolveTaskCwd } from "../utilities/tasks";
 import { Version } from "../utilities/version";
-import { existsSync } from "fs";
 
 const LOADING_ICON = "loading~spin";
 

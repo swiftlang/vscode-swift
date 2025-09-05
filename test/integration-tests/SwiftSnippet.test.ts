@@ -11,28 +11,28 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
-import { testAssetUri } from "../fixtures";
 import { expect } from "chai";
+import * as vscode from "vscode";
+
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { Commands } from "@src/commands";
+import { Version } from "@src/utilities/version";
+
+import { testAssetUri } from "../fixtures";
+import { tag } from "../tags";
+import { closeAllEditors } from "../utilities/commands";
 import {
     continueSession,
     waitForDebugAdapterRequest,
     waitUntilDebugSessionTerminates,
 } from "../utilities/debug";
-import { Version } from "../../src/utilities/version";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
     updateSettings,
 } from "./utilities/testutilities";
-import { WorkspaceContext } from "../../src/WorkspaceContext";
-import { closeAllEditors } from "../utilities/commands";
-import { Commands } from "../../src/commands";
 
-suite("SwiftSnippet Test Suite @slow", function () {
-    this.timeout(180000);
-
+tag("large").suite("SwiftSnippet Test Suite", function () {
     const uri = testAssetUri("defaultPackage/Snippets/hello.swift");
     const breakpoints = [
         new vscode.SourceBreakpoint(new vscode.Location(uri, new vscode.Position(2, 0))),

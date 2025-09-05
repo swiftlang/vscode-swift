@@ -1,8 +1,14 @@
 {
+  "plugins": ["@trivago/prettier-plugin-sort-imports"],
+  "endOfLine": "auto",
   "trailingComma": "es5",
   "printWidth": 100,
   "tabWidth": 4,
   "arrowParens": "avoid",
+  "importOrder": ["^@src/(.*)$", "^\\.(\\.)?/(.*)$"],
+  "importOrderSeparation": true,
+  "importOrderSortSpecifiers": true,
+  "importOrderSideEffects": false,
   "overrides": [
     {
       "files": "*.json",

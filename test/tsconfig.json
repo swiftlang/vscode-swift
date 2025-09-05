@@ -1,7 +1,11 @@
 {
   "extends": "../tsconfig-base.json",
   "compilerOptions": {
-    "types": ["node", "mocha"]
+    "types": ["node"],
+    "experimentalDecorators": true,
+    "paths": {
+      "@src/*": ["../src/*"]
+    }
   },
   "include": ["**/*"],
   "references": [{ "path": "../src" }]

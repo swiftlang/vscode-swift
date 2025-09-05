@@ -11,12 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as fs from "fs/promises";
-import { TemporaryFolder } from "../utilities/tempFolder";
-import configuration from "../configuration";
 import * as vscode from "vscode";
+
+import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
+import { TemporaryFolder } from "../utilities/tempFolder";
 
 /**
  * Warns the user about lack of symbolic link support on Windows. Performs the

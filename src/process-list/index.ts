@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { DarwinProcessList } from "./platforms/DarwinProcessList";
 import { LinuxProcessList } from "./platforms/LinuxProcessList";
 import { WindowsProcessList } from "./platforms/WindowsProcessList";

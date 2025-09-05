@@ -11,21 +11,19 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
+import * as assert from "assert";
 import { expect } from "chai";
 import * as vscode from "vscode";
-import * as assert from "assert";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import {
-    createSwiftTask,
-    createBuildAllTask,
-    getBuildAllTask,
-} from "../../../src/tasks/SwiftTaskProvider";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
-import { executeTaskAndWaitForResult, waitForEndTaskProcess } from "../../utilities/tasks";
-import { Version } from "../../../src/utilities/version";
-import { FolderContext } from "../../../src/FolderContext";
+
+import { FolderContext } from "@src/FolderContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { createBuildAllTask, createSwiftTask, getBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { Version } from "@src/utilities/version";
+
 import { mockGlobalObject } from "../../MockUtils";
+import { tag } from "../../tags";
+import { executeTaskAndWaitForResult, waitForEndTaskProcess } from "../../utilities/tasks";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
@@ -115,13 +113,13 @@ suite("SwiftTaskProvider Test Suite", () => {
                 expect(task?.detail).to.include("swift build --build-tests");
             });
 
-            test("executes @slow", async () => {
+            tag("large").test("executes", async () => {
                 assert(task);
                 const exitPromise = waitForEndTaskProcess(task);
                 await vscode.tasks.executeTask(task);
                 const exitCode = await exitPromise;
                 expect(exitCode).to.equal(0);
-            }).timeout(180000); // 3 minutes to build
+            });
         });
 
         suite("includes build all task from tasks.json", () => {

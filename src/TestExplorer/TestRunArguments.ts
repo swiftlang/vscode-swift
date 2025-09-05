@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
-import { reduceTestItemChildren } from "./TestUtils";
+
 import { TestRunProxy } from "./TestRunner";
+import { reduceTestItemChildren } from "./TestUtils";
 
 type ProcessResult = {
     testItems: vscode.TestItem[];

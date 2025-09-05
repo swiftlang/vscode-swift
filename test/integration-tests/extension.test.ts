@@ -11,17 +11,17 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
-import * as vscode from "vscode";
-import { WorkspaceContext } from "../../src/WorkspaceContext";
-import { getBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
-import { SwiftExecution } from "../../src/tasks/SwiftExecution";
-import { activateExtensionForTest, findWorkspaceFolder } from "./utilities/testutilities";
 import { expect } from "chai";
+import * as vscode from "vscode";
+
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { SwiftExecution } from "@src/tasks/SwiftExecution";
+import { getBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+
+import { activateExtensionForTest, findWorkspaceFolder } from "./utilities/testutilities";
 
 suite("Extension Test Suite", function () {
-    this.timeout(60000);
     let workspaceContext: WorkspaceContext;
 
     activateExtensionForTest({
@@ -30,22 +30,7 @@ suite("Extension Test Suite", function () {
         },
     });
 
-    suite("Temporary Folder Test Suite", () => {
-        /*test("Create/Delete File", async () => {
-            const fileContents = "Test file";
-            //const tempFolder = await TemporaryFolder.create();
-            const fileName = workspaceContext.tempFolder.filename("test");
-            assert.doesNotThrow(async () => await fs.writeFile(fileName, fileContents));
-            assert.doesNotThrow(async () => {
-                const contents = await fs.readFile(fileName, "utf8");
-                assert.strictEqual(contents, fileContents);
-            });
-            assert.doesNotThrow(async () => await fs.rm(fileName));
-        }).timeout(5000);*/
-    });
-
     suite("Workspace", function () {
-        this.timeout(60000);
         /** Verify tasks.json is being loaded */
         test("Tasks.json", async () => {
             const folder = findWorkspaceFolder("defaultPackage", workspaceContext);
@@ -62,6 +47,6 @@ suite("Extension Test Suite", function () {
             ])) {
                 assert.ok(execution?.args.find(item => item === arg));
             }
-        }).timeout(60000);
+        });
     });
 });

@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
 import {
     CloseAction,
@@ -25,23 +24,24 @@ import {
     MessageType,
     State,
 } from "vscode-languageclient";
+import { Executable, LanguageClient, ServerOptions } from "vscode-languageclient/node";
+
+import { FolderContext } from "../FolderContext";
 import configuration from "../configuration";
+import { SwiftOutputChannel } from "../logging/SwiftOutputChannel";
+import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { Version } from "../utilities/version";
+import { LSPLogger, LSPOutputChannel } from "./LSPOutputChannel";
+import { lspClientOptions } from "./LanguageClientConfiguration";
+import { LanguageClientFactory } from "./LanguageClientFactory";
+import { LSPActiveDocumentManager } from "./didChangeActiveDocument";
+import { SourceKitLogMessageNotification, SourceKitLogMessageParams } from "./extensions";
+import { DidChangeActiveDocumentNotification } from "./extensions/DidChangeActiveDocumentRequest";
+import { PollIndexRequest, WorkspaceSynchronizeRequest } from "./extensions/PollIndexRequest";
+import { activateGetReferenceDocument } from "./getReferenceDocument";
 import { activateLegacyInlayHints } from "./inlayHints";
 import { activatePeekDocuments } from "./peekDocuments";
-import { FolderContext } from "../FolderContext";
-import { Executable, LanguageClient, ServerOptions } from "vscode-languageclient/node";
-import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
-import { LSPLogger, LSPOutputChannel } from "./LSPOutputChannel";
-import { activateGetReferenceDocument } from "./getReferenceDocument";
-import { LanguageClientFactory } from "./LanguageClientFactory";
-import { SourceKitLogMessageNotification, SourceKitLogMessageParams } from "./extensions";
-import { LSPActiveDocumentManager } from "./didChangeActiveDocument";
-import { DidChangeActiveDocumentNotification } from "./extensions/DidChangeActiveDocumentRequest";
-import { lspClientOptions } from "./LanguageClientConfiguration";
-import { SwiftOutputChannel } from "../logging/SwiftOutputChannel";
-import { PollIndexRequest, WorkspaceSynchronizeRequest } from "./extensions/PollIndexRequest";
 
 interface LanguageClientManageOptions {
     /**

@@ -11,12 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as path from "path";
-import { createSwiftTask } from "./tasks/SwiftTaskProvider";
+import * as vscode from "vscode";
+
 import { WorkspaceContext } from "./WorkspaceContext";
 import { createSnippetConfiguration, debugLaunchConfig } from "./debugger/launch";
+import { createSwiftTask } from "./tasks/SwiftTaskProvider";
 import { TaskOperation } from "./tasks/TaskQueue";
 
 /**

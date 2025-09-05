@@ -11,22 +11,24 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
-import * as path from "path";
-import * as os from "os";
-import { mkdir, rm } from "fs/promises";
-import * as decompress from "decompress";
 import { expect } from "chai";
-import { captureDiagnostics } from "../../../src/commands/captureDiagnostics";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import * as decompress from "decompress";
+import { mkdir, rm } from "fs/promises";
+import * as os from "os";
+import * as path from "path";
+import * as vscode from "vscode";
+
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { captureDiagnostics } from "@src/commands/captureDiagnostics";
+import { Version } from "@src/utilities/version";
+
 import { mockGlobalObject } from "../../MockUtils";
+import { tag } from "../../tags";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
     updateSettings,
 } from "../utilities/testutilities";
-import { Version } from "../../../src/utilities/version";
 
 suite("captureDiagnostics Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -88,9 +90,7 @@ suite("captureDiagnostics Test Suite", () => {
         });
     });
 
-    suite("Full @slow", function () {
-        this.timeout(2 * 60 * 1000);
-
+    tag("large").suite("Full", function () {
         activateExtensionForSuite({
             async setup(ctx) {
                 workspaceContext = ctx;

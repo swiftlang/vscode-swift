@@ -11,33 +11,33 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as path from "path";
+import * as vscode from "vscode";
+
+import { DiagnosticsManager } from "./DiagnosticsManager";
 import { FolderContext } from "./FolderContext";
-import { StatusItem } from "./ui/StatusItem";
-import { swiftLibraryPathKey } from "./utilities/utilities";
-import { isExcluded, isPathInsidePath } from "./utilities/filesystem";
-import { LanguageClientToolchainCoordinator } from "./sourcekit-lsp/LanguageClientToolchainCoordinator";
-import { TaskManager } from "./tasks/TaskManager";
-import { makeDebugConfigurations } from "./debugger/launch";
+import { setSnippetContextKey } from "./SwiftSnippets";
+import { TestKind } from "./TestExplorer/TestKind";
+import { TestRunManager } from "./TestExplorer/TestRunManager";
 import configuration from "./configuration";
 import { ContextKeys } from "./contextKeys";
-import { setSnippetContextKey } from "./SwiftSnippets";
-import { CommentCompletionProviders } from "./editor/CommentCompletion";
-import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
-import { SwiftToolchain } from "./toolchain/toolchain";
-import { DiagnosticsManager } from "./DiagnosticsManager";
-import { DocumentationManager } from "./documentation/DocumentationManager";
-import { DocCDocumentationRequest, ReIndexProjectRequest } from "./sourcekit-lsp/extensions";
-import { TestKind } from "./TestExplorer/TestKind";
-import { isValidWorkspaceFolder, searchForPackages } from "./utilities/workspace";
-import { SwiftPluginTaskProvider } from "./tasks/SwiftPluginTaskProvider";
-import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
 import { LLDBDebugConfigurationProvider } from "./debugger/debugAdapterFactory";
+import { makeDebugConfigurations } from "./debugger/launch";
+import { DocumentationManager } from "./documentation/DocumentationManager";
+import { CommentCompletionProviders } from "./editor/CommentCompletion";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
-import { TestRunManager } from "./TestExplorer/TestRunManager";
+import { LanguageClientToolchainCoordinator } from "./sourcekit-lsp/LanguageClientToolchainCoordinator";
+import { DocCDocumentationRequest, ReIndexProjectRequest } from "./sourcekit-lsp/extensions";
+import { SwiftPluginTaskProvider } from "./tasks/SwiftPluginTaskProvider";
+import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
+import { TaskManager } from "./tasks/TaskManager";
+import { SwiftToolchain } from "./toolchain/toolchain";
+import { StatusItem } from "./ui/StatusItem";
+import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
+import { isExcluded, isPathInsidePath } from "./utilities/filesystem";
+import { swiftLibraryPathKey } from "./utilities/utilities";
+import { isValidWorkspaceFolder, searchForPackages } from "./utilities/workspace";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder

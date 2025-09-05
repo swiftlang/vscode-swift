@@ -11,16 +11,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as path from "path";
-import { showReloadExtensionNotification } from "./ReloadExtension";
-import { SwiftToolchain } from "../toolchain/toolchain";
-import configuration from "../configuration";
-import { Commands } from "../commands";
-import { Swiftly } from "../toolchain/swiftly";
-import { SwiftLogger } from "../logging/SwiftLogger";
+import * as vscode from "vscode";
+
 import { FolderContext } from "../FolderContext";
+import { Commands } from "../commands";
+import configuration from "../configuration";
+import { SwiftLogger } from "../logging/SwiftLogger";
+import { Swiftly } from "../toolchain/swiftly";
+import { SwiftToolchain } from "../toolchain/toolchain";
+import { showReloadExtensionNotification } from "./ReloadExtension";
 
 /**
  * Open the installation page on Swift.org

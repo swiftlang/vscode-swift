@@ -11,8 +11,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
 import { WorkspaceContext } from "../WorkspaceContext";
 import { ReIndexProjectRequest } from "../sourcekit-lsp/extensions";
 

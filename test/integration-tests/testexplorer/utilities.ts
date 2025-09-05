@@ -11,21 +11,23 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as assert from "assert";
-import { reduceTestItemChildren } from "../../../src/TestExplorer/TestUtils";
-import { TestRunProxy } from "../../../src/TestExplorer/TestRunner";
-import { TestExplorer } from "../../../src/TestExplorer/TestExplorer";
-import { TestKind } from "../../../src/TestExplorer/TestKind";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import * as vscode from "vscode";
+
+import { TestExplorer } from "@src/TestExplorer/TestExplorer";
+import { TestKind } from "@src/TestExplorer/TestKind";
+import { TestRunProxy } from "@src/TestExplorer/TestRunner";
+import { reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+
 import { testAssetUri } from "../../fixtures";
 import {
+    SettingsMap,
     activateExtension,
     deactivateExtension,
-    SettingsMap,
     updateSettings,
 } from "../utilities/testutilities";
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
 

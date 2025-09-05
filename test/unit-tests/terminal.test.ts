@@ -11,18 +11,19 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import { expect } from "chai";
+import * as vscode from "vscode";
+
+import configuration from "@src/configuration";
+import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "@src/terminal";
+
 import {
-    mockObject,
-    mockGlobalValue,
     MockedObject,
     instance,
     mockGlobalObject,
+    mockGlobalValue,
+    mockObject,
 } from "../MockUtils";
-import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "../../src/terminal";
-import configuration from "../../src/configuration";
 
 suite("Terminal", () => {
     const mockedPlatform = mockGlobalValue(process, "platform");

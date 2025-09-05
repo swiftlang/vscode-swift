@@ -11,11 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as vscode from "vscode";
 import { DebugProtocol } from "@vscode/debugprotocol";
-import { Workbench } from "../../src/utilities/commands";
-import { DebugAdapter } from "../../src/debugger/debugAdapter";
-import { Version } from "../../src/utilities/version";
+import * as vscode from "vscode";
+
+import { DebugAdapter } from "@src/debugger/debugAdapter";
+import { Workbench } from "@src/utilities/commands";
+import { Version } from "@src/utilities/version";
 
 export async function continueSession(): Promise<void> {
     await vscode.commands.executeCommand(Workbench.ACTION_DEBUG_CONTINUE);

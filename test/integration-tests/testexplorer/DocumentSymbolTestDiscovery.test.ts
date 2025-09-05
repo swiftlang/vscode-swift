@@ -11,11 +11,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
 import * as vscode from "vscode";
-import { parseTestsFromDocumentSymbols } from "../../../src/TestExplorer/DocumentSymbolTestDiscovery";
-import { TestClass } from "../../../src/TestExplorer/TestDiscovery";
+
+import { parseTestsFromDocumentSymbols } from "@src/TestExplorer/DocumentSymbolTestDiscovery";
+import { TestClass } from "@src/TestExplorer/TestDiscovery";
 
 suite("DocumentSymbolTestDiscovery Suite", () => {
     const mockRange = new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0));

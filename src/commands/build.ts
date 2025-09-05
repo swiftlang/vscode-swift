@@ -11,15 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
-import { WorkspaceContext } from "../WorkspaceContext";
-import { createSwiftTask, SwiftTaskProvider } from "../tasks/SwiftTaskProvider";
-import { debugLaunchConfig, getLaunchConfiguration } from "../debugger/launch";
-import { executeTaskWithUI } from "./utilities";
+
 import { FolderContext } from "../FolderContext";
 import { Target } from "../SwiftPackage";
+import { WorkspaceContext } from "../WorkspaceContext";
+import { debugLaunchConfig, getLaunchConfiguration } from "../debugger/launch";
+import { SwiftTaskProvider, createSwiftTask } from "../tasks/SwiftTaskProvider";
 import { packageName } from "../utilities/tasks";
+import { executeTaskWithUI } from "./utilities";
 
 /**
  * Executes a {@link vscode.Task task} to run swift target.

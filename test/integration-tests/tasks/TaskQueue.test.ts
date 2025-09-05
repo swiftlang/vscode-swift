@@ -11,12 +11,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as assert from "assert";
+import * as vscode from "vscode";
+
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { SwiftExecOperation, TaskOperation, TaskQueue } from "@src/tasks/TaskQueue";
+
 import { testAssetPath } from "../../fixtures";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { SwiftExecOperation, TaskOperation, TaskQueue } from "../../../src/tasks/TaskQueue";
+import { tag } from "../../tags";
 import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
 
 suite("TaskQueue Test Suite", () => {
@@ -129,7 +131,7 @@ suite("TaskQueue Test Suite", () => {
 
     // Queue two tasks. The first one taking longer than the second. If they
     // are queued correctly the first will still finish before the second
-    test("Test execution order", async () => {
+    tag("medium").test("Test execution order", async () => {
         const sleepScript = testAssetPath("sleep.sh");
         const results: (number | undefined)[] = [];
         const task1 = new vscode.Task(
@@ -151,7 +153,7 @@ suite("TaskQueue Test Suite", () => {
             taskQueue.queueOperation(new TaskOperation(task2)).then(rt => results.push(rt)),
         ]);
         assert.notStrictEqual(results, [1, 2]);
-    }).timeout(15000);
+    });
 
     // check queuing task will return expected value
     test("swift exec", async () => {

@@ -11,25 +11,25 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
-import * as TestDiscovery from "./TestDiscovery";
+
 import { FolderContext } from "../FolderContext";
-import { compositeDisposable, getErrorDescription } from "../utilities/utilities";
-import { FolderOperation, SwiftFileEvent, WorkspaceContext } from "../WorkspaceContext";
-import { TestRunProxy, TestRunner } from "./TestRunner";
-import { LSPTestDiscovery } from "./LSPTestDiscovery";
-import { Version } from "../utilities/version";
-import { buildOptions, getBuildAllTask } from "../tasks/SwiftTaskProvider";
-import { SwiftExecOperation, TaskOperation } from "../tasks/TaskQueue";
 import { TargetType } from "../SwiftPackage";
-import { parseTestsFromSwiftTestListOutput } from "./SPMTestDiscovery";
-import { parseTestsFromDocumentSymbols } from "./DocumentSymbolTestDiscovery";
-import { flattenTestItemCollection } from "./TestUtils";
-import { TestCodeLensProvider } from "./TestCodeLensProvider";
-import { SwiftLogger } from "../logging/SwiftLogger";
-import { TaskManager } from "../tasks/TaskManager";
+import { FolderOperation, SwiftFileEvent, WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
+import { SwiftLogger } from "../logging/SwiftLogger";
+import { buildOptions, getBuildAllTask } from "../tasks/SwiftTaskProvider";
+import { TaskManager } from "../tasks/TaskManager";
+import { SwiftExecOperation, TaskOperation } from "../tasks/TaskQueue";
+import { compositeDisposable, getErrorDescription } from "../utilities/utilities";
+import { Version } from "../utilities/version";
+import { parseTestsFromDocumentSymbols } from "./DocumentSymbolTestDiscovery";
+import { LSPTestDiscovery } from "./LSPTestDiscovery";
+import { parseTestsFromSwiftTestListOutput } from "./SPMTestDiscovery";
+import { TestCodeLensProvider } from "./TestCodeLensProvider";
+import * as TestDiscovery from "./TestDiscovery";
+import { TestRunProxy, TestRunner } from "./TestRunner";
+import { flattenTestItemCollection } from "./TestUtils";
 
 /** Build test explorer UI */
 export class TestExplorer {

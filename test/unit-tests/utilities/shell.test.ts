@@ -11,12 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import { beforeEach, afterEach } from "mocha";
 import { expect } from "chai";
+import { afterEach, beforeEach } from "mocha";
 import * as sinon from "sinon";
-import { findBinaryPath } from "../../../src/utilities/shell";
-import * as utilities from "../../../src/utilities/utilities";
+
+import { findBinaryPath } from "@src/utilities/shell";
+import * as utilities from "@src/utilities/utilities";
 
 suite("Shell Unit Test Suite", () => {
     let execFileStub: sinon.SinonStub;

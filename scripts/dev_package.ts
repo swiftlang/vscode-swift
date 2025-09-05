@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 /* eslint-disable no-console */
-
 import { getExtensionVersion, main, packageExtension } from "./lib/utilities";
 
 main(async () => {

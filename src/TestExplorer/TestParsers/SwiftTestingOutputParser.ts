@@ -11,20 +11,20 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
+import { exec } from "child_process";
 import * as readline from "readline";
 import { Readable } from "stream";
+import * as vscode from "vscode";
+
+import { lineBreakRegex } from "../../utilities/tasks";
+import { colorize, sourceLocationToVSCodeLocation } from "../../utilities/utilities";
+import { TestClass } from "../TestDiscovery";
 import {
     INamedPipeReader,
     UnixNamedPipeReader,
     WindowsNamedPipeReader,
 } from "./TestEventStreamReader";
 import { ITestRunState } from "./TestRunState";
-import { TestClass } from "../TestDiscovery";
-import { colorize, sourceLocationToVSCodeLocation } from "../../utilities/utilities";
-import { exec } from "child_process";
-import { lineBreakRegex } from "../../utilities/tasks";
 
 // All events produced by a swift-testing run will be one of these three types.
 // Detailed information about swift-testing's JSON schema is available here:

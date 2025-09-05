@@ -11,9 +11,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
+
 import { GetReferenceDocumentParams, GetReferenceDocumentRequest } from "./extensions";
 
 export function activateGetReferenceDocument(client: langclient.LanguageClient): vscode.Disposable {

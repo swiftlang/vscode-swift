@@ -12,11 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 /* eslint-disable no-console */
-
-import simpleGit, { ResetMode } from "simple-git";
-import { stat, mkdir, rm, readdir } from "fs/promises";
+import { mkdir, readdir, rm, stat } from "fs/promises";
 import * as path from "path";
 import * as semver from "semver";
+import simpleGit, { ResetMode } from "simple-git";
+
 import { exec, getRootDirectory, main, withTemporaryDirectory } from "./lib/utilities";
 
 function checkNodeVersion() {

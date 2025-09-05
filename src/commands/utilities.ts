@@ -11,11 +11,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
 import { FolderContext } from "../FolderContext";
-import { TaskOperation } from "../tasks/TaskQueue";
 import { FolderOperation } from "../WorkspaceContext";
+import { TaskOperation } from "../tasks/TaskQueue";
 
 /**
  * Execute task and show UI while running.

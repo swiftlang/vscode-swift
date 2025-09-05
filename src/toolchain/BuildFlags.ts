@@ -11,11 +11,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as path from "path";
+
 import configuration from "../configuration";
-import { SwiftToolchain, DarwinCompatibleTarget, getDarwinTargetTriple } from "./toolchain";
 import { Version } from "../utilities/version";
+import { DarwinCompatibleTarget, SwiftToolchain, getDarwinTargetTriple } from "./toolchain";
 
 /** Target info */
 export interface DarwinTargetInfo {

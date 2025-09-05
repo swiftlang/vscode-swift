@@ -11,22 +11,23 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as fs from "fs/promises";
-import * as path from "path";
 import * as os from "os";
+import * as path from "path";
 import * as plist from "plist";
 import * as vscode from "vscode";
+
 import configuration from "../configuration";
-import { execFile, execSwift } from "../utilities/utilities";
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { expandFilePathTilde, fileExists, pathExists } from "../utilities/filesystem";
+import { findBinaryPath } from "../utilities/shell";
+import { lineBreakRegex } from "../utilities/tasks";
+import { execFile, execSwift } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { BuildFlags } from "./BuildFlags";
 import { Sanitizer } from "./Sanitizer";
-import { lineBreakRegex } from "../utilities/tasks";
 import { Swiftly } from "./swiftly";
-import { SwiftLogger } from "../logging/SwiftLogger";
-import { findBinaryPath } from "../utilities/shell";
+
 /**
  * Contents of **Info.plist** on Windows.
  */
