@@ -51,9 +51,10 @@ export async function runTestMultipleTimes(
     }
     const token = new vscode.CancellationTokenSource();
     const testExplorer = currentFolder.testExplorer;
+    const request = new vscode.TestRunRequest(tests);
     const runner = new TestRunner(
         kind,
-        new vscode.TestRunRequest(tests),
+        request,
         currentFolder,
         testExplorer.controller,
         token.token
@@ -110,9 +111,7 @@ export async function runTestMultipleTimes(
  * also accept a final count parameter. We have to find the count parameter ourselves since JavaScript
  * only supports varargs at the end of an argument list.
  */
-export function extractTestItemsAndCount(
-    ...args: (vscode.TestItem | number | undefined | null)[]
-): {
+export function extractTestItemsAndCount(...args: unknown[]): {
     testItems: vscode.TestItem[];
     count?: number;
 } {
@@ -126,8 +125,11 @@ export function extractTestItemsAndCount(
             } else if (typeof arg === "number" && index === args.length - 1) {
                 result.count = arg ?? undefined;
                 return result;
-            } else if (typeof arg === "object") {
+            } else if (isVSCodeTestItem(arg)) {
                 result.testItems.push(arg);
+                return result;
+            } else if (typeof arg === "object") {
+                // Object but not a TestItem, just skip it
                 return result;
             } else {
                 throw new Error(`Unexpected argument ${arg} at index ${index}`);
@@ -136,4 +138,16 @@ export function extractTestItemsAndCount(
         { testItems: [] }
     );
     return result;
+}
+
+/**
+ * Checks if an object is a vscode.TestItem via duck typing.
+ */
+function isVSCodeTestItem(obj: unknown): obj is vscode.TestItem {
+    return (
+        typeof obj === "object" &&
+        obj !== null &&
+        Object.prototype.hasOwnProperty.call(obj, "id") &&
+        Object.prototype.hasOwnProperty.call(obj, "uri")
+    );
 }
