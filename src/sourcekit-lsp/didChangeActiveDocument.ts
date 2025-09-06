@@ -39,7 +39,7 @@ export class LSPActiveDocumentManager {
         document: vscode.TextDocument,
         next: (data: vscode.TextDocument) => Promise<void>
     ) {
-        this.openDocuments.add(document.uri);
+        this.openDocuments.delete(document.uri);
         await next(document);
     }
 
