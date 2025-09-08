@@ -2008,7 +2008,7 @@
     "@types/ttf2woff": "^2.0.4",
     "@types/vscode": "^1.88.0",
     "@types/xml2js": "^0.4.14",
-    "@typescript-eslint/eslint-plugin": "^8.42.0",
+    "@typescript-eslint/eslint-plugin": "^8.43.0",
     "@typescript-eslint/parser": "^8.32.1",
     "@vscode/debugprotocol": "^1.68.0",
     "@vscode/test-cli": "^0.0.11",
@@ -2048,7 +2048,7 @@
     "winston-transport": "^4.9.0"
   },
   "dependencies": {
-    "@vscode/codicons": "^0.0.39",
+    "@vscode/codicons": "^0.0.40",
     "archiver": "^7.0.1",
     "fast-glob": "^3.3.3",
     "lcov-parse": "^1.0.0",
