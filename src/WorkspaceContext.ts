@@ -610,7 +610,11 @@ export class WorkspaceContext implements vscode.Disposable {
      * Package.swift or a CMake compile_commands.json, compile_flags.txt, or a BSP buildServer.json.
      */
     async isValidWorkspaceFolder(folder: string): Promise<boolean> {
-        return await isValidWorkspaceFolder(folder, configuration.disableSwiftPMIntegration, this.globalToolchainSwiftVersion);
+        return await isValidWorkspaceFolder(
+            folder,
+            configuration.disableSwiftPMIntegration,
+            this.globalToolchainSwiftVersion
+        );
     }
 
     /** send unfocus event to current focussed folder and clear current folder */

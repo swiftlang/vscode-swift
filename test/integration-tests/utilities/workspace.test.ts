@@ -14,8 +14,8 @@
 import { expect } from "chai";
 import * as vscode from "vscode";
 
+import { Version } from "@src/utilities/version";
 import { searchForPackages } from "@src/utilities/workspace";
-import { Version } from "../../../src/utilities/version";
 
 suite("Workspace Utilities Test Suite", () => {
     suite("searchForPackages", () => {

@@ -11,12 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
-import * as path from "path";
 import * as fs from "fs/promises";
-import { globDirectory, pathExists } from "./filesystem";
+import * as path from "path";
 import { basename } from "path";
+import * as vscode from "vscode";
+
+import { globDirectory, pathExists } from "./filesystem";
 import { Version } from "./version";
 
 export async function searchForPackages(
@@ -63,11 +63,11 @@ export async function hasBSPConfigurationFile(
     }
     // .bsp/*.json for Swift >= 6.1.0
     if (swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))) {
-        const bspDir = path.join(folder, '.bsp');
+        const bspDir = path.join(folder, ".bsp");
         const bspStat = await fs.stat(bspDir).catch(() => undefined);
         if (bspStat && bspStat.isDirectory()) {
             const files = await fs.readdir(bspDir).catch(() => []);
-            if (files.some((f: string) => f.endsWith('.json'))) {
+            if (files.some((f: string) => f.endsWith(".json"))) {
                 return true;
             }
         }
@@ -84,20 +84,20 @@ export async function isValidWorkspaceFolder(
     if (!disableSwiftPMIntegration && (await pathExists(folder, "Package.swift"))) {
         return true;
     }
-    
+
     // Check other common build files
     if (await pathExists(folder, "compile_commands.json")) {
         return true;
     }
-    
+
     if (await pathExists(folder, "compile_flags.txt")) {
         return true;
     }
-    
+
     if (await pathExists(folder, "build")) {
         return true;
     }
-    
+
     if (await pathExists(folder, "out")) {
         return true;
     }
@@ -106,6 +106,6 @@ export async function isValidWorkspaceFolder(
     if (await hasBSPConfigurationFile(folder, swiftVersion)) {
         return true;
     }
-    
+
     return false;
 }
