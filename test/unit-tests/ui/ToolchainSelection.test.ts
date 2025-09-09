@@ -32,6 +32,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
     const mockedVSCodeCommands = mockGlobalObject(vscode, "commands");
     const mockedVSCodeEnv = mockGlobalObject(vscode, "env");
+    const mockedVSCodeWorkspace = mockGlobalObject(vscode, "workspace");
     let mockLogger: SwiftLogger;
 
     setup(() => {
@@ -56,6 +57,15 @@ suite("ToolchainSelection Unit Test Suite", () => {
         });
         mockedVSCodeCommands.executeCommand.resolves(undefined);
         mockedVSCodeEnv.openExternal.resolves(true);
+
+        // Mock workspace configuration to prevent actual settings writes
+        const mockConfiguration = {
+            update: stub().resolves(),
+            inspect: stub().returns({}),
+            get: stub().returns(undefined),
+            has: stub().returns(false),
+        };
+        mockedVSCodeWorkspace.getConfiguration.returns(mockConfiguration);
 
         // Mock SwiftToolchain static methods
         stub(SwiftToolchain, "findXcodeInstalls").resolves([]);
