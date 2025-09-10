@@ -17,9 +17,10 @@ import * as vscode from "vscode";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { TaskManager } from "@src/tasks/TaskManager";
 
+import { tag } from "../../tags";
 import { activateExtensionForSuite } from "../utilities/testutilities";
 
-suite("TaskManager Test Suite", () => {
+tag("medium").suite("TaskManager Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     let taskManager: TaskManager;
 
