@@ -64,7 +64,10 @@ const extensionBootstrapper = (() => {
         let workspaceContext: WorkspaceContext | undefined;
         let autoTeardown: void | (() => Promise<void>);
         let restoreSettings: (() => Promise<void>) | undefined;
-        before(async function () {
+        before("Activate Swift Extension", async function () {
+            // Allow enough time for the extension to activate
+            this.timeout(120_000);
+
             // Make sure that CodeLLDB is installed for debugging related tests
             if (!vscode.extensions.getExtension("vadimcn.vscode-lldb")) {
                 await vscode.commands.executeCommand(
@@ -141,7 +144,10 @@ const extensionBootstrapper = (() => {
             }
         });
 
-        after(async function () {
+        after("Deactivate Swift Extension", async function () {
+            // Allow enough time for the extension to deactivate
+            this.timeout(60_000);
+
             let userTeardownError: unknown | undefined;
             try {
                 // First run the users supplied teardown, then await the autoTeardown if it exists.
