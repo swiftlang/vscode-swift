@@ -123,6 +123,9 @@ module.exports = defineConfig({
                 retries: 1,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
                 reporterOptions: {
+                    githubActionsSummaryReporterOptions: {
+                        title: "Integration Test Summary",
+                    },
                     jsonReporterOptions: {
                         output: path.join(__dirname, "test-results", "integration-tests.json"),
                     },
@@ -156,6 +159,9 @@ module.exports = defineConfig({
                 retries: 1,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
                 reporterOptions: {
+                    githubActionsSummaryReporterOptions: {
+                        title: "Code Workspace Test Summary",
+                    },
                     jsonReporterOptions: {
                         output: path.join(__dirname, "test-results", "code-workspace-tests.json"),
                     },
@@ -178,6 +184,9 @@ module.exports = defineConfig({
                 slow: 100,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
                 reporterOptions: {
+                    githubActionsSummaryReporterOptions: {
+                        title: "Unit Test Summary",
+                    },
                     jsonReporterOptions: {
                         output: path.join(__dirname, "test-results", "unit-tests.json"),
                     },
