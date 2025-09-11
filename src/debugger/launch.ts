@@ -121,26 +121,43 @@ export async function makeDebugConfigurations(
 }
 
 // Return debug launch configuration for an executable in the given folder
-export function getLaunchConfiguration(
+export async function getLaunchConfiguration(
     target: string,
     folderCtx: FolderContext
-): vscode.DebugConfiguration | undefined {
+): Promise<vscode.DebugConfiguration | undefined> {
     const wsLaunchSection = vscode.workspace.workspaceFile
         ? vscode.workspace.getConfiguration("launch")
         : vscode.workspace.getConfiguration("launch", folderCtx.workspaceFolder);
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
     const { folder } = getFolderAndNameSuffix(folderCtx);
-    const targetPath = path.join(
-        BuildFlags.buildDirectoryFromWorkspacePath(folder, true),
-        "debug",
-        target
-    );
-    // Users could be on different platforms with different path annotations,
-    // so normalize before we compare.
-    const launchConfig = launchConfigs.find(
-        config => path.normalize(config.program) === path.normalize(targetPath)
-    );
-    return launchConfig;
+
+    try {
+        // Use dynamic path resolution with --show-bin-path
+        const binPath = await folderCtx.toolchain.buildFlags.getBuildBinaryPath(
+            folderCtx.folder.fsPath,
+            folder,
+            "debug"
+        );
+        const targetPath = path.join(binPath, target);
+
+        // Users could be on different platforms with different path annotations,
+        // so normalize before we compare.
+        const launchConfig = launchConfigs.find(
+            config => path.normalize(config.program) === path.normalize(targetPath)
+        );
+        return launchConfig;
+    } catch (error) {
+        // Fallback to traditional path construction if dynamic resolution fails
+        const targetPath = path.join(
+            BuildFlags.buildDirectoryFromWorkspacePath(folder, true),
+            "debug",
+            target
+        );
+        const launchConfig = launchConfigs.find(
+            config => path.normalize(config.program) === path.normalize(targetPath)
+        );
+        return launchConfig;
+    }
 }
 
 // Return array of DebugConfigurations for executables based on what is in Package.swift
@@ -152,30 +169,69 @@ async function createExecutableConfigurations(
     // Windows understand the forward slashes, so make the configuration unified as posix path
     // to make it easier for users switching between platforms.
     const { folder, nameSuffix } = getFolderAndNameSuffix(ctx, undefined, "posix");
-    const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true, "posix");
 
-    return executableProducts.flatMap(product => {
-        const baseConfig = {
-            type: SWIFT_LAUNCH_CONFIG_TYPE,
-            request: "launch",
-            args: [],
-            cwd: folder,
-        };
-        return [
-            {
-                ...baseConfig,
-                name: `Debug ${product.name}${nameSuffix}`,
-                program: path.posix.join(buildDirectory, "debug", product.name),
-                preLaunchTask: `swift: Build Debug ${product.name}${nameSuffix}`,
-            },
-            {
-                ...baseConfig,
-                name: `Release ${product.name}${nameSuffix}`,
-                program: path.posix.join(buildDirectory, "release", product.name),
-                preLaunchTask: `swift: Build Release ${product.name}${nameSuffix}`,
-            },
-        ];
-    });
+    try {
+        // Get dynamic build paths for both debug and release configurations
+        const debugBinPath = await ctx.toolchain.buildFlags.getBuildBinaryPath(
+            ctx.folder.fsPath,
+            folder,
+            "debug"
+        );
+        const releaseBinPath = await ctx.toolchain.buildFlags.getBuildBinaryPath(
+            ctx.folder.fsPath,
+            folder,
+            "release"
+        );
+
+        return executableProducts.flatMap(product => {
+            const baseConfig = {
+                type: SWIFT_LAUNCH_CONFIG_TYPE,
+                request: "launch",
+                args: [],
+                cwd: folder,
+            };
+            return [
+                {
+                    ...baseConfig,
+                    name: `Debug ${product.name}${nameSuffix}`,
+                    program: path.posix.join(debugBinPath, product.name),
+                    preLaunchTask: `swift: Build Debug ${product.name}${nameSuffix}`,
+                },
+                {
+                    ...baseConfig,
+                    name: `Release ${product.name}${nameSuffix}`,
+                    program: path.posix.join(releaseBinPath, product.name),
+                    preLaunchTask: `swift: Build Release ${product.name}${nameSuffix}`,
+                },
+            ];
+        });
+    } catch (error) {
+        // Fallback to traditional path construction if dynamic resolution fails
+        const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true, "posix");
+
+        return executableProducts.flatMap(product => {
+            const baseConfig = {
+                type: SWIFT_LAUNCH_CONFIG_TYPE,
+                request: "launch",
+                args: [],
+                cwd: folder,
+            };
+            return [
+                {
+                    ...baseConfig,
+                    name: `Debug ${product.name}${nameSuffix}`,
+                    program: path.posix.join(buildDirectory, "debug", product.name),
+                    preLaunchTask: `swift: Build Debug ${product.name}${nameSuffix}`,
+                },
+                {
+                    ...baseConfig,
+                    name: `Release ${product.name}${nameSuffix}`,
+                    program: path.posix.join(buildDirectory, "release", product.name),
+                    preLaunchTask: `swift: Build Release ${product.name}${nameSuffix}`,
+                },
+            ];
+        });
+    }
 }
 
 /**
@@ -184,22 +240,43 @@ async function createExecutableConfigurations(
  * @param ctx Folder context for project
  * @returns Debug configuration for running Swift Snippet
  */
-export function createSnippetConfiguration(
+export async function createSnippetConfiguration(
     snippetName: string,
     ctx: FolderContext
-): vscode.DebugConfiguration {
+): Promise<vscode.DebugConfiguration> {
     const { folder } = getFolderAndNameSuffix(ctx);
-    const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
 
-    return {
-        type: SWIFT_LAUNCH_CONFIG_TYPE,
-        request: "launch",
-        name: `Run ${snippetName}`,
-        program: path.posix.join(buildDirectory, "debug", snippetName),
-        args: [],
-        cwd: folder,
-        runType: "snippet",
-    };
+    try {
+        // Use dynamic path resolution with --show-bin-path
+        const binPath = await ctx.toolchain.buildFlags.getBuildBinaryPath(
+            ctx.folder.fsPath,
+            folder,
+            "debug"
+        );
+
+        return {
+            type: SWIFT_LAUNCH_CONFIG_TYPE,
+            request: "launch",
+            name: `Run ${snippetName}`,
+            program: path.posix.join(binPath, snippetName),
+            args: [],
+            cwd: folder,
+            runType: "snippet",
+        };
+    } catch (error) {
+        // Fallback to traditional path construction if dynamic resolution fails
+        const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
+
+        return {
+            type: SWIFT_LAUNCH_CONFIG_TYPE,
+            request: "launch",
+            name: `Run ${snippetName}`,
+            program: path.posix.join(buildDirectory, "debug", snippetName),
+            args: [],
+            cwd: folder,
+            runType: "snippet",
+        };
+    }
 }
 
 /**
