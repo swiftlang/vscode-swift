@@ -13,8 +13,7 @@
 //===----------------------------------------------------------------------===//
 import * as path from "path";
 
-import { FolderContext } from "../FolderContext";
-import configuration, { FolderConfiguration } from "../configuration";
+import configuration from "../configuration";
 import { execSwift } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { DarwinCompatibleTarget, SwiftToolchain, getDarwinTargetTriple } from "./toolchain";
