@@ -172,16 +172,10 @@ async function createExecutableConfigurations(
 
     try {
         // Get dynamic build paths for both debug and release configurations
-        const debugBinPath = await ctx.toolchain.buildFlags.getBuildBinaryPath(
-            ctx.folder.fsPath,
-            folder,
-            "debug"
-        );
-        const releaseBinPath = await ctx.toolchain.buildFlags.getBuildBinaryPath(
-            ctx.folder.fsPath,
-            folder,
-            "release"
-        );
+        const [debugBinPath, releaseBinPath] = await Promise.all([
+            ctx.toolchain.buildFlags.getBuildBinaryPath(ctx.folder.fsPath, folder, "debug"),
+            ctx.toolchain.buildFlags.getBuildBinaryPath(ctx.folder.fsPath, folder, "release"),
+        ]);
 
         return executableProducts.flatMap(product => {
             const baseConfig = {
