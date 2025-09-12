@@ -29,7 +29,7 @@ suite("Swift Scripts Suite", () => {
     activateExtensionForSuite({
         async setup(ctx) {
             if (process.platform === "win32") {
-                // Swift Scripts on Windows give a JIT error.
+                // Swift Scripts on Windows give a JIT error in CI.
                 this.skip();
             }
 
@@ -49,6 +49,7 @@ suite("Swift Scripts Suite", () => {
 
     test("Successfully runs a swift script", async () => {
         let output = "";
+        console.log(">>> Toolchain Version:", toolchain.swiftVersion);
         const exitCode = await runSwiftScript(document, tasks, toolchain, data => (output += data));
         console.log(">>> Output: ", output);
         expect(output).to.contain("Hello World");
