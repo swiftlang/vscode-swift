@@ -38,13 +38,13 @@ export async function runSwiftScript(
     document: vscode.TextDocument,
     tasks: TaskManager,
     toolchain: SwiftToolchain
-) {
+): Promise<number | undefined> {
     const targetVersion = await targetSwiftVersion();
     if (!targetVersion) {
         return;
     }
 
-    await withDocumentFile(document, async filename => {
+    return await withDocumentFile(document, async filename => {
         const runTask = createSwiftTask(
             ["-swift-version", targetVersion, filename],
             `Run ${filename}`,
@@ -55,7 +55,7 @@ export async function runSwiftScript(
             },
             toolchain
         );
-        await tasks.executeTaskAndWait(runTask);
+        return await tasks.executeTaskAndWait(runTask);
     });
 }
 
@@ -97,18 +97,18 @@ async function targetSwiftVersion() {
  * @param callback - An async function that receives the filename of the document or temporary file.
  * @returns A promise that resolves when the callback has completed.
  */
-async function withDocumentFile(
+async function withDocumentFile<T>(
     document: vscode.TextDocument,
-    callback: (filename: string) => Promise<void>
-) {
+    callback: (filename: string) => Promise<T>
+): Promise<T> {
     if (document.isUntitled) {
         const tmpFolder = await TemporaryFolder.create();
-        await tmpFolder.withTemporaryFile("swift", async filename => {
+        return await tmpFolder.withTemporaryFile("swift", async filename => {
             await fs.writeFile(filename, document.getText());
-            await callback(filename);
+            return await callback(filename);
         });
     } else {
         await document.save();
-        await callback(document.fileName);
+        return await callback(document.fileName);
     }
 }

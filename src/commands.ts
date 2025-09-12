@@ -220,11 +220,11 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             async (_ /* Ignore context */, folder) => await resetPackage(ctx, folder)
         ),
         vscode.commands.registerCommand("swift.runScript", async () => {
-            if (ctx.currentFolder && vscode.window.activeTextEditor?.document) {
+            if (ctx && vscode.window.activeTextEditor?.document) {
                 await runSwiftScript(
                     vscode.window.activeTextEditor.document,
                     ctx.tasks,
-                    ctx.currentFolder.toolchain
+                    ctx.currentFolder?.toolchain ?? ctx.globalToolchain
                 );
             }
         }),

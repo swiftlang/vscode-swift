@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 import * as assert from "assert";
 import * as mocha from "mocha";
+import * as path from "path";
 import { isDeepStrictEqual } from "util";
 import * as vscode from "vscode";
 
@@ -23,6 +24,7 @@ import { Api } from "@src/extension";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { buildAllTaskName, resetBuildAllTaskCache } from "@src/tasks/SwiftTaskProvider";
 import { Extension } from "@src/utilities/extensions";
+import { fileExists } from "@src/utilities/filesystem";
 import { Version } from "@src/utilities/version";
 
 import { testAssetPath, testAssetUri } from "../../fixtures";
@@ -362,10 +364,17 @@ export const folderInRootWorkspace = async (
     if (!folder) {
         folder = await workspaceContext.addPackageFolder(testAssetUri(name), workspaceFolder);
     }
+
+    // Folders that aren't packages (i.e. assets/tests/scripts) wont generate build tasks.
+    if (!(await fileExists(path.join(testAssetUri(name).fsPath, "Package.swift")))) {
+        return folder;
+    }
+
     let i = 0;
     while (i++ < 5) {
         const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
-        if (tasks.find(t => t.name === buildAllTaskName(folder, false))) {
+        const buildAllName = buildAllTaskName(folder, false);
+        if (tasks.find(t => t.name === buildAllName)) {
             break;
         }
         await new Promise(r => setTimeout(r, 5000));
