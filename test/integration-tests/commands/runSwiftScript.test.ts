@@ -43,7 +43,10 @@ suite("Swift Scripts Suite", () => {
     });
 
     test("Successfully runs a swift script", async () => {
-        const exitCode = await runSwiftScript(document, tasks, toolchain);
+        let output = "";
+        const exitCode = await runSwiftScript(document, tasks, toolchain, data => (output += data));
+        console.log(">>> Output: ", output);
+        expect(output).to.contain("Hello World");
         expect(exitCode).to.be.equal(0);
     });
 });

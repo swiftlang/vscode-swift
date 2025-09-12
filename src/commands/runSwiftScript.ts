@@ -16,6 +16,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 
 import configuration from "../configuration";
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import { TaskManager } from "../tasks/TaskManager";
 import { SwiftToolchain } from "../toolchain/toolchain";
@@ -37,7 +38,8 @@ import { TemporaryFolder } from "../utilities/tempFolder";
 export async function runSwiftScript(
     document: vscode.TextDocument,
     tasks: TaskManager,
-    toolchain: SwiftToolchain
+    toolchain: SwiftToolchain,
+    logger?: (data: string) => void
 ): Promise<number | undefined> {
     const targetVersion = await targetSwiftVersion();
     if (!targetVersion) {
@@ -55,6 +57,7 @@ export async function runSwiftScript(
             },
             toolchain
         );
+        runTask.execution.onDidWrite(data => logger?.(data));
         return await tasks.executeTaskAndWait(runTask);
     });
 }
