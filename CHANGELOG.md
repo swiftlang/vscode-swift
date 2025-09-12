@@ -14,6 +14,7 @@
 - Don't start debugging XCTest cases if the swift-testing debug session was stopped ([#1797](https://github.com/swiftlang/vscode-swift/pull/1797))
 - Improve error handling when the swift path is misconfigured ([#1801](https://github.com/swiftlang/vscode-swift/pull/1801))
 - Fix an error when performing "Run/Debug Tests Multiple Times" on Linux ([#1824](https://github.com/swiftlang/vscode-swift/pull/1824))
+- Fix the `> Swift: Run Swift Script` command not running unless a Swift Package folder is open ([#1832](https://github.com/swiftlang/vscode-swift/pull/1832))
 
 ## 2.11.20250806 - 2025-08-06
 
