@@ -32,6 +32,7 @@ suite("Swift Scripts Suite", () => {
                 // Swift Scripts on Windows give a JIT error.
                 this.skip();
             }
+
             tasks = ctx.tasks;
             toolchain = ctx.globalToolchain;
 

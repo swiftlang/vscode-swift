@@ -40,7 +40,7 @@ export async function runSwiftScript(
     toolchain: SwiftToolchain,
     logger?: (data: string) => void
 ): Promise<number | undefined> {
-    const targetVersion = await targetSwiftVersion();
+    const targetVersion = await targetSwiftVersion(toolchain);
     if (!targetVersion) {
         return;
     }
@@ -68,8 +68,8 @@ export async function runSwiftScript(
  *
  * @returns {Promise<string | undefined>} The selected Swift version, or undefined if no selection was made.
  */
-async function targetSwiftVersion() {
-    const defaultVersion = configuration.scriptSwiftLanguageVersion;
+async function targetSwiftVersion(toolchain: SwiftToolchain) {
+    const defaultVersion = configuration.scriptSwiftLanguageVersion(toolchain);
     if (defaultVersion === "Ask Every Run") {
         const picked = await vscode.window.showQuickPick(
             [

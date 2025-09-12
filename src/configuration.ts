@@ -16,6 +16,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 
 import { WorkspaceContext } from "./WorkspaceContext";
+import { SwiftToolchain } from "./toolchain/toolchain";
 import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 
 export type DebugAdapters = "auto" | "lldb-dap" | "CodeLLDB";
@@ -352,10 +353,10 @@ const configuration = {
             .get<string[]>("buildArguments", [])
             .map(substituteVariablesInString);
     },
-    get scriptSwiftLanguageVersion(): string {
+    scriptSwiftLanguageVersion(toolchain: SwiftToolchain): string {
         return vscode.workspace
             .getConfiguration("swift")
-            .get<string>("scriptSwiftLanguageVersion", "6");
+            .get<string>("scriptSwiftLanguageVersion", toolchain.swiftVersion.major.toString());
     },
     /** swift package arguments */
     get packageArguments(): string[] {

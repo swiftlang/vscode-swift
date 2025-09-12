@@ -93,7 +93,7 @@ suite("runSwiftScript Test Suite", () => {
         const mockWindow = mockGlobalObject(vscode, "window");
 
         test("Executes run task with the users chosen swift version", async () => {
-            config.setValue("5");
+            config.setValue(() => "5");
 
             await runSwiftScript(
                 instance(createMockTextDocument()),
@@ -107,7 +107,7 @@ suite("runSwiftScript Test Suite", () => {
         });
 
         test("Prompts for the users desired swift version", async () => {
-            config.setValue("Ask Every Run");
+            config.setValue(() => "Ask Every Run");
             const selectedItem = { value: "6", label: "Swift 6" };
             mockWindow.showQuickPick.resolves(selectedItem);
 
@@ -123,7 +123,7 @@ suite("runSwiftScript Test Suite", () => {
         });
 
         test("Exists when the user cancels the prompt", async () => {
-            config.setValue("Ask Every Run");
+            config.setValue(() => "Ask Every Run");
             mockWindow.showQuickPick.resolves(undefined);
 
             await runSwiftScript(
