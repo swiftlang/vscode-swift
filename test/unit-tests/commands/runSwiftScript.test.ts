@@ -21,6 +21,7 @@ import configuration from "@src/configuration";
 import { TaskManager } from "@src/tasks/TaskManager";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { Version } from "@src/utilities/version";
 
 import { instance, mockFn, mockGlobalObject, mockGlobalValue, mockObject } from "../../MockUtils";
 
@@ -28,6 +29,7 @@ suite("runSwiftScript Test Suite", () => {
     const mockTaskManager = mockObject<TaskManager>({ executeTaskAndWait: stub().resolves() });
     const mockToolchain = mockObject<SwiftToolchain>({
         getToolchainExecutable: () => "/usr/bin/swift",
+        swiftVersion: new Version(6, 0, 0),
         buildFlags: instance(
             mockObject<BuildFlags>({
                 withAdditionalFlags: mockFn(s => s.callsFake(args => args)),
