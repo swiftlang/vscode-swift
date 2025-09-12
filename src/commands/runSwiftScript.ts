@@ -16,7 +16,6 @@ import * as path from "path";
 import * as vscode from "vscode";
 
 import configuration from "../configuration";
-import { SwiftLogger } from "../logging/SwiftLogger";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import { TaskManager } from "../tasks/TaskManager";
 import { SwiftToolchain } from "../toolchain/toolchain";

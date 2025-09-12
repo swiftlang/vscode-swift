@@ -28,6 +28,10 @@ suite("Swift Scripts Suite", () => {
 
     activateExtensionForSuite({
         async setup(ctx) {
+            if (process.platform === "win32") {
+                // Swift Scripts on Windows give a JIT error.
+                this.skip();
+            }
             tasks = ctx.tasks;
             toolchain = ctx.globalToolchain;
 
