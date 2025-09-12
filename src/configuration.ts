@@ -354,9 +354,13 @@ const configuration = {
             .map(substituteVariablesInString);
     },
     scriptSwiftLanguageVersion(toolchain: SwiftToolchain): string {
-        return vscode.workspace
+        const version = vscode.workspace
             .getConfiguration("swift")
             .get<string>("scriptSwiftLanguageVersion", toolchain.swiftVersion.major.toString());
+        if (version.length === 0) {
+            return toolchain.swiftVersion.major.toString();
+        }
+        return version;
     },
     /** swift package arguments */
     get packageArguments(): string[] {
