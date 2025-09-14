@@ -136,7 +136,8 @@ export async function getLaunchConfiguration(
         const binPath = await folderCtx.toolchain.buildFlags.getBuildBinaryPath(
             folderCtx.folder.fsPath,
             folder,
-            "debug"
+            "debug",
+            folderCtx.workspaceContext.logger
         );
         const targetPath = path.join(binPath, target);
 
@@ -173,8 +174,18 @@ async function createExecutableConfigurations(
     try {
         // Get dynamic build paths for both debug and release configurations
         const [debugBinPath, releaseBinPath] = await Promise.all([
-            ctx.toolchain.buildFlags.getBuildBinaryPath(ctx.folder.fsPath, folder, "debug"),
-            ctx.toolchain.buildFlags.getBuildBinaryPath(ctx.folder.fsPath, folder, "release"),
+            ctx.toolchain.buildFlags.getBuildBinaryPath(
+                ctx.folder.fsPath,
+                folder,
+                "debug",
+                ctx.workspaceContext.logger
+            ),
+            ctx.toolchain.buildFlags.getBuildBinaryPath(
+                ctx.folder.fsPath,
+                folder,
+                "release",
+                ctx.workspaceContext.logger
+            ),
         ]);
 
         return executableProducts.flatMap(product => {
@@ -245,7 +256,8 @@ export async function createSnippetConfiguration(
         const binPath = await ctx.toolchain.buildFlags.getBuildBinaryPath(
             ctx.folder.fsPath,
             folder,
-            "debug"
+            "debug",
+            ctx.workspaceContext.logger
         );
 
         return {

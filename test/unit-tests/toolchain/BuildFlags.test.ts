@@ -16,6 +16,7 @@ import * as path from "path";
 import * as sinon from "sinon";
 
 import configuration from "@src/configuration";
+import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { ArgumentFilter, BuildFlags } from "@src/toolchain/BuildFlags";
 import { DarwinCompatibleTarget, SwiftToolchain } from "@src/toolchain/toolchain";
 import * as utilities from "@src/utilities/utilities";
@@ -435,6 +436,9 @@ suite("BuildFlags Test Suite", () => {
     suite("getBuildBinaryPath", () => {
         const buildArgsConfig = mockGlobalValue(configuration, "buildArguments");
         let execSwiftSpy: sinon.SinonSpy;
+        const logger: MockedObject<SwiftLogger> = mockObject<SwiftLogger>({
+            warn: sinon.spy(),
+        });
 
         setup(async () => {
             execSwiftSpy = sinon.spy(() =>
@@ -456,7 +460,8 @@ suite("BuildFlags Test Suite", () => {
             const result = await buildFlags.getBuildBinaryPath(
                 "/test/workspace",
                 "${workspaceFolder:SimpleExecutable}",
-                "debug"
+                "debug",
+                instance(logger)
             );
 
             expect(result).to.equal("/test/bin/path");
@@ -474,7 +479,8 @@ suite("BuildFlags Test Suite", () => {
             const result = await buildFlags.getBuildBinaryPath(
                 "/test/workspace",
                 "${workspaceFolder:SimpleExecutable}",
-                "release"
+                "release",
+                instance(logger)
             );
 
             expect(result).to.equal("/test/bin/path");
@@ -491,7 +497,8 @@ suite("BuildFlags Test Suite", () => {
             await buildFlags.getBuildBinaryPath(
                 "/test/workspace",
                 "${workspaceFolder:SimpleExecutable}",
-                "debug"
+                "debug",
+                instance(logger)
             );
 
             const [args] = execSwiftSpy.firstCall.args;
@@ -504,7 +511,8 @@ suite("BuildFlags Test Suite", () => {
             const result1 = await buildFlags.getBuildBinaryPath(
                 "/test/workspace",
                 "${workspaceFolder:SimpleExecutable}",
-                "debug"
+                "debug",
+                instance(logger)
             );
             expect(result1).to.equal("/test/bin/path");
             expect(execSwiftSpy).to.have.been.calledOnce;
@@ -513,7 +521,8 @@ suite("BuildFlags Test Suite", () => {
             const result2 = await buildFlags.getBuildBinaryPath(
                 "/test/workspace",
                 "${workspaceFolder:SimpleExecutable}",
-                "debug"
+                "debug",
+                instance(logger)
             );
             expect(result2).to.equal("/test/bin/path");
             expect(execSwiftSpy).to.have.been.calledOnce; // Still only one call
@@ -522,7 +531,8 @@ suite("BuildFlags Test Suite", () => {
             const result3 = await buildFlags.getBuildBinaryPath(
                 "/test/workspace",
                 "/test/workspace",
-                "release"
+                "release",
+                instance(logger)
             );
             expect(result3).to.equal("/test/bin/path");
             expect(execSwiftSpy).to.have.been.calledTwice;
@@ -533,7 +543,8 @@ suite("BuildFlags Test Suite", () => {
             await buildFlags.getBuildBinaryPath(
                 "/test/workspace",
                 "${workspaceFolder:SimpleExecutable}",
-                "debug"
+                "debug",
+                instance(logger)
             );
             expect(execSwiftSpy).to.have.been.calledOnce;
 
@@ -544,7 +555,8 @@ suite("BuildFlags Test Suite", () => {
             await buildFlags.getBuildBinaryPath(
                 "/test/workspace",
                 "${workspaceFolder:SimpleExecutable}",
-                "debug"
+                "debug",
+                instance(logger)
             );
             expect(execSwiftSpy).to.have.been.calledTwice;
         });
@@ -558,28 +570,46 @@ suite("BuildFlags Test Suite", () => {
             const utilities = await import("@src/utilities/utilities");
             sinon.replace(utilities, "execSwift", execSwiftSpy);
 
+            const log = instance(logger);
             const result = await buildFlags.getBuildBinaryPath(
                 "/test/workspace",
                 "${workspaceFolder:SimpleExecutable}",
-                "debug"
+                "debug",
+                log
             );
 
             // Should fallback to traditional path
             expect(result).to.include("${workspaceFolder:SimpleExecutable}");
             expect(result).to.include("debug");
+            expect(log.warn).to.have.been.calledOnce;
         });
 
         test("clearBuildPathCache clears all cached entries", async () => {
             // Cache some entries
-            await buildFlags.getBuildBinaryPath("cwd", "${workspaceFolder:Workspace1}", "debug");
-            await buildFlags.getBuildBinaryPath("cwd", "${workspaceFolder:Workspace2}", "release");
+            await buildFlags.getBuildBinaryPath(
+                "cwd",
+                "${workspaceFolder:Workspace1}",
+                "debug",
+                instance(logger)
+            );
+            await buildFlags.getBuildBinaryPath(
+                "cwd",
+                "${workspaceFolder:Workspace2}",
+                "release",
+                instance(logger)
+            );
             expect(execSwiftSpy).to.have.been.calledTwice;
 
             // Clear cache
             BuildFlags.clearBuildPathCache();
 
             // Next calls should execute again
-            await buildFlags.getBuildBinaryPath("cwd", "${workspaceFolder:Workspace1}", "debug");
+            await buildFlags.getBuildBinaryPath(
+                "cwd",
+                "${workspaceFolder:Workspace1}",
+                "debug",
+                instance(logger)
+            );
             expect(execSwiftSpy).to.have.been.calledThrice;
         });
     });

@@ -14,6 +14,7 @@
 import * as path from "path";
 
 import configuration from "../configuration";
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { execSwift } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { DarwinCompatibleTarget, SwiftToolchain, getDarwinTargetTriple } from "./toolchain";
@@ -235,7 +236,8 @@ export class BuildFlags {
     async getBuildBinaryPath(
         cwd: string,
         workspacePath: string,
-        buildConfiguration: "debug" | "release" = "debug"
+        buildConfiguration: "debug" | "release" = "debug",
+        logger: SwiftLogger
     ): Promise<string> {
         // Checking the bin path requires a swift process execution, so we maintain a cache.
         // The cache key is based on workspace, configuration, and build arguments.
@@ -249,11 +251,10 @@ export class BuildFlags {
         try {
             // Filters down build arguments to those affecting the bin path
             const binPathAffectingArgs = (args: string[]) => {
-                const filters: ArgumentFilter[] = [
+                return BuildFlags.filterArguments(args, [
                     { argument: "--scratch-path", include: 1 },
                     { argument: "--build-system", include: 1 },
-                ];
-                return BuildFlags.filterArguments(args, filters);
+                ]);
             };
 
             const baseArgs = ["build", "--show-bin-path", "--configuration", buildConfiguration];
@@ -270,6 +271,9 @@ export class BuildFlags {
             BuildFlags.buildPathCache.set(cacheKey, binPath);
             return binPath;
         } catch (error) {
+            logger.warn(
+                `Failed to get build binary path using 'swift build --show-bin-path'. Falling back to traditional path construction. error: ${error}`
+            );
             // Fallback to traditional path construction if command fails
             const fallbackPath = path.join(
                 BuildFlags.buildDirectoryFromWorkspacePath(workspacePath, true),
