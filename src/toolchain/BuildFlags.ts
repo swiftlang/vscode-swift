@@ -248,21 +248,20 @@ export class BuildFlags {
             return BuildFlags.buildPathCache.get(cacheKey)!;
         }
 
+        // Filters down build arguments to those affecting the bin path
+        const binPathAffectingArgs = (args: string[]) =>
+            BuildFlags.filterArguments(args, [
+                { argument: "--scratch-path", include: 1 },
+                { argument: "--build-system", include: 1 },
+            ]);
+
+        const baseArgs = ["build", "--show-bin-path", "--configuration", buildConfiguration];
+        const fullArgs = [
+            ...this.withAdditionalFlags(baseArgs),
+            ...binPathAffectingArgs(configuration.buildArguments),
+        ];
+
         try {
-            // Filters down build arguments to those affecting the bin path
-            const binPathAffectingArgs = (args: string[]) => {
-                return BuildFlags.filterArguments(args, [
-                    { argument: "--scratch-path", include: 1 },
-                    { argument: "--build-system", include: 1 },
-                ]);
-            };
-
-            const baseArgs = ["build", "--show-bin-path", "--configuration", buildConfiguration];
-            const fullArgs = [
-                ...this.withAdditionalFlags(baseArgs),
-                ...binPathAffectingArgs(configuration.buildArguments),
-            ];
-
             // Execute swift build --show-bin-path
             const result = await execSwift(fullArgs, this.toolchain, { cwd });
             const binPath = result.stdout.trim();
@@ -272,7 +271,7 @@ export class BuildFlags {
             return binPath;
         } catch (error) {
             logger.warn(
-                `Failed to get build binary path using 'swift build --show-bin-path'. Falling back to traditional path construction. error: ${error}`
+                `Failed to get build binary path using 'swift ${fullArgs.join(" ")}. Falling back to traditional path construction. error: ${error}`
             );
             // Fallback to traditional path construction if command fails
             const fallbackPath = path.join(
