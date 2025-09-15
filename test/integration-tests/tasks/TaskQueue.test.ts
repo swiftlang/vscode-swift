@@ -21,7 +21,7 @@ import { testAssetPath } from "../../fixtures";
 import { tag } from "../../tags";
 import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
 
-suite("TaskQueue Test Suite", () => {
+tag("medium").suite("TaskQueue Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     let taskQueue: TaskQueue;
 
@@ -131,7 +131,7 @@ suite("TaskQueue Test Suite", () => {
 
     // Queue two tasks. The first one taking longer than the second. If they
     // are queued correctly the first will still finish before the second
-    tag("medium").test("Test execution order", async () => {
+    test("Test execution order", async () => {
         const sleepScript = testAssetPath("sleep.sh");
         const results: (number | undefined)[] = [];
         const task1 = new vscode.Task(

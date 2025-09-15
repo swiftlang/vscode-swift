@@ -30,7 +30,7 @@ import {
     updateSettings,
 } from "../utilities/testutilities";
 
-suite("captureDiagnostics Test Suite", () => {
+tag("medium").suite("captureDiagnostics Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     const mockWindow = mockGlobalObject(vscode, "window");
 

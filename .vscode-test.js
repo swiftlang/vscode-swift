@@ -23,7 +23,8 @@ const dataDir = process.env["VSCODE_DATA_DIR"];
 
 // Check if we're debugging by looking at the process executable. Unfortunately, the VS Code debugger
 // doesn't seem to allow setting environment variables on a launched extension host.
-const isDebugRun = !(process.env["_"] ?? "").endsWith("node_modules/.bin/vscode-test");
+const processPath = process.env["_"] ?? "";
+const isDebugRun = !isCIBuild && !processPath.endsWith("node_modules/.bin/vscode-test");
 
 function log(/** @type {string} */ message) {
     if (!isDebugRun) {
@@ -122,6 +123,9 @@ module.exports = defineConfig({
                 retries: 1,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
                 reporterOptions: {
+                    githubActionsSummaryReporterOptions: {
+                        title: "Integration Test Summary",
+                    },
                     jsonReporterOptions: {
                         output: path.join(__dirname, "test-results", "integration-tests.json"),
                     },
@@ -155,6 +159,9 @@ module.exports = defineConfig({
                 retries: 1,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
                 reporterOptions: {
+                    githubActionsSummaryReporterOptions: {
+                        title: "Code Workspace Test Summary",
+                    },
                     jsonReporterOptions: {
                         output: path.join(__dirname, "test-results", "code-workspace-tests.json"),
                     },
@@ -177,6 +184,9 @@ module.exports = defineConfig({
                 slow: 100,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
                 reporterOptions: {
+                    githubActionsSummaryReporterOptions: {
+                        title: "Unit Test Summary",
+                    },
                     jsonReporterOptions: {
                         output: path.join(__dirname, "test-results", "unit-tests.json"),
                     },

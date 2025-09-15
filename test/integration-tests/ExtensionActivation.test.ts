@@ -27,7 +27,7 @@ import {
     deactivateExtension,
 } from "./utilities/testutilities";
 
-suite("Extension Activation/Deactivation Tests", () => {
+tag("medium").suite("Extension Activation/Deactivation Tests", () => {
     suite("Extension Activation", () => {
         afterEach(async () => {
             await deactivateExtension();
@@ -103,7 +103,7 @@ suite("Extension Activation/Deactivation Tests", () => {
         });
     });
 
-    tag("medium").suite("Activates for cmake projects", function () {
+    suite("Activates for cmake projects", function () {
         let workspaceContext: WorkspaceContext;
 
         activateExtensionForTest({

@@ -22,6 +22,7 @@ import { SwiftExecution } from "@src/tasks/SwiftExecution";
 import { SwiftPluginTaskProvider } from "@src/tasks/SwiftPluginTaskProvider";
 import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
 
+import { tag } from "../../tags";
 import {
     cleanOutput,
     executeTaskAndWaitForResult,
@@ -34,7 +35,7 @@ import {
     updateSettings,
 } from "../utilities/testutilities";
 
-suite("SwiftPluginTaskProvider Test Suite", function () {
+tag("medium").suite("SwiftPluginTaskProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;
     let folderContext: FolderContext;
 

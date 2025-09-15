@@ -102,18 +102,18 @@ suite("SwiftTaskProvider Test Suite", () => {
         });
 
         suite("includes build all task from extension", () => {
-            let task: vscode.Task | undefined;
-
-            setup(async () => {
+            async function getBuildAllTask(): Promise<vscode.Task | undefined> {
                 const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
-                task = tasks.find(t => t.name === "Build All (defaultPackage)");
-            });
+                return tasks.find(t => t.name === "Build All (defaultPackage)");
+            }
 
             test("provided", async () => {
+                const task = await getBuildAllTask();
                 expect(task?.detail).to.include("swift build --build-tests");
             });
 
             tag("large").test("executes", async () => {
+                const task = await getBuildAllTask();
                 assert(task);
                 const exitPromise = waitForEndTaskProcess(task);
                 await vscode.tasks.executeTask(task);
@@ -123,23 +123,23 @@ suite("SwiftTaskProvider Test Suite", () => {
         });
 
         suite("includes build all task from tasks.json", () => {
-            let task: vscode.Task | undefined;
-
-            setup(async () => {
+            async function getBuildAllTask(): Promise<vscode.Task | undefined> {
                 const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
-                task = tasks.find(
+                return tasks.find(
                     t =>
                         t.name ===
                         "swift: Build All from " +
                             (vscode.workspace.workspaceFile ? "code workspace" : "tasks.json")
                 );
-            });
+            }
 
             test("provided", async () => {
+                const task = await getBuildAllTask();
                 expect(task?.detail).to.include("swift build --show-bin-path");
             });
 
             test("executes", async () => {
+                const task = await getBuildAllTask();
                 assert(task);
                 const exitPromise = waitForEndTaskProcess(task);
                 await vscode.tasks.executeTask(task);
