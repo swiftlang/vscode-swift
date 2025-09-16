@@ -32,6 +32,7 @@ import { DocCDocumentationRequest, ReIndexProjectRequest } from "./sourcekit-lsp
 import { SwiftPluginTaskProvider } from "./tasks/SwiftPluginTaskProvider";
 import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
 import { TaskManager } from "./tasks/TaskManager";
+import { BuildFlags } from "./toolchain/BuildFlags";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
@@ -103,6 +104,17 @@ export class WorkspaceContext implements vscode.Disposable {
         this.commentCompletionProvider = new CommentCompletionProviders();
 
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(async event => {
+            // Clear build path cache when build-related configurations change
+            if (
+                event.affectsConfiguration("swift.buildArguments") ||
+                event.affectsConfiguration("swift.buildPath") ||
+                event.affectsConfiguration("swift.sdk") ||
+                event.affectsConfiguration("swift.swiftSDK")
+            ) {
+                // Clear the build path cache since configuration affects paths
+                BuildFlags.clearBuildPathCache();
+            }
+
             // on runtime path config change, regenerate launch.json
             if (event.affectsConfiguration("swift.runtimePath")) {
                 if (!(await this.needToAutoGenerateLaunchConfig())) {
@@ -122,14 +134,20 @@ export class WorkspaceContext implements vscode.Disposable {
                         }
                     });
             }
-            // on change of swift build path, regenerate launch.json
-            if (event.affectsConfiguration("swift.buildPath")) {
+            // on change of swift build path or build arguments, regenerate launch.json
+            if (
+                event.affectsConfiguration("swift.buildPath") ||
+                event.affectsConfiguration("swift.buildArguments")
+            ) {
                 if (!(await this.needToAutoGenerateLaunchConfig())) {
                     return;
                 }
+                const configType = event.affectsConfiguration("swift.buildPath")
+                    ? "build path"
+                    : "build arguments";
                 void vscode.window
                     .showInformationMessage(
-                        `Launch configurations need to be updated after changing the Swift build path. Do you want to update?`,
+                        `Launch configurations need to be updated after changing the Swift ${configType}. Do you want to update?`,
                         "Update",
                         "Cancel"
                     )

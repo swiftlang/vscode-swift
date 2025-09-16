@@ -107,7 +107,7 @@ export async function debugBuildWithOptions(
         return;
     }
 
-    const launchConfig = getLaunchConfiguration(target.name, current);
+    const launchConfig = await getLaunchConfiguration(target.name, current);
     if (launchConfig) {
         ctx.buildStarted(target.name, launchConfig, options);
         const result = await debugLaunchConfig(

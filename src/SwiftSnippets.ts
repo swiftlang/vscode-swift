@@ -98,7 +98,7 @@ export async function debugSnippetWithOptions(
         },
         folderContext.toolchain
     );
-    const snippetDebugConfig = createSnippetConfiguration(snippetName, folderContext);
+    const snippetDebugConfig = await createSnippetConfiguration(snippetName, folderContext);
     try {
         ctx.buildStarted(snippetName, snippetDebugConfig, options);
 

@@ -14,6 +14,8 @@
 import * as path from "path";
 
 import configuration from "../configuration";
+import { SwiftLogger } from "../logging/SwiftLogger";
+import { execSwift } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { DarwinCompatibleTarget, SwiftToolchain, getDarwinTargetTriple } from "./toolchain";
 
@@ -30,6 +32,8 @@ export interface ArgumentFilter {
 }
 
 export class BuildFlags {
+    private static buildPathCache = new Map<string, string>();
+
     constructor(public toolchain: SwiftToolchain) {}
 
     /**
@@ -219,6 +223,70 @@ export class BuildFlags {
                 // Do nothing for other commands
                 return args;
         }
+    }
+
+    /**
+     * Get the build binary path using swift build --show-bin-path.
+     * This respects all build configuration including buildArguments, buildSystem, etc.
+     *
+     * @param workspacePath Path to the workspace
+     * @param configuration Build configuration (debug or release)
+     * @returns Promise resolving to the build binary path
+     */
+    async getBuildBinaryPath(
+        cwd: string,
+        workspacePath: string,
+        buildConfiguration: "debug" | "release" = "debug",
+        logger: SwiftLogger
+    ): Promise<string> {
+        // Checking the bin path requires a swift process execution, so we maintain a cache.
+        // The cache key is based on workspace, configuration, and build arguments.
+        const buildArgsHash = JSON.stringify(configuration.buildArguments);
+        const cacheKey = `${workspacePath}:${buildConfiguration}:${buildArgsHash}`;
+
+        if (BuildFlags.buildPathCache.has(cacheKey)) {
+            return BuildFlags.buildPathCache.get(cacheKey)!;
+        }
+
+        // Filters down build arguments to those affecting the bin path
+        const binPathAffectingArgs = (args: string[]) =>
+            BuildFlags.filterArguments(args, [
+                { argument: "--scratch-path", include: 1 },
+                { argument: "--build-system", include: 1 },
+            ]);
+
+        const baseArgs = ["build", "--show-bin-path", "--configuration", buildConfiguration];
+        const fullArgs = [
+            ...this.withAdditionalFlags(baseArgs),
+            ...binPathAffectingArgs(configuration.buildArguments),
+        ];
+
+        try {
+            // Execute swift build --show-bin-path
+            const result = await execSwift(fullArgs, this.toolchain, { cwd });
+            const binPath = result.stdout.trim();
+
+            // Cache the result
+            BuildFlags.buildPathCache.set(cacheKey, binPath);
+            return binPath;
+        } catch (error) {
+            logger.warn(
+                `Failed to get build binary path using 'swift ${fullArgs.join(" ")}. Falling back to traditional path construction. error: ${error}`
+            );
+            // Fallback to traditional path construction if command fails
+            const fallbackPath = path.join(
+                BuildFlags.buildDirectoryFromWorkspacePath(workspacePath, true),
+                buildConfiguration
+            );
+            return fallbackPath;
+        }
+    }
+
+    /**
+     * Clear the build path cache. Should be called when build configuration changes.
+     */
+    static clearBuildPathCache(): void {
+        BuildFlags.buildPathCache.clear();
     }
 
     withAdditionalFlags(args: string[]): string[] {
