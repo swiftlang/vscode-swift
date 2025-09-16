@@ -37,14 +37,15 @@ import { TemporaryFolder } from "../utilities/tempFolder";
 export async function runSwiftScript(
     document: vscode.TextDocument,
     tasks: TaskManager,
-    toolchain: SwiftToolchain
-) {
-    const targetVersion = await targetSwiftVersion();
+    toolchain: SwiftToolchain,
+    logger?: (data: string) => void
+): Promise<number | undefined> {
+    const targetVersion = await targetSwiftVersion(toolchain);
     if (!targetVersion) {
         return;
     }
 
-    await withDocumentFile(document, async filename => {
+    return await withDocumentFile(document, async filename => {
         const runTask = createSwiftTask(
             ["-swift-version", targetVersion, filename],
             `Run ${filename}`,
@@ -55,7 +56,8 @@ export async function runSwiftScript(
             },
             toolchain
         );
-        await tasks.executeTaskAndWait(runTask);
+        runTask.execution.onDidWrite(data => logger?.(data));
+        return await tasks.executeTaskAndWait(runTask);
     });
 }
 
@@ -66,8 +68,8 @@ export async function runSwiftScript(
  *
  * @returns {Promise<string | undefined>} The selected Swift version, or undefined if no selection was made.
  */
-async function targetSwiftVersion() {
-    const defaultVersion = configuration.scriptSwiftLanguageVersion;
+async function targetSwiftVersion(toolchain: SwiftToolchain) {
+    const defaultVersion = configuration.scriptSwiftLanguageVersion(toolchain);
     if (defaultVersion === "Ask Every Run") {
         const picked = await vscode.window.showQuickPick(
             [
@@ -97,18 +99,18 @@ async function targetSwiftVersion() {
  * @param callback - An async function that receives the filename of the document or temporary file.
  * @returns A promise that resolves when the callback has completed.
  */
-async function withDocumentFile(
+async function withDocumentFile<T>(
     document: vscode.TextDocument,
-    callback: (filename: string) => Promise<void>
-) {
+    callback: (filename: string) => Promise<T>
+): Promise<T> {
     if (document.isUntitled) {
         const tmpFolder = await TemporaryFolder.create();
-        await tmpFolder.withTemporaryFile("swift", async filename => {
+        return await tmpFolder.withTemporaryFile("swift", async filename => {
             await fs.writeFile(filename, document.getText());
-            await callback(filename);
+            return await callback(filename);
         });
     } else {
         await document.save();
-        await callback(document.fileName);
+        return await callback(document.fileName);
     }
 }
