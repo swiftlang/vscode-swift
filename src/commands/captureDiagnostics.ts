@@ -332,9 +332,15 @@ async function sourcekitDiagnose(ctx: FolderContext, dir: string) {
         },
         async progress => {
             progress.report({ message: "Diagnosing SourceKit-LSP..." });
-            const writableStream = progressUpdatingWritable(percent =>
-                progress.report({ message: `Diagnosing SourceKit-LSP: ${percent}%` })
-            );
+            let lastProgress = 0;
+            const writableStream = progressUpdatingWritable(percentStr => {
+                const percent = parseInt(percentStr, 10);
+                progress.report({
+                    message: `Diagnosing SourceKit-LSP: ${percent}%`,
+                    increment: percent - lastProgress,
+                });
+                lastProgress = percent;
+            });
 
             await execFileStreamOutput(
                 serverPath,
@@ -362,7 +368,7 @@ function progressUpdatingWritable(updateProgress: (str: string) => void): Writab
     return new Writable({
         write(chunk, _encoding, callback) {
             const str = (chunk as Buffer).toString("utf8").trim();
-            const percent = /^([0-9])+%/.exec(str);
+            const percent = /^([0-9]+)%/.exec(str);
             if (percent && percent[1]) {
                 updateProgress(percent[1]);
             }
