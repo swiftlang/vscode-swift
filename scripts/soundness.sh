@@ -102,6 +102,7 @@ EOF
             \( \! -path './dist/*' -a \
             \( \! -path './assets/*' -a \
             \( \! -path './coverage/*' -a \
+            \( \! -path './.husky/*' -a \
             \( "${matching_files[@]}" \) \
             \) \) \) \) \) \) \)
     } | while read -r line; do
