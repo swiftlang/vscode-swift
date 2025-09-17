@@ -14,15 +14,19 @@
 import { expect } from "chai";
 import * as vscode from "vscode";
 
+import { Version } from "@src/utilities/version";
 import { searchForPackages } from "@src/utilities/workspace";
 
 suite("Workspace Utilities Test Suite", () => {
     suite("searchForPackages", () => {
+        const testSwiftVersion = new Version(5, 9, 0);
+
         test("ignores excluded file", async () => {
             const folders = await searchForPackages(
                 (vscode.workspace.workspaceFolders ?? [])[0]!.uri,
                 false,
-                true
+                true,
+                testSwiftVersion
             );
 
             expect(folders.find(f => f.fsPath.includes("defaultPackage"))).to.not.be.undefined;
