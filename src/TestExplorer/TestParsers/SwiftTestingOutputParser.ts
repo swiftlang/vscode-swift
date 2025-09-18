@@ -381,7 +381,7 @@ export class SwiftTestingOutputParser {
             .map(message => MessageRenderer.render(message))
             .join("\n");
 
-        if (payload.issue.isFailure === false) {
+        if (payload.issue.isFailure === false && !payload.issue.isKnown) {
             return;
         }
 
