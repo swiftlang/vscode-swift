@@ -11,6 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import { realpathSync } from "fs";
 import * as path from "path";
 import { isDeepStrictEqual } from "util";
 import * as vscode from "vscode";
@@ -130,7 +131,6 @@ export async function getLaunchConfiguration(
         : vscode.workspace.getConfiguration("launch", folderCtx.workspaceFolder);
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
     const { folder } = getFolderAndNameSuffix(folderCtx);
-
     try {
         // Use dynamic path resolution with --show-bin-path
         const binPath = await folderCtx.toolchain.buildFlags.getBuildBinaryPath(
@@ -141,10 +141,21 @@ export async function getLaunchConfiguration(
         );
         const targetPath = path.join(binPath, target);
 
+        const expandPath = (p: string) =>
+            p.replace(
+                `$\{workspaceFolder:${folderCtx.workspaceFolder.name}}`,
+                folderCtx.folder.fsPath
+            );
+
         // Users could be on different platforms with different path annotations,
         // so normalize before we compare.
         const launchConfig = launchConfigs.find(
-            config => path.normalize(config.program) === path.normalize(targetPath)
+            config =>
+                // Old launch configs had program paths that looked like ${workspaceFolder:test}/defaultPackage/.build/debug,
+                // where `debug` was a symlink to the host-triple-folder/debug. Because targetPath is determined by `--show-bin-path`
+                // in `getBuildBinaryPath` we need to follow this symlink to get the real path if we want to compare them.
+                path.normalize(realpathSync(expandPath(config.program))) ===
+                path.normalize(targetPath)
         );
         return launchConfig;
     } catch (error) {

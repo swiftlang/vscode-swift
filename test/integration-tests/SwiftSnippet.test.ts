@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
+import { realpathSync } from "fs";
 import * as vscode from "vscode";
 
 import { WorkspaceContext } from "@src/WorkspaceContext";
@@ -78,9 +79,12 @@ tag("large").suite("SwiftSnippet Test Suite", function () {
         expect(succeeded).to.be.true;
         const session = await sessionPromise;
         expect(vscode.Uri.file(session.configuration.program).fsPath).to.equal(
-            testAssetUri(
-                "defaultPackage/.build/debug/hello" + (process.platform === "win32" ? ".exe" : "")
-            ).fsPath
+            realpathSync(
+                testAssetUri(
+                    "defaultPackage/.build/debug/hello" +
+                        (process.platform === "win32" ? ".exe" : "")
+                ).fsPath
+            )
         );
         expect(session.configuration).to.have.property("noDebug", true);
     });
@@ -115,9 +119,12 @@ tag("large").suite("SwiftSnippet Test Suite", function () {
 
         const session = await sessionPromise;
         expect(vscode.Uri.file(session.configuration.program).fsPath).to.equal(
-            testAssetUri(
-                "defaultPackage/.build/debug/hello" + (process.platform === "win32" ? ".exe" : "")
-            ).fsPath
+            realpathSync(
+                testAssetUri(
+                    "defaultPackage/.build/debug/hello" +
+                        (process.platform === "win32" ? ".exe" : "")
+                ).fsPath
+            )
         );
         expect(session.configuration).to.not.have.property("noDebug");
     });
