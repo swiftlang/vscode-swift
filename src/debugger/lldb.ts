@@ -17,7 +17,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import * as vscode from "vscode";
 
-import { SwiftToolchain } from "../toolchain/toolchain";
+import { SwiftToolchain } from "../toolchain/SwiftToolchain";
 import { Result } from "../utilities/result";
 import { IS_RUNNING_UNDER_TEST, execFile } from "../utilities/utilities";
 
@@ -45,12 +45,12 @@ export function updateLaunchConfigForCI(
  *
  * @returns Library path for LLDB
  */
-export async function getLLDBLibPath(toolchain: SwiftToolchain): Promise<Result<string>> {
+export async function getLLDBLibPath(toolchain: SwiftToolchain): Promise<Result<string, unknown>> {
     let executable: string;
     try {
         executable = await toolchain.getLLDB();
     } catch (error) {
-        return Result.makeFailure(error);
+        return Result.failure(error);
     }
     let pathHint = path.dirname(toolchain.swiftFolderPath);
     try {
@@ -68,14 +68,14 @@ export async function getLLDBLibPath(toolchain: SwiftToolchain): Promise<Result<
         // should just the version of lldb that comes with CodeLLDB. We return a failure with no message
         // to indicate we want it to fail silently.
         if (process.platform === "win32") {
-            return Result.makeFailure(undefined);
+            return Result.failure(undefined);
         }
     }
     const lldbPath = await findLibLLDB(pathHint);
     if (lldbPath) {
-        return Result.makeSuccess(lldbPath);
+        return Result.success(lldbPath);
     } else {
-        return Result.makeFailure("LLDB failed to provide a library path");
+        return Result.failure("LLDB failed to provide a library path");
     }
 }
 

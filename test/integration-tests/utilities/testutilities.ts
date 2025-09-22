@@ -55,7 +55,7 @@ const extensionBootstrapper = (() => {
             | ((
                   this: Mocha.Context,
                   ctx: WorkspaceContext
-              ) => Promise<(() => Promise<void>) | void>)
+              ) => Promise<(() => Promise<void>) | void> | void)
             | undefined,
         after: Mocha.HookFunction,
         teardown: ((this: Mocha.Context) => Promise<void>) | undefined,
@@ -294,7 +294,7 @@ const extensionBootstrapper = (() => {
             setup?: (
                 this: Mocha.Context,
                 ctx: WorkspaceContext
-            ) => Promise<(() => Promise<void>) | void>;
+            ) => Promise<(() => Promise<void>) | void> | void;
             teardown?: (this: Mocha.Context) => Promise<void>;
             testAssets?: string[];
             requiresLSP?: boolean;

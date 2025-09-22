@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import configuration from "../configuration";
-import { SwiftToolchain } from "../toolchain/toolchain";
+import { SwiftToolchain } from "../toolchain/SwiftToolchain";
 import { Version } from "../utilities/version";
 
 /**

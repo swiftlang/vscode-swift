@@ -23,7 +23,7 @@ import configuration from "@src/configuration";
 import { SwiftExecution } from "@src/tasks/SwiftExecution";
 import { SwiftPluginTaskProvider } from "@src/tasks/SwiftPluginTaskProvider";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { SwiftToolchain } from "@src/toolchain/SwiftToolchain";
 import { Version } from "@src/utilities/version";
 
 import { MockedObject, instance, mockFn, mockGlobalValue, mockObject } from "../../MockUtils";

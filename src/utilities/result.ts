@@ -15,19 +15,109 @@
 /**
  * Wrapper class for a Result that might contain either success or failure
  */
-export class Result<Success> {
+export class Result<Success, Failure> {
+    get value(): Success | undefined {
+        if (this.state.type === "failure") {
+            return undefined;
+        }
+        return this.state.value;
+    }
+
+    get error(): Failure | undefined {
+        if (this.state.type === "failure") {
+            return this.state.error;
+        }
+        return undefined;
+    }
+
     private constructor(
-        readonly success?: Success,
-        readonly failure?: unknown
+        private readonly state: SuccessfulResult<Success> | FailedResult<Failure>
     ) {}
 
     /** Return a successful result */
-    static makeSuccess<Success>(success: Success): Result<Success> {
-        return new Result(success);
+    static success<Success>(success: Success): Result<Success, never> {
+        return new Result({ type: "success", value: success });
     }
 
     /** Return a failed result */
-    static makeFailure<Success>(failure: unknown): Result<Success> {
-        return new Result<Success>(undefined, failure);
+    static failure<Failure>(failure: Failure): Result<never, Failure> {
+        return new Result<never, Failure>({ type: "failure", error: failure });
     }
+
+    /**
+     * Returns the success value as a throwing expression.
+     *
+     * @returns The success value, if the instance represents a success.
+     * @throws The failure error, if the instance represents a failure.
+     */
+    getOrThrow(): Success {
+        if (this.state.type === "failure") {
+            throw this.state.error;
+        }
+        return this.state.value;
+    }
+
+    map<NewSuccess>(transform: (result: Success) => NewSuccess): Result<NewSuccess, Failure> {
+        if (this.state.type === "failure") {
+            return Result.failure(this.state.error);
+        }
+        const newSuccess = transform(this.state.value);
+        return Result.success(newSuccess);
+    }
+
+    mapError<NewFailure>(transform: (error: Failure) => NewFailure): Result<Success, NewFailure> {
+        if (this.state.type === "failure") {
+            return Result.failure(transform(this.state.error));
+        }
+        return Result.success(this.state.value);
+    }
+
+    flatMap<NewSuccess>(
+        transform: (result: Success) => Result<NewSuccess, Failure>
+    ): Result<NewSuccess, Failure> {
+        if (this.state.type === "failure") {
+            return Result.failure(this.state.error);
+        }
+        return transform(this.state.value);
+    }
+
+    flatMapError<NewFailure>(
+        transform: (error: Failure) => Result<Success, NewFailure>
+    ): Result<Success, NewFailure> {
+        if (this.state.type === "failure") {
+            return transform(this.state.error);
+        }
+        return Result.success(this.state.value);
+    }
+
+    onSuccess(onSuccess: (value: Success) => void): Result<Success, Failure> {
+        if (this.state.type === "success") {
+            onSuccess(this.state.value);
+        }
+        return this;
+    }
+
+    onError(onError: (error: Failure) => void): Result<Success, Failure> {
+        if (this.state.type === "failure") {
+            onError(this.state.error);
+        }
+        return this;
+    }
+
+    ignoreError(): Result<Success | undefined, never> {
+        if (this.state.type === "failure") {
+            return Result.success(undefined);
+        }
+        return Result.success(this.state.value);
+    }
+}
+
+interface SuccessfulResult<T> {
+    type: "success";
+    value: T;
+}
+
+interface FailedResult<T> {
+    type: "failure";
+    error: T;
 }

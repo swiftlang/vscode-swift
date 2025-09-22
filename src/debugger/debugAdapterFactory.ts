@@ -17,8 +17,9 @@ import * as vscode from "vscode";
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
-import { SwiftToolchain } from "../toolchain/toolchain";
+import { SwiftToolchain } from "../toolchain/SwiftToolchain";
 import { fileExists } from "../utilities/filesystem";
+import { Result } from "../utilities/result";
 import { getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
 import { DebugAdapter, LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
 import { getLLDBLibPath, updateLaunchConfigForCI } from "./lldb";
@@ -204,16 +205,20 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
     }
 
     async promptForCodeLldbSettings(toolchain: SwiftToolchain): Promise<boolean> {
-        const libLldbPathResult = await getLLDBLibPath(toolchain);
-        if (!libLldbPathResult.success) {
-            const errorMessage = `Error: ${getErrorDescription(libLldbPathResult.failure)}`;
-            void vscode.window.showWarningMessage(
-                `Failed to setup CodeLLDB for debugging of Swift code. Debugging may produce unexpected results. ${errorMessage}`
-            );
-            this.logger.error(`Failed to setup CodeLLDB: ${errorMessage}`);
+        const libLldbPath = (await getLLDBLibPath(toolchain))
+            .flatMapError(error => {
+                const errorMessage = `Error: ${getErrorDescription(error)}`;
+                void vscode.window.showWarningMessage(
+                    `Failed to setup CodeLLDB for debugging of Swift code. Debugging may produce unexpected results. ${errorMessage}`
+                );
+                this.logger.error(`Failed to setup CodeLLDB: ${errorMessage}`);
+                return Result.success("");
+            })
+            .getOrThrow();
+        if (libLldbPath === "") {
             return true;
         }
-        const libLldbPath = libLldbPathResult.success;
+
         const lldbConfig = vscode.workspace.getConfiguration("lldb");
         if (
             lldbConfig.get<string>("library") === libLldbPath &&

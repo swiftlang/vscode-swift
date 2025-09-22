@@ -44,14 +44,14 @@ suite("lldb contract test suite", () => {
 
         // Check the result for various platforms
         if (process.platform === "linux") {
-            expect(libPath.success).to.match(/liblldb.*\.so.*/); // Matches .so file pattern
+            expect(libPath.value).to.match(/liblldb.*\.so.*/); // Matches .so file pattern
         } else if (process.platform === "darwin") {
-            expect(libPath.success).to.match(/liblldb\..*dylib|LLDB/); // Matches .dylib or LLDB
+            expect(libPath.value).to.match(/liblldb\..*dylib|LLDB/); // Matches .dylib or LLDB
         } else if (process.platform === "win32") {
-            expect(libPath.success).to.match(/liblldb\.dll/); // Matches .dll for Windows
+            expect(libPath.value).to.match(/liblldb\.dll/); // Matches .dll for Windows
         } else {
             // In other platforms, the path hint should be returned directly
-            expect(libPath.success).to.be.a("string");
+            expect(libPath.value).to.be.a("string");
         }
     });
 });

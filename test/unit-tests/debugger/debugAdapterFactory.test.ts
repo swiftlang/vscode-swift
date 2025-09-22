@@ -23,7 +23,7 @@ import * as debugAdapter from "@src/debugger/debugAdapter";
 import { LLDBDebugConfigurationProvider } from "@src/debugger/debugAdapterFactory";
 import * as lldb from "@src/debugger/lldb";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { SwiftToolchain } from "@src/toolchain/SwiftToolchain";
 import { Result } from "@src/utilities/result";
 import { Version } from "@src/utilities/version";
 
@@ -154,7 +154,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             });
             mockWorkspace.getConfiguration.returns(instance(mockLldbConfiguration));
             mockLLDB.updateLaunchConfigForCI.returnsArg(0);
-            mockLLDB.getLLDBLibPath.resolves(Result.makeSuccess("/path/to/liblldb.dyLib"));
+            mockLLDB.getLLDBLibPath.resolves(Result.success("/path/to/liblldb.dyLib"));
             mockDebuggerConfig.setupCodeLLDB = "prompt";
             mockDebugAdapter.getLaunchConfigType.returns(LaunchConfigType.CODE_LLDB);
         });

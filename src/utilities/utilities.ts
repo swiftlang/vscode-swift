@@ -18,7 +18,7 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "../FolderContext";
 import configuration from "../configuration";
-import { SwiftToolchain } from "../toolchain/toolchain";
+import { SwiftToolchain } from "../toolchain/SwiftToolchain";
 
 /**
  * Whether or not this is a production build.
@@ -49,6 +49,24 @@ export const IS_RUNNING_UNDER_DOCKER = IS_RUNNING_UNDER_ACT || IS_RUNNING_UNDER_
  * This will NOT be removed when the extension is packaged into a VSIX, unlike "CI" variable.
  */
 export const IS_RUNNING_UNDER_TEST = process.env.RUNNING_UNDER_VSCODE_TEST_CLI === "1";
+
+/**
+ * Returns the path to the Xcode application given a toolchain path. Returns undefined
+ * if no application could be found.
+ *
+ * @param toolchainPath The toolchain path.
+ * @returns The path to the Xcode application or undefined if none.
+ */
+export function getXcodeDirectory(toolchainPath: string): string | undefined {
+    let xcodeDirectory = toolchainPath;
+    while (path.extname(xcodeDirectory) !== ".app") {
+        if (path.parse(xcodeDirectory).base === "") {
+            return undefined;
+        }
+        xcodeDirectory = path.dirname(xcodeDirectory);
+    }
+    return xcodeDirectory;
+}
 
 /**
  * Get required environment variable for Swift product
@@ -105,11 +123,11 @@ export function swiftPlatformLibraryPathKey(platform: NodeJS.Platform): string {
 
 export class ExecFileError extends Error {
     constructor(
-        public readonly causedBy: Error,
+        public readonly cause: Error,
         public readonly stdout: string,
         public readonly stderr: string
     ) {
-        super(causedBy.message);
+        super(cause.message, { cause });
     }
 }
 

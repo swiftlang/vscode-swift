@@ -14,17 +14,20 @@
 import * as assert from "assert";
 
 import { SwiftPackage } from "@src/SwiftPackage";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { SwiftToolchain } from "@src/toolchain/SwiftToolchain";
 import { Version } from "@src/utilities/version";
 
 import { testAssetUri } from "../fixtures";
 import { tag } from "../tags";
+import { activateExtensionForSuite } from "./utilities/testutilities";
 
 tag("medium").suite("SwiftPackage Test Suite", function () {
     let toolchain: SwiftToolchain;
 
-    setup(async () => {
-        toolchain = await SwiftToolchain.create();
+    activateExtensionForSuite({
+        setup(ctx) {
+            toolchain = ctx.globalToolchain;
+        },
     });
 
     test("No package", async () => {

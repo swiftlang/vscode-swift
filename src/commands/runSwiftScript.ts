@@ -18,7 +18,7 @@ import * as vscode from "vscode";
 import configuration from "../configuration";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import { TaskManager } from "../tasks/TaskManager";
-import { SwiftToolchain } from "../toolchain/toolchain";
+import { SwiftToolchain } from "../toolchain/SwiftToolchain";
 import { TemporaryFolder } from "../utilities/tempFolder";
 
 /**

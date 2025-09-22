@@ -12,12 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-export interface SwiftlyConfig {
-    installedToolchains: string[];
-    inUse: string;
-    version: string;
-}
-
 /**
  * This code is a port of the toolchain version parsing in Swiftly.
  * Until Swiftly can report the location of the toolchains under its management

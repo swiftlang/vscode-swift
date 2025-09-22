@@ -29,7 +29,7 @@ import {
 } from "@src/tasks/SwiftTaskProvider";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
 import { Sanitizer } from "@src/toolchain/Sanitizer";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { SwiftToolchain } from "@src/toolchain/SwiftToolchain";
 import { Version } from "@src/utilities/version";
 
 import {

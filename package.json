@@ -1148,6 +1148,14 @@
       ],
       "commandPalette": [
         {
+          "command": "swift.installSwiftlyToolchain",
+          "when": "swift.supportsSwiftlyInstall"
+        },
+        {
+          "command": "swift.installSwiftlySnapshotToolchain",
+          "when": "swift.supportsSwiftlyInstall"
+        },
+        {
           "command": "swift.runTestsMultipleTimes",
           "group": "testExtras",
           "when": "false"
@@ -2029,6 +2037,7 @@
     "lint-staged": "^16.1.6",
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
+    "memfs": "^4.42.0",
     "micromatch": "^4.0.8",
     "mocha": "^11.7.2",
     "mock-fs": "^5.5.0",

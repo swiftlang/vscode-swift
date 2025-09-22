@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 import * as path from "path";
 
-import { SwiftToolchain } from "./toolchain";
+import { SwiftToolchain } from "./SwiftToolchain";
 
 export class Sanitizer {
     private constructor(

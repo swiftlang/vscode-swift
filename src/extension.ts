@@ -28,14 +28,22 @@ import { registerDebugger } from "./debugger/debugAdapterFactory";
 import * as debug from "./debugger/launch";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
+import { NodeEnvironment } from "./services/Environment";
+import { createNodeFS } from "./services/FileSystem";
+import { NodeShell } from "./services/Shell";
+import { SwiftlyCLI } from "./swiftly/Swiftly";
+import { SwiftlyErrorCode } from "./swiftly/SwiftlyError";
+import { SwiftlyVersion } from "./swiftly/SwiftlyVersion";
 import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "./terminal";
 import { SelectedXcodeWatcher } from "./toolchain/SelectedXcodeWatcher";
-import { SwiftToolchain } from "./toolchain/toolchain";
+import { SwiftToolchain } from "./toolchain/SwiftToolchain";
+import { SwiftToolchainService, ToolchainService } from "./toolchain/ToolchainService";
 import { LanguageStatusItems } from "./ui/LanguageStatusItems";
 import { ProjectPanelProvider } from "./ui/ProjectPanelProvider";
 import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
 import { showToolchainError } from "./ui/ToolchainSelection";
 import { checkAndWarnAboutWindowsSymlinks } from "./ui/win32";
+import { Result } from "./utilities/result";
 import { getErrorDescription } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 
@@ -68,14 +76,53 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         checkAndWarnAboutWindowsSymlinks(logger);
 
         const contextKeys = createContextKeys();
-        const toolchain = await createActiveToolchain(contextKeys, logger);
+        const fileSystem = createNodeFS();
+        const environment = new NodeEnvironment(configuration);
+        const shell = new NodeShell(environment, configuration, logger);
+        const swiftly = new SwiftlyCLI(fileSystem, environment, shell, vscode.window, logger);
+        const toolchainService = new SwiftToolchainService(
+            fileSystem,
+            configuration,
+            environment,
+            shell,
+            vscode.window,
+            swiftly,
+            logger
+        );
+        const globalToolchain = await createGlobalToolchain(toolchainService, contextKeys, logger);
+
+        // Initialize the Swiftly context key
+        void swiftly.version().then(result => {
+            const version = result
+                .flatMapError(error => {
+                    switch (error.code) {
+                        case SwiftlyErrorCode.OS_NOT_SUPPORTED:
+                            logger.debug(`Swiftly is not supported on ${process.platform}.`);
+                            break;
+                        case SwiftlyErrorCode.NOT_INSTALLED:
+                            logger.debug("Swiftly is not installed on this system.");
+                            break;
+                        default:
+                            logger.error(error);
+                            break;
+                    }
+                    return Result.success(new SwiftlyVersion(0, 0, 0, true));
+                })
+                .getOrThrow();
+            contextKeys.supportsSwiftlyInstall = version.supportsJSONOutput;
+        });
 
         // If we don't have a toolchain, show an error and stop initializing the extension.
         // This can happen if the user has not installed Swift or if the toolchain is not
         // properly configured.
-        if (!toolchain) {
+        if (!globalToolchain) {
             // In order to select a toolchain we need to register the command first.
-            const subscriptions = commands.registerToolchainCommands(undefined, logger, undefined);
+            const subscriptions = commands.registerToolchainCommands(
+                undefined,
+                environment,
+                toolchainService,
+                swiftly
+            );
             const chosenRemediation = await showToolchainError();
             subscriptions.forEach(sub => sub.dispose());
 
@@ -94,15 +141,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             }
         }
 
-        const workspaceContext = new WorkspaceContext(context, contextKeys, logger, toolchain);
+        const workspaceContext = new WorkspaceContext(
+            context,
+            swiftly,
+            contextKeys,
+            logger,
+            globalToolchain,
+            toolchainService
+        );
         context.subscriptions.push(workspaceContext);
 
         context.subscriptions.push(new SwiftEnvironmentVariablesManager(context));
         context.subscriptions.push(SwiftTerminalProfileProvider.register());
         context.subscriptions.push(
             ...commands.registerToolchainCommands(
-                toolchain,
-                workspaceContext.logger,
+                globalToolchain,
+                environment,
+                toolchainService,
+                swiftly,
                 workspaceContext.currentFolder?.folder
             )
         );
@@ -251,12 +307,13 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
     };
 }
 
-async function createActiveToolchain(
+async function createGlobalToolchain(
+    toolchainFactory: ToolchainService,
     contextKeys: ContextKeys,
     logger: SwiftLogger
 ): Promise<SwiftToolchain | undefined> {
     try {
-        const toolchain = await SwiftToolchain.create(undefined, logger);
+        const toolchain = await toolchainFactory.create(process.cwd());
         toolchain.logDiagnostics(logger);
         contextKeys.updateKeysBasedOnActiveVersion(toolchain.swiftVersion);
         return toolchain;
