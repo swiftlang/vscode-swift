@@ -1,14 +1,13 @@
 # Running and Debugging Tests
 
-View test results in the test explorer.
+View test results in the Test Explorer.
 
 
-All VS Code extensions provide a [testing capabilities and views(https://code.visualstudio.com/docs/debugtest/testing).
-View, run, and debug tests that your package containers in the Test Explorer.
+View, run, and debug tests that your package containers in the VS Code [Test Explorer](https://code.visualstudio.com/docs/debugtest/testing).
 
 ![A screenshot of the test explorer pane in Visual Studio Code that shows a selection of 5 tests run and passed.](test-explorer.png)
 
-Once your project is built, the Test Explorer will list all your tests. These tests are grouped by package, then test target, and finally, by XCTestCase class. From the Test Explorer, you can initiate a test run, debug a test run, and if you have already opened a file, you can quickly jump to the source code for a test.
+The Test Explorer will list all your [Swift Testing](https://developer.apple.com/xcode/swift-testing/) and [XCTest](https://developer.apple.com/documentation/xctest) tests. These tests are grouped by package, then test target, and finally, by XCTestCase class. From the Test Explorer, you can initiate a test run, debug a test run, and if you have already opened a file, you can quickly jump to the source code for a test.
 
 ## Run Tests with Coverage
 
