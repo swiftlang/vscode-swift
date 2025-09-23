@@ -16,16 +16,16 @@ import { QuickPickItem } from "vscode";
 
 import { WorkspaceContext } from "../WorkspaceContext";
 import {
-    AvailableToolchain,
     Swiftly,
     SwiftlyProgressData,
+    SwiftlyToolchain,
     isSnapshotVersion,
     isStableVersion,
 } from "../toolchain/swiftly";
 import { showReloadExtensionNotification } from "../ui/ReloadExtension";
 
 interface SwiftlyToolchainItem extends QuickPickItem {
-    toolchain: AvailableToolchain;
+    toolchain: SwiftlyToolchain;
 }
 
 async function downloadAndInstallToolchain(selected: SwiftlyToolchainItem, ctx: WorkspaceContext) {
@@ -225,7 +225,7 @@ export async function installSwiftlySnapshotToolchain(ctx: WorkspaceContext): Pr
 /**
  * Sorts toolchains by version with most recent first
  */
-function sortToolchainsByVersion(toolchains: AvailableToolchain[]): AvailableToolchain[] {
+function sortToolchainsByVersion(toolchains: SwiftlyToolchain[]): SwiftlyToolchain[] {
     return toolchains.sort((a, b) => {
         // First sort by type (stable before snapshot)
         if (a.version.type !== b.version.type) {
