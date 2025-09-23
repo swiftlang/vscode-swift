@@ -31,7 +31,7 @@ const ListResult = z.object({
         z.object({
             inUse: z.boolean(),
             isDefault: z.boolean(),
-            version: z.discriminatedUnion("type", [
+            version: z.union([
                 z.object({
                     major: z.union([z.number(), z.undefined()]),
                     minor: z.union([z.number(), z.undefined()]),
@@ -47,6 +47,11 @@ const ListResult = z.object({
                     name: z.string(),
                     type: z.literal("snapshot"),
                 }),
+                z.object({
+                    name: z.string(),
+                    type: z.literal("system"),
+                }),
+                z.object(),
             ]),
         })
     ),
@@ -77,12 +82,20 @@ const SnapshotVersion = z.object({
 
 export type SnapshotVersion = z.infer<typeof SnapshotVersion>;
 
+export interface SwiftlyToolchain {
+    inUse: boolean;
+    installed: boolean;
+    isDefault: boolean;
+    version: StableVersion | SnapshotVersion;
+}
+
 const AvailableToolchain = z.object({
     inUse: z.boolean(),
     installed: z.boolean(),
     isDefault: z.boolean(),
-    version: z.discriminatedUnion("type", [StableVersion, SnapshotVersion]),
+    version: z.union([StableVersion, SnapshotVersion, z.object()]),
 });
+type AvailableToolchain = z.infer<typeof AvailableToolchain>;
 
 export function isStableVersion(
     version: StableVersion | SnapshotVersion
@@ -99,7 +112,6 @@ export function isSnapshotVersion(
 const ListAvailableResult = z.object({
     toolchains: z.array(AvailableToolchain),
 });
-export type AvailableToolchain = z.infer<typeof AvailableToolchain>;
 
 export interface SwiftlyProgressData {
     step?: {
@@ -180,7 +192,9 @@ export class Swiftly {
         try {
             const { stdout } = await execFile("swiftly", ["list", "--format=json"]);
             const response = ListResult.parse(JSON.parse(stdout));
-            return response.toolchains.map(t => t.version.name);
+            return response.toolchains
+                .filter(t => ["stable", "snapshot", "system"].includes(t.version?.type))
+                .map(t => t.version.name);
         } catch (error) {
             logger?.error(`Failed to retrieve Swiftly installations: ${error}`);
             return [];
@@ -293,7 +307,7 @@ export class Swiftly {
     public static async listAvailable(
         logger?: SwiftLogger,
         branch?: string
-    ): Promise<AvailableToolchain[]> {
+    ): Promise<SwiftlyToolchain[]> {
         if (!this.isSupported()) {
             return [];
         }
@@ -315,7 +329,10 @@ export class Swiftly {
                 args.push(branch);
             }
             const { stdout: availableStdout } = await execFile("swiftly", args);
-            return ListAvailableResult.parse(JSON.parse(availableStdout)).toolchains;
+            const result = ListAvailableResult.parse(JSON.parse(availableStdout));
+            return result.toolchains.filter((t): t is SwiftlyToolchain =>
+                ["stable", "snapshot"].includes(t.version.type)
+            );
         } catch (error) {
             logger?.error(`Failed to retrieve available Swiftly toolchains: ${error}`);
             return [];
