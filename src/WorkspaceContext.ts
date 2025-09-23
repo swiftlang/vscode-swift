@@ -29,11 +29,13 @@ import { SwiftLogger } from "./logging/SwiftLogger";
 import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
 import { LanguageClientToolchainCoordinator } from "./sourcekit-lsp/LanguageClientToolchainCoordinator";
 import { DocCDocumentationRequest, ReIndexProjectRequest } from "./sourcekit-lsp/extensions";
+import { Swiftly } from "./swiftly/Swiftly";
 import { SwiftPluginTaskProvider } from "./tasks/SwiftPluginTaskProvider";
 import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
 import { TaskManager } from "./tasks/TaskManager";
 import { BuildFlags } from "./toolchain/BuildFlags";
-import { SwiftToolchain } from "./toolchain/toolchain";
+import { SwiftToolchain } from "./toolchain/SwiftToolchain";
+import { ToolchainService } from "./toolchain/ToolchainService";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
 import { isExcluded, isPathInsidePath } from "./utilities/filesystem";
@@ -81,9 +83,11 @@ export class WorkspaceContext implements vscode.Disposable {
 
     constructor(
         extensionContext: vscode.ExtensionContext,
+        public swiftly: Swiftly,
         public contextKeys: ContextKeys,
         public logger: SwiftLogger,
-        public globalToolchain: SwiftToolchain
+        public globalToolchain: SwiftToolchain,
+        public toolchainService: ToolchainService
     ) {
         this.testRunManager = new TestRunManager();
         this.loggerFactory = new SwiftLoggerFactory(extensionContext.logUri);

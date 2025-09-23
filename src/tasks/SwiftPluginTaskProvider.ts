@@ -21,7 +21,7 @@ import configuration, {
     substituteVariablesInString,
 } from "../configuration";
 import { SwiftExecution } from "../tasks/SwiftExecution";
-import { SwiftToolchain } from "../toolchain/toolchain";
+import { SwiftToolchain } from "../toolchain/SwiftToolchain";
 import { packageName, resolveTaskCwd } from "../utilities/tasks";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { SwiftTask } from "./SwiftTaskProvider";

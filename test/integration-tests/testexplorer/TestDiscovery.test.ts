@@ -23,12 +23,21 @@ import {
     updateTestsFromClasses,
 } from "@src/TestExplorer/TestDiscovery";
 import { reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
+import { WorkspaceContext } from "@src/WorkspaceContext";
 import { TestStyle } from "@src/sourcekit-lsp/extensions";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
+
+import { activateExtensionForSuite } from "../utilities/testutilities";
 
 suite("TestDiscovery Suite", () => {
+    let workspaceContext: WorkspaceContext;
     let testController: vscode.TestController;
     let testRunCtr = 0;
+
+    activateExtensionForSuite({
+        setup(ctx) {
+            workspaceContext = ctx;
+        },
+    });
 
     interface SimplifiedTestItem {
         id: string;
@@ -223,7 +232,10 @@ suite("TestDiscovery Suite", () => {
 
     test("updates tests from classes within a swift package", async () => {
         const targetFolder = vscode.Uri.file("file:///some/");
-        const swiftPackage = await SwiftPackage.create(targetFolder, await SwiftToolchain.create());
+        const swiftPackage = await SwiftPackage.create(
+            targetFolder,
+            workspaceContext.globalToolchain
+        );
         const testTargetName = "TestTarget";
         const target: Target = {
             c99name: testTargetName,

@@ -20,7 +20,7 @@ import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { DiagnosticStyle } from "@src/configuration";
 import { createBuildAllTask, resetBuildAllTaskCache } from "@src/tasks/SwiftTaskProvider";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { SwiftToolchain } from "@src/toolchain/SwiftToolchain";
 import { Version } from "@src/utilities/version";
 
 import { testAssetUri, testSwiftTask } from "../fixtures";

@@ -20,7 +20,7 @@ import { runSwiftScript } from "@src/commands/runSwiftScript";
 import configuration from "@src/configuration";
 import { TaskManager } from "@src/tasks/TaskManager";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { SwiftToolchain } from "@src/toolchain/SwiftToolchain";
 import { Version } from "@src/utilities/version";
 
 import { instance, mockFn, mockGlobalObject, mockGlobalValue, mockObject } from "../../MockUtils";

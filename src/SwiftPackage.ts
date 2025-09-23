@@ -17,7 +17,7 @@ import * as vscode from "vscode";
 
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { BuildFlags } from "./toolchain/BuildFlags";
-import { SwiftToolchain } from "./toolchain/toolchain";
+import { SwiftToolchain } from "./toolchain/SwiftToolchain";
 import { isPathInsidePath } from "./utilities/filesystem";
 import { lineBreakRegex } from "./utilities/tasks";
 import { execSwift, getErrorDescription, hashString } from "./utilities/utilities";

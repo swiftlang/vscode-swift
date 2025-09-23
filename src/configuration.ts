@@ -16,7 +16,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 
 import { WorkspaceContext } from "./WorkspaceContext";
-import { SwiftToolchain } from "./toolchain/toolchain";
+import { SwiftToolchain } from "./toolchain/SwiftToolchain";
 import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 
 export type DebugAdapters = "auto" | "lldb-dap" | "CodeLLDB";

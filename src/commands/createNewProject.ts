@@ -15,7 +15,7 @@ import * as fs from "fs/promises";
 import * as vscode from "vscode";
 
 import configuration from "../configuration";
-import { SwiftProjectTemplate, SwiftToolchain } from "../toolchain/toolchain";
+import { SwiftProjectTemplate, SwiftToolchain } from "../toolchain/SwiftToolchain";
 import { showToolchainError } from "../ui/ToolchainSelection";
 import { withDelayedProgress } from "../ui/withDelayedProgress";
 import { execSwift } from "../utilities/utilities";

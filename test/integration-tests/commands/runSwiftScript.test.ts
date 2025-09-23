@@ -17,7 +17,7 @@ import * as vscode from "vscode";
 
 import { runSwiftScript } from "@src/commands/runSwiftScript";
 import { TaskManager } from "@src/tasks/TaskManager";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { SwiftToolchain } from "@src/toolchain/SwiftToolchain";
 
 import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
 

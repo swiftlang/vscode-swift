@@ -15,11 +15,7 @@ import * as vscode from "vscode";
 
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
-import {
-    DarwinCompatibleTarget,
-    SwiftToolchain,
-    getDarwinTargetTriple,
-} from "../toolchain/toolchain";
+import { DarwinCompatibleTarget, getDarwinTargetTriple } from "../toolchain/SwiftToolchain";
 
 /**
  * Switches the appropriate SDK setting to the platform selected in a QuickPick UI.
@@ -44,7 +40,7 @@ export async function switchPlatform(ctx: WorkspaceContext) {
         try {
             if (picked.value) {
                 // verify that the SDK for the platform actually exists
-                await SwiftToolchain.getSDKForTarget(picked.value);
+                await ctx.toolchainService.getSDKForTarget(picked.value);
             }
             const swiftSDKTriple = picked.value ? getDarwinTargetTriple(picked.value) : "";
             if (swiftSDKTriple !== "") {

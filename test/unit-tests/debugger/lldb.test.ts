@@ -16,7 +16,7 @@ import * as fs from "fs/promises";
 import * as sinon from "sinon";
 
 import * as lldb from "@src/debugger/lldb";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { SwiftToolchain } from "@src/toolchain/SwiftToolchain";
 import * as util from "@src/utilities/utilities";
 
 import {
@@ -47,7 +47,7 @@ suite("debugger.lldb Tests", () => {
         test("should return failure if toolchain.getLLDB() throws an error", async () => {
             mockToolchain.getLLDB.rejects(new Error("Failed to get LLDB"));
             const result = await lldb.getLLDBLibPath(instance(mockToolchain));
-            expect(result.failure).to.have.property("message", "Failed to get LLDB");
+            expect(result.error).to.have.property("message", "Failed to get LLDB");
         });
 
         test("should return failure when execFile throws an error on windows", async () => {
@@ -56,8 +56,8 @@ suite("debugger.lldb Tests", () => {
             mockUtil.execFile.rejects(new Error("execFile failed"));
             const result = await lldb.getLLDBLibPath(instance(mockToolchain));
             // specific behaviour: return success and failure both undefined
-            expect(result.failure).to.equal(undefined);
-            expect(result.success).to.equal(undefined);
+            expect(result.error).to.equal(undefined);
+            expect(result.value).to.equal(undefined);
         });
 
         test("should return failure if findLibLLDB returns falsy values", async () => {
@@ -66,12 +66,12 @@ suite("debugger.lldb Tests", () => {
             mockFindLibLLDB.onFirstCall().resolves(undefined);
 
             let result = await lldb.getLLDBLibPath(instance(mockToolchain));
-            expect(result.failure).to.not.equal(undefined);
+            expect(result.error).to.not.equal(undefined);
 
             mockFindLibLLDB.onSecondCall().resolves("");
 
             result = await lldb.getLLDBLibPath(instance(mockToolchain));
-            expect(result.failure).to.not.equal(undefined);
+            expect(result.error).to.not.equal(undefined);
         });
         // NB(separate itest): contract test with toolchains of various platforms
     });

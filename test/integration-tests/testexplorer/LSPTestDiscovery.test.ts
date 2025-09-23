@@ -28,15 +28,16 @@ import {
 import { SwiftPackage, Target, TargetType } from "@src/SwiftPackage";
 import { LSPTestDiscovery } from "@src/TestExplorer/LSPTestDiscovery";
 import { TestClass } from "@src/TestExplorer/TestDiscovery";
+import { WorkspaceContext } from "@src/WorkspaceContext";
 import { LanguageClientManager } from "@src/sourcekit-lsp/LanguageClientManager";
 import {
     LSPTestItem,
     TextDocumentTestsRequest,
     WorkspaceTestsRequest,
 } from "@src/sourcekit-lsp/extensions";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
 
 import { instance, mockFn, mockObject } from "../../MockUtils";
+import { activateExtensionForSuite } from "../utilities/testutilities";
 
 class TestLanguageClient {
     private responses = new Map<string, unknown>();
@@ -81,14 +82,20 @@ class TestLanguageClient {
 }
 
 suite("LSPTestDiscovery Suite", () => {
+    let workspaceContext: WorkspaceContext;
     let client: TestLanguageClient;
     let discoverer: LSPTestDiscovery;
     let pkg: SwiftPackage;
     const file = vscode.Uri.file("/some/file.swift");
 
-    beforeEach(async function () {
-        this.timeout(10000000);
-        pkg = await SwiftPackage.create(file, await SwiftToolchain.create());
+    activateExtensionForSuite({
+        async setup(ctx) {
+            workspaceContext = ctx;
+        },
+    });
+
+    setup(async () => {
+        pkg = await SwiftPackage.create(file, workspaceContext.globalToolchain);
         client = new TestLanguageClient();
         discoverer = new LSPTestDiscovery(
             instance(

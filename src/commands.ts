@@ -51,8 +51,10 @@ import { runTask } from "./commands/runTask";
 import { runTest } from "./commands/runTest";
 import { switchPlatform } from "./commands/switchPlatform";
 import { extractTestItemsAndCount, runTestMultipleTimes } from "./commands/testMultipleTimes";
-import { SwiftLogger } from "./logging/SwiftLogger";
-import { SwiftToolchain } from "./toolchain/toolchain";
+import { Environment } from "./services/Environment";
+import { Swiftly } from "./swiftly/Swiftly";
+import { SwiftToolchain } from "./toolchain/SwiftToolchain";
+import { ToolchainService } from "./toolchain/ToolchainService";
 import { PackageNode } from "./ui/ProjectPanelProvider";
 import { showToolchainSelectionQuickPick } from "./ui/ToolchainSelection";
 
@@ -69,7 +71,9 @@ export type WorkspaceContextWithToolchain = WorkspaceContext & { toolchain: Swif
 
 export function registerToolchainCommands(
     toolchain: SwiftToolchain | undefined,
-    logger: SwiftLogger,
+    environment: Environment,
+    toolchainService: ToolchainService,
+    swiftly: Swiftly,
     cwd?: vscode.Uri
 ): vscode.Disposable[] {
     return [
@@ -77,7 +81,7 @@ export function registerToolchainCommands(
             createNewProject(toolchain)
         ),
         vscode.commands.registerCommand("swift.selectToolchain", () =>
-            showToolchainSelectionQuickPick(toolchain, logger, cwd)
+            showToolchainSelectionQuickPick(toolchain, environment, toolchainService, swiftly, cwd)
         ),
         vscode.commands.registerCommand("swift.pickProcess", configuration =>
             pickProcess(configuration)

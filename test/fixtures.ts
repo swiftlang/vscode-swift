@@ -17,7 +17,7 @@ import * as vscode from "vscode";
 import { SwiftExecution } from "@src/tasks/SwiftExecution";
 import { SwiftProcess } from "@src/tasks/SwiftProcess";
 import { SwiftTask, createSwiftTask } from "@src/tasks/SwiftTaskProvider";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { SwiftToolchain } from "@src/toolchain/SwiftToolchain";
 
 /** Workspace folder class */
 class TestWorkspaceFolder implements vscode.WorkspaceFolder {

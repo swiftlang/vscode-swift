@@ -22,7 +22,7 @@ import configuration, {
 } from "../configuration";
 import { BuildConfigurationFactory } from "../debugger/buildConfig";
 import { SwiftExecution } from "../tasks/SwiftExecution";
-import { SwiftToolchain } from "../toolchain/toolchain";
+import { SwiftToolchain } from "../toolchain/SwiftToolchain";
 import { getPlatformConfig, packageName, resolveScope, resolveTaskCwd } from "../utilities/tasks";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { Version } from "../utilities/version";

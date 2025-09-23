@@ -17,16 +17,16 @@ import { restore, stub } from "sinon";
 
 import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { ToolchainService } from "@src/toolchain/ToolchainService";
 import * as toolchain from "@src/ui/ToolchainSelection";
 
-import { MockedFunction, mockGlobalValue } from "../MockUtils";
+import { MockedObject, mockFn, mockGlobalValue, mockObject } from "../MockUtils";
 import { testAssetUri } from "../fixtures";
 import { activateExtensionForSuite, getRootWorkspaceFolder } from "./utilities/testutilities";
 
 suite("FolderContext Error Handling Test Suite", () => {
     let workspaceContext: WorkspaceContext;
-    let swiftToolchainCreateStub: MockedFunction<typeof SwiftToolchain.create>;
+    let mockedToolchainService: MockedObject<ToolchainService>;
     const showToolchainError = mockGlobalValue(toolchain, "showToolchainError");
 
     activateExtensionForSuite({
@@ -37,13 +37,24 @@ suite("FolderContext Error Handling Test Suite", () => {
         testAssets: ["defaultPackage"],
     });
 
+    setup(() => {
+        mockedToolchainService = mockObject<ToolchainService>({
+            create: mockFn(s =>
+                s.rejects(
+                    new Error("ToolchainService.create() was not properly mocked for the test.")
+                )
+            ),
+        });
+        workspaceContext.toolchainService = mockedToolchainService;
+    });
+
     afterEach(() => {
         restore();
     });
 
     test("handles SwiftToolchain.create failure gracefully with user dismissal", async () => {
         const mockError = new Error("Mock toolchain failure");
-        swiftToolchainCreateStub = stub(SwiftToolchain, "create").throws(mockError);
+        mockedToolchainService.create.rejects(mockError);
 
         // Mock showToolchainError to return false (user dismissed dialog)
         const showToolchainErrorStub = stub().resolves(false);
@@ -74,11 +85,11 @@ suite("FolderContext Error Handling Test Suite", () => {
         assert.ok(errorLogs.length > 0, "Should log error message with folder context");
 
         assert.ok(
-            swiftToolchainCreateStub.calledWith(testFolder),
+            mockedToolchainService.create.calledWith(testFolder.fsPath),
             "Should attempt to create toolchain for specific folder"
         );
         assert.strictEqual(
-            swiftToolchainCreateStub.callCount,
+            mockedToolchainService.create.callCount,
             1,
             "Should only call SwiftToolchain.create once when user dismisses"
         );
@@ -89,9 +100,8 @@ suite("FolderContext Error Handling Test Suite", () => {
         const testFolder = testAssetUri("package2");
 
         // Arrange: Mock SwiftToolchain.create to fail first time, succeed second time
-        swiftToolchainCreateStub = stub(SwiftToolchain, "create");
-        swiftToolchainCreateStub.onFirstCall().throws(new Error("Initial toolchain failure"));
-        swiftToolchainCreateStub
+        mockedToolchainService.create.onFirstCall().throws(new Error("Initial toolchain failure"));
+        mockedToolchainService.create
             .onSecondCall()
             .returns(Promise.resolve(workspaceContext.globalToolchain));
 
@@ -115,7 +125,7 @@ suite("FolderContext Error Handling Test Suite", () => {
 
         // Assert: SwiftToolchain.create should be called twice (initial + retry)
         assert.strictEqual(
-            swiftToolchainCreateStub.callCount,
+            mockedToolchainService.create.callCount,
             2,
             "Should retry toolchain creation after user selection"
         );
@@ -138,9 +148,8 @@ suite("FolderContext Error Handling Test Suite", () => {
 
         const initialError = new Error("Initial toolchain failure");
         const retryError = new Error("Retry toolchain failure");
-        swiftToolchainCreateStub = stub(SwiftToolchain, "create");
-        swiftToolchainCreateStub.onFirstCall().throws(initialError);
-        swiftToolchainCreateStub.onSecondCall().throws(retryError);
+        mockedToolchainService.create.onFirstCall().throws(initialError);
+        mockedToolchainService.create.onSecondCall().throws(retryError);
 
         // Mock showToolchainError to return true (user made selection)
         const showToolchainErrorStub = stub().resolves(true);
@@ -163,7 +172,7 @@ suite("FolderContext Error Handling Test Suite", () => {
         );
 
         assert.strictEqual(
-            swiftToolchainCreateStub.callCount,
+            mockedToolchainService.create.callCount,
             2,
             "Should retry toolchain creation after user selection"
         );

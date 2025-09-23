@@ -12,28 +12,23 @@
 //
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
-import { QuickPickItem } from "vscode";
 
 import { WorkspaceContext } from "../WorkspaceContext";
 import {
     AvailableToolchain,
-    Swiftly,
     SwiftlyProgressData,
     isSnapshotVersion,
     isStableVersion,
-} from "../toolchain/swiftly";
+} from "../swiftly/types";
 import { showReloadExtensionNotification } from "../ui/ReloadExtension";
+import { Result } from "../utilities/result";
 
-interface SwiftlyToolchainItem extends QuickPickItem {
-    toolchain: AvailableToolchain;
-}
-
-async function downloadAndInstallToolchain(selected: SwiftlyToolchainItem, ctx: WorkspaceContext) {
+async function downloadAndInstallToolchain(toolchain: string, ctx: WorkspaceContext) {
     try {
         await vscode.window.withProgress(
             {
                 location: vscode.ProgressLocation.Notification,
-                title: `Installing Swift ${selected.toolchain.version.name}`,
+                title: `Installing Swift ${toolchain}`,
                 cancellable: false,
             },
             async progress => {
@@ -41,8 +36,8 @@ async function downloadAndInstallToolchain(selected: SwiftlyToolchainItem, ctx: 
 
                 let lastProgress = 0;
 
-                await Swiftly.installToolchain(
-                    selected.toolchain.version.name,
+                await ctx.swiftly.installToolchain(
+                    toolchain,
                     (progressData: SwiftlyProgressData) => {
                         if (
                             progressData.step?.percent !== undefined &&
@@ -57,8 +52,7 @@ async function downloadAndInstallToolchain(selected: SwiftlyToolchainItem, ctx: 
                             });
                             lastProgress = progressData.step.percent;
                         }
-                    },
-                    ctx.logger
+                    }
                 );
 
                 progress.report({
@@ -68,13 +62,11 @@ async function downloadAndInstallToolchain(selected: SwiftlyToolchainItem, ctx: 
             }
         );
         void showReloadExtensionNotification(
-            `Swift ${selected.toolchain.version.name} has been installed and activated. Visual Studio Code needs to be reloaded.`
+            `Swift ${toolchain} has been installed and activated. Visual Studio Code needs to be reloaded.`
         );
     } catch (error) {
-        ctx.logger?.error(`Failed to install Swift ${selected.toolchain.version.name}: ${error}`);
-        void vscode.window.showErrorMessage(
-            `Failed to install Swift ${selected.toolchain.version.name}: ${error}`
-        );
+        ctx.logger.error(`Failed to install Swift ${toolchain}: ${error}`);
+        void vscode.window.showErrorMessage(`Failed to install Swift ${toolchain}: ${error}`);
     }
 }
 
@@ -82,28 +74,22 @@ async function downloadAndInstallToolchain(selected: SwiftlyToolchainItem, ctx: 
  * Shows a quick pick dialog to install available Swiftly toolchains
  */
 export async function installSwiftlyToolchain(ctx: WorkspaceContext): Promise<void> {
-    if (!Swiftly.isSupported()) {
-        ctx.logger?.warn("Swiftly is not supported on this platform.");
+    if (!ctx.swiftly.isSupported()) {
+        ctx.logger.warn("Swiftly is not supported on this platform.");
         void vscode.window.showErrorMessage(
             "Swiftly is not supported on this platform. Only macOS and Linux are supported."
         );
         return;
     }
 
-    if (!(await Swiftly.isInstalled())) {
-        ctx.logger?.warn("Swiftly is not installed.");
-        void vscode.window.showErrorMessage(
-            "Swiftly is not installed. Please install Swiftly first from https://www.swift.org/install/"
-        );
-        return;
-    }
-
-    const availableToolchains = await Swiftly.listAvailable(ctx.logger);
+    const availableToolchains = (await ctx.swiftly.getAvailableToolchains())
+        .flatMapError(() => Result.success([]))
+        .getOrThrow();
 
     if (availableToolchains.length === 0) {
-        ctx.logger?.debug("No toolchains available for installation via Swiftly.");
+        ctx.logger.debug("No toolchains available for installation via ctx.swiftly.");
         void vscode.window.showInformationMessage(
-            "No toolchains are available for installation via Swiftly."
+            "No toolchains are available for installation via ctx.swiftly."
         );
         return;
     }
@@ -111,7 +97,7 @@ export async function installSwiftlyToolchain(ctx: WorkspaceContext): Promise<vo
     const uninstalledToolchains = availableToolchains.filter(toolchain => !toolchain.installed);
 
     if (uninstalledToolchains.length === 0) {
-        ctx.logger?.debug("All available toolchains are already installed.");
+        ctx.logger.debug("All available toolchains are already installed.");
         void vscode.window.showInformationMessage(
             "All available toolchains are already installed."
         );
@@ -141,23 +127,16 @@ export async function installSwiftlyToolchain(ctx: WorkspaceContext): Promise<vo
         return;
     }
 
-    await downloadAndInstallToolchain(selected, ctx);
+    await downloadAndInstallToolchain(selected.toolchain.version.name, ctx);
 }
 
 /**
  * Shows a quick pick dialog to install available Swiftly snapshot toolchains
  */
 export async function installSwiftlySnapshotToolchain(ctx: WorkspaceContext): Promise<void> {
-    if (!Swiftly.isSupported()) {
+    if (!ctx.swiftly.isSupported()) {
         void vscode.window.showErrorMessage(
             "Swiftly is not supported on this platform. Only macOS and Linux are supported."
-        );
-        return;
-    }
-
-    if (!(await Swiftly.isInstalled())) {
-        void vscode.window.showErrorMessage(
-            "Swiftly is not installed. Please install Swiftly first from https://www.swift.org/install/"
         );
         return;
     }
@@ -174,12 +153,14 @@ export async function installSwiftlySnapshotToolchain(ctx: WorkspaceContext): Pr
         return; // User cancelled input
     }
 
-    const availableToolchains = await Swiftly.listAvailable(ctx.logger, branch);
+    const availableToolchains = (await ctx.swiftly.getAvailableToolchains(branch))
+        .flatMapError(() => Result.success([]))
+        .getOrThrow();
 
     if (availableToolchains.length === 0) {
-        ctx.logger?.debug("No toolchains available for installation via Swiftly.");
+        ctx.logger.debug("No toolchains available for installation via ctx.swiftly.");
         void vscode.window.showInformationMessage(
-            "No toolchains are available for installation via Swiftly."
+            "No toolchains are available for installation via ctx.swiftly."
         );
         return;
     }
@@ -190,7 +171,7 @@ export async function installSwiftlySnapshotToolchain(ctx: WorkspaceContext): Pr
     );
 
     if (uninstalledSnapshotToolchains.length === 0) {
-        ctx.logger?.debug("All available snapshot toolchains are already installed.");
+        ctx.logger.debug("All available snapshot toolchains are already installed.");
         void vscode.window.showInformationMessage(
             "All available snapshot toolchains are already installed."
         );
@@ -219,11 +200,11 @@ export async function installSwiftlySnapshotToolchain(ctx: WorkspaceContext): Pr
         return;
     }
 
-    await downloadAndInstallToolchain(selected, ctx);
+    await downloadAndInstallToolchain(selected.toolchain.version.name, ctx);
 }
 
 /**
- * Sorts toolchains by version with most recent first
+ * Sorts toolchains by version in descending order.
  */
 function sortToolchainsByVersion(toolchains: AvailableToolchain[]): AvailableToolchain[] {
     return toolchains.sort((a, b) => {

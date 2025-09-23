@@ -11,8 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import { SinonStub, stub } from "sinon";
+import { memfs } from "memfs";
+import * as path from "path";
+import { SinonSandbox, SinonStub, createSandbox, stub } from "sinon";
 import * as vscode from "vscode";
+
+import { FileSystem } from "@src/services/FileSystem";
 
 /**
  * Waits for all promises returned by a MockedFunction to resolve. Useful when
@@ -27,6 +31,112 @@ export async function waitForReturnedPromises(
     for (const promise of mockedFn.returnValues) {
         await promise;
     }
+}
+
+export function inMemoryFileSystem(): FileSystem {
+    return createMochaProxy<FileSystem>("Mock FileSystem", {
+        setup() {
+            const { fs } = memfs();
+            return {
+                async withTemporaryDirectory(prefix, body) {
+                    await fs.promises.mkdir("/tmp");
+                    const directory = (await fs.promises.mkdtemp(
+                        path.join("/tmp", prefix)
+                    )) as string; // Return type mismatch from fs
+                    try {
+                        return await body(directory);
+                    } finally {
+                        fs.promises
+                            .rm(directory, { force: true, recursive: true })
+                            // Ignore any errors that arise as a result of removing the directory
+                            .catch(() => {});
+                    }
+                },
+                // Some of the typings in memfs are incompatible with Node's fs module for whatever reason.
+                ...(fs.promises as any),
+            };
+        },
+    });
+}
+
+/**
+ * Creates a new {@link Proxy} that is re-created for each test, but can be accessed as if it was
+ * created before the test case. Allows for removing boilerplate in tests:
+ *
+ *     import { expect } from "chai";
+ *
+ *     suite("Test Suite", () => {
+ *         const proxy = createMochaProxy("something", {
+ *             setup() {
+ *                 return {
+ *                     someProperty: "hello!"
+ *                 };
+ *             }
+ *         });
+ *
+ *         test('test case', () => {
+ *             // The proxy will always be reset back to "hello!" at the start of each test.
+ *             expect(proxy).to.have.property("someProperty", "hello!")
+ *             proxy.someProperty = "world!";
+ *             expect(proxy).to.have.property("someProperty", "world!")
+ *         });
+ *     });
+ *
+ * @param name The name of the object being proxied. Will be shown in error messages.
+ * @param options Options used to configure the behavior of the proxy.
+ * @returns A proxy to an object that is setup and torn down between each test.
+ */
+export function createMochaProxy<T>(
+    name: string,
+    options: {
+        /** Called to create a new object for each test. */
+        setup: () => T;
+        /** Called to restore functionality after each test. */
+        teardown?: (obj: T) => void;
+        /** Override the behavior of the proxy's get() function. */
+        get?(target: T, property: string | symbol): any;
+        /** Override the behavior of the proxy's set() function. */
+        set?(target: T, property: string | symbol, value: any): boolean;
+    }
+): T {
+    let realValue: T | undefined = undefined;
+    setup(() => {
+        realValue = options.setup();
+    });
+    teardown(() => {
+        if (options.teardown) {
+            options.teardown(realValue!);
+        }
+        realValue = undefined;
+    });
+    return new Proxy(
+        {},
+        {
+            get(_target, property) {
+                if (!realValue) {
+                    throw Error(
+                        `${name} has not been initialized yet. You can only use it from within a test(), setup(), or teardown() block.`
+                    );
+                }
+                if (!options.get) {
+                    return (realValue as any)[property];
+                }
+                return options.get(realValue, property);
+            },
+            set(_target, property, value) {
+                if (!realValue) {
+                    throw Error(
+                        `${name} has not been initialized yet. You can only use it from within a test(), setup(), or teardown() block.`
+                    );
+                }
+                if (!options.set) {
+                    (realValue as any)[property] = value;
+                    return true;
+                }
+                return options.set(realValue, property, value);
+            },
+        }
+    ) as T;
 }
 
 /**
@@ -241,28 +351,15 @@ export function mockGlobalObject<T, K extends MockableObjectsOf<T>>(
     obj: T,
     property: K
 ): MockedObject<T[K]> {
-    let realMock: MockedObject<T[K]>;
     const originalValue: T[K] = obj[property];
-    // Create the mock at setup
-    setup(() => {
-        realMock = mockObject(obj[property]);
-        Object.defineProperty(obj, property, { value: realMock });
-    });
-    // Restore original value at teardown
-    teardown(() => {
-        Object.defineProperty(obj, property, { value: originalValue });
-    });
-    // Return the proxy to the real mock
-    return new Proxy<any>(originalValue, {
-        get(_target, property) {
-            if (!realMock) {
-                throw Error("Mock proxy accessed before setup()");
-            }
-            return (realMock as any)[property];
+    return createMochaProxy(`Mocked global object '${String(property)}'`, {
+        setup() {
+            const mockedObject: MockedObject<T[K]> = mockObject(obj[property]);
+            Object.defineProperty(obj, property, { value: mockedObject });
+            return mockedObject;
         },
-        set(_target, property, value) {
-            (realMock as any)[property] = value;
-            return true;
+        teardown() {
+            Object.defineProperty(obj, property, { value: originalValue });
         },
     });
 }
@@ -300,40 +397,35 @@ function shallowClone<T>(obj: T): T {
  * @param mod The module that will be fully mocked
  */
 export function mockGlobalModule<T>(mod: T): MockedObject<T> {
-    let realMock: MockedObject<T>;
     const originalValue: T = shallowClone(mod);
-    // Create the mock at setup
-    setup(() => {
-        realMock = mockObject(mod);
-        for (const property of Object.getOwnPropertyNames(realMock)) {
-            try {
-                Object.defineProperty(mod, property, {
-                    value: (realMock as any)[property],
-                    writable: true,
-                });
-            } catch {
-                // Some properties of a module just can't be mocked and that's fine
+    return createMochaProxy("Mocked global module", {
+        setup() {
+            const mockedModule = mockObject<T>(mod);
+            for (const property of Object.getOwnPropertyNames(mockedModule)) {
+                try {
+                    Object.defineProperty(mod, property, {
+                        value: (mockedModule as any)[property],
+                        writable: true,
+                    });
+                } catch {
+                    // Some properties of a module just can't be mocked and that's fine
+                }
             }
-        }
-    });
-    // Restore original value at teardown
-    teardown(() => {
-        for (const property of Object.getOwnPropertyNames(originalValue)) {
-            try {
-                Object.defineProperty(mod, property, {
-                    value: (originalValue as any)[property],
-                });
-            } catch {
-                // Some properties of a module just can't be mocked and that's fine
+            return mockedModule;
+        },
+        teardown() {
+            for (const property of Object.getOwnPropertyNames(originalValue)) {
+                try {
+                    Object.defineProperty(mod, property, {
+                        value: (originalValue as any)[property],
+                    });
+                } catch {
+                    // Some properties of a module just can't be mocked and that's fine
+                }
             }
-        }
-    });
-    // Return the proxy to the real mock
-    return new Proxy<any>(originalValue, {
+        },
+        // Override get and set to act on the module itself.
         get(_target, property) {
-            if (!realMock) {
-                throw Error("Mock proxy accessed before setup()");
-            }
             return (mod as any)[property];
         },
         set(_target, property, value) {
@@ -374,10 +466,9 @@ export interface MockedValue<T> {
  */
 export function mockGlobalValue<T, K extends keyof T>(obj: T, property: K): MockedValue<T[K]> {
     let setupComplete: boolean = false;
-    let originalValue: T[K];
+    const originalValue: T[K] = obj[property];
     // Grab the original value during setup
     setup(() => {
-        originalValue = obj[property];
         setupComplete = true;
     });
     // Restore the original value on teardown
@@ -389,7 +480,9 @@ export function mockGlobalValue<T, K extends keyof T>(obj: T, property: K): Mock
     return {
         setValue(value: T[K]): void {
             if (!setupComplete) {
-                throw new Error("Mocks cannot be accessed outside of test functions");
+                throw new Error(
+                    `Mocked global value '${String(property)}' has not been initialized yet. You can only use it from within a test(), setup(), or teardown() block.`
+                );
             }
             Object.defineProperty(obj, property, { value: value });
         },
@@ -409,9 +502,9 @@ type EventsOf<T> = {
 export type EventType<T> = T extends vscode.Event<infer E> ? E : never;
 
 /**
- * Create a new AsyncEventEmitter for each test that gets cleaned up automatically afterwards. This function makes use of the
- * fact that Mocha's setup() and teardown() methods can be called from anywhere. The resulting object is a proxy to the
- * real AsyncEventEmitter since it won't be created until the test actually begins.
+ * Create a new AsyncEventEmitter for each test that gets cleaned up automatically afterwards. This function makes use
+ * of the fact that Mocha's setup() and teardown() methods can be called from anywhere. The resulting object is a proxy
+ * to the real AsyncEventEmitter since it won't be created until the test actually begins.
  *
  * The proxy lets us avoid boilerplate by creating a mock in one line:
  *
@@ -422,11 +515,11 @@ export type EventType<T> = T extends vscode.Event<infer E> ? E : never;
  *     suite("Test Suite", () => {
  *         const didStartTask = mockGlobalEvent(vscode.tasks, "onDidStartTask");
  *
- *         test("test case", () => {
+ *         test("test case", async () => {
  *             const stubbedListener = stub();
  *             vscode.tasks.onDidStartTask(stubbedListener);
  *
- *             didStartTask.fire();
+ *             await didStartTask.fire();
  *             expect(stubbedListener).to.have.been.calledOnce;
  *         });
  *     });
@@ -440,28 +533,15 @@ export function mockGlobalEvent<T, K extends EventsOf<T>>(
     obj: T,
     property: K
 ): AsyncEventEmitter<EventType<T[K]>> {
-    let eventEmitter: vscode.EventEmitter<EventType<T[K]>>;
     const originalValue: T[K] = obj[property];
-    // Create the mock at setup
-    setup(() => {
-        eventEmitter = new vscode.EventEmitter();
-        Object.defineProperty(obj, property, { value: eventEmitter.event });
-    });
-    // Restore original value at teardown
-    teardown(() => {
-        Object.defineProperty(obj, property, { value: originalValue });
-    });
-    // Return the proxy to the EventEmitter
-    return new Proxy(new AsyncEventEmitter(), {
-        get(_target, property) {
-            if (!eventEmitter) {
-                throw Error("Mock proxy accessed before setup()");
-            }
-            return (eventEmitter as any)[property];
+    return createMochaProxy(`Mocked event '${String(property)}'`, {
+        setup() {
+            const eventEmitter = new AsyncEventEmitter<EventType<T[K]>>();
+            Object.defineProperty(obj, property, { value: eventEmitter.event });
+            return eventEmitter;
         },
-        set(_target, property, value) {
-            (eventEmitter as any)[property] = value;
-            return true;
+        teardown() {
+            Object.defineProperty(obj, property, { value: originalValue });
         },
     });
 }
@@ -483,4 +563,38 @@ export class AsyncEventEmitter<T> {
             await listener(event);
         }
     }
+}
+
+/**
+ * Returns a new {@link SinonSandbox} that is re-created for each test. This function makes use of the fact that Mocha's
+ * setup() and teardown() methods can be called from anywhere. The resulting object is a proxy to the real SinonSandbox
+ * since it won't be created until the test actually begins.
+ *
+ * The proxy lets us avoid boilerplate by creating the sandbox in one line:
+ *
+ *     import * as vscode from "vscode";
+ *
+ *     suite("Test Suite", () => {
+ *         const sandbox = setupSandboxForTests();
+ *
+ *         setup(() => {
+ *             // We can do anything we want with the sandbox here and it'll be
+ *             // restored on teardown().
+ *             sandbox.stub(vscode.window, "showQuickPick");
+ *         });
+ *
+ *         // Tests go here...
+ *     });
+ *
+ * **Note:** This **MUST** be called outside of the test() function or it will not work.
+ */
+export function setupSandboxForTests(): SinonSandbox {
+    return createMochaProxy("SinonSandbox", {
+        setup() {
+            return createSandbox();
+        },
+        teardown(sandbox) {
+            sandbox.restore();
+        },
+    });
 }

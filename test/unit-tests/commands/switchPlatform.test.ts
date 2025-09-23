@@ -17,11 +17,8 @@ import * as vscode from "vscode";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { switchPlatform } from "@src/commands/switchPlatform";
 import configuration from "@src/configuration";
-import {
-    DarwinCompatibleTarget,
-    SwiftToolchain,
-    getDarwinTargetTriple,
-} from "@src/toolchain/toolchain";
+import { DarwinCompatibleTarget, getDarwinTargetTriple } from "@src/toolchain/SwiftToolchain";
+import { ToolchainService } from "@src/toolchain/ToolchainService";
 import { StatusItem } from "@src/ui/StatusItem";
 
 import {
@@ -36,24 +33,28 @@ import {
 suite("Switch Target Platform Unit Tests", () => {
     const mockedConfiguration = mockGlobalModule(configuration);
     const windowMock = mockGlobalObject(vscode, "window");
-    const mockSwiftToolchain = mockGlobalModule(SwiftToolchain);
+    let mockedToolchainService: MockedObject<ToolchainService>;
     let mockContext: MockedObject<WorkspaceContext>;
     let mockedStatusItem: MockedObject<StatusItem>;
 
     setup(() => {
+        mockedToolchainService = mockObject<ToolchainService>({
+            getSDKForTarget: mockFn(),
+        });
         mockedStatusItem = mockObject<StatusItem>({
             start: mockFn(),
             end: mockFn(),
         });
         mockContext = mockObject<WorkspaceContext>({
             statusItem: instance(mockedStatusItem),
+            toolchainService: mockedToolchainService,
         });
     });
 
     test("Call Switch Platform and switch to iOS", async () => {
         const selectedItem = { value: DarwinCompatibleTarget.iOS, label: "iOS" };
         windowMock.showQuickPick.resolves(selectedItem);
-        mockSwiftToolchain.getSDKForTarget.resolves("");
+        mockedToolchainService.getSDKForTarget.resolves("");
         expect(mockedConfiguration.swiftSDK).to.equal("");
 
         await switchPlatform(instance(mockContext));
@@ -72,7 +73,7 @@ suite("Switch Target Platform Unit Tests", () => {
     test("Call Switch Platform and switch to macOS", async () => {
         const selectedItem = { value: undefined, label: "macOS" };
         windowMock.showQuickPick.resolves(selectedItem);
-        mockSwiftToolchain.getSDKForTarget.resolves("");
+        mockedToolchainService.getSDKForTarget.resolves("");
         expect(mockedConfiguration.swiftSDK).to.equal("");
 
         await switchPlatform(instance(mockContext));

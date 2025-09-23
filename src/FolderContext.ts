@@ -24,7 +24,7 @@ import { TestRunProxy } from "./TestExplorer/TestRunner";
 import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { TaskQueue } from "./tasks/TaskQueue";
-import { SwiftToolchain } from "./toolchain/toolchain";
+import { SwiftToolchain } from "./toolchain/SwiftToolchain";
 import { showToolchainError } from "./ui/ToolchainSelection";
 import { isPathInsidePath } from "./utilities/filesystem";
 
@@ -88,7 +88,7 @@ export class FolderContext implements vscode.Disposable {
 
         let toolchain: SwiftToolchain;
         try {
-            toolchain = await SwiftToolchain.create(folder);
+            toolchain = await workspaceContext.toolchainService.create(folder.fsPath);
         } catch (error) {
             // This error case is quite hard for the user to get in to, but possible.
             // Typically on startup the toolchain creation failure is going to happen in
@@ -102,7 +102,7 @@ export class FolderContext implements vscode.Disposable {
             if (userMadeSelection) {
                 // User updated toolchain settings, retry once
                 try {
-                    toolchain = await SwiftToolchain.create(folder);
+                    toolchain = await workspaceContext.toolchainService.create(folder.fsPath);
                     workspaceContext.logger.info(
                         `Successfully created toolchain for ${FolderContext.uriName(folder)} after user selection`,
                         FolderContext.uriName(folder)

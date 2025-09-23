@@ -17,7 +17,7 @@ import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { execSwift } from "../utilities/utilities";
 import { Version } from "../utilities/version";
-import { DarwinCompatibleTarget, SwiftToolchain, getDarwinTargetTriple } from "./toolchain";
+import { DarwinCompatibleTarget, SwiftToolchain, getDarwinTargetTriple } from "./SwiftToolchain";
 
 /** Target info */
 export interface DarwinTargetInfo {

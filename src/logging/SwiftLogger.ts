@@ -16,17 +16,12 @@ import * as winston from "winston";
 
 import configuration from "../configuration";
 import { IS_RUNNING_UNDER_TEST } from "../utilities/utilities";
+import { LogMessageOptions, Logger, LoggerMeta } from "./Logger";
 import { OutputChannelTransport } from "./OutputChannelTransport";
 import { RollingLog } from "./RollingLog";
 import { RollingLogTransport } from "./RollingLogTransport";
 
-// Winston work off of "any" as meta data so creating this
-// type so we don't have to disable ESLint many times below
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type LoggerMeta = any;
-type LogMessageOptions = { append: boolean };
-
-export class SwiftLogger implements vscode.Disposable {
+export class SwiftLogger implements Logger, vscode.Disposable {
     private disposables: vscode.Disposable[] = [];
     private logger: winston.Logger;
     protected rollingLog: RollingLog;

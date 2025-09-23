@@ -90,6 +90,11 @@ export interface ContextKeys {
     switchPlatformAvailable: boolean;
 
     /**
+     * Whether or not Swiftly is installed and supports installing toolchains.
+     */
+    supportsSwiftlyInstall: boolean;
+
+    /**
      * Sets values for context keys that are enabled/disabled based on the toolchain version in use.
      */
     updateKeysBasedOnActiveVersion(toolchainVersion: Version): void;
@@ -110,6 +115,7 @@ export function createContextKeys(): ContextKeys {
     let supportsReindexing: boolean = false;
     let supportsDocumentationLivePreview: boolean = false;
     let switchPlatformAvailable: boolean = false;
+    let supportsSwiftlyInstall: boolean = false;
 
     return {
         updateKeysBasedOnActiveVersion(toolchainVersion: Version) {
@@ -286,6 +292,19 @@ export function createContextKeys(): ContextKeys {
             switchPlatformAvailable = value;
             void vscode.commands
                 .executeCommand("setContext", "swift.switchPlatformAvailable", value)
+                .then(() => {
+                    /* Put in worker queue */
+                });
+        },
+
+        get supportsSwiftlyInstall() {
+            return supportsSwiftlyInstall;
+        },
+
+        set supportsSwiftlyInstall(value: boolean) {
+            supportsSwiftlyInstall = value;
+            void vscode.commands
+                .executeCommand("setContext", "swift.supportsSwiftlyInstall", value)
                 .then(() => {
                     /* Put in worker queue */
                 });

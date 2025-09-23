@@ -18,7 +18,7 @@ import * as sinon from "sinon";
 import configuration from "@src/configuration";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { ArgumentFilter, BuildFlags } from "@src/toolchain/BuildFlags";
-import { DarwinCompatibleTarget, SwiftToolchain } from "@src/toolchain/toolchain";
+import { DarwinCompatibleTarget, SwiftToolchain } from "@src/toolchain/SwiftToolchain";
 import * as utilities from "@src/utilities/utilities";
 import { Version } from "@src/utilities/version";
 

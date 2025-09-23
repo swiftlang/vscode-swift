@@ -15,7 +15,7 @@ import * as assert from "assert";
 import * as vscode from "vscode";
 
 import { WorkspaceContext } from "@src/WorkspaceContext";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { SwiftToolchain } from "@src/toolchain/SwiftToolchain";
 
 import { testSwiftTask } from "../../fixtures";
 import { executeTaskAndWaitForResult, waitForStartTaskProcess } from "../../utilities/tasks";
@@ -29,7 +29,7 @@ suite("SwiftExecution Tests Suite", () => {
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
-            toolchain = await SwiftToolchain.create();
+            toolchain = ctx.globalToolchain;
             assert.notEqual(workspaceContext.folders.length, 0);
             workspaceFolder = workspaceContext.folders[0].workspaceFolder;
         },

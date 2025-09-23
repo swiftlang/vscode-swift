@@ -17,8 +17,10 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
+import configuration from "@src/configuration";
+import { NodeEnvironment } from "@src/services/Environment";
 import { createBuildAllTask, createSwiftTask, getBuildAllTask } from "@src/tasks/SwiftTaskProvider";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { SwiftToolchain } from "@src/toolchain/SwiftToolchain";
 import { Version } from "@src/utilities/version";
 
 import { mockGlobalObject } from "../../MockUtils";
@@ -77,6 +79,7 @@ suite("SwiftTaskProvider Test Suite", () => {
                 "help",
                 { cwd: workspaceFolder.uri, scope: vscode.TaskScope.Workspace },
                 new SwiftToolchain(
+                    new NodeEnvironment(configuration),
                     "/invalid/swift/path",
                     "/invalid/toolchain/path",
                     {
