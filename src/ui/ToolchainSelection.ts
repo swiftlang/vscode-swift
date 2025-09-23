@@ -332,12 +332,12 @@ async function getQuickPickItems(
         run: selectToolchainFolder,
     });
     return [
+        ...(swiftlyToolchains.length > 0
+            ? [new SeparatorItem("swiftly"), ...swiftlyToolchains]
+            : []),
         ...(xcodes.length > 0 ? [new SeparatorItem("Xcode"), ...xcodes] : []),
         ...(sortedToolchains.length > 0
             ? [new SeparatorItem("toolchains"), ...sortedToolchains]
-            : []),
-        ...(swiftlyToolchains.length > 0
-            ? [new SeparatorItem("swiftly"), ...swiftlyToolchains]
             : []),
         new SeparatorItem("actions"),
         ...actionItems,
