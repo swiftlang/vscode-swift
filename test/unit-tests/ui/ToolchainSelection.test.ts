@@ -73,7 +73,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
         stub(SwiftToolchain, "getXcodeDeveloperDir").resolves("");
 
         // Mock Swiftly static methods
-        stub(Swiftly, "listAvailableToolchains").resolves([]);
+        stub(Swiftly, "list").resolves([]);
         stub(Swiftly, "listAvailable").resolves([]);
         stub(Swiftly, "inUseVersion").resolves(undefined);
         stub(Swiftly, "use").resolves();
@@ -117,7 +117,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
 
             (SwiftToolchain.findXcodeInstalls as sinon.SinonStub).resolves(xcodeInstalls);
             (SwiftToolchain.getToolchainInstalls as sinon.SinonStub).resolves(toolchainInstalls);
-            (Swiftly.listAvailableToolchains as sinon.SinonStub).resolves(swiftlyToolchains);
+            (Swiftly.list as sinon.SinonStub).resolves(swiftlyToolchains);
             (Swiftly.listAvailable as sinon.SinonStub).resolves(availableToolchains);
 
             await ToolchainSelectionModule.showToolchainSelectionQuickPick(undefined, mockLogger);
@@ -125,7 +125,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
             expect(mockedVSCodeWindow.showQuickPick).to.have.been.called;
             expect(SwiftToolchain.findXcodeInstalls).to.have.been.called;
             expect(SwiftToolchain.getToolchainInstalls).to.have.been.called;
-            expect(Swiftly.listAvailableToolchains).to.have.been.called;
+            expect(Swiftly.list).to.have.been.called;
         });
 
         test("should work on Linux platform", async () => {
@@ -133,14 +133,14 @@ suite("ToolchainSelection Unit Test Suite", () => {
 
             (SwiftToolchain.findXcodeInstalls as sinon.SinonStub).resolves([]);
             (SwiftToolchain.getToolchainInstalls as sinon.SinonStub).resolves([]);
-            (Swiftly.listAvailableToolchains as sinon.SinonStub).resolves([]);
+            (Swiftly.list as sinon.SinonStub).resolves([]);
             (Swiftly.listAvailable as sinon.SinonStub).resolves([]);
 
             await ToolchainSelectionModule.showToolchainSelectionQuickPick(undefined, mockLogger);
 
             expect(mockedVSCodeWindow.showQuickPick).to.have.been.called;
             expect(SwiftToolchain.getToolchainInstalls).to.have.been.called;
-            expect(Swiftly.listAvailableToolchains).to.have.been.called;
+            expect(Swiftly.list).to.have.been.called;
         });
 
         test("should handle active toolchain correctly", async () => {
@@ -158,7 +158,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
 
             (SwiftToolchain.findXcodeInstalls as sinon.SinonStub).resolves([]);
             (SwiftToolchain.getToolchainInstalls as sinon.SinonStub).resolves(toolchainInstalls);
-            (Swiftly.listAvailableToolchains as sinon.SinonStub).resolves([]);
+            (Swiftly.list as sinon.SinonStub).resolves([]);
             (Swiftly.listAvailable as sinon.SinonStub).resolves([]);
 
             await ToolchainSelectionModule.showToolchainSelectionQuickPick(
@@ -181,7 +181,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
 
             (SwiftToolchain.findXcodeInstalls as sinon.SinonStub).resolves([]);
             (SwiftToolchain.getToolchainInstalls as sinon.SinonStub).resolves([]);
-            (Swiftly.listAvailableToolchains as sinon.SinonStub).resolves(swiftlyToolchains);
+            (Swiftly.list as sinon.SinonStub).resolves(swiftlyToolchains);
             (Swiftly.listAvailable as sinon.SinonStub).resolves([]);
             (Swiftly.inUseVersion as sinon.SinonStub).resolves("6.0.0");
 
@@ -207,7 +207,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
 
             (SwiftToolchain.findXcodeInstalls as sinon.SinonStub).resolves([]);
             (SwiftToolchain.getToolchainInstalls as sinon.SinonStub).resolves([]);
-            (Swiftly.listAvailableToolchains as sinon.SinonStub).resolves([]);
+            (Swiftly.list as sinon.SinonStub).resolves([]);
             (Swiftly.listAvailable as sinon.SinonStub).resolves([
                 {
                     name: "6.0.1",
@@ -233,7 +233,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
 
             (SwiftToolchain.findXcodeInstalls as sinon.SinonStub).resolves([]);
             (SwiftToolchain.getToolchainInstalls as sinon.SinonStub).resolves([]);
-            (Swiftly.listAvailableToolchains as sinon.SinonStub).resolves([]);
+            (Swiftly.list as sinon.SinonStub).resolves([]);
             (Swiftly.listAvailable as sinon.SinonStub).resolves([]);
 
             await ToolchainSelectionModule.showToolchainSelectionQuickPick(undefined, mockLogger);
@@ -246,7 +246,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
 
             (SwiftToolchain.findXcodeInstalls as sinon.SinonStub).resolves([]);
             (SwiftToolchain.getToolchainInstalls as sinon.SinonStub).resolves([]);
-            (Swiftly.listAvailableToolchains as sinon.SinonStub).resolves([]);
+            (Swiftly.list as sinon.SinonStub).resolves([]);
             (Swiftly.listAvailable as sinon.SinonStub).resolves([]);
 
             await ToolchainSelectionModule.showToolchainSelectionQuickPick(undefined, mockLogger);
@@ -262,9 +262,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
             (SwiftToolchain.getToolchainInstalls as sinon.SinonStub).rejects(
                 new Error("Toolchain search failed")
             );
-            (Swiftly.listAvailableToolchains as sinon.SinonStub).rejects(
-                new Error("Swiftly list failed")
-            );
+            (Swiftly.list as sinon.SinonStub).rejects(new Error("Swiftly list failed"));
             (Swiftly.listAvailable as sinon.SinonStub).rejects(
                 new Error("Swiftly available failed")
             );

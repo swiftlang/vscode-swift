@@ -232,24 +232,27 @@ async function getQuickPickItems(
     const sortedToolchains = toolchains.sort((a, b) => b.label.localeCompare(a.label));
 
     // Find any Swift toolchains installed via Swiftly
-    const swiftlyToolchains = (
-        await Swiftly.listAvailableToolchains(logger)
-    ).map<SwiftlyToolchainItem>(toolchainPath => ({
-        type: "toolchain",
-        label: path.basename(toolchainPath),
-        category: "swiftly",
-        version: path.basename(toolchainPath),
-        onDidSelect: async () => {
-            try {
-                await Swiftly.use(toolchainPath);
-                void showReloadExtensionNotification(
-                    "Changing the Swift path requires Visual Studio Code be reloaded."
-                );
-            } catch (error) {
-                void vscode.window.showErrorMessage(`Failed to switch Swiftly toolchain: ${error}`);
-            }
-        },
-    }));
+    const swiftlyToolchains = (await Swiftly.list(logger)).map<SwiftlyToolchainItem>(
+        toolchainPath => ({
+            type: "toolchain",
+            label: path.basename(toolchainPath),
+            category: "swiftly",
+            version: path.basename(toolchainPath),
+            onDidSelect: async () => {
+                try {
+                    await Swiftly.use(toolchainPath);
+                    void showReloadExtensionNotification(
+                        "Changing the Swift path requires Visual Studio Code be reloaded."
+                    );
+                } catch (error) {
+                    logger.error(error);
+                    void vscode.window.showErrorMessage(
+                        `Failed to switch Swiftly toolchain: ${error}`
+                    );
+                }
+            },
+        })
+    );
 
     if (activeToolchain) {
         const currentSwiftlyVersion = activeToolchain.isSwiftlyManaged
