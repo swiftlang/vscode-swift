@@ -15,6 +15,7 @@ import * as vscode from "vscode";
 import { QuickPickItem } from "vscode";
 
 import { WorkspaceContext } from "../WorkspaceContext";
+import { SwiftLogger } from "../logging/SwiftLogger";
 import {
     Swiftly,
     SwiftlyProgressData,
@@ -29,11 +30,26 @@ interface SwiftlyToolchainItem extends QuickPickItem {
 }
 
 async function downloadAndInstallToolchain(selected: SwiftlyToolchainItem, ctx: WorkspaceContext) {
+    return await installSwiftlyToolchainVersion(selected.toolchain.version.name, ctx.logger, true);
+}
+
+/**
+ * Installs a Swiftly toolchain by version string
+ * @param version The toolchain version to install
+ * @param logger Optional logger for error reporting
+ * @param showReloadNotification Whether to show reload notification after installation
+ * @returns Promise<boolean> true if installation succeeded, false otherwise
+ */
+export async function installSwiftlyToolchainVersion(
+    version: string,
+    logger?: SwiftLogger,
+    showReloadNotification: boolean = true
+): Promise<boolean> {
     try {
         await vscode.window.withProgress(
             {
                 location: vscode.ProgressLocation.Notification,
-                title: `Installing Swift ${selected.toolchain.version.name}`,
+                title: `Installing Swift ${version}`,
                 cancellable: false,
             },
             async progress => {
@@ -42,7 +58,7 @@ async function downloadAndInstallToolchain(selected: SwiftlyToolchainItem, ctx: 
                 let lastProgress = 0;
 
                 await Swiftly.installToolchain(
-                    selected.toolchain.version.name,
+                    version,
                     (progressData: SwiftlyProgressData) => {
                         if (
                             progressData.step?.percent !== undefined &&
@@ -58,7 +74,7 @@ async function downloadAndInstallToolchain(selected: SwiftlyToolchainItem, ctx: 
                             lastProgress = progressData.step.percent;
                         }
                     },
-                    ctx.logger
+                    logger
                 );
 
                 progress.report({
@@ -67,14 +83,17 @@ async function downloadAndInstallToolchain(selected: SwiftlyToolchainItem, ctx: 
                 });
             }
         );
-        void showReloadExtensionNotification(
-            `Swift ${selected.toolchain.version.name} has been installed and activated. Visual Studio Code needs to be reloaded.`
-        );
+
+        if (showReloadNotification) {
+            void showReloadExtensionNotification(
+                `Swift ${version} has been installed and activated. Visual Studio Code needs to be reloaded.`
+            );
+        }
+        return true;
     } catch (error) {
-        ctx.logger?.error(`Failed to install Swift ${selected.toolchain.version.name}: ${error}`);
-        void vscode.window.showErrorMessage(
-            `Failed to install Swift ${selected.toolchain.version.name}: ${error}`
-        );
+        logger?.error(`Failed to install Swift ${version}: ${error}`);
+        void vscode.window.showErrorMessage(`Failed to install Swift ${version}: ${error}`);
+        return false;
     }
 }
 
