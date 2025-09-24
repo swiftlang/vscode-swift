@@ -30,6 +30,7 @@ import { SwiftLogger } from "./logging/SwiftLogger";
 import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
 import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "./terminal";
 import { SelectedXcodeWatcher } from "./toolchain/SelectedXcodeWatcher";
+import { checkForSwiftlyInstallation } from "./toolchain/swiftly";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { LanguageStatusItems } from "./ui/LanguageStatusItems";
 import { ProjectPanelProvider } from "./ui/ProjectPanelProvider";
@@ -69,6 +70,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
 
         const contextKeys = createContextKeys();
         const toolchain = await createActiveToolchain(contextKeys, logger);
+        checkForSwiftlyInstallation(contextKeys, logger);
 
         // If we don't have a toolchain, show an error and stop initializing the extension.
         // This can happen if the user has not installed Swift or if the toolchain is not

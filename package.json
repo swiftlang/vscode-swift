@@ -1176,6 +1176,14 @@
           "when": "swift.supportsDocumentationLivePreview"
         },
         {
+          "command": "swift.installSwiftlyToolchain",
+          "when": "swift.supportsSwiftlyInstall"
+        },
+        {
+          "command": "swift.installSwiftlySnapshotToolchain",
+          "when": "swift.supportsSwiftlyInstall"
+        },
+        {
           "command": "swift.createNewProject",
           "when": "!swift.isActivated || swift.createNewProjectAvailable"
         },
