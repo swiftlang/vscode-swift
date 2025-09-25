@@ -52,14 +52,11 @@ suite("Swiftly Unit Tests", () => {
 
         mockedPlatform.setValue("darwin");
         mockedEnv.setValue({});
+        mockFS({});
     });
 
     teardown(() => {
-        try {
-            mockFS.restore();
-        } catch {
-            // Ignore if mockFS is not active
-        }
+        mockFS.restore();
     });
 
     suite("getSwiftlyToolchainInstalls", () => {
@@ -257,7 +254,6 @@ suite("Swiftly Unit Tests", () => {
             mockUtilities.execFile.withArgs("swiftly").resolves({ stdout: "", stderr: "" });
 
             const tmpDir = os.tmpdir();
-            mockFS.restore();
             mockFS({
                 [tmpDir]: {},
             });
@@ -284,7 +280,6 @@ suite("Swiftly Unit Tests", () => {
                 stderr: "",
             });
             os.tmpdir();
-            mockFS.restore();
             mockFS({});
 
             // This test verifies the method starts the installation process
@@ -305,7 +300,6 @@ suite("Swiftly Unit Tests", () => {
             mockUtilities.execFile.withArgs("swiftly").rejects(installError);
 
             const tmpDir = os.tmpdir();
-            mockFS.restore();
             mockFS({
                 [tmpDir]: {},
             });
@@ -874,13 +868,6 @@ apt-get -y install build-essential`;
         test("should complete installation successfully when no post-install file exists", async () => {
             mockUtilities.execFile.withArgs("swiftly").resolves({ stdout: "", stderr: "" });
 
-            // Test doesn't need mock filesystem, just ensure it's clean
-            try {
-                mockFS.restore();
-            } catch {
-                // Ignore if not active
-            }
-
             await Swiftly.installToolchain("6.0.0");
 
             expect(mockVscodeWindow.showWarningMessage).to.not.have.been.called;
@@ -1017,13 +1004,6 @@ apt-get -y install libncurses5-dev
         test("should skip post-install handling on macOS", async () => {
             mockedPlatform.setValue("darwin");
             mockUtilities.execFile.withArgs("swiftly").resolves({ stdout: "", stderr: "" });
-
-            // Test doesn't need mock filesystem, just ensure it's clean
-            try {
-                mockFS.restore();
-            } catch {
-                // Ignore if not active
-            }
 
             await Swiftly.installToolchain("6.0.0");
 

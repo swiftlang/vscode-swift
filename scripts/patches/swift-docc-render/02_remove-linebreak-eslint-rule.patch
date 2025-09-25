@@ -1,0 +1,12 @@
+﻿diff --git a/.eslintrc.js b/.eslintrc.js
+index 1760671..a48af13 100644
+--- a/.eslintrc.js
++++ b/.eslintrc.js
+@@ -21,6 +21,7 @@ module.exports = {
+     parser: '@babel/eslint-parser',
+   },
+   rules: {
++    'linebreak-style': 'off',
+     'no-console': process.env.NODE_ENV === 'production' ? [
+       'error',
+       { allow: ['error', 'warn'] },
