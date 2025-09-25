@@ -22,6 +22,9 @@ updates:
       - dependency-name: "@types/svgicons2svgfont"
       - dependency-name: "octokit"
         update-types: ["version-update:semver-major"]
+      # Newer versions of fantasticon are broken on Windows.
+      # https://github.com/tancredi/fantasticon/issues/470
+      - dependency-name: "fantasticon"
     groups:
       all-dependencies:
         patterns:
