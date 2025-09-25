@@ -68,7 +68,7 @@ const extensionBootstrapper = (() => {
         let restoreSettings: (() => Promise<void>) | undefined;
         before("Activate Swift Extension", async function () {
             // Allow enough time for the extension to activate
-            this.timeout(120_000);
+            this.timeout(180_000);
 
             // Make sure that CodeLLDB is installed for debugging related tests
             if (!vscode.extensions.getExtension("vadimcn.vscode-lldb")) {

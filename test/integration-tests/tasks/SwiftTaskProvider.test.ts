@@ -112,7 +112,7 @@ suite("SwiftTaskProvider Test Suite", () => {
                 expect(task?.detail).to.include("swift build --build-tests");
             });
 
-            tag("large").test("executes", async () => {
+            tag("medium").test("executes", async () => {
                 const task = await getBuildAllTask();
                 assert(task);
                 const exitPromise = waitForEndTaskProcess(task);
@@ -138,7 +138,7 @@ suite("SwiftTaskProvider Test Suite", () => {
                 expect(task?.detail).to.include("swift build --show-bin-path");
             });
 
-            test("executes", async () => {
+            tag("medium").test("executes", async () => {
                 const task = await getBuildAllTask();
                 assert(task);
                 const exitPromise = waitForEndTaskProcess(task);
