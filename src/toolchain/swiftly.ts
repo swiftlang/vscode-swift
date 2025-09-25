@@ -20,7 +20,10 @@ import * as Stream from "stream";
 import * as vscode from "vscode";
 import { z } from "zod/v4/mini";
 
+// Import the reusable installation function
+import { installSwiftlyToolchainVersion } from "../commands/installSwiftlyToolchain";
 import { SwiftLogger } from "../logging/SwiftLogger";
+import { showMissingToolchainDialog } from "../ui/ToolchainSelection";
 import { findBinaryPath } from "../utilities/shell";
 import { ExecFileError, execFile, execFileStreamOutput } from "../utilities/utilities";
 import { Version } from "../utilities/version";
@@ -125,6 +128,56 @@ export interface PostInstallValidationResult {
     isValid: boolean;
     summary: string;
     invalidCommands?: string[];
+}
+
+export interface MissingToolchainError {
+    version: string;
+    originalError: string;
+}
+
+/**
+ * Parses Swiftly error message to detect missing toolchain scenarios
+ * @param stderr The stderr output from swiftly command
+ * @returns MissingToolchainError if this is a missing toolchain error, undefined otherwise
+ */
+export function parseSwiftlyMissingToolchainError(
+    stderr: string
+): MissingToolchainError | undefined {
+    // Parse error message like: "uses toolchain version 6.1.2, but it doesn't match any of the installed toolchains"
+    const versionMatch = stderr.match(/uses toolchain version ([0-9.]+(?:-[a-zA-Z0-9-]+)*)/);
+    if (versionMatch && stderr.includes("doesn't match any of the installed toolchains")) {
+        return {
+            version: versionMatch[1],
+            originalError: stderr,
+        };
+    }
+    return undefined;
+}
+
+/**
+ * Attempts to automatically install a missing Swiftly toolchain with user consent
+ * @param version The toolchain version to install
+ * @param logger Optional logger for error reporting
+ * @param folder Optional folder context
+ * @returns Promise<boolean> true if toolchain was successfully installed, false otherwise
+ */
+export async function handleMissingSwiftlyToolchain(
+    version: string,
+    logger?: SwiftLogger,
+    folder?: vscode.Uri
+): Promise<boolean> {
+    logger?.info(`Attempting to handle missing toolchain: ${version}`);
+
+    // Ask user for permission
+    const userConsent = await showMissingToolchainDialog(version, folder);
+    if (!userConsent) {
+        logger?.info(`User declined to install missing toolchain: ${version}`);
+        return false;
+    }
+
+    // Use the existing installation function without showing reload notification
+    // (since we want to continue the current operation)
+    return await installSwiftlyToolchainVersion(version, logger, false);
 }
 
 export class Swiftly {
@@ -287,7 +340,39 @@ export class Swiftly {
                 } catch (err: unknown) {
                     logger?.error(`Failed to retrieve Swiftly installations: ${err}`);
                     const error = err as ExecFileError;
-                    // Its possible the toolchain in .swift-version is misconfigured or doesn't exist.
+
+                    // Check if this is a missing toolchain error
+                    const missingToolchainError = parseSwiftlyMissingToolchainError(error.stderr);
+                    if (missingToolchainError) {
+                        // Attempt automatic installation
+                        const installed = await handleMissingSwiftlyToolchain(
+                            missingToolchainError.version,
+                            logger,
+                            cwd
+                        );
+
+                        if (installed) {
+                            // Retry toolchain location after successful installation
+                            try {
+                                const retryInUse = await Swiftly.inUseLocation("swiftly", cwd);
+                                if (retryInUse.length > 0) {
+                                    return path.join(retryInUse, "usr");
+                                }
+                            } catch (retryError) {
+                                logger?.error(
+                                    `Failed to use toolchain after installation: ${retryError}`
+                                );
+                            }
+                        } else {
+                            // User declined installation - gracefully fall back to global toolchain
+                            logger?.info(
+                                `Falling back to global toolchain after user declined installation of missing toolchain: ${missingToolchainError.version}`
+                            );
+                            return undefined;
+                        }
+                    }
+
+                    // Fall back to original error handling for non-missing-toolchain errors
                     void vscode.window.showErrorMessage(
                         `Failed to load toolchain from Swiftly: ${error.stderr}`
                     );

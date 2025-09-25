@@ -100,6 +100,25 @@ export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> 
     return false;
 }
 
+/**
+ * Shows a dialog asking user permission to install a missing Swiftly toolchain
+ * @param version The toolchain version to install
+ * @param folder Optional folder context for the error
+ * @returns Promise<boolean> true if user agrees to install, false otherwise
+ */
+export async function showMissingToolchainDialog(
+    version: string,
+    folder?: vscode.Uri
+): Promise<boolean> {
+    const folderName = folder ? `${FolderContext.uriName(folder)}: ` : "";
+    const message =
+        `${folderName}Swift version ${version} is required but not installed. ` +
+        `Would you like to automatically install it using Swiftly?`;
+
+    const choice = await vscode.window.showWarningMessage(message, "Install Toolchain", "Cancel");
+    return choice === "Install Toolchain";
+}
+
 export async function selectToolchain() {
     await vscode.commands.executeCommand(Commands.SELECT_TOOLCHAIN);
 }

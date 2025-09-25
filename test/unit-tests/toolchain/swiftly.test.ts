@@ -19,7 +19,11 @@ import { match } from "sinon";
 import * as vscode from "vscode";
 
 import * as SwiftOutputChannelModule from "@src/logging/SwiftOutputChannel";
-import { Swiftly } from "@src/toolchain/swiftly";
+import {
+    Swiftly,
+    handleMissingSwiftlyToolchain,
+    parseSwiftlyMissingToolchainError,
+} from "@src/toolchain/swiftly";
 import * as utilities from "@src/utilities/utilities";
 
 import { mockGlobalModule, mockGlobalObject, mockGlobalValue } from "../../MockUtils";
@@ -1029,6 +1033,74 @@ apt-get -y install libncurses5-dev
 
             expect(mockVscodeWindow.showWarningMessage).to.not.have.been.called;
             expect(mockUtilities.execFile).to.not.have.been.calledWith("pkexec", match.array);
+        });
+    });
+
+    suite("Missing Toolchain Handling", () => {
+        test("parseSwiftlyMissingToolchainError parses version correctly", () => {
+            const stderr =
+                "The swift version file uses toolchain version 6.1.2, but it doesn't match any of the installed toolchains. You can install the toolchain with `swiftly install`.";
+            const result = parseSwiftlyMissingToolchainError(stderr);
+            expect(result?.version).to.equal("6.1.2");
+            expect(result?.originalError).to.equal(stderr);
+        });
+
+        test("parseSwiftlyMissingToolchainError returns undefined for other errors", () => {
+            const stderr = "Some other error message";
+            const result = parseSwiftlyMissingToolchainError(stderr);
+            expect(result).to.be.undefined;
+        });
+
+        test("parseSwiftlyMissingToolchainError handles snapshot versions", () => {
+            const stderr =
+                "uses toolchain version 6.1-snapshot-2024-12-01, but it doesn't match any of the installed toolchains";
+            const result = parseSwiftlyMissingToolchainError(stderr);
+            expect(result?.version).to.equal("6.1-snapshot-2024-12-01");
+        });
+
+        test("parseSwiftlyMissingToolchainError handles versions with hyphens", () => {
+            const stderr =
+                "uses toolchain version 6.0-dev, but it doesn't match any of the installed toolchains";
+            const result = parseSwiftlyMissingToolchainError(stderr);
+            expect(result?.version).to.equal("6.0-dev");
+        });
+    });
+
+    suite("handleMissingSwiftlyToolchain", () => {
+        const mockWindow = mockGlobalObject(vscode, "window");
+        const mockedUtilities = mockGlobalModule(utilities);
+        const mockSwiftlyInstallToolchain = mockGlobalValue(Swiftly, "installToolchain");
+
+        test("handleMissingSwiftlyToolchain returns false when user declines installation", async () => {
+            mockWindow.showWarningMessage.resolves(undefined); // User cancels/declines
+            const result = await handleMissingSwiftlyToolchain("6.1.2");
+            expect(result).to.be.false;
+        });
+
+        test("handleMissingSwiftlyToolchain returns true when user accepts and installation succeeds", async () => {
+            // User accepts the installation
+            mockWindow.showWarningMessage.resolves("Install Toolchain" as any);
+
+            // Mock successful installation with progress
+            mockWindow.withProgress.callsFake(async (_options, task) => {
+                const mockProgress = { report: () => {} };
+                const mockToken = {
+                    isCancellationRequested: false,
+                    onCancellationRequested: () => ({ dispose: () => {} }),
+                };
+                await task(mockProgress, mockToken);
+                return true;
+            });
+
+            mockSwiftlyInstallToolchain.setValue(() => Promise.resolve(void 0));
+
+            // Mock the installSwiftlyToolchainVersion to succeed
+            mockedUtilities.execFile
+                .withArgs("swiftly", match.any)
+                .resolves({ stdout: "", stderr: "" });
+
+            const result = await handleMissingSwiftlyToolchain("6.1.2");
+            expect(result).to.be.true;
         });
     });
 });
