@@ -290,50 +290,22 @@ async function getQuickPickItems(
         }
     }
     // Various actions that the user can perform (e.g. to install new toolchains)
-    const actionItems: ActionItem[] = [];
-    if (Swiftly.isSupported() && !(await Swiftly.isInstalled())) {
-        const platformName = process.platform === "linux" ? "Linux" : "macOS";
-        actionItems.push({
+    const actionItems: ActionItem[] = [
+        ...(await getSwiftlyActions()),
+        {
             type: "action",
-            label: "$(swift-icon) Install Swiftly for toolchain management...",
-            detail: `Install https://swiftlang.github.io/swiftly to manage your toolchains on ${platformName}`,
-            run: installSwiftly,
-        });
-    }
-
-    // Add install Swiftly toolchain actions if Swiftly is installed
-    if (Swiftly.isSupported() && (await Swiftly.isInstalled())) {
-        actionItems.push({
+            label: "$(cloud-download) Download from Swift.org...",
+            detail: "Open https://swift.org/install to download and install a toolchain",
+            run: downloadToolchain,
+        },
+        {
             type: "action",
-            label: "$(cloud-download) Install Swiftly toolchain...",
-            detail: "Install a Swift stable release toolchain via Swiftly",
-            run: async () => {
-                await vscode.commands.executeCommand(Commands.INSTALL_SWIFTLY_TOOLCHAIN);
-            },
-        });
+            label: "$(folder-opened) Select toolchain directory...",
+            detail: "Select a folder on your machine where the Swift toolchain is installed",
+            run: selectToolchainFolder,
+        },
+    ];
 
-        actionItems.push({
-            type: "action",
-            label: "$(beaker) Install Swiftly snapshot toolchain...",
-            detail: "Install a Swift snapshot toolchain via Swiftly from development builds",
-            run: async () => {
-                await vscode.commands.executeCommand(Commands.INSTALL_SWIFTLY_SNAPSHOT_TOOLCHAIN);
-            },
-        });
-    }
-
-    actionItems.push({
-        type: "action",
-        label: "$(cloud-download) Download from Swift.org...",
-        detail: "Open https://swift.org/install to download and install a toolchain",
-        run: downloadToolchain,
-    });
-    actionItems.push({
-        type: "action",
-        label: "$(folder-opened) Select toolchain directory...",
-        detail: "Select a folder on your machine where the Swift toolchain is installed",
-        run: selectToolchainFolder,
-    });
     return [
         ...(swiftlyToolchains.length > 0
             ? [new SeparatorItem("swiftly"), ...swiftlyToolchains]
@@ -344,6 +316,46 @@ async function getQuickPickItems(
             : []),
         new SeparatorItem("actions"),
         ...actionItems,
+    ];
+}
+
+async function getSwiftlyActions(): Promise<ActionItem[]> {
+    if (!Swiftly.isSupported()) {
+        return [];
+    }
+    if (!(await Swiftly.isInstalled())) {
+        const platformName = process.platform === "linux" ? "Linux" : "macOS";
+        return [
+            {
+                type: "action",
+                label: "$(swift-icon) Install Swiftly for toolchain management...",
+                detail: `Install https://swiftlang.github.io/swiftly to manage your toolchains on ${platformName}`,
+                run: installSwiftly,
+            },
+        ];
+    }
+    // We only support installing toolchains via Swiftly starting in Swiftly 1.1.0
+    const swiftlyVersion = await Swiftly.version();
+    if (swiftlyVersion?.isLessThan({ major: 1, minor: 1, patch: 0 })) {
+        return [];
+    }
+    return [
+        {
+            type: "action",
+            label: "$(cloud-download) Install Swiftly toolchain...",
+            detail: "Install a Swift stable release toolchain via Swiftly",
+            run: async () => {
+                await vscode.commands.executeCommand(Commands.INSTALL_SWIFTLY_TOOLCHAIN);
+            },
+        },
+        {
+            type: "action",
+            label: "$(beaker) Install Swiftly snapshot toolchain...",
+            detail: "Install a Swift snapshot toolchain via Swiftly from development builds",
+            run: async () => {
+                await vscode.commands.executeCommand(Commands.INSTALL_SWIFTLY_SNAPSHOT_TOOLCHAIN);
+            },
+        },
     ];
 }
 
