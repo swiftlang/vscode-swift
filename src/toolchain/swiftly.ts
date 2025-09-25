@@ -160,12 +160,14 @@ export function parseSwiftlyMissingToolchainError(
  * @param version The toolchain version to install
  * @param logger Optional logger for error reporting
  * @param folder Optional folder context
+ * @param token Optional cancellation token to abort the installation
  * @returns Promise<boolean> true if toolchain was successfully installed, false otherwise
  */
 export async function handleMissingSwiftlyToolchain(
     version: string,
     logger?: SwiftLogger,
-    folder?: vscode.Uri
+    folder?: vscode.Uri,
+    token?: vscode.CancellationToken
 ): Promise<boolean> {
     logger?.info(`Attempting to handle missing toolchain: ${version}`);
 
@@ -178,10 +180,12 @@ export async function handleMissingSwiftlyToolchain(
 
     // Use the existing installation function without showing reload notification
     // (since we want to continue the current operation)
-    return await installSwiftlyToolchainVersion(version, logger, false);
+    return await installSwiftlyToolchainVersion(version, logger, false, token);
 }
 
 export class Swiftly {
+    public static cancellationMessage = "Installation cancelled by user";
+
     /**
      * Finds the version of Swiftly installed on the system.
      *
@@ -452,11 +456,13 @@ export class Swiftly {
      * @param version The toolchain version to install.
      * @param progressCallback Optional callback that receives progress data as JSON objects.
      * @param logger Optional logger for error reporting.
+     * @param token Optional cancellation token to abort the installation.
      */
     public static async installToolchain(
         version: string,
         progressCallback?: (progressData: SwiftlyProgressData) => void,
-        logger?: SwiftLogger
+        logger?: SwiftLogger,
+        token?: vscode.CancellationToken
     ): Promise<void> {
         if (!this.isSupported()) {
             throw new Error("Swiftly is not supported on this platform");
@@ -481,7 +487,18 @@ export class Swiftly {
                     crlfDelay: Infinity,
                 });
 
+                // Handle cancellation during progress tracking
+                const cancellationHandler = token?.onCancellationRequested(() => {
+                    rl.close();
+                    reject(new Error(Swiftly.cancellationMessage));
+                });
+
                 rl.on("line", (line: string) => {
+                    if (token?.isCancellationRequested) {
+                        rl.close();
+                        return;
+                    }
+
                     try {
                         const progressData = JSON.parse(line.trim()) as SwiftlyProgressData;
                         progressCallback(progressData);
@@ -491,10 +508,12 @@ export class Swiftly {
                 });
 
                 rl.on("close", () => {
+                    cancellationHandler?.dispose();
                     resolve();
                 });
 
                 rl.on("error", err => {
+                    cancellationHandler?.dispose();
                     reject(err);
                 });
             });
@@ -514,29 +533,70 @@ export class Swiftly {
         }
 
         try {
-            const installPromise = execFile("swiftly", installArgs);
+            // Create output streams for process output
+            const stdoutStream = new Stream.PassThrough();
+            const stderrStream = new Stream.PassThrough();
+
+            // Use execFileStreamOutput with cancellation token
+            const installPromise = execFileStreamOutput(
+                "swiftly",
+                installArgs,
+                stdoutStream,
+                stderrStream,
+                token || null,
+                {}
+            );
 
             if (progressPromise) {
-                await Promise.all([installPromise, progressPromise]);
+                await Promise.race([
+                    Promise.all([installPromise, progressPromise]),
+                    new Promise<never>((_, reject) => {
+                        if (token) {
+                            token.onCancellationRequested(() =>
+                                reject(new Error(Swiftly.cancellationMessage))
+                            );
+                        }
+                    }),
+                ]);
             } else {
                 await installPromise;
+            }
+
+            // Check for cancellation before post-install
+            if (token?.isCancellationRequested) {
+                throw new Error(Swiftly.cancellationMessage);
             }
 
             if (process.platform === "linux") {
                 await this.handlePostInstallFile(postInstallFilePath, version, logger);
             }
+        } catch (error) {
+            if (
+                token?.isCancellationRequested ||
+                (error as Error).message.includes(Swiftly.cancellationMessage)
+            ) {
+                logger?.info(`Installation of ${version} was cancelled by user`);
+                throw new Error(Swiftly.cancellationMessage);
+            }
+            throw error;
         } finally {
             if (progressPipePath) {
                 try {
                     await fs.unlink(progressPipePath);
                 } catch {
-                    // Ignore errors if the pipe file doesn't exist
+                    // Ignore errors - file may not exist
                 }
             }
+
+            // Clean up post-install file
             try {
                 await fs.unlink(postInstallFilePath);
             } catch {
-                // Ignore errors if the post-install file doesn't exist
+                // Ignore errors - file may not exist
+            }
+
+            if (token?.isCancellationRequested) {
+                logger?.info(`Cleaned up temporary files for cancelled installation of ${version}`);
             }
         }
     }
