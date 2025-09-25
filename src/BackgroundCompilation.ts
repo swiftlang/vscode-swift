@@ -86,7 +86,7 @@ export class BackgroundCompilation implements vscode.Disposable {
      */
     async runTask() {
         // create compile task and execute it
-        const backgroundTask = await getBuildAllTask(this.folderContext);
+        const backgroundTask = await this.getTask();
         if (!backgroundTask) {
             return;
         }
@@ -95,5 +95,17 @@ export class BackgroundCompilation implements vscode.Disposable {
         } catch {
             // can ignore if running task fails
         }
+    }
+
+    async getTask(): Promise<vscode.Task> {
+        if (!configuration.useDefaultTask) {
+            return await getBuildAllTask(this.folderContext);
+        }
+
+        const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
+        const defaultTask = tasks.find(
+            t => t.group?.id === vscode.TaskGroup.Build.id && t.group?.isDefault
+        );
+        return defaultTask || (await getBuildAllTask(this.folderContext));
     }
 }
