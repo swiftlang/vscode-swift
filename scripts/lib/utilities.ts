@@ -86,6 +86,13 @@ export async function exec(
         logMessage += " " + args.join(" ");
     }
     console.log(logMessage + "\n");
+    // On Windows, we have to append ".cmd" to the npm and npx commands. Additionally, the
+    // "shell" option must be set to true to allow execution of batch scripts on windows.
+    // See https://nodejs.org/en/blog/vulnerability/april-2024-security-releases-2
+    if (process.platform === "win32" && ["npm", "npx"].includes(command)) {
+        command = command + ".cmd";
+        options.shell = true;
+    }
     return new Promise<void>((resolve, reject) => {
         const childProcess = child_process.spawn(command, args, { stdio: "inherit", ...options });
         childProcess.once("error", reject);
