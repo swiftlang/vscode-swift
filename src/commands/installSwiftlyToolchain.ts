@@ -43,16 +43,18 @@ async function downloadAndInstallToolchain(selected: SwiftlyToolchainItem, ctx: 
 export async function installSwiftlyToolchainVersion(
     version: string,
     logger?: SwiftLogger,
-    showReloadNotification: boolean = true
+    showReloadNotification: boolean = true,
+    token?: vscode.CancellationToken
 ): Promise<boolean> {
     try {
         await vscode.window.withProgress(
             {
                 location: vscode.ProgressLocation.Notification,
                 title: `Installing Swift ${version}`,
-                cancellable: false,
+                cancellable: true,
             },
-            async progress => {
+            async (progress, progressToken) => {
+                const effectiveToken = token || progressToken;
                 progress.report({ message: "Starting installation..." });
 
                 let lastProgress = 0;
@@ -74,7 +76,8 @@ export async function installSwiftlyToolchainVersion(
                             lastProgress = progressData.step.percent;
                         }
                     },
-                    logger
+                    logger,
+                    effectiveToken
                 );
 
                 progress.report({
@@ -91,6 +94,13 @@ export async function installSwiftlyToolchainVersion(
         }
         return true;
     } catch (error) {
+        const errorMessage = (error as Error).message;
+        if (errorMessage.includes(Swiftly.cancellationMessage)) {
+            logger?.info(`Installation of Swift ${version} was cancelled by user`);
+            // Don't show error message for user-initiated cancellation
+            return false;
+        }
+
         logger?.error(`Failed to install Swift ${version}: ${error}`);
         void vscode.window.showErrorMessage(`Failed to install Swift ${version}: ${error}`);
         return false;
