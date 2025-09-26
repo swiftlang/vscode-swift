@@ -27,7 +27,20 @@ function isAssertionError(err: Error): err is AssertionError {
     return typeof (err as any).actual === "string" && typeof (err as any).expected === "string";
 }
 
-module.exports = class GitHubActionsSummaryReporter extends mocha.reporters.Base {
+interface TestWithContext extends mocha.Test {
+    __VSCode_Swift__context?: { title: string; content: string }[];
+}
+
+export class GitHubActionsSummaryReporter extends mocha.reporters.Base {
+    static addContext(test: mocha.Test, title: string, content: string): void {
+        const existingContext = (test as TestWithContext).__VSCode_Swift__context;
+        if (!existingContext) {
+            (test as TestWithContext).__VSCode_Swift__context = [{ title, content }];
+            return;
+        }
+        existingContext.push({ title, content });
+    }
+
     private _summaryFilePath: string | null | undefined;
     get summaryFilePath(): string | null | undefined {
         if (this._summaryFilePath !== undefined) {
@@ -69,7 +82,7 @@ module.exports = class GitHubActionsSummaryReporter extends mocha.reporters.Base
         }
         fs.appendFileSync(this.summaryFilePath, summary, { encoding: "utf8" });
     }
-};
+}
 
 function fullTitle(test: Mocha.Test | Mocha.Suite): string {
     if (test.parent && test.parent.title) {
@@ -164,7 +177,12 @@ function createMarkdownSummary(title: string, stats: Mocha.Stats, failures: Moch
         summary += tag("h3", [], "Test Failures");
         summary += list(
             failures.map(failure => {
-                const errorMessage = generateErrorMessage(failure);
+                let errorMessage = generateErrorMessage(failure);
+                const context = (failure as TestWithContext).__VSCode_Swift__context;
+                if (context) {
+                    errorMessage +=
+                        "\n\n" + context.map(c => c.title + "\n" + c.content).join("\n\n");
+                }
                 return (
                     eol() +
                     tag("h5", [], fullTitle(failure)) +
