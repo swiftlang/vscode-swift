@@ -63,7 +63,7 @@ suite("Swiftly Unit Tests", () => {
         mockFS.restore();
     });
 
-    suite("getSwiftlyToolchainInstalls", () => {
+    suite("list()", () => {
         test("should return toolchain names from list-available command for version 1.1.0", async () => {
             // Mock version check to return 1.1.0
             mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
@@ -124,7 +124,7 @@ suite("Swiftly Unit Tests", () => {
                 stderr: "",
             });
 
-            const result = await Swiftly.listAvailableToolchains();
+            const result = await Swiftly.list();
 
             expect(result).to.deep.equal([
                 "xcode",
@@ -217,7 +217,7 @@ suite("Swiftly Unit Tests", () => {
                 stderr: "",
             });
 
-            const result = await Swiftly.listAvailableToolchains();
+            const result = await Swiftly.list();
 
             expect(result).to.deep.equal([
                 "xcode",
@@ -236,7 +236,7 @@ suite("Swiftly Unit Tests", () => {
         test("should return empty array when platform is not supported", async () => {
             mockedPlatform.setValue("win32");
 
-            const result = await Swiftly.listAvailableToolchains();
+            const result = await Swiftly.list();
 
             expect(result).to.deep.equal([]);
             expect(mockUtilities.execFile).not.have.been.called;
@@ -314,7 +314,7 @@ suite("Swiftly Unit Tests", () => {
         });
     });
 
-    suite("listAvailable", () => {
+    suite("listAvailable()", () => {
         test("should return empty array on unsupported platform", async () => {
             mockedPlatform.setValue("win32");
 
@@ -586,7 +586,7 @@ suite("Swiftly Unit Tests", () => {
                     stderr: "",
                 });
 
-            const result = await Swiftly.listAvailable(undefined, "main-snapshot");
+            const result = await Swiftly.listAvailable("main-snapshot");
             expect(result).to.deep.equal([
                 {
                     inUse: false,

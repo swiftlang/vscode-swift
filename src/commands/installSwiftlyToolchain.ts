@@ -117,7 +117,7 @@ export async function installSwiftlyToolchain(ctx: WorkspaceContext): Promise<vo
         return;
     }
 
-    const availableToolchains = await Swiftly.listAvailable(ctx.logger);
+    const availableToolchains = await Swiftly.listAvailable(undefined, ctx.logger);
 
     if (availableToolchains.length === 0) {
         ctx.logger?.debug("No toolchains available for installation via Swiftly.");
@@ -193,7 +193,7 @@ export async function installSwiftlySnapshotToolchain(ctx: WorkspaceContext): Pr
         return; // User cancelled input
     }
 
-    const availableToolchains = await Swiftly.listAvailable(ctx.logger, branch);
+    const availableToolchains = await Swiftly.listAvailable(branch, ctx.logger);
 
     if (availableToolchains.length === 0) {
         ctx.logger?.debug("No toolchains available for installation via Swiftly.");

@@ -22,6 +22,7 @@ import { z } from "zod/v4/mini";
 
 // Import the reusable installation function
 import { installSwiftlyToolchainVersion } from "../commands/installSwiftlyToolchain";
+import { ContextKeys } from "../contextKeys";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { showMissingToolchainDialog } from "../ui/ToolchainSelection";
 import { findBinaryPath } from "../utilities/shell";
@@ -220,11 +221,11 @@ export class Swiftly {
     }
 
     /**
-     * Finds the list of toolchains managed by Swiftly.
+     * Finds the list of toolchains installed via Swiftly.
      *
-     * @returns an array of toolchain paths
+     * @returns an array of toolchain version names.
      */
-    public static async listAvailableToolchains(logger?: SwiftLogger): Promise<string[]> {
+    public static async list(logger?: SwiftLogger): Promise<string[]> {
         if (!this.isSupported()) {
             return [];
         }
@@ -235,13 +236,13 @@ export class Swiftly {
         }
 
         if (!(await Swiftly.supportsJsonOutput(logger))) {
-            return await Swiftly.getToolchainInstallLegacy(logger);
+            return await Swiftly.listFromSwiftlyConfig(logger);
         }
 
-        return await Swiftly.getListAvailableToolchains(logger);
+        return await Swiftly.listUsingJSONFormat(logger);
     }
 
-    private static async getListAvailableToolchains(logger?: SwiftLogger): Promise<string[]> {
+    private static async listUsingJSONFormat(logger?: SwiftLogger): Promise<string[]> {
         try {
             const { stdout } = await execFile("swiftly", ["list", "--format=json"]);
             const response = ListResult.parse(JSON.parse(stdout));
@@ -254,7 +255,7 @@ export class Swiftly {
         }
     }
 
-    private static async getToolchainInstallLegacy(logger?: SwiftLogger) {
+    private static async listFromSwiftlyConfig(logger?: SwiftLogger) {
         try {
             const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
             if (!swiftlyHomeDir) {
@@ -279,10 +280,19 @@ export class Swiftly {
         }
     }
 
+    /**
+     * Checks whether or not the current operating system supports Swiftly.
+     */
     public static isSupported() {
         return process.platform === "linux" || process.platform === "darwin";
     }
 
+    /**
+     * Retrieves the location of the toolchain that is currently in use by Swiftly.
+     *
+     * @param swiftlyPath Optional path to the Swiftly binary.
+     * @param cwd Optional current working directory to check within.
+     */
     public static async inUseLocation(swiftlyPath: string = "swiftly", cwd?: vscode.Uri) {
         const { stdout: inUse } = await execFile(swiftlyPath, ["use", "--print-location"], {
             cwd: cwd?.fsPath,
@@ -290,6 +300,12 @@ export class Swiftly {
         return inUse.trimEnd();
     }
 
+    /**
+     * Retrieves the version name of the toolchain that is currently in use by Swiftly.
+     *
+     * @param swiftlyPath Optional path to the Swiftly binary.
+     * @param cwd Optional current working directory to check within.
+     */
     public static async inUseVersion(
         swiftlyPath: string = "swiftly",
         cwd?: vscode.Uri
@@ -309,6 +325,11 @@ export class Swiftly {
         return result.version;
     }
 
+    /**
+     * Instructs Swiftly to use a specific version of the Swift toolchain.
+     *
+     * @param version The version name to use. Obtainable via {@link Swiftly.list}.
+     */
     public static async use(version: string): Promise<void> {
         if (!this.isSupported()) {
             throw new Error("Swiftly is not supported on this platform");
@@ -319,6 +340,7 @@ export class Swiftly {
     /**
      * Determine if Swiftly is being used to manage the active toolchain and if so, return
      * the path to the active toolchain.
+     *
      * @returns The location of the active toolchain if swiftly is being used to manage it.
      */
     public static async toolchain(
@@ -383,15 +405,15 @@ export class Swiftly {
     }
 
     /**
-     * Lists all toolchains available for installation from swiftly
+     * Lists all toolchains available for installation from swiftly.
      *
-     * @param branch Optional branch to filter available toolchains (e.g., "main" for snapshots)
-     * @param logger Optional logger for error reporting
-     * @returns Array of available toolchains
+     * @param branch Optional branch to filter available toolchains (e.g., "main" for snapshots).
+     * @param logger Optional logger for error reporting.
+     * @returns Array of available toolchains.
      */
     public static async listAvailable(
-        logger?: SwiftLogger,
-        branch?: string
+        branch?: string,
+        logger?: SwiftLogger
     ): Promise<SwiftlyToolchain[]> {
         if (!this.isSupported()) {
             return [];
@@ -425,11 +447,11 @@ export class Swiftly {
     }
 
     /**
-     * Installs a toolchain via swiftly with optional progress tracking
+     * Installs a toolchain via swiftly with optional progress tracking.
      *
-     * @param version The toolchain version to install
-     * @param progressCallback Optional callback that receives progress data as JSON objects
-     * @param logger Optional logger for error reporting
+     * @param version The toolchain version to install.
+     * @param progressCallback Optional callback that receives progress data as JSON objects.
+     * @param logger Optional logger for error reporting.
      */
     public static async installToolchain(
         version: string,
@@ -742,6 +764,9 @@ export class Swiftly {
         return JSON.parse(swiftlyConfigRaw);
     }
 
+    /**
+     * Checks whether or not Swiftly is installed on the current system.
+     */
     public static async isInstalled(): Promise<boolean> {
         if (!this.isSupported()) {
             return false;
@@ -753,4 +778,33 @@ export class Swiftly {
             return false;
         }
     }
+}
+
+/**
+ * Checks whether or not Swiftly is installed and updates context keys appropriately.
+ */
+export function checkForSwiftlyInstallation(contextKeys: ContextKeys, logger: SwiftLogger): void {
+    contextKeys.supportsSwiftlyInstall = false;
+    if (!Swiftly.isSupported()) {
+        logger.debug(`Swiftly is not available on ${process.platform}`);
+        return;
+    }
+    // Don't block while checking the Swiftly insallation.
+    void Swiftly.isInstalled().then(async isInstalled => {
+        if (!isInstalled) {
+            logger.debug("Swiftly is not installed on this system.");
+            return;
+        }
+        const version = await Swiftly.version(logger);
+        if (!version) {
+            logger.warn("Unable to determine Swiftly version.");
+            return;
+        }
+        logger.debug(`Detected Swiftly version ${version}.`);
+        contextKeys.supportsSwiftlyInstall = version.isGreaterThanOrEqual({
+            major: 1,
+            minor: 1,
+            patch: 0,
+        });
+    });
 }
