@@ -45,7 +45,11 @@ tag("medium").suite("SwiftPluginTaskProvider Test Suite", function () {
             folderContext = await folderInRootWorkspace("command-plugin", workspaceContext);
             const logger = await ctx.loggerFactory.temp("SwiftPluginTaskProvider.tests");
             await folderContext.loadSwiftPlugins(logger);
-            expect(logger.logs.length).to.equal(0, `Expected no output channel logs`);
+            if (logger.logs.length > 0) {
+                expect.fail(
+                    `Expected no output channel logs: ${JSON.stringify(logger.logs, undefined, 2)}`
+                );
+            }
             expect(workspaceContext.folders).to.not.have.lengthOf(0);
         },
     });

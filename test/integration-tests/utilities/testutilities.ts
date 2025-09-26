@@ -28,6 +28,7 @@ import { fileExists } from "@src/utilities/filesystem";
 import { Version } from "@src/utilities/version";
 
 import { testAssetPath, testAssetUri } from "../../fixtures";
+import { GitHubActionsSummaryReporter } from "../../reporters/GitHubActionsSummaryReporter";
 import { closeAllEditors } from "../../utilities/commands";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
 
@@ -37,9 +38,13 @@ export function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     return result;
 }
 
-function printLogs(logger: SwiftLogger, message: string) {
+function printLogs(message: string, logger: SwiftLogger, test?: mocha.Test) {
+    const logs = logger.logs.map(log => console.log(log)).join("\n");
+    if (test) {
+        GitHubActionsSummaryReporter.addContext(test, "Captured Extension Logs", logs);
+    }
     console.error(`${message}, captured logs are:`);
-    logger.logs.map(log => console.log(log));
+    console.log(logs);
     console.log("======== END OF LOGS ========\n\n");
 }
 
@@ -139,7 +144,11 @@ const extensionBootstrapper = (() => {
 
         mocha.afterEach(async function () {
             if (this.currentTest && activatedAPI && this.currentTest.isFailed()) {
-                printLogs(activatedAPI.logger, `Test failed: ${testTitle(this.currentTest)}`);
+                printLogs(
+                    `Test failed: ${testTitle(this.currentTest)}`,
+                    activatedAPI.logger,
+                    this.currentTest
+                );
             }
             if (vscode.debug.activeDebugSession) {
                 await vscode.debug.stopDebugging(vscode.debug.activeDebugSession);
@@ -161,7 +170,11 @@ const extensionBootstrapper = (() => {
                 }
             } catch (error) {
                 if (workspaceContext) {
-                    printLogs(workspaceContext.logger, "Error during test/suite teardown");
+                    printLogs(
+                        "Error during test/suite teardown",
+                        workspaceContext.logger,
+                        this.currentTest
+                    );
                 }
                 // We always want to restore settings and deactivate the extension even if the
                 // user supplied teardown fails. That way we have the best chance at not causing
@@ -228,8 +241,9 @@ const extensionBootstrapper = (() => {
 
             if (!workspaceContext) {
                 printLogs(
+                    "Error during test/suite setup, workspace context could not be created",
                     activatedAPI.logger,
-                    "Error during test/suite setup, workspace context could not be created"
+                    currentTest
                 );
                 throw new Error("Extension did not activate. Workspace context is not available.");
             }

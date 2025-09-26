@@ -50,7 +50,11 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
             );
             const logger = await ctx.loggerFactory.temp("ProjectPanelProvider.tests");
             await folderContext.loadSwiftPlugins(logger);
-            expect(logger.logs.length).to.equal(0, `Expected no output channel logs`);
+            if (logger.logs.length > 0) {
+                expect.fail(
+                    `Expected no output channel logs: ${JSON.stringify(logger.logs, undefined, 2)}`
+                );
+            }
             treeProvider = new ProjectPanelProvider(workspaceContext);
             await workspaceContext.focusFolder(folderContext);
             const buildAllTask = await createBuildAllTask(folderContext);

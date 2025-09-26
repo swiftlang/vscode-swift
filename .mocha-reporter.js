@@ -13,7 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 const mocha = require("mocha");
-const GHASummaryReporter = require("./dist/test/reporters/GitHubActionsSummaryReporter");
+const {
+    GitHubActionsSummaryReporter,
+} = require("./dist/test/reporters/GitHubActionsSummaryReporter");
 
 // Taking inspiration from https://github.com/stanleyhlng/mocha-multi-reporters/issues/108#issuecomment-2028773686
 // since mocha-multi-reporters seems to have bugs with newer mocha versions
@@ -24,7 +26,7 @@ module.exports = class MultiReporter extends mocha.reporters.Base {
             new mocha.reporters.Spec(runner, {
                 reporterOption: options.reporterOption.specReporterOptions,
             }),
-            new GHASummaryReporter(runner, {
+            new GitHubActionsSummaryReporter(runner, {
                 reporterOption: options.reporterOption.githubActionsSummaryReporterOptions,
             }),
             new mocha.reporters.JSON(runner, {
