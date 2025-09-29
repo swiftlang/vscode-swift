@@ -29,6 +29,7 @@
     "workspaceContains:**/compile_commands.json",
     "workspaceContains:**/compile_flags.txt",
     "workspaceContains:**/buildServer.json",
+    "workspaceContains:**/.bsp/*.json",
     "onDebugResolve:swift-lldb",
     "onDebugResolve:swift"
   ],
