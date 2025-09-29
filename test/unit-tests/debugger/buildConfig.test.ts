@@ -15,6 +15,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { FolderContext } from "@src/FolderContext";
+import { LinuxMain } from "@src/LinuxMain";
 import { SwiftPackage } from "@src/SwiftPackage";
 import configuration, { FolderConfiguration } from "@src/configuration";
 import { BuildConfigurationFactory } from "@src/debugger/buildConfig";
@@ -67,6 +68,9 @@ suite("BuildConfig Test Suite", () => {
             workspaceFolder: { uri: { fsPath: "/test/workspace" }, name: "TestWorkspace" } as any,
             swiftVersion: new Version(6, 0, 0),
             relativePath: "",
+            linuxMain: {
+                exists: true,
+            } as any as LinuxMain,
         });
     });
 
