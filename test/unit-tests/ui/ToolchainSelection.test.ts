@@ -13,18 +13,25 @@
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
 import * as mockFS from "mock-fs";
-import * as sinon from "sinon";
-import { match, stub } from "sinon";
+import * as path from "path";
+import { match } from "sinon";
 import * as vscode from "vscode";
 
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { Swiftly } from "@src/toolchain/swiftly";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
-import * as ToolchainSelectionModule from "@src/ui/ToolchainSelection";
+import { showToolchainSelectionQuickPick } from "@src/ui/ToolchainSelection";
 import * as utilities from "@src/utilities/utilities";
-import { Version } from "@src/utilities/version";
 
-import { mockGlobalModule, mockGlobalObject, mockGlobalValue } from "../../MockUtils";
+import {
+    MockedObject,
+    instance,
+    mockFn,
+    mockGlobalModule,
+    mockGlobalObject,
+    mockGlobalValue,
+    mockObject,
+} from "../../MockUtils";
 
 suite("ToolchainSelection Unit Test Suite", () => {
     const mockedUtilities = mockGlobalModule(utilities);
@@ -33,18 +40,18 @@ suite("ToolchainSelection Unit Test Suite", () => {
     const mockedVSCodeCommands = mockGlobalObject(vscode, "commands");
     const mockedVSCodeEnv = mockGlobalObject(vscode, "env");
     const mockedVSCodeWorkspace = mockGlobalObject(vscode, "workspace");
-    let mockLogger: SwiftLogger;
+    const mockedSwiftToolchain = mockGlobalModule(SwiftToolchain);
+    const mockedSwiftly = mockGlobalModule(Swiftly);
+    let mockedConfiguration: MockedObject<vscode.WorkspaceConfiguration>;
+    let mockedLogger: MockedObject<SwiftLogger>;
 
     setup(() => {
         mockFS({});
-        mockedUtilities.execFile.reset();
-        mockedPlatform.setValue("darwin");
+        mockedUtilities.execFile.rejects(
+            new Error("execFile was not properly mocked for this test.")
+        );
 
-        mockLogger = {
-            info: () => {},
-            warn: () => {},
-            error: () => {},
-        } as unknown as SwiftLogger;
+        mockedLogger = mockObject<SwiftLogger>({});
 
         // Set up VSCode mocks
         mockedVSCodeWindow.showQuickPick.resolves(undefined);
@@ -59,266 +66,317 @@ suite("ToolchainSelection Unit Test Suite", () => {
         mockedVSCodeEnv.openExternal.resolves(true);
 
         // Mock workspace configuration to prevent actual settings writes
-        const mockConfiguration = {
-            update: stub().resolves(),
-            inspect: stub().returns({}),
-            get: stub().returns(undefined),
-            has: stub().returns(false),
-        };
-        mockedVSCodeWorkspace.getConfiguration.returns(mockConfiguration);
+        mockedConfiguration = mockObject<vscode.WorkspaceConfiguration>({
+            update: mockFn(),
+            inspect: mockFn(s => s.returns({})),
+            get: mockFn(),
+            has: mockFn(s => s.returns(false)),
+        });
+        mockedVSCodeWorkspace.getConfiguration.returns(instance(mockedConfiguration));
+        mockedVSCodeWorkspace.workspaceFolders = [
+            {
+                index: 0,
+                name: "test",
+                uri: vscode.Uri.file("/path/to/workspace"),
+            },
+        ];
 
         // Mock SwiftToolchain static methods
-        stub(SwiftToolchain, "findXcodeInstalls").resolves([]);
-        stub(SwiftToolchain, "getToolchainInstalls").resolves([]);
-        stub(SwiftToolchain, "getXcodeDeveloperDir").resolves("");
+        mockedSwiftToolchain.findXcodeInstalls.resolves([]);
+        mockedSwiftToolchain.getToolchainInstalls.resolves([]);
+        mockedSwiftToolchain.getXcodeDeveloperDir.resolves("");
 
         // Mock Swiftly static methods
-        stub(Swiftly, "list").resolves([]);
-        stub(Swiftly, "listAvailable").resolves([]);
-        stub(Swiftly, "inUseVersion").resolves(undefined);
-        stub(Swiftly, "use").resolves();
-        stub(Swiftly, "installToolchain").resolves();
+        mockedSwiftly.list.resolves([]);
+        mockedSwiftly.listAvailable.resolves([]);
+        mockedSwiftly.inUseVersion.resolves(undefined);
+        mockedSwiftly.use.resolves();
+        mockedSwiftly.installToolchain.resolves();
     });
 
     teardown(() => {
         mockFS.restore();
-        sinon.restore();
     });
 
-    suite("showToolchainSelectionQuickPick", () => {
-        function createMockActiveToolchain(options: {
-            swiftVersion: Version;
-            toolchainPath: string;
-            swiftFolderPath: string;
-            isSwiftlyManaged?: boolean;
-        }): SwiftToolchain {
-            return {
-                swiftVersion: options.swiftVersion,
-                toolchainPath: options.toolchainPath,
-                swiftFolderPath: options.swiftFolderPath,
-                isSwiftlyManaged: options.isSwiftlyManaged || false,
-            } as SwiftToolchain;
-        }
-
-        test("should show quick pick with toolchain options", async () => {
-            const xcodeInstalls = ["/Applications/Xcode.app"];
-            const toolchainInstalls = [
-                "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain",
-            ];
-            const swiftlyToolchains = ["swift-6.0.0"];
-            const availableToolchains = [
-                {
-                    name: "6.0.1",
-                    type: "stable" as const,
-                    version: "6.0.1",
-                    isInstalled: false,
-                },
-            ];
-
-            (SwiftToolchain.findXcodeInstalls as sinon.SinonStub).resolves(xcodeInstalls);
-            (SwiftToolchain.getToolchainInstalls as sinon.SinonStub).resolves(toolchainInstalls);
-            (Swiftly.list as sinon.SinonStub).resolves(swiftlyToolchains);
-            (Swiftly.listAvailable as sinon.SinonStub).resolves(availableToolchains);
-
-            await ToolchainSelectionModule.showToolchainSelectionQuickPick(undefined, mockLogger);
-
-            expect(mockedVSCodeWindow.showQuickPick).to.have.been.called;
-            expect(SwiftToolchain.findXcodeInstalls).to.have.been.called;
-            expect(SwiftToolchain.getToolchainInstalls).to.have.been.called;
-            expect(Swiftly.list).to.have.been.called;
+    suite("macOS", () => {
+        setup(() => {
+            mockedPlatform.setValue("darwin");
         });
 
-        test("should work on Linux platform", async () => {
-            mockedPlatform.setValue("linux");
-
-            (SwiftToolchain.findXcodeInstalls as sinon.SinonStub).resolves([]);
-            (SwiftToolchain.getToolchainInstalls as sinon.SinonStub).resolves([]);
-            (Swiftly.list as sinon.SinonStub).resolves([]);
-            (Swiftly.listAvailable as sinon.SinonStub).resolves([]);
-
-            await ToolchainSelectionModule.showToolchainSelectionQuickPick(undefined, mockLogger);
-
-            expect(mockedVSCodeWindow.showQuickPick).to.have.been.called;
-            expect(SwiftToolchain.getToolchainInstalls).to.have.been.called;
-            expect(Swiftly.list).to.have.been.called;
-        });
-
-        test("should handle active toolchain correctly", async () => {
-            const activeToolchain = createMockActiveToolchain({
-                swiftVersion: new Version(6, 0, 1),
-                toolchainPath: "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr",
-                swiftFolderPath:
-                    "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin",
-                isSwiftlyManaged: false,
-            });
-
-            const toolchainInstalls = [
-                "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain",
-            ];
-
-            (SwiftToolchain.findXcodeInstalls as sinon.SinonStub).resolves([]);
-            (SwiftToolchain.getToolchainInstalls as sinon.SinonStub).resolves(toolchainInstalls);
-            (Swiftly.list as sinon.SinonStub).resolves([]);
-            (Swiftly.listAvailable as sinon.SinonStub).resolves([]);
-
-            await ToolchainSelectionModule.showToolchainSelectionQuickPick(
-                activeToolchain,
-                mockLogger
-            );
-
-            expect(SwiftToolchain.getToolchainInstalls).to.have.been.called;
-        });
-
-        test("should handle Swiftly managed active toolchain", async () => {
-            const activeToolchain = createMockActiveToolchain({
-                swiftVersion: new Version(6, 0, 0),
-                toolchainPath: "/home/user/.swiftly/toolchains/swift-6.0.0/usr",
-                swiftFolderPath: "/home/user/.swiftly/toolchains/swift-6.0.0/usr/bin",
-                isSwiftlyManaged: true,
-            });
-
-            const swiftlyToolchains = ["6.0.0", "6.1.0"];
-
-            (SwiftToolchain.findXcodeInstalls as sinon.SinonStub).resolves([]);
-            (SwiftToolchain.getToolchainInstalls as sinon.SinonStub).resolves([]);
-            (Swiftly.list as sinon.SinonStub).resolves(swiftlyToolchains);
-            (Swiftly.listAvailable as sinon.SinonStub).resolves([]);
-            (Swiftly.inUseVersion as sinon.SinonStub).resolves("6.0.0");
-
-            await ToolchainSelectionModule.showToolchainSelectionQuickPick(
-                activeToolchain,
-                mockLogger
-            );
-
-            expect(mockedVSCodeWindow.showQuickPick).to.have.been.called;
-        });
-
-        test("should handle toolchain installation selection", async () => {
-            const installableToolchain = {
-                type: "toolchain",
-                category: "installable",
-                label: "$(cloud-download) 6.0.1 (stable)",
-                version: "6.0.1",
-                toolchainType: "stable",
-                onDidSelect: stub().resolves(),
-            };
-
-            mockedVSCodeWindow.showQuickPick.resolves(installableToolchain as any);
-
-            (SwiftToolchain.findXcodeInstalls as sinon.SinonStub).resolves([]);
-            (SwiftToolchain.getToolchainInstalls as sinon.SinonStub).resolves([]);
-            (Swiftly.list as sinon.SinonStub).resolves([]);
-            (Swiftly.listAvailable as sinon.SinonStub).resolves([
-                {
-                    name: "6.0.1",
-                    type: "stable" as const,
-                    version: "6.0.1",
-                    isInstalled: false,
-                },
+        test("shows Xcode toolchains", async () => {
+            mockedSwiftToolchain.findXcodeInstalls.resolves([
+                "/Applications/Xcode-beta.app",
+                "/Applications/Xcode.app",
             ]);
+            // Extract the Xcode toolchain labels and simulate user cancellation
+            let xcodeToolchains: string[] = [];
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Select the Swift toolchain"))
+                .callsFake(async items => {
+                    xcodeToolchains = (await items)
+                        .filter((t: any) => t.category === "xcode")
+                        .map((t: any) => t.label);
+                    return undefined;
+                });
 
-            await ToolchainSelectionModule.showToolchainSelectionQuickPick(undefined, mockLogger);
+            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
 
-            expect(mockedVSCodeWindow.showQuickPick).to.have.been.called;
+            expect(xcodeToolchains).to.deep.equal(["Xcode", "Xcode-beta"]);
         });
 
-        test("should handle action item selection", async () => {
-            const actionItem = {
-                type: "action",
-                label: "$(cloud-download) Download from Swift.org...",
-                run: stub().resolves(),
-            };
+        test("user is able to set an Xcode toolchain for their workspace", async () => {
+            mockedSwiftToolchain.findXcodeInstalls.resolves(["/Applications/Xcode.app"]);
+            // User selects the first toolchain that appears
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Select the Swift toolchain"))
+                .callsFake(async items => {
+                    const xcodeToolchains = (await items).filter(
+                        (t: any) => t.category === "xcode"
+                    );
+                    return xcodeToolchains[0];
+                });
+            // User selects Workspace Configuration
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Toolchain Configuration"))
+                .callsFake(async items => {
+                    return (await items).find(item => item.label === "Workspace Configuration");
+                });
 
-            mockedVSCodeWindow.showQuickPick.resolves(actionItem as any);
+            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
 
-            (SwiftToolchain.findXcodeInstalls as sinon.SinonStub).resolves([]);
-            (SwiftToolchain.getToolchainInstalls as sinon.SinonStub).resolves([]);
-            (Swiftly.list as sinon.SinonStub).resolves([]);
-            (Swiftly.listAvailable as sinon.SinonStub).resolves([]);
-
-            await ToolchainSelectionModule.showToolchainSelectionQuickPick(undefined, mockLogger);
-
-            expect(actionItem.run).to.have.been.called;
+            expect(mockedConfiguration.update).to.have.been.calledWith(
+                "path",
+                path.normalize(
+                    "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+                ),
+                vscode.ConfigurationTarget.Workspace
+            );
         });
 
-        test("should handle user cancellation", async () => {
-            mockedVSCodeWindow.showQuickPick.resolves(undefined);
+        test("user is able to set a global Xcode toolchain", async () => {
+            mockedSwiftToolchain.findXcodeInstalls.resolves(["/Applications/Xcode.app"]);
+            // User selects the first toolchain that appears
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Select the Swift toolchain"))
+                .callsFake(async items => {
+                    const xcodeToolchains = (await items).filter(
+                        (t: any) => t.category === "xcode"
+                    );
+                    return xcodeToolchains[0];
+                });
+            // User selects Global Configuration
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Toolchain Configuration"))
+                .callsFake(async items => {
+                    return (await items).find(item => item.label === "Global Configuration");
+                });
 
-            (SwiftToolchain.findXcodeInstalls as sinon.SinonStub).resolves([]);
-            (SwiftToolchain.getToolchainInstalls as sinon.SinonStub).resolves([]);
-            (Swiftly.list as sinon.SinonStub).resolves([]);
-            (Swiftly.listAvailable as sinon.SinonStub).resolves([]);
+            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
 
-            await ToolchainSelectionModule.showToolchainSelectionQuickPick(undefined, mockLogger);
-
-            // Should complete without error when user cancels
-            expect(mockedVSCodeWindow.showQuickPick).to.have.been.called;
+            expect(mockedConfiguration.update).to.have.been.calledWith(
+                "path",
+                path.normalize(
+                    "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+                ),
+                vscode.ConfigurationTarget.Global
+            );
         });
 
-        test("should handle errors gracefully", async () => {
-            (SwiftToolchain.findXcodeInstalls as sinon.SinonStub).rejects(
-                new Error("Xcode search failed")
-            );
-            (SwiftToolchain.getToolchainInstalls as sinon.SinonStub).rejects(
-                new Error("Toolchain search failed")
-            );
-            (Swiftly.list as sinon.SinonStub).rejects(new Error("Swiftly list failed"));
-            (Swiftly.listAvailable as sinon.SinonStub).rejects(
-                new Error("Swiftly available failed")
-            );
+        test("shows public toolchains installed by the user", async () => {
+            mockedSwiftToolchain.getToolchainInstalls.resolves([
+                "/Library/Developer/Toolchains/swift-main-DEVELOPMENT",
+                "/Library/Developer/Toolchains/swift-6.2-RELEASE",
+            ]);
+            // Extract the Xcode toolchain labels and simulate user cancellation
+            let publicToolchains: string[] = [];
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Select the Swift toolchain"))
+                .callsFake(async items => {
+                    publicToolchains = (await items)
+                        .filter((t: any) => t.category === "public")
+                        .map((t: any) => t.label);
+                    return undefined;
+                });
 
-            await ToolchainSelectionModule.showToolchainSelectionQuickPick(undefined, mockLogger);
+            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
 
-            expect(mockedVSCodeWindow.showQuickPick).to.have.been.called;
+            expect(publicToolchains).to.deep.equal(["swift-main-DEVELOPMENT", "swift-6.2-RELEASE"]);
+        });
+
+        test("shows toolchains installed via Swiftly", async () => {
+            mockedSwiftly.list.resolves(["6.0.0", "6.2.0", "5.9.3"]);
+            // Extract the Swiftly toolchain labels and simulate user cancellation
+            let swiftlyToolchains: string[] = [];
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Select the Swift toolchain"))
+                .callsFake(async items => {
+                    swiftlyToolchains = (await items)
+                        .filter((t: any) => t.category === "swiftly")
+                        .map((t: any) => t.label);
+                    return undefined;
+                });
+
+            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+
+            expect(swiftlyToolchains).to.deep.equal(["6.2.0", "6.0.0", "5.9.3"]);
+        });
+
+        test("user is able to set a Swiftly toolchain for their workspace", async () => {
+            mockedSwiftly.list.resolves(["6.2.0"]);
+            mockedSwiftToolchain.findXcodeInstalls.resolves(["/Applications/Xcode.app"]);
+            // User selects the first toolchain that appears
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Select the Swift toolchain"))
+                .callsFake(async items => {
+                    const swiftlyToolchains = (await items).filter(
+                        (t: any) => t.category === "swiftly"
+                    );
+                    return swiftlyToolchains[0];
+                });
+            // User selects Workspace Configuration
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Toolchain Configuration"))
+                .callsFake(async items => {
+                    return (await items).find(item => item.label === "Workspace Configuration");
+                });
+
+            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+
+            expect(mockedSwiftly.use).to.have.been.calledWith(
+                "6.2.0",
+                path.normalize("/path/to/workspace")
+            );
+            expect(mockedConfiguration.update).to.have.been.calledWith(
+                "path",
+                undefined,
+                vscode.ConfigurationTarget.Workspace
+            );
+        });
+
+        test("user is able to set a global Swiftly toolchain", async () => {
+            mockedSwiftly.list.resolves(["6.2.0"]);
+            mockedSwiftToolchain.findXcodeInstalls.resolves(["/Applications/Xcode.app"]);
+            mockedVSCodeWorkspace.workspaceFolders = [
+                {
+                    index: 0,
+                    name: "test",
+                    uri: vscode.Uri.file("/path/to/workspace"),
+                },
+            ];
+            // User selects the first toolchain that appears
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Select the Swift toolchain"))
+                .callsFake(async items => {
+                    const swiftlyToolchains = (await items).filter(
+                        (t: any) => t.category === "swiftly"
+                    );
+                    return swiftlyToolchains[0];
+                });
+            // User selects Global Configuration
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Toolchain Configuration"))
+                .callsFake(async items => {
+                    return (await items).find(item => item.label === "Global Configuration");
+                });
+
+            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+
+            expect(mockedSwiftly.use).to.have.been.calledWith("6.2.0");
+            expect(mockedConfiguration.update).to.have.been.calledWith(
+                "path",
+                undefined,
+                vscode.ConfigurationTarget.Global
+            );
         });
     });
 
-    suite("downloadToolchain", () => {
-        test("should open external URL for Swift.org", async () => {
-            mockedVSCodeEnv.openExternal.resolves(true);
+    suite("Linux", () => {
+        setup(() => {
+            mockedPlatform.setValue("linux");
+        });
 
-            await ToolchainSelectionModule.downloadToolchain();
+        test("shows toolchains installed via Swiftly", async () => {
+            mockedSwiftly.list.resolves(["6.0.0", "6.2.0", "5.9.3"]);
+            // Extract the Swiftly toolchain labels and simulate user cancellation
+            let swiftlyToolchains: string[] = [];
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Select the Swift toolchain"))
+                .callsFake(async items => {
+                    swiftlyToolchains = (await items)
+                        .filter((t: any) => t.category === "swiftly")
+                        .map((t: any) => t.label);
+                    return undefined;
+                });
 
-            expect(mockedVSCodeEnv.openExternal).to.have.been.calledWith(
-                match((uri: vscode.Uri) => uri.toString() === "https://www.swift.org/install")
+            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+
+            expect(swiftlyToolchains).to.deep.equal(["6.2.0", "6.0.0", "5.9.3"]);
+        });
+
+        test("user is able to set a Swiftly toolchain for their workspace", async () => {
+            mockedSwiftly.list.resolves(["6.2.0"]);
+            // User selects the first toolchain that appears
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Select the Swift toolchain"))
+                .callsFake(async items => {
+                    const swiftlyToolchains = (await items).filter(
+                        (t: any) => t.category === "swiftly"
+                    );
+                    return swiftlyToolchains[0];
+                });
+            // User selects Workspace Configuration
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Toolchain Configuration"))
+                .callsFake(async items => {
+                    return (await items).find(item => item.label === "Workspace Configuration");
+                });
+
+            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+
+            expect(mockedSwiftly.use).to.have.been.calledWith(
+                "6.2.0",
+                path.normalize("/path/to/workspace")
+            );
+            expect(mockedConfiguration.update).to.have.been.calledWith(
+                "path",
+                undefined,
+                vscode.ConfigurationTarget.Workspace
             );
         });
-    });
 
-    suite("installSwiftly", () => {
-        test("should open external URL for Swiftly installation", async () => {
-            mockedVSCodeEnv.openExternal.resolves(true);
+        test("user is able to set a global Swiftly toolchain", async () => {
+            mockedSwiftly.list.resolves(["6.2.0"]);
+            mockedVSCodeWorkspace.workspaceFolders = [
+                {
+                    index: 0,
+                    name: "test",
+                    uri: vscode.Uri.file("/path/to/workspace"),
+                },
+            ];
+            // User selects the first toolchain that appears
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Select the Swift toolchain"))
+                .callsFake(async items => {
+                    const swiftlyToolchains = (await items).filter(
+                        (t: any) => t.category === "swiftly"
+                    );
+                    return swiftlyToolchains[0];
+                });
+            // User selects Global Configuration
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Toolchain Configuration"))
+                .callsFake(async items => {
+                    return (await items).find(item => item.label === "Global Configuration");
+                });
 
-            await ToolchainSelectionModule.installSwiftly();
+            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
 
-            expect(mockedVSCodeEnv.openExternal).to.have.been.calledWith(
-                match((uri: vscode.Uri) => uri.toString() === "https://www.swift.org/install/")
+            expect(mockedSwiftly.use).to.have.been.calledWith("6.2.0");
+            expect(mockedConfiguration.update).to.have.been.calledWith(
+                "path",
+                undefined,
+                vscode.ConfigurationTarget.Global
             );
-        });
-    });
-
-    suite("selectToolchainFolder", () => {
-        test("should show open dialog for folder selection", async () => {
-            const selectedFolder = [{ fsPath: "/custom/toolchain/path" }] as vscode.Uri[];
-            mockedVSCodeWindow.showOpenDialog.resolves(selectedFolder);
-
-            await ToolchainSelectionModule.selectToolchainFolder();
-
-            expect(mockedVSCodeWindow.showOpenDialog).to.have.been.calledWith({
-                canSelectFiles: false,
-                canSelectFolders: true,
-                canSelectMany: false,
-                title: "Select the folder containing Swift binaries",
-                openLabel: "Select folder",
-            });
-        });
-
-        test("should handle user cancellation", async () => {
-            mockedVSCodeWindow.showOpenDialog.resolves(undefined);
-
-            await ToolchainSelectionModule.selectToolchainFolder();
-
-            expect(mockedVSCodeWindow.showOpenDialog).to.have.been.called;
         });
     });
 });

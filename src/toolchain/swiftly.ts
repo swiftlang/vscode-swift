@@ -270,9 +270,9 @@ export class Swiftly {
             if (!Array.isArray(installedToolchains)) {
                 return [];
             }
-            return installedToolchains
-                .filter((toolchain): toolchain is string => typeof toolchain === "string")
-                .map(toolchain => path.join(swiftlyHomeDir, "toolchains", toolchain));
+            return installedToolchains.filter(
+                (toolchain): toolchain is string => typeof toolchain === "string"
+            );
         } catch (error) {
             logger?.error(`Failed to retrieve Swiftly installations: ${error}`);
             throw new Error(

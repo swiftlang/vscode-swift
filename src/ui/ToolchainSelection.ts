@@ -25,7 +25,7 @@ import { showReloadExtensionNotification } from "./ReloadExtension";
 /**
  * Open the installation page on Swift.org
  */
-export async function downloadToolchain() {
+async function downloadToolchain() {
     if (await vscode.env.openExternal(vscode.Uri.parse("https://www.swift.org/install"))) {
         const selected = await showReloadExtensionNotification(
             "The Swift extension must be reloaded once you have downloaded and installed the new toolchain.",
@@ -40,7 +40,7 @@ export async function downloadToolchain() {
 /**
  * Open the installation page for Swiftly
  */
-export async function installSwiftly() {
+async function installSwiftly() {
     if (await vscode.env.openExternal(vscode.Uri.parse("https://www.swift.org/install/"))) {
         const selected = await showReloadExtensionNotification(
             "The Swift extension must be reloaded once you have downloaded and installed the new toolchain.",
@@ -56,7 +56,7 @@ export async function installSwiftly() {
  * Prompt the user to select a folder where they have installed the swift toolchain.
  * Updates the swift.path configuration with the selected folder.
  */
-export async function selectToolchainFolder() {
+async function selectToolchainFolder() {
     const selected = await vscode.window.showOpenDialog({
         canSelectFiles: false,
         canSelectFolders: true,
@@ -190,28 +190,33 @@ async function getQuickPickItems(
     cwd?: vscode.Uri
 ): Promise<SelectToolchainItem[]> {
     // Find any Xcode installations on the system
-    const xcodes = (await SwiftToolchain.findXcodeInstalls()).map<SwiftToolchainItem>(xcodePath => {
-        const toolchainPath = path.join(
-            xcodePath,
-            "Contents",
-            "Developer",
-            "Toolchains",
-            "XcodeDefault.xctoolchain",
-            "usr"
-        );
-        return {
-            type: "toolchain",
-            category: "xcode",
-            label: path.basename(xcodePath, ".app"),
-            detail: xcodePath,
-            xcodePath,
-            toolchainPath,
-            swiftFolderPath: path.join(toolchainPath, "bin"),
-        };
-    });
+    const xcodes = (await SwiftToolchain.findXcodeInstalls())
+        // Sort in descending order alphabetically
+        .sort((a, b) => -a.localeCompare(b))
+        .map<SwiftToolchainItem>(xcodePath => {
+            const toolchainPath = path.join(
+                xcodePath,
+                "Contents",
+                "Developer",
+                "Toolchains",
+                "XcodeDefault.xctoolchain",
+                "usr"
+            );
+            return {
+                type: "toolchain",
+                category: "xcode",
+                label: path.basename(xcodePath, ".app"),
+                detail: xcodePath,
+                xcodePath,
+                toolchainPath,
+                swiftFolderPath: path.join(toolchainPath, "bin"),
+            };
+        });
     // Find any public Swift toolchains on the system
-    const toolchains = (await SwiftToolchain.getToolchainInstalls()).map<SwiftToolchainItem>(
-        toolchainPath => {
+    const publicToolchains = (await SwiftToolchain.getToolchainInstalls())
+        // Sort in descending order alphabetically
+        .sort((a, b) => -a.localeCompare(b))
+        .map<SwiftToolchainItem>(toolchainPath => {
             const result: SwiftToolchainItem = {
                 type: "toolchain",
                 category: "public",
@@ -229,15 +234,13 @@ async function getQuickPickItems(
                 };
             }
             return result;
-        }
-    );
-
-    // Sort toolchains by label (alphabetically)
-    const sortedToolchains = toolchains.sort((a, b) => b.label.localeCompare(a.label));
+        });
 
     // Find any Swift toolchains installed via Swiftly
-    const swiftlyToolchains = (await Swiftly.list(logger)).map<SwiftlyToolchainItem>(
-        toolchainPath => ({
+    const swiftlyToolchains = (await Swiftly.list(logger))
+        // Sort in descending order alphabetically
+        .sort((a, b) => -a.localeCompare(b))
+        .map<SwiftlyToolchainItem>(toolchainPath => ({
             type: "toolchain",
             label: path.basename(toolchainPath),
             category: "swiftly",
@@ -264,14 +267,13 @@ async function getQuickPickItems(
                     );
                 }
             },
-        })
-    );
+        }));
 
     if (activeToolchain) {
         const currentSwiftlyVersion = activeToolchain.isSwiftlyManaged
             ? await Swiftly.inUseVersion("swiftly", cwd)
             : undefined;
-        const toolchainInUse = [...xcodes, ...sortedToolchains, ...swiftlyToolchains].find(
+        const toolchainInUse = [...xcodes, ...publicToolchains, ...swiftlyToolchains].find(
             toolchain => {
                 if (currentSwiftlyVersion) {
                     if (toolchain.category !== "swiftly") {
@@ -291,7 +293,7 @@ async function getQuickPickItems(
         if (toolchainInUse) {
             toolchainInUse.description = "$(check) in use";
         } else {
-            sortedToolchains.splice(0, 0, {
+            publicToolchains.splice(0, 0, {
                 type: "toolchain",
                 category: "public",
                 label: `Swift ${activeToolchain.swiftVersion.toString()}`,
@@ -324,8 +326,8 @@ async function getQuickPickItems(
             ? [new SeparatorItem("swiftly"), ...swiftlyToolchains]
             : []),
         ...(xcodes.length > 0 ? [new SeparatorItem("Xcode"), ...xcodes] : []),
-        ...(sortedToolchains.length > 0
-            ? [new SeparatorItem("toolchains"), ...sortedToolchains]
+        ...(publicToolchains.length > 0
+            ? [new SeparatorItem("toolchains"), ...publicToolchains]
             : []),
         new SeparatorItem("actions"),
         ...actionItems,
@@ -537,7 +539,7 @@ async function askWhereToSetToolchain(): Promise<vscode.ConfigurationTarget | un
  * @param developerDir
  * @returns
  */
-export async function setToolchainPath(
+async function setToolchainPath(
     toolchain: {
         category: SwiftToolchainItem["category"];
         swiftFolderPath?: string;

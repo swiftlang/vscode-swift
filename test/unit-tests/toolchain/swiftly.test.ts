@@ -103,14 +103,14 @@ suite("Swiftly Unit Tests", () => {
     });
 
     suite("list()", () => {
-        test("should return toolchain names from list-available command for version 1.1.0", async () => {
+        test("should return toolchain names from list command for version 1.1.0", async () => {
             // Mock version check to return 1.1.0
             mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
                 stdout: "1.1.0\n",
                 stderr: "",
             });
 
-            // Mock list-available command with JSON output
+            // Mock list command with JSON output
             const jsonOutput = {
                 toolchains: [
                     {
@@ -270,6 +270,26 @@ suite("Swiftly Unit Tests", () => {
                 "list",
                 "--format=json",
             ]);
+        });
+
+        test("should return toolchain names from the configuration file for version 1.0.1", async () => {
+            // Mock version check to return 1.0.1
+            mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
+                stdout: "1.0.1\n",
+                stderr: "",
+            });
+
+            // Swiftly home directory contains a config.json
+            mockedEnv.setValue({ SWIFTLY_HOME_DIR: "/home/.swiftly" });
+            mockFS({
+                "/home/.swiftly/config.json": JSON.stringify({
+                    installedToolchains: ["swift-5.9.0", "swift-6.0.0"],
+                }),
+            });
+
+            const result = await Swiftly.list();
+
+            expect(result).to.deep.equal(["swift-5.9.0", "swift-6.0.0"]);
         });
 
         test("should return empty array when platform is not supported", async () => {
