@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "dependencies",
     dependencies: [
-        .package(url: "https://github.com/swiftlang/swift-markdown.git", branch: "main"),
+        .package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.7.1"),
         .package(path: "../defaultPackage"),
     ],
     targets: [
