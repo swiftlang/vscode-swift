@@ -296,34 +296,53 @@ export class BuildFlags {
     }
 
     /**
-     *  Filter argument list
+     *  Filter argument list with support for both inclusion and exclusion logic
      * @param args argument list
      * @param filter argument list filter
+     * @param exclude if true, remove matching arguments (exclusion mode); if false, keep only matching arguments (inclusion mode)
      * @returns filtered argument list
      */
-    static filterArguments(args: string[], filter: ArgumentFilter[]): string[] {
+    static filterArguments(args: string[], filter: ArgumentFilter[], exclude = false): string[] {
         const filteredArguments: string[] = [];
-        let includeCount = 0;
+        let pendingCount = 0;
+
         for (const arg of args) {
-            if (includeCount > 0) {
-                filteredArguments.push(arg);
-                includeCount -= 1;
+            if (pendingCount > 0) {
+                if (!exclude) {
+                    filteredArguments.push(arg);
+                }
+                pendingCount -= 1;
                 continue;
             }
-            const argFilter = filter.find(item => item.argument === arg);
-            if (argFilter) {
-                filteredArguments.push(arg);
-                includeCount = argFilter.include;
+
+            // Check if this argument matches any filter
+            const matchingFilter = filter.find(item => item.argument === arg);
+            if (matchingFilter) {
+                if (!exclude) {
+                    filteredArguments.push(arg);
+                }
+                pendingCount = matchingFilter.include;
                 continue;
             }
-            // find arguments of form arg=value
-            const argFilter2 = filter.find(
+
+            // Check for arguments of form --arg=value (only for filters with include=1)
+            const combinedArgFilter = filter.find(
                 item => item.include === 1 && arg.startsWith(item.argument + "=")
             );
-            if (argFilter2) {
+            if (combinedArgFilter) {
+                if (!exclude) {
+                    filteredArguments.push(arg);
+                }
+                continue;
+            }
+
+            // Handle unmatched arguments
+            if (exclude) {
                 filteredArguments.push(arg);
             }
+            // In include mode, unmatched arguments are not added
         }
+
         return filteredArguments;
     }
 }
