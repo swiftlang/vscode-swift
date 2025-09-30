@@ -164,15 +164,13 @@ export class PackageNode {
     }
 
     async getChildren(): Promise<TreeNode[]> {
-        const [childDeps, files] = await Promise.all([
-            this.childDependencies(this.dependency),
-            getChildren(
-                this.dependency.path,
-                excludedFilesForProjectPanelExplorer(),
-                this.id,
-                this.fs
-            ),
-        ]);
+        const childDeps = this.childDependencies(this.dependency);
+        const files = await getChildren(
+            this.dependency.path,
+            excludedFilesForProjectPanelExplorer(),
+            this.id,
+            this.fs
+        );
         const childNodes = childDeps.map(
             dep => new PackageNode(dep, this.childDependencies, this.id)
         );

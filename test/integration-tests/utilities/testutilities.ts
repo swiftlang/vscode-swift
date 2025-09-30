@@ -45,7 +45,7 @@ interface Loggable {
 function printLogs(logger: Loggable, message: string) {
     console.error(`${message}, captured logs are:`);
     logger.logs.map(log => console.log(log));
-    console.log("======== END OF LOGS ========\n\n");
+    console.log("======== END OF LOGS ========\n");
 }
 
 // Until the logger on the WorkspaceContext is available we capture logs here.
@@ -53,13 +53,20 @@ function printLogs(logger: Loggable, message: string) {
 class ExtensionActivationLogger implements Loggable {
     private logger: SwiftLogger | undefined;
     private _logs: string[] = [];
+    private testName: string | undefined;
 
     get logs(): string[] {
-        return [...this._logs, ...(this.logger?.logs ?? [])];
+        return [...this._logs, ...(this.logger?.logs ?? [])].map(log =>
+            this.testName ? `[${this.testName}] ${log}` : log
+        );
     }
 
     setLogger(logger: SwiftLogger) {
         this.logger = logger;
+    }
+
+    setTestName(name: string) {
+        this.testName = name;
     }
 
     private formatTimestamp(): string {
@@ -81,6 +88,12 @@ class ExtensionActivationLogger implements Loggable {
         } else {
             this._logs.push(timestampedMessage);
         }
+    }
+
+    reset() {
+        this._logs = [];
+        this.logger = undefined;
+        this.testName = undefined;
     }
 }
 
@@ -126,9 +139,7 @@ const extensionBootstrapper = (() => {
                 Math.max(0, SETUP_TIMEOUT_MS - 300)
             );
 
-            activationLogger.info(
-                `Activating extension for test/suite: ${testTitle(this.currentTest!)}`
-            );
+            activationLogger.info(`Begin activating extension`);
 
             // Make sure that CodeLLDB is installed for debugging related tests
             if (!vscode.extensions.getExtension("vadimcn.vscode-lldb")) {
@@ -223,6 +234,7 @@ const extensionBootstrapper = (() => {
             if (this.currentTest && activatedAPI) {
                 activatedAPI.logger.clear();
                 activatedAPI.logger.info(`Starting test: ${testTitle(this.currentTest)}`);
+                activationLogger.setTestName(testTitle(this.currentTest));
             }
         });
 
@@ -282,6 +294,7 @@ const extensionBootstrapper = (() => {
             }
             activationLogger.info("Deactivation complete, calling deactivateExtension()");
             await extensionBootstrapper.deactivateExtension();
+            activationLogger.reset();
 
             clearTimeout(timer);
 
@@ -423,6 +436,7 @@ const extensionBootstrapper = (() => {
             activationLogger.info(`Removed root workspace folder.`);
             activationLogger.info(`Running extension deactivation function.`);
             await activatedAPI.deactivate();
+            activationLogger.reset();
             activatedAPI = undefined;
             lastTestName = undefined;
         },
