@@ -598,7 +598,7 @@
             "markdownDescription": "Run `swift build` in the background whenever a file is saved. It is possible the background compilation will already be running when you attempt a compile yourself, so this is disabled by default.",
             "scope": "machine-overridable"
           },
-          "swift.backgroundCompilation.useDefaultTask": {
+          "swift.backgroundCompilationUsesDefaultTask": {
             "type": "boolean",
             "default": false,
             "markdownDescription": "Use the default build task configured using the `Tasks: Configure Default Build Task` command when executing the background compilation. `#swift.backgroundCompilation#` must be enabled.",

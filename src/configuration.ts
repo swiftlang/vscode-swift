@@ -422,8 +422,8 @@ const configuration = {
     /** use the default `swift` build task when background compilation is enabled */
     get useDefaultTask(): boolean {
         return vscode.workspace
-            .getConfiguration("swift.backgroundCompilation")
-            .get<boolean>("useDefaultTask", false);
+            .getConfiguration("swift")
+            .get<boolean>("backgroundCompilationUsesDefaultTask", false);
     },
     /** background indexing */
     get backgroundIndexing(): "on" | "off" | "auto" {
