@@ -11,6 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import { ExecFileOptions } from "child_process";
 import * as fsSync from "fs";
 import * as fs from "fs/promises";
 import * as os from "os";
@@ -273,9 +274,9 @@ export class Swiftly {
             if (!Array.isArray(installedToolchains)) {
                 return [];
             }
-            return installedToolchains
-                .filter((toolchain): toolchain is string => typeof toolchain === "string")
-                .map(toolchain => path.join(swiftlyHomeDir, "toolchains", toolchain));
+            return installedToolchains.filter(
+                (toolchain): toolchain is string => typeof toolchain === "string"
+            );
         } catch (error) {
             logger?.error(`Failed to retrieve Swiftly installations: ${error}`);
             throw new Error(
@@ -333,12 +334,21 @@ export class Swiftly {
      * Instructs Swiftly to use a specific version of the Swift toolchain.
      *
      * @param version The version name to use. Obtainable via {@link Swiftly.list}.
+     * @param [cwd] Optional working directory to set the toolchain within.
      */
-    public static async use(version: string): Promise<void> {
+    public static async use(version: string, cwd?: string): Promise<void> {
         if (!this.isSupported()) {
             throw new Error("Swiftly is not supported on this platform");
         }
-        await execFile("swiftly", ["use", version]);
+        const useArgs = ["use", "-y"];
+        const options: ExecFileOptions = {};
+        if (cwd) {
+            options.cwd = cwd;
+        } else {
+            useArgs.push("--global-default");
+        }
+        useArgs.push(version);
+        await execFile("swiftly", useArgs, options);
     }
 
     /**
