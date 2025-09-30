@@ -134,7 +134,7 @@ const extensionBootstrapper = (() => {
             const timer = setTimeout(
                 () => {
                     activationLogger.info(`Activating extension timed out!`);
-                    printLogs(activationLogger, "Activating extension exceeded the timeout...");
+                    printLogs(activationLogger, "Activating extension exceeded the timeout");
                 },
                 Math.max(0, SETUP_TIMEOUT_MS - 300)
             );
