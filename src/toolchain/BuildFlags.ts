@@ -303,65 +303,46 @@ export class BuildFlags {
      * @returns filtered argument list
      */
     static filterArguments(args: string[], filter: ArgumentFilter[], exclude = false): string[] {
-        if (exclude) {
-            // remove arguments that match the filter
-            const filteredArguments: string[] = [];
-            let skipCount = 0;
+        const filteredArguments: string[] = [];
+        let pendingCount = 0;
 
-            for (const arg of args) {
-                if (skipCount > 0) {
-                    // Skip this argument as it's a parameter to an excluded flag
-                    skipCount -= 1;
-                    continue;
+        for (const arg of args) {
+            if (pendingCount > 0) {
+                if (!exclude) {
+                    filteredArguments.push(arg);
                 }
+                pendingCount -= 1;
+                continue;
+            }
 
-                // Check if this is an excluded argument
-                const excludeFilter = filter.find(item => item.argument === arg);
-                if (excludeFilter) {
-                    // Skip this argument and any parameters it takes
-                    skipCount = excludeFilter.include;
-                    continue;
+            // Check if this argument matches any filter
+            const matchingFilter = filter.find(item => item.argument === arg);
+            if (matchingFilter) {
+                if (!exclude) {
+                    filteredArguments.push(arg);
                 }
+                pendingCount = matchingFilter.include;
+                continue;
+            }
 
-                // Check for arguments of form --arg=value
-                const excludeFilter2 = filter.find(
-                    item => item.include === 1 && arg.startsWith(item.argument + "=")
-                );
-                if (excludeFilter2) {
-                    // Skip this combined argument
-                    continue;
+            // Check for arguments of form --arg=value (only for filters with include=1)
+            const combinedArgFilter = filter.find(
+                item => item.include === 1 && arg.startsWith(item.argument + "=")
+            );
+            if (combinedArgFilter) {
+                if (!exclude) {
+                    filteredArguments.push(arg);
                 }
+                continue;
+            }
 
-                // This argument is not excluded, so include it
+            // Handle unmatched arguments
+            if (exclude) {
                 filteredArguments.push(arg);
             }
-
-            return filteredArguments;
-        } else {
-            // keep only arguments that match the filter
-            const filteredArguments: string[] = [];
-            let includeCount = 0;
-            for (const arg of args) {
-                if (includeCount > 0) {
-                    filteredArguments.push(arg);
-                    includeCount -= 1;
-                    continue;
-                }
-                const argFilter = filter.find(item => item.argument === arg);
-                if (argFilter) {
-                    filteredArguments.push(arg);
-                    includeCount = argFilter.include;
-                    continue;
-                }
-                // find arguments of form arg=value
-                const argFilter2 = filter.find(
-                    item => item.include === 1 && arg.startsWith(item.argument + "=")
-                );
-                if (argFilter2) {
-                    filteredArguments.push(arg);
-                }
-            }
-            return filteredArguments;
+            // In include mode, unmatched arguments are not added
         }
+
+        return filteredArguments;
     }
 }
