@@ -15,6 +15,6 @@
         "**/excluded": true
     },
     "swift.packageArguments": [
-        "--cache-path=${workspaceFolder}/.spm-cache"
+        "--cache-path=${workspaceFolder}${pathSeparator}.spm-cache"
     ]
 }
