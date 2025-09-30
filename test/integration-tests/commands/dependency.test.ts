@@ -22,11 +22,7 @@ import { PackageNode, ProjectPanelProvider } from "@src/ui/ProjectPanelProvider"
 import { testAssetUri } from "../../fixtures";
 import { tag } from "../../tags";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
-import {
-    activateExtensionForSuite,
-    findWorkspaceFolder,
-    updateSettings,
-} from "../utilities/testutilities";
+import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
 
 tag("large").suite("Dependency Commmands Test Suite", function () {
     let depsContext: FolderContext;
@@ -36,9 +32,6 @@ tag("large").suite("Dependency Commmands Test Suite", function () {
         async setup(ctx) {
             workspaceContext = ctx;
             depsContext = findWorkspaceFolder("dependencies", workspaceContext)!;
-            return await updateSettings({
-                "swift.sourcekit-lsp.disable": true,
-            });
         },
         testAssets: ["dependencies"],
     });
