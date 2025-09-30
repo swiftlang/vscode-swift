@@ -31,31 +31,69 @@ import { ExecFileError, execFile, execFileStreamOutput } from "../utilities/util
 import { Version } from "../utilities/version";
 import { SwiftlyConfig } from "./ToolchainVersion";
 
-const ListResult = z.object({
+const SystemVersion = z.object({
+    type: z.literal("system"),
+    name: z.string(),
+});
+export type SystemVersion = z.infer<typeof SystemVersion>;
+
+const StableVersion = z.object({
+    type: z.literal("stable"),
+    name: z.string(),
+
+    major: z.number(),
+    minor: z.number(),
+    patch: z.number(),
+});
+export type StableVersion = z.infer<typeof StableVersion>;
+
+const SnapshotVersion = z.object({
+    type: z.literal("snapshot"),
+    name: z.string(),
+
+    major: z.optional(z.number()),
+    minor: z.optional(z.number()),
+    branch: z.string(),
+    date: z.string(),
+});
+export type SnapshotVersion = z.infer<typeof SnapshotVersion>;
+
+export type ToolchainVersion = SystemVersion | StableVersion | SnapshotVersion;
+
+export interface AvailableToolchain {
+    inUse: boolean;
+    installed: boolean;
+    isDefault: boolean;
+    version: ToolchainVersion;
+}
+
+const SwiftlyListResult = z.object({
     toolchains: z.array(
         z.object({
             inUse: z.boolean(),
             isDefault: z.boolean(),
             version: z.union([
-                z.object({
-                    major: z.union([z.number(), z.undefined()]),
-                    minor: z.union([z.number(), z.undefined()]),
-                    patch: z.union([z.number(), z.undefined()]),
-                    name: z.string(),
-                    type: z.literal("stable"),
-                }),
-                z.object({
-                    major: z.union([z.number(), z.undefined()]),
-                    minor: z.union([z.number(), z.undefined()]),
-                    branch: z.string(),
-                    date: z.string(),
-                    name: z.string(),
-                    type: z.literal("snapshot"),
-                }),
-                z.object({
-                    name: z.string(),
-                    type: z.literal("system"),
-                }),
+                SystemVersion,
+                StableVersion,
+                SnapshotVersion,
+                // Allow matching against unexpected future version types
+                z.object(),
+            ]),
+        })
+    ),
+});
+
+const SwiftlyListAvailableResult = z.object({
+    toolchains: z.array(
+        z.object({
+            inUse: z.boolean(),
+            installed: z.boolean(),
+            isDefault: z.boolean(),
+            version: z.union([
+                SystemVersion,
+                StableVersion,
+                SnapshotVersion,
+                // Allow matching against unexpected future version types
                 z.object(),
             ]),
         })
@@ -64,58 +102,6 @@ const ListResult = z.object({
 
 const InUseVersionResult = z.object({
     version: z.string(),
-});
-
-const StableVersion = z.object({
-    major: z.number(),
-    minor: z.number(),
-    patch: z.number(),
-    name: z.string(),
-    type: z.literal("stable"),
-});
-
-export type StableVersion = z.infer<typeof StableVersion>;
-
-const SnapshotVersion = z.object({
-    major: z.union([z.number(), z.undefined()]),
-    minor: z.union([z.number(), z.undefined()]),
-    branch: z.string(),
-    date: z.string(),
-    name: z.string(),
-    type: z.literal("snapshot"),
-});
-
-export type SnapshotVersion = z.infer<typeof SnapshotVersion>;
-
-export interface SwiftlyToolchain {
-    inUse: boolean;
-    installed: boolean;
-    isDefault: boolean;
-    version: StableVersion | SnapshotVersion;
-}
-
-const AvailableToolchain = z.object({
-    inUse: z.boolean(),
-    installed: z.boolean(),
-    isDefault: z.boolean(),
-    version: z.union([StableVersion, SnapshotVersion, z.object()]),
-});
-type AvailableToolchain = z.infer<typeof AvailableToolchain>;
-
-export function isStableVersion(
-    version: StableVersion | SnapshotVersion
-): version is StableVersion {
-    return version.type === "stable";
-}
-
-export function isSnapshotVersion(
-    version: StableVersion | SnapshotVersion
-): version is SnapshotVersion {
-    return version.type === "snapshot";
-}
-
-const ListAvailableResult = z.object({
-    toolchains: z.array(AvailableToolchain),
 });
 
 export interface SwiftlyProgressData {
@@ -228,6 +214,8 @@ export class Swiftly {
     /**
      * Finds the list of toolchains installed via Swiftly.
      *
+     * Toolchains will be sorted by version number in descending order.
+     *
      * @returns an array of toolchain version names.
      */
     public static async list(logger?: SwiftLogger): Promise<string[]> {
@@ -250,10 +238,13 @@ export class Swiftly {
     private static async listUsingJSONFormat(logger?: SwiftLogger): Promise<string[]> {
         try {
             const { stdout } = await execFile("swiftly", ["list", "--format=json"]);
-            const response = ListResult.parse(JSON.parse(stdout));
-            return response.toolchains
-                .filter(t => ["stable", "snapshot", "system"].includes(t.version?.type))
-                .map(t => t.version.name);
+            return SwiftlyListResult.parse(JSON.parse(stdout))
+                .toolchains.map(toolchain => toolchain.version)
+                .filter((version): version is ToolchainVersion =>
+                    ["system", "stable", "snapshot"].includes(version.type)
+                )
+                .sort(compareSwiftlyToolchainVersion)
+                .map(version => version.name);
         } catch (error) {
             logger?.error(`Failed to retrieve Swiftly installations: ${error}`);
             return [];
@@ -274,8 +265,14 @@ export class Swiftly {
             if (!Array.isArray(installedToolchains)) {
                 return [];
             }
-            return installedToolchains.filter(
-                (toolchain): toolchain is string => typeof toolchain === "string"
+            return (
+                installedToolchains
+                    .filter((toolchain): toolchain is string => typeof toolchain === "string")
+                    // Sort alphabetically in descending order.
+                    //
+                    // This isn't perfect (e.g. "5.10" will come before "5.9"), but this is
+                    // good enough for legacy support.
+                    .sort((lhs, rhs) => rhs.localeCompare(lhs))
             );
         } catch (error) {
             logger?.error(`Failed to retrieve Swiftly installations: ${error}`);
@@ -421,6 +418,8 @@ export class Swiftly {
     /**
      * Lists all toolchains available for installation from swiftly.
      *
+     * Toolchains will be sorted by version number in descending order.
+     *
      * @param branch Optional branch to filter available toolchains (e.g., "main" for snapshots).
      * @param logger Optional logger for error reporting.
      * @returns Array of available toolchains.
@@ -428,7 +427,7 @@ export class Swiftly {
     public static async listAvailable(
         branch?: string,
         logger?: SwiftLogger
-    ): Promise<SwiftlyToolchain[]> {
+    ): Promise<AvailableToolchain[]> {
         if (!this.isSupported()) {
             return [];
         }
@@ -450,10 +449,11 @@ export class Swiftly {
                 args.push(branch);
             }
             const { stdout: availableStdout } = await execFile("swiftly", args);
-            const result = ListAvailableResult.parse(JSON.parse(availableStdout));
-            return result.toolchains.filter((t): t is SwiftlyToolchain =>
-                ["stable", "snapshot"].includes(t.version.type)
-            );
+            return SwiftlyListAvailableResult.parse(JSON.parse(availableStdout))
+                .toolchains.filter((t): t is AvailableToolchain =>
+                    ["system", "stable", "snapshot"].includes(t.version.type)
+                )
+                .sort(compareSwiftlyToolchain);
         } catch (error) {
             logger?.error(`Failed to retrieve available Swiftly toolchains: ${error}`);
             return [];
@@ -877,4 +877,37 @@ export function checkForSwiftlyInstallation(contextKeys: ContextKeys, logger: Sw
             patch: 0,
         });
     });
+}
+
+function compareSwiftlyToolchain(lhs: AvailableToolchain, rhs: AvailableToolchain): number {
+    return compareSwiftlyToolchainVersion(lhs.version, rhs.version);
+}
+
+function compareSwiftlyToolchainVersion(lhs: ToolchainVersion, rhs: ToolchainVersion): number {
+    switch (lhs.type) {
+        case "system": {
+            if (rhs.type === "system") {
+                return lhs.name.localeCompare(rhs.name);
+            }
+            return -1;
+        }
+        case "stable": {
+            if (rhs.type === "stable") {
+                const lhsVersion = new Version(lhs.major, lhs.minor, lhs.patch);
+                const rhsVersion = new Version(rhs.major, rhs.minor, rhs.patch);
+                return rhsVersion.compare(lhsVersion);
+            }
+            if (rhs.type === "system") {
+                return 1;
+            }
+            return -1;
+        }
+        case "snapshot":
+            if (rhs.type === "snapshot") {
+                const lhsDate = new Date(lhs.date);
+                const rhsDate = new Date(rhs.date);
+                return rhsDate.getTime() - lhsDate.getTime();
+            }
+            return 1;
+    }
 }
