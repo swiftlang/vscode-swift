@@ -16,17 +16,11 @@ import { QuickPickItem } from "vscode";
 
 import { WorkspaceContext } from "../WorkspaceContext";
 import { SwiftLogger } from "../logging/SwiftLogger";
-import {
-    Swiftly,
-    SwiftlyProgressData,
-    SwiftlyToolchain,
-    isSnapshotVersion,
-    isStableVersion,
-} from "../toolchain/swiftly";
+import { AvailableToolchain, Swiftly, SwiftlyProgressData } from "../toolchain/swiftly";
 import { showReloadExtensionNotification } from "../ui/ReloadExtension";
 
 interface SwiftlyToolchainItem extends QuickPickItem {
-    toolchain: SwiftlyToolchain;
+    toolchain: AvailableToolchain;
 }
 
 async function downloadAndInstallToolchain(selected: SwiftlyToolchainItem, ctx: WorkspaceContext) {
@@ -147,15 +141,10 @@ export async function installSwiftlyToolchain(ctx: WorkspaceContext): Promise<vo
         return;
     }
 
-    // Sort toolchains with most recent versions first and filter only stable releases
-    const sortedToolchains = sortToolchainsByVersion(
-        uninstalledToolchains.filter(toolchain => toolchain.version.type === "stable")
-    );
-
     ctx.logger.debug(
-        `Available toolchains for installation: ${sortedToolchains.map(t => t.version.name).join(", ")}`
+        `Available toolchains for installation: ${uninstalledToolchains.map(t => t.version.name).join(", ")}`
     );
-    const quickPickItems = sortedToolchains.map(toolchain => ({
+    const quickPickItems = uninstalledToolchains.map(toolchain => ({
         label: `$(cloud-download) ${toolchain.version.name}`,
         toolchain: toolchain,
     }));
@@ -226,10 +215,7 @@ export async function installSwiftlySnapshotToolchain(ctx: WorkspaceContext): Pr
         return;
     }
 
-    // Sort toolchains with most recent versions first
-    const sortedToolchains = sortToolchainsByVersion(uninstalledSnapshotToolchains);
-
-    const quickPickItems = sortedToolchains.map(toolchain => ({
+    const quickPickItems = uninstalledSnapshotToolchains.map(toolchain => ({
         label: `$(cloud-download) ${toolchain.version.name}`,
         description: "snapshot",
         detail: `Date: ${
@@ -249,45 +235,4 @@ export async function installSwiftlySnapshotToolchain(ctx: WorkspaceContext): Pr
     }
 
     await downloadAndInstallToolchain(selected, ctx);
-}
-
-/**
- * Sorts toolchains by version with most recent first
- */
-function sortToolchainsByVersion(toolchains: SwiftlyToolchain[]): SwiftlyToolchain[] {
-    return toolchains.sort((a, b) => {
-        // First sort by type (stable before snapshot)
-        if (a.version.type !== b.version.type) {
-            return isStableVersion(a.version) ? -1 : 1;
-        }
-
-        // For stable releases, sort by semantic version
-        if (isStableVersion(a.version) && isStableVersion(b.version)) {
-            const versionA = a.version;
-            const versionB = b.version;
-
-            if (versionA && versionB) {
-                if (versionA.major !== versionB.major) {
-                    return versionB.major - versionA.major;
-                }
-                if (versionA.minor !== versionB.minor) {
-                    return versionB.minor - versionA.minor;
-                }
-                return versionB.patch - versionA.patch;
-            }
-        }
-
-        // For snapshots, sort by date (newer first)
-        if (isSnapshotVersion(a.version) && isSnapshotVersion(b.version)) {
-            const dateA = a.version.date;
-            const dateB = b.version.date;
-
-            if (dateA && dateB) {
-                return dateB.localeCompare(dateA);
-            }
-        }
-
-        // Fallback to string comparison
-        return b.version.name.localeCompare(a.version.name);
-    });
 }

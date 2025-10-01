@@ -237,10 +237,8 @@ async function getQuickPickItems(
         });
 
     // Find any Swift toolchains installed via Swiftly
-    const swiftlyToolchains = (await Swiftly.list(logger))
-        // Sort in descending order alphabetically
-        .sort((a, b) => -a.localeCompare(b))
-        .map<SwiftlyToolchainItem>(toolchainPath => ({
+    const swiftlyToolchains = (await Swiftly.list(logger)).map<SwiftlyToolchainItem>(
+        toolchainPath => ({
             type: "toolchain",
             label: path.basename(toolchainPath),
             category: "swiftly",
@@ -267,7 +265,8 @@ async function getQuickPickItems(
                     );
                 }
             },
-        }));
+        })
+    );
 
     if (activeToolchain) {
         const currentSwiftlyVersion = activeToolchain.isSwiftlyManaged

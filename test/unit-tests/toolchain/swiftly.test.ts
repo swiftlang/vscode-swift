@@ -112,65 +112,102 @@ suite("Swiftly Unit Tests", () => {
             });
 
             // Mock list command with JSON output
-            const jsonOutput = {
-                toolchains: [
-                    {
-                        inUse: false,
-                        isDefault: false,
-                        version: {
-                            name: "xcode",
-                            type: "system",
-                        },
-                    },
-                    {
-                        inUse: true,
-                        isDefault: true,
-                        version: {
-                            major: 5,
-                            minor: 9,
-                            patch: 0,
-                            name: "swift-5.9.0-RELEASE",
-                            type: "stable",
-                        },
-                    },
-                    {
-                        inUse: false,
-                        isDefault: false,
-                        version: {
-                            major: 5,
-                            minor: 8,
-                            patch: 0,
-                            name: "swift-5.8.0-RELEASE",
-                            type: "stable",
-                        },
-                    },
-                    {
-                        inUse: false,
-                        isDefault: false,
-                        version: {
-                            major: 5,
-                            minor: 10,
-                            branch: "development",
-                            date: "2023-10-15",
-                            name: "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
-                            type: "snapshot",
-                        },
-                    },
-                ],
-            };
-
             mockUtilities.execFile.withArgs("swiftly", ["list", "--format=json"]).resolves({
-                stdout: JSON.stringify(jsonOutput),
+                stdout: JSON.stringify({
+                    toolchains: [
+                        {
+                            inUse: true,
+                            isDefault: true,
+                            version: {
+                                major: 5,
+                                minor: 9,
+                                patch: 0,
+                                name: "swift-5.9.0-RELEASE",
+                                type: "stable",
+                            },
+                        },
+                        {
+                            inUse: true,
+                            isDefault: true,
+                            version: {
+                                major: 5,
+                                minor: 10,
+                                patch: 0,
+                                name: "swift-5.10.0-RELEASE",
+                                type: "stable",
+                            },
+                        },
+                        {
+                            inUse: true,
+                            isDefault: true,
+                            version: {
+                                major: 5,
+                                minor: 10,
+                                patch: 1,
+                                name: "swift-5.10.1-RELEASE",
+                                type: "stable",
+                            },
+                        },
+                        {
+                            inUse: false,
+                            isDefault: false,
+                            version: {
+                                name: "xcode",
+                                type: "system",
+                            },
+                        },
+                        {
+                            inUse: false,
+                            isDefault: false,
+                            version: {
+                                major: 5,
+                                minor: 10,
+                                branch: "development",
+                                date: "2021-10-15",
+                                name: "swift-DEVELOPMENT-SNAPSHOT-2021-10-15-a",
+                                type: "snapshot",
+                            },
+                        },
+                        {
+                            inUse: false,
+                            isDefault: false,
+                            version: {
+                                major: 5,
+                                minor: 10,
+                                branch: "development",
+                                date: "2023-10-15",
+                                name: "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
+                                type: "snapshot",
+                            },
+                        },
+                        {
+                            inUse: false,
+                            isDefault: false,
+                            version: {
+                                major: 5,
+                                minor: 8,
+                                patch: 0,
+                                name: "swift-5.8.0-RELEASE",
+                                type: "stable",
+                            },
+                        },
+                    ],
+                }),
                 stderr: "",
             });
 
             const result = await Swiftly.list();
 
+            // Toolchains should be sorted newest to oldest with system toolchains appearing first, followed by
+            // stable toolchains, and finally snapshot toolchains.
             expect(result).to.deep.equal([
                 "xcode",
+                "swift-5.10.1-RELEASE",
+                "swift-5.10.0-RELEASE",
                 "swift-5.9.0-RELEASE",
                 "swift-5.8.0-RELEASE",
                 "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
+                "swift-DEVELOPMENT-SNAPSHOT-2021-10-15-a",
             ]);
 
             expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["--version"]);
@@ -186,74 +223,71 @@ suite("Swiftly Unit Tests", () => {
                 stdout: "1.1.0\n",
                 stderr: "",
             });
-
-            // Mock list-available command with JSON output
-            const jsonOutput = {
-                toolchains: [
-                    {
-                        inUse: false,
-                        isDefault: false,
-                        version: {
-                            name: "xcode",
-                            type: "system",
-                            newProp: 1, // Try adding a new property.
-                        },
-                        newProp: 1, // Try adding a new property.
-                    },
-                    {
-                        inUse: false,
-                        isDefault: false,
-                        version: {
-                            // Try adding an unexpected version type.
-                            type: "something_else",
-                        },
-                        newProp: 1, // Try adding a new property.
-                    },
-                    {
-                        inUse: true,
-                        isDefault: true,
-                        version: {
-                            major: 5,
-                            minor: 9,
-                            patch: 0,
-                            name: "swift-5.9.0-RELEASE",
-                            type: "stable",
-                            newProp: 1, // Try adding a new property.
-                        },
-                        newProp: 1, // Try adding a new property.
-                    },
-                    {
-                        inUse: false,
-                        isDefault: false,
-                        version: {
-                            major: 5,
-                            minor: 8,
-                            patch: 0,
-                            name: "swift-5.8.0-RELEASE",
-                            type: "stable",
-                            newProp: 1, // Try adding a new property.
-                        },
-                        newProp: "", // Try adding a new property.
-                    },
-                    {
-                        inUse: false,
-                        isDefault: false,
-                        version: {
-                            major: 5,
-                            minor: 10,
-                            branch: "development",
-                            date: "2023-10-15",
-                            name: "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
-                            type: "snapshot",
-                            newProp: 1, // Try adding a new property.
-                        },
-                        newProp: 1, // Try adding a new property.
-                    },
-                ],
-            };
-
+            // Mock list command with JSON output
             mockUtilities.execFile.withArgs("swiftly", ["list", "--format=json"]).resolves({
-                stdout: JSON.stringify(jsonOutput),
+                stdout: JSON.stringify({
+                    toolchains: [
+                        {
+                            inUse: false,
+                            isDefault: false,
+                            version: {
+                                name: "xcode",
+                                type: "system",
+                                newProp: 1, // Try adding a new property.
+                            },
+                            newProp: 1, // Try adding a new property.
+                        },
+                        {
+                            inUse: false,
+                            isDefault: false,
+                            version: {
+                                // Try adding an unexpected version type.
+                                type: "something_else",
+                            },
+                            newProp: 1, // Try adding a new property.
+                        },
+                        {
+                            inUse: true,
+                            isDefault: true,
+                            version: {
+                                major: 5,
+                                minor: 9,
+                                patch: 0,
+                                name: "swift-5.9.0-RELEASE",
+                                type: "stable",
+                                newProp: 1, // Try adding a new property.
+                            },
+                            newProp: 1, // Try adding a new property.
+                        },
+                        {
+                            inUse: false,
+                            isDefault: false,
+                            version: {
+                                major: 5,
+                                minor: 8,
+                                patch: 0,
+                                name: "swift-5.8.0-RELEASE",
+                                type: "stable",
+                                newProp: 1, // Try adding a new property.
+                            },
+                            newProp: "", // Try adding a new property.
+                        },
+                        {
+                            inUse: false,
+                            isDefault: false,
+                            version: {
+                                major: 5,
+                                minor: 10,
+                                branch: "development",
+                                date: "2023-10-15",
+                                name: "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
+                                type: "snapshot",
+                                newProp: 1, // Try adding a new property.
+                            },
+                            newProp: 1, // Try adding a new property.
+                        },
+                    ],
+                }),
                 stderr: "",
             });
 
@@ -290,7 +324,8 @@ suite("Swiftly Unit Tests", () => {
 
             const result = await Swiftly.list();
 
-            expect(result).to.deep.equal(["swift-5.9.0", "swift-6.0.0"]);
+            // Toolchains should be sorted by name in descending order
+            expect(result).to.deep.equal(["swift-6.0.0", "swift-5.9.0"]);
         });
 
         test("should return empty array when platform is not supported", async () => {
@@ -520,156 +555,183 @@ suite("Swiftly Unit Tests", () => {
 
         test("should return available toolchains with installation status", async () => {
             mockedPlatform.setValue("darwin");
-
             mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
                 stdout: "1.1.0\n",
                 stderr: "",
             });
-
-            const availableResponse = {
-                toolchains: [
-                    {
-                        inUse: false,
-                        installed: false,
-                        isDefault: false,
-                        version: {
-                            type: "stable",
-                            major: 6,
-                            minor: 0,
-                            patch: 0,
-                            name: "6.0.0",
-                        },
-                    },
-                    {
-                        inUse: false,
-                        installed: false,
-                        isDefault: false,
-                        version: {
-                            type: "snapshot",
-                            major: 6,
-                            minor: 1,
-                            branch: "main",
-                            date: "2025-01-15",
-                            name: "main-snapshot-2025-01-15",
-                        },
-                    },
-                ],
-            };
-
             mockUtilities.execFile
                 .withArgs("swiftly", ["list-available", "--format=json"])
                 .resolves({
-                    stdout: JSON.stringify(availableResponse),
+                    stdout: JSON.stringify({
+                        toolchains: [
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    type: "stable",
+                                    major: 6,
+                                    minor: 0,
+                                    patch: 0,
+                                    name: "6.0.0",
+                                },
+                            },
+                            {
+                                inUse: false,
+                                installed: true,
+                                isDefault: false,
+                                version: {
+                                    type: "system",
+                                    name: "xcode",
+                                },
+                            },
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    type: "stable",
+                                    major: 6,
+                                    minor: 0,
+                                    patch: 1,
+                                    name: "6.0.1",
+                                },
+                            },
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    type: "snapshot",
+                                    major: 6,
+                                    minor: 1,
+                                    branch: "main",
+                                    date: "2025-01-15",
+                                    name: "main-snapshot-2025-01-15",
+                                },
+                            },
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    type: "stable",
+                                    major: 5,
+                                    minor: 9,
+                                    patch: 0,
+                                    name: "5.9.0",
+                                },
+                            },
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    type: "snapshot",
+                                    major: 5,
+                                    minor: 9,
+                                    branch: "main",
+                                    date: "2023-01-15",
+                                    name: "main-snapshot-2023-01-15",
+                                },
+                            },
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    type: "stable",
+                                    major: 5,
+                                    minor: 10,
+                                    patch: 0,
+                                    name: "5.10.0",
+                                },
+                            },
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    type: "stable",
+                                    major: 5,
+                                    minor: 10,
+                                    patch: 1,
+                                    name: "5.10.1",
+                                },
+                            },
+                        ],
+                    }),
                     stderr: "",
                 });
 
-            const installedResponse = {
-                toolchains: [
-                    {
-                        inUse: true,
-                        isDefault: true,
-                        version: {
-                            type: "stable",
-                            major: 6,
-                            minor: 0,
-                            patch: 0,
-                            name: "6.0.0",
-                        },
-                    },
-                ],
-            };
-
-            mockUtilities.execFile.withArgs("swiftly", ["list", "--format=json"]).resolves({
-                stdout: JSON.stringify(installedResponse),
-                stderr: "",
-            });
-
             const result = await Swiftly.listAvailable();
-            expect(result).to.deep.equal([
-                {
-                    inUse: false,
-                    installed: false,
-                    isDefault: false,
-                    version: {
-                        type: "stable",
-                        major: 6,
-                        minor: 0,
-                        patch: 0,
-                        name: "6.0.0",
-                    },
-                },
-                {
-                    inUse: false,
-                    installed: false,
-                    isDefault: false,
-                    version: {
-                        type: "snapshot",
-                        major: 6,
-                        minor: 1,
-                        branch: "main",
-                        date: "2025-01-15",
-                        name: "main-snapshot-2025-01-15",
-                    },
-                },
+
+            // Toolchains should be sorted newest to oldest with system toolchains appearing first, followed by
+            // stable toolchains, and finally snapshot toolchains.
+            expect(result.map(toolchain => toolchain.version.name)).to.deep.equal([
+                "xcode",
+                "6.0.1",
+                "6.0.0",
+                "5.10.1",
+                "5.10.0",
+                "5.9.0",
+                "main-snapshot-2025-01-15",
+                "main-snapshot-2023-01-15",
             ]);
         });
 
         test("should be able to parse future additions to the output and ignore unexpected types", async () => {
             mockedPlatform.setValue("darwin");
-
             mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
                 stdout: "1.1.0\n",
                 stderr: "",
             });
-
-            const availableResponse = {
-                toolchains: [
-                    {
-                        inUse: false,
-                        installed: false,
-                        isDefault: false,
-                        version: {
-                            // Try adding an unexpected version type.
-                            type: "something_else",
-                        },
-                        newProp: 1, // Try adding a new property.
-                    },
-                    {
-                        inUse: false,
-                        installed: false,
-                        isDefault: false,
-                        version: {
-                            type: "stable",
-                            major: 6,
-                            minor: 0,
-                            patch: 0,
-                            name: "6.0.0",
-                            newProp: 1, // Try adding a new property.
-                        },
-                        newProp: 1, // Try adding a new property.
-                    },
-                    {
-                        inUse: false,
-                        installed: false,
-                        isDefault: false,
-                        version: {
-                            type: "snapshot",
-                            major: 6,
-                            minor: 1,
-                            branch: "main",
-                            date: "2025-01-15",
-                            name: "main-snapshot-2025-01-15",
-                            newProp: 1, // Try adding a new property.
-                        },
-                        newProp: 1, // Try adding a new property.
-                    },
-                ],
-            };
-
             mockUtilities.execFile
                 .withArgs("swiftly", ["list-available", "--format=json"])
                 .resolves({
-                    stdout: JSON.stringify(availableResponse),
+                    stdout: JSON.stringify({
+                        toolchains: [
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    // Try adding an unexpected version type.
+                                    type: "something_else",
+                                },
+                                newProp: 1, // Try adding a new property.
+                            },
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    type: "stable",
+                                    major: 6,
+                                    minor: 0,
+                                    patch: 0,
+                                    name: "6.0.0",
+                                    newProp: 1, // Try adding a new property.
+                                },
+                                newProp: 1, // Try adding a new property.
+                            },
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    type: "snapshot",
+                                    major: 6,
+                                    minor: 1,
+                                    branch: "main",
+                                    date: "2025-01-15",
+                                    name: "main-snapshot-2025-01-15",
+                                    newProp: 1, // Try adding a new property.
+                                },
+                                newProp: 1, // Try adding a new property.
+                            },
+                        ],
+                    }),
                     stderr: "",
                 });
 
