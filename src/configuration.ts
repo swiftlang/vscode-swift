@@ -105,6 +105,15 @@ export interface PluginPermissionConfiguration {
     allowNetworkConnections?: string;
 }
 
+export interface BackgroundCompilationConfiguration {
+    /** enable background compilation task on save */
+    enabled: boolean;
+    /** use the default `swift` build task when background compilation is enabled */
+    useDefaultTask: boolean;
+    /** Use the `release` variant of the build all task */
+    release: boolean;
+}
+
 /**
  * Type-safe wrapper around configuration settings.
  */
@@ -414,16 +423,21 @@ const configuration = {
             .get<boolean>("createTasksForLibraryProducts", false);
     },
     /** background compilation */
-    get backgroundCompilation(): boolean {
-        return vscode.workspace
+    get backgroundCompilation(): BackgroundCompilationConfiguration {
+        const value = vscode.workspace
             .getConfiguration("swift")
-            .get<boolean>("backgroundCompilation", false);
-    },
-    /** use the default `swift` build task when background compilation is enabled */
-    get useDefaultTask(): boolean {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<boolean>("backgroundCompilationUsesDefaultTask", false);
+            .get<BackgroundCompilationConfiguration | boolean>("backgroundCompilation", false);
+        return {
+            get enabled(): boolean {
+                return typeof value === "boolean" ? value : value.enabled;
+            },
+            get useDefaultTask(): boolean {
+                return typeof value === "boolean" ? true : (value.useDefaultTask ?? true);
+            },
+            get release(): boolean {
+                return typeof value === "boolean" ? false : (value.release ?? false);
+            },
+        };
     },
     /** background indexing */
     get backgroundIndexing(): "on" | "off" | "auto" {
