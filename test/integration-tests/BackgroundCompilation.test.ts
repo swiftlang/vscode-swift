@@ -17,7 +17,7 @@ import * as vscode from "vscode";
 import { BackgroundCompilation } from "@src/BackgroundCompilation";
 import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
-import { getBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+import { createSwiftTask, getBuildAllTask } from "@src/tasks/SwiftTaskProvider";
 
 import { mockGlobalObject } from "../MockUtils";
 import { testAssetUri } from "../fixtures";
@@ -94,31 +94,31 @@ tag("large").suite("BackgroundCompilation Test Suite", () => {
                     nonSwiftTask = new vscode.Task(
                         {
                             type: "shell",
-                            args: ["./build.sh"],
-                            cwd: "defaultPackage",
+                            command: ["swift"],
+                            args: ["build"],
                             group: {
                                 id: "build",
                                 isDefault: true,
                             },
-                            label: "Default build",
+                            label: "shell build",
                         },
                         folderContext.workspaceFolder,
-                        "Default build",
-                        "shell"
+                        "shell build",
+                        "Workspace",
+                        new vscode.ShellExecution("", {
+                            cwd: testAssetUri("defaultPackage").fsPath,
+                        })
                     );
-                    nonSwiftTask.group = { id: "build", isDefault: true };
-                    swiftTask = new vscode.Task(
+                    swiftTask = createSwiftTask(
+                        ["build"],
+                        "swift build",
                         {
-                            type: "swift",
-                            args: ["build"],
-                            cwd: "defaultPackage",
-                            label: "swift build",
+                            cwd: testAssetUri("defaultPackage"),
+                            scope: folderContext.workspaceFolder,
                         },
-                        folderContext.workspaceFolder,
-                        "Swift build",
-                        "swift"
+                        folderContext.toolchain
                     );
-                    swiftTask.group = { id: "build", isDefault: true };
+                    swiftTask.source = "Workspace";
                     return await updateSettings({
                         "swift.backgroundCompilation": {
                             enabled: true,
@@ -129,7 +129,7 @@ tag("large").suite("BackgroundCompilation Test Suite", () => {
             });
 
             setup(() => {
-                tasksMock.fetchTasks.resolves([swiftTask, buildAllTask]);
+                tasksMock.fetchTasks.withArgs().resolves([nonSwiftTask, swiftTask, buildAllTask]);
                 backgroundConfiguration = new BackgroundCompilation(folderContext);
             });
 
@@ -138,20 +138,21 @@ tag("large").suite("BackgroundCompilation Test Suite", () => {
             });
 
             test("swift default task", async () => {
+                swiftTask.group = { id: "build", isDefault: true };
                 expect(await backgroundConfiguration.getTask()).to.equal(swiftTask);
             });
 
+            test("non-swift default task", async () => {
+                nonSwiftTask.group = { id: "build", isDefault: true };
+                expect(await backgroundConfiguration.getTask()).to.equal(nonSwiftTask);
+            });
+
             test("don't use default task", async () => {
+                swiftTask.group = { id: "build", isDefault: true };
                 await vscode.workspace.getConfiguration("swift").update("backgroundCompilation", {
                     enabled: true,
                     useDefaultTask: false,
                 });
-                expect(await backgroundConfiguration.getTask()).to.equal(buildAllTask);
-            });
-
-            test("non-swift default task", async () => {
-                tasksMock.fetchTasks.resolves([nonSwiftTask, swiftTask, buildAllTask]);
-                swiftTask.group = { id: "build", isDefault: false };
                 expect(await backgroundConfiguration.getTask()).to.equal(buildAllTask);
             });
         });

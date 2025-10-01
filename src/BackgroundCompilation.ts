@@ -30,12 +30,7 @@ export class BackgroundCompilation implements vscode.Disposable {
     constructor(private folderContext: FolderContext) {
         // We only want to configure the file watcher if background compilation is enabled.
         this.configurationEventDisposable = vscode.workspace.onDidChangeConfiguration(event => {
-            if (
-                event.affectsConfiguration(
-                    "swift.backgroundCompilation.enabled",
-                    folderContext.folder
-                )
-            ) {
+            if (event.affectsConfiguration("swift.backgroundCompilation", folderContext.folder)) {
                 if (configuration.backgroundCompilation.enabled) {
                     this.setupFileWatching();
                 } else {
