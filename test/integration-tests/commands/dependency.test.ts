@@ -79,14 +79,18 @@ tag("large").suite("Dependency Commmands Test Suite", function () {
         // and RESET_PACKAGE commands because the file watcher on
         // workspace-state.json needs to trigger.
         async function getDependencyInState(state: "remote" | "editing") {
+            let depType: string | undefined;
             for (let i = 0; i < 10; i++) {
                 const dep = await getDependency();
                 if (dep?.type === state) {
                     return dep;
                 }
+                depType = dep?.type;
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
-            throw Error(`Could not find dependency with state "${state}"`);
+            throw Error(
+                `Could not find dependency with state "${state}", instead it was "${depType}"`
+            );
         }
 
         async function useLocalDependencyTest() {
