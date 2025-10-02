@@ -8,6 +8,7 @@
 - Prompt to restart `SourceKit-LSP` after changing `.sourcekit-lsp/config.json` files ([#1744](https://github.com/swiftlang/vscode-swift/issues/1744))
 - Prompt to cancel and replace the active test run if one is in flight ([#1774](https://github.com/swiftlang/vscode-swift/pull/1774))
 - A walkthrough for first time extension users ([#1560](https://github.com/swiftlang/vscode-swift/issues/1560))
+- Allow `swift.backgroundCompilation` setting to accept an object where enabling the `useDefaultTask` property will run the default build task, and the `release` property will run the `release` variant of the Build All task ([#1857](https://github.com/swiftlang/vscode-swift/pull/1857))
 
 ### Fixed
 

@@ -11,55 +11,150 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as assert from "assert";
+import { expect } from "chai";
 import * as vscode from "vscode";
 
+import { BackgroundCompilation } from "@src/BackgroundCompilation";
+import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
+import { createSwiftTask, getBuildAllTask } from "@src/tasks/SwiftTaskProvider";
 
+import { mockGlobalObject } from "../MockUtils";
 import { testAssetUri } from "../fixtures";
 import { tag } from "../tags";
 import { closeAllEditors } from "../utilities/commands";
 import { waitForNoRunningTasks } from "../utilities/tasks";
-import { activateExtensionForTest, updateSettings } from "./utilities/testutilities";
+import {
+    activateExtensionForSuite,
+    folderInRootWorkspace,
+    updateSettings,
+} from "./utilities/testutilities";
 
 tag("large").suite("BackgroundCompilation Test Suite", () => {
-    let subscriptions: vscode.Disposable[];
     let workspaceContext: WorkspaceContext;
+    let folderContext: FolderContext;
+    let buildAllTask: vscode.Task;
 
-    activateExtensionForTest({
-        async setup(ctx) {
-            subscriptions = [];
-            workspaceContext = ctx;
-            assert.notEqual(workspaceContext.folders.length, 0);
-            return await updateSettings({
-                "swift.backgroundCompilation": true,
-            });
-        },
-    });
+    async function setupFolder(ctx: WorkspaceContext) {
+        workspaceContext = ctx;
+        folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
+        buildAllTask = await getBuildAllTask(folderContext);
+    }
 
-    suiteTeardown(async () => {
-        subscriptions.forEach(s => s.dispose());
-        await closeAllEditors();
-    });
+    suite("build all on save", () => {
+        let subscriptions: vscode.Disposable[];
 
-    test("build all on save", async () => {
-        const taskStartPromise = new Promise<void>(resolve => {
-            subscriptions.push(
-                vscode.tasks.onDidStartTask(e => {
-                    const task = e.execution.task;
-                    if (task.name.includes("Build All")) {
-                        resolve();
-                    }
-                })
-            );
+        activateExtensionForSuite({
+            async setup(ctx) {
+                subscriptions = [];
+                await setupFolder(ctx);
+                return await updateSettings({
+                    "swift.backgroundCompilation": true,
+                });
+            },
         });
 
-        const uri = testAssetUri("defaultPackage/Sources/PackageExe/main.swift");
-        const doc = await vscode.workspace.openTextDocument(uri.fsPath);
-        await vscode.window.showTextDocument(doc);
-        await vscode.workspace.save(uri);
+        suiteTeardown(async () => {
+            subscriptions.forEach(s => s.dispose());
+            await closeAllEditors();
+        });
 
-        await taskStartPromise;
-        await waitForNoRunningTasks();
+        test("runs build task", async () => {
+            const taskStartPromise = new Promise<void>(resolve => {
+                subscriptions.push(
+                    vscode.tasks.onDidStartTask(e => {
+                        const task = e.execution.task;
+                        if (task.name.includes("Build All")) {
+                            resolve();
+                        }
+                    })
+                );
+            });
+
+            const uri = testAssetUri("defaultPackage/Sources/PackageExe/main.swift");
+            const doc = await vscode.workspace.openTextDocument(uri.fsPath);
+            await vscode.window.showTextDocument(doc);
+            await vscode.workspace.save(uri);
+
+            await taskStartPromise;
+            await waitForNoRunningTasks();
+        });
+    });
+
+    suite("getTask", () => {
+        const tasksMock = mockGlobalObject(vscode, "tasks");
+        let swiftTask: vscode.Task;
+        let nonSwiftTask: vscode.Task;
+        let backgroundConfiguration: BackgroundCompilation;
+
+        suite("useDefaultTask", () => {
+            activateExtensionForSuite({
+                async setup(ctx) {
+                    await setupFolder(ctx);
+                    nonSwiftTask = new vscode.Task(
+                        {
+                            type: "shell",
+                            command: ["swift"],
+                            args: ["build"],
+                            group: {
+                                id: "build",
+                                isDefault: true,
+                            },
+                            label: "shell build",
+                        },
+                        folderContext.workspaceFolder,
+                        "shell build",
+                        "Workspace",
+                        new vscode.ShellExecution("", {
+                            cwd: testAssetUri("defaultPackage").fsPath,
+                        })
+                    );
+                    swiftTask = createSwiftTask(
+                        ["build"],
+                        "swift build",
+                        {
+                            cwd: testAssetUri("defaultPackage"),
+                            scope: folderContext.workspaceFolder,
+                        },
+                        folderContext.toolchain
+                    );
+                    swiftTask.source = "Workspace";
+                    return await updateSettings({
+                        "swift.backgroundCompilation": {
+                            enabled: true,
+                            useDefaultTask: true,
+                        },
+                    });
+                },
+            });
+
+            setup(() => {
+                tasksMock.fetchTasks.withArgs().resolves([nonSwiftTask, swiftTask, buildAllTask]);
+                backgroundConfiguration = new BackgroundCompilation(folderContext);
+            });
+
+            teardown(() => {
+                backgroundConfiguration.dispose();
+            });
+
+            test("swift default task", async () => {
+                swiftTask.group = { id: "build", isDefault: true };
+                expect(await backgroundConfiguration.getTask()).to.equal(swiftTask);
+            });
+
+            test("non-swift default task", async () => {
+                nonSwiftTask.group = { id: "build", isDefault: true };
+                expect(await backgroundConfiguration.getTask()).to.equal(nonSwiftTask);
+            });
+
+            test("don't use default task", async () => {
+                swiftTask.group = { id: "build", isDefault: true };
+                await vscode.workspace.getConfiguration("swift").update("backgroundCompilation", {
+                    enabled: true,
+                    useDefaultTask: false,
+                });
+                expect(await backgroundConfiguration.getTask()).to.equal(buildAllTask);
+            });
+        });
     });
 });

@@ -31,7 +31,7 @@ export class BackgroundCompilation implements vscode.Disposable {
         // We only want to configure the file watcher if background compilation is enabled.
         this.configurationEventDisposable = vscode.workspace.onDidChangeConfiguration(event => {
             if (event.affectsConfiguration("swift.backgroundCompilation", folderContext.folder)) {
-                if (configuration.backgroundCompilation) {
+                if (configuration.backgroundCompilation.enabled) {
                     this.setupFileWatching();
                 } else {
                     this.stopFileWatching();
@@ -39,7 +39,7 @@ export class BackgroundCompilation implements vscode.Disposable {
             }
         });
 
-        if (configuration.backgroundCompilation) {
+        if (configuration.backgroundCompilation.enabled) {
             this.setupFileWatching();
         }
     }
@@ -86,7 +86,7 @@ export class BackgroundCompilation implements vscode.Disposable {
      */
     async runTask() {
         // create compile task and execute it
-        const backgroundTask = await getBuildAllTask(this.folderContext);
+        const backgroundTask = await this.getTask();
         if (!backgroundTask) {
             return;
         }
@@ -95,5 +95,13 @@ export class BackgroundCompilation implements vscode.Disposable {
         } catch {
             // can ignore if running task fails
         }
+    }
+
+    async getTask(): Promise<vscode.Task> {
+        return await getBuildAllTask(
+            this.folderContext,
+            configuration.backgroundCompilation.release,
+            configuration.backgroundCompilation.useDefaultTask
+        );
     }
 }

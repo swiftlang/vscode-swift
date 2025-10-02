@@ -189,13 +189,13 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
     async function folderAdded(folder: FolderContext, workspace: WorkspaceContext) {
         if (
             !configuration.folder(folder.workspaceFolder).disableAutoResolve ||
-            configuration.backgroundCompilation
+            configuration.backgroundCompilation.enabled
         ) {
             // if background compilation is set then run compile at startup unless
             // this folder is a sub-folder of the workspace folder. This is to avoid
             // kicking off compile for multiple projects at the same time
             if (
-                configuration.backgroundCompilation &&
+                configuration.backgroundCompilation.enabled &&
                 folder.workspaceFolder.uri === folder.folder
             ) {
                 await folder.backgroundCompilation.runTask();

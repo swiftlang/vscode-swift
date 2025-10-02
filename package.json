@@ -593,10 +593,29 @@
             "scope": "machine-overridable"
           },
           "swift.backgroundCompilation": {
-            "type": "boolean",
+            "type": [
+              "boolean",
+              "object"
+            ],
             "default": false,
-            "markdownDescription": "**Experimental**: Run `swift build` in the background whenever a file is saved. It is possible the background compilation will already be running when you attempt a compile yourself, so this is disabled by default.",
-            "scope": "machine-overridable"
+            "markdownDescription": "Run `swift build` in the background whenever a file is saved. Setting to `true` enables, or you can use `object` notation for more fine grained control. It is possible the background compilation will already be running when you attempt a compile yourself, so this is disabled by default.",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "default": true,
+                "description": "Enable/disable background compilation."
+              },
+              "useDefaultTask": {
+                "type": "boolean",
+                "default": true,
+                "markdownDescription": "Use the default build task configured using the `Tasks: Configure Default Build Task` command when executing the background compilation. `#enabled#` property must be `true`."
+              },
+              "release": {
+                "type": "boolean",
+                "default": false,
+                "markdownDescription": "Use the `release` variant of the `Build All` task when executing the background compilation. `#enabled#` property must be `true`. This is ignored if the `#useDefaultTask#` property is true."
+              }
+            }
           },
           "swift.actionAfterBuildError": {
             "type": "string",

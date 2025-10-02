@@ -183,7 +183,8 @@ export async function createBuildAllTask(
  */
 export async function getBuildAllTask(
     folderContext: FolderContext,
-    release: boolean = false
+    release: boolean = false,
+    findDefault: boolean = true
 ): Promise<vscode.Task> {
     const buildTaskName = buildAllTaskName(folderContext, release);
     const folderWorkingDir = folderContext.workspaceFolder.uri.fsPath;
@@ -208,11 +209,14 @@ export async function getBuildAllTask(
     });
 
     // find default build task
-    let task = workspaceTasks.find(
-        task => task.group?.id === vscode.TaskGroup.Build.id && task.group?.isDefault === true
-    );
-    if (task) {
-        return task;
+    let task;
+    if (findDefault) {
+        task = workspaceTasks.find(
+            task => task.group?.id === vscode.TaskGroup.Build.id && task.group?.isDefault === true
+        );
+        if (task) {
+            return task;
+        }
     }
     // find task with name "swift: Build All"
     task = workspaceTasks.find(task => task.name === `swift: ${buildTaskName}`);
