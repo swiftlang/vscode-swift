@@ -43,6 +43,7 @@ const launchArgs = [
     "--disable-telemetry",
     "--disable-gpu",
     "--disable-gpu-sandbox",
+    "--disable-chromium-sandbox",
     "--no-xshm",
 ];
 if (dataDir) {
