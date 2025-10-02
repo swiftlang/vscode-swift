@@ -65,7 +65,7 @@ class ExtensionActivationLogger implements Loggable {
         this.logger = logger;
     }
 
-    setTestName(name: string) {
+    setTestName(name: string | undefined) {
         this.testName = name;
     }
 
@@ -97,12 +97,26 @@ class ExtensionActivationLogger implements Loggable {
     }
 }
 
+// Mocha doesn't give us a hook to run code when a before block times out.
+// This utility method can be used to dump logs right before the before block times out.
+// Ensure you pass in a timeout that is slightly less than mocha's `before` timeout.
+function configureLogDumpOnTimeout(timeout: number, logger: ExtensionActivationLogger) {
+    return setTimeout(
+        () => {
+            logger.info(`Activating extension timed out!`);
+            printLogs(logger, "Activating extension exceeded the timeout");
+        },
+        Math.max(0, timeout - 300)
+    );
+}
+
 const extensionBootstrapper = (() => {
     let activator: (() => Promise<Api>) | undefined = undefined;
     let activatedAPI: Api | undefined = undefined;
     let lastTestName: string | undefined = undefined;
     const testTitle = (currentTest: Mocha.Test) => currentTest.titlePath().join(" → ");
     let activationLogger: ExtensionActivationLogger;
+    let asyncLogWrapper: <T>(prefix: string, asyncWork: () => Thenable<T>) => Promise<T>;
 
     function testRunnerSetup(
         before: Mocha.HookFunction,
@@ -122,6 +136,7 @@ const extensionBootstrapper = (() => {
         let autoTeardown: void | (() => Promise<void>);
         let restoreSettings: (() => Promise<void>) | undefined;
         activationLogger = new ExtensionActivationLogger();
+        asyncLogWrapper = withLogging(activationLogger);
         const SETUP_TIMEOUT_MS = 180_000;
         const TEARDOWN_TIMEOUT_MS = 60_000;
 
@@ -131,33 +146,25 @@ const extensionBootstrapper = (() => {
 
             // Mocha doesn't give us a hook to run code when a before block times out, so
             // we set a timeout to just before mocha's so we have time to print the logs.
-            const timer = setTimeout(
-                () => {
-                    activationLogger.info(`Activating extension timed out!`);
-                    printLogs(activationLogger, "Activating extension exceeded the timeout");
-                },
-                Math.max(0, SETUP_TIMEOUT_MS - 300)
-            );
+            const timer = configureLogDumpOnTimeout(SETUP_TIMEOUT_MS, activationLogger);
 
             activationLogger.info(`Begin activating extension`);
 
             // Make sure that CodeLLDB is installed for debugging related tests
             if (!vscode.extensions.getExtension("vadimcn.vscode-lldb")) {
-                activationLogger.info(
-                    `vadimcn.vscode-lldb is not installed, installing CodeLLDB extension for the debugging tests.`
+                await asyncLogWrapper(
+                    "vadimcn.vscode-lldb is not installed, installing CodeLLDB extension for the debugging tests.",
+                    () =>
+                        vscode.commands.executeCommand(
+                            "workbench.extensions.installExtension",
+                            "vadimcn.vscode-lldb"
+                        )
                 );
-
-                await vscode.commands.executeCommand(
-                    "workbench.extensions.installExtension",
-                    "vadimcn.vscode-lldb"
-                );
-
-                activationLogger.info(`vadimcn.vscode-lldb installed successfully.`);
             }
             // Always activate the extension. If no test assets are provided,
             // default to adding `defaultPackage` to the workspace.
             workspaceContext = await extensionBootstrapper.activateExtension(
-                this.currentTest,
+                this.currentTest ?? this.test,
                 testAssets ?? ["defaultPackage"]
             );
             activationLogger.setLogger(workspaceContext.logger);
@@ -181,24 +188,24 @@ const extensionBootstrapper = (() => {
             }
             // CodeLLDB does not work with libllbd in Swift toolchains prior to 5.10
             if (workspaceContext.globalToolchainSwiftVersion.isLessThan(new Version(5, 10, 0))) {
-                activationLogger.info('Setting swift.debugger.setupCodeLLDB: "never"');
-                restoreSettings = await updateSettings({
-                    "swift.debugger.setupCodeLLDB": "never",
-                });
-                activationLogger.info('Set swift.debugger.setupCodeLLDB: "never" successfully');
+                await asyncLogWrapper('Setting swift.debugger.setupCodeLLDB: "never"', () =>
+                    updateSettings({
+                        "swift.debugger.setupCodeLLDB": "never",
+                    })
+                );
             } else if (requiresDebugger) {
-                const lldbLibPath = await getLLDBLibPath(workspaceContext.globalToolchain);
+                const lldbLibPath = await asyncLogWrapper("Getting LLDB library path", async () =>
+                    getLLDBLibPath(workspaceContext!.globalToolchain)
+                );
                 activationLogger.info(
                     `LLDB library path is: ${lldbLibPath.success ?? "not found"}`
                 );
             }
 
-            activationLogger.info("Waiting for no running tasks before starting test/suite");
-
             // Make sure no running tasks before setting up
-            await waitForNoRunningTasks({ timeout: 10000 });
-
-            activationLogger.info("Running tasks have completed, clearing build all cache");
+            await asyncLogWrapper("Waiting for no running tasks before starting test/suite", () =>
+                waitForNoRunningTasks({ timeout: 10000 })
+            );
 
             // Clear build all cache before starting suite
             resetBuildAllTaskCache();
@@ -209,16 +216,13 @@ const extensionBootstrapper = (() => {
                 return;
             }
             try {
-                activationLogger.info(
-                    "Calling user defined setup method to configure test/suite specifics"
-                );
-
                 // If the setup returns a promise it is used to undo whatever setup it did.
                 // Typically this is the promise returned from `updateSettings`, which will
                 // undo any settings changed during setup.
-                autoTeardown = await setup.call(this, workspaceContext);
-
-                activationLogger.info("Activation complete!");
+                autoTeardown = await asyncLogWrapper(
+                    "Calling user defined setup method to configure test/suite specifics",
+                    () => setup.call(this, workspaceContext!)
+                );
             } catch (error: any) {
                 // Mocha will throw an error to break out of a test if `.skip` is used.
                 if (error.message?.indexOf("sync skip;") === -1) {
@@ -250,13 +254,8 @@ const extensionBootstrapper = (() => {
         after("Deactivate Swift Extension", async function () {
             // Allow enough time for the extension to deactivate
             this.timeout(TEARDOWN_TIMEOUT_MS);
-            const timer = setTimeout(
-                () => {
-                    activationLogger.info(`Deactivating extension timed out!`);
-                    printLogs(activationLogger, "Deactivating extension exceeded the timeout...");
-                },
-                Math.max(0, TEARDOWN_TIMEOUT_MS - 300)
-            );
+
+            const timer = configureLogDumpOnTimeout(TEARDOWN_TIMEOUT_MS, activationLogger);
 
             activationLogger.info("Deactivating extension...");
 
@@ -264,16 +263,15 @@ const extensionBootstrapper = (() => {
             try {
                 // First run the users supplied teardown, then await the autoTeardown if it exists.
                 if (teardown) {
-                    activationLogger.info("Running user teardown function...");
-                    await teardown.call(this);
-                    activationLogger.info("User teardown completed.");
+                    await asyncLogWrapper("Running user teardown function...", () =>
+                        teardown.call(this)
+                    );
                 }
                 if (autoTeardown) {
-                    activationLogger.info(
-                        "Running auto teardown function (function returned from setup)..."
+                    await asyncLogWrapper(
+                        "Running auto teardown function (function returned from setup)...",
+                        () => autoTeardown!()
                     );
-                    await autoTeardown();
-                    activationLogger.info("Auto teardown completed.");
                 }
             } catch (error) {
                 if (workspaceContext) {
@@ -288,9 +286,9 @@ const extensionBootstrapper = (() => {
             }
 
             if (restoreSettings) {
-                activationLogger.info("Running restore settings function...");
-                await restoreSettings();
-                activationLogger.info("Restore settings completed.");
+                await asyncLogWrapper("Running restore settings function...", () =>
+                    restoreSettings!()
+                );
             }
             activationLogger.info("Deactivation complete, calling deactivateExtension()");
             await extensionBootstrapper.deactivateExtension();
@@ -311,12 +309,13 @@ const extensionBootstrapper = (() => {
         // test run, so after it is called once we switch over to calling activate on
         // the returned API object which behaves like the extension is being launched for
         // the first time _as long as everything is disposed of properly in `deactivate()`_.
-        activateExtension: async function (currentTest?: Mocha.Test, testAssets?: string[]) {
+        activateExtension: async function (currentTest?: Mocha.Runnable, testAssets?: string[]) {
             if (activatedAPI) {
                 throw new Error(
                     `Extension is already activated. Last test that activated the extension: ${lastTestName}`
                 );
             }
+
             const extensionId = "swiftlang.swift-vscode";
             const ext = vscode.extensions.getExtension<Api>(extensionId);
             if (!ext) {
@@ -337,14 +336,15 @@ const extensionBootstrapper = (() => {
                     if (!dep) {
                         throw new Error(`Unable to find extension "${depId}"`);
                     }
-                    activationLogger.info(`Activating dependency extension "${depId}".`);
-                    await dep.activate();
-                    activationLogger.info(`Activated dependency extension "${depId}".`);
+                    await asyncLogWrapper(`Activating dependency extension "${depId}".`, () =>
+                        dep.activate()
+                    );
                 }
 
-                activationLogger.info("Activating Swift extension (true activation)...");
-                activatedAPI = await ext.activate();
-                activationLogger.info("Swift extension activated successfully.");
+                activatedAPI = await asyncLogWrapper(
+                    "Activating Swift extension (true activation)...",
+                    () => ext.activate()
+                );
 
                 // Save the test name so if the test doesn't clean up by deactivating properly the next
                 // test that tries to activate can throw an error with the name of the test that needs to clean up.
@@ -352,11 +352,10 @@ const extensionBootstrapper = (() => {
                 activator = activatedAPI.activate;
                 workspaceContext = activatedAPI.workspaceContext;
             } else {
-                activationLogger.info(
-                    "Activating Swift extension by re-calling the extension's activation method..."
+                activatedAPI = await asyncLogWrapper(
+                    "Activating Swift extension by re-calling the extension's activation method...",
+                    () => activator!()
                 );
-                activatedAPI = await activator();
-                activationLogger.info("Swift extension re-activated successfully.");
                 lastTestName = currentTest?.titlePath().join(" → ");
                 workspaceContext = activatedAPI.workspaceContext;
             }
@@ -374,9 +373,9 @@ const extensionBootstrapper = (() => {
             if (!vscode.workspace.workspaceFile) {
                 activationLogger.info(`No workspace file found, adding assets directly.`);
                 for (const asset of expectedAssets) {
-                    activationLogger.info(`Adding ${asset} to workspace`);
-                    await folderInRootWorkspace(asset, workspaceContext);
-                    activationLogger.info(`Added ${asset} to workspace`);
+                    await asyncLogWrapper(`Adding ${asset} to workspace...`, () =>
+                        folderInRootWorkspace(asset, workspaceContext)
+                    );
                 }
                 activationLogger.info(`All assets added to workspace.`);
             } else if (expectedAssets.length > 0) {
@@ -419,21 +418,22 @@ const extensionBootstrapper = (() => {
                 throw new Error("Extension is not activated. Call activateExtension() first.");
             }
 
-            activationLogger.info(`Deactivating extension, waiting for no running tasks.`);
             // Wait for up to 10 seconds for all tasks to complete before deactivating.
             // Long running tasks should be avoided in tests, but this is a safety net.
-            await waitForNoRunningTasks({ timeout: 10000 });
-
-            activationLogger.info(`All tasks completed.`);
-            activationLogger.info(`Closing all editors.`);
+            await asyncLogWrapper(`Deactivating extension, waiting for no running tasks.`, () =>
+                waitForNoRunningTasks({ timeout: 10000 })
+            );
 
             // Close all editors before deactivating the extension.
-            await closeAllEditors();
-            activationLogger.info(`All editors closed.`);
+            await asyncLogWrapper(`Closing all editors.`, () => closeAllEditors());
 
-            activationLogger.info(`Removing root workspace folder.`);
-            await activatedAPI.workspaceContext?.removeWorkspaceFolder(getRootWorkspaceFolder());
-            activationLogger.info(`Removed root workspace folder.`);
+            await asyncLogWrapper(
+                `Removing root workspace folder.`,
+                () =>
+                    activatedAPI!.workspaceContext?.removeWorkspaceFolder(
+                        getRootWorkspaceFolder()
+                    ) ?? Promise.resolve()
+            );
             activationLogger.info(`Running extension deactivation function.`);
             await activatedAPI.deactivate();
             activationLogger.reset();
@@ -694,4 +694,25 @@ export function isConfigurationSuperset(configValue: unknown, expected: unknown)
 
     // If types don't match (one is array, one is object), return false
     return false;
+}
+
+/**
+ * Creates a logging wrapper function that wraps async operations with prefixed start/end logging messages.
+ * Logs when the operation starts, completes successfully, or fails with an error.
+ *
+ * @param logger The logger object that must have an `info` method for logging messages
+ * @returns A wrapper function that takes a prefix and async work function, returning a promise that resolves to the result of the async work
+ */
+export function withLogging(logger: { info: (message: string) => void }) {
+    return async function <T>(prefix: string, asyncWork: () => Thenable<T>): Promise<T> {
+        logger.info(`${prefix} - starting`);
+        try {
+            const result = await asyncWork();
+            logger.info(`${prefix} - completed`);
+            return result;
+        } catch (error) {
+            logger.info(`${prefix} - failed: ${error}`);
+            throw error;
+        }
+    };
 }

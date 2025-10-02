@@ -39,6 +39,7 @@ import {
     activateExtensionForSuite,
     folderInRootWorkspace,
     updateSettings,
+    withLogging,
 } from "../utilities/testutilities";
 import {
     assertContains,
@@ -60,19 +61,29 @@ tag("large").suite("Test Explorer Suite", function () {
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
-            folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
+            const logger = withLogging(ctx.logger);
+            folderContext = await logger("Locating defaultPackage folder in root workspace", () =>
+                folderInRootWorkspace("defaultPackage", workspaceContext)
+            );
 
             if (!folderContext) {
                 throw new Error("Unable to find test explorer");
             }
 
-            testExplorer = await folderContext.resolvedTestExplorer;
+            testExplorer = await logger(
+                "Waiting for test explorer to resolve",
+                () => folderContext.resolvedTestExplorer
+            );
 
-            await executeTaskAndWaitForResult(await createBuildAllTask(folderContext));
+            await logger("Executing build all task", async () =>
+                executeTaskAndWaitForResult(await createBuildAllTask(folderContext))
+            );
 
             // Set up the listener before bringing the text explorer in to focus,
             // which starts searching the workspace for tests.
-            await waitForTestExplorerReady(testExplorer);
+            await logger("Waiting for test explorer to be ready", () =>
+                waitForTestExplorerReady(testExplorer)
+            );
         },
         requiresLSP: true,
         requiresDebugger: true,

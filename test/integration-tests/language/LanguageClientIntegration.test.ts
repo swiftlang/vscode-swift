@@ -30,6 +30,7 @@ async function buildProject(ctx: WorkspaceContext, name: string) {
     await waitForNoRunningTasks();
     const folderContext = await folderInRootWorkspace(name, ctx);
     const task = await createBuildAllTask(folderContext);
+    task.definition.dontTriggerTestDiscovery = true;
     const { exitCode, output } = await executeTaskAndWaitForResult(task);
     expect(exitCode, `${output}`).to.equal(0);
     return folderContext;
