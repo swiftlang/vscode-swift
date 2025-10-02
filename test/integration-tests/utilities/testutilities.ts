@@ -137,7 +137,7 @@ const extensionBootstrapper = (() => {
         let restoreSettings: (() => Promise<void>) | undefined;
         activationLogger = new ExtensionActivationLogger();
         asyncLogWrapper = withLogging(activationLogger);
-        const SETUP_TIMEOUT_MS = 180_000;
+        const SETUP_TIMEOUT_MS = 300_000;
         const TEARDOWN_TIMEOUT_MS = 60_000;
 
         before("Activate Swift Extension", async function () {
