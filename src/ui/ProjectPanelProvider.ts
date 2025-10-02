@@ -500,11 +500,17 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
             vscode.tasks.onDidStartTask(e => {
                 const taskId = e.execution.task.detail ?? e.execution.task.name;
                 this.activeTasks.add(taskId);
+                this.workspaceContext.logger.info(
+                    `Project panel updating after task ${taskId} has started`
+                );
                 this.didChangeTreeDataEmitter.fire();
             }),
             vscode.tasks.onDidEndTask(e => {
                 const taskId = e.execution.task.detail ?? e.execution.task.name;
                 this.activeTasks.delete(taskId);
+                this.workspaceContext.logger.info(
+                    `Project panel updating after task ${taskId} has ended`
+                );
                 this.didChangeTreeDataEmitter.fire();
             }),
             ctx.onDidStartBuild(e => {
@@ -513,6 +519,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                 } else {
                     this.activeTasks.add(e.targetName);
                 }
+                this.workspaceContext.logger.info("Project panel updating after build has started");
                 this.didChangeTreeDataEmitter.fire();
             }),
             ctx.onDidFinishBuild(e => {
@@ -521,18 +528,25 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                 } else {
                     this.activeTasks.delete(e.targetName);
                 }
+                this.workspaceContext.logger.info(
+                    "Project panel updating after build has finished"
+                );
                 this.didChangeTreeDataEmitter.fire();
             }),
             ctx.onDidStartTests(e => {
                 for (const target of e.targets) {
                     this.activeTasks.add(testTaskName(target));
                 }
+                this.workspaceContext.logger.info("Project panel updating on test run start");
                 this.didChangeTreeDataEmitter.fire();
             }),
             ctx.onDidFinishTests(e => {
                 for (const target of e.targets) {
                     this.activeTasks.delete(testTaskName(target));
                 }
+                this.workspaceContext.logger.info(
+                    "Project panel updating after test run has finished"
+                );
                 this.didChangeTreeDataEmitter.fire();
             })
         );
@@ -543,6 +557,9 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                     e.affectsConfiguration("files.exclude") ||
                     e.affectsConfiguration("swift.excludePathsFromPackageDependencies")
                 ) {
+                    this.workspaceContext.logger.info(
+                        "Project panel updating due to configuration changes"
+                    );
                     this.didChangeTreeDataEmitter.fire();
                 }
             })
@@ -559,10 +576,16 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                         }
                         this.watchBuildPluginOutputs(folder);
                         treeView.title = `Swift Project (${folder.name})`;
+                        this.workspaceContext.logger.info(
+                            `Project panel updating, focused folder ${folder.name}`
+                        );
                         this.didChangeTreeDataEmitter.fire();
                         break;
                     case FolderOperation.unfocus:
                         treeView.title = `Swift Project`;
+                        this.workspaceContext.logger.info(
+                            `Project panel updating, unfocused folder`
+                        );
                         this.didChangeTreeDataEmitter.fire();
                         break;
                     case FolderOperation.workspaceStateUpdated:
@@ -573,6 +596,9 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                             return;
                         }
                         if (folder === this.workspaceContext.currentFolder) {
+                            this.workspaceContext.logger.info(
+                                `Project panel updating, "${operation}" for folder ${folder.name}`
+                            );
                             this.didChangeTreeDataEmitter.fire();
                         }
                 }

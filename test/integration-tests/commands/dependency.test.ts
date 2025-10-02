@@ -88,8 +88,15 @@ tag("large").suite("Dependency Commmands Test Suite", function () {
                 depType = dep?.type;
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
+
+            const headers = await treeProvider.getChildren();
+            const headerNames = headers.map(n => n.name);
+            const depChildren = await (
+                headers.find(n => n.name === "Dependencies") as PackageNode
+            )?.getChildren();
+            const childrenNames = depChildren?.map(n => n.name) ?? [];
             throw Error(
-                `Could not find dependency with state "${state}", instead it was "${depType}"`
+                `Could not find dependency with state "${state}", instead it was "${depType}". Current headers: ${headerNames.join(", ")}, Current children for "Dependencies" entry: ${childrenNames.join(", ")}`
             );
         }
 
