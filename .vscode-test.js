@@ -41,13 +41,13 @@ const launchArgs = [
     "--disable-crash-reporter",
     "--disable-workspace-trust",
     "--disable-telemetry",
+    "--disable-gpu",
+    "--disable-gpu-sandbox",
+    "--disable-chromium-sandbox",
+    "--no-xshm",
 ];
 if (dataDir) {
     launchArgs.push("--user-data-dir", dataDir);
-}
-// GPU hardware acceleration not working on Darwin for intel
-if (process.platform === "darwin" && process.arch === "x64") {
-    launchArgs.push("--disable-gpu");
 }
 
 const installExtensions = [];
