@@ -491,6 +491,8 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
 
     dispose() {
         this.workspaceObserver?.dispose();
+        this.disposables.forEach(d => d.dispose());
+        this.disposables.length = 0;
     }
 
     observeTasks(ctx: WorkspaceContext) {
@@ -849,6 +851,7 @@ class TaskPoller implements vscode.Disposable {
     dispose() {
         if (this.timeout) {
             clearTimeout(this.timeout);
+            this.timeout = undefined;
         }
     }
 }

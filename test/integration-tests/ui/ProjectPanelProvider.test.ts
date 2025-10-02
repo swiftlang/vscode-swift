@@ -44,6 +44,7 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
+
             const folderContext = await folderInRootWorkspace("targets", workspaceContext);
             await vscode.workspace.openTextDocument(
                 path.join(folderContext.folder.fsPath, "Package.swift")
@@ -55,7 +56,9 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
                     `Expected no output channel logs: ${JSON.stringify(logger.logs, undefined, 2)}`
                 );
             }
-            treeProvider = new ProjectPanelProvider(workspaceContext);
+
+            treeProvider = ctx.projectPanel;
+
             await workspaceContext.focusFolder(folderContext);
             const buildAllTask = await createBuildAllTask(folderContext);
             buildAllTask.definition.dontTriggerTestDiscovery = true;
@@ -63,7 +66,6 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
         },
         async teardown() {
             workspaceContext.contextKeys.flatDependenciesList = false;
-            treeProvider.dispose();
         },
         testAssets: ["targets"],
     });
@@ -304,6 +306,13 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
     });
 
     suite("Dependencies", () => {
+        let errorTreeProvider: ProjectPanelProvider | undefined;
+
+        afterEach(() => {
+            errorTreeProvider?.dispose();
+            errorTreeProvider = undefined;
+        });
+
         test("Includes remote dependency", async () => {
             workspaceContext.contextKeys.flatDependenciesList = false;
             const items = await getHeaderChildren("Dependencies");
@@ -407,8 +416,8 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
         test("Shows an error node when there is a problem compiling Package.swift", async () => {
             workspaceContext.folders[0].hasResolveErrors = true;
             workspaceContext.currentFolder = workspaceContext.folders[0];
-            const treeProvider = new ProjectPanelProvider(workspaceContext);
-            const children = await treeProvider.getChildren();
+            errorTreeProvider = new ProjectPanelProvider(workspaceContext);
+            const children = await errorTreeProvider.getChildren();
             const errorNode = children.find(n => n.name === "Error Parsing Package.swift");
             expect(errorNode).to.not.be.undefined;
         });
