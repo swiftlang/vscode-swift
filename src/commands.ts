@@ -30,10 +30,7 @@ import { useLocalDependency } from "./commands/dependencies/useLocal";
 import { generateLaunchConfigurations } from "./commands/generateLaunchConfigurations";
 import { generateSourcekitConfiguration } from "./commands/generateSourcekitConfiguration";
 import { insertFunctionComment } from "./commands/insertFunctionComment";
-import {
-    installSwiftlySnapshotToolchain,
-    installSwiftlyToolchain,
-} from "./commands/installSwiftlyToolchain";
+import { promptToInstallSwiftlyToolchain } from "./commands/installSwiftlyToolchain";
 import { newSwiftFile } from "./commands/newFile";
 import { openDocumentation } from "./commands/openDocumentation";
 import { openEducationalNote } from "./commands/openEducationalNote";
@@ -356,11 +353,11 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         ),
         vscode.commands.registerCommand(
             Commands.INSTALL_SWIFTLY_TOOLCHAIN,
-            async () => await installSwiftlyToolchain(ctx)
+            async () => await promptToInstallSwiftlyToolchain(ctx, "stable")
         ),
         vscode.commands.registerCommand(
             Commands.INSTALL_SWIFTLY_SNAPSHOT_TOOLCHAIN,
-            async () => await installSwiftlySnapshotToolchain(ctx)
+            async () => await promptToInstallSwiftlyToolchain(ctx, "snapshot")
         ),
     ];
 }

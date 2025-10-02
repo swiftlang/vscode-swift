@@ -505,7 +505,7 @@ export async function removeToolchainPath() {
     await swiftSettings.update("path", undefined, vscode.ConfigurationTarget.Workspace);
 }
 
-async function askWhereToSetToolchain(): Promise<vscode.ConfigurationTarget | undefined> {
+export async function askWhereToSetToolchain(): Promise<vscode.ConfigurationTarget | undefined> {
     if (!vscode.workspace.workspaceFolders) {
         return vscode.ConfigurationTarget.Global;
     }

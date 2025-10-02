@@ -21,8 +21,7 @@ import * as Stream from "stream";
 import * as vscode from "vscode";
 import { z } from "zod/v4/mini";
 
-// Import the reusable installation function
-import { installSwiftlyToolchainVersion } from "../commands/installSwiftlyToolchain";
+import { installSwiftlyToolchainWithProgress } from "../commands/installSwiftlyToolchain";
 import { ContextKeys } from "../contextKeys";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { showMissingToolchainDialog } from "../ui/ToolchainSelection";
@@ -153,8 +152,7 @@ export function parseSwiftlyMissingToolchainError(
 export async function handleMissingSwiftlyToolchain(
     version: string,
     logger?: SwiftLogger,
-    folder?: vscode.Uri,
-    token?: vscode.CancellationToken
+    folder?: vscode.Uri
 ): Promise<boolean> {
     logger?.info(`Attempting to handle missing toolchain: ${version}`);
 
@@ -167,7 +165,7 @@ export async function handleMissingSwiftlyToolchain(
 
     // Use the existing installation function without showing reload notification
     // (since we want to continue the current operation)
-    return await installSwiftlyToolchainVersion(version, logger, false, token);
+    return await installSwiftlyToolchainWithProgress(version, logger);
 }
 
 export class Swiftly {
@@ -532,7 +530,6 @@ export class Swiftly {
         const installArgs = [
             "install",
             version,
-            "--use",
             "--assume-yes",
             "--post-install-file",
             postInstallFilePath,
