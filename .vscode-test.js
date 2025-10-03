@@ -44,6 +44,7 @@ const launchArgs = [
     "--disable-gpu",
     "--disable-gpu-sandbox",
     "--disable-chromium-sandbox",
+    "--disable-extension=vscode.git",
     "--no-xshm",
 ];
 if (dataDir) {
