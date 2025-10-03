@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
+import * as fs from "fs/promises";
+import * as path from "path";
 import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
@@ -22,9 +24,13 @@ import { PackageNode, ProjectPanelProvider } from "@src/ui/ProjectPanelProvider"
 import { testAssetUri } from "../../fixtures";
 import { tag } from "../../tags";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
-import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
+import {
+    activateExtensionForSuite,
+    findWorkspaceFolder,
+    folderInRootWorkspace,
+} from "../utilities/testutilities";
 
-tag("large").suite("Dependency Commmands Test Suite", function () {
+tag("large").suite("Dependency Commands Test Suite", function () {
     let depsContext: FolderContext;
     let workspaceContext: WorkspaceContext;
 
@@ -95,12 +101,25 @@ tag("large").suite("Dependency Commmands Test Suite", function () {
                 headers.find(n => n.name === "Dependencies") as PackageNode
             )?.getChildren();
             const childrenNames = depChildren?.map(n => n.name) ?? [];
+
+            const dependenciesFolderContext = await folderInRootWorkspace(
+                "dependencies",
+                workspaceContext
+            );
+            const resolvedPath = path.join(
+                dependenciesFolderContext.folder.fsPath,
+                "Package.resolved"
+            );
+            const packageResolvedContents = await fs.readFile(resolvedPath, "utf8");
+
             throw Error(
-                `Could not find dependency with state "${state}", instead it was "${depType}". Current headers: ${headerNames.map(h => `"${h}"`).join(", ")}, Current children for "Dependencies" entry: ${childrenNames.map(c => `"${c}"`).join(", ")}`
+                `Could not find dependency with state "${state}", instead it was "${depType}". Current headers: ${headerNames.map(h => `"${h}"`).join(", ")}, Current children for "Dependencies" entry: ${childrenNames.map(c => `"${c}"`).join(", ")}\nContents of Package.resolved:\n${packageResolvedContents}`
             );
         }
 
         async function useLocalDependencyTest() {
+            workspaceContext.logger.info("Fetching the dependency in the 'remote' state");
+
             // spm edit with user supplied local version of dependency
             const item = await getDependencyInState("remote");
             const localDep = testAssetUri("swift-markdown");
