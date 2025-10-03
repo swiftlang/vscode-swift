@@ -18,7 +18,7 @@ import * as os from "os";
 import { match } from "sinon";
 import * as vscode from "vscode";
 
-import { installSwiftlyToolchainVersion } from "@src/commands/installSwiftlyToolchain";
+import { installSwiftlyToolchainWithProgress } from "@src/commands/installSwiftlyToolchain";
 import * as SwiftOutputChannelModule from "@src/logging/SwiftOutputChannel";
 import {
     Swiftly,
@@ -476,7 +476,7 @@ suite("Swiftly Unit Tests", () => {
 
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
                 "swiftly",
-                ["install", "6.0.0", "--use", "--assume-yes", "--post-install-file", match.string],
+                ["install", "6.0.0", "--assume-yes", "--post-install-file", match.string],
                 match.any,
                 match.any,
                 match.any,
@@ -862,7 +862,7 @@ suite("Swiftly Unit Tests", () => {
             // Verify swiftly install was called with post-install file argument
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
                 "swiftly",
-                ["install", "6.0.0", "--use", "--assume-yes", "--post-install-file", match.string],
+                ["install", "6.0.0", "--assume-yes", "--post-install-file", match.string],
                 match.any,
                 match.any,
                 match.any,
@@ -964,13 +964,12 @@ apt-get -y install libncurses5-dev`;
                 .withArgs("swiftly", [
                     "install",
                     "6.0.0",
-                    "--use",
                     "--assume-yes",
                     "--post-install-file",
                     match.string,
                 ])
                 .callsFake(async (_command, args) => {
-                    const postInstallPath = args[5];
+                    const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, validScript);
                     return;
                 });
@@ -1021,13 +1020,12 @@ apt-get -y install build-essential`;
                 .withArgs("swiftly", [
                     "install",
                     "6.0.0",
-                    "--use",
                     "--assume-yes",
                     "--post-install-file",
                     match.string,
                 ])
                 .callsFake(async (_command, args) => {
-                    const postInstallPath = args[5];
+                    const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, validScript);
                     return;
                 });
@@ -1066,13 +1064,12 @@ apt-get -y install build-essential`;
                 .withArgs("swiftly", [
                     "install",
                     "6.0.0",
-                    "--use",
                     "--assume-yes",
                     "--post-install-file",
                     match.string,
                 ])
                 .callsFake(async (_command, args) => {
-                    const postInstallPath = args[5];
+                    const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, invalidScript);
                     return;
                 });
@@ -1107,13 +1104,12 @@ apt-get -y install build-essential`;
                 .withArgs("swiftly", [
                     "install",
                     "6.0.0",
-                    "--use",
                     "--assume-yes",
                     "--post-install-file",
                     match.string,
                 ])
                 .callsFake(async (_command, args) => {
-                    const postInstallPath = args[5];
+                    const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, validScript);
                     return;
                 });
@@ -1176,13 +1172,12 @@ yum install ncurses-devel`;
                 .withArgs("swiftly", [
                     "install",
                     "6.0.0",
-                    "--use",
                     "--assume-yes",
                     "--post-install-file",
                     match.string,
                 ])
                 .callsFake(async (_command, args) => {
-                    const postInstallPath = args[5];
+                    const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, yumScript);
                     return;
                 });
@@ -1222,13 +1217,12 @@ yum remove important-system-package`;
                 .withArgs("swiftly", [
                     "install",
                     "6.0.0",
-                    "--use",
                     "--assume-yes",
                     "--post-install-file",
                     match.string,
                 ])
                 .callsFake(async (_command, args) => {
-                    const postInstallPath = args[5];
+                    const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, malformedScript);
                     return;
                 });
@@ -1263,13 +1257,12 @@ apt-get -y install libncurses5-dev
                 .withArgs("swiftly", [
                     "install",
                     "6.0.0",
-                    "--use",
                     "--assume-yes",
                     "--post-install-file",
                     match.string,
                 ])
                 .callsFake(async (_command, args) => {
-                    const postInstallPath = args[5];
+                    const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, scriptWithComments);
                     return;
                 });
@@ -1424,18 +1417,11 @@ apt-get -y install libncurses5-dev
                 .rejects(new Error(Swiftly.cancellationMessage));
 
             await expect(
-                Swiftly.installToolchain("6.0.0", undefined, undefined, mockToken as any)
+                Swiftly.installToolchain("6.0.0", undefined, undefined, mockToken)
             ).to.eventually.be.rejectedWith(Swiftly.cancellationMessage);
         });
 
         test("installSwiftlyToolchainVersion should handle cancellation gracefully", async () => {
-            const mockLogger = {
-                info: () => {},
-                error: () => {},
-                warn: () => {},
-                debug: () => {},
-            };
-
             // Mock window.withProgress to simulate cancellation
             mockWindow.withProgress.callsFake(async (_options, task) => {
                 const mockProgress = { report: () => {} };
@@ -1459,20 +1445,13 @@ apt-get -y install libncurses5-dev
                 .withArgs("swiftly")
                 .rejects(new Error(Swiftly.cancellationMessage));
 
-            const result = await installSwiftlyToolchainVersion("6.0.0", mockLogger as any, false);
+            const result = await installSwiftlyToolchainWithProgress("6.0.0");
 
             expect(result).to.be.false;
             expect(mockWindow.showErrorMessage).to.not.have.been.called;
         });
 
         test("installSwiftlyToolchainVersion should show error for non-cancellation errors", async () => {
-            const mockLogger = {
-                info: () => {},
-                error: () => {},
-                warn: () => {},
-                debug: () => {},
-            };
-
             // Mock window.withProgress to simulate a regular error
             mockWindow.withProgress.callsFake(async (_options, task) => {
                 const mockProgress = { report: () => {} };
@@ -1489,7 +1468,7 @@ apt-get -y install libncurses5-dev
                 .withArgs("swiftly")
                 .rejects(new Error("Network error"));
 
-            const result = await installSwiftlyToolchainVersion("6.0.0", mockLogger as any, false);
+            const result = await installSwiftlyToolchainWithProgress("6.0.0");
 
             expect(result).to.be.false;
             expect(mockWindow.showErrorMessage).to.have.been.calledWith(
