@@ -67,12 +67,21 @@ export async function useLocalDependency(
         currentFolder.toolchain
     );
 
+    ctx.logger.debug(
+        `Placing dependency "${identifier}" in "editing" state with task: ${task.definition}`
+    );
+
     const success = await executeTaskWithUI(
         task,
         `Use local version of ${identifier}`,
         currentFolder,
         true
     );
+
+    ctx.logger.debug(
+        `Finished placing dependency "${identifier}" in "editing" state, success: ${success}`
+    );
+
     if (success) {
         await ctx.fireEvent(currentFolder, FolderOperation.resolvedUpdated);
     }

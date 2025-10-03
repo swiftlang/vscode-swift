@@ -53,20 +53,13 @@ function printLogs(logger: Loggable, message: string) {
 class ExtensionActivationLogger implements Loggable {
     private logger: SwiftLogger | undefined;
     private _logs: string[] = [];
-    private testName: string | undefined;
 
     get logs(): string[] {
-        return [...this._logs, ...(this.logger?.logs ?? [])].map(log =>
-            this.testName ? `[${this.testName}] ${log}` : log
-        );
+        return [...this._logs, ...(this.logger?.logs ?? [])];
     }
 
     setLogger(logger: SwiftLogger) {
         this.logger = logger;
-    }
-
-    setTestName(name: string | undefined) {
-        this.testName = name;
     }
 
     private formatTimestamp(): string {
@@ -93,7 +86,6 @@ class ExtensionActivationLogger implements Loggable {
     reset() {
         this._logs = [];
         this.logger = undefined;
-        this.testName = undefined;
     }
 }
 
@@ -238,7 +230,6 @@ const extensionBootstrapper = (() => {
             if (this.currentTest && activatedAPI) {
                 activatedAPI.logger.clear();
                 activatedAPI.logger.info(`Starting test: ${testTitle(this.currentTest)}`);
-                activationLogger.setTestName(testTitle(this.currentTest));
             }
         });
 
@@ -362,7 +353,7 @@ const extensionBootstrapper = (() => {
 
             if (!workspaceContext) {
                 printLogs(
-                    activatedAPI.logger,
+                    activationLogger,
                     "Error during test/suite setup, workspace context could not be created"
                 );
                 throw new Error("Extension did not activate. Workspace context is not available.");

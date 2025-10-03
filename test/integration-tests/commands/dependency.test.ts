@@ -96,7 +96,7 @@ tag("large").suite("Dependency Commmands Test Suite", function () {
             )?.getChildren();
             const childrenNames = depChildren?.map(n => n.name) ?? [];
             throw Error(
-                `Could not find dependency with state "${state}", instead it was "${depType}". Current headers: ${headerNames.join(", ")}, Current children for "Dependencies" entry: ${childrenNames.join(", ")}`
+                `Could not find dependency with state "${state}", instead it was "${depType}". Current headers: ${headerNames.map(h => `"${h}"`).join(", ")}, Current children for "Dependencies" entry: ${childrenNames.map(c => `"${c}"`).join(", ")}`
             );
         }
 
@@ -104,6 +104,12 @@ tag("large").suite("Dependency Commmands Test Suite", function () {
             // spm edit with user supplied local version of dependency
             const item = await getDependencyInState("remote");
             const localDep = testAssetUri("swift-markdown");
+
+            // Perform a resolve first to make sure that dependencies are up to date
+            await vscode.commands.executeCommand(Commands.RESOLVE_DEPENDENCIES);
+
+            workspaceContext.logger.debug(`Configuring ${localDep.fsPath} to the "editing" state`);
+
             const result = await vscode.commands.executeCommand(
                 Commands.USE_LOCAL_DEPENDENCY,
                 item,
@@ -121,6 +127,8 @@ tag("large").suite("Dependency Commmands Test Suite", function () {
         test("Swift: Reset Package Dependencies", async function () {
             await useLocalDependencyTest();
 
+            workspaceContext.logger.info("Resetting package dependency to remote version");
+
             // spm reset
             const result = await vscode.commands.executeCommand(
                 Commands.RESET_PACKAGE,
@@ -134,8 +142,10 @@ tag("large").suite("Dependency Commmands Test Suite", function () {
             expect(dep?.type).to.equal("remote");
         });
 
-        test("Swift: Revert To Original Version", async function () {
+        test("Swift: Unedit To Original Version", async function () {
             await useLocalDependencyTest();
+
+            workspaceContext.logger.debug("Unediting package dependency to original version");
 
             const result = await vscode.commands.executeCommand(
                 Commands.UNEDIT_DEPENDENCY,
