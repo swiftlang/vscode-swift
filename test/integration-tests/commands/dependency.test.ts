@@ -105,10 +105,12 @@ tag("large").suite("Dependency Commmands Test Suite", function () {
             const item = await getDependencyInState("remote");
             const localDep = testAssetUri("swift-markdown");
 
+            workspaceContext.logger.info("Resolving latest dependencies before editing");
+
             // Perform a resolve first to make sure that dependencies are up to date
             await vscode.commands.executeCommand(Commands.RESOLVE_DEPENDENCIES);
 
-            workspaceContext.logger.debug(`Configuring ${localDep.fsPath} to the "editing" state`);
+            workspaceContext.logger.info(`Configuring ${localDep.fsPath} to the "editing" state`);
 
             const result = await vscode.commands.executeCommand(
                 Commands.USE_LOCAL_DEPENDENCY,
@@ -118,10 +120,16 @@ tag("large").suite("Dependency Commmands Test Suite", function () {
             );
             expect(result).to.be.true;
 
+            workspaceContext.logger.info("Set use local dependency to remote, now verifying");
+
             const dep = await getDependencyInState("editing");
             expect(dep).to.not.be.undefined;
             // Make sure using local
             expect(dep?.type).to.equal("editing");
+
+            workspaceContext.logger.info(
+                "Use local dependency was verified to be in 'editing' state"
+            );
         }
 
         test("Swift: Reset Package Dependencies", async function () {
@@ -145,7 +153,7 @@ tag("large").suite("Dependency Commmands Test Suite", function () {
         test("Swift: Unedit To Original Version", async function () {
             await useLocalDependencyTest();
 
-            workspaceContext.logger.debug("Unediting package dependency to original version");
+            workspaceContext.logger.info("Unediting package dependency to original version");
 
             const result = await vscode.commands.executeCommand(
                 Commands.UNEDIT_DEPENDENCY,
