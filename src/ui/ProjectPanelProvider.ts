@@ -595,6 +595,9 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                     case FolderOperation.packageViewUpdated:
                     case FolderOperation.pluginsUpdated:
                         if (!folder) {
+                            this.workspaceContext.logger.info(
+                                `Project panel cannot update, "${operation}" event was provided with no folder.`
+                            );
                             return;
                         }
                         if (folder === this.workspaceContext.currentFolder) {
@@ -711,8 +714,14 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         if (!folderContext) {
             return [];
         }
+        this.workspaceContext.logger.info("Project panel refreshing dependencies");
         const pkg = folderContext.swiftPackage;
         const rootDeps = await pkg.rootDependencies;
+
+        rootDeps.forEach(dep => {
+            this.workspaceContext.logger.info(`\tAdding dependency: ${dep.identity}`);
+        });
+
         if (this.workspaceContext.contextKeys.flatDependenciesList) {
             const existenceMap = new Map<string, boolean>();
             const gatherChildren = (dependencies: ResolvedDependency[]): ResolvedDependency[] => {
