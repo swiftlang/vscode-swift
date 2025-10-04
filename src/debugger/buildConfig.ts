@@ -441,6 +441,7 @@ export class TestingConfigurationFactory {
                         if (xcTestPath === undefined) {
                             return null;
                         }
+                        const toolchain = this.ctx.toolchain;
                         return {
                             ...baseConfig,
                             program: path.join(xcTestPath, "xctest"),
@@ -450,6 +451,16 @@ export class TestingConfigurationFactory {
                             env: {
                                 ...this.testEnv,
                                 ...this.sanitizerRuntimeEnvironment,
+                                ...(toolchain.swiftVersion.isGreaterThanOrEqual(
+                                    new Version(6, 2, 0)
+                                )
+                                    ? {
+                                          // Starting in 6.2 we need to provide libTesting.dylib for xctests
+                                          DYLD_FRAMEWORK_PATH:
+                                              toolchain.swiftTestingFrameworkPath(),
+                                          DYLD_LIBRARY_PATH: toolchain.swiftTestingLibraryPath(),
+                                      }
+                                    : {}),
                                 SWIFT_TESTING_ENABLED: "0",
                             },
                         };

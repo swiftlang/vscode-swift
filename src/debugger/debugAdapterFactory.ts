@@ -148,9 +148,9 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                     return undefined;
                 }
             }
-            if (!(await this.promptForCodeLldbSettings(toolchain))) {
-                return undefined;
-            }
+
+            await this.promptForCodeLldbSettingsIfRequired(toolchain);
+
             // Rename lldb-dap's "terminateCommands" to "preTerminateCommands" for CodeLLDB
             if ("terminateCommands" in launchConfig) {
                 launchConfig["preTerminateCommands"] = launchConfig["terminateCommands"];
@@ -203,7 +203,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         }
     }
 
-    async promptForCodeLldbSettings(toolchain: SwiftToolchain): Promise<boolean> {
+    async promptForCodeLldbSettingsIfRequired(toolchain: SwiftToolchain) {
         const libLldbPathResult = await getLLDBLibPath(toolchain);
         if (!libLldbPathResult.success) {
             const errorMessage = `Error: ${getErrorDescription(libLldbPathResult.failure)}`;
@@ -211,7 +211,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                 `Failed to setup CodeLLDB for debugging of Swift code. Debugging may produce unexpected results. ${errorMessage}`
             );
             this.logger.error(`Failed to setup CodeLLDB: ${errorMessage}`);
-            return true;
+            return;
         }
         const libLldbPath = libLldbPathResult.success;
         const lldbConfig = vscode.workspace.getConfiguration("lldb");
@@ -219,7 +219,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             lldbConfig.get<string>("library") === libLldbPath &&
             lldbConfig.get<string>("launch.expressions") === "native"
         ) {
-            return true;
+            return;
         }
         let userSelection: "Global" | "Workspace" | "Run Anyway" | undefined = undefined;
         switch (configuration.debugger.setupCodeLLDB) {
@@ -272,7 +272,6 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                 );
                 break;
         }
-        return true;
     }
 
     private convertEnvironmentVariables(map: { [key: string]: string }): string[] {

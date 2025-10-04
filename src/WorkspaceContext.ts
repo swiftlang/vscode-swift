@@ -34,6 +34,7 @@ import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
 import { TaskManager } from "./tasks/TaskManager";
 import { BuildFlags } from "./toolchain/BuildFlags";
 import { SwiftToolchain } from "./toolchain/toolchain";
+import { ProjectPanelProvider } from "./ui/ProjectPanelProvider";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
 import { isExcluded, isPathInsidePath } from "./utilities/filesystem";
@@ -60,6 +61,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public commentCompletionProvider: CommentCompletionProviders;
     public documentation: DocumentationManager;
     public testRunManager: TestRunManager;
+    public projectPanel: ProjectPanelProvider;
     private lastFocusUri: vscode.Uri | undefined;
     private initialisationFinished = false;
 
@@ -102,6 +104,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.documentation = new DocumentationManager(extensionContext, this);
         this.currentDocument = null;
         this.commentCompletionProvider = new CommentCompletionProviders();
+        this.projectPanel = new ProjectPanelProvider(this);
 
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(async event => {
             // Clear build path cache when build-related configurations change
@@ -225,6 +228,7 @@ export class WorkspaceContext implements vscode.Disposable {
             this.logger,
             this.statusItem,
             this.buildStatus,
+            this.projectPanel,
         ];
         this.lastFocusUri = vscode.window.activeTextEditor?.document.uri;
 
@@ -463,7 +467,7 @@ export class WorkspaceContext implements vscode.Disposable {
         // find context with root folder
         const index = this.folders.findIndex(context => context.folder.fsPath === folder.fsPath);
         if (index !== -1) {
-            this.logger.warn(`Adding package folder ${folder} twice`);
+            this.logger.warn(`Adding package folder ${folder} twice: ${Error().stack}`);
             return this.folders[index];
         }
         const folderContext = await FolderContext.create(folder, workspaceFolder, this);

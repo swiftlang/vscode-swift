@@ -33,7 +33,6 @@ import { SelectedXcodeWatcher } from "./toolchain/SelectedXcodeWatcher";
 import { checkForSwiftlyInstallation } from "./toolchain/swiftly";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { LanguageStatusItems } from "./ui/LanguageStatusItems";
-import { ProjectPanelProvider } from "./ui/ProjectPanelProvider";
 import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
 import { showToolchainError } from "./ui/ToolchainSelection";
 import { checkAndWarnAboutWindowsSymlinks } from "./ui/win32";
@@ -144,14 +143,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         );
 
         // project panel provider
-        const projectPanelProvider = new ProjectPanelProvider(workspaceContext);
         const dependenciesView = vscode.window.createTreeView("projectPanel", {
-            treeDataProvider: projectPanelProvider,
+            treeDataProvider: workspaceContext.projectPanel,
             showCollapseAll: true,
         });
-        projectPanelProvider.observeFolders(dependenciesView);
+        workspaceContext.projectPanel.observeFolders(dependenciesView);
 
-        context.subscriptions.push(dependenciesView, projectPanelProvider);
+        context.subscriptions.push(dependenciesView);
 
         // observer that will resolve package and build launch configurations
         context.subscriptions.push(workspaceContext.onDidChangeFolders(handleFolderEvent(logger)));

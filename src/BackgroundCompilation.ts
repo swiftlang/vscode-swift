@@ -26,6 +26,7 @@ export class BackgroundCompilation implements vscode.Disposable {
     private workspaceFileWatcher?: vscode.FileSystemWatcher;
     private configurationEventDisposable?: vscode.Disposable;
     private disposables: vscode.Disposable[] = [];
+    private _disposed = false;
 
     constructor(private folderContext: FolderContext) {
         // We only want to configure the file watcher if background compilation is enabled.
@@ -59,7 +60,9 @@ export class BackgroundCompilation implements vscode.Disposable {
             this.workspaceFileWatcher.onDidChange(
                 debounce(
                     () => {
-                        void this.runTask();
+                        if (!this._disposed) {
+                            void this.runTask();
+                        }
                     },
                     100 /* 10 times per second */,
                     { trailing: true }
@@ -73,6 +76,7 @@ export class BackgroundCompilation implements vscode.Disposable {
     }
 
     dispose() {
+        this._disposed = true;
         this.configurationEventDisposable?.dispose();
         this.disposables.forEach(disposable => disposable.dispose());
     }

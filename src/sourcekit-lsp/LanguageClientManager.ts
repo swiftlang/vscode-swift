@@ -517,11 +517,13 @@ export class LanguageClientManager implements vscode.Disposable {
             this.logMessage(client, params as SourceKitLogMessageParams);
         });
 
-        // start client
-        this.clientReadyPromise = client
-            .start()
-            .then(() => runningPromise)
-            .then(() => {
+        // Create and save the client ready promise
+        this.clientReadyPromise = (async () => {
+            try {
+                // start client
+                await client.start();
+                await runningPromise;
+
                 // Now that we've started up correctly, start the error handler to auto-restart
                 // if sourcekit-lsp crashes during normal operation.
                 errorHandler.enable();
@@ -546,15 +548,19 @@ export class LanguageClientManager implements vscode.Disposable {
                         this.subscriptions.push(this.didChangeActiveDocument);
                     }
                 } catch {
-                    // do nothing
+                    // do nothing, the experimental capability is not supported
                 }
-            })
-            .catch(reason => {
-                this.folderContext.workspaceContext.logger.error(reason);
-                void this.languageClient?.stop();
+            } catch (reason) {
+                this.folderContext.workspaceContext.logger.error(
+                    `Error starting SourceKit-LSP: ${reason}`
+                );
+                if (this.languageClient?.state === State.Running) {
+                    await this.languageClient?.stop();
+                }
                 this.languageClient = undefined;
                 throw reason;
-            });
+            }
+        })();
 
         this.languageClient = client;
         this.cancellationToken = new vscode.CancellationTokenSource();
