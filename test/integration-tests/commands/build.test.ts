@@ -62,7 +62,15 @@ tag("large").suite("Build Commands", function () {
         expect(result).to.be.true;
     });
 
-    test("Swift: Debug Build", async () => {
+    test("Swift: Debug Build", async function () {
+        // This is failing in CI only in Linux 5.10 by crashing VS Code with the error
+        // `CodeWindow: renderer process gone (reason: crashed, code: 133)`
+        if (
+            folderContext.swiftVersion.isGreaterThanOrEqual(new Version(5, 10, 0)) &&
+            folderContext.swiftVersion.isLessThan(new Version(6, 0, 0))
+        ) {
+            this.skip();
+        }
         // Promise used to indicate we hit the break point.
         // NB: "stopped" is the exact command when debuggee has stopped due to break point,
         // but "stackTrace" is the deterministic sync point we will use to make sure we can execute continue
