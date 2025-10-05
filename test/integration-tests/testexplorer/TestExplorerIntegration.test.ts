@@ -25,6 +25,7 @@ import {
     MessageRenderer,
     TestSymbol,
 } from "@src/TestExplorer/TestParsers/SwiftTestingOutputParser";
+import { TestRunProxy } from "@src/TestExplorer/TestRunner";
 import { flattenTestItemCollection, reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { Commands } from "@src/commands";
@@ -49,7 +50,7 @@ import {
     buildStateFromController,
     eventPromise,
     gatherTests,
-    runTest,
+    runTest as runTestWithLogging,
     waitForTestExplorerReady,
 } from "./utilities";
 
@@ -57,10 +58,16 @@ tag("large").suite("Test Explorer Suite", function () {
     let workspaceContext: WorkspaceContext;
     let folderContext: FolderContext;
     let testExplorer: TestExplorer;
+    let runTest: (
+        testExplorer: TestExplorer,
+        runProfile: TestKind,
+        ...tests: string[]
+    ) => Promise<TestRunProxy>;
 
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
+            runTest = runTestWithLogging.bind(null, workspaceContext.logger);
             const logger = withLogging(ctx.logger);
             folderContext = await logger("Locating defaultPackage folder in root workspace", () =>
                 folderInRootWorkspace("defaultPackage", workspaceContext)
