@@ -78,6 +78,8 @@ export interface FolderConfiguration {
     readonly additionalTestArguments: string[];
     /** search sub-folder of workspace folder for Swift Packages */
     readonly searchSubfoldersForPackages: boolean;
+    /** Folders to ignore when searching for Swift Packages */
+    readonly ignoreSearchingForPackagesInSubfolders: string[];
     /** auto-generate launch.json configurations */
     readonly autoGenerateLaunchConfigurations: boolean;
     /** disable automatic running of swift package resolve */
@@ -231,6 +233,15 @@ const configuration = {
                 return vscode.workspace
                     .getConfiguration("swift", workspaceFolder)
                     .get<boolean>("searchSubfoldersForPackages", false);
+            },
+            /** Folders to ignore when searching for Swift Packages */
+            get ignoreSearchingForPackagesInSubfolders(): string[] {
+                return vscode.workspace
+                    .getConfiguration("swift", workspaceFolder)
+                    .get<
+                        string[]
+                    >("ignoreSearchingForPackagesInSubfolders", [".", ".build", "Packages", "out", "bazel-out", "bazel-bin"])
+                    .map(substituteVariablesInString);
             },
             get attachmentsPath(): string {
                 return substituteVariablesInString(

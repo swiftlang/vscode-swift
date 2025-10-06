@@ -547,6 +547,22 @@
             "markdownDescription": "Search sub-folders of workspace folder for Swift Packages at start up.",
             "scope": "machine-overridable"
           },
+          "swift.ignoreSearchingForPackagesInSubfolders": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              ".",
+              ".build",
+              "Packages",
+              "out",
+              "bazel-out",
+              "bazel-bin"
+            ],
+            "markdownDescription": "A list of glob patterns to ignore when searching sub-folders for Swift Packages. The `swift.searchSubfoldersForPackages` must be `true` for this setting to have an effect. Always use forward-slashes in glob expressions regardless of platform. This is combined with VS Code's default `files.exclude` setting.",
+            "scope": "machine-overridable"
+          },
           "swift.autoGenerateLaunchConfigurations": {
             "type": "boolean",
             "default": true,

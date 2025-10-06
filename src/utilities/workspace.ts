@@ -23,6 +23,7 @@ export async function searchForPackages(
     folder: vscode.Uri,
     disableSwiftPMIntegration: boolean,
     searchSubfoldersForPackages: boolean,
+    skipFolders: Array<string>,
     swiftVersion: Version
 ): Promise<Array<vscode.Uri>> {
     const folders: Array<vscode.Uri> = [];
@@ -32,24 +33,17 @@ export async function searchForPackages(
         if (await isValidWorkspaceFolder(folder.fsPath, disableSwiftPMIntegration, swiftVersion)) {
             folders.push(folder);
         }
-        // should I search sub-folders for more Swift Packages
+
+        // If sub-folder searches are disabled, don't search subdirectories
         if (!searchSubfoldersForPackages) {
             return;
         }
 
         await globDirectory(folder, { onlyDirectories: true }).then(async entries => {
-            const skipFolders = new Set<string>([
-                ".",
-                ".build",
-                "Packages",
-                "out",
-                "bazel-out",
-                "bazel-bin",
-            ]);
-
+            const skip = new Set<string>(skipFolders);
             for (const entry of entries) {
                 const base = basename(entry);
-                if (!skipFolders.has(base)) {
+                if (!skip.has(base)) {
                     await search(vscode.Uri.file(entry));
                 }
             }
