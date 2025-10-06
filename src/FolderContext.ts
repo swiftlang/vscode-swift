@@ -70,6 +70,7 @@ export class FolderContext implements vscode.Disposable {
         this.packageWatcher.dispose();
         this.testExplorer?.dispose();
         this.backgroundCompilation.dispose();
+        this.taskQueue.dispose();
     }
 
     /**

@@ -204,7 +204,8 @@ export class SwiftPackage {
         readonly folder: vscode.Uri,
         private contentsPromise: Promise<SwiftPackageState>,
         public resolved: PackageResolved | undefined,
-        private workspaceState: WorkspaceState | undefined
+        // TODO: Make private again
+        public workspaceState: WorkspaceState | undefined
     ) {}
 
     /**

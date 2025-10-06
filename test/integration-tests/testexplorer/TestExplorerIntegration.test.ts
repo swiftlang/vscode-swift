@@ -25,6 +25,7 @@ import {
     MessageRenderer,
     TestSymbol,
 } from "@src/TestExplorer/TestParsers/SwiftTestingOutputParser";
+import { TestRunProxy } from "@src/TestExplorer/TestRunner";
 import { flattenTestItemCollection, reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { Commands } from "@src/commands";
@@ -39,6 +40,7 @@ import {
     activateExtensionForSuite,
     folderInRootWorkspace,
     updateSettings,
+    withLogging,
 } from "../utilities/testutilities";
 import {
     assertContains,
@@ -48,7 +50,7 @@ import {
     buildStateFromController,
     eventPromise,
     gatherTests,
-    runTest,
+    runTest as runTestWithLogging,
     waitForTestExplorerReady,
 } from "./utilities";
 
@@ -56,23 +58,39 @@ tag("large").suite("Test Explorer Suite", function () {
     let workspaceContext: WorkspaceContext;
     let folderContext: FolderContext;
     let testExplorer: TestExplorer;
+    let runTest: (
+        testExplorer: TestExplorer,
+        runProfile: TestKind,
+        ...tests: string[]
+    ) => Promise<TestRunProxy>;
 
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
-            folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
+            runTest = runTestWithLogging.bind(null, workspaceContext.logger);
+            const logger = withLogging(ctx.logger);
+            folderContext = await logger("Locating defaultPackage folder in root workspace", () =>
+                folderInRootWorkspace("defaultPackage", workspaceContext)
+            );
 
             if (!folderContext) {
                 throw new Error("Unable to find test explorer");
             }
 
-            testExplorer = await folderContext.resolvedTestExplorer;
+            testExplorer = await logger(
+                "Waiting for test explorer to resolve",
+                () => folderContext.resolvedTestExplorer
+            );
 
-            await executeTaskAndWaitForResult(await createBuildAllTask(folderContext));
+            await logger("Executing build all task", async () =>
+                executeTaskAndWaitForResult(await createBuildAllTask(folderContext))
+            );
 
             // Set up the listener before bringing the text explorer in to focus,
             // which starts searching the workspace for tests.
-            await waitForTestExplorerReady(testExplorer);
+            await logger("Waiting for test explorer to be ready", () =>
+                waitForTestExplorerReady(testExplorer)
+            );
         },
         requiresLSP: true,
         requiresDebugger: true,

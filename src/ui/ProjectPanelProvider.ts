@@ -164,15 +164,13 @@ export class PackageNode {
     }
 
     async getChildren(): Promise<TreeNode[]> {
-        const [childDeps, files] = await Promise.all([
-            this.childDependencies(this.dependency),
-            getChildren(
-                this.dependency.path,
-                excludedFilesForProjectPanelExplorer(),
-                this.id,
-                this.fs
-            ),
-        ]);
+        const childDeps = this.childDependencies(this.dependency);
+        const files = await getChildren(
+            this.dependency.path,
+            excludedFilesForProjectPanelExplorer(),
+            this.id,
+            this.fs
+        );
         const childNodes = childDeps.map(
             dep => new PackageNode(dep, this.childDependencies, this.id)
         );
@@ -493,6 +491,8 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
 
     dispose() {
         this.workspaceObserver?.dispose();
+        this.disposables.forEach(d => d.dispose());
+        this.disposables.length = 0;
     }
 
     observeTasks(ctx: WorkspaceContext) {
@@ -502,11 +502,17 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
             vscode.tasks.onDidStartTask(e => {
                 const taskId = e.execution.task.detail ?? e.execution.task.name;
                 this.activeTasks.add(taskId);
+                this.workspaceContext.logger.info(
+                    `Project panel updating after task ${taskId} has started`
+                );
                 this.didChangeTreeDataEmitter.fire();
             }),
             vscode.tasks.onDidEndTask(e => {
                 const taskId = e.execution.task.detail ?? e.execution.task.name;
                 this.activeTasks.delete(taskId);
+                this.workspaceContext.logger.info(
+                    `Project panel updating after task ${taskId} has ended`
+                );
                 this.didChangeTreeDataEmitter.fire();
             }),
             ctx.onDidStartBuild(e => {
@@ -515,6 +521,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                 } else {
                     this.activeTasks.add(e.targetName);
                 }
+                this.workspaceContext.logger.info("Project panel updating after build has started");
                 this.didChangeTreeDataEmitter.fire();
             }),
             ctx.onDidFinishBuild(e => {
@@ -523,18 +530,25 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                 } else {
                     this.activeTasks.delete(e.targetName);
                 }
+                this.workspaceContext.logger.info(
+                    "Project panel updating after build has finished"
+                );
                 this.didChangeTreeDataEmitter.fire();
             }),
             ctx.onDidStartTests(e => {
                 for (const target of e.targets) {
                     this.activeTasks.add(testTaskName(target));
                 }
+                this.workspaceContext.logger.info("Project panel updating on test run start");
                 this.didChangeTreeDataEmitter.fire();
             }),
             ctx.onDidFinishTests(e => {
                 for (const target of e.targets) {
                     this.activeTasks.delete(testTaskName(target));
                 }
+                this.workspaceContext.logger.info(
+                    "Project panel updating after test run has finished"
+                );
                 this.didChangeTreeDataEmitter.fire();
             })
         );
@@ -545,6 +559,9 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                     e.affectsConfiguration("files.exclude") ||
                     e.affectsConfiguration("swift.excludePathsFromPackageDependencies")
                 ) {
+                    this.workspaceContext.logger.info(
+                        "Project panel updating due to configuration changes"
+                    );
                     this.didChangeTreeDataEmitter.fire();
                 }
             })
@@ -561,10 +578,16 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                         }
                         this.watchBuildPluginOutputs(folder);
                         treeView.title = `Swift Project (${folder.name})`;
+                        this.workspaceContext.logger.info(
+                            `Project panel updating, focused folder ${folder.name}`
+                        );
                         this.didChangeTreeDataEmitter.fire();
                         break;
                     case FolderOperation.unfocus:
                         treeView.title = `Swift Project`;
+                        this.workspaceContext.logger.info(
+                            `Project panel updating, unfocused folder`
+                        );
                         this.didChangeTreeDataEmitter.fire();
                         break;
                     case FolderOperation.workspaceStateUpdated:
@@ -572,9 +595,15 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                     case FolderOperation.packageViewUpdated:
                     case FolderOperation.pluginsUpdated:
                         if (!folder) {
+                            this.workspaceContext.logger.info(
+                                `Project panel cannot update, "${operation}" event was provided with no folder.`
+                            );
                             return;
                         }
                         if (folder === this.workspaceContext.currentFolder) {
+                            this.workspaceContext.logger.info(
+                                `Project panel updating, "${operation}" for folder ${folder.name}`
+                            );
                             this.didChangeTreeDataEmitter.fire();
                         }
                 }
@@ -685,8 +714,14 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         if (!folderContext) {
             return [];
         }
+        this.workspaceContext.logger.info("Project panel refreshing dependencies");
         const pkg = folderContext.swiftPackage;
         const rootDeps = await pkg.rootDependencies;
+
+        rootDeps.forEach(dep => {
+            this.workspaceContext.logger.info(`\tAdding dependency: ${dep.identity}`);
+        });
+
         if (this.workspaceContext.contextKeys.flatDependenciesList) {
             const existenceMap = new Map<string, boolean>();
             const gatherChildren = (dependencies: ResolvedDependency[]): ResolvedDependency[] => {
@@ -825,6 +860,7 @@ class TaskPoller implements vscode.Disposable {
     dispose() {
         if (this.timeout) {
             clearTimeout(this.timeout);
+            this.timeout = undefined;
         }
     }
 }

@@ -127,7 +127,8 @@ export class SwiftToolchain {
         );
         const toolchainPath = await this.getToolchainPath(swiftFolderPath, folder, logger);
         const targetInfo = await this.getSwiftTargetInfo(
-            this._getToolchainExecutable(toolchainPath, "swift")
+            this._getToolchainExecutable(toolchainPath, "swift"),
+            logger
         );
         const swiftVersion = this.getSwiftVersion(targetInfo);
         const [runtimePath, defaultSDK] = await Promise.all([
@@ -872,24 +873,35 @@ export class SwiftToolchain {
     }
 
     /** @returns swift target info */
-    private static async getSwiftTargetInfo(swiftExecutable: string): Promise<SwiftTargetInfo> {
+    private static async getSwiftTargetInfo(
+        swiftExecutable: string,
+        logger?: SwiftLogger
+    ): Promise<SwiftTargetInfo> {
         try {
             try {
                 const { stdout } = await execSwift(["-print-target-info"], { swiftExecutable });
                 const targetInfo = JSON.parse(stdout.trimEnd()) as SwiftTargetInfo;
+                if (!targetInfo.target) {
+                    logger?.warn(
+                        `No target found in toolchain, targetInfo was: ${JSON.stringify(targetInfo)}`
+                    );
+                }
+
                 if (targetInfo.compilerVersion) {
                     return targetInfo;
                 }
-            } catch {
+            } catch (error) {
                 // hit error while running `swift -print-target-info`. We are possibly running
                 // a version of swift 5.3 or older
+                logger?.warn(`Error while running 'swift -print-target-info': ${error}`);
             }
             const { stdout } = await execSwift(["--version"], { swiftExecutable });
             return {
                 compilerVersion: stdout.split(lineBreakRegex, 1)[0],
                 paths: { runtimeLibraryPaths: [""] },
             };
-        } catch {
+        } catch (error) {
+            logger?.warn(`Error while running 'swift --version': ${error}`);
             throw Error(
                 "Failed to get swift version from either '-print-target-info' or '--version'."
             );
