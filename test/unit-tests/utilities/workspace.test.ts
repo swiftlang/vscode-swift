@@ -35,7 +35,7 @@ suite("Workspace Utilities Unit Test Suite", () => {
                 testSwiftVersion
             );
 
-            expect(folders.map(folder => folder.fsPath)).equals([packageFolder.fsPath]);
+            expect(folders.map(folder => folder.fsPath)).deep.equal([packageFolder.fsPath]);
         });
 
         test("returns subpackages when search for subpackages enabled", async () => {
@@ -93,7 +93,7 @@ suite("Workspace Utilities Unit Test Suite", () => {
                 testSwiftVersion
             );
 
-            expect(folders.map(folder => folder.fsPath)).equals([packageFolder.fsPath]);
+            expect(folders.map(folder => folder.fsPath)).deep.equal([packageFolder.fsPath]);
         });
 
         test("skipFolders has no effect when search for subpackages is disabled", async () => {
@@ -105,7 +105,7 @@ suite("Workspace Utilities Unit Test Suite", () => {
                 testSwiftVersion
             );
 
-            expect(folders.map(folder => folder.fsPath)).equals([packageFolder.fsPath]);
+            expect(folders.map(folder => folder.fsPath)).deep.equal([packageFolder.fsPath]);
         });
 
         test("skipFolders with non-existent folder names does not affect results", async () => {
