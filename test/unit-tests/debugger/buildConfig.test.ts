@@ -38,6 +38,7 @@ suite("BuildConfig Test Suite", () => {
             testEnvironmentVariables: {},
             additionalTestArguments,
             searchSubfoldersForPackages: false,
+            ignoreSearchingForPackagesInSubfolders: [],
             autoGenerateLaunchConfigurations: false,
             disableAutoResolve: false,
             attachmentsPath: "",
