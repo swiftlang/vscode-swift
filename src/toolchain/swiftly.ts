@@ -25,6 +25,7 @@ import { installSwiftlyToolchainWithProgress } from "../commands/installSwiftlyT
 import { ContextKeys } from "../contextKeys";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { showMissingToolchainDialog } from "../ui/ToolchainSelection";
+import { touch } from "../utilities/filesystem";
 import { findBinaryPath } from "../utilities/shell";
 import { ExecFileError, execFile, execFileStreamOutput } from "../utilities/utilities";
 import { Version } from "../utilities/version";
@@ -339,6 +340,7 @@ export class Swiftly {
         const options: ExecFileOptions = {};
         if (cwd) {
             options.cwd = cwd;
+            await touch(path.join(cwd, ".swift-version"));
         } else {
             useArgs.push("--global-default");
         }
