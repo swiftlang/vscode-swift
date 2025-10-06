@@ -85,6 +85,8 @@ suite("Swiftly Unit Tests", () => {
         });
 
         test("sets the toolchain in cwd if it is provided", async () => {
+            // CWD exists
+            mockFS({ "/home/user/project": mockFS.directory() });
             // Mock version check to return 1.0.1
             mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
                 stdout: "1.1.0\n",
@@ -100,6 +102,8 @@ suite("Swiftly Unit Tests", () => {
                 ["use", "-y", "6.1.0"],
                 match.has("cwd", "/home/user/project")
             );
+            const stats = await fs.stat("/home/user/project/.swift-version");
+            expect(stats.isFile(), "Expected .swift-version file to be created").to.be.true;
         });
     });
 
