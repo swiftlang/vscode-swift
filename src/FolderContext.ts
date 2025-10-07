@@ -37,6 +37,7 @@ export class FolderContext implements vscode.Disposable {
     private testExplorerResolver?: (testExplorer: TestExplorer) => void;
     private packageWatcher: PackageWatcher;
     private testRunManager: TestRunManager;
+    public creationStack?: string;
 
     /**
      * FolderContext constructor
@@ -56,6 +57,10 @@ export class FolderContext implements vscode.Disposable {
         this.backgroundCompilation = new BackgroundCompilation(this);
         this.taskQueue = new TaskQueue(this);
         this.testRunManager = new TestRunManager();
+
+        // In order to track down why a FolderContext may be created when we don't want one,
+        // capture the stack so we can log it if we find a duplicate.
+        this.creationStack = new Error().stack;
 
         // Tests often need to wait for the test explorer to be created before they can run.
         // This promise resolves when the test explorer is created, allowing them to wait for it before starting.
