@@ -99,21 +99,42 @@ export class TestExplorer {
     ): Promise<void> {
         const target = await folder.swiftPackage.getTarget(uri.fsPath);
         if (target?.type !== "test") {
+            this.logger.info(
+                `Target ${target} is not a test target, aborting looking for tests within it`,
+                "Test Explorer"
+            );
             return;
         }
 
+        this.logger.info(`Getting tests for ${uri.toString()}`, "Test Explorer");
         try {
             const tests = await this.lspTestDiscovery.getDocumentTests(folder.swiftPackage, uri);
+            this.logger.info(
+                `LSP test discovert found ${tests.length} top level tests`,
+                "Test Explorer"
+            );
             TestDiscovery.updateTestsForTarget(
                 this.controller,
                 { id: target.c99name, label: target.name },
                 tests,
                 uri
             );
+            this.logger.info(
+                `Emitting test item change after LSP test discovery for ${uri.toString()}`,
+                "Test Explorer"
+            );
             this.onTestItemsDidChangeEmitter.fire(this.controller);
-        } catch {
+        } catch (error) {
+            this.logger.error(
+                `Error occurred during LSP test discovery for ${uri.toString()}: ${error}`,
+                "Test Explorer"
+            );
             // Fallback to parsing document symbols for XCTests only
             const tests = parseTestsFromDocumentSymbols(target.name, symbols, uri);
+            this.logger.info(
+                `Parsed ${tests.length} top level tests from document symbols from ${uri.toString()}`,
+                "Test Explorer"
+            );
             this.updateTests(this.controller, tests, uri);
         }
     }
