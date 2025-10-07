@@ -25,7 +25,7 @@ import { testAssetUri } from "../../fixtures";
 import { tag } from "../../tags";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
 import {
-    activateExtensionForSuite,
+    activateExtensionForTest,
     findWorkspaceFolder,
     folderInRootWorkspace,
 } from "../utilities/testutilities";
@@ -34,7 +34,7 @@ tag("large").suite("Dependency Commands Test Suite", function () {
     let depsContext: FolderContext;
     let workspaceContext: WorkspaceContext;
 
-    activateExtensionForSuite({
+    activateExtensionForTest({
         async setup(ctx) {
             workspaceContext = ctx;
             depsContext = findWorkspaceFolder("dependencies", workspaceContext)!;
