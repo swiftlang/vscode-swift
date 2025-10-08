@@ -25,7 +25,7 @@
     },
     "gyb-start-control-statement": {
       "name": "meta.embedded.control.begin.gyb",
-      "begin": "^\\s*(%)(?!\\{|\\s*end\\b).+?",
+      "begin": "^\\s*(%)(?!\\{|\\s*end\\b)",
       "beginCaptures": {
         "1": { "name": "keyword.control.flow.gyb" }
       },
