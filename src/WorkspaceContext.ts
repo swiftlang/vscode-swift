@@ -11,32 +11,35 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as path from "path";
-import { FolderContext } from "./FolderContext";
-import { StatusItem } from "./ui/StatusItem";
-import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
-import { swiftLibraryPathKey } from "./utilities/utilities";
-import { isPathInsidePath } from "./utilities/filesystem";
-import { LanguageClientToolchainCoordinator } from "./sourcekit-lsp/LanguageClientToolchainCoordinator";
-import { TemporaryFolder } from "./utilities/tempFolder";
-import { TaskManager } from "./tasks/TaskManager";
-import { makeDebugConfigurations } from "./debugger/launch";
-import configuration from "./configuration";
-import contextKeys from "./contextKeys";
-import { setSnippetContextKey } from "./SwiftSnippets";
-import { CommentCompletionProviders } from "./editor/CommentCompletion";
-import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
-import { SwiftToolchain } from "./toolchain/toolchain";
+import * as vscode from "vscode";
+
 import { DiagnosticsManager } from "./DiagnosticsManager";
-import { DocumentationManager } from "./documentation/DocumentationManager";
-import { DocCDocumentationRequest, ReIndexProjectRequest } from "./sourcekit-lsp/extensions";
+import { FolderContext } from "./FolderContext";
+import { setSnippetContextKey } from "./SwiftSnippets";
 import { TestKind } from "./TestExplorer/TestKind";
-import { isValidWorkspaceFolder, searchForPackages } from "./utilities/workspace";
+import { TestRunManager } from "./TestExplorer/TestRunManager";
+import configuration from "./configuration";
+import { ContextKeys } from "./contextKeys";
+import { LLDBDebugConfigurationProvider } from "./debugger/debugAdapterFactory";
+import { makeDebugConfigurations } from "./debugger/launch";
+import { DocumentationManager } from "./documentation/DocumentationManager";
+import { CommentCompletionProviders } from "./editor/CommentCompletion";
+import { SwiftLogger } from "./logging/SwiftLogger";
+import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
+import { LanguageClientToolchainCoordinator } from "./sourcekit-lsp/LanguageClientToolchainCoordinator";
+import { DocCDocumentationRequest, ReIndexProjectRequest } from "./sourcekit-lsp/extensions";
 import { SwiftPluginTaskProvider } from "./tasks/SwiftPluginTaskProvider";
 import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
-import { LLDBDebugConfigurationProvider } from "./debugger/debugAdapterFactory";
+import { TaskManager } from "./tasks/TaskManager";
+import { BuildFlags } from "./toolchain/BuildFlags";
+import { SwiftToolchain } from "./toolchain/toolchain";
+import { ProjectPanelProvider } from "./ui/ProjectPanelProvider";
+import { StatusItem } from "./ui/StatusItem";
+import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
+import { isExcluded, isPathInsidePath } from "./utilities/filesystem";
+import { swiftLibraryPathKey } from "./utilities/utilities";
+import { isValidWorkspaceFolder, searchForPackages } from "./utilities/workspace";
 
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
@@ -57,6 +60,8 @@ export class WorkspaceContext implements vscode.Disposable {
     public subscriptions: vscode.Disposable[];
     public commentCompletionProvider: CommentCompletionProviders;
     public documentation: DocumentationManager;
+    public testRunManager: TestRunManager;
+    public projectPanel: ProjectPanelProvider;
     private lastFocusUri: vscode.Uri | undefined;
     private initialisationFinished = false;
 
@@ -71,29 +76,48 @@ export class WorkspaceContext implements vscode.Disposable {
     public onDidStartBuild = this.buildStartEmitter.event;
     public onDidFinishBuild = this.buildFinishEmitter.event;
 
-    private constructor(
+    private observers = new Set<(listener: FolderEvent) => unknown>();
+    private swiftFileObservers = new Set<(listener: SwiftFileEvent) => unknown>();
+
+    public loggerFactory: SwiftLoggerFactory;
+
+    constructor(
         extensionContext: vscode.ExtensionContext,
-        public tempFolder: TemporaryFolder,
-        public outputChannel: SwiftOutputChannel,
+        public contextKeys: ContextKeys,
+        public logger: SwiftLogger,
         public globalToolchain: SwiftToolchain
     ) {
+        this.testRunManager = new TestRunManager();
+        this.loggerFactory = new SwiftLoggerFactory(extensionContext.logUri);
         this.statusItem = new StatusItem();
         this.buildStatus = new SwiftBuildStatus(this.statusItem);
-        this.languageClientManager = new LanguageClientToolchainCoordinator(this);
+        this.languageClientManager = new LanguageClientToolchainCoordinator(this, {
+            onDocumentSymbols: (folder, document, symbols) => {
+                folder.onDocumentSymbols(document, symbols);
+            },
+        });
         this.tasks = new TaskManager(this);
         this.diagnostics = new DiagnosticsManager(this);
         this.taskProvider = new SwiftTaskProvider(this);
         this.pluginProvider = new SwiftPluginTaskProvider(this);
-        this.launchProvider = new LLDBDebugConfigurationProvider(
-            process.platform,
-            this,
-            outputChannel
-        );
+        this.launchProvider = new LLDBDebugConfigurationProvider(process.platform, this, logger);
         this.documentation = new DocumentationManager(extensionContext, this);
         this.currentDocument = null;
         this.commentCompletionProvider = new CommentCompletionProviders();
+        this.projectPanel = new ProjectPanelProvider(this);
 
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(async event => {
+            // Clear build path cache when build-related configurations change
+            if (
+                event.affectsConfiguration("swift.buildArguments") ||
+                event.affectsConfiguration("swift.buildPath") ||
+                event.affectsConfiguration("swift.sdk") ||
+                event.affectsConfiguration("swift.swiftSDK")
+            ) {
+                // Clear the build path cache since configuration affects paths
+                BuildFlags.clearBuildPathCache();
+            }
+
             // on runtime path config change, regenerate launch.json
             if (event.affectsConfiguration("swift.runtimePath")) {
                 if (!(await this.needToAutoGenerateLaunchConfig())) {
@@ -113,14 +137,20 @@ export class WorkspaceContext implements vscode.Disposable {
                         }
                     });
             }
-            // on change of swift build path, regenerate launch.json
-            if (event.affectsConfiguration("swift.buildPath")) {
+            // on change of swift build path or build arguments, regenerate launch.json
+            if (
+                event.affectsConfiguration("swift.buildPath") ||
+                event.affectsConfiguration("swift.buildArguments")
+            ) {
                 if (!(await this.needToAutoGenerateLaunchConfig())) {
                     return;
                 }
+                const configType = event.affectsConfiguration("swift.buildPath")
+                    ? "build path"
+                    : "build arguments";
                 void vscode.window
                     .showInformationMessage(
-                        `Launch configurations need to be updated after changing the Swift build path. Do you want to update?`,
+                        `Launch configurations need to be updated after changing the Swift ${configType}. Do you want to update?`,
                         "Update",
                         "Cancel"
                     )
@@ -195,9 +225,10 @@ export class WorkspaceContext implements vscode.Disposable {
             this.diagnostics,
             this.documentation,
             this.languageClientManager,
-            this.outputChannel,
+            this.logger,
             this.statusItem,
             this.buildStatus,
+            this.projectPanel,
         ];
         this.lastFocusUri = vscode.window.activeTextEditor?.document.uri;
 
@@ -223,24 +254,14 @@ export class WorkspaceContext implements vscode.Disposable {
         return this.globalToolchain.swiftVersion;
     }
 
-    /** Get swift version and create WorkspaceContext */
-    static async create(
-        extensionContext: vscode.ExtensionContext,
-        outputChannel: SwiftOutputChannel,
-        toolchain: SwiftToolchain
-    ): Promise<WorkspaceContext> {
-        const tempFolder = await TemporaryFolder.create();
-        return new WorkspaceContext(extensionContext, tempFolder, outputChannel, toolchain);
-    }
-
     /**
      * Update context keys based on package contents
      */
     updateContextKeys(folderContext: FolderContext | null) {
         if (!folderContext) {
-            contextKeys.hasPackage = false;
-            contextKeys.hasExecutableProduct = false;
-            contextKeys.packageHasDependencies = false;
+            this.contextKeys.hasPackage = false;
+            this.contextKeys.hasExecutableProduct = false;
+            this.contextKeys.packageHasDependencies = false;
             return;
         }
 
@@ -249,9 +270,9 @@ export class WorkspaceContext implements vscode.Disposable {
             folderContext.swiftPackage.executableProducts,
             folderContext.swiftPackage.dependencies,
         ]).then(([foundPackage, executableProducts, dependencies]) => {
-            contextKeys.hasPackage = foundPackage;
-            contextKeys.hasExecutableProduct = executableProducts.length > 0;
-            contextKeys.packageHasDependencies = dependencies.length > 0;
+            this.contextKeys.hasPackage = foundPackage;
+            this.contextKeys.hasExecutableProduct = executableProducts.length > 0;
+            this.contextKeys.packageHasDependencies = dependencies.length > 0;
         });
     }
 
@@ -263,9 +284,9 @@ export class WorkspaceContext implements vscode.Disposable {
             const target = await this.currentFolder?.swiftPackage.getTarget(
                 this.currentDocument?.fsPath
             );
-            contextKeys.currentTargetType = target?.type;
+            this.contextKeys.currentTargetType = target?.type;
         } else {
-            contextKeys.currentTargetType = undefined;
+            this.contextKeys.currentTargetType = undefined;
         }
 
         if (this.currentFolder) {
@@ -273,13 +294,13 @@ export class WorkspaceContext implements vscode.Disposable {
             await languageClient.useLanguageClient(async client => {
                 const experimentalCaps = client.initializeResult?.capabilities.experimental;
                 if (!experimentalCaps) {
-                    contextKeys.supportsReindexing = false;
-                    contextKeys.supportsDocumentationLivePreview = false;
+                    this.contextKeys.supportsReindexing = false;
+                    this.contextKeys.supportsDocumentationLivePreview = false;
                     return;
                 }
-                contextKeys.supportsReindexing =
+                this.contextKeys.supportsReindexing =
                     experimentalCaps[ReIndexProjectRequest.method] !== undefined;
-                contextKeys.supportsDocumentationLivePreview =
+                this.contextKeys.supportsDocumentationLivePreview =
                     experimentalCaps[DocCDocumentationRequest.method] !== undefined;
             });
         }
@@ -298,7 +319,7 @@ export class WorkspaceContext implements vscode.Disposable {
                 break;
             }
         }
-        contextKeys.packageHasPlugins = hasPlugins;
+        this.contextKeys.packageHasPlugins = hasPlugins;
     }
 
     /** Setup the vscode event listeners to catch folder changes and active window changes */
@@ -332,15 +353,18 @@ export class WorkspaceContext implements vscode.Disposable {
                 await this.addWorkspaceFolder(folder);
             }
         }
+
         // If we don't have a current selected folder Start up language server by firing focus event
-        // on either null folder or the first folder if there is only one
+        // on the first root folder found in the workspace if there is only one.
         if (this.currentFolder === undefined) {
-            if (this.folders.length === 1) {
-                await this.focusFolder(this.folders[0]);
+            const rootFolders = this.folders.filter(folder => folder.isRootFolder);
+            if (rootFolders.length === 1) {
+                await this.focusFolder(rootFolders[0]);
             } else {
                 await this.focusFolder(null);
             }
         }
+
         await this.initialisationComplete();
     }
 
@@ -423,7 +447,8 @@ export class WorkspaceContext implements vscode.Disposable {
         const folders = await searchForPackages(
             workspaceFolder.uri,
             configuration.disableSwiftPMIntegration,
-            configuration.folder(workspaceFolder).searchSubfoldersForPackages
+            configuration.folder(workspaceFolder).searchSubfoldersForPackages,
+            this.globalToolchainSwiftVersion
         );
 
         for (const folder of folders) {
@@ -442,8 +467,10 @@ export class WorkspaceContext implements vscode.Disposable {
         // find context with root folder
         const index = this.folders.findIndex(context => context.folder.fsPath === folder.fsPath);
         if (index !== -1) {
-            this.outputChannel.log(`Adding package folder ${folder} twice`, "WARN");
-            return this.folders[index];
+            const existingFolder = this.folders[index];
+            this.logger.warn(`Adding package folder ${folder} twice: ${Error().stack}`);
+            this.logger.warn(`Existing folder was created by ${existingFolder.creationStack}`);
+            return existingFolder;
         }
         const folderContext = await FolderContext.create(folder, workspaceFolder, this);
         this.folders.push(folderContext);
@@ -505,6 +532,9 @@ export class WorkspaceContext implements vscode.Disposable {
 
     /** set focus based on the file */
     async focusPackageUri(uri: vscode.Uri) {
+        if (isExcluded(uri)) {
+            return;
+        }
         const packageFolder = await this.getPackageFolder(uri);
         if (packageFolder instanceof FolderContext) {
             await this.focusFolder(packageFolder);
@@ -562,9 +592,7 @@ export class WorkspaceContext implements vscode.Disposable {
      * one of those. If not then it searches up the tree to find the uppermost folder in the
      * workspace that contains a Package.swift
      */
-    private async getPackageFolder(
-        url: vscode.Uri
-    ): Promise<FolderContext | vscode.Uri | undefined> {
+    async getPackageFolder(url: vscode.Uri): Promise<FolderContext | vscode.Uri | undefined> {
         // is editor document in any of the current FolderContexts
         const folder = this.folders.find(context => {
             return isPathInsidePath(url.fsPath, context.folder.fsPath);
@@ -606,7 +634,11 @@ export class WorkspaceContext implements vscode.Disposable {
      * Package.swift or a CMake compile_commands.json, compile_flags.txt, or a BSP buildServer.json.
      */
     async isValidWorkspaceFolder(folder: string): Promise<boolean> {
-        return await isValidWorkspaceFolder(folder, configuration.disableSwiftPMIntegration);
+        return await isValidWorkspaceFolder(
+            folder,
+            configuration.disableSwiftPMIntegration,
+            this.globalToolchainSwiftVersion
+        );
     }
 
     /** send unfocus event to current focussed folder and clear current folder */
@@ -628,9 +660,6 @@ export class WorkspaceContext implements vscode.Disposable {
         }
         return autoGenerate;
     }
-
-    private observers = new Set<(listener: FolderEvent) => unknown>();
-    private swiftFileObservers = new Set<(listener: SwiftFileEvent) => unknown>();
 }
 
 /** Test events for test run begin/end */

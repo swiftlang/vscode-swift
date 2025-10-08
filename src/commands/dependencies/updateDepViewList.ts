@@ -11,13 +11,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import contextKeys from "../../contextKeys";
 import { FolderOperation, WorkspaceContext } from "../../WorkspaceContext";
 
 export function updateDependenciesViewList(ctx: WorkspaceContext, flatList: boolean) {
     if (ctx.currentFolder) {
-        contextKeys.flatDependenciesList = flatList;
+        ctx.contextKeys.flatDependenciesList = flatList;
         void ctx.fireEvent(ctx.currentFolder, FolderOperation.packageViewUpdated);
     }
 }

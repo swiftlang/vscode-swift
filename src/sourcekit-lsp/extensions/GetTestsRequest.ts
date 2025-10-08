@@ -11,16 +11,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 // We use namespaces to store request information just like vscode-languageclient
 /* eslint-disable @typescript-eslint/no-namespace */
-
 import {
     Location,
-    TextDocumentIdentifier,
     MessageDirection,
     RequestType0,
     RequestType,
+    TextDocumentIdentifier,
 } from "vscode-languageclient";
 
 /** Test styles where test-target represents a test target that contains tests. */

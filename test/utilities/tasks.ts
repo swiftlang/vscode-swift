@@ -11,12 +11,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
+import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
+
+import { SwiftTaskFixture } from "../fixtures";
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
-import { SwiftTaskFixture } from "../fixtures";
-import { SwiftTask } from "../../src/tasks/SwiftTaskProvider";
 
 export type Mutable<T> = {
     -readonly [K in keyof T]: T[K];
@@ -38,17 +40,18 @@ export async function executeTaskAndWaitForResult(
 ): Promise<{ exitCode?: number; output: string }> {
     const task = "task" in fixture ? fixture.task : fixture;
     const exitPromise = waitForEndTaskProcess(task);
-    return await vscode.tasks.executeTask(task).then(async execution => {
-        let output = "";
-        const runningTask = execution.task as SwiftTask;
-        const disposables = [runningTask.execution.onDidWrite(e => (output += e))];
-        const exitCode = await exitPromise;
-        disposables.forEach(d => d.dispose());
-        return {
-            output,
-            exitCode,
-        };
-    });
+
+    const execution = await vscode.tasks.executeTask(task);
+
+    let output = "";
+    const runningTask = execution.task as SwiftTask;
+    const disposables = [runningTask.execution.onDidWrite(e => (output += e))];
+    const exitCode = await exitPromise;
+    disposables.forEach(d => d.dispose());
+    return {
+        output,
+        exitCode,
+    };
 }
 
 /**

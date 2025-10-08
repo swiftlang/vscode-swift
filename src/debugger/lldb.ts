@@ -11,16 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 // Based on code taken from CodeLLDB https://github.com/vadimcn/vscode-lldb/
 // LICENSED with MIT License
-
-import * as vscode from "vscode";
-import * as path from "path";
 import * as fs from "fs/promises";
-import { execFile, IS_RUNNING_IN_CI } from "../utilities/utilities";
-import { Result } from "../utilities/result";
+import * as path from "path";
+import * as vscode from "vscode";
+
 import { SwiftToolchain } from "../toolchain/toolchain";
+import { Result } from "../utilities/result";
+import { IS_RUNNING_UNDER_TEST, execFile } from "../utilities/utilities";
 
 /**
  * Updates the provided debug configuration to be compatible with running in CI.
@@ -30,7 +29,7 @@ import { SwiftToolchain } from "../toolchain/toolchain";
 export function updateLaunchConfigForCI(
     config: vscode.DebugConfiguration
 ): vscode.DebugConfiguration {
-    if (!IS_RUNNING_IN_CI) {
+    if (!IS_RUNNING_UNDER_TEST) {
         return config;
     }
 

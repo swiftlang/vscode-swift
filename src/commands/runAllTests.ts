@@ -11,11 +11,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
 import { TestKind } from "../TestExplorer/TestKind";
-import { WorkspaceContext } from "../WorkspaceContext";
 import { flattenTestItemCollection } from "../TestExplorer/TestUtils";
+import { WorkspaceContext } from "../WorkspaceContext";
 
 export async function runAllTests(ctx: WorkspaceContext, testKind: TestKind, target?: string) {
     const testExplorer = ctx.currentFolder?.testExplorer;

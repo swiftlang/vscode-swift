@@ -11,10 +11,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import configuration from "../configuration";
-import { Version } from "../utilities/version";
 import { SwiftToolchain } from "../toolchain/toolchain";
+import { Version } from "../utilities/version";
 
 /**
  * The launch configuration type added by the Swift extension that will delegate to the appropriate

@@ -11,13 +11,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
-import { Version } from "../utilities/version";
+
 import { FolderContext } from "../FolderContext";
+import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
+import { isExcluded } from "../utilities/filesystem";
+import { Version } from "../utilities/version";
 import { LanguageClientFactory } from "./LanguageClientFactory";
 import { LanguageClientManager } from "./LanguageClientManager";
-import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
 
 /**
  * Manages the creation of LanguageClient instances for workspace folders.
@@ -32,6 +33,13 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
 
     public constructor(
         workspaceContext: WorkspaceContext,
+        private options: {
+            onDocumentSymbols?: (
+                folder: FolderContext,
+                document: vscode.TextDocument,
+                symbols: vscode.DocumentSymbol[] | null | undefined
+            ) => void;
+        } = {},
         languageClientFactory: LanguageClientFactory = new LanguageClientFactory() // used for testing only
     ) {
         this.subscriptions.push(
@@ -55,6 +63,9 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
         languageClientFactory: LanguageClientFactory
     ) {
         if (!folder) {
+            return;
+        }
+        if (isExcluded(folder.workspaceFolder.uri)) {
             return;
         }
         const singleServer = folder.swiftVersion.isGreaterThanOrEqual(new Version(5, 7, 0));
@@ -124,7 +135,7 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
         const versionString = folder.swiftVersion.toString();
         let client = this.clients.get(versionString);
         if (!client) {
-            client = new LanguageClientManager(folder, languageClientFactory);
+            client = new LanguageClientManager(folder, this.options, languageClientFactory);
             this.clients.set(versionString, client);
             // Callers that must restart when switching folders will call setLanguageClientFolder themselves.
             if (singleServerSupport) {

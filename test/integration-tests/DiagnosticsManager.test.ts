@@ -11,28 +11,30 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
+import { expect } from "chai";
 import * as vscode from "vscode";
-import { SwiftToolchain } from "../../src/toolchain/toolchain";
+
+import { DiagnosticsManager } from "@src/DiagnosticsManager";
+import { FolderContext } from "@src/FolderContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { DiagnosticStyle } from "@src/configuration";
+import { createBuildAllTask, resetBuildAllTaskCache } from "@src/tasks/SwiftTaskProvider";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { Version } from "@src/utilities/version";
+
+import { testAssetUri, testSwiftTask } from "../fixtures";
+import { tag } from "../tags";
 import {
     executeTaskAndWaitForResult,
     waitForNoRunningTasks,
     waitForStartTaskProcess,
 } from "../utilities/tasks";
-import { WorkspaceContext } from "../../src/WorkspaceContext";
-import { testAssetUri, testSwiftTask } from "../fixtures";
-import { createBuildAllTask, resetBuildAllTaskCache } from "../../src/tasks/SwiftTaskProvider";
-import { DiagnosticsManager } from "../../src/DiagnosticsManager";
-import { FolderContext } from "../../src/FolderContext";
-import { Version } from "../../src/utilities/version";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
     updateSettings,
 } from "./utilities/testutilities";
-import { DiagnosticStyle } from "../../src/configuration";
-import { expect } from "chai";
 
 const isEqual = (d1: vscode.Diagnostic, d2: vscode.Diagnostic) => {
     return (
@@ -66,9 +68,7 @@ function assertWithoutDiagnostic(uri: vscode.Uri, expected: vscode.Diagnostic) {
     );
 }
 
-suite("DiagnosticsManager Test Suite", function () {
-    this.timeout(60 * 1000 * 5); // Allow up to 5 minutes for build
-
+tag("medium").suite("DiagnosticsManager Test Suite", function () {
     let workspaceContext: WorkspaceContext;
     let folderContext: FolderContext;
     let cFolderContext: FolderContext;
@@ -236,7 +236,10 @@ suite("DiagnosticsManager Test Suite", function () {
                             this.skip();
                         }
 
-                        resetSettings = await updateSettings({ "swift.diagnosticsStyle": style });
+                        resetSettings = await updateSettings({
+                            "swift.diagnosticsStyle": style,
+                            "swift.buildArguments": ["-Xswiftc", `-DDIAGNOSTIC_STYLE=${style}`],
+                        });
 
                         // Clean up any lingering diagnostics
                         if (vscode.languages.getDiagnostics(mainUri).length > 0) {

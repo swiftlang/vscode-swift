@@ -1,7 +1,7 @@
 **/*
 !LICENSE
 !NOTICE.txt
-!CHANGELOG.md
+!CHANGELOG-*.md
 !README.md
 !icon.png
 !package.json
@@ -9,6 +9,7 @@
 !images/**
 !snippets/**
 !assets/icons/**
+!assets/walkthrough/**
 !assets/documentation-webview/**
 !assets/swift-docc-render/**
 !node_modules/@vscode/codicons/**

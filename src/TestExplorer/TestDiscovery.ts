@@ -11,8 +11,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
 import { SwiftPackage, TargetType } from "../SwiftPackage";
 import { LSPTestItem } from "../sourcekit-lsp/extensions";
 import { reduceTestItemChildren } from "./TestUtils";
@@ -73,6 +73,12 @@ export async function updateTestsFromClasses(
     updateTests(testController, results);
 }
 
+function isFileDisambiguated(id: string): boolean {
+    // a regex to check if the id ends with a string like "filename.swift:line:column"
+    const regex = /^(.*\/)?([^/]+\.swift):(\d+):(\d+)$/;
+    return regex.test(id);
+}
+
 export function updateTestsForTarget(
     testController: vscode.TestController,
     testTarget: { id: string; label: string },
@@ -91,13 +97,23 @@ export function updateTestsForTarget(
             return testItem;
         }
 
+        const fileDisambiguated = isFileDisambiguated(testItem.id);
         const item = { ...testItem };
         // To determine if any root level test items are missing a parent we check how many
         // components there are in the ID. If there are more than one (the test target) then
         // we synthesize all the intermediary test items.
         const idComponents = testItem.id.split(/\.|\//);
-        idComponents.pop(); // Remove the last component to get the parent ID components
-        if (idComponents.length > 1) {
+
+        // Remove the last component to get the parent ID components
+        idComponents.pop();
+
+        // If this is a file disambiguated id (ends in <file>.swift:<line>:<column>),
+        // remove both the filename and line info.
+        if (fileDisambiguated) {
+            idComponents.pop();
+        }
+
+        if (idComponents.length > (fileDisambiguated ? 2 : 1)) {
             let newId = idComponents.slice(0, 2).join(".");
             const remainingIdComponents = idComponents.slice(2);
             if (remainingIdComponents.length) {

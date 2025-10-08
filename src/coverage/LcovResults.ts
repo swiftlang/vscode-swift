@@ -23,7 +23,7 @@ import { FolderContext } from "../FolderContext";
 import { execFileStreamOutput } from "../utilities/utilities";
 import { BuildFlags } from "../toolchain/BuildFlags";
 import { TestLibrary } from "../TestExplorer/TestRunner";
-import { DisposableFileCollection } from "../utilities/tempFolder";
+import { DisposableFileCollection, TemporaryFolder } from "../utilities/tempFolder";
 import { TargetType } from "../SwiftPackage";
 import { TestingConfigurationFactory } from "../debugger/buildConfig";
 import { TestKind } from "../TestExplorer/TestKind";
@@ -35,13 +35,11 @@ interface CodeCovFile {
 
 export class TestCoverage {
     private lcovFiles: CodeCovFile[] = [];
-    private lcovTmpFiles: DisposableFileCollection;
+    private _lcovTmpFiles?: DisposableFileCollection;
+    private _lcovTmpFilesInit?: Promise<DisposableFileCollection>;
     private coverageDetails = new Map<vscode.Uri, vscode.FileCoverageDetail[]>();
 
-    constructor(private folderContext: FolderContext) {
-        const tmpFolder = folderContext.workspaceContext.tempFolder;
-        this.lcovTmpFiles = tmpFolder.createDisposableFileCollection();
-    }
+    constructor(private folderContext: FolderContext) {}
 
     /**
      * Returns coverage information for the suppplied URI.
@@ -60,7 +58,7 @@ export class TestCoverage {
             true
         );
         const result = await asyncfs.readFile(`${buildDirectory}/debug/codecov/default.profdata`);
-        const filename = this.lcovTmpFiles.file(testLibrary, "profdata");
+        const filename = (await this.lcovTmpFiles()).file(testLibrary, "profdata");
         await asyncfs.writeFile(filename, result);
         this.lcovFiles.push({ testLibrary, path: filename });
     }
@@ -88,14 +86,14 @@ export class TestCoverage {
                 this.coverageDetails.set(uri, detailedCoverage);
             }
         }
-        await this.lcovTmpFiles.dispose();
+        await this._lcovTmpFiles?.dispose();
     }
 
     /**
      * Merges multiple `.profdata` files into a single `.profdata` file.
      */
     private async mergeProfdata(profDataFiles: string[]) {
-        const filename = this.lcovTmpFiles.file("merged", "profdata");
+        const filename = (await this.lcovTmpFiles()).file("merged", "profdata");
         const toolchain = this.folderContext.toolchain;
         const llvmProfdata = toolchain.getToolchainExecutable("llvm-profdata");
         await execFileStreamOutput(
@@ -194,6 +192,27 @@ export class TestCoverage {
         );
 
         return buffer;
+    }
+
+    /**
+     * Lazily creates (once) and returns the disposable file collection used for LCOV processing.
+     * Safe against concurrent callers.
+     */
+    private async lcovTmpFiles(): Promise<DisposableFileCollection> {
+        if (this._lcovTmpFiles) {
+            return this._lcovTmpFiles;
+        }
+
+        // Use an internal promise to avoid duplicate folder creation in concurrent calls.
+        if (!this._lcovTmpFilesInit) {
+            this._lcovTmpFilesInit = (async () => {
+                const tempFolder = await TemporaryFolder.create();
+                this._lcovTmpFiles = tempFolder.createDisposableFileCollection();
+                return this._lcovTmpFiles;
+            })();
+        }
+
+        return (await this._lcovTmpFilesInit)!;
     }
 
     /**

@@ -11,13 +11,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
 import { FolderContext } from "../../FolderContext";
-import { createSwiftTask, SwiftTaskProvider } from "../../tasks/SwiftTaskProvider";
 import { WorkspaceContext } from "../../WorkspaceContext";
-import { executeTaskWithUI, updateAfterError } from "../utilities";
+import { SwiftTaskProvider, createSwiftTask } from "../../tasks/SwiftTaskProvider";
 import { packageName } from "../../utilities/tasks";
+import { executeTaskWithUI, updateAfterError } from "../utilities";
 
 /**
  * Executes a {@link vscode.Task task} to resolve this package's dependencies.

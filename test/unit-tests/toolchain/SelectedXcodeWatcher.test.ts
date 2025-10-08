@@ -11,30 +11,34 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import { expect } from "chai";
-import { SelectedXcodeWatcher } from "../../../src/toolchain/SelectedXcodeWatcher";
-import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
+import * as vscode from "vscode";
+
+import { Commands } from "@src/commands";
+import configuration from "@src/configuration";
+import { SwiftLogger } from "@src/logging/SwiftLogger";
+import { SelectedXcodeWatcher } from "@src/toolchain/SelectedXcodeWatcher";
+import * as ReloadExtension from "@src/ui/ReloadExtension";
+
 import {
-    instance,
     MockedObject,
+    instance,
     mockFn,
+    mockGlobalModule,
     mockGlobalObject,
     mockGlobalValue,
     mockObject,
 } from "../../MockUtils";
-import configuration from "../../../src/configuration";
-import { Commands } from "../../../src/commands";
 
 suite("Selected Xcode Watcher", () => {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
-    let mockOutputChannel: MockedObject<SwiftOutputChannel>;
+    let mockLogger: MockedObject<SwiftLogger>;
     const pathConfig = mockGlobalValue(configuration, "path");
     const envConfig = mockGlobalValue(configuration, "swiftEnvironmentVariables");
     const mockWorkspace = mockGlobalObject(vscode, "workspace");
     const mockCommands = mockGlobalObject(vscode, "commands");
     let mockSwiftConfig: MockedObject<vscode.WorkspaceConfiguration>;
+    const mockReloadExtension = mockGlobalModule(ReloadExtension);
 
     setup(function () {
         // Xcode only exists on macOS, so the SelectedXcodeWatcher is macOS-only.
@@ -42,23 +46,29 @@ suite("Selected Xcode Watcher", () => {
             this.skip();
         }
 
-        mockOutputChannel = mockObject<SwiftOutputChannel>({
-            appendLine: mockFn(),
+        mockLogger = mockObject<SwiftLogger>({
+            debug: mockFn(),
+            info: mockFn(),
         });
 
         pathConfig.setValue("");
+        envConfig.setValue({});
 
         mockSwiftConfig = mockObject<vscode.WorkspaceConfiguration>({
             inspect: mockFn(),
             update: mockFn(),
         });
         mockWorkspace.getConfiguration.returns(instance(mockSwiftConfig));
+
+        mockReloadExtension.showReloadExtensionNotification.callsFake(async (message: string) => {
+            return vscode.window.showWarningMessage(message, "Reload Extensions");
+        });
     });
 
     async function run(symLinksOnCallback: (string | undefined)[]) {
         return new Promise<void>(resolve => {
             let ctr = 0;
-            const watcher = new SelectedXcodeWatcher(instance(mockOutputChannel), {
+            const watcher = new SelectedXcodeWatcher(instance(mockLogger), {
                 checkIntervalMs: 1,
                 xcodeSymlink: async () => {
                     if (ctr >= symLinksOnCallback.length) {

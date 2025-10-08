@@ -11,18 +11,18 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as path from "path";
+import * as vscode from "vscode";
+
 import { WorkspaceContext } from "../WorkspaceContext";
-import { DebugAdapter, LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
-import { registerLoggingDebugAdapterTracker } from "./logTracker";
-import { SwiftToolchain } from "../toolchain/toolchain";
-import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
-import { fileExists } from "../utilities/filesystem";
-import { updateLaunchConfigForCI, getLLDBLibPath } from "./lldb";
-import { getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
 import configuration from "../configuration";
+import { SwiftLogger } from "../logging/SwiftLogger";
+import { SwiftToolchain } from "../toolchain/toolchain";
+import { fileExists } from "../utilities/filesystem";
+import { getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
+import { DebugAdapter, LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
+import { getLLDBLibPath, updateLaunchConfigForCI } from "./lldb";
+import { registerLoggingDebugAdapterTracker } from "./logTracker";
 
 /**
  * Registers the active debugger with the extension, and reregisters it
@@ -87,7 +87,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
     constructor(
         private platform: NodeJS.Platform,
         private workspaceContext: WorkspaceContext,
-        private outputChannel: SwiftOutputChannel
+        private logger: SwiftLogger
     ) {}
 
     async resolveDebugConfigurationWithSubstitutedVariables(
@@ -148,9 +148,9 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                     return undefined;
                 }
             }
-            if (!(await this.promptForCodeLldbSettings(toolchain))) {
-                return undefined;
-            }
+
+            await this.promptForCodeLldbSettingsIfRequired(toolchain);
+
             // Rename lldb-dap's "terminateCommands" to "preTerminateCommands" for CodeLLDB
             if ("terminateCommands" in launchConfig) {
                 launchConfig["preTerminateCommands"] = launchConfig["terminateCommands"];
@@ -203,15 +203,15 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         }
     }
 
-    async promptForCodeLldbSettings(toolchain: SwiftToolchain): Promise<boolean> {
+    async promptForCodeLldbSettingsIfRequired(toolchain: SwiftToolchain) {
         const libLldbPathResult = await getLLDBLibPath(toolchain);
         if (!libLldbPathResult.success) {
             const errorMessage = `Error: ${getErrorDescription(libLldbPathResult.failure)}`;
             void vscode.window.showWarningMessage(
                 `Failed to setup CodeLLDB for debugging of Swift code. Debugging may produce unexpected results. ${errorMessage}`
             );
-            this.outputChannel.log(`Failed to setup CodeLLDB: ${errorMessage}`);
-            return true;
+            this.logger.error(`Failed to setup CodeLLDB: ${errorMessage}`);
+            return;
         }
         const libLldbPath = libLldbPathResult.success;
         const lldbConfig = vscode.workspace.getConfiguration("lldb");
@@ -219,7 +219,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             lldbConfig.get<string>("library") === libLldbPath &&
             lldbConfig.get<string>("launch.expressions") === "native"
         ) {
-            return true;
+            return;
         }
         let userSelection: "Global" | "Workspace" | "Run Anyway" | undefined = undefined;
         switch (configuration.debugger.setupCodeLLDB) {
@@ -272,7 +272,6 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                 );
                 break;
         }
-        return true;
     }
 
     private convertEnvironmentVariables(map: { [key: string]: string }): string[] {

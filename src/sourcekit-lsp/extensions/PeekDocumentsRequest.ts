@@ -11,11 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 // We use namespaces to store request information just like vscode-languageclient
 /* eslint-disable @typescript-eslint/no-namespace */
-
-import { DocumentUri, Position, MessageDirection, RequestType } from "vscode-languageclient";
+import {
+    DocumentUri,
+    Location,
+    MessageDirection,
+    Position,
+    RequestType,
+} from "vscode-languageclient";
 
 /** Parameters used to make a {@link PeekDocumentsRequest}. */
 export interface PeekDocumentsParams {
@@ -30,9 +34,9 @@ export interface PeekDocumentsParams {
     position: Position;
 
     /**
-     * An array `DocumentUri` of the documents to appear inside the "peeked" editor
+     * An array `DocumentUri` or `Location` of the documents to appear inside the "peeked" editor
      */
-    locations: DocumentUri[];
+    locations: DocumentUri[] | Location[];
 }
 
 /** Response to indicate the `success` of the {@link PeekDocumentsRequest}. */

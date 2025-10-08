@@ -12,10 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 /* eslint-disable no-console */
-
 import { getExtensionVersion, main } from "./lib/utilities";
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
 main(async () => {
     const version = await getExtensionVersion();
     if (version.minor % 2 !== 0) {

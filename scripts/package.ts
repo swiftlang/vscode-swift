@@ -12,19 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 /* eslint-disable no-console */
+import { getExtensionVersion, main, packageExtension } from "./lib/utilities";
 
-import {
-    exec,
-    getExtensionVersion,
-    getRootDirectory,
-    main,
-    updateChangelog,
-} from "./lib/utilities";
-
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
 main(async () => {
-    const rootDirectory = getRootDirectory();
     const version = await getExtensionVersion();
+    // Leave the "prerelease" tag out
     const versionString = `${version.major}.${version.minor}.${version.patch}`;
 
     if (process.platform === "win32") {
@@ -32,10 +24,5 @@ main(async () => {
         return process.exit(0);
     }
 
-    // Update version in CHANGELOG
-    await updateChangelog(versionString);
-    // Use VSCE to package the extension
-    await exec("npx", ["vsce", "package"], {
-        cwd: rootDirectory,
-    });
+    await packageExtension(versionString);
 });

@@ -2,7 +2,7 @@
     "swift.disableAutoResolve": true,
     "swift.autoGenerateLaunchConfigurations": false,
     "swift.debugger.debugAdapter": "lldb-dap",
-    "swift.debugger.setupCodeLLDB": "alwaysUpdateGlobal",
+    "swift.debugger.setupCodeLLDB": "never",
     "swift.additionalTestArguments": [
         "-Xswiftc",
         "-DTEST_ARGUMENT_SET_VIA_TEST_BUILD_ARGUMENTS_SETTING"
@@ -10,5 +10,11 @@
     "lldb.verboseLogging": true,
     "lldb.launch.terminal": "external",
     "lldb-dap.detachOnError": true,
-    "swift.sourcekit-lsp.backgroundIndexing": "off"
+    "swift.sourcekit-lsp.backgroundIndexing": "off",
+    "swift.excludePathsFromActivation": {
+        "**/excluded": true
+    },
+    "swift.packageArguments": [
+        "--cache-path=${workspaceFolder}${pathSeparator}.spm-cache"
+    ]
 }

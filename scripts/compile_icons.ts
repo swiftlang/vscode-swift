@@ -12,14 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 /* eslint-disable no-console */
-
-import { mkdir, readdir, readFile, rm, writeFile } from "fs/promises";
-import * as path from "path";
 import { FontAssetType, generateFonts } from "fantasticon";
 import { CodepointsMap } from "fantasticon/lib/utils/codepoints";
+import { mkdir, readFile, readdir, rm, writeFile } from "fs/promises";
+import * as path from "path";
 import * as svgo from "svgo";
-import { main, withTemporaryDirectory } from "./lib/utilities";
+
 import { config } from "../src/icons/config";
+import { main, withTemporaryDirectory } from "./lib/utilities";
 
 /**
  * Minifies and colors the provided icon.
@@ -51,7 +51,6 @@ function minifyIcon(icon: string, color: string = "#424242"): string {
     }).data;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
 main(async () => {
     const iconsSourceDirectory = path.join(__dirname, "../src/icons");
     const iconAssetsDirectory = path.join(__dirname, "../assets/icons");

@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
-import { Version } from "../utilities/version";
+
 import { fileExists } from "../utilities/filesystem";
+import { Version } from "../utilities/version";
 
 /**
  * Open Package.swift for in focus project. If there is a version specific manifest that

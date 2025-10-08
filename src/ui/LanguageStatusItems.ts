@@ -11,10 +11,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
 import { Command } from "vscode-languageclient";
-import { WorkspaceContext, FolderOperation } from "../WorkspaceContext";
+
+import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
+import { Commands } from "../commands";
 import { LanguagerClientDocumentSelectors } from "../sourcekit-lsp/LanguageClientConfiguration";
 
 export class LanguageStatusItems implements vscode.Disposable {
@@ -30,6 +31,8 @@ export class LanguageStatusItems implements vscode.Disposable {
         swiftVersionItem.accessibilityInformation = {
             label: `Swift Version ${toolchain.swiftVersion.toString()}`,
         };
+
+        swiftVersionItem.command = Command.create("Select Toolchain", Commands.SELECT_TOOLCHAIN);
 
         // Package.swift item
         const packageSwiftItem = vscode.languages.createLanguageStatusItem("swiftlang-package", [

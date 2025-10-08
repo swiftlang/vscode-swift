@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { LaunchConfigType } from "./debugAdapter";
-import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 
 /**
  * Factory class for building LoggingDebugAdapterTracker
@@ -30,6 +30,7 @@ export class LoggingDebugAdapterTrackerFactory implements vscode.DebugAdapterTra
 interface OutputEventBody {
     category: string;
     output: string;
+    exitCode: number | undefined;
 }
 
 interface DebugMessage {
@@ -68,7 +69,9 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
     private static debugSessionIdMap: { [id: string]: LoggingDebugAdapterTracker } = {};
 
     private cb?: (output: string) => void;
+    private exitHandler?: (exitCode: number) => void;
     private output: string[] = [];
+    private exitCode: number | undefined;
 
     constructor(public id: string) {
         LoggingDebugAdapterTracker.debugSessionIdMap[id] = this;
@@ -76,19 +79,29 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
 
     static setDebugSessionCallback(
         session: vscode.DebugSession,
-        outputChannel: SwiftOutputChannel,
-        cb: (log: string) => void
+        logger: SwiftLogger,
+        cb: (log: string) => void,
+        exitHandler: (exitCode: number) => void
     ) {
         const loggingDebugAdapter = this.debugSessionIdMap[session.id];
         if (loggingDebugAdapter) {
-            loggingDebugAdapter.cb = cb;
+            loggingDebugAdapter.setCallbacks(cb, exitHandler);
             for (const o of loggingDebugAdapter.output) {
                 cb(o);
             }
+            if (loggingDebugAdapter.exitCode) {
+                exitHandler(loggingDebugAdapter.exitCode);
+            }
             loggingDebugAdapter.output = [];
+            loggingDebugAdapter.exitCode = undefined;
         } else {
-            outputChannel.appendLine("Could not find debug adapter for session: " + session.id);
+            logger.error("Could not find debug adapter for session: " + session.id);
         }
+    }
+
+    setCallbacks(handleOutput: (output: string) => void, handleExit: (exitCode: number) => void) {
+        this.cb = handleOutput;
+        this.exitHandler = handleExit;
     }
 
     /**
@@ -97,21 +110,24 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
      */
     onDidSendMessage(message: unknown): void {
         const debugMessage = message as DebugMessage;
-        if (
-            !(
-                debugMessage &&
-                debugMessage.type === "event" &&
-                debugMessage.event === "output" &&
-                debugMessage.body.category !== "console"
-            )
-        ) {
+        if (!debugMessage) {
             return;
         }
-        const output = debugMessage.body.output;
-        if (this.cb) {
-            this.cb(output);
-        } else {
-            this.output.push(output);
+
+        if (debugMessage.event === "exited" && debugMessage.body.exitCode) {
+            this.exitCode = debugMessage.body.exitCode;
+            this.exitHandler?.(debugMessage.body.exitCode);
+        } else if (
+            debugMessage.type === "event" &&
+            debugMessage.event === "output" &&
+            debugMessage.body.category !== "console"
+        ) {
+            const output = debugMessage.body.output;
+            if (this.cb) {
+                this.cb(output);
+            } else {
+                this.output.push(output);
+            }
         }
     }
 
@@ -119,7 +135,7 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
      * The debug adapter session is about to be stopped. Delete the session from
      * the tracker
      */
-    onWillStopSession?(): void {
+    onWillStopSession(): void {
         delete LoggingDebugAdapterTracker.debugSessionIdMap[this.id];
     }
 }

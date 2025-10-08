@@ -11,23 +11,24 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
+import * as fs from "fs/promises";
 import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
-import * as fs from "fs/promises";
-import configuration from "../configuration";
+
 import { FolderContext } from "../FolderContext";
-import { BuildFlags } from "../toolchain/BuildFlags";
-import { regexEscapedString, swiftRuntimeEnv } from "../utilities/utilities";
-import { SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
 import { TargetType } from "../SwiftPackage";
-import { Version } from "../utilities/version";
-import { TestLibrary } from "../TestExplorer/TestRunner";
 import { TestKind, isDebugging, isRelease } from "../TestExplorer/TestKind";
+import { TestLibrary } from "../TestExplorer/TestRunner";
+import configuration from "../configuration";
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { buildOptions } from "../tasks/SwiftTaskProvider";
-import { updateLaunchConfigForCI } from "./lldb";
+import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
 import { packageName } from "../utilities/tasks";
+import { regexEscapedString, swiftRuntimeEnv } from "../utilities/utilities";
+import { Version } from "../utilities/version";
+import { SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
+import { updateLaunchConfigForCI } from "./lldb";
 
 export class BuildConfigurationFactory {
     public static buildAll(
@@ -61,10 +62,13 @@ export class BuildConfigurationFactory {
                 additionalArgs = [...additionalArgs, "-Xswiftc", "-enable-testing"];
             }
             if (this.isTestBuild) {
-                additionalArgs = [
-                    ...additionalArgs,
-                    ...configuration.folder(this.ctx.workspaceFolder).additionalTestArguments,
-                ];
+                // Exclude all arguments from TEST_ONLY_ARGUMENTS that would cause a `swift build` to fail.
+                const buildCompatibleArgs = BuildFlags.filterArguments(
+                    configuration.folder(this.ctx.workspaceFolder).additionalTestArguments,
+                    BuildConfigurationFactory.TEST_ONLY_ARGUMENTS,
+                    true
+                );
+                additionalArgs = [...additionalArgs, ...buildCompatibleArgs];
             }
         }
 
@@ -98,6 +102,30 @@ export class BuildConfigurationFactory {
     private get baseConfig() {
         return getBaseConfig(this.ctx, true);
     }
+
+    /**
+     * Arguments from additionalTestArguments that should be excluded from swift build commands.
+     * These are test-only arguments that would cause build failures if passed to swift build.
+     */
+    private static TEST_ONLY_ARGUMENTS: ArgumentFilter[] = [
+        { argument: "--parallel", include: 0 },
+        { argument: "--no-parallel", include: 0 },
+        { argument: "--num-workers", include: 1 },
+        { argument: "--filter", include: 1 },
+        { argument: "--skip", include: 1 },
+        { argument: "-s", include: 1 },
+        { argument: "--specifier", include: 1 },
+        { argument: "-l", include: 0 },
+        { argument: "--list-tests", include: 0 },
+        { argument: "--show-codecov-path", include: 0 },
+        { argument: "--show-code-coverage-path", include: 0 },
+        { argument: "--show-coverage-path", include: 0 },
+        { argument: "--xunit-output", include: 1 },
+        { argument: "--enable-testable-imports", include: 0 },
+        { argument: "--disable-testable-imports", include: 0 },
+        { argument: "--attachments-path", include: 1 },
+        { argument: "--skip-build", include: 0 },
+    ];
 }
 
 export class SwiftTestingBuildAguments {
@@ -136,7 +164,7 @@ export class SwiftTestingConfigurationSetup {
     public static async cleanupAttachmentFolder(
         folderContext: FolderContext,
         testRunTime: number,
-        outputChannel: vscode.OutputChannel
+        logger: SwiftLogger
     ): Promise<void> {
         const attachmentPath = SwiftTestingConfigurationSetup.resolveAttachmentPath(
             folderContext,
@@ -153,7 +181,7 @@ export class SwiftTestingConfigurationSetup {
                     await fs.rmdir(attachmentPath);
                 }
             } catch (error) {
-                outputChannel.appendLine(`Failed to clean up attachment path: ${error}`);
+                logger.error(`Failed to clean up attachment path: ${error}`);
             }
         }
     }
@@ -333,6 +361,14 @@ export class TestingConfigurationFactory {
                         const libraryPath = toolchain.swiftTestingLibraryPath();
                         const frameworkPath = toolchain.swiftTestingFrameworkPath();
                         const swiftPMTestingHelperPath = toolchain.swiftPMTestingHelperPath;
+                        const env = {
+                            ...this.testEnv,
+                            ...this.sanitizerRuntimeEnvironment,
+                            DYLD_FRAMEWORK_PATH: frameworkPath,
+                            DYLD_LIBRARY_PATH: libraryPath,
+                            SWT_SF_SYMBOLS_ENABLED: "0",
+                            SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED: "1",
+                        };
 
                         // Toolchains that contain https://github.com/swiftlang/swift-package-manager/commit/844bd137070dcd18d0f46dd95885ef7907ea0697
                         // produce a single testing binary for both xctest and swift-testing (called <ProductName>.xctest).
@@ -353,13 +389,7 @@ export class TestingConfigurationFactory {
                                         ])
                                     )
                                 ),
-                                env: {
-                                    ...this.testEnv,
-                                    ...this.sanitizerRuntimeEnvironment,
-                                    DYLD_FRAMEWORK_PATH: frameworkPath,
-                                    DYLD_LIBRARY_PATH: libraryPath,
-                                    SWT_SF_SYMBOLS_ENABLED: "0",
-                                },
+                                env,
                             };
                             return result;
                         }
@@ -368,13 +398,7 @@ export class TestingConfigurationFactory {
                             ...baseConfig,
                             program: await this.testExecutableOutputPath(),
                             args: this.debuggingTestExecutableArgs(),
-                            env: {
-                                ...this.testEnv,
-                                ...this.sanitizerRuntimeEnvironment,
-                                DYLD_FRAMEWORK_PATH: frameworkPath,
-                                DYLD_LIBRARY_PATH: libraryPath,
-                                SWT_SF_SYMBOLS_ENABLED: "0",
-                            },
+                            env,
                         };
                         return result;
                     default:
@@ -397,6 +421,7 @@ export class TestingConfigurationFactory {
                                 ...this.testEnv,
                                 ...this.sanitizerRuntimeEnvironment,
                                 SWT_SF_SYMBOLS_ENABLED: "0",
+                                SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED: "1",
                             },
                             // For coverage we need to rebuild so do the build/test all in one step,
                             // otherwise we do a build, then test, to give better progress.
@@ -416,6 +441,7 @@ export class TestingConfigurationFactory {
                         if (xcTestPath === undefined) {
                             return null;
                         }
+                        const toolchain = this.ctx.toolchain;
                         return {
                             ...baseConfig,
                             program: path.join(xcTestPath, "xctest"),
@@ -425,6 +451,16 @@ export class TestingConfigurationFactory {
                             env: {
                                 ...this.testEnv,
                                 ...this.sanitizerRuntimeEnvironment,
+                                ...(toolchain.swiftVersion.isGreaterThanOrEqual(
+                                    new Version(6, 2, 0)
+                                )
+                                    ? {
+                                          // Starting in 6.2 we need to provide libTesting.dylib for xctests
+                                          DYLD_FRAMEWORK_PATH:
+                                              toolchain.swiftTestingFrameworkPath(),
+                                          DYLD_LIBRARY_PATH: toolchain.swiftTestingLibraryPath(),
+                                      }
+                                    : {}),
                                 SWIFT_TESTING_ENABLED: "0",
                             },
                         };
@@ -540,11 +576,17 @@ export class TestingConfigurationFactory {
             );
         }
 
+        // Starting in 6.3 the version string should match the toolchain version.
+        let versionString = "0";
+        if (this.ctx.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 3, 0))) {
+            versionString = `${this.ctx.toolchain.swiftVersion.major}.${this.ctx.toolchain.swiftVersion.minor}`;
+        }
+
         const swiftTestingArgs = [
             ...this.ctx.toolchain.buildFlags.withAdditionalFlags(args),
             "--enable-swift-testing",
-            "--event-stream-version",
-            "0",
+            "--experimental-event-stream-version",
+            versionString,
             "--event-stream-output-path",
             this.swiftTestingArguments.fifoPipePath,
         ];

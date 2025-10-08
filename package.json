@@ -2,7 +2,7 @@
   "name": "swift-vscode",
   "displayName": "Swift",
   "description": "Swift Language Support for Visual Studio Code.",
-  "version": "2.6.1",
+  "version": "2.12.0-dev",
   "publisher": "swiftlang",
   "icon": "icon.png",
   "repository": {
@@ -34,6 +34,99 @@
   ],
   "main": "./dist/src/extension.js",
   "contributes": {
+    "walkthroughs": [
+      {
+        "id": "swift-welcome",
+        "title": "Get Started with Swift for VS Code",
+        "description": "Learn how to use the Swift extension for VS Code.",
+        "steps": [
+          {
+            "id": "installing-mac",
+            "title": "Install Swift",
+            "description": "Swift is cross-platform! If you already have Xcode installed, you're ready to go. Otherwise, see the instructions to [install on macOS](https://www.swift.org/install).\n Swift is [open source](https://github.com/swiftlang) and community driven!\n Questions? Visit the [Swift forums](https://forums.swift.org/) or the [Swift extension GitHub page](https://github.com/swiftlang/vscode-swift) for help.",
+            "media": {
+              "markdown": "./assets/walkthrough/welcome.md"
+            },
+            "when": "isMac"
+          },
+          {
+            "id": "installing-linux",
+            "title": "Installing Swift",
+            "description": "Swift is cross-platform! See the instructions to [install on Linux](https://www.swift.org/install).\n Swift is [open source](https://github.com/swiftlang) and community driven!\n Questions? Visit the [Swift forums](https://forums.swift.org/) or the [Swift extension GitHub page](https://github.com/swiftlang/vscode-swift) for help.",
+            "media": {
+              "markdown": "./assets/walkthrough/welcome.md"
+            },
+            "when": "isLinux"
+          },
+          {
+            "id": "installing-windows",
+            "title": "Installing Swift",
+            "description": "Swift is cross-platform! See the instructions to [install on Windows](https://www.swift.org/install).\n Swift is [open source](https://github.com/swiftlang) and community driven!\n Questions? Visit the [Swift forums](https://forums.swift.org/) or the [Swift extension GitHub page](https://github.com/swiftlang/vscode-swift) for help.",
+            "media": {
+              "markdown": "./assets/walkthrough/welcome.md"
+            },
+            "when": "isWindows"
+          },
+          {
+            "id": "creating-new-project",
+            "title": "Create a Swift project",
+            "description": "You can create a new Swift project with \n``Swift: Create New Project``\n in the Command Palette. \n[Try it out](command:swift.createNewProject)",
+            "media": {
+              "markdown": "assets/walkthrough/createNewProject.md"
+            }
+          },
+          {
+            "id": "run-and-debug-executable",
+            "title": "Run and debug an executable",
+            "description": "You can run an executable from the Swift file, Command Palette or the Project Panel.",
+            "media": {
+              "markdown": "assets/walkthrough/runExecutable.md"
+            }
+          },
+          {
+            "id": "testing",
+            "title": "Run tests",
+            "description": "Tests are automatically discovered in your project and added to the [Testing View](https://code.visualstudio.com/docs/debugtest/testing#_automatic-test-discovery-in-testing-view).\n Both [XCTest](https://developer.apple.com/documentation/xctest) and [Swift Testing](https://developer.apple.com/xcode/swift-testing/) tests are supported.",
+            "media": {
+              "markdown": "assets/walkthrough/runTests.md"
+            }
+          },
+          {
+            "id": "documentation",
+            "title": "Preview DocC documentation",
+            "description": "Preview documentation written in [DocC](https://www.swift.org/documentation/docc/).",
+            "media": {
+              "markdown": "assets/walkthrough/previewDocs.md"
+            }
+          },
+          {
+            "id": "swift-commands",
+            "title": "Swift commands",
+            "description": "Explore commands available in the Command Palette prefixed with ``> Swift:``\n See documentation for [available commands](https://docs.swift.org/vscode/documentation/userdocs/commands/). \n[Show Swift Commands](command:swift.showCommands)",
+            "media": {
+              "markdown": "assets/walkthrough/swiftCommands.md"
+            }
+          },
+          {
+            "id": "selecting-toolchain",
+            "title": "Select a toolchain",
+            "description": "If you have more than one Swift toolchain installed you can switch between them with \n``Swift: Select Toolchain...``\n in the Command Palette.\n[Select Toolchain](command:swift.selectToolchain)",
+            "markdown": "",
+            "media": {
+              "markdown": "assets/walkthrough/swiftToolchains.md"
+            }
+          },
+          {
+            "id": "customize",
+            "title": "Customize settings",
+            "description": "The Swift extensions contributes numerous settings that you can configure to customize how your project builds and how the extension operates.\n[Configure Swift Settings](command:swift.configureSettings)",
+            "media": {
+              "markdown": "assets/walkthrough/customizeSettings.md"
+            }
+          }
+        ]
+      }
+    ],
     "icons": {
       "swift-icon": {
         "description": "The official icon for the Swift programming language",
@@ -123,6 +216,16 @@
       }
     ],
     "commands": [
+      {
+        "command": "swift.showCommands",
+        "title": "Show Commands",
+        "category": "Swift"
+      },
+      {
+        "command": "swift.configureSettings",
+        "title": "Configure Settings",
+        "category": "Swift"
+      },
       {
         "command": "swift.generateLaunchConfigurations",
         "title": "Generate Launch Configurations",
@@ -253,6 +356,16 @@
         "category": "Swift"
       },
       {
+        "command": "swift.installSwiftlyToolchain",
+        "title": "Install Swiftly Toolchain...",
+        "category": "Swift"
+      },
+      {
+        "command": "swift.installSwiftlySnapshotToolchain",
+        "title": "Install Swiftly Snapshot Toolchain...",
+        "category": "Swift"
+      },
+      {
         "command": "swift.runSnippet",
         "title": "Run Swift Snippet",
         "category": "Swift",
@@ -300,6 +413,16 @@
         "category": "Swift"
       },
       {
+        "command": "swift.debugTestsMultipleTimes",
+        "title": "Debug Multiple Times...",
+        "category": "Swift"
+      },
+      {
+        "command": "swift.debugTestsUntilFailure",
+        "title": "Debug Until Failure...",
+        "category": "Swift"
+      },
+      {
         "command": "swift.pickProcess",
         "title": "Pick Process...",
         "category": "Swift"
@@ -329,10 +452,36 @@
         "icon": "$(debug-coverage)"
       },
       {
+        "command": "swift.runTest",
+        "title": "Run Test",
+        "category": "Test",
+        "icon": "$(testing-run-icon)",
+        "enablement": "false"
+      },
+      {
+        "command": "swift.debugTest",
+        "title": "Debug Test",
+        "category": "Test",
+        "icon": "$(testing-debug-icon)",
+        "enablement": "false"
+      },
+      {
+        "command": "swift.runTestWithCoverage",
+        "title": "Run Test with Coverage",
+        "category": "Test",
+        "icon": "$(debug-coverage)",
+        "enablement": "false"
+      },
+      {
         "command": "swift.openDocumentation",
         "title": "Open Documentation",
         "category": "Swift",
         "icon": "$(book)"
+      },
+      {
+        "command": "swift.generateSourcekitConfiguration",
+        "title": "Generate SourceKit-LSP Configuration",
+        "category": "Swift"
       }
     ],
     "configuration": [
@@ -342,7 +491,8 @@
           "swift.path": {
             "type": "string",
             "default": "",
-            "markdownDescription": "Override the default path of the folder containing the Swift executables. The default is to look in the `PATH` environment variable. This path is also used to search for other executables used by the extension like `sourcekit-lsp` and `lldb`."
+            "markdownDescription": "Override the default path of the folder containing the Swift executables. The default is to look in the `PATH` environment variable. This path is also used to search for other executables used by the extension like `sourcekit-lsp` and `lldb`.",
+            "scope": "machine-overridable"
           },
           "swift.buildArguments": {
             "type": "array",
@@ -350,7 +500,8 @@
             "items": {
               "type": "string"
             },
-            "markdownDescription": "Additional arguments to pass to `swift build` and `swift test`. Keys and values should be provided as individual entries in the list. If you have created a copy of the build task in `tasks.json` then these build arguments will not be propagated to that task."
+            "markdownDescription": "Additional arguments to pass to `swift build` and `swift test`. Keys and values should be provided as individual entries in the list. If you have created a copy of the build task in `tasks.json` then these build arguments will not be propagated to that task.",
+            "scope": "machine-overridable"
           },
           "swift.scriptSwiftLanguageVersion": {
             "type": "string",
@@ -366,7 +517,6 @@
               "Use Swift 5 when running Swift scripts.",
               "Prompt to select the Swift version each time a script is run."
             ],
-            "default": "6",
             "markdownDescription": "The default Swift version to use when running Swift scripts.",
             "scope": "machine-overridable"
           },
@@ -376,7 +526,8 @@
             "items": {
               "type": "string"
             },
-            "markdownDescription": "Additional arguments to pass to swift commands that do package resolution, such as `swift package resolve`, `swift package update`, `swift build` and `swift test`. Keys and values should be provided as individual entries in the list."
+            "markdownDescription": "Additional arguments to pass to swift commands that do package resolution, such as `swift package resolve`, `swift package update`, `swift build` and `swift test`. Keys and values should be provided as individual entries in the list.",
+            "scope": "machine-overridable"
           },
           "swift.additionalTestArguments": {
             "type": "array",
@@ -444,7 +595,8 @@
               "When merging diagnostics, give precedence to diagnostics from `swiftc`.",
               "When merging diagnostics, give precedence to diagnostics from `SourceKit`.",
               "Keep diagnostics from all providers."
-            ]
+            ],
+            "scope": "machine-overridable"
           },
           "swift.diagnosticsStyle": {
             "type": "string",
@@ -459,12 +611,33 @@
               "Use whichever diagnostics style `swiftc` produces by default.",
               "Use the `llvm` diagnostic style. This allows the parsing of \"notes\".",
               "Use the `swift` diagnostic style. This means that \"notes\" will not be parsed. This option has no effect in Swift versions prior to 5.10."
-            ]
+            ],
+            "scope": "machine-overridable"
           },
           "swift.backgroundCompilation": {
-            "type": "boolean",
+            "type": [
+              "boolean",
+              "object"
+            ],
             "default": false,
-            "markdownDescription": "**Experimental**: Run `swift build` in the background whenever a file is saved. It is possible the background compilation will already be running when you attempt a compile yourself, so this is disabled by default."
+            "markdownDescription": "Run `swift build` in the background whenever a file is saved. Setting to `true` enables, or you can use `object` notation for more fine grained control. It is possible the background compilation will already be running when you attempt a compile yourself, so this is disabled by default.",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "default": true,
+                "description": "Enable/disable background compilation."
+              },
+              "useDefaultTask": {
+                "type": "boolean",
+                "default": true,
+                "markdownDescription": "Use the default build task configured using the `Tasks: Configure Default Build Task` command when executing the background compilation. `#enabled#` property must be `true`."
+              },
+              "release": {
+                "type": "boolean",
+                "default": false,
+                "markdownDescription": "Use the `release` variant of the `Build All` task when executing the background compilation. `#enabled#` property must be `true`. This is ignored if the `#useDefaultTask#` property is true."
+              }
+            }
           },
           "swift.actionAfterBuildError": {
             "type": "string",
@@ -478,17 +651,20 @@
               "Focus on Problems View",
               "Focus on Build Task Terminal"
             ],
-            "markdownDescription": "Action after a Build task generates errors."
+            "markdownDescription": "Action after a Build task generates errors.",
+            "scope": "application"
           },
           "swift.buildPath": {
             "type": "string",
             "default": "",
-            "markdownDescription": "The path to a directory that will be used for build artifacts. This path will be added to all swift package manager commands that are executed by vscode-swift extension via `--scratch-path` option. When no value provided - nothing gets passed to swift package manager and it will use its default value of `.build` folder in the workspace.\n\nYou can use absolute path for directory or the relative path, which will use the workspace path as a base. Note that VS Code does not respect tildes (`~`) in paths which represents user home folder under *nix systems."
+            "markdownDescription": "The path to a directory that will be used for build artifacts. This path will be added to all swift package manager commands that are executed by vscode-swift extension via `--scratch-path` option. When no value provided - nothing gets passed to swift package manager and it will use its default value of `.build` folder in the workspace.\n\nYou can use absolute path for directory or the relative path, which will use the workspace path as a base. Note that VS Code does not respect tildes (`~`) in paths which represents user home folder under *nix systems.",
+            "scope": "machine-overridable"
           },
           "swift.disableSwiftPackageManagerIntegration": {
             "type": "boolean",
             "default": false,
-            "markdownDescription": "Disables automated Build Tasks, Package Dependency view, Launch configuration generation and TestExplorer."
+            "markdownDescription": "Disables automated Build Tasks, Package Dependency view, Launch configuration generation and TestExplorer.",
+            "scope": "machine-overridable"
           },
           "swift.warnAboutSymlinkCreation": {
             "type": "boolean",
@@ -499,7 +675,8 @@
           "swift.enableTerminalEnvironment": {
             "type": "boolean",
             "default": true,
-            "markdownDescription": "Controls whether or not the extension will contribute environment variables defined in `Swift: Environment Variables` to the integrated terminal. If this is set to `true` and a custom `Swift: Path` is also set then the swift path is appended to the terminal's `PATH`."
+            "markdownDescription": "Controls whether or not the extension will contribute environment variables defined in `Swift: Environment Variables` to the integrated terminal. If this is set to `true` and a custom `Swift: Path` is also set then the swift path is appended to the terminal's `PATH`.",
+            "scope": "application"
           },
           "swift.pluginArguments": {
             "default": [],
@@ -570,11 +747,23 @@
             "default": ".build/attachments",
             "markdownDescription": "The path to a directory that will be used to store attachments produced during a test run.\n\nA relative path resolves relative to the root directory of the workspace running the test(s)",
             "scope": "machine-overridable"
+          },
+          "swift.outputChannelLogLevel": {
+            "type": "string",
+            "default": "info",
+            "markdownDescription": "The log level of the Swift output channel. This has no effect on the verbosity of messages written to the extension's log file.",
+            "enum": [
+              "debug",
+              "info",
+              "warn",
+              "error"
+            ],
+            "scope": "machine-overridable"
           }
         }
       },
       {
-        "title": "Code Coverage",
+        "title": "Testing",
         "properties": {
           "swift.excludeFromCodeCoverage": {
             "description": "A list of paths to exclude from code coverage reports. Paths can be absolute or relative to the workspace root.",
@@ -582,7 +771,31 @@
             "items": {
               "type": "string"
             },
-            "default": []
+            "default": [],
+            "scope": "machine-overridable"
+          },
+          "swift.showTestCodeLenses": {
+            "type": [
+              "boolean",
+              "array"
+            ],
+            "default": true,
+            "markdownDescription": "Controls whether or not to show inline code lenses for running and debugging tests inline, above test and suite declarations. If set to an array, specify one or more of the following: 'run', 'debug', 'coverage'.",
+            "scope": "application",
+            "items": {
+              "type": "string",
+              "enum": [
+                "run",
+                "debug",
+                "coverage"
+              ]
+            }
+          },
+          "swift.recordTestDuration": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Controls whether or not to record the duration of tests in the Test Explorer. This is used to show the duration of tests in the Test Explorer view. If you're experiencing performance issues when running a large number of tests that complete quickly, disabling this setting can make the UI more responsive.",
+            "scope": "machine-overridable"
           }
         }
       },
@@ -616,12 +829,20 @@
               "Show the Swift build status in a status bar item provided by the Swift extension.",
               "Show the Swift build status in the \"Progress Message\" status bar item provided by VS Code.",
               "Show the Swift build status as a progress notification."
-            ]
+            ],
+            "scope": "application"
+          },
+          "swift.createTasksForLibraryProducts": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "When enabled, the extension will create \"swift\" build tasks for library products in the package manifest. Note that automatic library products will not be included.",
+            "scope": "machine-overridable"
           },
           "swift.showCreateSwiftProjectInWelcomePage": {
             "type": "boolean",
             "default": true,
-            "markdownDescription": "Controls whether or not the create new swift project button appears in the welcome page."
+            "markdownDescription": "Controls whether or not the create new swift project button appears in the welcome page.",
+            "scope": "application"
           },
           "swift.openAfterCreateNewProject": {
             "type": "string",
@@ -638,7 +859,18 @@
               "Always prompt for action."
             ],
             "default": "prompt",
-            "markdownDescription": "Controls whether to open a swift project automatically after creating it."
+            "markdownDescription": "Controls whether to open a swift project automatically after creating it.",
+            "scope": "application"
+          },
+          "swift.lspConfigurationBranch": {
+            "type": "string",
+            "markdownDescription": "Set the branch to use when setting the `$schema` property of the SourceKit-LSP configuration. For example: \"release/6.1\" or \"main\". When this setting is unset, the extension will determine the branch based on the version of the toolchain that is in use."
+          },
+          "swift.checkLspConfigurationSchema": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "When opening a .sourckit-lsp/config.json configuration file, whether or not to check if the $schema matches the version of Swift you are using.",
+            "scope": "machine-overridable"
           }
         }
       },
@@ -657,7 +889,7 @@
             "items": {
               "type": "string"
             },
-            "markdownDescription": "Arguments to pass to SourceKit-LSP. Keys and values should be provided as individual entries in the list. e.g. `['--log-level', 'debug']`",
+            "markdownDescription": "Arguments to pass to SourceKit-LSP. Keys and values should be provided as individual entries in the list. e.g. `--experimental-feature=show-macro-expansions`",
             "order": 2
           },
           "swift.sourcekit-lsp.supported-languages": {
@@ -680,7 +912,8 @@
                 "cpp"
               ]
             },
-            "order": 3
+            "order": 3,
+            "scope": "machine-overridable"
           },
           "swift.sourcekit-lsp.backgroundIndexing": {
             "type": "string",
@@ -691,7 +924,8 @@
             ],
             "default": "auto",
             "markdownDescription": "Turns background indexing `on` or `off`. `auto` will enable background indexing if the Swift version is >= 6.1. This option has no effect in Swift versions prior to 6.0.",
-            "order": 4
+            "order": 4,
+            "scope": "machine-overridable"
           },
           "swift.sourcekit-lsp.trace.server": {
             "type": "string",
@@ -702,13 +936,15 @@
               "verbose"
             ],
             "markdownDescription": "Controls logging the communication between VS Code and the SourceKit-LSP language server. Logs can be viewed in Output > SourceKit Language Server.",
-            "order": 5
+            "order": 5,
+            "scope": "machine-overridable"
           },
           "swift.sourcekit-lsp.disable": {
             "type": "boolean",
             "default": false,
             "markdownDescription": "Disable SourceKit-LSP. This will turn off features like code completion, error diagnostics and jump-to-definition. Features like swift-testing test discovery will not work correctly.",
-            "order": 6
+            "order": 6,
+            "scope": "machine-overridable"
           },
           "sourcekit-lsp.inlayHints.enabled": {
             "type": "boolean",
@@ -743,7 +979,7 @@
             "items": {
               "type": "string"
             },
-            "markdownDescription": "Arguments to pass to SourceKit-LSP. Keys and values should be provided as individual entries in the list. e.g. `['--log-level', 'debug']`",
+            "markdownDescription": "Arguments to pass to SourceKit-LSP. Keys and values should be provided as individual entries in the list. e.g. `--experimental-feature=show-macro-expansions`",
             "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.serverArguments#` instead."
           },
           "sourcekit-lsp.trace.server": {
@@ -762,6 +998,13 @@
             "default": false,
             "markdownDescription": "Disable the running of SourceKit-LSP.",
             "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.disable#` instead."
+          },
+          "swift.excludePathsFromActivation": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "markdownDescription": "Configure glob patterns for excluding Swift package folders from getting activated. This will take precedence over the glob patterns provided to `files.exclude`."
           }
         }
       },
@@ -782,13 +1025,15 @@
               "Use the CodeLLDB extension's debug adapter."
             ],
             "markdownDescription": "Select which debug adapter to use to debug Swift executables.",
-            "order": 1
+            "order": 1,
+            "scope": "machine-overridable"
           },
           "swift.debugger.path": {
             "type": "string",
             "default": "",
             "markdownDescription": "Path to lldb debug adapter.",
-            "order": 2
+            "order": 2,
+            "scope": "machine-overridable"
           },
           "swift.debugger.setupCodeLLDB": {
             "type": "string",
@@ -806,7 +1051,8 @@
               "Never automatically update CodeLLDB settings when they are incorrect."
             ],
             "markdownDescription": "Choose how CodeLLDB settings are updated when debugging Swift executables.",
-            "order": 3
+            "order": 3,
+            "scope": "machine-overridable"
           },
           "swift.debugger.useDebugAdapterFromToolchain": {
             "type": "boolean",
@@ -829,36 +1075,43 @@
             },
             "default": {},
             "markdownDescription": "Additional environment variables to pass to swift operations (`swift build`, `swift resolve`, etc...).",
-            "order": 1
+            "order": 1,
+            "scope": "machine-overridable"
           },
           "swift.runtimePath": {
             "type": "string",
             "default": "",
             "markdownDescription": "The path of the folder containing the Swift runtime libraries. This is of use when supporting non-standard SDK layouts on Windows. On Windows the runtime path is added to the `Path` environment variable. This is of less use on macOS and Linux but will be added to `DYLD_LIBRARY_PATH` and `LD_LIBRARY_PATH` environment variables respectively on each platform. ",
-            "order": 2
+            "order": 2,
+            "scope": "machine-overridable"
           },
           "swift.SDK": {
             "type": "string",
             "default": "",
             "markdownDescription": "The path of the SDK to compile against (`--sdk` parameter). This is of use when supporting non-standard SDK layouts on Windows and using custom SDKs. The default SDK is determined by the environment on macOS and Windows.\n\nFor SwiftPM projects, prefer using `swift.swiftSDK` with a triple (such as `arm64-apple-ios`) or Swift SDK name instead.",
-            "order": 3
+            "order": 3,
+            "scope": "machine-overridable"
           },
           "swift.swiftSDK": {
             "type": "string",
             "default": "",
-            "markdownDescription": "The [Swift SDK](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0387-cross-compilation-destinations.md) to compile against (`--swift-sdk` parameter)."
+            "markdownDescription": "The [Swift SDK](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0387-cross-compilation-destinations.md) to compile against (`--swift-sdk` parameter).",
+            "scope": "machine-overridable"
           },
           "swift.disableSandox": {
             "type": "boolean",
             "default": false,
             "markdownDescription": "Disable sandboxing when running SwiftPM commands. In most cases you should keep the sandbox enabled and leave this setting set to `false`",
-            "order": 4
+            "order": 4,
+            "scope": "machine-overridable"
           },
           "swift.diagnostics": {
             "type": "boolean",
             "default": false,
-            "markdownDescription": "Output additional diagnostics to the Swift Output View.",
-            "order": 100
+            "markdownDescription": "Output additional diagnostics to the Swift output channel.",
+            "deprecationMessage": "**Deprecated**: Please use `#swift.outputChannelLogLevel#` instead.",
+            "order": 100,
+            "scope": "machine-overridable"
           }
         }
       }
@@ -886,6 +1139,16 @@
           "command": "swift.runTestsUntilFailure",
           "group": "testExtras",
           "when": "testId in swift.tests"
+        },
+        {
+          "command": "swift.debugTestsMultipleTimes",
+          "group": "testExtras",
+          "when": "testId in swift.tests"
+        },
+        {
+          "command": "swift.debugTestsUntilFailure",
+          "group": "testExtras",
+          "when": "testId in swift.tests"
         }
       ],
       "testing/item/context": [
@@ -896,6 +1159,16 @@
         },
         {
           "command": "swift.runTestsUntilFailure",
+          "group": "testExtras",
+          "when": "testId in swift.tests"
+        },
+        {
+          "command": "swift.debugTestsMultipleTimes",
+          "group": "testExtras",
+          "when": "testId in swift.tests"
+        },
+        {
+          "command": "swift.debugTestsUntilFailure",
           "group": "testExtras",
           "when": "testId in swift.tests"
         }
@@ -916,12 +1189,40 @@
       ],
       "commandPalette": [
         {
+          "command": "swift.runTestsMultipleTimes",
+          "group": "testExtras",
+          "when": "false"
+        },
+        {
+          "command": "swift.runTestsUntilFailure",
+          "group": "testExtras",
+          "when": "false"
+        },
+        {
+          "command": "swift.debugTestsMultipleTimes",
+          "group": "testExtras",
+          "when": "false"
+        },
+        {
+          "command": "swift.debugTestsUntilFailure",
+          "group": "testExtras",
+          "when": "false"
+        },
+        {
           "command": "swift.generateLaunchConfigurations",
           "when": "swift.hasExecutableProduct"
         },
         {
           "command": "swift.previewDocumentation",
           "when": "swift.supportsDocumentationLivePreview"
+        },
+        {
+          "command": "swift.installSwiftlyToolchain",
+          "when": "swift.supportsSwiftlyInstall"
+        },
+        {
+          "command": "swift.installSwiftlySnapshotToolchain",
+          "when": "swift.supportsSwiftlyInstall"
         },
         {
           "command": "swift.createNewProject",
@@ -1038,6 +1339,18 @@
         {
           "command": "swift.coverAllTests",
           "when": "swift.isActivated"
+        },
+        {
+          "command": "swift.runTest",
+          "when": "false"
+        },
+        {
+          "command": "swift.debugTest",
+          "when": "false"
+        },
+        {
+          "command": "swift.runTestWithCoverage",
+          "when": "false"
         },
         {
           "command": "swift.openEducationalNote",
@@ -1677,6 +1990,12 @@
           }
         ]
       }
+    ],
+    "jsonValidation": [
+      {
+        "fileMatch": "**/.sourcekit-lsp/config.json",
+        "url": "https://raw.githubusercontent.com/swiftlang/sourcekit-lsp/refs/heads/main/config.schema.json"
+      }
     ]
   },
   "extensionDependencies": [
@@ -1691,7 +2010,7 @@
     "watch": "npm run compile -- --watch",
     "compile-documentation-webview": "del-cli ./assets/documentation-webview && esbuild ./src/documentation/webview/webview.ts --bundle --outfile=assets/documentation-webview/index.js --define:process.env.NODE_ENV=\\\"production\\\" --define:process.env.CI=\\\"\\\" --format=cjs --sourcemap",
     "watch-documentation-webview": "npm run compile-documentation-webview -- --watch",
-    "lint": "eslint ./ --ext ts && tsc --noEmit",
+    "lint": "eslint ./ --ext ts && tsc --noEmit && tsc --noEmit -p scripts/tsconfig.json",
     "update-swift-docc-render": "tsx ./scripts/update_swift_docc_render.ts",
     "compile-icons": "tsx ./scripts/compile_icons.ts",
     "format": "prettier --check .",
@@ -1709,48 +2028,62 @@
     "dev-package": "tsx ./scripts/dev_package.ts",
     "preview-package": "tsx ./scripts/preview_package.ts",
     "tag": "./scripts/tag_release.sh $npm_package_version",
-    "contributors": "./scripts/generate_contributors_list.sh"
+    "contributors": "./scripts/generate_contributors_list.sh",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "**/*": "prettier --write --ignore-unknown"
   },
   "devDependencies": {
+    "@actions/core": "^1.11.1",
+    "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@types/archiver": "^6.0.3",
     "@types/chai": "^4.3.19",
     "@types/chai-as-promised": "^7.1.8",
     "@types/chai-subset": "^1.3.6",
     "@types/decompress": "^4.2.7",
+    "@types/diff": "^8.0.0",
     "@types/lcov-parse": "^1.0.2",
     "@types/lodash.debounce": "^4.0.9",
     "@types/lodash.throttle": "^4.1.9",
+    "@types/micromatch": "^4.0.9",
     "@types/mocha": "^10.0.10",
     "@types/mock-fs": "^4.13.4",
-    "@types/node": "^20.19.1",
+    "@types/node": "^20.19.18",
     "@types/plist": "^3.0.5",
-    "@types/semver": "^7.7.0",
+    "@types/semver": "^7.7.1",
     "@types/sinon": "^17.0.4",
     "@types/sinon-chai": "^3.2.12",
+    "@types/svg2ttf": "^5.0.3",
+    "@types/svgicons2svgfont": "^10.0.5",
+    "@types/ttf2woff": "^2.0.4",
     "@types/vscode": "^1.88.0",
     "@types/xml2js": "^0.4.14",
-    "@typescript-eslint/eslint-plugin": "^8.35.0",
+    "@typescript-eslint/eslint-plugin": "^8.45.0",
     "@typescript-eslint/parser": "^8.32.1",
     "@vscode/debugprotocol": "^1.68.0",
     "@vscode/test-cli": "^0.0.11",
     "@vscode/test-electron": "^2.5.2",
-    "@vscode/vsce": "^3.5.0",
+    "@vscode/vsce": "^3.6.2",
     "chai": "^4.5.0",
     "chai-as-promised": "^7.1.2",
     "chai-subset": "^1.6.0",
     "decompress": "^4.2.1",
-    "del-cli": "^6.0.0",
-    "esbuild": "^0.25.5",
+    "del-cli": "^7.0.0",
+    "diff": "^8.0.2",
+    "esbuild": "^0.25.10",
     "eslint": "^8.57.0",
-    "eslint-config-prettier": "^10.1.5",
-    "fantasticon": "^3.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "fantasticon": "^1.2.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.3",
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
-    "mocha": "^11.7.0",
+    "micromatch": "^4.0.8",
+    "mocha": "^11.7.2",
     "mock-fs": "^5.5.0",
-    "node-pty": "^1.0.0",
     "octokit": "^3.2.2",
-    "prettier": "^3.6.0",
+    "prettier": "^3.6.2",
     "replace-in-file": "^8.3.0",
     "semver": "^7.7.2",
     "simple-git": "^3.28.0",
@@ -1760,16 +2093,20 @@
     "strip-ansi": "^6.0.1",
     "vscode-tmgrammar-test": "^0.1.3",
     "svgo": "^4.0.0",
-    "tsx": "^4.20.3",
-    "typescript": "^5.8.3"
+    "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.2",
+    "winston": "^3.17.0",
+    "winston-transport": "^4.9.0"
   },
   "dependencies": {
-    "@vscode/codicons": "^0.0.36",
+    "@vscode/codicons": "^0.0.40",
     "archiver": "^7.0.1",
     "fast-glob": "^3.3.3",
     "lcov-parse": "^1.0.0",
     "plist": "^3.1.0",
     "vscode-languageclient": "^9.0.1",
-    "xml2js": "^0.6.2"
+    "xml2js": "^0.6.2",
+    "zod": "^4.1.5"
   }
 }

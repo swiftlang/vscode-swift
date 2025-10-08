@@ -11,14 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { RenderNode, WebviewContent, WebviewMessage } from "./webview/WebviewMessage";
+import * as vscode from "vscode";
+import { LSPErrorCodes, ResponseError } from "vscode-languageclient";
+
 import { WorkspaceContext } from "../WorkspaceContext";
 import { DocCDocumentationRequest, DocCDocumentationResponse } from "../sourcekit-lsp/extensions";
-import { LSPErrorCodes, ResponseError } from "vscode-languageclient";
+import { RenderNode, WebviewContent, WebviewMessage } from "./webview/WebviewMessage";
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import throttle = require("lodash.throttle");
 
@@ -98,6 +99,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
     private activeTextEditor?: vscode.TextEditor;
     private activeTextEditorSelection?: vscode.Selection;
     private subscriptions: vscode.Disposable[] = [];
+    private isDisposed: boolean = false;
 
     private disposeEmitter = new vscode.EventEmitter<void>();
     private renderEmitter = new vscode.EventEmitter<void>();
@@ -133,6 +135,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
     }
 
     dispose() {
+        this.isDisposed = true;
         this.subscriptions.forEach(subscription => subscription.dispose());
         this.subscriptions = [];
         this.webviewPanel.dispose();
@@ -140,6 +143,9 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
     }
 
     private postMessage(message: WebviewMessage) {
+        if (this.isDisposed) {
+            return;
+        }
         if (message.type === "update-content") {
             this.updateContentEmitter.fire(message.content);
         }
@@ -246,13 +252,13 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                             break;
                         default:
                             // We should log additional info for other response errors
-                            this.context.outputChannel.log(
+                            this.context.logger.error(
                                 baseLogErrorMessage + JSON.stringify(error.toJson(), undefined, 2)
                             );
                             break;
                     }
                 } else {
-                    this.context.outputChannel.log(baseLogErrorMessage + `${error}`);
+                    this.context.logger.error(baseLogErrorMessage + `${error}`);
                 }
                 this.postMessage({
                     type: "update-content",

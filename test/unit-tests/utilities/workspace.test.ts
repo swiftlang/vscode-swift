@@ -11,26 +11,29 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
-import { searchForPackages } from "../../../src/utilities/workspace";
-import { testAssetUri } from "../../fixtures";
 import { expect } from "chai";
+import * as vscode from "vscode";
+
+import { Version } from "@src/utilities/version";
+import { searchForPackages } from "@src/utilities/workspace";
+
+import { testAssetUri } from "../../fixtures";
 
 suite("Workspace Utilities Unit Test Suite", () => {
     suite("searchForPackages", () => {
         const packageFolder = testAssetUri("ModularPackage");
         const firstModuleFolder = vscode.Uri.joinPath(packageFolder, "Module1");
         const secondModuleFolder = vscode.Uri.joinPath(packageFolder, "Module2");
+        const testSwiftVersion = new Version(5, 9, 0);
 
         test("returns only root package when search for subpackages disabled", async () => {
-            const folders = await searchForPackages(packageFolder, false, false);
+            const folders = await searchForPackages(packageFolder, false, false, testSwiftVersion);
 
             expect(folders.map(folder => folder.fsPath)).eql([packageFolder.fsPath]);
         });
 
         test("returns subpackages when search for subpackages enabled", async () => {
-            const folders = await searchForPackages(packageFolder, false, true);
+            const folders = await searchForPackages(packageFolder, false, true, testSwiftVersion);
 
             expect(folders.map(folder => folder.fsPath).sort()).deep.equal([
                 packageFolder.fsPath,

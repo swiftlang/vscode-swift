@@ -11,20 +11,20 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as path from "path";
-import { WorkspaceContext } from "../WorkspaceContext";
+import * as vscode from "vscode";
+
 import { PackagePlugin } from "../SwiftPackage";
-import { swiftRuntimeEnv } from "../utilities/utilities";
-import { SwiftExecution } from "../tasks/SwiftExecution";
-import { packageName, resolveTaskCwd } from "../utilities/tasks";
+import { WorkspaceContext } from "../WorkspaceContext";
 import configuration, {
     PluginPermissionConfiguration,
     substituteVariablesInString,
 } from "../configuration";
-import { SwiftTask } from "./SwiftTaskProvider";
+import { SwiftExecution } from "../tasks/SwiftExecution";
 import { SwiftToolchain } from "../toolchain/toolchain";
+import { packageName, resolveTaskCwd } from "../utilities/tasks";
+import { swiftRuntimeEnv } from "../utilities/utilities";
+import { SwiftTask } from "./SwiftTaskProvider";
 
 // Interface class for defining task configuration
 interface TaskConfig {
@@ -102,6 +102,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             "swift-plugin",
             new SwiftExecution(swift, swiftArgs, {
                 cwd,
+                env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
                 presentation: task.presentationOptions,
             }),
             task.problemMatchers

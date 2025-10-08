@@ -11,83 +11,129 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+// @ts-check
 
 const { defineConfig } = require("@vscode/test-cli");
 const path = require("path");
 const { version, publisher, name } = require("./package.json");
 
 const isCIBuild = process.env["CI"] === "1";
-const isFastTestRun = process.env["FAST_TEST_RUN"] === "1";
 
 const dataDir = process.env["VSCODE_DATA_DIR"];
 
-// "env" in launch.json doesn't seem to work with vscode-test
-const isDebugRun = !(process.env["_"] ?? "").endsWith("node_modules/.bin/vscode-test");
+// Check if we're debugging by looking at the process executable. Unfortunately, the VS Code debugger
+// doesn't seem to allow setting environment variables on a launched extension host.
+const processPath = process.env["_"] ?? "";
+const isDebugRun = !isCIBuild && !processPath.endsWith("node_modules/.bin/vscode-test");
 
-// so tests don't timeout when a breakpoint is hit
-const timeout = isDebugRun ? Number.MAX_SAFE_INTEGER : 3000;
+function log(/** @type {string} */ message) {
+    if (!isDebugRun) {
+        console.log(message);
+    }
+}
+
+// Remove the default timeout when debugging to avoid test failures when a breakpoint is hit.
+// Keep this up to date with the timeout of a 'small' test in 'test/tags.ts'.
+const timeout = isDebugRun ? 0 : 2000;
 
 const launchArgs = [
     "--disable-updates",
     "--disable-crash-reporter",
     "--disable-workspace-trust",
     "--disable-telemetry",
+    "--disable-gpu",
+    "--disable-gpu-sandbox",
+    "--disable-chromium-sandbox",
+    "--disable-extension=vscode.git",
+    "--no-xshm",
 ];
 if (dataDir) {
     launchArgs.push("--user-data-dir", dataDir);
 }
-// GPU hardware acceleration not working on Darwin for intel
-if (process.platform === "darwin" && process.arch === "x64") {
-    launchArgs.push("--disable-gpu");
-}
+
+const installExtensions = [];
+const extensionDependencies = [];
 let vsixPath = process.env["VSCODE_SWIFT_VSIX"];
-const install = [];
-const installExtensions = ["vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap"];
+let versionStr = version;
+let extensionDevelopmentPath;
 if (vsixPath) {
+    // https://github.com/swiftlang/vscode-swift/issues/1751
+    // Will install extensions before CI tests run
+    installExtensions.push("vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap");
+
+    // Absolute path to vsix needed
     if (!path.isAbsolute(vsixPath)) {
         vsixPath = path.join(__dirname, vsixPath);
     }
-    console.log("Installing " + vsixPath);
-    install.push({
-        label: "installExtension",
-        installExtensions: installExtensions.concat(vsixPath ? [vsixPath] : []),
-        launchArgs,
-        files: [],
-        version: process.env["VSCODE_VERSION"] ?? "stable",
+    log("Installing VSIX " + vsixPath);
+    installExtensions.push(vsixPath);
+
+    // Determine version to use
+    const match = /swift-vscode-(\d+.\d+.\d+(-dev)?)(-\d+)?.vsix/g.exec(path.basename(vsixPath));
+    if (match) {
+        versionStr = match[1];
+    }
+    log("Running tests against extension version " + versionStr);
+
+    extensionDevelopmentPath = `${__dirname}/.vscode-test/extensions/${publisher}.${name}-${versionStr}`;
+    log("Running tests against extension development path " + extensionDevelopmentPath);
+} else {
+    extensionDependencies.push("vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap");
+}
+
+const vscodeVersion = process.env["VSCODE_VERSION"] ?? "stable";
+log("Running tests against VS Code version " + vscodeVersion);
+
+const installConfigs = [];
+for (const ext of installExtensions) {
+    installConfigs.push({
+        label: `installExtension-${ext}`,
+        installExtensions: [ext],
+        launchArgs: launchArgs.concat("--disable-extensions"),
+        files: ["dist/test/sleep.test.js"],
+        version: vscodeVersion,
+        skipExtensionDependencies: true,
         reuseMachineInstall: !isCIBuild,
     });
 }
 
+const env = {
+    ...process.env,
+    RUNNING_UNDER_VSCODE_TEST_CLI: "1",
+    VSCODE_DEBUG: isDebugRun ? "1" : "0",
+};
+log("Running tests against environment:\n" + JSON.stringify(env, undefined, 2));
+
 module.exports = defineConfig({
     tests: [
-        ...install,
+        ...installConfigs,
         {
             label: "integrationTests",
             files: ["dist/test/common.js", "dist/test/integration-tests/**/*.test.js"],
-            version: process.env["VSCODE_VERSION"] ?? "stable",
+            version: vscodeVersion,
             workspaceFolder: "./assets/test",
             launchArgs,
-            extensionDevelopmentPath: vsixPath
-                ? [`${__dirname}/.vscode-test/extensions/${publisher}.${name}-${version}`]
-                : undefined,
+            extensionDevelopmentPath,
+            env,
             mocha: {
                 ui: "tdd",
                 color: true,
                 timeout,
                 forbidOnly: isCIBuild,
-                grep: isFastTestRun ? "@slow" : undefined,
-                invert: isFastTestRun,
                 slow: 10000,
                 retries: 1,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
                 reporterOptions: {
+                    githubActionsSummaryReporterOptions: {
+                        title: "Integration Test Summary",
+                    },
                     jsonReporterOptions: {
                         output: path.join(__dirname, "test-results", "integration-tests.json"),
                     },
                 },
             },
-            reuseMachineInstall: !isCIBuild,
-            installExtensions,
+            installExtensions: extensionDependencies,
+            skipExtensionDependencies: installConfigs.length > 0,
         },
         {
             label: "codeWorkspaceTests",
@@ -100,36 +146,37 @@ module.exports = defineConfig({
                 "dist/test/integration-tests/testexplorer/TestExplorerIntegration.test.js",
                 "dist/test/integration-tests/commands/dependency.test.js",
             ],
-            version: process.env["VSCODE_VERSION"] ?? "stable",
+            version: vscodeVersion,
             workspaceFolder: "./assets/test.code-workspace",
             launchArgs,
-            extensionDevelopmentPath: vsixPath
-                ? [`${__dirname}/.vscode-test/extensions/${publisher}.${name}-${version}`]
-                : undefined,
+            extensionDevelopmentPath,
+            env,
             mocha: {
                 ui: "tdd",
                 color: true,
                 timeout,
                 forbidOnly: isCIBuild,
-                grep: isFastTestRun ? "@slow" : undefined,
-                invert: isFastTestRun,
                 slow: 10000,
                 retries: 1,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
                 reporterOptions: {
+                    githubActionsSummaryReporterOptions: {
+                        title: "Code Workspace Test Summary",
+                    },
                     jsonReporterOptions: {
                         output: path.join(__dirname, "test-results", "code-workspace-tests.json"),
                     },
                 },
             },
-            reuseMachineInstall: !isCIBuild,
-            installExtensions,
+            installExtensions: extensionDependencies,
+            skipExtensionDependencies: installConfigs.length > 0,
         },
         {
             label: "unitTests",
             files: ["dist/test/common.js", "dist/test/unit-tests/**/*.test.js"],
-            version: process.env["VSCODE_VERSION"] ?? "stable",
+            version: vscodeVersion,
             launchArgs: launchArgs.concat("--disable-extensions"),
+            env,
             mocha: {
                 ui: "tdd",
                 color: true,
@@ -138,13 +185,15 @@ module.exports = defineConfig({
                 slow: 100,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
                 reporterOptions: {
+                    githubActionsSummaryReporterOptions: {
+                        title: "Unit Test Summary",
+                    },
                     jsonReporterOptions: {
                         output: path.join(__dirname, "test-results", "unit-tests.json"),
                     },
                 },
             },
             skipExtensionDependencies: true,
-            reuseMachineInstall: !isCIBuild,
         },
         // you can specify additional test configurations, too
     ],

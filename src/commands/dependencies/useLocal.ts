@@ -11,12 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
 import { FolderOperation, WorkspaceContext } from "../../WorkspaceContext";
 import { createSwiftTask } from "../../tasks/SwiftTaskProvider";
-import { executeTaskWithUI } from "../utilities";
 import { packageName } from "../../utilities/tasks";
+import { executeTaskWithUI } from "../utilities";
 
 /**
  * Use local version of package dependency
@@ -32,7 +32,7 @@ export async function useLocalDependency(
 ): Promise<boolean> {
     const currentFolder = ctx.currentFolder;
     if (!currentFolder) {
-        ctx.outputChannel.log("currentFolder is not set.");
+        ctx.logger.debug("currentFolder is not set.", "useLocalDependency");
         return false;
     }
     let folder = dep;
@@ -67,12 +67,21 @@ export async function useLocalDependency(
         currentFolder.toolchain
     );
 
+    ctx.logger.debug(
+        `Placing dependency "${identifier}" in "editing" state with task: ${task.definition}`
+    );
+
     const success = await executeTaskWithUI(
         task,
         `Use local version of ${identifier}`,
         currentFolder,
         true
     );
+
+    ctx.logger.debug(
+        `Finished placing dependency "${identifier}" in "editing" state, success: ${success}`
+    );
+
     if (success) {
         await ctx.fireEvent(currentFolder, FolderOperation.resolvedUpdated);
     }

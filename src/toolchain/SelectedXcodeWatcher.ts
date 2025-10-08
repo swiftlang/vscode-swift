@@ -11,12 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as fs from "fs/promises";
 import * as vscode from "vscode";
-import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
-import { showReloadExtensionNotification } from "../ui/ReloadExtension";
+
 import configuration from "../configuration";
+import { SwiftLogger } from "../logging/SwiftLogger";
+import { showReloadExtensionNotification } from "../ui/ReloadExtension";
 import { removeToolchainPath, selectToolchain } from "../ui/ToolchainSelection";
 
 export class SelectedXcodeWatcher implements vscode.Disposable {
@@ -30,7 +30,7 @@ export class SelectedXcodeWatcher implements vscode.Disposable {
     private static XCODE_SYMLINK_LOCATION = "/var/select/developer_dir";
 
     constructor(
-        private outputChannel: SwiftOutputChannel,
+        private logger: SwiftLogger,
         testDependencies?: {
             checkIntervalMs?: number;
             xcodeSymlink?: () => Promise<string | undefined>;
@@ -67,6 +67,7 @@ export class SelectedXcodeWatcher implements vscode.Disposable {
      */
     private async setup() {
         this.xcodePath = await this.xcodeSymlink();
+        this.logger.debug(`Initial Xcode symlink path ${this.xcodePath}`);
         const developerDir = () => configuration.swiftEnvironmentVariables["DEVELOPER_DIR"];
         const matchesPath = (xcodePath: string) =>
             configuration.path && configuration.path.startsWith(xcodePath);
@@ -85,7 +86,7 @@ export class SelectedXcodeWatcher implements vscode.Disposable {
 
             const newXcodePath = await this.xcodeSymlink();
             if (newXcodePath && this.xcodePath !== newXcodePath) {
-                this.outputChannel.appendLine(
+                this.logger.info(
                     `Selected Xcode changed from ${this.xcodePath} to ${newXcodePath}`
                 );
                 this.xcodePath = newXcodePath;

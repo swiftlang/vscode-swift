@@ -11,12 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
+
 import configuration from "../configuration";
-import { LegacyInlayHintRequest } from "./extensions";
 import { LanguagerClientDocumentSelectors } from "./LanguageClientConfiguration";
+import { LegacyInlayHintRequest } from "./extensions";
 
 /** Provide Inlay Hints using sourcekit-lsp */
 class SwiftLegacyInlayHintsProvider implements vscode.InlayHintsProvider {

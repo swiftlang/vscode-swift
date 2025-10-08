@@ -11,8 +11,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
 import { WorkspaceContext } from "../WorkspaceContext";
 
 /** Manage task execution and completion handlers */
@@ -104,7 +104,7 @@ export class TaskManager implements vscode.Disposable {
         });
         // setup startingTaskPromise to be resolved one task has started
         if (this.startingTaskPromise !== undefined) {
-            this.workspaceContext.outputChannel.appendLine(
+            this.workspaceContext.logger.error(
                 "TaskManager: Starting promise should be undefined if we reach here."
             );
         }
@@ -124,7 +124,7 @@ export class TaskManager implements vscode.Disposable {
                 });
             },
             error => {
-                this.workspaceContext.outputChannel.appendLine(`Error executing task: ${error}`);
+                this.workspaceContext.logger.error(`Error executing task: ${error}`);
                 disposable.dispose();
                 this.startingTaskPromise = undefined;
                 reject(error);

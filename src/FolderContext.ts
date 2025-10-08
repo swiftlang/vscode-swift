@@ -11,26 +11,33 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as path from "path";
+import * as vscode from "vscode";
+
+import { BackgroundCompilation } from "./BackgroundCompilation";
 import { LinuxMain } from "./LinuxMain";
 import { PackageWatcher } from "./PackageWatcher";
 import { SwiftPackage, Target, TargetType } from "./SwiftPackage";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
-import { WorkspaceContext, FolderOperation } from "./WorkspaceContext";
-import { BackgroundCompilation } from "./BackgroundCompilation";
+import { TestRunManager } from "./TestExplorer/TestRunManager";
+import { TestRunProxy } from "./TestExplorer/TestRunner";
+import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
+import { SwiftLogger } from "./logging/SwiftLogger";
 import { TaskQueue } from "./tasks/TaskQueue";
-import { isPathInsidePath } from "./utilities/filesystem";
-import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
 import { SwiftToolchain } from "./toolchain/toolchain";
+import { showToolchainError } from "./ui/ToolchainSelection";
+import { isPathInsidePath } from "./utilities/filesystem";
 
 export class FolderContext implements vscode.Disposable {
-    private packageWatcher: PackageWatcher;
     public backgroundCompilation: BackgroundCompilation;
     public hasResolveErrors = false;
-    public testExplorer?: TestExplorer;
     public taskQueue: TaskQueue;
+    public testExplorer?: TestExplorer;
+    public resolvedTestExplorer: Promise<TestExplorer>;
+    private testExplorerResolver?: (testExplorer: TestExplorer) => void;
+    private packageWatcher: PackageWatcher;
+    private testRunManager: TestRunManager;
+    public creationStack?: string;
 
     /**
      * FolderContext constructor
@@ -46,9 +53,20 @@ export class FolderContext implements vscode.Disposable {
         public workspaceFolder: vscode.WorkspaceFolder,
         public workspaceContext: WorkspaceContext
     ) {
-        this.packageWatcher = new PackageWatcher(this, workspaceContext);
+        this.packageWatcher = new PackageWatcher(this, workspaceContext.logger);
         this.backgroundCompilation = new BackgroundCompilation(this);
         this.taskQueue = new TaskQueue(this);
+        this.testRunManager = new TestRunManager();
+
+        // In order to track down why a FolderContext may be created when we don't want one,
+        // capture the stack so we can log it if we find a duplicate.
+        this.creationStack = new Error().stack;
+
+        // Tests often need to wait for the test explorer to be created before they can run.
+        // This promise resolves when the test explorer is created, allowing them to wait for it before starting.
+        this.resolvedTestExplorer = new Promise<TestExplorer>(resolve => {
+            this.testExplorerResolver = resolve;
+        });
     }
 
     /** dispose of any thing FolderContext holds */
@@ -57,6 +75,7 @@ export class FolderContext implements vscode.Disposable {
         this.packageWatcher.dispose();
         this.testExplorer?.dispose();
         this.backgroundCompilation.dispose();
+        this.taskQueue.dispose();
     }
 
     /**
@@ -73,7 +92,40 @@ export class FolderContext implements vscode.Disposable {
         const statusItemText = `Loading Package (${FolderContext.uriName(folder)})`;
         workspaceContext.statusItem.start(statusItemText);
 
-        const toolchain = await SwiftToolchain.create(folder);
+        let toolchain: SwiftToolchain;
+        try {
+            toolchain = await SwiftToolchain.create(folder);
+        } catch (error) {
+            // This error case is quite hard for the user to get in to, but possible.
+            // Typically on startup the toolchain creation failure is going to happen in
+            // the extension activation in extension.ts. However if they incorrectly configure
+            // their path post activation, and add a new folder to the workspace, this failure can occur.
+            workspaceContext.logger.error(
+                `Failed to discover Swift toolchain for ${FolderContext.uriName(folder)}: ${error}`,
+                FolderContext.uriName(folder)
+            );
+            const userMadeSelection = await showToolchainError(folder);
+            if (userMadeSelection) {
+                // User updated toolchain settings, retry once
+                try {
+                    toolchain = await SwiftToolchain.create(folder);
+                    workspaceContext.logger.info(
+                        `Successfully created toolchain for ${FolderContext.uriName(folder)} after user selection`,
+                        FolderContext.uriName(folder)
+                    );
+                } catch (retryError) {
+                    workspaceContext.logger.error(
+                        `Failed to create toolchain for ${FolderContext.uriName(folder)} even after user selection: ${retryError}`,
+                        FolderContext.uriName(folder)
+                    );
+                    // Fall back to global toolchain
+                    toolchain = workspaceContext.globalToolchain;
+                }
+            } else {
+                toolchain = workspaceContext.globalToolchain;
+            }
+        }
+
         const { linuxMain, swiftPackage } =
             await workspaceContext.statusItem.showStatusWhileRunning(statusItemText, async () => {
                 const linuxMain = await LinuxMain.create(folder);
@@ -96,7 +148,7 @@ export class FolderContext implements vscode.Disposable {
             void vscode.window.showErrorMessage(
                 `Failed to load ${folderContext.name}/Package.swift: ${error.message}`
             );
-            workspaceContext.outputChannel.log(
+            workspaceContext.logger.info(
                 `Failed to load Package.swift: ${error.message}`,
                 folderContext.name
             );
@@ -106,6 +158,10 @@ export class FolderContext implements vscode.Disposable {
         await folderContext.packageWatcher.install();
 
         return folderContext;
+    }
+
+    get languageClientManager() {
+        return this.workspaceContext.languageClientManager.get(this);
     }
 
     get name(): string {
@@ -145,8 +201,8 @@ export class FolderContext implements vscode.Disposable {
     }
 
     /** Load Swift Plugins and store in Package */
-    async loadSwiftPlugins(outputChannel: SwiftOutputChannel) {
-        await this.swiftPackage.loadSwiftPlugins(this.toolchain, outputChannel);
+    async loadSwiftPlugins(logger: SwiftLogger) {
+        await this.swiftPackage.loadSwiftPlugins(this.toolchain, logger);
     }
 
     /**
@@ -165,7 +221,13 @@ export class FolderContext implements vscode.Disposable {
     /** Create Test explorer for this folder */
     addTestExplorer() {
         if (this.testExplorer === undefined) {
-            this.testExplorer = new TestExplorer(this);
+            this.testExplorer = new TestExplorer(
+                this,
+                this.workspaceContext.tasks,
+                this.workspaceContext.logger,
+                this.workspaceContext.onDidChangeSwiftFiles.bind(this.workspaceContext)
+            );
+            this.testExplorerResolver?.(this.testExplorer);
         }
         return this.testExplorer;
     }
@@ -177,9 +239,9 @@ export class FolderContext implements vscode.Disposable {
     }
 
     /** Refresh the tests in the test explorer for this folder */
-    refreshTestExplorer() {
+    async refreshTestExplorer() {
         if (this.testExplorer?.controller.resolveHandler) {
-            void this.testExplorer.controller.resolveHandler(undefined);
+            return this.testExplorer.controller.resolveHandler(undefined);
         }
     }
 
@@ -210,6 +272,53 @@ export class FolderContext implements vscode.Disposable {
             return element.sources.find(file => file === relativeUri) !== undefined;
         });
         return target;
+    }
+
+    /**
+     * Register a new test run
+     * @param testRun The test run to register
+     * @param folder The folder context
+     * @param testKind The kind of test run
+     * @param tokenSource The cancellation token source
+     */
+    public registerTestRun(testRun: TestRunProxy, tokenSource: vscode.CancellationTokenSource) {
+        this.testRunManager.registerTestRun(testRun, this, tokenSource);
+    }
+
+    /**
+     * Returns true if there is an active test run for the given test kind
+     * @param testKind The kind of test
+     * @returns True if there is an active test run, false otherwise
+     */
+    hasActiveTestRun() {
+        return this.testRunManager.getActiveTestRun(this) !== undefined;
+    }
+
+    /**
+     * Cancels the active test run for the given test kind
+     * @param testKind The kind of test run
+     */
+    cancelTestRun() {
+        this.testRunManager.cancelTestRun(this);
+    }
+
+    /**
+     * Called whenever we have new document symbols
+     */
+    onDocumentSymbols(
+        document: vscode.TextDocument,
+        symbols: vscode.DocumentSymbol[] | null | undefined
+    ) {
+        const uri = document?.uri;
+        if (
+            this.testExplorer &&
+            symbols &&
+            uri &&
+            uri.scheme === "file" &&
+            isPathInsidePath(uri.fsPath, this.folder.fsPath)
+        ) {
+            void this.testExplorer.getDocumentTests(this, uri, symbols);
+        }
     }
 }
 

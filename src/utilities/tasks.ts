@@ -13,8 +13,9 @@
 //===----------------------------------------------------------------------===//
 import * as path from "path";
 import * as vscode from "vscode";
-import { substituteVariablesInString } from "../configuration";
+
 import { FolderContext } from "../FolderContext";
+import { substituteVariablesInString } from "../configuration";
 
 export const lineBreakRegex = /\r\n|\n|\r/gm;
 

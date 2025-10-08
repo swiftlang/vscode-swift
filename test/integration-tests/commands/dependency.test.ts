@@ -11,22 +11,26 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { expect } from "chai";
+import * as fs from "fs/promises";
+import * as path from "path";
 import * as vscode from "vscode";
-import { PackageNode, ProjectPanelProvider } from "../../../src/ui/ProjectPanelProvider";
+
+import { FolderContext } from "@src/FolderContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { Commands } from "@src/commands";
+import { PackageNode, ProjectPanelProvider } from "@src/ui/ProjectPanelProvider";
+
 import { testAssetUri } from "../../fixtures";
-import { FolderContext } from "../../../src/FolderContext";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { Commands } from "../../../src/commands";
-import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
+import { tag } from "../../tags";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
+import {
+    activateExtensionForSuite,
+    findWorkspaceFolder,
+    folderInRootWorkspace,
+} from "../utilities/testutilities";
 
-suite("Dependency Commmands Test Suite @slow", function () {
-    // full workflow's interaction with spm is longer than the default timeout
-    // 3 minutes for each test should be more than enough
-    this.timeout(3 * 60 * 1000);
-
+tag("large").suite("Dependency Commands Test Suite", function () {
     let depsContext: FolderContext;
     let workspaceContext: WorkspaceContext;
 
@@ -67,10 +71,17 @@ suite("Dependency Commmands Test Suite @slow", function () {
         async function getDependency() {
             const headers = await treeProvider.getChildren();
             const header = headers.find(n => n.name === "Dependencies") as PackageNode;
+            workspaceContext.logger.info(
+                `getDependency: Current headers: ${headers.map(n => n.name)}`
+            );
             if (!header) {
                 return;
             }
+
             const children = await header.getChildren();
+            workspaceContext.logger.info(
+                `getDependencyInState: Current children for "Dependencies" entry: ${children.map(n => n.name).join(", ")}`
+            );
             return children.find(
                 n => n.name.toLocaleLowerCase() === "swift-markdown"
             ) as PackageNode;
@@ -81,20 +92,56 @@ suite("Dependency Commmands Test Suite @slow", function () {
         // and RESET_PACKAGE commands because the file watcher on
         // workspace-state.json needs to trigger.
         async function getDependencyInState(state: "remote" | "editing") {
+            let depType: string | undefined;
             for (let i = 0; i < 10; i++) {
                 const dep = await getDependency();
                 if (dep?.type === state) {
                     return dep;
                 }
+                depType = dep?.type;
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
-            throw Error(`Could not find dependency with state "${state}"`);
+
+            const headers = await treeProvider.getChildren();
+            const headerNames = headers.map(n => n.name);
+            const depChildren = await (
+                headers.find(n => n.name === "Dependencies") as PackageNode
+            )?.getChildren();
+            const childrenNames = depChildren?.map(n => n.name) ?? [];
+
+            const dependenciesFolderContext = await folderInRootWorkspace(
+                "dependencies",
+                workspaceContext
+            );
+            const resolvedPath = path.join(
+                dependenciesFolderContext.folder.fsPath,
+                "Package.resolved"
+            );
+            const packageResolvedContents = await fs.readFile(resolvedPath, "utf8");
+
+            throw Error(
+                `Could not find dependency with state "${state}", instead it was "${depType}". Current headers: ${headerNames.map(h => `"${h}"`).join(", ")}, Current children for "Dependencies" entry: ${childrenNames.map(c => `"${c}"`).join(", ")}\nContents of Package.resolved:\n${packageResolvedContents}`
+            );
         }
 
         async function useLocalDependencyTest() {
+            workspaceContext.logger.info(
+                "useLocalDependencyTest: Fetching the dependency in the 'remote' state"
+            );
+
             // spm edit with user supplied local version of dependency
             const item = await getDependencyInState("remote");
             const localDep = testAssetUri("swift-markdown");
+
+            workspaceContext.logger.info(
+                "useLocalDependencyTest: Resolving latest dependencies before editing"
+            );
+
+            // Perform a resolve first to make sure that dependencies are up to date
+            await vscode.commands.executeCommand(Commands.RESOLVE_DEPENDENCIES);
+
+            workspaceContext.logger.info(`Configuring ${localDep.fsPath} to the "editing" state`);
+
             const result = await vscode.commands.executeCommand(
                 Commands.USE_LOCAL_DEPENDENCY,
                 item,
@@ -103,14 +150,24 @@ suite("Dependency Commmands Test Suite @slow", function () {
             );
             expect(result).to.be.true;
 
+            workspaceContext.logger.info(
+                "useLocalDependencyTest: Set use local dependency to remote, now verifying"
+            );
+
             const dep = await getDependencyInState("editing");
             expect(dep).to.not.be.undefined;
             // Make sure using local
             expect(dep?.type).to.equal("editing");
+
+            workspaceContext.logger.info(
+                "useLocalDependencyTest: Use local dependency was verified to be in 'editing' state"
+            );
         }
 
         test("Swift: Reset Package Dependencies", async function () {
             await useLocalDependencyTest();
+
+            workspaceContext.logger.info("Resetting package dependency to remote version");
 
             // spm reset
             const result = await vscode.commands.executeCommand(
@@ -125,8 +182,10 @@ suite("Dependency Commmands Test Suite @slow", function () {
             expect(dep?.type).to.equal("remote");
         });
 
-        test("Swift: Revert To Original Version", async function () {
+        test("Swift: Unedit To Original Version", async function () {
             await useLocalDependencyTest();
+
+            workspaceContext.logger.info("Unediting package dependency to original version");
 
             const result = await vscode.commands.executeCommand(
                 Commands.UNEDIT_DEPENDENCY,

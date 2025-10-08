@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
-import { WorkspaceContext } from "../WorkspaceContext";
+
 import { FolderContext } from "../FolderContext";
+import { WorkspaceContext } from "../WorkspaceContext";
 
 /**
  * Restart the sourcekit-lsp server. If multiple sourcekit-lsp instances

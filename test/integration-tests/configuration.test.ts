@@ -11,18 +11,19 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
+import { expect } from "chai";
+import { afterEach } from "mocha";
 import * as path from "path";
+
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import configuration from "@src/configuration";
+import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+
 import {
     activateExtensionForSuite,
     getRootWorkspaceFolder,
     updateSettings,
 } from "./utilities/testutilities";
-import { expect } from "chai";
-import { afterEach } from "mocha";
-import configuration from "../../src/configuration";
-import { createBuildAllTask } from "../../src/tasks/SwiftTaskProvider";
-import { WorkspaceContext } from "../../src/WorkspaceContext";
 
 suite("Configuration Test Suite", function () {
     let workspaceContext: WorkspaceContext;

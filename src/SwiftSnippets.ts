@@ -11,13 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as path from "path";
-import contextKeys from "./contextKeys";
-import { createSwiftTask } from "./tasks/SwiftTaskProvider";
+import * as vscode from "vscode";
+
 import { WorkspaceContext } from "./WorkspaceContext";
 import { createSnippetConfiguration, debugLaunchConfig } from "./debugger/launch";
+import { createSwiftTask } from "./tasks/SwiftTaskProvider";
 import { TaskOperation } from "./tasks/TaskQueue";
 
 /**
@@ -30,16 +29,16 @@ export function setSnippetContextKey(ctx: WorkspaceContext) {
         !ctx.currentDocument ||
         ctx.currentFolder.swiftVersion.isLessThan({ major: 5, minor: 7, patch: 0 })
     ) {
-        contextKeys.fileIsSnippet = false;
+        ctx.contextKeys.fileIsSnippet = false;
         return;
     }
 
     const filename = ctx.currentDocument.fsPath;
     const snippetsFolder = path.join(ctx.currentFolder.folder.fsPath, "Snippets");
     if (filename.startsWith(snippetsFolder)) {
-        contextKeys.fileIsSnippet = true;
+        ctx.contextKeys.fileIsSnippet = true;
     } else {
-        contextKeys.fileIsSnippet = false;
+        ctx.contextKeys.fileIsSnippet = false;
     }
     return;
 }
@@ -99,7 +98,7 @@ export async function debugSnippetWithOptions(
         },
         folderContext.toolchain
     );
-    const snippetDebugConfig = createSnippetConfiguration(snippetName, folderContext);
+    const snippetDebugConfig = await createSnippetConfiguration(snippetName, folderContext);
     try {
         ctx.buildStarted(snippetName, snippetDebugConfig, options);
 
@@ -120,7 +119,7 @@ export async function debugSnippetWithOptions(
                 return result;
             });
     } catch (error) {
-        ctx.outputChannel.appendLine(`Failed to debug snippet: ${error}`);
+        ctx.logger.error(`Failed to debug snippet: ${error}`);
         // ignore error if task failed to run
         return false;
     }

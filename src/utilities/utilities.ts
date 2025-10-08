@@ -11,13 +11,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as cp from "child_process";
 import * as path from "path";
 import * as Stream from "stream";
-import configuration from "../configuration";
+import * as vscode from "vscode";
+
 import { FolderContext } from "../FolderContext";
+import configuration from "../configuration";
 import { SwiftToolchain } from "../toolchain/toolchain";
 
 /**
@@ -29,12 +29,26 @@ import { SwiftToolchain } from "../toolchain/toolchain";
 export const IS_PRODUCTION_BUILD = process.env.NODE_ENV === "production";
 
 /**
- * Whether or not the code is being run in CI.
- *
- * Code that checks for this will be removed completely when the extension is packaged into
- * a VSIX.
+ * Whether or not the code is being run in a Github Actions workflow.
  */
-export const IS_RUNNING_IN_CI = process.env.CI === "1";
+export const IS_RUNNING_UNDER_GITHUB_ACTIONS = process.env.GITHUB_ACTIONS === "true";
+
+/**
+ * Whether or not the code is being run by `act` CLT.
+ */
+export const IS_RUNNING_UNDER_ACT = process.env.ACT === "true";
+
+/**
+ * Whether or not the code is being run in a docker container.
+ */
+export const IS_RUNNING_UNDER_DOCKER = IS_RUNNING_UNDER_ACT || IS_RUNNING_UNDER_GITHUB_ACTIONS;
+
+/**
+ * Whether or not the code is being run as part of a test suite.
+ *
+ * This will NOT be removed when the extension is packaged into a VSIX, unlike "CI" variable.
+ */
+export const IS_RUNNING_UNDER_TEST = process.env.RUNNING_UNDER_VSCODE_TEST_CLI === "1";
 
 /**
  * Get required environment variable for Swift product
@@ -115,7 +129,7 @@ export async function execFile(
     folderContext?: FolderContext,
     customSwiftRuntime = true
 ): Promise<{ stdout: string; stderr: string }> {
-    folderContext?.workspaceContext.outputChannel.logDiagnostic(
+    folderContext?.workspaceContext.logger.debug(
         `Exec: ${executable} ${args.join(" ")}`,
         folderContext.name
     );
@@ -132,12 +146,35 @@ export async function execFile(
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
         cp.execFile(executable, args, options, (error, stdout, stderr) => {
             if (error) {
-                reject(new ExecFileError(error, stdout, stderr));
+                reject(new ExecFileError(error, stdout.toString(), stderr.toString()));
             } else {
-                resolve({ stdout, stderr });
+                resolve({ stdout: stdout.toString(), stderr: stderr.toString() });
             }
         });
     });
+}
+
+enum Color {
+    red = 31,
+    green = 32,
+    yellow = 33,
+    blue = 34,
+    magenta = 35,
+    cyan = 36,
+    white = 37,
+    grey = 90,
+    lightRed = 91,
+    lightGreen = 92,
+    lightYellow = 93,
+    lightBlue = 94,
+}
+
+export function colorize(text: string, color: keyof typeof Color): string {
+    const colorCode = Color[color];
+    if (colorCode !== undefined) {
+        return `\x1b[${colorCode}m${text}\x1b[0m`;
+    }
+    return text;
 }
 
 export async function execFileStreamOutput(
@@ -151,7 +188,7 @@ export async function execFileStreamOutput(
     customSwiftRuntime = true,
     killSignal: NodeJS.Signals = "SIGTERM"
 ): Promise<void> {
-    folderContext?.workspaceContext.outputChannel.logDiagnostic(
+    folderContext?.workspaceContext.logger.debug(
         `Exec: ${executable} ${args.join(" ")}`,
         folderContext.name
     );
@@ -385,4 +422,37 @@ export function regexEscapedString(string: string, omitting?: Set<string>): stri
         }
     }
     return result;
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * Creates a promise that can be resolved or rejected outside the promise executor.
+ * @returns An object containing a promise, a resolve function, and a reject function.
+ */
+export function destructuredPromise<T>(): {
+    promise: Promise<T>;
+    resolve: (value: T) => void;
+    reject: (reason?: any) => void;
+} {
+    let resolve: (value: T) => void;
+    let reject: (reason?: any) => void;
+    const p = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+    });
+    return { promise: p, resolve: resolve!, reject: reject! };
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+/**
+ * Creates a composite disposable from multiple disposables.
+ * @param disposables The disposables to include.
+ * @returns A composite disposable that disposes all included disposables.
+ */
+export function compositeDisposable(...disposables: vscode.Disposable[]): vscode.Disposable {
+    return {
+        dispose: () => {
+            disposables.forEach(d => d.dispose());
+        },
+    };
 }

@@ -11,16 +11,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { execSwift, getErrorDescription, hashString } from "./utilities/utilities";
-import { isPathInsidePath } from "./utilities/filesystem";
-import { SwiftToolchain } from "./toolchain/toolchain";
+import * as vscode from "vscode";
+
+import { SwiftLogger } from "./logging/SwiftLogger";
 import { BuildFlags } from "./toolchain/BuildFlags";
-import { SwiftOutputChannel } from "./ui/SwiftOutputChannel";
+import { SwiftToolchain } from "./toolchain/toolchain";
+import { isPathInsidePath } from "./utilities/filesystem";
 import { lineBreakRegex } from "./utilities/tasks";
+import { execSwift, getErrorDescription, hashString } from "./utilities/utilities";
 
 /** Swift Package Manager contents */
 interface PackageContents {
@@ -35,6 +35,10 @@ export interface Product {
     name: string;
     targets: string[];
     type: { executable?: null; library?: string[] };
+}
+
+export function isAutomatic(product: Product): boolean {
+    return (product.type.library || []).includes("automatic");
 }
 
 /** Swift Package Manager target */
@@ -61,6 +65,7 @@ export interface ResolvedDependency extends Dependency {
     type: string;
     path: string;
     location: string;
+    revision?: string;
 }
 
 /** Swift Package.resolved file */
@@ -70,9 +75,8 @@ export class PackageResolved {
     readonly version: number;
 
     constructor(fileContents: string) {
-        const json = JSON.parse(fileContents);
-        const version = <{ version: number }>json;
-        this.version = version.version;
+        const json = JSON.parse(fileContents) as { version: number };
+        this.version = json.version;
         this.fileHash = hashString(fileContents);
 
         if (this.version === 1) {
@@ -200,7 +204,8 @@ export class SwiftPackage {
         readonly folder: vscode.Uri,
         private contentsPromise: Promise<SwiftPackageState>,
         public resolved: PackageResolved | undefined,
-        private workspaceState: WorkspaceState | undefined
+        // TODO: Make private again
+        public workspaceState: WorkspaceState | undefined
     ) {}
 
     /**
@@ -307,7 +312,7 @@ export class SwiftPackage {
     private static async loadPlugins(
         folder: vscode.Uri,
         toolchain: SwiftToolchain,
-        outputChannel: SwiftOutputChannel
+        logger: SwiftLogger
     ): Promise<PackagePlugin[]> {
         try {
             const { stdout } = await execSwift(["package", "plugin", "--list"], toolchain, {
@@ -328,7 +333,7 @@ export class SwiftPackage {
             }
             return plugins;
         } catch (error) {
-            outputChannel.appendLine(`Failed to laod plugins: ${error}`);
+            logger.error(`Failed to load plugins: ${error}`);
             // failed to load resolved file return undefined
             return [];
         }
@@ -370,8 +375,8 @@ export class SwiftPackage {
         this.workspaceState = await SwiftPackage.loadWorkspaceState(this.folder);
     }
 
-    public async loadSwiftPlugins(toolchain: SwiftToolchain, outputChannel: SwiftOutputChannel) {
-        this.plugins = await SwiftPackage.loadPlugins(this.folder, toolchain, outputChannel);
+    public async loadSwiftPlugins(toolchain: SwiftToolchain, logger: SwiftLogger) {
+        this.plugins = await SwiftPackage.loadPlugins(this.folder, toolchain, logger);
     }
 
     /** Return if has valid contents */
@@ -409,6 +414,7 @@ export class SwiftPackage {
                 : "",
             type: workspaceStateDep ? this.dependencyType(workspaceStateDep) : "",
             location: workspaceStateDep ? workspaceStateDep.packageRef.location : "",
+            revision: workspaceStateDep?.state.checkoutState?.revision ?? "",
         };
     }
 

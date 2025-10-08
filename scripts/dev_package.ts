@@ -12,26 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 /* eslint-disable no-console */
+import { getExtensionVersion, main, packageExtension } from "./lib/utilities";
 
-import {
-    exec,
-    getExtensionVersion,
-    getRootDirectory,
-    main,
-    updateChangelog,
-} from "./lib/utilities";
-
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
 main(async () => {
-    const rootDirectory = getRootDirectory();
     const version = await getExtensionVersion();
-    // Increment the patch version from the package.json
-    const patch = version.patch + 1;
-    const devVersion = `${version.major}.${version.minor}.${patch}-dev`;
-    // Update version in CHANGELOG
-    await updateChangelog(devVersion);
-    // Use VSCE to package the extension
-    await exec("npx", ["vsce", "package", "--no-update-package-json", devVersion], {
-        cwd: rootDirectory,
-    });
+    const devVersion = `${version.major}.${version.minor}.${version.patch}-dev`;
+    await packageExtension(devVersion);
 });

@@ -11,9 +11,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
+
 import { checkExperimentalCapability } from "./LanguageClientManager";
 import { DidChangeActiveDocumentNotification } from "./extensions/DidChangeActiveDocumentRequest";
 
@@ -39,7 +39,7 @@ export class LSPActiveDocumentManager {
         document: vscode.TextDocument,
         next: (data: vscode.TextDocument) => Promise<void>
     ) {
-        this.openDocuments.add(document.uri);
+        this.openDocuments.delete(document.uri);
         await next(document);
     }
 

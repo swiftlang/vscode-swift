@@ -11,22 +11,25 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
-import { pathExists } from "./filesystem";
-import { convertPathToPattern, glob } from "fast-glob";
+import * as fs from "fs/promises";
+import * as path from "path";
 import { basename } from "path";
+import * as vscode from "vscode";
+
+import { globDirectory, pathExists } from "./filesystem";
+import { Version } from "./version";
 
 export async function searchForPackages(
     folder: vscode.Uri,
     disableSwiftPMIntegration: boolean,
-    searchSubfoldersForPackages: boolean
+    searchSubfoldersForPackages: boolean,
+    swiftVersion: Version
 ): Promise<Array<vscode.Uri>> {
     const folders: Array<vscode.Uri> = [];
 
     async function search(folder: vscode.Uri) {
         // add folder if Package.swift/compile_commands.json/compile_flags.txt/buildServer.json exists
-        if (await isValidWorkspaceFolder(folder.fsPath, disableSwiftPMIntegration)) {
+        if (await isValidWorkspaceFolder(folder.fsPath, disableSwiftPMIntegration, swiftVersion)) {
             folders.push(folder);
         }
         // should I search sub-folders for more Swift Packages
@@ -34,13 +37,7 @@ export async function searchForPackages(
             return;
         }
 
-        const config = vscode.workspace.getConfiguration("files");
-        const vscodeExcludeList = config.get<{ [key: string]: boolean }>("exclude", {});
-        await glob(`${convertPathToPattern(folder.fsPath)}/*`, {
-            ignore: [...Object.keys(vscodeExcludeList).filter(k => vscodeExcludeList[k])],
-            absolute: true,
-            onlyDirectories: true,
-        }).then(async entries => {
+        await globDirectory(folder, { onlyDirectories: true }).then(async entries => {
             for (const entry of entries) {
                 if (basename(entry) !== "." && basename(entry) !== "Packages") {
                     await search(vscode.Uri.file(entry));
@@ -54,16 +51,61 @@ export async function searchForPackages(
     return folders;
 }
 
+export async function hasBSPConfigurationFile(
+    folder: string,
+    swiftVersion: Version
+): Promise<boolean> {
+    // buildServer.json
+    const buildServerPath = path.join(folder, "buildServer.json");
+    const buildServerStat = await fs.stat(buildServerPath).catch(() => undefined);
+    if (buildServerStat && buildServerStat.isFile()) {
+        return true;
+    }
+    // .bsp/*.json for Swift >= 6.1.0
+    if (swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))) {
+        const bspDir = path.join(folder, ".bsp");
+        const bspStat = await fs.stat(bspDir).catch(() => undefined);
+        if (bspStat && bspStat.isDirectory()) {
+            const files = await fs.readdir(bspDir).catch(() => []);
+            if (files.some((f: string) => f.endsWith(".json"))) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 export async function isValidWorkspaceFolder(
     folder: string,
-    disableSwiftPMIntegration: boolean
+    disableSwiftPMIntegration: boolean,
+    swiftVersion: Version
 ): Promise<boolean> {
-    return (
-        (!disableSwiftPMIntegration && (await pathExists(folder, "Package.swift"))) ||
-        (await pathExists(folder, "compile_commands.json")) ||
-        (await pathExists(folder, "compile_flags.txt")) ||
-        (await pathExists(folder, "buildServer.json")) ||
-        (await pathExists(folder, "build")) ||
-        (await pathExists(folder, "out"))
-    );
+    // Check Package.swift first (most common case)
+    if (!disableSwiftPMIntegration && (await pathExists(folder, "Package.swift"))) {
+        return true;
+    }
+
+    // Check other common build files
+    if (await pathExists(folder, "compile_commands.json")) {
+        return true;
+    }
+
+    if (await pathExists(folder, "compile_flags.txt")) {
+        return true;
+    }
+
+    if (await pathExists(folder, "build")) {
+        return true;
+    }
+
+    if (await pathExists(folder, "out")) {
+        return true;
+    }
+
+    // Check BSP configuration last (potentially more expensive)
+    if (await hasBSPConfigurationFile(folder, swiftVersion)) {
+        return true;
+    }
+
+    return false;
 }

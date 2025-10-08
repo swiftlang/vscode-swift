@@ -11,8 +11,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
 import { Version } from "./utilities/version";
 
 /**
@@ -23,7 +23,7 @@ import { Version } from "./utilities/version";
  */
 
 /** Interface for getting and setting the VS Code Swift extension's context keys */
-interface ContextKeys {
+export interface ContextKeys {
     /**
      * Whether or not the swift extension is activated.
      */
@@ -85,6 +85,11 @@ interface ContextKeys {
     supportsDocumentationLivePreview: boolean;
 
     /**
+     * Whether the installed version of Swiftly can be used to install toolchains from within VS Code.
+     */
+    supportsSwiftlyInstall: boolean;
+
+    /**
      * Whether the swift.switchPlatform command is available.
      */
     switchPlatformAvailable: boolean;
@@ -96,7 +101,7 @@ interface ContextKeys {
 }
 
 /** Creates the getters and setters for the VS Code Swift extension's context keys. */
-function createContextKeys(): ContextKeys {
+export function createContextKeys(): ContextKeys {
     let isActivated: boolean = false;
     let hasPackage: boolean = false;
     let hasExecutableProduct: boolean = false;
@@ -109,6 +114,7 @@ function createContextKeys(): ContextKeys {
     let createNewProjectAvailable: boolean = false;
     let supportsReindexing: boolean = false;
     let supportsDocumentationLivePreview: boolean = false;
+    let supportsSwiftlyInstall: boolean = false;
     let switchPlatformAvailable: boolean = false;
 
     return {
@@ -278,6 +284,19 @@ function createContextKeys(): ContextKeys {
                 });
         },
 
+        get supportsSwiftlyInstall() {
+            return supportsSwiftlyInstall;
+        },
+
+        set supportsSwiftlyInstall(value: boolean) {
+            supportsSwiftlyInstall = value;
+            void vscode.commands
+                .executeCommand("setContext", "swift.supportsSwiftlyInstall", value)
+                .then(() => {
+                    /* Put in worker queue */
+                });
+        },
+
         get switchPlatformAvailable() {
             return switchPlatformAvailable;
         },
@@ -292,10 +311,3 @@ function createContextKeys(): ContextKeys {
         },
     };
 }
-
-/**
- * Type-safe wrapper around context keys used in `when` clauses.
- */
-const contextKeys: ContextKeys = createContextKeys();
-
-export default contextKeys;

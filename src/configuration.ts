@@ -11,12 +11,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as os from "os";
 import * as path from "path";
-import { showReloadExtensionNotification } from "./ui/ReloadExtension";
+import * as vscode from "vscode";
+
 import { WorkspaceContext } from "./WorkspaceContext";
+import { SwiftToolchain } from "./toolchain/toolchain";
+import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 
 export type DebugAdapters = "auto" | "lldb-dap" | "CodeLLDB";
 export type SetupCodeLLDBOptions =
@@ -39,6 +40,7 @@ export type DiagnosticCollectionOptions =
     | "keepSourceKit"
     | "keepAll";
 export type DiagnosticStyle = "default" | "llvm" | "swift";
+export type ValidCodeLens = "run" | "debug" | "coverage";
 
 /** sourcekit-lsp configuration */
 export interface LSPConfiguration {
@@ -101,6 +103,15 @@ export interface PluginPermissionConfiguration {
      * https://github.com/swiftlang/swift-package-manager/blob/0401a2ae55077cfd1f4c0acd43ae0a1a56ab21ef/Sources/Commands/PackageCommands/PluginCommand.swift#L62
      */
     allowNetworkConnections?: string;
+}
+
+export interface BackgroundCompilationConfiguration {
+    /** enable background compilation task on save */
+    enabled: boolean;
+    /** use the default `swift` build task when background compilation is enabled */
+    useDefaultTask: boolean;
+    /** Use the `release` variant of the build all task */
+    release: boolean;
 }
 
 /**
@@ -290,6 +301,16 @@ const configuration = {
             .get<string[]>("excludeFromCodeCoverage", [])
             .map(substituteVariablesInString);
     },
+    /** Whether to show inline code lenses for running and debugging tests. */
+    get showTestCodeLenses(): boolean | ValidCodeLens[] {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<boolean | ValidCodeLens[]>("showTestCodeLenses", true);
+    },
+    /** Whether to record the duration of tests in the Test Explorer. */
+    get recordTestDuration(): boolean {
+        return vscode.workspace.getConfiguration("swift").get<boolean>("recordTestDuration", true);
+    },
     /** Files and directories to exclude from the Package Dependencies view. */
     get excludePathsFromPackageDependencies(): string[] {
         return vscode.workspace
@@ -341,10 +362,14 @@ const configuration = {
             .get<string[]>("buildArguments", [])
             .map(substituteVariablesInString);
     },
-    get scriptSwiftLanguageVersion(): string {
-        return vscode.workspace
+    scriptSwiftLanguageVersion(toolchain: SwiftToolchain): string {
+        const version = vscode.workspace
             .getConfiguration("swift")
-            .get<string>("scriptSwiftLanguageVersion", "6");
+            .get<string>("scriptSwiftLanguageVersion", toolchain.swiftVersion.major.toString());
+        if (version.length === 0) {
+            return toolchain.swiftVersion.major.toString();
+        }
+        return version;
     },
     /** swift package arguments */
     get packageArguments(): string[] {
@@ -391,11 +416,28 @@ const configuration = {
             .getConfiguration("swift")
             .get<ShowBuildStatusOptions>("showBuildStatus", "swiftStatus");
     },
-    /** background compilation */
-    get backgroundCompilation(): boolean {
+    /** create build tasks for the library products of the package(s) */
+    get createTasksForLibraryProducts(): boolean {
         return vscode.workspace
             .getConfiguration("swift")
-            .get<boolean>("backgroundCompilation", false);
+            .get<boolean>("createTasksForLibraryProducts", false);
+    },
+    /** background compilation */
+    get backgroundCompilation(): BackgroundCompilationConfiguration {
+        const value = vscode.workspace
+            .getConfiguration("swift")
+            .get<BackgroundCompilationConfiguration | boolean>("backgroundCompilation", false);
+        return {
+            get enabled(): boolean {
+                return typeof value === "boolean" ? value : value.enabled;
+            },
+            get useDefaultTask(): boolean {
+                return typeof value === "boolean" ? true : (value.useDefaultTask ?? true);
+            },
+            get release(): boolean {
+                return typeof value === "boolean" ? false : (value.release ?? false);
+            },
+        };
     },
     /** background indexing */
     get backgroundIndexing(): "on" | "off" | "auto" {
@@ -482,6 +524,41 @@ const configuration = {
     /** Whether or not to disable SwiftPM sandboxing */
     get disableSandbox(): boolean {
         return vscode.workspace.getConfiguration("swift").get<boolean>("disableSandbox", false);
+    },
+    /** Workspace folder glob patterns to exclude */
+    get excludePathsFromActivation(): Record<string, boolean> {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<Record<string, boolean>>("excludePathsFromActivation", {});
+    },
+    get lspConfigurationBranch(): string {
+        return vscode.workspace.getConfiguration("swift").get<string>("lspConfigurationBranch", "");
+    },
+    get checkLspConfigurationSchema(): boolean {
+        return vscode.workspace
+            .getConfiguration("swift")
+            .get<boolean>("checkLspConfigurationSchema", true);
+    },
+    set checkLspConfigurationSchema(value: boolean) {
+        void vscode.workspace
+            .getConfiguration("swift")
+            .update("checkLspConfigurationSchema", value)
+            .then(() => {
+                /* Put in worker queue */
+            });
+    },
+    get outputChannelLogLevel(): string {
+        return vscode.workspace.getConfiguration("swift").get("outputChannelLogLevel", "info");
+    },
+    parameterHintsEnabled(documentUri: vscode.Uri): boolean {
+        const enabled = vscode.workspace
+            .getConfiguration("editor.parameterHints", {
+                uri: documentUri,
+                languageId: "swift",
+            })
+            .get<boolean>("enabled");
+
+        return enabled === true;
     },
 };
 

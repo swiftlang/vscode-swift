@@ -11,45 +11,49 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
-import * as path from "path";
 import { expect } from "chai";
+import * as path from "path";
 import { match } from "sinon";
-import { FolderEvent, FolderOperation, WorkspaceContext } from "../../../src/WorkspaceContext";
-import { Version } from "../../../src/utilities/version";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
-import { BuildFlags } from "../../../src/toolchain/BuildFlags";
-import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
-import {
-    MockedObject,
-    mockObject,
-    instance,
-    mockGlobalModule,
-    waitForReturnedPromises,
-    AsyncEventEmitter,
-    mockGlobalObject,
-    mockGlobalValue,
-    mockFn,
-} from "../../MockUtils";
+import * as vscode from "vscode";
 import {
     Code2ProtocolConverter,
     DidChangeWorkspaceFoldersNotification,
     DidChangeWorkspaceFoldersParams,
     LanguageClient,
+    Middleware,
     State,
     StateChangeEvent,
 } from "vscode-languageclient/node";
-import { LanguageClientManager } from "../../../src/sourcekit-lsp/LanguageClientManager";
-import { LanguageClientToolchainCoordinator } from "../../../src/sourcekit-lsp/LanguageClientToolchainCoordinator";
-import configuration from "../../../src/configuration";
-import { FolderContext } from "../../../src/FolderContext";
-import { LanguageClientFactory } from "../../../src/sourcekit-lsp/LanguageClientFactory";
-import { LSPActiveDocumentManager } from "../../../src/sourcekit-lsp/didChangeActiveDocument";
+
+import { FolderContext } from "@src/FolderContext";
+import { FolderEvent, FolderOperation, WorkspaceContext } from "@src/WorkspaceContext";
+import configuration from "@src/configuration";
+import { SwiftLogger } from "@src/logging/SwiftLogger";
+import { SwiftLoggerFactory } from "@src/logging/SwiftLoggerFactory";
+import { SwiftOutputChannel } from "@src/logging/SwiftOutputChannel";
+import { LanguageClientFactory } from "@src/sourcekit-lsp/LanguageClientFactory";
+import { LanguageClientManager } from "@src/sourcekit-lsp/LanguageClientManager";
+import { LanguageClientToolchainCoordinator } from "@src/sourcekit-lsp/LanguageClientToolchainCoordinator";
+import { LSPActiveDocumentManager } from "@src/sourcekit-lsp/didChangeActiveDocument";
 import {
     DidChangeActiveDocumentNotification,
     DidChangeActiveDocumentParams,
-} from "../../../src/sourcekit-lsp/extensions/DidChangeActiveDocumentRequest";
+} from "@src/sourcekit-lsp/extensions/DidChangeActiveDocumentRequest";
+import { BuildFlags } from "@src/toolchain/BuildFlags";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { Version } from "@src/utilities/version";
+
+import {
+    AsyncEventEmitter,
+    MockedObject,
+    instance,
+    mockFn,
+    mockGlobalModule,
+    mockGlobalObject,
+    mockGlobalValue,
+    mockObject,
+    waitForReturnedPromises,
+} from "../../MockUtils";
 
 suite("LanguageClientManager Suite", () => {
     let languageClientFactoryMock: MockedObject<LanguageClientFactory>;
@@ -59,7 +63,8 @@ suite("LanguageClientManager Suite", () => {
     let mockedWorkspace: MockedObject<WorkspaceContext>;
     let mockedFolder: MockedObject<FolderContext>;
     let didChangeFoldersEmitter: AsyncEventEmitter<FolderEvent>;
-    let mockedOutputChannel: MockedObject<SwiftOutputChannel>;
+    let mockLogger: MockedObject<SwiftLogger>;
+    let mockLoggerFactory: MockedObject<SwiftLoggerFactory>;
     let mockedToolchain: MockedObject<SwiftToolchain>;
     let mockedBuildFlags: MockedObject<BuildFlags>;
 
@@ -69,6 +74,7 @@ suite("LanguageClientManager Suite", () => {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
     const mockedVSCodeExtensions = mockGlobalObject(vscode, "extensions");
     const mockedVSCodeWorkspace = mockGlobalObject(vscode, "workspace");
+    const excludeConfig = mockGlobalValue(configuration, "excludePathsFromActivation");
     let changeConfigEmitter: AsyncEventEmitter<vscode.ConfigurationChangeEvent>;
     let createFilesEmitter: AsyncEventEmitter<vscode.FileCreateEvent>;
     let deleteFilesEmitter: AsyncEventEmitter<vscode.FileDeleteEvent>;
@@ -92,6 +98,9 @@ suite("LanguageClientManager Suite", () => {
         mockedVSCodeWorkspace.onDidCreateFiles.callsFake(createFilesEmitter.event);
         deleteFilesEmitter = new AsyncEventEmitter();
         mockedVSCodeWorkspace.onDidDeleteFiles.callsFake(deleteFilesEmitter.event);
+        mockedVSCodeWorkspace.getConfiguration
+            .withArgs("files")
+            .returns({ get: () => ({}) } as any);
         // Mock the WorkspaceContext and SwiftToolchain
         mockedBuildFlags = mockObject<BuildFlags>({
             buildPathFlags: mockFn(s => s.returns([])),
@@ -105,10 +114,12 @@ suite("LanguageClientManager Suite", () => {
                 s.withArgs("sourcekit-lsp").returns("/path/to/toolchain/bin/sourcekit-lsp")
             ),
         });
-        mockedOutputChannel = mockObject<SwiftOutputChannel>({
-            log: s => s,
-            logDiagnostic: s => s,
-            appendLine: () => {},
+        mockLogger = mockObject<SwiftLogger>({
+            info: s => s,
+            debug: s => s,
+        });
+        mockLoggerFactory = mockObject<SwiftLoggerFactory>({
+            create: mockFn(s => s.returns(mockObject<SwiftOutputChannel>({}))),
         });
         didChangeFoldersEmitter = new AsyncEventEmitter();
         mockedFolder = mockObject<FolderContext>({
@@ -123,7 +134,8 @@ suite("LanguageClientManager Suite", () => {
                 mockObject<WorkspaceContext>({
                     globalToolchain: instance(mockedToolchain),
                     globalToolchainSwiftVersion: new Version(6, 0, 0),
-                    outputChannel: instance(mockedOutputChannel),
+                    logger: instance(mockLogger),
+                    loggerFactory: instance(mockLoggerFactory),
                 })
             ),
             swiftVersion: new Version(6, 0, 0),
@@ -132,7 +144,8 @@ suite("LanguageClientManager Suite", () => {
         mockedWorkspace = mockObject<WorkspaceContext>({
             globalToolchain: instance(mockedToolchain),
             globalToolchainSwiftVersion: new Version(6, 0, 0),
-            outputChannel: instance(mockedOutputChannel),
+            logger: instance(mockLogger),
+            loggerFactory: instance(mockLoggerFactory),
             subscriptions: [],
             folders: [instance(mockedFolder)],
             onDidChangeFolders: mockFn(s => s.callsFake(didChangeFoldersEmitter.event)),
@@ -147,7 +160,7 @@ suite("LanguageClientManager Suite", () => {
             code2ProtocolConverter: instance(mockedConverter),
             clientOptions: {},
             outputChannel: instance(
-                mockObject<vscode.OutputChannel>({
+                mockObject<SwiftOutputChannel>({
                     dispose: mockFn(),
                 })
             ),
@@ -208,12 +221,15 @@ suite("LanguageClientManager Suite", () => {
         mockedLspConfig.serverArguments = [];
         // Process environment variables
         mockedEnvironment.setValue({});
+        // Exclusion
+        excludeConfig.setValue({});
     });
 
     suite("LanguageClientToolchainCoordinator", () => {
         test("returns the same language client for the same folder", async () => {
             const factory = new LanguageClientToolchainCoordinator(
                 instance(mockedWorkspace),
+                {},
                 languageClientFactoryMock
             );
 
@@ -239,6 +255,7 @@ suite("LanguageClientManager Suite", () => {
             mockedWorkspace.folders.push(instance(newFolder));
             const factory = new LanguageClientToolchainCoordinator(
                 instance(mockedWorkspace),
+                {},
                 languageClientFactoryMock
             );
 
@@ -264,6 +281,7 @@ suite("LanguageClientManager Suite", () => {
             mockedWorkspace.folders.push(instance(newFolder));
             const factory = new LanguageClientToolchainCoordinator(
                 instance(mockedWorkspace),
+                {},
                 languageClientFactoryMock
             );
 
@@ -278,6 +296,7 @@ suite("LanguageClientManager Suite", () => {
     test("launches SourceKit-LSP on startup", async () => {
         const factory = new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
+            {},
             languageClientFactoryMock
         );
 
@@ -301,6 +320,7 @@ suite("LanguageClientManager Suite", () => {
         mockedConfig.swiftSDK = "arm64-apple-ios";
         const factory = new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
+            {},
             languageClientFactoryMock
         );
 
@@ -329,6 +349,7 @@ suite("LanguageClientManager Suite", () => {
 
         new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
+            {},
             languageClientFactoryMock
         );
         await waitForReturnedPromises(languageClientMock.start);
@@ -347,6 +368,7 @@ suite("LanguageClientManager Suite", () => {
 
         new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
+            {},
             languageClientFactoryMock
         );
         await waitForReturnedPromises(languageClientMock.start);
@@ -365,6 +387,7 @@ suite("LanguageClientManager Suite", () => {
 
         new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
+            {},
             languageClientFactoryMock
         );
         await waitForReturnedPromises(languageClientMock.start);
@@ -403,6 +426,7 @@ suite("LanguageClientManager Suite", () => {
 
         new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
+            {},
             languageClientFactoryMock
         );
         await waitForReturnedPromises(languageClientMock.start);
@@ -468,7 +492,11 @@ suite("LanguageClientManager Suite", () => {
 
     test("doesn't launch SourceKit-LSP if disabled by the user", async () => {
         mockedLspConfig.disable = true;
-        const sut = new LanguageClientManager(instance(mockedFolder), languageClientFactoryMock);
+        const sut = new LanguageClientManager(
+            instance(mockedFolder),
+            {},
+            languageClientFactoryMock
+        );
         await waitForReturnedPromises(languageClientMock.start);
 
         expect(sut.state).to.equal(State.Stopped);
@@ -480,6 +508,7 @@ suite("LanguageClientManager Suite", () => {
         mockedLspConfig.serverPath = "/path/to/my/custom/sourcekit-lsp";
         const factory = new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
+            {},
             languageClientFactoryMock
         );
 
@@ -531,6 +560,7 @@ suite("LanguageClientManager Suite", () => {
 
         new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
+            {},
             languageClientFactoryMock
         );
 
@@ -545,7 +575,7 @@ suite("LanguageClientManager Suite", () => {
             {
                 range: new vscode.Range(0, 0, 0, 0),
                 command: {
-                    title: "$(play) Run",
+                    title: "$(play)\u00A0Run",
                     command: "swift.run",
                 },
                 isResolved: true,
@@ -553,7 +583,7 @@ suite("LanguageClientManager Suite", () => {
             {
                 range: new vscode.Range(0, 0, 0, 0),
                 command: {
-                    title: "$(debug) Debug",
+                    title: "$(debug)\u00A0Debug",
                     command: "swift.debug",
                 },
                 isResolved: true,
@@ -567,6 +597,213 @@ suite("LanguageClientManager Suite", () => {
                 isResolved: true,
             },
         ]);
+    });
+
+    suite("provideCompletionItem middleware", () => {
+        const mockParameterHintsEnabled = mockGlobalValue(configuration, "parameterHintsEnabled");
+        let document: MockedObject<vscode.TextDocument>;
+        let middleware: Middleware;
+
+        setup(async () => {
+            mockParameterHintsEnabled.setValue(() => true);
+
+            document = mockObject<vscode.TextDocument>({
+                uri: vscode.Uri.file("/test/file.swift"),
+            });
+
+            new LanguageClientToolchainCoordinator(
+                instance(mockedWorkspace),
+                {},
+                languageClientFactoryMock
+            );
+
+            await waitForReturnedPromises(languageClientMock.start);
+
+            middleware = languageClientFactoryMock.createLanguageClient.args[0][3].middleware!;
+        });
+
+        test("adds parameter hints command to function completion items when enabled", async () => {
+            const completionItemsFromLSP = async (): Promise<vscode.CompletionItem[]> => {
+                return [
+                    {
+                        label: "post(endpoint: String, body: [String : Any]?)",
+                        detail: "NetworkRequest",
+                        kind: vscode.CompletionItemKind.EnumMember,
+                    },
+                    {
+                        label: "defaultHeaders",
+                        detail: "[String : String]",
+                        kind: vscode.CompletionItemKind.Property,
+                    },
+                    {
+                        label: "makeRequest(for: NetworkRequest)",
+                        detail: "String",
+                        kind: vscode.CompletionItemKind.Function,
+                    },
+                    {
+                        label: "[endpoint: String]",
+                        detail: "NetworkRequest",
+                        kind: vscode.CompletionItemKind.Method,
+                    },
+                    {
+                        label: "(endpoint: String, method: String)",
+                        detail: "NetworkRequest",
+                        kind: vscode.CompletionItemKind.Constructor,
+                    },
+                ];
+            };
+
+            expect(middleware).to.have.property("provideCompletionItem");
+
+            const result = await middleware.provideCompletionItem!(
+                instance(document),
+                new vscode.Position(0, 0),
+                {} as any,
+                {} as any,
+                completionItemsFromLSP
+            );
+
+            expect(result).to.deep.equal([
+                {
+                    label: "post(endpoint: String, body: [String : Any]?)",
+                    detail: "NetworkRequest",
+                    kind: vscode.CompletionItemKind.EnumMember,
+                    command: {
+                        title: "Trigger Parameter Hints",
+                        command: "editor.action.triggerParameterHints",
+                    },
+                },
+                {
+                    label: "defaultHeaders",
+                    detail: "[String : String]",
+                    kind: vscode.CompletionItemKind.Property,
+                },
+                {
+                    label: "makeRequest(for: NetworkRequest)",
+                    detail: "String",
+                    kind: vscode.CompletionItemKind.Function,
+                    command: {
+                        title: "Trigger Parameter Hints",
+                        command: "editor.action.triggerParameterHints",
+                    },
+                },
+                {
+                    label: "[endpoint: String]",
+                    detail: "NetworkRequest",
+                    kind: vscode.CompletionItemKind.Method,
+                    command: {
+                        title: "Trigger Parameter Hints",
+                        command: "editor.action.triggerParameterHints",
+                    },
+                },
+                {
+                    label: "(endpoint: String, method: String)",
+                    detail: "NetworkRequest",
+                    kind: vscode.CompletionItemKind.Constructor,
+                    command: {
+                        title: "Trigger Parameter Hints",
+                        command: "editor.action.triggerParameterHints",
+                    },
+                },
+            ]);
+        });
+
+        test("does not add parameter hints command when disabled", async () => {
+            mockParameterHintsEnabled.setValue(() => false);
+
+            const completionItems = [
+                {
+                    label: "makeRequest(for: NetworkRequest)",
+                    detail: "String",
+                    kind: vscode.CompletionItemKind.Function,
+                },
+                {
+                    label: "[endpoint: String]",
+                    detail: "NetworkRequest",
+                    kind: vscode.CompletionItemKind.Method,
+                },
+            ];
+
+            const completionItemsFromLSP = async (): Promise<vscode.CompletionItem[]> => {
+                return completionItems;
+            };
+
+            const result = await middleware.provideCompletionItem!(
+                instance(document),
+                new vscode.Position(0, 0),
+                {} as any,
+                {} as any,
+                completionItemsFromLSP
+            );
+
+            expect(result).to.deep.equal(completionItems);
+        });
+
+        test("handles CompletionList result format", async () => {
+            const completionListFromLSP = async (): Promise<vscode.CompletionList> => {
+                return {
+                    isIncomplete: false,
+                    items: [
+                        {
+                            label: "defaultHeaders",
+                            detail: "[String : String]",
+                            kind: vscode.CompletionItemKind.Property,
+                        },
+                        {
+                            label: "makeRequest(for: NetworkRequest)",
+                            detail: "String",
+                            kind: vscode.CompletionItemKind.Function,
+                        },
+                    ],
+                };
+            };
+
+            const result = await middleware.provideCompletionItem!(
+                instance(document),
+                new vscode.Position(0, 0),
+                {} as any,
+                {} as any,
+                completionListFromLSP
+            );
+
+            expect(result).to.deep.equal({
+                isIncomplete: false,
+                items: [
+                    {
+                        label: "defaultHeaders",
+                        detail: "[String : String]",
+                        kind: vscode.CompletionItemKind.Property,
+                    },
+                    {
+                        label: "makeRequest(for: NetworkRequest)",
+                        detail: "String",
+                        kind: vscode.CompletionItemKind.Function,
+                        command: {
+                            title: "Trigger Parameter Hints",
+                            command: "editor.action.triggerParameterHints",
+                        },
+                    },
+                ],
+            });
+        });
+
+        test("handles null/undefined result from next middleware", async () => {
+            mockParameterHintsEnabled.setValue(() => true);
+
+            const nullCompletionResult = async (): Promise<null> => {
+                return null;
+            };
+
+            const result = await middleware.provideCompletionItem!(
+                instance(document),
+                new vscode.Position(0, 0),
+                {} as any,
+                {} as any,
+                nullCompletionResult
+            );
+
+            expect(result).to.be.null;
+        });
     });
 
     suite("active document changes", () => {
@@ -589,7 +826,7 @@ suite("LanguageClientManager Suite", () => {
                 return { dispose: () => {} };
             });
 
-            new LanguageClientManager(instance(mockedFolder), languageClientFactoryMock);
+            new LanguageClientManager(instance(mockedFolder), {}, languageClientFactoryMock);
             await waitForReturnedPromises(languageClientMock.start);
 
             const activeDocumentManager = new LSPActiveDocumentManager();
@@ -621,7 +858,7 @@ suite("LanguageClientManager Suite", () => {
                     document,
                 })
             );
-            new LanguageClientManager(instance(mockedFolder), languageClientFactoryMock);
+            new LanguageClientManager(instance(mockedFolder), {}, languageClientFactoryMock);
             await waitForReturnedPromises(languageClientMock.start);
 
             const activeDocumentManager = new LSPActiveDocumentManager();
@@ -692,6 +929,7 @@ suite("LanguageClientManager Suite", () => {
         test("doesn't launch SourceKit-LSP on startup", async () => {
             const sut = new LanguageClientManager(
                 instance(mockedFolder),
+                {},
                 languageClientFactoryMock
             );
             await waitForReturnedPromises(languageClientMock.start);
@@ -713,6 +951,7 @@ suite("LanguageClientManager Suite", () => {
             );
             const factory = new LanguageClientToolchainCoordinator(
                 instance(mockedWorkspace),
+                {},
                 languageClientFactoryMock
             );
 
@@ -750,6 +989,7 @@ suite("LanguageClientManager Suite", () => {
             );
             const factory = new LanguageClientToolchainCoordinator(
                 instance(mockedWorkspace),
+                {},
                 languageClientFactoryMock
             );
 

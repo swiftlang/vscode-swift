@@ -11,21 +11,21 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
-import { WorkspaceContext } from "../WorkspaceContext";
+
 import { FolderContext } from "../FolderContext";
-import { Product } from "../SwiftPackage";
+import { Product, isAutomatic } from "../SwiftPackage";
+import { WorkspaceContext } from "../WorkspaceContext";
 import configuration, {
     ShowBuildStatusOptions,
     substituteVariablesInString,
 } from "../configuration";
+import { BuildConfigurationFactory } from "../debugger/buildConfig";
+import { SwiftExecution } from "../tasks/SwiftExecution";
+import { SwiftToolchain } from "../toolchain/toolchain";
+import { getPlatformConfig, packageName, resolveScope, resolveTaskCwd } from "../utilities/tasks";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { Version } from "../utilities/version";
-import { SwiftToolchain } from "../toolchain/toolchain";
-import { SwiftExecution } from "../tasks/SwiftExecution";
-import { getPlatformConfig, packageName, resolveScope, resolveTaskCwd } from "../utilities/tasks";
-import { BuildConfigurationFactory } from "../debugger/buildConfig";
 
 /**
  * References:
@@ -135,7 +135,7 @@ export function resetBuildAllTaskCache() {
     buildAllTaskCache.reset();
 }
 
-function buildAllTaskName(folderContext: FolderContext, release: boolean): string {
+export function buildAllTaskName(folderContext: FolderContext, release: boolean): string {
     let buildTaskName = release
         ? `${SwiftTaskProvider.buildAllName} - Release`
         : SwiftTaskProvider.buildAllName;
@@ -183,7 +183,8 @@ export async function createBuildAllTask(
  */
 export async function getBuildAllTask(
     folderContext: FolderContext,
-    release: boolean = false
+    release: boolean = false,
+    findDefault: boolean = true
 ): Promise<vscode.Task> {
     const buildTaskName = buildAllTaskName(folderContext, release);
     const folderWorkingDir = folderContext.workspaceFolder.uri.fsPath;
@@ -208,11 +209,14 @@ export async function getBuildAllTask(
     });
 
     // find default build task
-    let task = workspaceTasks.find(
-        task => task.group?.id === vscode.TaskGroup.Build.id && task.group?.isDefault === true
-    );
-    if (task) {
-        return task;
+    let task;
+    if (findDefault) {
+        task = workspaceTasks.find(
+            task => task.group?.id === vscode.TaskGroup.Build.id && task.group?.isDefault === true
+        );
+        if (task) {
+            return task;
+        }
     }
     // find task with name "swift: Build All"
     task = workspaceTasks.find(task => task.name === `swift: ${buildTaskName}`);
@@ -424,6 +428,16 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             const executables = await folderContext.swiftPackage.executableProducts;
             for (const executable of executables) {
                 tasks.push(...createBuildTasks(executable, folderContext));
+            }
+
+            if (configuration.createTasksForLibraryProducts) {
+                const libraries = await folderContext.swiftPackage.libraryProducts;
+                for (const lib of libraries) {
+                    if (isAutomatic(lib)) {
+                        continue;
+                    }
+                    tasks.push(...createBuildTasks(lib, folderContext));
+                }
             }
         }
         return tasks;

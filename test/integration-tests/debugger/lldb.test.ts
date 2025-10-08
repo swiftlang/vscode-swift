@@ -11,13 +11,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { expect } from "chai";
-import { getLLDBLibPath } from "../../../src/debugger/lldb";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
+
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { getLLDBLibPath } from "@src/debugger/lldb";
+import { IS_RUNNING_UNDER_DOCKER } from "@src/utilities/utilities";
+import { Version } from "@src/utilities/version";
+
 import { activateExtensionForTest } from "../utilities/testutilities";
-import { Version } from "../../../src/utilities/version";
-import { IS_RUNNING_IN_CI } from "../../../src/utilities/utilities";
 
 suite("lldb contract test suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -26,7 +27,7 @@ suite("lldb contract test suite", () => {
         async setup(ctx) {
             // lldb.exe on Windows is not launching correctly, but only in Docker.
             if (
-                IS_RUNNING_IN_CI &&
+                IS_RUNNING_UNDER_DOCKER &&
                 process.platform === "win32" &&
                 ctx.globalToolchainSwiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
                 ctx.globalToolchainSwiftVersion.isLessThan(new Version(6, 0, 2))

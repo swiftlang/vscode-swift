@@ -11,12 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as fs from "fs/promises";
-import { SwiftOutputChannel } from "./SwiftOutputChannel";
-import { TemporaryFolder } from "../utilities/tempFolder";
-import configuration from "../configuration";
 import * as vscode from "vscode";
+
+import configuration from "../configuration";
+import { SwiftLogger } from "../logging/SwiftLogger";
+import { TemporaryFolder } from "../utilities/tempFolder";
 
 /**
  * Warns the user about lack of symbolic link support on Windows. Performs the
@@ -24,9 +24,9 @@ import * as vscode from "vscode";
  *
  * @param outputChannel The Swift output channel to log any errors to
  */
-export function checkAndWarnAboutWindowsSymlinks(outputChannel: SwiftOutputChannel) {
+export function checkAndWarnAboutWindowsSymlinks(logger: SwiftLogger) {
     if (process.platform === "win32" && configuration.warnAboutSymlinkCreation) {
-        void isSymlinkAllowed(outputChannel).then(async canCreateSymlink => {
+        void isSymlinkAllowed(logger).then(async canCreateSymlink => {
             if (canCreateSymlink) {
                 return;
             }
@@ -53,7 +53,7 @@ export function checkAndWarnAboutWindowsSymlinks(outputChannel: SwiftOutputChann
  *
  * @returns whether or not a symlink can be created
  */
-export async function isSymlinkAllowed(outputChannel?: SwiftOutputChannel): Promise<boolean> {
+export async function isSymlinkAllowed(logger?: SwiftLogger): Promise<boolean> {
     const temporaryFolder = await TemporaryFolder.create();
     return await temporaryFolder.withTemporaryFile("", async testFilePath => {
         const testSymlinkPath = temporaryFolder.filename("symlink-");
@@ -62,7 +62,7 @@ export async function isSymlinkAllowed(outputChannel?: SwiftOutputChannel): Prom
             await fs.unlink(testSymlinkPath);
             return true;
         } catch (error) {
-            outputChannel?.log(`${error}`);
+            logger?.error(error);
             return false;
         }
     });

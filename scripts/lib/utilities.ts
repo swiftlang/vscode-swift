@@ -12,13 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 /* eslint-disable no-console */
-
 import * as child_process from "child_process";
-import { mkdtemp, readFile, rm } from "fs/promises";
-import * as path from "path";
+import { copyFile, mkdtemp, readFile, rm } from "fs/promises";
 import * as os from "os";
-import * as semver from "semver";
+import * as path from "path";
 import { replaceInFile } from "replace-in-file";
+import * as semver from "semver";
 
 /**
  * Executes the provided main function for the script while logging any errors.
@@ -27,13 +26,11 @@ import { replaceInFile } from "replace-in-file";
  *
  * @param mainFn The main function of the script that will be run.
  */
-export async function main(mainFn: () => Promise<void>): Promise<void> {
-    try {
-        await mainFn();
-    } catch (error) {
+export function main(mainFn: () => Promise<void>) {
+    mainFn().catch(error => {
         console.error(error);
         process.exit(1);
-    }
+    });
 }
 
 /**
@@ -89,6 +86,13 @@ export async function exec(
         logMessage += " " + args.join(" ");
     }
     console.log(logMessage + "\n");
+    // On Windows, we have to append ".cmd" to the npm and npx commands. Additionally, the
+    // "shell" option must be set to true to allow execution of batch scripts on windows.
+    // See https://nodejs.org/en/blog/vulnerability/april-2024-security-releases-2
+    if (process.platform === "win32" && ["npm", "npx"].includes(command)) {
+        command = command + ".cmd";
+        options.shell = true;
+    }
     return new Promise<void>((resolve, reject) => {
         const childProcess = child_process.spawn(command, args, { stdio: "inherit", ...options });
         childProcess.once("error", reject);
@@ -126,9 +130,11 @@ export async function withTemporaryDirectory<T>(
     }
 }
 
-export async function updateChangelog(version: string): Promise<void> {
+export async function updateChangelog(version: string): Promise<string> {
+    const tempChangelog = path.join(getRootDirectory(), `CHANGELOG-${version}.md`);
+    await copyFile(getChangelog(), tempChangelog);
     await replaceInFile({
-        files: getChangelog(),
+        files: tempChangelog,
         from: /{{releaseVersion}}/g,
         to: version,
     });
@@ -137,8 +143,47 @@ export async function updateChangelog(version: string): Promise<void> {
     const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
     const day = date.getUTCDate().toString().padStart(2, "0");
     await replaceInFile({
-        files: getChangelog(),
+        files: tempChangelog,
         from: /{{releaseDate}}/g,
         to: `${year}-${month}-${day}`,
+    });
+    return tempChangelog;
+}
+
+export interface PackageExtensionOptions {
+    preRelease?: boolean;
+}
+
+export async function packageExtension(version: string, options: PackageExtensionOptions = {}) {
+    // Update version in a temporary CHANGELOG
+    const changelogPath = await updateChangelog(version);
+
+    // Use VSCE to package the extension
+    // Note: There are no sendgrid secrets in the extension. `--allow-package-secrets` works around a false positive
+    // where the symbol `SG.MessageTransports.is` can appear in the dist.js if we're unlucky enough
+    // to have `SG` as the minified name of a namespace. Here is the rule we sometimes mistakenly match:
+    // https://github.com/secretlint/secretlint/blob/5706ac4942f098b845570541903472641d4ae914/packages/%40secretlint/secretlint-rule-sendgrid/src/index.ts#L35
+    await exec(
+        "npx",
+        [
+            "vsce",
+            "package",
+            ...(options.preRelease === true ? ["--pre-release"] : []),
+            "--allow-package-secrets",
+            "sendgrid",
+            "--no-update-package-json",
+            "--changelog-path",
+            path.basename(changelogPath),
+            version,
+        ],
+        {
+            cwd: getRootDirectory(),
+        }
+    );
+
+    // Clean up temporary changelog
+    await rm(changelogPath, { force: true }).catch(error => {
+        console.error(`Failed to remove temporary changelog '${changelogPath}'`);
+        console.error(error);
     });
 }

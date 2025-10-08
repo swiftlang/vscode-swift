@@ -11,31 +11,32 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
+import { expect } from "chai";
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
-import { expect } from "chai";
-import { LanguageClientManager } from "../../../src/sourcekit-lsp/LanguageClientManager";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
+
+import { FolderContext } from "@src/FolderContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { LanguageClientManager } from "@src/sourcekit-lsp/LanguageClientManager";
+import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+
 import { testAssetUri } from "../../fixtures";
+import { tag } from "../../tags";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
-import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
+import { waitForClientState } from "../utilities/lsputilities";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
-import { waitForClientState, waitForIndex } from "../utilities/lsputilities";
-import { FolderContext } from "../../../src/FolderContext";
 
 async function buildProject(ctx: WorkspaceContext, name: string) {
     await waitForNoRunningTasks();
     const folderContext = await folderInRootWorkspace(name, ctx);
     const task = await createBuildAllTask(folderContext);
+    task.definition.dontTriggerTestDiscovery = true;
     const { exitCode, output } = await executeTaskAndWaitForResult(task);
     expect(exitCode, `${output}`).to.equal(0);
     return folderContext;
 }
 
-suite("Language Client Integration Suite @slow", function () {
-    this.timeout(3 * 60 * 1000);
-
+tag("large").suite("Language Client Integration Suite", function () {
     let clientManager: LanguageClientManager;
     let folderContext: FolderContext;
 
@@ -51,12 +52,12 @@ suite("Language Client Integration Suite @slow", function () {
             clientManager = ctx.languageClientManager.get(folderContext);
             await clientManager.restart();
             await waitForClientState(clientManager, langclient.State.Running);
-            await waitForIndex(clientManager, folderContext.swiftVersion);
+            await clientManager.waitForIndex();
         },
     });
 
     setup(async () => {
-        await waitForIndex(clientManager, folderContext.swiftVersion);
+        await clientManager.waitForIndex();
     });
 
     suite("Symbols", () => {

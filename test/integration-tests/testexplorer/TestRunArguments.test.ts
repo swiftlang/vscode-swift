@@ -11,12 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as assert from "assert";
-import { beforeEach, afterEach } from "mocha";
-import { TestRunArguments } from "../../../src/TestExplorer/TestRunArguments";
-import { flattenTestItemCollection } from "../../../src/TestExplorer/TestUtils";
+import { afterEach, beforeEach } from "mocha";
+import * as vscode from "vscode";
+
+import { TestRunArguments } from "@src/TestExplorer/TestRunArguments";
+import { flattenTestItemCollection } from "@src/TestExplorer/TestUtils";
 
 suite("TestRunArguments Suite", () => {
     // Helper function to create a test item tree from a DSL string.
@@ -76,10 +76,7 @@ suite("TestRunArguments Suite", () => {
 
     function assertRunArguments(
         args: TestRunArguments,
-        expected: Omit<
-            Omit<Omit<TestRunArguments, "testItems">, "hasXCTests">,
-            "hasSwiftTestingTests"
-        > & { testItems: string[] }
+        expected: Partial<Omit<TestRunArguments, "testItems">> & { testItems: string[] }
     ) {
         // Order of testItems doesn't matter, that they contain the same elements.
         assert.deepStrictEqual(
@@ -132,12 +129,15 @@ suite("TestRunArguments Suite", () => {
             const xcTest = new TestRunArguments(runRequestByIds([xcTestId]), false);
             const swiftTestingTest = new TestRunArguments(runRequestByIds([swiftTestId]), false);
             const bothTests = new TestRunArguments(runRequestByIds([xcTestId, swiftTestId]), false);
+            const noTests = new TestRunArguments(runRequestByIds([]), false);
             assert.strictEqual(xcTest.hasXCTests, true);
             assert.strictEqual(xcTest.hasSwiftTestingTests, false);
             assert.strictEqual(swiftTestingTest.hasXCTests, false);
             assert.strictEqual(swiftTestingTest.hasSwiftTestingTests, true);
             assert.strictEqual(bothTests.hasXCTests, true);
             assert.strictEqual(bothTests.hasSwiftTestingTests, true);
+            assert.strictEqual(noTests.hasXCTests, true);
+            assert.strictEqual(noTests.hasSwiftTestingTests, true);
         });
 
         test("Single XCTest", () => {

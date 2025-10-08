@@ -11,29 +11,27 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as vscode from "vscode";
 import * as path from "path";
+import * as vscode from "vscode";
 import {
     DocumentSelector,
     LanguageClientOptions,
     RevealOutputChannelOn,
     vsdiag,
 } from "vscode-languageclient";
+
+import { DiagnosticsManager } from "../DiagnosticsManager";
+import { WorkspaceContext } from "../WorkspaceContext";
+import { promptForDiagnostics } from "../commands/captureDiagnostics";
 import configuration from "../configuration";
 import { Version } from "../utilities/version";
-import { WorkspaceContext } from "../WorkspaceContext";
-import { DiagnosticsManager } from "../DiagnosticsManager";
-import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
-import { promptForDiagnostics } from "../commands/captureDiagnostics";
-import { uriConverters } from "./uriConverters";
-import { LSPActiveDocumentManager } from "./didChangeActiveDocument";
 import { SourceKitLSPErrorHandler } from "./LanguageClientManager";
+import { LSPActiveDocumentManager } from "./didChangeActiveDocument";
+import { uriConverters } from "./uriConverters";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function initializationOptions(swiftVersion: Version): any {
     let options: any = {
-        "workspace/peekDocuments": true, // workaround for client capability to handle `PeekDocumentsRequest`
-        "workspace/getReferenceDocument": true, // the client can handle URIs with scheme `sourcekit-lsp:`
         "textDocument/codeLens": {
             supportedCommands: {
                 "swift.run": "swift.run",
@@ -41,6 +39,26 @@ function initializationOptions(swiftVersion: Version): any {
             },
         },
     };
+
+    // Swift 6.3 changed the value to enable experimental client capabilities from `true` to `{ "supported": true }`
+    // (https://github.com/swiftlang/sourcekit-lsp/pull/2204)
+    if (swiftVersion.isGreaterThanOrEqual(new Version(6, 3, 0))) {
+        options = {
+            "workspace/peekDocuments": {
+                supported: true, // workaround for client capability to handle `PeekDocumentsRequest`
+                peekLocation: true, // allow SourceKit-LSP to send `Location` instead of `DocumentUri` for the locations to peek.
+            },
+            "workspace/getReferenceDocument": {
+                supported: true, // the client can handle URIs with scheme `sourcekit-lsp:`
+            },
+        };
+    } else {
+        options = {
+            ...options,
+            "workspace/peekDocuments": true, // workaround for client capability to handle `PeekDocumentsRequest`
+            "workspace/getReferenceDocument": true, // the client can handle URIs with scheme `sourcekit-lsp:`
+        };
+    }
 
     // Swift 6.0.0 and later supports background indexing.
     // In 6.0.0 it is experimental so only "true" enables it.
@@ -58,7 +76,14 @@ function initializationOptions(swiftVersion: Version): any {
         };
     }
 
-    if (swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))) {
+    if (swiftVersion.isGreaterThanOrEqual(new Version(6, 3, 0))) {
+        options = {
+            ...options,
+            "window/didChangeActiveDocument": {
+                supported: true, // the client can send `window/didChangeActiveDocument` notifications
+            },
+        };
+    } else if (swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))) {
         options = {
             ...options,
             "window/didChangeActiveDocument": true, // the client can send `window/didChangeActiveDocument` notifications
@@ -153,6 +178,33 @@ export class LanguagerClientDocumentSelectors {
     }
 }
 
+function addParameterHintsCommandsIfNeeded(
+    items: vscode.CompletionItem[],
+    documentUri: vscode.Uri
+): vscode.CompletionItem[] {
+    if (!configuration.parameterHintsEnabled(documentUri)) {
+        return items;
+    }
+
+    return items.map(item => {
+        switch (item.kind) {
+            case vscode.CompletionItemKind.Function:
+            case vscode.CompletionItemKind.Method:
+            case vscode.CompletionItemKind.Constructor:
+            case vscode.CompletionItemKind.EnumMember:
+                return {
+                    command: {
+                        title: "Trigger Parameter Hints",
+                        command: "editor.action.triggerParameterHints",
+                    },
+                    ...item,
+                };
+            default:
+                return item;
+        }
+    });
+}
+
 export function lspClientOptions(
     swiftVersion: Version,
     workspaceContext: WorkspaceContext,
@@ -167,22 +219,40 @@ export function lspClientOptions(
     return {
         documentSelector: LanguagerClientDocumentSelectors.sourcekitLSPDocumentTypes(),
         revealOutputChannelOn: RevealOutputChannelOn.Never,
-        workspaceFolder: workspaceFolder,
-        outputChannel: new SwiftOutputChannel(
-            `SourceKit Language Server (${swiftVersion.toString()})`
+        workspaceFolder,
+        outputChannel: workspaceContext.loggerFactory.create(
+            `SourceKit Language Server (${swiftVersion.toString()})`,
+            `sourcekit-lsp-${swiftVersion.toString()}.log`,
+            { outputChannel: true }
         ),
         middleware: {
             didOpen: activeDocumentManager.didOpen.bind(activeDocumentManager),
             didClose: activeDocumentManager.didClose.bind(activeDocumentManager),
+            provideCompletionItem: async (document, position, context, token, next) => {
+                const result = await next(document, position, context, token);
+
+                if (!result) {
+                    return result;
+                }
+
+                if (Array.isArray(result)) {
+                    return addParameterHintsCommandsIfNeeded(result, document.uri);
+                }
+
+                return {
+                    ...result,
+                    items: addParameterHintsCommandsIfNeeded(result.items, document.uri),
+                };
+            },
             provideCodeLenses: async (document, token, next) => {
                 const result = await next(document, token);
                 return result?.map(codelens => {
                     switch (codelens.command?.command) {
                         case "swift.run":
-                            codelens.command.title = `$(play) ${codelens.command.title}`;
+                            codelens.command.title = `$(play)\u00A0${codelens.command.title}`;
                             break;
                         case "swift.debug":
-                            codelens.command.title = `$(debug) ${codelens.command.title}`;
+                            codelens.command.title = `$(debug)\u00A0${codelens.command.title}`;
                             break;
                     }
                     return codelens;

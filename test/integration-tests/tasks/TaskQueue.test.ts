@@ -11,15 +11,17 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as assert from "assert";
+import * as vscode from "vscode";
+
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { SwiftExecOperation, TaskOperation, TaskQueue } from "@src/tasks/TaskQueue";
+
 import { testAssetPath } from "../../fixtures";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { SwiftExecOperation, TaskOperation, TaskQueue } from "../../../src/tasks/TaskQueue";
+import { tag } from "../../tags";
 import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
 
-suite("TaskQueue Test Suite", () => {
+tag("medium").suite("TaskQueue Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     let taskQueue: TaskQueue;
 
@@ -151,7 +153,7 @@ suite("TaskQueue Test Suite", () => {
             taskQueue.queueOperation(new TaskOperation(task2)).then(rt => results.push(rt)),
         ]);
         assert.notStrictEqual(results, [1, 2]);
-    }).timeout(15000);
+    });
 
     // check queuing task will return expected value
     test("swift exec", async () => {

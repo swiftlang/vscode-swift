@@ -11,9 +11,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { expect } from "chai";
-import { ToolchainVersion } from "../../../src/toolchain/ToolchainVersion";
+
+import { ToolchainVersion } from "@src/toolchain/ToolchainVersion";
 
 suite("ToolchainVersion Unit Test Suite", () => {
     test("Parses snapshot", () => {

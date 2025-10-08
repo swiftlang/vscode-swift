@@ -11,10 +11,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as path from "path";
-import { isPathInsidePath, expandFilePathTilde } from "../../../src/utilities/filesystem";
 import { expect } from "chai";
+import * as path from "path";
+import { Uri } from "vscode";
+
+import {
+    expandFilePathTilde,
+    isExcluded,
+    isIncluded,
+    isPathInsidePath,
+} from "@src/utilities/filesystem";
 
 suite("File System Utilities Unit Test Suite", () => {
     test("isPathInsidePath", () => {
@@ -53,6 +59,60 @@ suite("File System Utilities Unit Test Suite", () => {
 
         test("don't resolve tilde on Windows", () => {
             expect(expandFilePathTilde("~/Test", "C:\\Users\\John", "win32")).to.equal("~/Test");
+        });
+    });
+
+    suite("isExcluded()", () => {
+        const uri = Uri.file("path/to/foo/bar/file.swift");
+
+        test("excluded", () => {
+            expect(isExcluded(uri, { "/path": true })).to.be.true;
+            expect(isExcluded(uri, { "**/foo": true })).to.be.true;
+            expect(isExcluded(uri, { "**/foo/**": true })).to.be.true;
+        });
+
+        test("excluded, overwriting patterns", () => {
+            expect(isExcluded(uri, { "**/foo": false, "**/foo/bar": true })).to.be.true;
+        });
+
+        test("NOT excluded", () => {
+            expect(isExcluded(uri, { "**/qux/**": false })).to.be.false;
+            expect(isExcluded(uri, { "**/foo": false, "**/foo/qux": true })).to.be.false;
+            expect(
+                isExcluded(uri, {
+                    "**/foo": false,
+                    "**/foo/bar": true,
+                    "**/foo/bar/file.swift": false,
+                })
+            ).to.be.false;
+        });
+    });
+
+    suite("isIncluded()", () => {
+        const uri = Uri.file("path/to/foo/bar/file.swift");
+
+        test("included", () => {
+            expect(isIncluded(uri, {})).to.be.true;
+            expect(isIncluded(uri, { "/path": false })).to.be.true;
+            expect(isIncluded(uri, { "**/foo": false })).to.be.true;
+            expect(isIncluded(uri, { "**/foo/**": false })).to.be.true;
+            expect(isIncluded(uri, { "**/qux/**": true })).to.be.true;
+        });
+
+        test("included, overwriting patterns", () => {
+            expect(isIncluded(uri, { "**/foo": true, "**/foo/bar": false })).to.be.true;
+        });
+
+        test("NOT included", () => {
+            expect(isIncluded(uri, { "**/foo": true })).to.be.false;
+            expect(isIncluded(uri, { "**/foo": true, "**/foo/qux": false })).to.be.false;
+            expect(
+                isIncluded(uri, {
+                    "**/foo": true,
+                    "**/foo/bar": false,
+                    "**/foo/bar/file.swift": true,
+                })
+            ).to.be.false;
         });
     });
 });

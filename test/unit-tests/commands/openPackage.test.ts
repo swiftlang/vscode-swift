@@ -11,16 +11,17 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 // import * as assert from "assert";
-import * as vscode from "vscode";
-import * as path from "path";
 import { expect } from "chai";
+import * as path from "path";
 import { match } from "sinon";
+import * as vscode from "vscode";
+
+import { openPackage } from "@src/commands/openPackage";
+import * as fs from "@src/utilities/filesystem";
+import { Version } from "@src/utilities/version";
+
 import { mockGlobalModule, mockGlobalObject } from "../../MockUtils";
-import { openPackage } from "../../../src/commands/openPackage";
-import { Version } from "../../../src/utilities/version";
-import * as fs from "../../../src/utilities/filesystem";
 
 suite("openPackage Command Test Suite", () => {
     const windowMock = mockGlobalObject(vscode, "window");

@@ -11,71 +11,86 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
-import * as vscode from "vscode";
-import * as path from "path";
 import * as fs from "fs";
-import { beforeEach, afterEach } from "mocha";
-import { TestExplorer } from "../../../src/TestExplorer/TestExplorer";
+import { afterEach, beforeEach } from "mocha";
+import * as path from "path";
+import * as vscode from "vscode";
+
+import { FolderContext } from "@src/FolderContext";
+import { runnableTag } from "@src/TestExplorer/TestDiscovery";
+import { TestExplorer } from "@src/TestExplorer/TestExplorer";
+import { TestKind } from "@src/TestExplorer/TestKind";
+import {
+    MessageRenderer,
+    TestSymbol,
+} from "@src/TestExplorer/TestParsers/SwiftTestingOutputParser";
+import { TestRunProxy } from "@src/TestExplorer/TestRunner";
+import { flattenTestItemCollection, reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { Commands } from "@src/commands";
+import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+import { lineBreakRegex } from "@src/utilities/tasks";
+import { randomString } from "@src/utilities/utilities";
+import { Version } from "@src/utilities/version";
+
+import { tag } from "../../tags";
+import { executeTaskAndWaitForResult } from "../../utilities/tasks";
+import {
+    activateExtensionForSuite,
+    folderInRootWorkspace,
+    updateSettings,
+    withLogging,
+} from "../utilities/testutilities";
 import {
     assertContains,
     assertContainsTrimmed,
     assertTestControllerHierarchy,
     assertTestResults,
+    buildStateFromController,
     eventPromise,
     gatherTests,
-    runTest,
+    runTest as runTestWithLogging,
     waitForTestExplorerReady,
 } from "./utilities";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { Version } from "../../../src/utilities/version";
-import { TestKind } from "../../../src/TestExplorer/TestKind";
-import {
-    MessageRenderer,
-    TestSymbol,
-} from "../../../src/TestExplorer/TestParsers/SwiftTestingOutputParser";
-import {
-    flattenTestItemCollection,
-    reduceTestItemChildren,
-} from "../../../src/TestExplorer/TestUtils";
-import { runnableTag } from "../../../src/TestExplorer/TestDiscovery";
-import {
-    activateExtensionForSuite,
-    folderInRootWorkspace,
-    updateSettings,
-} from "../utilities/testutilities";
-import { Commands } from "../../../src/commands";
-import { executeTaskAndWaitForResult } from "../../utilities/tasks";
-import { createBuildAllTask } from "../../../src/tasks/SwiftTaskProvider";
-import { FolderContext } from "../../../src/FolderContext";
-import { lineBreakRegex } from "../../../src/utilities/tasks";
 
-suite("Test Explorer Suite", function () {
-    const MAX_TEST_RUN_TIME_MINUTES = 6;
-
-    this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES);
-
+tag("large").suite("Test Explorer Suite", function () {
     let workspaceContext: WorkspaceContext;
     let folderContext: FolderContext;
     let testExplorer: TestExplorer;
+    let runTest: (
+        testExplorer: TestExplorer,
+        runProfile: TestKind,
+        ...tests: string[]
+    ) => Promise<TestRunProxy>;
 
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
-            folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
+            runTest = runTestWithLogging.bind(null, workspaceContext.logger);
+            const logger = withLogging(ctx.logger);
+            folderContext = await logger("Locating defaultPackage folder in root workspace", () =>
+                folderInRootWorkspace("defaultPackage", workspaceContext)
+            );
 
             if (!folderContext) {
                 throw new Error("Unable to find test explorer");
             }
 
-            testExplorer = folderContext.addTestExplorer();
+            testExplorer = await logger(
+                "Waiting for test explorer to resolve",
+                () => folderContext.resolvedTestExplorer
+            );
 
-            await executeTaskAndWaitForResult(await createBuildAllTask(folderContext));
+            await logger("Executing build all task", async () =>
+                executeTaskAndWaitForResult(await createBuildAllTask(folderContext))
+            );
 
             // Set up the listener before bringing the text explorer in to focus,
             // which starts searching the workspace for tests.
-            await waitForTestExplorerReady(testExplorer);
+            await logger("Waiting for test explorer to be ready", () =>
+                waitForTestExplorerReady(testExplorer)
+            );
         },
         requiresLSP: true,
         requiresDebugger: true,
@@ -155,9 +170,7 @@ suite("Test Explorer Suite", function () {
                 }
             });
 
-            test("Debugs specified XCTest test @slow", async function () {
-                this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 2);
-
+            test("Debugs specified XCTest test", async function () {
                 // CodeLLDB tests stall out on 5.9 and below.
                 if (folderContext.swiftVersion.isLessThan(new Version(5, 10, 0))) {
                     this.skip();
@@ -371,7 +384,7 @@ suite("Test Explorer Suite", function () {
                 });
             });
 
-            test("tests run in debug mode @slow", async function () {
+            test("tests run in debug mode", async function () {
                 const testRun = await runTest(
                     testExplorer,
                     TestKind.standard,
@@ -383,10 +396,7 @@ suite("Test Explorer Suite", function () {
                 });
             });
 
-            test("test run in release mode @slow", async function () {
-                // Building in release takes a long time.
-                this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 2);
-
+            test("test run in release mode", async function () {
                 const passingRun = await runTest(
                     testExplorer,
                     TestKind.release,
@@ -424,9 +434,7 @@ suite("Test Explorer Suite", function () {
             suite("Runs multiple", function () {
                 const numIterations = 5;
 
-                this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 5);
-
-                test("@slow runs an swift-testing test multiple times", async function () {
+                test("runs an swift-testing test multiple times", async function () {
                     const testItems = gatherTests(
                         testExplorer.controller,
                         "PackageTests.MixedXCTestSuite/testPassing"
@@ -521,7 +529,46 @@ suite("Test Explorer Suite", function () {
                 assertContains(testRun.runState.output, "\r\nTest run cancelled.");
             });
 
-            test("tests run in debug mode @slow", async function () {
+            test("Cancellation during build", async function () {
+                const targetProfile = testExplorer.testRunProfiles.find(
+                    profile => profile.label === TestKind.standard
+                );
+                if (!targetProfile) {
+                    throw new Error(`Unable to find run profile named ${TestKind.standard}`);
+                }
+                const testItems = gatherTests(
+                    testExplorer.controller,
+                    "PackageTests.DuplicateSuffixTests/testPassing"
+                );
+                const request = new vscode.TestRunRequest(testItems);
+                const initialTokenSource = new vscode.CancellationTokenSource();
+
+                const testRunPromise = eventPromise(testExplorer.onCreateTestRun);
+
+                // Deliberately don't await this so we can cancel it.
+                void targetProfile.runHandler(request, initialTokenSource.token);
+                const testRun = await testRunPromise;
+
+                const secondRunTokenSource = new vscode.CancellationTokenSource();
+                // Wait for the next tick to cancel the test run so that
+                // handlers have time to set up.
+                await new Promise<void>(resolve => {
+                    setImmediate(async () => {
+                        const secondRunOnCreate = eventPromise(testExplorer.onCreateTestRun);
+                        // Start the second test run, which will trigger the mockWindow to resolve with
+                        // the request to cancel and start a new run. Then wait for the second run to start,
+                        // and cancel it as if VS Code requested it.
+                        void targetProfile.runHandler(request, secondRunTokenSource.token);
+                        await secondRunOnCreate;
+                        secondRunTokenSource.cancel();
+                        resolve();
+                    });
+                });
+
+                assertContains(testRun.runState.output, "\r\nTest run cancelled.");
+            });
+
+            test("tests run in debug mode", async function () {
                 const testRun = await runTest(
                     testExplorer,
                     TestKind.standard,
@@ -536,10 +583,7 @@ suite("Test Explorer Suite", function () {
                 });
             });
 
-            test("tests run in release mode @slow", async function () {
-                // Building in release takes a long time.
-                this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 2);
-
+            test("tests run in release mode", async function () {
                 const passingRun = await runTest(
                     testExplorer,
                     TestKind.release,
@@ -557,9 +601,7 @@ suite("Test Explorer Suite", function () {
             suite("Runs multiple", function () {
                 const numIterations = 5;
 
-                this.timeout(1000 * 60 * MAX_TEST_RUN_TIME_MINUTES * 5);
-
-                test("@slow runs an XCTest multiple times", async function () {
+                test("runs an XCTest multiple times", async function () {
                     const testItems = gatherTests(
                         testExplorer.controller,
                         "PackageTests.PassingXCTestSuite/testPassing"
@@ -573,6 +615,7 @@ suite("Test Explorer Suite", function () {
                     await vscode.commands.executeCommand(
                         Commands.RUN_TESTS_MULTIPLE_TIMES,
                         testItems[0],
+                        { preserveFocus: true }, // a trailing argument included on Linux
                         numIterations
                     );
 
@@ -867,6 +910,114 @@ suite("Test Explorer Suite", function () {
                     });
                 });
             });
+        });
+    });
+
+    suite("Modifying", function () {
+        let sourceFile: string;
+        let originalSource: string;
+
+        suiteSetup(function () {
+            if (
+                (process.platform === "win32" &&
+                    workspaceContext.globalToolchainSwiftVersion.isLessThan(
+                        new Version(6, 1, 0)
+                    )) ||
+                workspaceContext.globalToolchainSwiftVersion.isLessThan(new Version(6, 0, 2))
+            ) {
+                this.skip();
+            }
+        });
+
+        beforeEach(() => {
+            sourceFile = path.join(
+                folderContext.folder.fsPath,
+                "Tests",
+                "PackageTests",
+                "PackageTests.swift"
+            );
+            originalSource = fs.readFileSync(sourceFile, "utf8");
+        });
+
+        async function appendSource(newContent: string) {
+            const document = await vscode.workspace.openTextDocument(sourceFile);
+            await vscode.window.showTextDocument(document);
+            const edit = new vscode.WorkspaceEdit();
+            const lastLine = document.lineAt(document.lineCount - 1);
+            edit.insert(document.uri, lastLine.range.end, newContent);
+            await vscode.workspace.applyEdit(edit);
+            return document;
+        }
+
+        async function setSource(content: string) {
+            const document = await vscode.workspace.openTextDocument(sourceFile);
+            await vscode.window.showTextDocument(document);
+            const edit = new vscode.WorkspaceEdit();
+            edit.replace(
+                document.uri,
+                document.validateRange(new vscode.Range(0, 0, 10000000, 0)),
+                content
+            );
+            await vscode.workspace.applyEdit(edit);
+            return document;
+        }
+
+        type TestHierarchy = string | TestHierarchy[];
+
+        // Because we're at the whim of how often VS Code/the LSP provide document symbols
+        // we can't assume that changes to test items will be reflected in the next onTestItemsDidChange
+        // so poll until the condition is met.
+        async function validate(validator: (testItems: TestHierarchy) => boolean) {
+            let testItems: TestHierarchy = [];
+            const startTime = Date.now();
+            while (Date.now() - startTime < 5000) {
+                testItems = buildStateFromController(testExplorer.controller.items);
+                if (validator(testItems)) {
+                    return;
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            assert.fail("Expected test items to be updated, but they were not: " + testItems);
+        }
+
+        test("Test explorer updates when a test is added and removed", async () => {
+            const testName = `newTest${randomString()}()`;
+            const newTest = `\n@Test func ${testName} {\n    #expect(1 == 1)\n}\n`;
+
+            await Promise.all([
+                eventPromise(testExplorer.onTestItemsDidChange),
+                appendSource(newTest),
+            ]);
+
+            await validate(testItems => testItems[1].includes(testName));
+
+            await Promise.all([
+                eventPromise(testExplorer.onTestItemsDidChange),
+                setSource(originalSource),
+            ]);
+
+            await validate(testItems => !testItems[1].includes(testName));
+        });
+
+        test("Test explorer updates when a suite is added and removed", async () => {
+            const suiteName = `newSuite${randomString()}`;
+            const newSuite = `\n@Suite\nstruct ${suiteName} {\n    @Test\n    func testPassing() throws {\n        #expect(1 == 1)\n    }\n}\n`;
+            await Promise.all([
+                eventPromise(testExplorer.onTestItemsDidChange),
+                appendSource(newSuite),
+            ]);
+            await validate(testItems => testItems[1].includes(suiteName));
+
+            await Promise.all([
+                eventPromise(testExplorer.onTestItemsDidChange),
+                setSource(originalSource),
+            ]);
+            await validate(testItems => !testItems[1].includes(suiteName));
+        });
+
+        afterEach(async () => {
+            const document = await setSource(originalSource);
+            await document.save();
         });
     });
 });

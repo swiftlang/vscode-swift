@@ -11,14 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as assert from "assert";
 import * as Stream from "stream";
-import {
-    execFileStreamOutput,
-    execSwift,
-    getSwiftExecutable,
-} from "../../../src/utilities/utilities";
+
+import { execFileStreamOutput, execSwift, getSwiftExecutable } from "@src/utilities/utilities";
 
 suite("Utilities Test Suite", () => {
     test("execFileStreamOutput", async () => {

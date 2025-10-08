@@ -11,15 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
-import { WorkspaceContext } from "../WorkspaceContext";
-import { createSwiftTask, SwiftTaskProvider } from "../tasks/SwiftTaskProvider";
-import { debugLaunchConfig, getLaunchConfiguration } from "../debugger/launch";
-import { executeTaskWithUI } from "./utilities";
+
 import { FolderContext } from "../FolderContext";
 import { Target } from "../SwiftPackage";
+import { WorkspaceContext } from "../WorkspaceContext";
+import { debugLaunchConfig, getLaunchConfiguration } from "../debugger/launch";
+import { SwiftTaskProvider, createSwiftTask } from "../tasks/SwiftTaskProvider";
 import { packageName } from "../utilities/tasks";
+import { executeTaskWithUI } from "./utilities";
 
 /**
  * Executes a {@link vscode.Task task} to run swift target.
@@ -77,9 +77,7 @@ export async function debugBuildWithOptions(
 ) {
     const current = ctx.currentFolder;
     if (!current) {
-        ctx.outputChannel.appendLine(
-            "debugBuildWithOptions: No current folder on WorkspaceContext"
-        );
+        ctx.logger.debug("debugBuildWithOptions: No current folder on WorkspaceContext");
         return;
     }
 
@@ -90,7 +88,7 @@ export async function debugBuildWithOptions(
     } else {
         const file = vscode.window.activeTextEditor?.document.fileName;
         if (!file) {
-            ctx.outputChannel.appendLine("debugBuildWithOptions: No active text editor");
+            ctx.logger.debug("debugBuildWithOptions: No active text editor");
             return;
         }
 
@@ -98,18 +96,18 @@ export async function debugBuildWithOptions(
     }
 
     if (!target) {
-        ctx.outputChannel.appendLine("debugBuildWithOptions: No active target");
+        ctx.logger.debug("debugBuildWithOptions: No active target");
         return;
     }
 
     if (target.type !== "executable") {
-        ctx.outputChannel.appendLine(
+        ctx.logger.debug(
             `debugBuildWithOptions: Target is not an executable, instead is ${target.type}`
         );
         return;
     }
 
-    const launchConfig = getLaunchConfiguration(target.name, current);
+    const launchConfig = await getLaunchConfiguration(target.name, current);
     if (launchConfig) {
         ctx.buildStarted(target.name, launchConfig, options);
         const result = await debugLaunchConfig(

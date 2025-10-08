@@ -11,8 +11,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
+import { TestRunProxy } from "./TestRunner";
 import { reduceTestItemChildren } from "./TestUtils";
 
 type ProcessResult = {
@@ -37,12 +38,26 @@ export class TestRunArguments {
         this.swiftTestArgs = this.annotateTestArgs(swiftTestArgs, isDebug);
     }
 
+    /**
+     * Returns true if there are XCTests specified in the request.
+     */
     public get hasXCTests(): boolean {
-        return this.xcTestArgs.length > 0;
+        return this.xcTestArgs.length > 0 || this.hasNoSpecifiedTests;
     }
 
+    /**
+     * Returns true if there are swift-testing tests specified in the request.
+     */
     public get hasSwiftTestingTests(): boolean {
-        return this.swiftTestArgs.length > 0;
+        return this.swiftTestArgs.length > 0 || this.hasNoSpecifiedTests;
+    }
+
+    /**
+     * Returns true if there are no tests specified in the request,
+     * which indicates that we should run all tests.
+     */
+    private get hasNoSpecifiedTests(): boolean {
+        return this.testItems.length === 0;
     }
 
     /**
@@ -93,13 +108,19 @@ export class TestRunArguments {
                 const terminator = hasChildren ? "/" : "$";
                 // Debugging XCTests requires exact matches, so we don't need a trailing terminator.
                 return isDebug ? arg.id : `${arg.id}${terminator}`;
-            } else if (hasChildren) {
+            } else if (hasChildren && !this.hasParameterizedTestChildren(arg)) {
                 // Append a trailing slash to match a suite name exactly.
                 // This prevents TestTarget.MySuite matching TestTarget.MySuite2.
                 return `${arg.id}/`;
             }
             return arg.id;
         });
+    }
+
+    private hasParameterizedTestChildren(testItem: vscode.TestItem): boolean {
+        return Array.from(testItem.children).some(arr =>
+            arr[1].tags.some(tag => tag.id === TestRunProxy.Tags.PARAMETERIZED_TEST_RESULT)
+        );
     }
 
     private createTestItemReducer(

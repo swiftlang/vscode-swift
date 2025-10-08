@@ -11,26 +11,28 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
-import { getBuildAllTask } from "./tasks/SwiftTaskProvider";
-import configuration from "./configuration";
+
 import { FolderContext } from "./FolderContext";
+import configuration from "./configuration";
+import { getBuildAllTask } from "./tasks/SwiftTaskProvider";
 import { TaskOperation } from "./tasks/TaskQueue";
+import { validFileTypes } from "./utilities/filesystem";
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import debounce = require("lodash.debounce");
-import { validFileTypes } from "./utilities/filesystem";
 
 export class BackgroundCompilation implements vscode.Disposable {
     private workspaceFileWatcher?: vscode.FileSystemWatcher;
     private configurationEventDisposable?: vscode.Disposable;
     private disposables: vscode.Disposable[] = [];
+    private _disposed = false;
 
     constructor(private folderContext: FolderContext) {
         // We only want to configure the file watcher if background compilation is enabled.
         this.configurationEventDisposable = vscode.workspace.onDidChangeConfiguration(event => {
             if (event.affectsConfiguration("swift.backgroundCompilation", folderContext.folder)) {
-                if (configuration.backgroundCompilation) {
+                if (configuration.backgroundCompilation.enabled) {
                     this.setupFileWatching();
                 } else {
                     this.stopFileWatching();
@@ -38,7 +40,7 @@ export class BackgroundCompilation implements vscode.Disposable {
             }
         });
 
-        if (configuration.backgroundCompilation) {
+        if (configuration.backgroundCompilation.enabled) {
             this.setupFileWatching();
         }
     }
@@ -58,7 +60,9 @@ export class BackgroundCompilation implements vscode.Disposable {
             this.workspaceFileWatcher.onDidChange(
                 debounce(
                     () => {
-                        void this.runTask();
+                        if (!this._disposed) {
+                            void this.runTask();
+                        }
                     },
                     100 /* 10 times per second */,
                     { trailing: true }
@@ -72,6 +76,7 @@ export class BackgroundCompilation implements vscode.Disposable {
     }
 
     dispose() {
+        this._disposed = true;
         this.configurationEventDisposable?.dispose();
         this.disposables.forEach(disposable => disposable.dispose());
     }
@@ -85,7 +90,7 @@ export class BackgroundCompilation implements vscode.Disposable {
      */
     async runTask() {
         // create compile task and execute it
-        const backgroundTask = await getBuildAllTask(this.folderContext);
+        const backgroundTask = await this.getTask();
         if (!backgroundTask) {
             return;
         }
@@ -94,5 +99,13 @@ export class BackgroundCompilation implements vscode.Disposable {
         } catch {
             // can ignore if running task fails
         }
+    }
+
+    async getTask(): Promise<vscode.Task> {
+        return await getBuildAllTask(
+            this.folderContext,
+            configuration.backgroundCompilation.release,
+            configuration.backgroundCompilation.useDefaultTask
+        );
     }
 }

@@ -11,46 +11,47 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import { expect } from "chai";
-import { LLDBDebugConfigurationProvider } from "../../../src/debugger/debugAdapterFactory";
-import { Version } from "../../../src/utilities/version";
-import {
-    mockGlobalObject,
-    MockedObject,
-    mockObject,
-    instance,
-    mockGlobalModule,
-    mockFn,
-} from "../../MockUtils";
 import * as mockFS from "mock-fs";
-import { LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "../../../src/debugger/debugAdapter";
-import * as lldb from "../../../src/debugger/lldb";
-import { SwiftToolchain } from "../../../src/toolchain/toolchain";
-import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
-import * as debugAdapter from "../../../src/debugger/debugAdapter";
-import { Result } from "../../../src/utilities/result";
-import configuration from "../../../src/configuration";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { FolderContext } from "../../../src/FolderContext";
+import * as vscode from "vscode";
+
+import { FolderContext } from "@src/FolderContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import configuration from "@src/configuration";
+import { LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "@src/debugger/debugAdapter";
+import * as debugAdapter from "@src/debugger/debugAdapter";
+import { LLDBDebugConfigurationProvider } from "@src/debugger/debugAdapterFactory";
+import * as lldb from "@src/debugger/lldb";
+import { SwiftLogger } from "@src/logging/SwiftLogger";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { Result } from "@src/utilities/result";
+import { Version } from "@src/utilities/version";
+
+import {
+    MockedObject,
+    instance,
+    mockFn,
+    mockGlobalModule,
+    mockGlobalObject,
+    mockObject,
+} from "../../MockUtils";
 
 suite("LLDBDebugConfigurationProvider Tests", () => {
     let mockWorkspaceContext: MockedObject<WorkspaceContext>;
     let mockToolchain: MockedObject<SwiftToolchain>;
-    let mockOutputChannel: MockedObject<SwiftOutputChannel>;
+    let mockLogger: MockedObject<SwiftLogger>;
     const mockDebugAdapter = mockGlobalObject(debugAdapter, "DebugAdapter");
     const mockWindow = mockGlobalObject(vscode, "window");
 
     setup(() => {
         mockToolchain = mockObject<SwiftToolchain>({ swiftVersion: new Version(6, 0, 0) });
-        mockOutputChannel = mockObject<SwiftOutputChannel>({
-            log: mockFn(),
+        mockLogger = mockObject<SwiftLogger>({
+            info: mockFn(),
         });
         mockWorkspaceContext = mockObject<WorkspaceContext>({
             globalToolchain: instance(mockToolchain),
             globalToolchainSwiftVersion: new Version(6, 0, 0),
-            outputChannel: instance(mockOutputChannel),
+            logger: instance(mockLogger),
             subscriptions: [],
             folders: [],
         });
@@ -60,7 +61,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         const configProvider = new LLDBDebugConfigurationProvider(
             "darwin",
             instance(mockWorkspaceContext),
-            instance(mockOutputChannel)
+            instance(mockLogger)
         );
         const launchConfig = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(
             undefined,
@@ -78,7 +79,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         const configProvider = new LLDBDebugConfigurationProvider(
             "darwin",
             instance(mockWorkspaceContext),
-            instance(mockOutputChannel)
+            instance(mockLogger)
         );
         const launchConfig = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(
             undefined,
@@ -99,7 +100,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         const configProvider = new LLDBDebugConfigurationProvider(
             "darwin",
             instance(mockWorkspaceContext),
-            instance(mockOutputChannel)
+            instance(mockLogger)
         );
         const launchConfig = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(
             undefined,
@@ -120,7 +121,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         const configProvider = new LLDBDebugConfigurationProvider(
             "darwin",
             instance(mockWorkspaceContext),
-            instance(mockOutputChannel)
+            instance(mockLogger)
         );
         const launchConfig = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(
             undefined,
@@ -162,7 +163,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
                 instance(mockWorkspaceContext),
-                instance(mockOutputChannel)
+                instance(mockLogger)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -180,7 +181,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
                 instance(mockWorkspaceContext),
-                instance(mockOutputChannel)
+                instance(mockLogger)
             );
             await expect(
                 configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -202,7 +203,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
                 instance(mockWorkspaceContext),
-                instance(mockOutputChannel)
+                instance(mockLogger)
             );
             await expect(
                 configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -225,7 +226,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
                 instance(mockWorkspaceContext),
-                instance(mockOutputChannel)
+                instance(mockLogger)
             );
             await expect(
                 configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -260,7 +261,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
                 instance(mockWorkspaceContext),
-                instance(mockOutputChannel)
+                instance(mockLogger)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -280,7 +281,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
                 instance(mockWorkspaceContext),
-                instance(mockOutputChannel)
+                instance(mockLogger)
             );
             await expect(
                 configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -297,7 +298,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "win32",
                 instance(mockWorkspaceContext),
-                instance(mockOutputChannel)
+                instance(mockLogger)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -315,7 +316,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "win32",
                 instance(mockWorkspaceContext),
-                instance(mockOutputChannel)
+                instance(mockLogger)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -333,7 +334,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
                 instance(mockWorkspaceContext),
-                instance(mockOutputChannel)
+                instance(mockLogger)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -351,7 +352,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "linux",
                 instance(mockWorkspaceContext),
-                instance(mockOutputChannel)
+                instance(mockLogger)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -369,7 +370,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
                 instance(mockWorkspaceContext),
-                instance(mockOutputChannel)
+                instance(mockLogger)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -391,7 +392,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
                 instance(mockWorkspaceContext),
-                instance(mockOutputChannel)
+                instance(mockLogger)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -407,7 +408,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
                 instance(mockWorkspaceContext),
-                instance(mockOutputChannel)
+                instance(mockLogger)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -429,7 +430,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
                 instance(mockWorkspaceContext),
-                instance(mockOutputChannel)
+                instance(mockLogger)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -468,7 +469,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         const configProvider = new LLDBDebugConfigurationProvider(
             "darwin",
             instance(mockWorkspaceContext),
-            instance(mockOutputChannel)
+            instance(mockLogger)
         );
         const launchConfig = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(
             {

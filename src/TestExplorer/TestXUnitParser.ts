@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as xml2js from "xml2js";
+
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { ITestRunState } from "./TestParsers/TestRunState";
-import { SwiftOutputChannel } from "../ui/SwiftOutputChannel";
 
 export interface TestResults {
     tests: number;
@@ -50,14 +50,14 @@ export class TestXUnitParser {
     async parse(
         buffer: string,
         runState: ITestRunState,
-        outputChannel: SwiftOutputChannel
+        logger: SwiftLogger
     ): Promise<TestResults | undefined> {
         const xml = await xml2js.parseStringPromise(buffer);
         try {
             return await this.parseXUnit(xml, runState);
         } catch (error) {
             // ignore error
-            outputChannel.appendLine(`Error parsing xUnit output: ${error}`);
+            logger.error(`Error parsing xUnit output: ${error}`);
             return undefined;
         }
     }

@@ -11,23 +11,22 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
+import { expect } from "chai";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { expect } from "chai";
+import * as vscode from "vscode";
+
+import { FolderContext } from "@src/FolderContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { Commands } from "@src/commands";
+import { Version } from "@src/utilities/version";
+
 import { testAssetUri } from "../../fixtures";
-import { FolderContext } from "../../../src/FolderContext";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { Commands } from "../../../src/commands";
+import { tag } from "../../tags";
 import { continueSession, waitForDebugAdapterRequest } from "../../utilities/debug";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
-import { Version } from "../../../src/utilities/version";
 
-suite("Build Commands @slow", function () {
-    // Default timeout is a bit too short, give it a little bit more time
-    this.timeout(3 * 60 * 1000);
-
+tag("large").suite("Build Commands", function () {
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
     const uri = testAssetUri("defaultPackage/Sources/PackageExe/main.swift");
@@ -63,7 +62,15 @@ suite("Build Commands @slow", function () {
         expect(result).to.be.true;
     });
 
-    test("Swift: Debug Build", async () => {
+    test("Swift: Debug Build", async function () {
+        // This is failing in CI only in Linux 5.10 by crashing VS Code with the error
+        // `CodeWindow: renderer process gone (reason: crashed, code: 133)`
+        if (
+            folderContext.swiftVersion.isGreaterThanOrEqual(new Version(5, 10, 0)) &&
+            folderContext.swiftVersion.isLessThan(new Version(6, 0, 0))
+        ) {
+            this.skip();
+        }
         // Promise used to indicate we hit the break point.
         // NB: "stopped" is the exact command when debuggee has stopped due to break point,
         // but "stackTrace" is the deterministic sync point we will use to make sure we can execute continue

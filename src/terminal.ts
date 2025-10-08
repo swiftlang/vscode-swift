@@ -11,12 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
+
 import configuration from "./configuration";
 
 /** The separator to use between paths in the PATH environment variable */
-const pathSeparator: string = process.platform === "win32" ? ";" : ":";
+const pathSeparator = () => (process.platform === "win32" ? ";" : ":");
 
 /**
  * Configures Swift environment variables for VS Code. Will automatically update
@@ -56,7 +56,7 @@ export class SwiftEnvironmentVariablesManager implements vscode.Disposable {
         }
 
         if (configuration.path) {
-            environment.prepend("PATH", configuration.path + pathSeparator, {
+            environment.prepend("PATH", configuration.path + pathSeparator(), {
                 applyAtShellIntegration: true,
             });
         }
@@ -80,7 +80,7 @@ export class SwiftTerminalProfileProvider implements vscode.TerminalProfileProvi
         if (!configuration.enableTerminalEnvironment) {
             const disposable = vscode.window.onDidOpenTerminal(terminal => {
                 if (configuration.path) {
-                    terminal.sendText(`export PATH=${configuration.path + pathSeparator}$PATH`);
+                    terminal.sendText(`export PATH=${configuration.path + pathSeparator()}$PATH`);
                 }
                 disposable.dispose();
             });

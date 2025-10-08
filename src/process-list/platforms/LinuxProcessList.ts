@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { BaseProcessList, ProcessListParser } from "../BaseProcessList";
 
 export class LinuxProcessList extends BaseProcessList {

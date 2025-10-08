@@ -1,9 +1,9 @@
 # Swift Project View
 
-Use this view to navigate your Swift project.
+Use this view to get a high level view of your Swift project.
 
 If your workspace contains a package, this extension will add a **Swift Project** view to the Explorer:
 
-![A snapshot of the Package Dependencies view showing dependencies for the async-http-client Swift project.](package-dependencies.png)
+![A snapshot of the Package Dependencies view showing dependencies for the async-http-client Swift project.](project-panel.png)
 
-Additionally, the extension will monitor `Package.swift` and `Package.resolved` for changes, resolve any changes to the dependencies, and update the view as needed.
+Use the project panel to view all targets, tasks, dependencies and commands of your Swift project.

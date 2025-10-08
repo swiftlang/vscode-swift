@@ -12,12 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 /* eslint-disable no-console */
-
 import decompress from "decompress";
 import { createWriteStream } from "node:fs";
-import { rename, unlink } from "node:fs/promises";
+import { appendFile, unlink } from "node:fs/promises";
 import { pipeline } from "node:stream/promises";
 import { Octokit } from "octokit";
+
+import { main } from "./lib/utilities";
 
 const artifact_id = process.env["VSCODE_SWIFT_VSIX_ID"];
 if (!artifact_id) {
@@ -29,12 +30,16 @@ if (!token) {
     console.error("No GITHUB_TOKEN provided");
     process.exit(1);
 }
+const envFile = process.env["GITHUB_ENV"];
+if (!envFile) {
+    console.error("No GITHUB_ENV provided");
+    process.exit(1);
+}
 const repository = process.env["GITHUB_REPOSITORY"] || "swiftlang/vscode-swift";
 const owner = repository.split("/")[0];
 const repo = repository.split("/")[1];
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
-(async function () {
+main(async function () {
     const octokit = new Octokit({
         auth: token,
     });
@@ -57,22 +62,29 @@ const repo = repository.split("/")[1];
     await pipeline(data, createWriteStream("artifacts.zip", data));
     const files = await decompress("artifacts.zip", process.cwd());
     console.log(`Downloaded artifact(s): ${files.map(f => f.path).join(", ")}`);
-    const newName = process.env["VSCODE_SWIFT_VSIX"] || "vscode-swift.vsix";
-    const releaseVSIX = files.find(f => /swift-vscode-\d.\d.\d-\d+.vsix/m.test(f.path));
-    if (!releaseVSIX) {
-        console.error("Cound not find vscode-swift release VSIX in artifact bundle");
-        process.exit(1);
+    const testPrerelease = process.env["VSCODE_SWIFT_VSIX_PRERELEASE"] === "1";
+    if (testPrerelease) {
+        const prereleaseVSIX = files.find(f =>
+            /swift-vscode-\d+.\d+.\d{8}(-dev)?-\d+.vsix/m.test(f.path)
+        );
+        if (prereleaseVSIX) {
+            await appendFile(envFile, `VSCODE_SWIFT_VSIX=${prereleaseVSIX.path}\n`);
+            console.log(`Running tests against: ${prereleaseVSIX.path}`);
+        } else {
+            console.error("Cound not find vscode-swift pre-release VSIX in artifact bundle");
+            process.exit(1);
+        }
+    } else {
+        const releaseVSIX = files.find(f =>
+            /swift-vscode-\d+.\d+.\d+(-dev)?-\d+.vsix/m.test(f.path)
+        );
+        if (releaseVSIX) {
+            await appendFile(envFile, `VSCODE_SWIFT_VSIX=${releaseVSIX.path}\n`);
+            console.log(`Running tests against: ${releaseVSIX.path}`);
+        } else {
+            console.error("Cound not find vscode-swift release VSIX in artifact bundle");
+            process.exit(1);
+        }
     }
-    await rename(releaseVSIX.path, newName);
-    const prereleaseVSIX = files.find(f => /swift-vscode-\d.\d.\d{8}-\d+.vsix/m.test(f.path));
-    if (!prereleaseVSIX) {
-        console.error("Cound not find vscode-swift pre-release VSIX in artifact bundle");
-        process.exit(1);
-    }
-    console.log(`Renamed artifact: ${releaseVSIX.path} => ${newName}`);
-    const preNewName =
-        process.env["VSCODE_SWIFT_PRERELEASE_VSIX"] || "vscode-swift-prerelease.vsix";
-    await rename(prereleaseVSIX.path, preNewName);
-    console.log(`Renamed artifact: ${prereleaseVSIX.path} => ${preNewName}`);
     await unlink("artifacts.zip");
-})();
+});

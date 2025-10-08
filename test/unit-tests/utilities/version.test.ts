@@ -11,9 +11,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import { expect } from "chai";
-import { Version } from "../../../src/utilities/version";
+
+import { Version } from "@src/utilities/version";
 
 suite("Version Suite", () => {
     suite("fromString", () => {
@@ -23,6 +23,7 @@ suite("Version Suite", () => {
             expect(version?.major).to.equal(5);
             expect(version?.minor).to.equal(10);
             expect(version?.patch).to.equal(0);
+            expect(version?.dev).to.be.false;
         });
 
         test("parses major.minor.patch", () => {
@@ -31,6 +32,16 @@ suite("Version Suite", () => {
             expect(version?.major).to.equal(5);
             expect(version?.minor).to.equal(10);
             expect(version?.patch).to.equal(1);
+            expect(version?.dev).to.be.false;
+        });
+
+        test("parses -dev suffix", () => {
+            const version = Version.fromString("5.10.1-dev");
+
+            expect(version?.major).to.equal(5);
+            expect(version?.minor).to.equal(10);
+            expect(version?.patch).to.equal(1);
+            expect(version?.dev).to.be.true;
         });
 
         test("ignores extra digits", () => {

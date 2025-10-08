@@ -11,21 +11,24 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as assert from "assert";
-import { reduceTestItemChildren } from "../../../src/TestExplorer/TestUtils";
-import { TestRunProxy } from "../../../src/TestExplorer/TestRunner";
-import { TestExplorer } from "../../../src/TestExplorer/TestExplorer";
-import { TestKind } from "../../../src/TestExplorer/TestKind";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
+import * as vscode from "vscode";
+
+import { TestExplorer } from "@src/TestExplorer/TestExplorer";
+import { TestKind } from "@src/TestExplorer/TestKind";
+import { TestRunProxy } from "@src/TestExplorer/TestRunner";
+import { reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { SwiftLogger } from "@src/logging/SwiftLogger";
+
 import { testAssetUri } from "../../fixtures";
 import {
+    SettingsMap,
     activateExtension,
     deactivateExtension,
-    SettingsMap,
     updateSettings,
 } from "../utilities/testutilities";
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
 
@@ -81,6 +84,19 @@ export function testExplorerFor(
 type TestHierarchy = string | TestHierarchy[];
 
 /**
+ * Builds a tree of text items from a TestItemCollection
+ */
+export const buildStateFromController = (items: vscode.TestItemCollection): TestHierarchy =>
+    reduceTestItemChildren(
+        items,
+        (acc, item) => {
+            const children = buildStateFromController(item.children);
+            return [...acc, item.label, ...(children.length ? [children] : [])];
+        },
+        [] as TestHierarchy
+    );
+
+/**
  * Asserts that the test item hierarchy matches the description provided by a collection
  * of `TestControllerState`s.
  */
@@ -88,16 +104,6 @@ export function assertTestControllerHierarchy(
     controller: vscode.TestController,
     state: TestHierarchy
 ) {
-    const buildStateFromController = (items: vscode.TestItemCollection): TestHierarchy =>
-        reduceTestItemChildren(
-            items,
-            (acc, item) => {
-                const children = buildStateFromController(item.children);
-                return [...acc, item.label, ...(children.length ? [children] : [])];
-            },
-            [] as TestHierarchy
-        );
-
     assert.deepEqual(
         buildStateFromController(controller.items),
         state,
@@ -162,7 +168,9 @@ export function assertTestResults(
                 .sort(),
             skipped: testRun.runState.skipped.map(({ id }) => id).sort(),
             errored: testRun.runState.errored.map(({ id }) => id).sort(),
-            enqueued: testRun.runState.enqueued.map(({ id }) => id).sort(),
+            enqueued: Array.from(testRun.runState.enqueued)
+                .map(({ id }) => id)
+                .sort(),
             unknown: testRun.runState.unknown,
         },
         {
@@ -288,10 +296,12 @@ export function gatherTests(
  * @returns A test run proxy whose `runState` can be inspected for test results.
  */
 export async function runTest(
+    logger: SwiftLogger,
     testExplorer: TestExplorer,
     runProfile: TestKind,
     ...tests: string[]
 ): Promise<TestRunProxy> {
+    logger.info(`runTest: ${runProfile} tests: ${tests}`);
     const targetProfile = testExplorer.testRunProfiles.find(
         profile => profile.label === runProfile
     );
@@ -301,13 +311,22 @@ export async function runTest(
     const testItems = gatherTests(testExplorer.controller, ...tests);
     const request = new vscode.TestRunRequest(testItems);
 
+    logger.info(`runTest: configuring test run with ${testItems}`);
+
     // The first promise is the return value, the second promise builds and runs
     // the tests, populating the TestRunProxy with results and blocking the return
     // of that TestRunProxy until the test run is complete.
     return (
         await Promise.all([
-            eventPromise(testExplorer.onCreateTestRun),
-            targetProfile.runHandler(request, new vscode.CancellationTokenSource().token),
+            eventPromise(testExplorer.onCreateTestRun).then(run => {
+                logger.info(`runTest: created test run with items ${run.testItems}`);
+                return run;
+            }),
+            targetProfile
+                .runHandler(request, new vscode.CancellationTokenSource().token)
+                ?.then(() => {
+                    logger.info(`runTest: completed running tests`);
+                }),
         ])
     )[0];
 }

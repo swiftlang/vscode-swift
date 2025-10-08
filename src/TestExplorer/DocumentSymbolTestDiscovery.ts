@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import * as vscode from "vscode";
-import { TestClass } from "./TestDiscovery";
+
 import { parseTestsFromSwiftTestListOutput } from "./SPMTestDiscovery";
+import { TestClass } from "./TestDiscovery";
 
 export function parseTestsFromDocumentSymbols(
     target: string,

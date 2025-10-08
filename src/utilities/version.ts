@@ -22,19 +22,21 @@ export class Version implements VersionInterface {
     constructor(
         readonly major: number,
         readonly minor: number,
-        readonly patch: number
+        readonly patch: number,
+        readonly dev: boolean = false
     ) {}
 
     static fromString(s: string): Version | undefined {
-        const numbers = s.match(/(\d+).(\d+)(?:.(\d+))?/);
+        const numbers = s.match(/(\d+).(\d+)(?:.(\d+))?(-dev)?/);
         if (numbers) {
             const major = parseInt(numbers[1]);
             const minor = parseInt(numbers[2]);
+            const dev = numbers[4] === "-dev";
             if (numbers[3] === undefined) {
-                return new Version(major, minor, 0);
+                return new Version(major, minor, 0, dev);
             } else {
                 const patch = parseInt(numbers[3]);
-                return new Version(major, minor, patch);
+                return new Version(major, minor, patch, dev);
             }
         }
         return undefined;
@@ -84,5 +86,9 @@ export class Version implements VersionInterface {
 
     isGreaterThanOrEqual(rhs: VersionInterface): boolean {
         return !this.isLessThan(rhs);
+    }
+
+    compare(rhs: VersionInterface): number {
+        return this.isGreaterThan(rhs) ? 1 : this.isLessThan(rhs) ? -1 : 0;
     }
 }

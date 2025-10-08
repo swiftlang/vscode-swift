@@ -11,38 +11,53 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
 import * as assert from "assert";
-import { beforeEach, afterEach } from "mocha";
 import { expect } from "chai";
-import { WorkspaceContext } from "../../../src/WorkspaceContext";
-import { SwiftPluginTaskProvider } from "../../../src/tasks/SwiftPluginTaskProvider";
-import { FolderContext } from "../../../src/FolderContext";
+import { afterEach, beforeEach } from "mocha";
+import * as vscode from "vscode";
+
+import { FolderContext } from "@src/FolderContext";
+import { WorkspaceContext } from "@src/WorkspaceContext";
+import { SwiftExecution } from "@src/tasks/SwiftExecution";
+import { SwiftPluginTaskProvider } from "@src/tasks/SwiftPluginTaskProvider";
+import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
+
+import { tag } from "../../tags";
+import {
+    cleanOutput,
+    executeTaskAndWaitForResult,
+    waitForEndTaskProcess,
+} from "../../utilities/tasks";
+import { mutable } from "../../utilities/types";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
     updateSettings,
 } from "../utilities/testutilities";
-import { executeTaskAndWaitForResult, waitForEndTaskProcess } from "../../utilities/tasks";
-import { mutable } from "../../utilities/types";
-import { SwiftExecution } from "../../../src/tasks/SwiftExecution";
-import { SwiftTask } from "../../../src/tasks/SwiftTaskProvider";
-import { SwiftOutputChannel } from "../../../src/ui/SwiftOutputChannel";
 
-suite("SwiftPluginTaskProvider Test Suite", function () {
+tag("medium").suite("SwiftPluginTaskProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;
     let folderContext: FolderContext;
-
-    this.timeout(120000); // Mostly only when running suite with .only
 
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
-            const outputChannel = new SwiftOutputChannel("SwiftPluginTaskProvider.tests");
+            ctx.logger.info("Locating command-plugin folder in root workspace");
             folderContext = await folderInRootWorkspace("command-plugin", workspaceContext);
-            await folderContext.loadSwiftPlugins(outputChannel);
-            expect(outputChannel.logs.length).to.equal(0, `Expected no output channel logs`);
+            ctx.logger.info(
+                "Located command-plugin folder in root workspace at " + folderContext.folder.fsPath
+            );
+            const logger = await ctx.loggerFactory.temp("SwiftPluginTaskProvider.tests");
+            ctx.logger.info("Loading swift plugins");
+            await folderContext.loadSwiftPlugins(logger);
+            ctx.logger.info(
+                "Finished loading swift plugins, captured logs should be empty: " + logger.logs
+            );
+            if (logger.logs.length > 0) {
+                expect.fail(
+                    `Expected no output channel logs: ${JSON.stringify(logger.logs, undefined, 2)}`
+                );
+            }
             expect(workspaceContext.folders).to.not.have.lengthOf(0);
         },
     });
@@ -209,11 +224,7 @@ suite("SwiftPluginTaskProvider Test Suite", function () {
                 );
                 const { exitCode, output } = await executeTaskAndWaitForResult(task);
                 expect(exitCode, output).to.equal(0);
-                // TODO figure out why the output is '' intermittently
-                // it seems like the task is being copied by any of the
-                // vscode.tasks event emitters so executeTaskAndWaitForResult
-                // captures no output
-                // expect(cleanOutput(output)).to.include("Hello, World!");
+                expect(cleanOutput(output)).to.include("Hello, World!");
             });
 
             test("Exit code on failure", async () => {
