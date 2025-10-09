@@ -2000,7 +2000,7 @@
     "integration-test": "npm test -- --label integrationTests",
     "unit-test": "npm test -- --label unitTests",
     "coverage": "npm test -- --coverage",
-    "compile-tests": "del-cli ./assets/test/**/.build && del-cli ./assets/test/**/Package.resolved && del-cli ./assets/test/**/.spm-cache && npm run compile",
+    "compile-tests": "del-cli ./assets/test/**/.build && del-cli ./assets/test/**/.spm-cache && npm run compile",
     "package": "tsx ./scripts/package.ts",
     "dev-package": "tsx ./scripts/dev_package.ts",
     "preview-package": "tsx ./scripts/preview_package.ts",

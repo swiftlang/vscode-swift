@@ -18,18 +18,14 @@ import * as path from "path";
 import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
+import { ResolvedDependency } from "@src/SwiftPackage";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { Commands } from "@src/commands";
-import { PackageNode, ProjectPanelProvider } from "@src/ui/ProjectPanelProvider";
 
 import { testAssetUri } from "../../fixtures";
 import { tag } from "../../tags";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
-import {
-    activateExtensionForTest,
-    findWorkspaceFolder,
-    folderInRootWorkspace,
-} from "../utilities/testutilities";
+import { activateExtensionForTest, findWorkspaceFolder } from "../utilities/testutilities";
 
 tag("large").suite("Dependency Commands Test Suite", function () {
     let depsContext: FolderContext;
@@ -58,15 +54,8 @@ tag("large").suite("Dependency Commands Test Suite", function () {
     });
 
     suite("Swift: Use Local Dependency", function () {
-        let treeProvider: ProjectPanelProvider;
-
         setup(async () => {
             await waitForNoRunningTasks();
-            treeProvider = new ProjectPanelProvider(workspaceContext);
-        });
-
-        teardown(() => {
-            treeProvider?.dispose();
         });
 
         beforeEach(async function () {
@@ -84,8 +73,8 @@ tag("large").suite("Dependency Commands Test Suite", function () {
                 "useLocalDependencyTest: Fetching the dependency in the 'remote' state"
             );
 
-            // spm edit with user supplied local version of dependency
-            const item = await getDependencyInState("remote");
+            // Get the dependency in remote state
+            const remoteDep = await getDependencyInState("remote");
             const localDep = testAssetUri("swift-markdown");
 
             workspaceContext.logger.info(
@@ -96,7 +85,7 @@ tag("large").suite("Dependency Commands Test Suite", function () {
 
             const result = await vscode.commands.executeCommand(
                 Commands.USE_LOCAL_DEPENDENCY,
-                item,
+                createPackageNode(remoteDep),
                 localDep,
                 depsContext
             );
@@ -116,74 +105,69 @@ tag("large").suite("Dependency Commands Test Suite", function () {
             );
         });
 
-        async function getDependency() {
-            const headers = await treeProvider.getChildren();
-            const header = headers.find(n => n.name === "Dependencies") as PackageNode;
-            workspaceContext.logger.info(
-                `getDependency: Current headers: ${headers.map(n => n.name)}`
-            );
-            if (!header) {
-                return;
-            }
+        /**
+         * Get the swift-markdown dependency from the package dependencies
+         */
+        async function getSwiftMarkdownDependency(): Promise<ResolvedDependency | undefined> {
+            // Reload workspace state to get latest dependency information
+            await depsContext.reloadWorkspaceState();
 
-            const children = await header.getChildren();
-            workspaceContext.logger.info(
-                `getDependencyInState: Current children for "Dependencies" entry: ${children.map(n => `"${n.name.toLocaleLowerCase()}"`).join(", ")} === "swift-markdown"`
+            const dependencies = await depsContext.swiftPackage.rootDependencies;
+            const swiftMarkdownDep = dependencies.find(
+                dep => dep.identity.toLowerCase() === "swift-markdown"
             );
-            try {
-                const foundDep = children.find(
-                    n => n.name.toLocaleLowerCase() === "swift-markdown"
-                ) as PackageNode;
-                workspaceContext.logger.info(
-                    `getDependencyInState: Found dependency? ${JSON.stringify(foundDep, null, 2)}`
-                );
-                return foundDep;
-            } catch (err) {
-                workspaceContext.logger.error(
-                    `getDependencyInState: Error finding dependency: ${err}`,
-                    "Dependencies Test"
-                );
-                return;
-            }
+
+            workspaceContext.logger.info(
+                `getSwiftMarkdownDependency: Found dependency with type "${swiftMarkdownDep?.type}"`
+            );
+
+            return swiftMarkdownDep;
         }
 
-        // Wait for the dependency to switch to the expected state.
-        // This doesn't happen immediately after the USE_LOCAL_DEPENDENCY
-        // and RESET_PACKAGE commands because the file watcher on
-        // workspace-state.json needs to trigger.
-        async function getDependencyInState(state: "remote" | "editing") {
-            let depType: string | undefined;
+        /**
+         * Create a PackageNode from a ResolvedDependency for use with commands
+         */
+        function createPackageNode(dependency: ResolvedDependency): any {
+            return {
+                __isPackageNode: true,
+                name: dependency.identity,
+                location: dependency.location,
+                type: dependency.type,
+                path: dependency.path ?? "",
+                dependency: dependency,
+            };
+        }
+
+        /**
+         * Wait for the dependency to switch to the expected state.
+         * This doesn't happen immediately after the USE_LOCAL_DEPENDENCY
+         * and RESET_PACKAGE commands because the file watcher on
+         * workspace-state.json needs to trigger.
+         */
+        async function getDependencyInState(
+            state: "remote" | "editing"
+        ): Promise<ResolvedDependency> {
+            let currentDep: ResolvedDependency | undefined;
+
             for (let i = 0; i < 10; i++) {
-                const dep = await getDependency();
+                currentDep = await getSwiftMarkdownDependency();
+
                 workspaceContext.logger.info(
-                    `getDependencyInState: Current state of dependency is "${dep?.type}", waiting for "${state}"`
+                    `getDependencyInState: Current state of dependency is "${currentDep?.type}", waiting for "${state}"`
                 );
-                if (dep?.type === state) {
-                    return dep;
+
+                if (currentDep?.type === state) {
+                    return currentDep;
                 }
-                depType = dep?.type;
+
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
 
-            const headers = await treeProvider.getChildren();
-            const headerNames = headers.map(n => n.name);
-            const depChildren = await (
-                headers.find(n => n.name === "Dependencies") as PackageNode
-            )?.getChildren();
-            const childrenNames = depChildren?.map(n => n.name) ?? [];
-
-            const dependenciesFolderContext = await folderInRootWorkspace(
-                "dependencies",
-                workspaceContext
-            );
-            const resolvedPath = path.join(
-                dependenciesFolderContext.folder.fsPath,
-                "Package.resolved"
-            );
-            const packageResolvedContents = await fs.readFile(resolvedPath, "utf8");
+            const dependencies = await depsContext.swiftPackage.rootDependencies;
+            const dependencyNames = dependencies.map(dep => dep.identity);
 
             throw Error(
-                `Could not find dependency with state "${state}", instead it was "${depType}". Current headers: ${headerNames.map(h => `"${h}"`).join(", ")}, Current children for "Dependencies" entry: ${childrenNames.map(c => `"${c}"`).join(", ")}\nContents of Package.resolved:\n${packageResolvedContents}`
+                `Could not find swift-markdown dependency with state "${state}", instead it was "${currentDep?.type}". Available dependencies: ${dependencyNames.join(", ")}`
             );
         }
 
@@ -206,9 +190,10 @@ tag("large").suite("Dependency Commands Test Suite", function () {
         test("Swift: Unedit To Original Version", async function () {
             workspaceContext.logger.info("Unediting package dependency to original version");
 
+            const editingDep = await getDependencyInState("editing");
             const result = await vscode.commands.executeCommand(
                 Commands.UNEDIT_DEPENDENCY,
-                await getDependencyInState("editing"),
+                createPackageNode(editingDep),
                 depsContext
             );
             expect(result).to.be.true;
