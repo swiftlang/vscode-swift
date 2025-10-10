@@ -311,7 +311,7 @@ export async function runTest(
     const testItems = gatherTests(testExplorer.controller, ...tests);
     const request = new vscode.TestRunRequest(testItems);
 
-    logger.info(`runTest: configuring test run with ${testItems}`);
+    logger.info(`runTest: configuring test run with ${testItems.map(t => t.id)}`);
 
     // The first promise is the return value, the second promise builds and runs
     // the tests, populating the TestRunProxy with results and blocking the return
@@ -319,14 +319,29 @@ export async function runTest(
     return (
         await Promise.all([
             eventPromise(testExplorer.onCreateTestRun).then(run => {
-                logger.info(`runTest: created test run with items ${run.testItems}`);
+                logger.info(`runTest: created test run with items ${run.testItems.map(t => t.id)}`);
                 return run;
             }),
-            targetProfile
-                .runHandler(request, new vscode.CancellationTokenSource().token)
-                ?.then(() => {
-                    logger.info(`runTest: completed running tests`);
-                }),
+            performRun(targetProfile, request, logger),
         ])
     )[0];
+}
+
+async function performRun(
+    targetProfile: vscode.TestRunProfile,
+    request: vscode.TestRunRequest,
+    logger: SwiftLogger
+): Promise<void> {
+    const run = targetProfile.runHandler(request, new vscode.CancellationTokenSource().token);
+    if (!run) {
+        throw new Error("No test run was created");
+    }
+    logger.info(`runTest: starting running tests`);
+    try {
+        await run;
+        logger.info(`runTest: completed running tests`);
+    } catch (e) {
+        logger.error(`runTest: error running tests: ${e}`);
+        throw e;
+    }
 }
