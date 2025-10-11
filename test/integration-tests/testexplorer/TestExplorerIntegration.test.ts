@@ -89,7 +89,7 @@ tag("large").suite("Test Explorer Suite", function () {
             // Set up the listener before bringing the text explorer in to focus,
             // which starts searching the workspace for tests.
             await logger("Waiting for test explorer to be ready", () =>
-                waitForTestExplorerReady(testExplorer)
+                waitForTestExplorerReady(testExplorer, workspaceContext.logger)
             );
         },
         requiresLSP: true,
