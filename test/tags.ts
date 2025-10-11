@@ -144,11 +144,13 @@ export function tag(size: TestSize): MochaFunctions {
     };
     wrappedSuite.only = (title: string, fn?: (this: Suite) => void): Suite => {
         if (fn) {
+            // eslint-disable-next-line mocha/no-exclusive-tests
             return suite.only(title, function () {
                 applyTags(this);
                 fn.call(this);
             });
         }
+        // eslint-disable-next-line mocha/no-exclusive-tests
         return suite.only(title);
     };
     wrappedSuite.skip = (title: string, fn: (this: Suite) => void): Suite | void => {
@@ -164,6 +166,7 @@ export function tag(size: TestSize): MochaFunctions {
     };
     wrappedTest.only = (titleOrFn: string | AsyncFunc | Func, fn?: AsyncFunc | Func): Test => {
         return applyTags(
+            // eslint-disable-next-line mocha/no-exclusive-tests
             typeof titleOrFn === "string" ? test.only(titleOrFn, fn) : test.only(titleOrFn)
         );
     };
