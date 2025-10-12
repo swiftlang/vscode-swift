@@ -2009,6 +2009,10 @@
     "prepare": "husky"
   },
   "lint-staged": {
+    "**/*.ts": [
+      "eslint --max-warnings=0",
+      "prettier --write"
+    ],
     "**/*": "prettier --write --ignore-unknown"
   },
   "devDependencies": {
@@ -2051,6 +2055,7 @@
     "esbuild": "^0.25.10",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-mocha": "^10.5.0",
     "fantasticon": "^1.2.3",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.3",
