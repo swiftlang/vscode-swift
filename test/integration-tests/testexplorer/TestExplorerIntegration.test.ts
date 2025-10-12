@@ -66,6 +66,12 @@ tag("large").suite("Test Explorer Suite", function () {
 
     activateExtensionForSuite({
         async setup(ctx) {
+            // It can take a very long time for sourcekit-lsp to index tests on Windows,
+            // especially w/ Swift 6.0. Wait for up to 25 minutes for the indexing to complete.
+            if (process.platform === "win32") {
+                this.timeout(25 * 60 * 1000);
+            }
+
             workspaceContext = ctx;
             runTest = runTestWithLogging.bind(null, workspaceContext.logger);
             const logger = withLogging(ctx.logger);
