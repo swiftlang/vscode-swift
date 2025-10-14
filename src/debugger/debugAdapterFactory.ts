@@ -100,6 +100,17 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         );
         const toolchain = folderContext?.toolchain ?? this.workspaceContext.globalToolchain;
 
+        // "launch" requests must have either a "target" or "program" property
+        if (
+            launchConfig.request === "launch" &&
+            !("program" in launchConfig) &&
+            !("target" in launchConfig)
+        ) {
+            throw new Error(
+                "You must specify either a 'program' or a 'target' when 'request' is set to 'launch' in a Swift debug configuration. Please update your debug configuration."
+            );
+        }
+
         // Convert the "target" property to a "program"
         if (typeof launchConfig.target === "string") {
             const targetName = launchConfig.target;
