@@ -21,6 +21,7 @@ import { SwiftToolchain } from "../toolchain/toolchain";
 import { fileExists } from "../utilities/filesystem";
 import { getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
 import { DebugAdapter, LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
+import { getTargetBinaryPath } from "./launch";
 import { getLLDBLibPath, updateLaunchConfigForCI } from "./lldb";
 import { registerLoggingDebugAdapterTracker } from "./logTracker";
 
@@ -94,10 +95,22 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         folder: vscode.WorkspaceFolder | undefined,
         launchConfig: vscode.DebugConfiguration
     ): Promise<vscode.DebugConfiguration | undefined | null> {
-        const workspaceFolder = this.workspaceContext.folders.find(
+        const folderContext = this.workspaceContext.folders.find(
             f => f.workspaceFolder.uri.fsPath === folder?.uri.fsPath
         );
-        const toolchain = workspaceFolder?.toolchain ?? this.workspaceContext.globalToolchain;
+        const toolchain = folderContext?.toolchain ?? this.workspaceContext.globalToolchain;
+
+        // Convert the "target" property to a "program"
+        if (typeof launchConfig.target === "string") {
+            const targetName = launchConfig.target;
+            if (!folderContext) {
+                throw new Error(
+                    `Unable to resolve target "${targetName}". No Swift package is available to search within.`
+                );
+            }
+            launchConfig.program = await getTargetBinaryPath(targetName, folderContext);
+            delete launchConfig.target;
+        }
 
         // Fix the program path on Windows to include the ".exe" extension
         if (

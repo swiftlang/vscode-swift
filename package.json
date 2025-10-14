@@ -1725,13 +1725,14 @@
         },
         "configurationAttributes": {
           "launch": {
-            "required": [
-              "program"
-            ],
             "properties": {
               "program": {
                 "type": "string",
                 "description": "Path to the program to debug."
+              },
+              "target": {
+                "type": "string",
+                "description": "The name of the SwiftPM target to debug."
               },
               "args": {
                 "type": [
