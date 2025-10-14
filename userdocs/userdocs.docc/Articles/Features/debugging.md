@@ -29,11 +29,23 @@ The most basic launch configuration uses the `"launch"` request and provides a p
 }
 ```
 
+For SwiftPM based projects, you may specify a `target` instead of a `program` to make your debug configurations shareable between different developers on different platforms:
+
+```javascript
+{
+    "label": "Debug my-executable", // Human readable name for the configuration
+    "type": "swift",                // All Swift launch configurations use the same type
+    "request": "launch",            // Launch an executable
+    "target": "my-executable"
+}
+```
+
 There are many more options that you can specify which will alter the behavior of the debugger:
 
 | Parameter                     | Type        | Description         |
 |-------------------------------|-------------|---------------------|
 | program                       | string      | Path to the executable to launch.
+| target                        | string      | Path to the target to launch. Only available in SwiftPM projects.
 | args                          | [string]    | An array of command line argument strings to be passed to the program being launched.
 | cwd                           | string      | The program working directory.
 | env                           | dictionary  | Environment variables to set when launching the program. The format of each environment variable string is "VAR=VALUE" for environment variables with values or just "VAR" for environment variables with no values.
