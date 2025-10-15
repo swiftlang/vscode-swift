@@ -11,6 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import { AssertionError } from "chai";
 import * as vscode from "vscode";
 
 import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
@@ -138,6 +139,21 @@ export class TaskWatcher implements vscode.Disposable {
                 this.completedTasks.push(event.execution.task);
             }),
         ];
+    }
+
+    /** Asserts that a task was completed with the given name. */
+    assertTaskCompleted(name: string): void {
+        if (this.completedTasks.find(t => t.name === name)) {
+            return;
+        }
+        const createStringArray = (arr: string[]): string => {
+            return "[\n" + arr.map(s => "  " + s).join(",\n") + "\n]";
+        };
+        throw new AssertionError(`expected a task with name "${name}" to have completed.`, {
+            actual: createStringArray(this.completedTasks.map(t => t.name)),
+            expected: createStringArray([name]),
+            showDiff: true,
+        });
     }
 
     dispose() {
