@@ -119,7 +119,12 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                     `Unable to resolve target "${targetName}". No Swift package is available to search within.`
                 );
             }
-            const buildConfiguration: "debug" | "release" = launchConfig.configuration ?? "debug";
+            const buildConfiguration = launchConfig.configuration ?? "debug";
+            if (!["debug", "release"].includes(buildConfiguration)) {
+                throw new Error(
+                    `Unknown configuration property "${buildConfiguration}" in Swift debug configuration. Valid options are "debug" or "release. Please update your debug configuration.`
+                );
+            }
             launchConfig.program = await getTargetBinaryPath(
                 targetName,
                 buildConfiguration,
