@@ -2035,6 +2035,7 @@
     "@types/semver": "^7.7.1",
     "@types/sinon": "^17.0.4",
     "@types/sinon-chai": "^3.2.12",
+    "@types/source-map-support": "^0.5.10",
     "@types/svg2ttf": "^5.0.3",
     "@types/svgicons2svgfont": "^10.0.5",
     "@types/ttf2woff": "^2.0.4",
