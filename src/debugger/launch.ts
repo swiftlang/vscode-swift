@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import { realpathSync } from "fs";
 import * as path from "path";
 import { isDeepStrictEqual } from "util";
 import * as vscode from "vscode";
@@ -19,6 +18,7 @@ import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import configuration from "../configuration";
 import { BuildFlags } from "../toolchain/BuildFlags";
+import { realpathSync } from "../utilities/filesystem";
 import { stringArrayInEnglish } from "../utilities/utilities";
 import { getFolderAndNameSuffix } from "./buildConfig";
 import { SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
@@ -146,6 +146,27 @@ export async function getTargetBinaryPath(
     }
 }
 
+/** Expands VS Code variables such as ${workspaceFolder} in the given string. */
+function expandVariables(str: string): string {
+    let expandedStr = str;
+    const availableWorkspaceFolders = vscode.workspace.workspaceFolders ?? [];
+    // Expand the top level VS Code workspace folder.
+    if (availableWorkspaceFolders.length > 0) {
+        expandedStr = expandedStr.replaceAll(
+            "${workspaceFolder}",
+            availableWorkspaceFolders[0].uri.fsPath
+        );
+    }
+    // Expand each available VS Code workspace folder.
+    for (const workspaceFolder of availableWorkspaceFolders) {
+        expandedStr = expandedStr.replaceAll(
+            `$\{workspaceFolder:${workspaceFolder.name}}`,
+            workspaceFolder.uri.fsPath
+        );
+    }
+    return expandedStr;
+}
+
 // Return debug launch configuration for an executable in the given folder
 export async function getLaunchConfiguration(
     target: string,
@@ -156,12 +177,6 @@ export async function getLaunchConfiguration(
         : vscode.workspace.getConfiguration("launch", folderCtx.workspaceFolder);
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
     const targetPath: string = await getTargetBinaryPath(target, folderCtx);
-    const expandPath = (p: string): string => {
-        return p.replace(
-            `$\{workspaceFolder:${folderCtx.workspaceFolder.name}}`,
-            folderCtx.folder.fsPath
-        );
-    };
     // Users could be on different platforms with different path annotations,
     // so normalize before we compare.
     return launchConfigs.find(config => {
@@ -172,7 +187,7 @@ export async function getLaunchConfiguration(
         // Old launch configs had program paths that looked like ${workspaceFolder:test}/defaultPackage/.build/debug,
         // where `debug` was a symlink to the host-triple-folder/debug. Because targetPath is determined by `--show-bin-path`
         // in `getBuildBinaryPath` we need to follow this symlink to get the real path if we want to compare them.
-        const normalizedConfigPath = path.normalize(realpathSync(expandPath(config.program)));
+        const normalizedConfigPath = path.normalize(realpathSync(expandVariables(config.program)));
         const normalizedTargetPath = path.normalize(targetPath);
         return normalizedConfigPath === normalizedTargetPath;
     });

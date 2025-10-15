@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import { Options, convertPathToPattern, glob as fastGlob } from "fast-glob";
+import * as fsSync from "fs";
 import * as fs from "fs/promises";
 import { contains } from "micromatch";
 import * as path from "path";
@@ -20,6 +21,19 @@ import * as vscode from "vscode";
 import configuration from "../configuration";
 
 export const validFileTypes = ["swift", "c", "cpp", "h", "hpp", "m", "mm"];
+
+/**
+ * Finds the real path of a file synchronously. If the file does not exist
+ * then this will just return the provided path.
+ * @param path The file path to find the real location of.
+ * @returns The real path of the file.
+ */
+export function realpathSync(path: string): string {
+    if (!fsSync.existsSync(path)) {
+        return path;
+    }
+    return fsSync.realpathSync(path);
+}
 
 /**
  * Checks if a file, directory or symlink exists at the supplied path.
