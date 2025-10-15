@@ -459,6 +459,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                     type: SWIFT_LAUNCH_CONFIG_TYPE,
                     request: "launch",
                     name: "Test Launch",
+                    program: "/path/to/some/program",
                     env: {},
                 });
 
@@ -481,6 +482,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                     type: SWIFT_LAUNCH_CONFIG_TYPE,
                     request: "launch",
                     name: "Test Launch",
+                    program: "/path/to/some/program",
                     env,
                 });
 
