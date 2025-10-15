@@ -119,7 +119,12 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                     `Unable to resolve target "${targetName}". No Swift package is available to search within.`
                 );
             }
-            launchConfig.program = await getTargetBinaryPath(targetName, folderContext);
+            const buildConfiguration: "debug" | "release" = launchConfig.configuration ?? "debug";
+            launchConfig.program = await getTargetBinaryPath(
+                targetName,
+                buildConfiguration,
+                folderContext
+            );
             delete launchConfig.target;
         }
 

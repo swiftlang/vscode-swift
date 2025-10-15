@@ -78,6 +78,7 @@ suite("Launch Configurations Test", () => {
                     cwd: "${workspaceFolder:folder}",
                     name: "Debug executable",
                     target: "executable",
+                    configuration: "debug",
                     preLaunchTask: "swift: Build Debug executable",
                 },
                 {
@@ -87,6 +88,7 @@ suite("Launch Configurations Test", () => {
                     cwd: "${workspaceFolder:folder}",
                     name: "Release executable",
                     target: "executable",
+                    configuration: "release",
                     preLaunchTask: "swift: Build Release executable",
                 },
             ],
@@ -116,6 +118,7 @@ suite("Launch Configurations Test", () => {
                     cwd: "${workspaceFolder:folder}",
                     name: "Debug executable",
                     target: "executable",
+                    configuration: "debug",
                     preLaunchTask: "swift: Build Debug executable",
                 },
                 {
@@ -125,6 +128,7 @@ suite("Launch Configurations Test", () => {
                     cwd: "${workspaceFolder:folder}",
                     name: "Release executable",
                     target: "executable",
+                    configuration: "release",
                     preLaunchTask: "swift: Build Release executable",
                 },
             ],
@@ -141,6 +145,7 @@ suite("Launch Configurations Test", () => {
                 cwd: "${workspaceFolder:folder}",
                 name: "Debug executable",
                 target: "executable",
+                configuration: "debug",
                 preLaunchTask: "swift: Build Debug executable",
             },
             {
@@ -150,6 +155,7 @@ suite("Launch Configurations Test", () => {
                 cwd: "${workspaceFolder:folder}",
                 name: "Release executable",
                 target: "executable",
+                configuration: "release",
                 preLaunchTask: "swift: Build Release executable",
             },
         ]);
@@ -165,6 +171,7 @@ suite("Launch Configurations Test", () => {
                     cwd: "${workspaceFolder:folder}",
                     name: "Debug executable",
                     target: "executable",
+                    configuration: "debug",
                     preLaunchTask: "swift: Build Debug executable",
                 },
                 {
@@ -174,6 +181,7 @@ suite("Launch Configurations Test", () => {
                     cwd: "${workspaceFolder:folder}",
                     name: "Release executable",
                     target: "executable",
+                    configuration: "release",
                     preLaunchTask: "swift: Build Release executable",
                 },
             ],
@@ -191,6 +199,7 @@ suite("Launch Configurations Test", () => {
                 cwd: "${workspaceFolder:folder}",
                 name: "Debug executable",
                 target: "executable",
+                configuration: "debug",
                 preLaunchTask: "swift: Build Debug executable",
             },
             {
@@ -200,6 +209,7 @@ suite("Launch Configurations Test", () => {
                 cwd: "${workspaceFolder:folder}",
                 name: "Release executable",
                 target: "executable",
+                configuration: "release",
                 preLaunchTask: "swift: Build Release executable",
             },
         ]);
@@ -218,6 +228,7 @@ suite("Launch Configurations Test", () => {
                 cwd: "${workspaceFolder:folder}",
                 name: "Debug executable",
                 target: "executable",
+                configuration: "debug",
                 preLaunchTask: "swift: Build Debug executable",
             },
             {
@@ -227,6 +238,7 @@ suite("Launch Configurations Test", () => {
                 cwd: "${workspaceFolder:folder}",
                 name: "Release executable",
                 target: "executable",
+                configuration: "release",
                 preLaunchTask: "swift: Build Release executable",
             },
         ]);
@@ -243,6 +255,7 @@ suite("Launch Configurations Test", () => {
                     cwd: "${workspaceFolder:folder}",
                     name: "Debug executable",
                     target: "executable",
+                    configuration: "debug",
                     preLaunchTask: "swift: Build Debug executable",
                 },
                 {
@@ -252,6 +265,7 @@ suite("Launch Configurations Test", () => {
                     cwd: "${workspaceFolder:folder}",
                     name: "Release executable",
                     target: "executable",
+                    configuration: "release",
                     preLaunchTask: "swift: Build Release executable",
                 },
             ],
@@ -268,6 +282,7 @@ suite("Launch Configurations Test", () => {
                 cwd: "${workspaceFolder:folder}",
                 name: "Debug executable",
                 target: "executable",
+                configuration: "debug",
                 preLaunchTask: "swift: Build Debug executable",
             },
             {
@@ -277,6 +292,7 @@ suite("Launch Configurations Test", () => {
                 cwd: "${workspaceFolder:folder}",
                 name: "Release executable",
                 target: "executable",
+                configuration: "release",
                 preLaunchTask: "swift: Build Release executable",
             },
         ]);

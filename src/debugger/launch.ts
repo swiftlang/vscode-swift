@@ -18,7 +18,6 @@ import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import configuration from "../configuration";
 import { BuildFlags } from "../toolchain/BuildFlags";
-import { realpathSync } from "../utilities/filesystem";
 import { stringArrayInEnglish } from "../utilities/utilities";
 import { getFolderAndNameSuffix } from "./buildConfig";
 import { SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
@@ -71,6 +70,7 @@ export async function makeDebugConfigurations(
         updateConfigWithNewKeys(config, generatedConfig, [
             "program",
             "target",
+            "configuration",
             "cwd",
             "preLaunchTask",
             "type",
@@ -124,26 +124,33 @@ export async function makeDebugConfigurations(
 
 export async function getTargetBinaryPath(
     targetName: string,
+    buildConfiguration: "debug" | "release",
     folderCtx: FolderContext
 ): Promise<string> {
-    const { folder } = getFolderAndNameSuffix(folderCtx);
     try {
         // Use dynamic path resolution with --show-bin-path
         const binPath = await folderCtx.toolchain.buildFlags.getBuildBinaryPath(
             folderCtx.folder.fsPath,
-            folder,
-            "debug",
+            buildConfiguration,
             folderCtx.workspaceContext.logger
         );
         return path.join(binPath, targetName);
     } catch (error) {
         // Fallback to traditional path construction if dynamic resolution fails
-        return path.join(
-            BuildFlags.buildDirectoryFromWorkspacePath(folder, true),
-            "debug",
-            targetName
-        );
+        return getLegacyTargetBinaryPath(targetName, buildConfiguration, folderCtx);
     }
+}
+
+export function getLegacyTargetBinaryPath(
+    targetName: string,
+    buildConfiguration: "debug" | "release",
+    folderCtx: FolderContext
+): string {
+    return path.join(
+        BuildFlags.buildDirectoryFromWorkspacePath(folderCtx.folder.fsPath, true),
+        buildConfiguration,
+        targetName
+    );
 }
 
 /** Expands VS Code variables such as ${workspaceFolder} in the given string. */
@@ -170,26 +177,29 @@ function expandVariables(str: string): string {
 // Return debug launch configuration for an executable in the given folder
 export async function getLaunchConfiguration(
     target: string,
+    buildConfiguration: "debug" | "release",
     folderCtx: FolderContext
 ): Promise<vscode.DebugConfiguration | undefined> {
     const wsLaunchSection = vscode.workspace.workspaceFile
         ? vscode.workspace.getConfiguration("launch")
         : vscode.workspace.getConfiguration("launch", folderCtx.workspaceFolder);
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
-    const targetPath: string = await getTargetBinaryPath(target, folderCtx);
-    // Users could be on different platforms with different path annotations,
-    // so normalize before we compare.
+    const targetPath = await getTargetBinaryPath(target, buildConfiguration, folderCtx);
+    const legacyTargetPath = getLegacyTargetBinaryPath(target, buildConfiguration, folderCtx);
     return launchConfigs.find(config => {
-        // Newer launch configs use a "target" property which is easy to query.
+        // Newer launch configs use "target" and "configuration" properties which are easier to query.
         if (config.target) {
-            return config.target === target;
+            const configBuildConfiguration = config.configuration ?? "debug";
+            return config.target === target && configBuildConfiguration === buildConfiguration;
         }
-        // Old launch configs had program paths that looked like ${workspaceFolder:test}/defaultPackage/.build/debug,
-        // where `debug` was a symlink to the host-triple-folder/debug. Because targetPath is determined by `--show-bin-path`
-        // in `getBuildBinaryPath` we need to follow this symlink to get the real path if we want to compare them.
-        const normalizedConfigPath = path.normalize(realpathSync(expandVariables(config.program)));
+        // Users could be on different platforms with different path annotations, so normalize before we compare.
+        const normalizedConfigPath = path.normalize(expandVariables(config.program));
         const normalizedTargetPath = path.normalize(targetPath);
-        return normalizedConfigPath === normalizedTargetPath;
+        const normalizedLegacyTargetPath = path.normalize(legacyTargetPath);
+        // Old launch configs had program paths that looked like "${workspaceFolder:test}/defaultPackage/.build/debug",
+        // where `debug` was a symlink to the <host-triple-folder>/debug. We want to support both old and new, so we're
+        // comparing against both to find a match.
+        return [normalizedTargetPath, normalizedLegacyTargetPath].includes(normalizedConfigPath);
     });
 }
 
@@ -215,12 +225,14 @@ async function createExecutableConfigurations(
                 ...baseConfig,
                 name: `Debug ${product.name}${nameSuffix}`,
                 target: product.name,
+                configuration: "debug",
                 preLaunchTask: `swift: Build Debug ${product.name}${nameSuffix}`,
             },
             {
                 ...baseConfig,
                 name: `Release ${product.name}${nameSuffix}`,
                 target: product.name,
+                configuration: "release",
                 preLaunchTask: `swift: Build Release ${product.name}${nameSuffix}`,
             },
         ];
@@ -243,7 +255,6 @@ export async function createSnippetConfiguration(
         // Use dynamic path resolution with --show-bin-path
         const binPath = await ctx.toolchain.buildFlags.getBuildBinaryPath(
             ctx.folder.fsPath,
-            folder,
             "debug",
             ctx.workspaceContext.logger
         );

@@ -25,14 +25,14 @@ import { executeTaskWithUI } from "./utilities";
  * Executes a {@link vscode.Task task} to run swift target.
  */
 export async function runBuild(ctx: WorkspaceContext, target?: string) {
-    return await debugBuildWithOptions(ctx, { noDebug: true }, target);
+    return await debugBuildWithOptions(ctx, { noDebug: true }, target, "release");
 }
 
 /**
  * Executes a {@link vscode.Task task} to debug swift target.
  */
 export async function debugBuild(ctx: WorkspaceContext, target?: string) {
-    return await debugBuildWithOptions(ctx, {}, target);
+    return await debugBuildWithOptions(ctx, {}, target, "debug");
 }
 
 /**
@@ -73,7 +73,8 @@ export async function folderCleanBuild(folderContext: FolderContext) {
 export async function debugBuildWithOptions(
     ctx: WorkspaceContext,
     options: vscode.DebugSessionOptions,
-    targetName?: string
+    targetName: string | undefined,
+    buildConfiguration: "debug" | "release"
 ) {
     const current = ctx.currentFolder;
     if (!current) {
@@ -107,7 +108,7 @@ export async function debugBuildWithOptions(
         return;
     }
 
-    const launchConfig = await getLaunchConfiguration(target.name, current);
+    const launchConfig = await getLaunchConfiguration(target.name, buildConfiguration, current);
     if (launchConfig) {
         ctx.buildStarted(target.name, launchConfig, options);
         const result = await debugLaunchConfig(

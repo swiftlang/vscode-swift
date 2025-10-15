@@ -459,7 +459,6 @@ suite("BuildFlags Test Suite", () => {
         test("debug configuration calls swift build with correct arguments", async () => {
             const result = await buildFlags.getBuildBinaryPath(
                 "/test/workspace",
-                "${workspaceFolder:SimpleExecutable}",
                 "debug",
                 instance(logger)
             );
@@ -478,7 +477,6 @@ suite("BuildFlags Test Suite", () => {
         test("release configuration calls swift build with correct arguments", async () => {
             const result = await buildFlags.getBuildBinaryPath(
                 "/test/workspace",
-                "${workspaceFolder:SimpleExecutable}",
                 "release",
                 instance(logger)
             );
@@ -494,12 +492,7 @@ suite("BuildFlags Test Suite", () => {
         test("includes build arguments in command", async () => {
             buildArgsConfig.setValue(["--build-system", "swiftbuild"]);
 
-            await buildFlags.getBuildBinaryPath(
-                "/test/workspace",
-                "${workspaceFolder:SimpleExecutable}",
-                "debug",
-                instance(logger)
-            );
+            await buildFlags.getBuildBinaryPath("/test/workspace", "debug", instance(logger));
 
             const [args] = execSwiftSpy.firstCall.args;
             expect(args).to.include("--build-system");
@@ -510,7 +503,6 @@ suite("BuildFlags Test Suite", () => {
             // First call
             const result1 = await buildFlags.getBuildBinaryPath(
                 "/test/workspace",
-                "${workspaceFolder:SimpleExecutable}",
                 "debug",
                 instance(logger)
             );
@@ -520,7 +512,6 @@ suite("BuildFlags Test Suite", () => {
             // Second call should use cache
             const result2 = await buildFlags.getBuildBinaryPath(
                 "/test/workspace",
-                "${workspaceFolder:SimpleExecutable}",
                 "debug",
                 instance(logger)
             );
@@ -529,7 +520,6 @@ suite("BuildFlags Test Suite", () => {
 
             // Different configuration should not use cache
             const result3 = await buildFlags.getBuildBinaryPath(
-                "/test/workspace",
                 "/test/workspace",
                 "release",
                 instance(logger)
@@ -540,24 +530,14 @@ suite("BuildFlags Test Suite", () => {
 
         test("different build arguments create different cache entries", async () => {
             // First call with no build arguments
-            await buildFlags.getBuildBinaryPath(
-                "/test/workspace",
-                "${workspaceFolder:SimpleExecutable}",
-                "debug",
-                instance(logger)
-            );
+            await buildFlags.getBuildBinaryPath("/test/workspace", "debug", instance(logger));
             expect(execSwiftSpy).to.have.been.calledOnce;
 
             // Change build arguments
             buildArgsConfig.setValue(["--build-system", "swiftbuild"]);
 
             // Second call should not use cache due to different build arguments
-            await buildFlags.getBuildBinaryPath(
-                "/test/workspace",
-                "${workspaceFolder:SimpleExecutable}",
-                "debug",
-                instance(logger)
-            );
+            await buildFlags.getBuildBinaryPath("/test/workspace", "debug", instance(logger));
             expect(execSwiftSpy).to.have.been.calledTwice;
         });
 
@@ -571,45 +551,24 @@ suite("BuildFlags Test Suite", () => {
             sinon.replace(utilities, "execSwift", execSwiftSpy);
 
             const log = instance(logger);
-            const result = await buildFlags.getBuildBinaryPath(
-                "/test/workspace",
-                "${workspaceFolder:SimpleExecutable}",
-                "debug",
-                log
-            );
+            const result = await buildFlags.getBuildBinaryPath("/test/workspace", "debug", log);
 
             // Should fallback to traditional path
-            expect(result).to.include("${workspaceFolder:SimpleExecutable}");
-            expect(result).to.include("debug");
+            expect(result).to.equal(path.normalize("/test/workspace/.build/debug"));
             expect(log.warn).to.have.been.calledOnce;
         });
 
         test("clearBuildPathCache clears all cached entries", async () => {
             // Cache some entries
-            await buildFlags.getBuildBinaryPath(
-                "cwd",
-                "${workspaceFolder:Workspace1}",
-                "debug",
-                instance(logger)
-            );
-            await buildFlags.getBuildBinaryPath(
-                "cwd",
-                "${workspaceFolder:Workspace2}",
-                "release",
-                instance(logger)
-            );
+            await buildFlags.getBuildBinaryPath("cwd", "debug", instance(logger));
+            await buildFlags.getBuildBinaryPath("cwd", "release", instance(logger));
             expect(execSwiftSpy).to.have.been.calledTwice;
 
             // Clear cache
             BuildFlags.clearBuildPathCache();
 
             // Next calls should execute again
-            await buildFlags.getBuildBinaryPath(
-                "cwd",
-                "${workspaceFolder:Workspace1}",
-                "debug",
-                instance(logger)
-            );
+            await buildFlags.getBuildBinaryPath("cwd", "debug", instance(logger));
             expect(execSwiftSpy).to.have.been.calledThrice;
         });
     });

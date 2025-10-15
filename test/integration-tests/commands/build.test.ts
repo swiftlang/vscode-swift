@@ -24,6 +24,7 @@ import { Version } from "@src/utilities/version";
 import { testAssetUri } from "../../fixtures";
 import { tag } from "../../tags";
 import { continueSession, waitForDebugAdapterRequest } from "../../utilities/debug";
+import { withTaskWatcher } from "../../utilities/tasks";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 
 tag("large").suite("Build Commands", function () {
@@ -43,7 +44,7 @@ tag("large").suite("Build Commands", function () {
             ) {
                 this.skip();
             }
-            // A breakpoint will have not effect on the Run command.
+            // A breakpoint will have no effect on the Run command.
             vscode.debug.addBreakpoints(breakpoints);
 
             workspaceContext = ctx;
@@ -58,8 +59,13 @@ tag("large").suite("Build Commands", function () {
     });
 
     test("Swift: Run Build", async () => {
-        const result = await vscode.commands.executeCommand(Commands.RUN, "PackageExe");
-        expect(result).to.be.true;
+        await withTaskWatcher(async taskWatcher => {
+            const result = await vscode.commands.executeCommand(Commands.RUN, "PackageExe");
+            expect(result).to.be.true;
+            expect(taskWatcher.completedTasks.map(t => t.name)).to.include(
+                "Build Release PackageExe (defaultPackage)"
+            );
+        });
     });
 
     test("Swift: Debug Build", async function () {
@@ -71,29 +77,26 @@ tag("large").suite("Build Commands", function () {
         ) {
             this.skip();
         }
-        // Promise used to indicate we hit the break point.
-        // NB: "stopped" is the exact command when debuggee has stopped due to break point,
-        // but "stackTrace" is the deterministic sync point we will use to make sure we can execute continue
-        const bpPromise = waitForDebugAdapterRequest(
-            "Debug PackageExe (defaultPackage)" +
-                (vscode.workspace.workspaceFile ? " (workspace)" : ""),
-            workspaceContext.globalToolchain.swiftVersion,
-            "stackTrace"
-        );
 
-        const resultPromise: Thenable<boolean> = vscode.commands.executeCommand(
-            Commands.DEBUG,
-            "PackageExe"
-        );
+        await withTaskWatcher(async taskWatcher => {
+            const resultPromise = vscode.commands.executeCommand(Commands.DEBUG, "PackageExe");
 
-        await bpPromise;
-        let succeeded = false;
-        void resultPromise.then(s => (succeeded = s));
-        while (!succeeded) {
+            // Wait until we hit the breakpoint.
+            // NB: "stopped" is the exact command when debuggee has stopped due to break point,
+            // but "stackTrace" is the deterministic sync point we will use to make sure we can execute continue
+            await waitForDebugAdapterRequest(
+                "Debug PackageExe (defaultPackage)" +
+                    (vscode.workspace.workspaceFile ? " (workspace)" : ""),
+                workspaceContext.globalToolchain.swiftVersion,
+                "stackTrace"
+            );
             await continueSession();
-            await new Promise(r => setTimeout(r, 500));
-        }
-        await expect(resultPromise).to.eventually.be.true;
+
+            await expect(resultPromise).to.eventually.be.true;
+            expect(taskWatcher.completedTasks.map(t => t.name)).to.include(
+                "Build Debug PackageExe (defaultPackage)"
+            );
+        });
     });
 
     test("Swift: Clean Build", async () => {
@@ -108,7 +111,7 @@ tag("large").suite("Build Commands", function () {
 
         const afterItemCount = (await fs.readdir(buildPath)).length;
         // .build folder is going to be filled with built artifacts after Commands.RUN command
-        // After executing the clean command the build directory is guranteed to have less entry.
+        // After executing the clean command the build directory is guaranteed to have less entries.
         expect(afterItemCount).to.be.lessThan(beforeItemCount);
     });
 });

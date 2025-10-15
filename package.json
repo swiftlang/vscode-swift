@@ -1734,6 +1734,14 @@
                 "type": "string",
                 "description": "The name of the SwiftPM target to debug."
               },
+              "configuration": {
+                "type": "string",
+                "enum": [
+                  "debug",
+                  "release"
+                ],
+                "description": "The configuration of the SwiftPM target to use."
+              },
               "args": {
                 "type": [
                   "array",
