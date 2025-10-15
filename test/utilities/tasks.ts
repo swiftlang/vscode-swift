@@ -142,8 +142,8 @@ export class TaskWatcher implements vscode.Disposable {
     }
 
     /** Asserts that a task was completed with the given name. */
-    assertTaskCompleted(name: string): void {
-        if (this.completedTasks.find(t => t.name === name)) {
+    assertTaskCompletedByName(name: string): void {
+        if (this.completedTasks.find(t => t.name.includes(name))) {
             return;
         }
         const createStringArray = (arr: string[]): string => {

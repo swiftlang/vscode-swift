@@ -62,7 +62,7 @@ tag("large").suite("Build Commands", function () {
         await withTaskWatcher(async taskWatcher => {
             const result = await vscode.commands.executeCommand(Commands.RUN, "PackageExe");
             expect(result).to.be.true;
-            taskWatcher.assertTaskCompleted("Build Release PackageExe (defaultPackage)");
+            taskWatcher.assertTaskCompletedByName("Build Release PackageExe (defaultPackage)");
         });
     });
 
@@ -91,7 +91,7 @@ tag("large").suite("Build Commands", function () {
             await continueSession();
 
             await expect(resultPromise).to.eventually.be.true;
-            taskWatcher.assertTaskCompleted("Build Debug PackageExe (defaultPackage)");
+            taskWatcher.assertTaskCompletedByName("Build Debug PackageExe (defaultPackage)");
         });
     });
 
