@@ -111,8 +111,13 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             );
         }
 
-        // Convert the "target" property to a "program"
+        // Convert the "target" and "configuration" properties to a "program"
         if (typeof launchConfig.target === "string") {
+            if ("program" in launchConfig) {
+                throw new Error(
+                    `Unable to set both "target" and "program" on the same Swift debug configuration. Please remove one of them from your debug configuration.`
+                );
+            }
             const targetName = launchConfig.target;
             if (!folderContext) {
                 throw new Error(
