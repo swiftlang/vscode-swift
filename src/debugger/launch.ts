@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import { realpathSync } from "fs";
 import * as path from "path";
 import { isDeepStrictEqual } from "util";
 import * as vscode from "vscode";
@@ -70,6 +69,8 @@ export async function makeDebugConfigurations(
         const config = structuredClone(launchConfigs[index]);
         updateConfigWithNewKeys(config, generatedConfig, [
             "program",
+            "target",
+            "configuration",
             "cwd",
             "preLaunchTask",
             "type",
@@ -121,55 +122,85 @@ export async function makeDebugConfigurations(
     return true;
 }
 
+export async function getTargetBinaryPath(
+    targetName: string,
+    buildConfiguration: "debug" | "release",
+    folderCtx: FolderContext
+): Promise<string> {
+    try {
+        // Use dynamic path resolution with --show-bin-path
+        const binPath = await folderCtx.toolchain.buildFlags.getBuildBinaryPath(
+            folderCtx.folder.fsPath,
+            buildConfiguration,
+            folderCtx.workspaceContext.logger
+        );
+        return path.join(binPath, targetName);
+    } catch (error) {
+        // Fallback to traditional path construction if dynamic resolution fails
+        return getLegacyTargetBinaryPath(targetName, buildConfiguration, folderCtx);
+    }
+}
+
+export function getLegacyTargetBinaryPath(
+    targetName: string,
+    buildConfiguration: "debug" | "release",
+    folderCtx: FolderContext
+): string {
+    return path.join(
+        BuildFlags.buildDirectoryFromWorkspacePath(folderCtx.folder.fsPath, true),
+        buildConfiguration,
+        targetName
+    );
+}
+
+/** Expands VS Code variables such as ${workspaceFolder} in the given string. */
+function expandVariables(str: string): string {
+    let expandedStr = str;
+    const availableWorkspaceFolders = vscode.workspace.workspaceFolders ?? [];
+    // Expand the top level VS Code workspace folder.
+    if (availableWorkspaceFolders.length > 0) {
+        expandedStr = expandedStr.replaceAll(
+            "${workspaceFolder}",
+            availableWorkspaceFolders[0].uri.fsPath
+        );
+    }
+    // Expand each available VS Code workspace folder.
+    for (const workspaceFolder of availableWorkspaceFolders) {
+        expandedStr = expandedStr.replaceAll(
+            `$\{workspaceFolder:${workspaceFolder.name}}`,
+            workspaceFolder.uri.fsPath
+        );
+    }
+    return expandedStr;
+}
+
 // Return debug launch configuration for an executable in the given folder
 export async function getLaunchConfiguration(
     target: string,
+    buildConfiguration: "debug" | "release",
     folderCtx: FolderContext
 ): Promise<vscode.DebugConfiguration | undefined> {
     const wsLaunchSection = vscode.workspace.workspaceFile
         ? vscode.workspace.getConfiguration("launch")
         : vscode.workspace.getConfiguration("launch", folderCtx.workspaceFolder);
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
-    const { folder } = getFolderAndNameSuffix(folderCtx);
-    try {
-        // Use dynamic path resolution with --show-bin-path
-        const binPath = await folderCtx.toolchain.buildFlags.getBuildBinaryPath(
-            folderCtx.folder.fsPath,
-            folder,
-            "debug",
-            folderCtx.workspaceContext.logger
-        );
-        const targetPath = path.join(binPath, target);
-
-        const expandPath = (p: string) =>
-            p.replace(
-                `$\{workspaceFolder:${folderCtx.workspaceFolder.name}}`,
-                folderCtx.folder.fsPath
-            );
-
-        // Users could be on different platforms with different path annotations,
-        // so normalize before we compare.
-        const launchConfig = launchConfigs.find(
-            config =>
-                // Old launch configs had program paths that looked like ${workspaceFolder:test}/defaultPackage/.build/debug,
-                // where `debug` was a symlink to the host-triple-folder/debug. Because targetPath is determined by `--show-bin-path`
-                // in `getBuildBinaryPath` we need to follow this symlink to get the real path if we want to compare them.
-                path.normalize(realpathSync(expandPath(config.program))) ===
-                path.normalize(targetPath)
-        );
-        return launchConfig;
-    } catch (error) {
-        // Fallback to traditional path construction if dynamic resolution fails
-        const targetPath = path.join(
-            BuildFlags.buildDirectoryFromWorkspacePath(folder, true),
-            "debug",
-            target
-        );
-        const launchConfig = launchConfigs.find(
-            config => path.normalize(config.program) === path.normalize(targetPath)
-        );
-        return launchConfig;
-    }
+    const targetPath = await getTargetBinaryPath(target, buildConfiguration, folderCtx);
+    const legacyTargetPath = getLegacyTargetBinaryPath(target, buildConfiguration, folderCtx);
+    return launchConfigs.find(config => {
+        // Newer launch configs use "target" and "configuration" properties which are easier to query.
+        if (config.target) {
+            const configBuildConfiguration = config.configuration ?? "debug";
+            return config.target === target && configBuildConfiguration === buildConfiguration;
+        }
+        // Users could be on different platforms with different path annotations, so normalize before we compare.
+        const normalizedConfigPath = path.normalize(expandVariables(config.program));
+        const normalizedTargetPath = path.normalize(targetPath);
+        const normalizedLegacyTargetPath = path.normalize(legacyTargetPath);
+        // Old launch configs had program paths that looked like "${workspaceFolder:test}/defaultPackage/.build/debug",
+        // where `debug` was a symlink to the <host-triple-folder>/debug. We want to support both old and new, so we're
+        // comparing against both to find a match.
+        return [normalizedTargetPath, normalizedLegacyTargetPath].includes(normalizedConfigPath);
+    });
 }
 
 // Return array of DebugConfigurations for executables based on what is in Package.swift
@@ -182,72 +213,30 @@ async function createExecutableConfigurations(
     // to make it easier for users switching between platforms.
     const { folder, nameSuffix } = getFolderAndNameSuffix(ctx, undefined, "posix");
 
-    try {
-        // Get dynamic build paths for both debug and release configurations
-        const [debugBinPath, releaseBinPath] = await Promise.all([
-            ctx.toolchain.buildFlags.getBuildBinaryPath(
-                ctx.folder.fsPath,
-                folder,
-                "debug",
-                ctx.workspaceContext.logger
-            ),
-            ctx.toolchain.buildFlags.getBuildBinaryPath(
-                ctx.folder.fsPath,
-                folder,
-                "release",
-                ctx.workspaceContext.logger
-            ),
-        ]);
-
-        return executableProducts.flatMap(product => {
-            const baseConfig = {
-                type: SWIFT_LAUNCH_CONFIG_TYPE,
-                request: "launch",
-                args: [],
-                cwd: folder,
-            };
-            return [
-                {
-                    ...baseConfig,
-                    name: `Debug ${product.name}${nameSuffix}`,
-                    program: path.posix.join(debugBinPath, product.name),
-                    preLaunchTask: `swift: Build Debug ${product.name}${nameSuffix}`,
-                },
-                {
-                    ...baseConfig,
-                    name: `Release ${product.name}${nameSuffix}`,
-                    program: path.posix.join(releaseBinPath, product.name),
-                    preLaunchTask: `swift: Build Release ${product.name}${nameSuffix}`,
-                },
-            ];
-        });
-    } catch (error) {
-        // Fallback to traditional path construction if dynamic resolution fails
-        const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true, "posix");
-
-        return executableProducts.flatMap(product => {
-            const baseConfig = {
-                type: SWIFT_LAUNCH_CONFIG_TYPE,
-                request: "launch",
-                args: [],
-                cwd: folder,
-            };
-            return [
-                {
-                    ...baseConfig,
-                    name: `Debug ${product.name}${nameSuffix}`,
-                    program: path.posix.join(buildDirectory, "debug", product.name),
-                    preLaunchTask: `swift: Build Debug ${product.name}${nameSuffix}`,
-                },
-                {
-                    ...baseConfig,
-                    name: `Release ${product.name}${nameSuffix}`,
-                    program: path.posix.join(buildDirectory, "release", product.name),
-                    preLaunchTask: `swift: Build Release ${product.name}${nameSuffix}`,
-                },
-            ];
-        });
-    }
+    return executableProducts.flatMap(product => {
+        const baseConfig = {
+            type: SWIFT_LAUNCH_CONFIG_TYPE,
+            request: "launch",
+            args: [],
+            cwd: folder,
+        };
+        return [
+            {
+                ...baseConfig,
+                name: `Debug ${product.name}${nameSuffix}`,
+                target: product.name,
+                configuration: "debug",
+                preLaunchTask: `swift: Build Debug ${product.name}${nameSuffix}`,
+            },
+            {
+                ...baseConfig,
+                name: `Release ${product.name}${nameSuffix}`,
+                target: product.name,
+                configuration: "release",
+                preLaunchTask: `swift: Build Release ${product.name}${nameSuffix}`,
+            },
+        ];
+    });
 }
 
 /**
@@ -266,7 +255,6 @@ export async function createSnippetConfiguration(
         // Use dynamic path resolution with --show-bin-path
         const binPath = await ctx.toolchain.buildFlags.getBuildBinaryPath(
             ctx.folder.fsPath,
-            folder,
             "debug",
             ctx.workspaceContext.logger
         );

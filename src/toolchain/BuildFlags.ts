@@ -234,7 +234,6 @@ export class BuildFlags {
      * @returns Promise resolving to the build binary path
      */
     async getBuildBinaryPath(
-        cwd: string,
         workspacePath: string,
         buildConfiguration: "debug" | "release" = "debug",
         logger: SwiftLogger
@@ -263,7 +262,9 @@ export class BuildFlags {
 
         try {
             // Execute swift build --show-bin-path
-            const result = await execSwift(fullArgs, this.toolchain, { cwd });
+            const result = await execSwift(fullArgs, this.toolchain, {
+                cwd: workspacePath,
+            });
             const binPath = result.stdout.trim();
 
             // Cache the result
