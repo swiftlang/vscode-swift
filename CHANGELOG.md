@@ -9,7 +9,7 @@
 - Prompt to cancel and replace the active test run if one is in flight ([#1774](https://github.com/swiftlang/vscode-swift/pull/1774))
 - A walkthrough for first time extension users ([#1560](https://github.com/swiftlang/vscode-swift/issues/1560))
 - Allow `swift.backgroundCompilation` setting to accept an object where enabling the `useDefaultTask` property will run the default build task, and the `release` property will run the `release` variant of the Build All task ([#1857](https://github.com/swiftlang/vscode-swift/pull/1857))
-- Added a new `target` property to `swift` launch configurations that can be used instead of `program` for SwiftPM based projects ([#1890](https://github.com/swiftlang/vscode-swift/pull/1890))
+- Added new `target` and `configuration` properties to `swift` launch configurations that can be used instead of `program` for SwiftPM based projects ([#1890](https://github.com/swiftlang/vscode-swift/pull/1890))
 
 ### Fixed
 
