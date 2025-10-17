@@ -76,7 +76,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         // properly configured.
         if (!toolchain) {
             // In order to select a toolchain we need to register the command first.
-            const subscriptions = commands.registerToolchainCommands(undefined, logger, undefined);
+            const subscriptions = commands.registerToolchainCommands(undefined, logger);
             const chosenRemediation = await showToolchainError();
             subscriptions.forEach(sub => sub.dispose());
 
@@ -101,11 +101,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         context.subscriptions.push(new SwiftEnvironmentVariablesManager(context));
         context.subscriptions.push(SwiftTerminalProfileProvider.register());
         context.subscriptions.push(
-            ...commands.registerToolchainCommands(
-                toolchain,
-                workspaceContext.logger,
-                workspaceContext.currentFolder?.folder
-            )
+            ...commands.registerToolchainCommands(workspaceContext, workspaceContext.logger)
         );
 
         // Watch for configuration changes the trigger a reload of the extension if necessary.
