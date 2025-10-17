@@ -507,26 +507,6 @@
             "markdownDescription": "Additional arguments to pass to swift commands that do package resolution, such as `swift package resolve`, `swift package update`, `swift build` and `swift test`. Keys and values should be provided as individual entries in the list.",
             "scope": "machine-overridable"
           },
-          "swift.additionalTestArguments": {
-            "type": "array",
-            "default": [],
-            "items": {
-              "type": "string"
-            },
-            "markdownDescription": "Additional arguments to pass to the `swift test` or `swift build` commands used when building and running tests from within VS Code.",
-            "scope": "machine-overridable"
-          },
-          "swift.testEnvironmentVariables": {
-            "type": "object",
-            "patternProperties": {
-              ".*": {
-                "type": "string"
-              }
-            },
-            "default": {},
-            "markdownDescription": "Environment variables to set when running tests. To set environment variables when debugging an application you should edit the `env` field in the relevant `launch.json` configuration.",
-            "scope": "machine-overridable"
-          },
           "swift.sanitizer": {
             "type": "string",
             "default": "off",
@@ -743,6 +723,26 @@
       {
         "title": "Testing",
         "properties": {
+          "swift.additionalTestArguments": {
+            "type": "array",
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "markdownDescription": "Additional arguments to pass to the `swift test` or `swift build` commands used when building and running tests from within VS Code.",
+            "scope": "machine-overridable"
+          },
+          "swift.testEnvironmentVariables": {
+            "type": "object",
+            "patternProperties": {
+              ".*": {
+                "type": "string"
+              }
+            },
+            "default": {},
+            "markdownDescription": "Environment variables to set when running tests. To set environment variables when debugging an application you should edit the `env` field in the relevant `launch.json` configuration.",
+            "scope": "machine-overridable"
+          },
           "swift.excludeFromCodeCoverage": {
             "description": "A list of paths to exclude from code coverage reports. Paths can be absolute or relative to the workspace root.",
             "type": "array",
