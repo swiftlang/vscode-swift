@@ -365,13 +365,8 @@ export class TestExplorer {
                     return;
                 }
 
-                // get list of tests from `swift test --list-tests`
-                let listTestArguments: string[];
-                if (toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 8, 0))) {
-                    listTestArguments = ["test", "list", "--skip-build"];
-                } else {
-                    listTestArguments = ["test", "--list-tests", "--skip-build"];
-                }
+                // get list of tests from `swift test list --skip-build`
+                let listTestArguments: string[] = ["test", "list", "--skip-build"];
                 listTestArguments = [...listTestArguments, ...testBuildOptions];
                 const listTestsOperation = new SwiftExecOperation(
                     listTestArguments,
