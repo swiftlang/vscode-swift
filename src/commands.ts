@@ -65,16 +65,19 @@ import { showToolchainSelectionQuickPick } from "./ui/ToolchainSelection";
 export type WorkspaceContextWithToolchain = WorkspaceContext & { toolchain: SwiftToolchain };
 
 export function registerToolchainCommands(
-    toolchain: SwiftToolchain | undefined,
-    logger: SwiftLogger,
-    cwd?: vscode.Uri
+    ctx: WorkspaceContext | undefined,
+    logger: SwiftLogger
 ): vscode.Disposable[] {
     return [
         vscode.commands.registerCommand("swift.createNewProject", () =>
-            createNewProject(toolchain)
+            createNewProject(ctx?.globalToolchain)
         ),
         vscode.commands.registerCommand("swift.selectToolchain", () =>
-            showToolchainSelectionQuickPick(toolchain, logger, cwd)
+            showToolchainSelectionQuickPick(
+                ctx?.currentFolder?.toolchain ?? ctx?.globalToolchain,
+                logger,
+                ctx?.currentFolder?.folder
+            )
         ),
         vscode.commands.registerCommand("swift.pickProcess", configuration =>
             pickProcess(configuration)
