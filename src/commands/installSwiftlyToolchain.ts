@@ -16,7 +16,12 @@ import * as vscode from "vscode";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly, SwiftlyProgressData } from "../toolchain/swiftly";
-import { askWhereToSetToolchain } from "../ui/ToolchainSelection";
+import { SwiftToolchain } from "../toolchain/toolchain";
+import {
+    askWhereToSetToolchain,
+    setToolchainPath,
+    showDeveloperDirQuickPick,
+} from "../ui/ToolchainSelection";
 
 /**
  * Installs a Swiftly toolchain and shows a progress notification to the user.
@@ -165,6 +170,12 @@ export async function promptToInstallSwiftlyToolchain(
         return;
     }
 
+    const xcodes = await SwiftToolchain.findXcodeInstalls();
+    const developerDir = await showDeveloperDirQuickPick(xcodes);
+    if (!developerDir) {
+        return;
+    }
+
     // Install the toolchain via Swiftly
     if (!(await installSwiftlyToolchainWithProgress(selected.toolchain.version.name, ctx.logger))) {
         return;
@@ -178,5 +189,14 @@ export async function promptToInstallSwiftlyToolchain(
         );
         return;
     }
-    await Swiftly.use(selected.toolchain.version.name);
+    await setToolchainPath(
+        {
+            category: "swiftly",
+            async onDidSelect() {
+                await Swiftly.use(selected.toolchain.version.name);
+            },
+        },
+        developerDir,
+        target
+    );
 }

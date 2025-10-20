@@ -438,7 +438,7 @@ export async function showToolchainSelectionQuickPick(
  * @param xcodePaths An array of paths to available Xcode installations on the system
  * @returns The selected DEVELOPER_DIR or undefined if the user cancelled selection
  */
-async function showDeveloperDirQuickPick(xcodePaths: string[]): Promise<string | undefined> {
+export async function showDeveloperDirQuickPick(xcodePaths: string[]): Promise<string | undefined> {
     const selected = await vscode.window.showQuickPick<vscode.QuickPickItem>(
         SwiftToolchain.getXcodeDeveloperDir(configuration.swiftEnvironmentVariables).then(
             existingDeveloperDir => {
@@ -538,15 +538,16 @@ export async function askWhereToSetToolchain(): Promise<vscode.ConfigurationTarg
  * @param developerDir
  * @returns
  */
-async function setToolchainPath(
+export async function setToolchainPath(
     toolchain: {
         category: SwiftToolchainItem["category"];
         swiftFolderPath?: string;
         onDidSelect?: SwiftToolchainItem["onDidSelect"];
     },
-    developerDir?: string
+    developerDir?: string,
+    target?: vscode.ConfigurationTarget
 ): Promise<void> {
-    const target = await askWhereToSetToolchain();
+    target = target ?? (await askWhereToSetToolchain());
     if (!target) {
         return;
     }
