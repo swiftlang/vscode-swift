@@ -156,12 +156,18 @@ export async function promptToInstallSwiftlyToolchain(
         toolchain: toolchain,
     }));
 
-    const selected = await vscode.window.showQuickPick(quickPickItems, {
+    const selectedToolchain = await vscode.window.showQuickPick(quickPickItems, {
         title: "Install Swift Toolchain via Swiftly",
         placeHolder: "Pick a Swift toolchain to install",
         canPickMany: false,
     });
-    if (!selected) {
+    if (!selectedToolchain) {
+        return;
+    }
+
+    const xcodes = await SwiftToolchain.findXcodeInstalls();
+    const selectedDeveloperDir = await showDeveloperDirQuickPick(xcodes);
+    if (!selectedDeveloperDir) {
         return;
     }
 
@@ -170,33 +176,33 @@ export async function promptToInstallSwiftlyToolchain(
         return;
     }
 
-    const xcodes = await SwiftToolchain.findXcodeInstalls();
-    const developerDir = await showDeveloperDirQuickPick(xcodes);
-    if (!developerDir) {
+    // Install the toolchain via Swiftly
+    if (
+        !(await installSwiftlyToolchainWithProgress(
+            selectedToolchain.toolchain.version.name,
+            ctx.logger
+        ))
+    ) {
         return;
     }
 
-    // Install the toolchain via Swiftly
-    if (!(await installSwiftlyToolchainWithProgress(selected.toolchain.version.name, ctx.logger))) {
-        return;
-    }
     // Tell Swiftly to use the newly installed toolchain
-    if (target === vscode.ConfigurationTarget.Workspace) {
-        await Promise.all(
-            vscode.workspace.workspaceFolders?.map(folder =>
-                Swiftly.use(selected.toolchain.version.name, folder.uri.fsPath)
-            ) ?? []
-        );
-        return;
-    }
     await setToolchainPath(
         {
             category: "swiftly",
             async onDidSelect() {
-                await Swiftly.use(selected.toolchain.version.name);
+                if (target === vscode.ConfigurationTarget.Workspace) {
+                    await Promise.all(
+                        vscode.workspace.workspaceFolders?.map(folder =>
+                            Swiftly.use(selectedToolchain.toolchain.version.name, folder.uri.fsPath)
+                        ) ?? []
+                    );
+                    return;
+                }
+                await Swiftly.use(selectedToolchain.toolchain.version.name);
             },
         },
-        developerDir,
+        selectedDeveloperDir.developerDir,
         target
     );
 }
