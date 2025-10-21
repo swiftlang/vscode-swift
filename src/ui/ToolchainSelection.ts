@@ -20,6 +20,7 @@ import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly } from "../toolchain/swiftly";
 import { SwiftToolchain } from "../toolchain/toolchain";
+import { isEmptyObject } from "../utilities/utilities";
 import { showReloadExtensionNotification } from "./ReloadExtension";
 
 /**
@@ -580,13 +581,13 @@ export async function setToolchainPath(
     const toolchainPath = toolchain.category !== "swiftly" ? toolchain.swiftFolderPath : undefined;
     const swiftConfiguration = vscode.workspace.getConfiguration("swift");
     await swiftConfiguration.update("path", toolchainPath, target);
-    const swiftEnv = configuration.swiftEnvironmentVariables;
+    const swiftEnvironmentVariables = {
+        ...configuration.swiftEnvironmentVariables,
+        DEVELOPER_DIR: developerDir,
+    };
     await swiftConfiguration.update(
         "swiftEnvironmentVariables",
-        {
-            ...swiftEnv,
-            DEVELOPER_DIR: developerDir,
-        },
+        isEmptyObject(swiftEnvironmentVariables) ? undefined : swiftEnvironmentVariables,
         target
     );
     await checkAndRemoveWorkspaceSetting(target);
