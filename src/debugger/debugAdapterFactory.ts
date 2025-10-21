@@ -21,7 +21,7 @@ import { SwiftToolchain } from "../toolchain/toolchain";
 import { fileExists } from "../utilities/filesystem";
 import { getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
 import { DebugAdapter, LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
-import { getTargetBinaryPath } from "./launch";
+import { getTargetBinaryPath, swiftPrelaunchBuildTaskArguments } from "./launch";
 import { getLLDBLibPath, updateLaunchConfigForCI } from "./lldb";
 import { registerLoggingDebugAdapterTracker } from "./logTracker";
 
@@ -133,7 +133,8 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             launchConfig.program = await getTargetBinaryPath(
                 targetName,
                 buildConfiguration,
-                folderContext
+                folderContext,
+                await swiftPrelaunchBuildTaskArguments(launchConfig, folderContext.workspaceFolder)
             );
             delete launchConfig.target;
         }

@@ -125,14 +125,17 @@ export async function makeDebugConfigurations(
 export async function getTargetBinaryPath(
     targetName: string,
     buildConfiguration: "debug" | "release",
-    folderCtx: FolderContext
+    folderCtx: FolderContext,
+    extraArgs: string[] = []
 ): Promise<string> {
     try {
         // Use dynamic path resolution with --show-bin-path
         const binPath = await folderCtx.toolchain.buildFlags.getBuildBinaryPath(
             folderCtx.folder.fsPath,
             buildConfiguration,
-            folderCtx.workspaceContext.logger
+            folderCtx.workspaceContext.logger,
+            "",
+            extraArgs
         );
         return path.join(binPath, targetName);
     } catch (error) {
@@ -256,7 +259,8 @@ export async function createSnippetConfiguration(
         const binPath = await ctx.toolchain.buildFlags.getBuildBinaryPath(
             ctx.folder.fsPath,
             "debug",
-            ctx.workspaceContext.logger
+            ctx.workspaceContext.logger,
+            "snippet"
         );
 
         return {
@@ -326,5 +330,67 @@ function updateConfigWithNewKeys(
             continue;
         }
         oldConfig[key] = newConfig[key];
+    }
+}
+
+/**
+ * Get the arguments for a launch configuration's preLaunchTask if it's a Swift build task
+ * @param launchConfig The launch configuration to check
+ * @param workspaceFolder The workspace folder context (optional)
+ * @returns Promise<string[] | undefined> the task arguments if it's a Swift build task, undefined otherwise
+ */
+export async function swiftPrelaunchBuildTaskArguments(
+    launchConfig: vscode.DebugConfiguration,
+    workspaceFolder?: vscode.WorkspaceFolder
+): Promise<string[] | undefined> {
+    const preLaunchTask = launchConfig.preLaunchTask;
+
+    if (!preLaunchTask || typeof preLaunchTask !== "string") {
+        return undefined;
+    }
+
+    try {
+        // Fetch all available tasks
+        const allTasks = await vscode.tasks.fetchTasks();
+
+        // Find the task by name
+        const task = allTasks.find(t => {
+            // Check if task name matches (with or without "swift: " prefix)
+            const taskName = t.name;
+            const matches =
+                taskName === preLaunchTask ||
+                taskName === `swift: ${preLaunchTask}` ||
+                `swift: ${taskName}` === preLaunchTask;
+
+            // If workspace folder is specified, also check scope
+            if (workspaceFolder && matches) {
+                return t.scope === workspaceFolder || t.scope === vscode.TaskScope.Workspace;
+            }
+
+            return matches;
+        });
+
+        if (!task) {
+            return undefined;
+        }
+
+        // Check if task type is "swift"
+        if (task.definition.type !== "swift") {
+            return undefined;
+        }
+
+        // Check if args contain "build" and "--build-system"
+        const args = (task.definition.args as string[]) || [];
+        const hasBuild = args.includes("build");
+        const hasBuildSystem = args.includes("--build-system");
+
+        if (hasBuild && hasBuildSystem) {
+            return args;
+        }
+
+        return undefined;
+    } catch (error) {
+        // Log error but don't throw - return undefined for safety
+        return undefined;
     }
 }
