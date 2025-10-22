@@ -49,30 +49,35 @@ export async function installSwiftlyToolchainWithProgress(
                 await Swiftly.installToolchain(
                     version,
                     (progressData: SwiftlyProgressData) => {
-                        if (
-                            progressData.step?.percent !== undefined &&
-                            progressData.step.percent > lastProgress
-                        ) {
-                            const increment = progressData.step.percent - lastProgress;
+                        if (progressData.complete) {
+                            // Swiftly will also verify the signature and extract the toolchain after the
+                            // "complete" message has been sent, but does not report progress for this.
+                            // Provide a suitable message in this case and reset the progress back to an
+                            // indeterminate state (0) since we don't know how long it will take.
                             progress.report({
-                                increment,
-                                message:
-                                    progressData.step.text ??
-                                    `${progressData.step.percent}% complete`,
+                                message: "Verifying signature and extracting...",
+                                increment: -lastProgress,
                             });
-                            lastProgress = progressData.step.percent;
+                            return;
                         }
+                        if (!progressData.step) {
+                            return;
+                        }
+                        const increment = progressData.step.percent - lastProgress;
+                        progress.report({
+                            increment,
+                            message:
+                                progressData.step.text ?? `${progressData.step.percent}% complete`,
+                        });
+                        lastProgress = progressData.step.percent;
                     },
                     logger,
                     token
                 );
-
-                progress.report({
-                    increment: 100 - lastProgress,
-                    message: "Installation complete",
-                });
             }
         );
+
+        void vscode.window.showInformationMessage(`Successfully installed Swift ${version}`);
 
         return true;
     } catch (error) {
@@ -83,7 +88,7 @@ export async function installSwiftlyToolchainWithProgress(
             return false;
         }
 
-        logger?.error(`Failed to install Swift ${version}: ${error}`);
+        logger?.error(new Error(`Failed to install Swift ${version}`, { cause: error }));
         void vscode.window.showErrorMessage(`Failed to install Swift ${version}: ${error}`);
         return false;
     }

@@ -104,13 +104,21 @@ const InUseVersionResult = z.object({
     version: z.string(),
 });
 
-export interface SwiftlyProgressData {
-    step?: {
-        text?: string;
-        timestamp?: number;
-        percent?: number;
-    };
-}
+const SwiftlyProgressData = z.object({
+    complete: z.optional(
+        z.object({
+            success: z.boolean(),
+        })
+    ),
+    step: z.optional(
+        z.object({
+            text: z.string(),
+            percent: z.number(),
+        })
+    ),
+});
+
+export type SwiftlyProgressData = z.infer<typeof SwiftlyProgressData>;
 
 export interface PostInstallValidationResult {
     isValid: boolean;
@@ -510,10 +518,12 @@ export class Swiftly {
                     }
 
                     try {
-                        const progressData = JSON.parse(line.trim()) as SwiftlyProgressData;
+                        const progressData = SwiftlyProgressData.parse(JSON.parse(line));
                         progressCallback(progressData);
-                    } catch (err) {
-                        logger?.error(`Failed to parse progress line: ${err}`);
+                    } catch (error) {
+                        logger?.error(
+                            new Error(`Failed to parse Swiftly progress: ${line}`, { cause: error })
+                        );
                     }
                 });
 
