@@ -395,34 +395,6 @@ suite("Swift PreLaunch Build Task Arguments Test", () => {
         expect(result).to.be.undefined;
     });
 
-    test("swiftPrelaunchBuildTaskArguments returns undefined for Swift task without --build-system arg", async () => {
-        const mockTask = mockObject<vscode.Task>({
-            name: "swift: Build Debug executable",
-            definition: {
-                type: "swift",
-                args: ["build", "--product", "executable"],
-            },
-            scope: vscode.TaskScope.Workspace,
-            source: "swift",
-            isBackground: false,
-            presentationOptions: {},
-            problemMatchers: [],
-            runOptions: {},
-        });
-
-        mockTasks.fetchTasks.resolves([instance(mockTask)]);
-
-        const launchConfig: vscode.DebugConfiguration = {
-            type: "swift",
-            request: "launch",
-            name: "Debug executable",
-            preLaunchTask: "swift: Build Debug executable",
-        };
-
-        const result = await swiftPrelaunchBuildTaskArguments(launchConfig);
-        expect(result).to.be.undefined;
-    });
-
     test("swiftPrelaunchBuildTaskArguments returns undefined for launch config without preLaunchTask", async () => {
         const launchConfig: vscode.DebugConfiguration = {
             type: "swift",

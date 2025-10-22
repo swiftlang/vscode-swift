@@ -379,16 +379,10 @@ export async function swiftPrelaunchBuildTaskArguments(
             return undefined;
         }
 
-        // Check if args contain "build" and "--build-system"
+        // Check if args contain "build"
         const args = (task.definition.args as string[]) || [];
         const hasBuild = args.includes("build");
-        const hasBuildSystem = args.includes("--build-system");
-
-        if (hasBuild && hasBuildSystem) {
-            return args;
-        }
-
-        return undefined;
+        return hasBuild ? args : undefined;
     } catch (error) {
         // Log error but don't throw - return undefined for safety
         return undefined;
