@@ -50,6 +50,14 @@ export const IS_RUNNING_UNDER_DOCKER = IS_RUNNING_UNDER_ACT || IS_RUNNING_UNDER_
  */
 export const IS_RUNNING_UNDER_TEST = process.env.RUNNING_UNDER_VSCODE_TEST_CLI === "1";
 
+/** Determines whether the provided object has any properties set to non-null values. */
+export function isEmptyObject(obj: { [key: string]: unknown }): boolean {
+    const properties = Object.getOwnPropertyNames(obj).filter(
+        property => obj[property] !== undefined && obj[property] !== null
+    );
+    return properties.length === 0;
+}
+
 /**
  * Get required environment variable for Swift product
  *
