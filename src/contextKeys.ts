@@ -119,9 +119,7 @@ export function createContextKeys(): ContextKeys {
 
     return {
         updateKeysBasedOnActiveVersion(toolchainVersion: Version) {
-            this.createNewProjectAvailable = toolchainVersion.isGreaterThanOrEqual(
-                new Version(5, 8, 0)
-            );
+            this.createNewProjectAvailable = true;
             this.switchPlatformAvailable =
                 process.platform === "darwin"
                     ? toolchainVersion.isGreaterThanOrEqual(new Version(6, 1, 0))
