@@ -32,6 +32,7 @@ import {
  */
 export async function installSwiftlyToolchainWithProgress(
     version: string,
+    extensionRoot: string,
     logger?: SwiftLogger
 ): Promise<boolean> {
     try {
@@ -48,6 +49,7 @@ export async function installSwiftlyToolchainWithProgress(
 
                 await Swiftly.installToolchain(
                     version,
+                    extensionRoot,
                     (progressData: SwiftlyProgressData) => {
                         if (progressData.complete) {
                             // Swiftly will also verify the signature and extract the toolchain after the
@@ -185,6 +187,7 @@ export async function promptToInstallSwiftlyToolchain(
     if (
         !(await installSwiftlyToolchainWithProgress(
             selectedToolchain.toolchain.version.name,
+            ctx.extensionContext.extensionPath,
             ctx.logger
         ))
     ) {
