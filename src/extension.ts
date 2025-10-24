@@ -68,7 +68,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         checkAndWarnAboutWindowsSymlinks(logger);
 
         const contextKeys = createContextKeys();
-        const toolchain = await createActiveToolchain(contextKeys, logger);
+        const toolchain = await createActiveToolchain(context, contextKeys, logger);
         checkForSwiftlyInstallation(contextKeys, logger);
 
         // If we don't have a toolchain, show an error and stop initializing the extension.
@@ -248,11 +248,12 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
 }
 
 async function createActiveToolchain(
+    extension: vscode.ExtensionContext,
     contextKeys: ContextKeys,
     logger: SwiftLogger
 ): Promise<SwiftToolchain | undefined> {
     try {
-        const toolchain = await SwiftToolchain.create(undefined, logger);
+        const toolchain = await SwiftToolchain.create(extension.extensionPath, undefined, logger);
         toolchain.logDiagnostics(logger);
         contextKeys.updateKeysBasedOnActiveVersion(toolchain.swiftVersion);
         return toolchain;

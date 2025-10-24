@@ -24,7 +24,7 @@ tag("medium").suite("SwiftPackage Test Suite", function () {
     let toolchain: SwiftToolchain;
 
     setup(async () => {
-        toolchain = await SwiftToolchain.create();
+        toolchain = await SwiftToolchain.create("/path/to/extension");
     });
 
     test("No package", async () => {

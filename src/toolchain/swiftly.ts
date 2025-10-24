@@ -21,6 +21,7 @@ import * as Stream from "stream";
 import * as vscode from "vscode";
 import { z } from "zod/v4/mini";
 
+import { withAskpassServer } from "../askpass/askpass-server";
 import { installSwiftlyToolchainWithProgress } from "../commands/installSwiftlyToolchain";
 import { ContextKeys } from "../contextKeys";
 import { SwiftLogger } from "../logging/SwiftLogger";
@@ -160,6 +161,7 @@ export function parseSwiftlyMissingToolchainError(
  */
 export async function handleMissingSwiftlyToolchain(
     version: string,
+    extensionRoot: string,
     logger?: SwiftLogger,
     folder?: vscode.Uri
 ): Promise<boolean> {
@@ -174,7 +176,7 @@ export async function handleMissingSwiftlyToolchain(
 
     // Use the existing installation function without showing reload notification
     // (since we want to continue the current operation)
-    return await installSwiftlyToolchainWithProgress(version, logger);
+    return await installSwiftlyToolchainWithProgress(version, extensionRoot, logger);
 }
 
 export class Swiftly {
@@ -363,6 +365,7 @@ export class Swiftly {
      * @returns The location of the active toolchain if swiftly is being used to manage it.
      */
     public static async toolchain(
+        extensionRoot: string,
         logger?: SwiftLogger,
         cwd?: vscode.Uri
     ): Promise<string | undefined> {
@@ -388,6 +391,7 @@ export class Swiftly {
                         // Attempt automatic installation
                         const installed = await handleMissingSwiftlyToolchain(
                             missingToolchainError.version,
+                            extensionRoot,
                             logger,
                             cwd
                         );
@@ -478,6 +482,7 @@ export class Swiftly {
      */
     public static async installToolchain(
         version: string,
+        extensionRoot: string,
         progressCallback?: (progressData: SwiftlyProgressData) => void,
         logger?: SwiftLogger,
         token?: vscode.CancellationToken
@@ -587,7 +592,12 @@ export class Swiftly {
             }
 
             if (process.platform === "linux") {
-                await this.handlePostInstallFile(postInstallFilePath, version, logger);
+                await this.handlePostInstallFile(
+                    postInstallFilePath,
+                    version,
+                    extensionRoot,
+                    logger
+                );
             }
         } catch (error) {
             if (
@@ -630,6 +640,7 @@ export class Swiftly {
     private static async handlePostInstallFile(
         postInstallFilePath: string,
         version: string,
+        extensionRoot: string,
         logger?: SwiftLogger
     ): Promise<void> {
         try {
@@ -655,7 +666,12 @@ export class Swiftly {
         const shouldExecute = await this.showPostInstallConfirmation(version, validation, logger);
 
         if (shouldExecute) {
-            await this.executePostInstallScript(postInstallFilePath, version, logger);
+            await this.executePostInstallScript(
+                postInstallFilePath,
+                version,
+                extensionRoot,
+                logger
+            );
         } else {
             logger?.warn(`Swift ${version} post-install script execution cancelled by user`);
             void vscode.window.showWarningMessage(
@@ -776,6 +792,7 @@ export class Swiftly {
     private static async executePostInstallScript(
         postInstallFilePath: string,
         version: string,
+        extensionRoot: string,
         logger?: SwiftLogger
     ): Promise<void> {
         logger?.info(`Executing post-install script for toolchain ${version}`);
@@ -790,7 +807,7 @@ export class Swiftly {
 
             await execFile("chmod", ["+x", postInstallFilePath]);
 
-            const command = "pkexec";
+            const command = "sudo";
             const args = [postInstallFilePath];
 
             outputChannel.appendLine(`Executing: ${command} ${args.join(" ")}`);
@@ -804,7 +821,31 @@ export class Swiftly {
                 },
             });
 
-            await execFileStreamOutput(command, args, outputStream, outputStream, null, {});
+            await withAskpassServer(
+                async (nonce, port) => {
+                    await execFileStreamOutput(
+                        command,
+                        ["-A", ...args],
+                        outputStream,
+                        outputStream,
+                        null,
+                        {
+                            env: {
+                                ...process.env,
+                                SUDO_ASKPASS: path.join(extensionRoot, "assets/swift_askpass.sh"),
+                                VSCODE_SWIFT_ASKPASS_NODE: process.execPath,
+                                VSCODE_SWIFT_ASKPASS_MAIN: path.join(
+                                    extensionRoot,
+                                    "dist/src/askpass/askpass-main.js"
+                                ),
+                                VSCODE_SWIFT_ASKPASS_NONCE: nonce,
+                                VSCODE_SWIFT_ASKPASS_PORT: port.toString(10),
+                            },
+                        }
+                    );
+                },
+                { title: "sudo password for Swiftly post-install script" }
+            );
 
             outputChannel.appendLine("");
             outputChannel.appendLine(
