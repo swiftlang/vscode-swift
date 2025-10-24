@@ -856,14 +856,18 @@ export class Swiftly {
                 `Swift ${version} post-install script executed successfully. Additional system packages have been installed.`
             );
         } catch (error) {
-            const errorMsg = `Failed to execute post-install script: ${error}`;
-            logger?.error(errorMsg);
-            outputChannel.appendLine("");
-            outputChannel.appendLine(`Error: ${errorMsg}`);
-
-            void vscode.window.showErrorMessage(
-                `Failed to execute post-install script for Swift ${version}. Check the output channel for details.`
-            );
+            logger?.error(Error("Failed to execute post-install script", { cause: error }));
+            void vscode.window
+                .showErrorMessage(
+                    `Failed to execute post-install script for Swift ${version}. See command output for more details.`,
+                    "Show Command Output"
+                )
+                .then(selected => {
+                    if (!selected) {
+                        return;
+                    }
+                    outputChannel.show();
+                });
         }
     }
 
