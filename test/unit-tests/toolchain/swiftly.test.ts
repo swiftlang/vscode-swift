@@ -1131,6 +1131,7 @@ apt-get -y install build-essential`;
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
             mockVscodeWindow.showWarningMessage.resolves("Execute Script");
+            mockVscodeWindow.showErrorMessage.resolves(undefined);
 
             await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
