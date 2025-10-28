@@ -47,7 +47,7 @@ Before using the toolchain installation feature, ensure you meet the following r
 * **Swiftly 1.1.0 or newer** - The installation feature requires swiftly version 1.1.0 or newer
 * **Administrator Privileges** - On Linux systems, administrator privileges may be required to execute post-installation scripts
 
-You can access the installation commands via toolchain selection, or by running the following commands directly:
+You can access the installation commands via the `Swift: Select Toolchain...` command, or by running the following commands directly:
 - **`Swift: Install Swiftly Toolchain...`** - installs stable Swift toolchains via swiftly
 - **`Swift: Install Swiftly Snapshot Toolchain...`** - installs snapshot Swift toolchains via swiftly
 
