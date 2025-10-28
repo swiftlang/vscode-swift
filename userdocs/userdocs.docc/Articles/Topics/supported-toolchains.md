@@ -20,9 +20,9 @@ Debugging with `lldb-dap`  | 6.0
 
 ## Toolchain Management
 
-The Swift extension will automatically detect installations of the Swift toolchain in your environment. It will look for a `swift` binary available in `PATH` and, if one cannot be found, will prompt you to [install a toolchain from Swift.org](https://www.swift.org/install).
+The Swift extension automatically detects installations of the Swift toolchain in your environment. It looks for a `swift` binary available in `PATH` and, if one cannot be found, prompts you to [install a toolchain from Swift.org](https://www.swift.org/install).
 
-If you have multiple Swift toolchains installed on your system then you can use the command `Swift: Select Toolchain...` to tell the extension which toolchain you would like to use. This will show you a list of all toolchains that VS Code was able to find on your system and let you switch between them.
+If you have multiple Swift toolchains installed on your system, use the command `Swift: Select Toolchain...` to tell the extension which toolchain to use. The command shows you a list of all the toolchains that VS Code found on your system and lets you switch between them.
 
 @Video(
     source: "toolchain-selection.mp4",
@@ -34,7 +34,7 @@ If you have multiple Swift toolchains installed on your system then you can use 
 
 The extension supports toolchains managed by [swiftly](https://github.com/swiftlang/swiftly), the Swift toolchain installer and manager. This is the recommended way of installing Swift toolchains on macOS and Linux. For instructions on installing swiftly see the [installation instructions on Swift.org](https://www.swift.org/install).
 
-You can choose a swiftly managed toolchain to use from the `> Swift: Select Toolchain...` menu.
+Choose a swiftly managed toolchain to use from the `> Swift: Select Toolchain...` menu.
 
 If you do `swiftly use` on the command line you must restart VS Code or do `> Developer: Reload Window` in order for the VS Code Swift extension to start using the new toolchain.
 
