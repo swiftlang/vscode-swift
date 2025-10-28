@@ -803,6 +803,11 @@ export class Swiftly {
             outputChannel.show(true);
             outputChannel.appendLine(`Executing post-install script for Swift ${version}...`);
             outputChannel.appendLine(`Script location: ${postInstallFilePath}`);
+            outputChannel.appendLine("Script contents:");
+            const scriptContents = await fs.readFile(postInstallFilePath, "utf-8");
+            for (const line of scriptContents.split(/\r?\n/)) {
+                outputChannel.appendLine("    " + line);
+            }
             outputChannel.appendLine("");
 
             await execFile("chmod", ["+x", postInstallFilePath]);
