@@ -26,7 +26,7 @@ If you have multiple Swift toolchains installed on your system then you can use 
 
 @Video(
     source: "toolchain-selection.mp4",
-    alt: "A video showing a VS Code window. The command palette is opened to run the 'Swift: Select toolchain' command which is then used to select Xcode as the preferred toolchain.",
+    alt: "A video showing a VS Code window. The command palette is opened to run the 'Swift: Select Toolchain...' command which is then used to select Xcode as the preferred toolchain.",
     poster: "toolchain-selection.png"
 )
 
