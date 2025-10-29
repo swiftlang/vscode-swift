@@ -32,7 +32,7 @@ If you have multiple Swift toolchains installed on your system, use the command 
 
 ## Swiftly Support
 
-The extension supports toolchains managed by [swiftly](https://github.com/swiftlang/swiftly), the Swift toolchain installer and manager. This is the recommended way of installing Swift toolchains on macOS and Linux. For instructions on installing swiftly see the [installation instructions on Swift.org](https://www.swift.org/install).
+The extension supports toolchains managed by [swiftly](https://github.com/swiftlang/swiftly), the Swift toolchain installer and manager. This is the recommended way of installing Swift toolchains on macOS and Linux. For instructions on installing swiftly see the [installation instructions on Swift.org](https://www.swift.org/install). There is also a [getting started guide for swiftly on Swift.org](https://www.swift.org/swiftly/documentation/swiftly/getting-started/).
 
 Choose a swiftly managed toolchain to use from the `> Swift: Select Toolchain...` menu.
 
@@ -44,8 +44,8 @@ The Swift extension can use swiftly to install toolchains on your behalf. This a
 
 Before using the toolchain installation feature, ensure you meet the following requirements:
 
-* **Swiftly 1.1.0 or newer** - The installation feature requires swiftly version 1.1.0 or newer
-* **Administrator Privileges** - On Linux systems, administrator privileges may be required to execute post-installation scripts
+* **Swiftly 1.1.0 or newer** - The installation feature requires swiftly version 1.1.0 or newer. Run **`swiftly self-update`** in your terminal to get the latest version of swiftly.
+* **Administrator Privileges** - On Linux systems, `sudo` may be required to install system dependencies for the toolchain after installation.
 
 You can access the installation commands via the `Swift: Select Toolchain...` command, or by running the following commands directly:
 - **`Swift: Install Swiftly Toolchain...`** - installs stable Swift toolchains via swiftly
