@@ -22,6 +22,7 @@ import {
     setToolchainPath,
     showDeveloperDirQuickPick,
 } from "../ui/ToolchainSelection";
+import { handleMissingSwiftly } from "./installSwiftly";
 
 /**
  * Installs a Swiftly toolchain and shows a progress notification to the user.
@@ -113,10 +114,10 @@ export async function promptToInstallSwiftlyToolchain(
 
     if (!(await Swiftly.isInstalled())) {
         ctx.logger?.warn("Swiftly is not installed.");
-        void vscode.window.showErrorMessage(
-            "Swiftly is not installed. Please install Swiftly first from https://www.swift.org/install/"
-        );
-        return;
+        const swiftlyInstalled = await handleMissingSwiftly(ctx.logger);
+        if (!swiftlyInstalled) {
+            return;
+        }
     }
 
     let branch: string | undefined = undefined;

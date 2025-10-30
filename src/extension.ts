@@ -25,6 +25,7 @@ import { FolderEvent, FolderOperation, WorkspaceContext } from "./WorkspaceConte
 import * as commands from "./commands";
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConfiguration";
+import { handleMissingSwiftly } from "./commands/installSwiftly";
 import configuration, {
     ConfigurationValidationError,
     handleConfigurationChangeEvent,
@@ -331,11 +332,63 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
     };
 }
 
+/**
+ * Checks if any workspace folder contains a .swift-version file
+ */
+async function hasSwiftVersionFile(): Promise<boolean> {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders) {
+        return false;
+    }
+
+    for (const folder of workspaceFolders) {
+        try {
+            const swiftVersionPath = vscode.Uri.joinPath(folder.uri, ".swift-version");
+            await vscode.workspace.fs.stat(swiftVersionPath);
+            return true;
+        } catch {
+            // File doesn't exist, continue checking other folders
+        }
+    }
+
+    return false;
+}
+
 async function createActiveToolchain(
     extension: vscode.ExtensionContext,
     contextKeys: ContextKeys,
     logger: SwiftLogger
 ): Promise<SwiftToolchain | undefined> {
+    // Check if there's a .swift-version file in the workspace and Swiftly is not installed
+    if (await hasSwiftVersionFile()) {
+        const { Swiftly } = await import("./toolchain/swiftly");
+        const swiftlyInstalled = await Swiftly.isInstalled();
+
+        if (!swiftlyInstalled) {
+            logger.info(
+                "Detected .swift-version file in workspace without Swiftly, prompting for Swiftly installation"
+            );
+            const installed = await handleMissingSwiftly(logger);
+            if (installed) {
+                // Try to create the toolchain again after Swiftly installation
+                try {
+                    const toolchain = await SwiftToolchain.create(
+                        extension.extensionPath,
+                        undefined,
+                        logger
+                    );
+                    toolchain.logDiagnostics(logger);
+                    contextKeys.updateKeysBasedOnActiveVersion(toolchain.swiftVersion);
+                    return toolchain;
+                } catch (retryError) {
+                    logger.error(
+                        `Failed to create toolchain after Swiftly installation: ${retryError}`
+                    );
+                }
+            }
+        }
+    }
+
     try {
         const toolchain = await SwiftToolchain.create(extension.extensionPath, undefined, logger);
         toolchain.logDiagnostics(logger);

@@ -1129,6 +1129,13 @@
             "order": 4,
             "scope": "machine-overridable"
           },
+          "swift.suppressSwiftlyInstallPrompt": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Suppress the automatic Swiftly installation prompt when no Swift toolchain is found.",
+            "order": 98,
+            "scope": "application"
+          },
           "swift.diagnostics": {
             "type": "boolean",
             "default": false,
@@ -2099,6 +2106,7 @@
     "@types/source-map-support": "^0.5.10",
     "@types/svg2ttf": "^5.0.3",
     "@types/svgicons2svgfont": "^10.0.5",
+    "@types/tar": "^6.1.13",
     "@types/ttf2woff": "^2.0.4",
     "@types/vscode": "^1.88.0",
     "@types/xml2js": "^0.4.14",
@@ -2148,6 +2156,7 @@
     "fast-glob": "^3.3.3",
     "lcov-parse": "^1.0.0",
     "plist": "^3.1.0",
+    "tar": "^6.2.1",
     "vscode-languageclient": "^9.0.1",
     "xml2js": "^0.6.2",
     "zod": "^4.1.5"
