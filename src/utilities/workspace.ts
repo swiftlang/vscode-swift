@@ -16,30 +16,34 @@ import * as path from "path";
 import { basename } from "path";
 import * as vscode from "vscode";
 
-import { globDirectory, pathExists } from "./filesystem";
+import { folderExists, globDirectory, pathExists } from "./filesystem";
 import { Version } from "./version";
 
 export async function searchForPackages(
     folder: vscode.Uri,
     disableSwiftPMIntegration: boolean,
     searchSubfoldersForPackages: boolean,
+    skipFolders: Array<string>,
     swiftVersion: Version
 ): Promise<Array<vscode.Uri>> {
     const folders: Array<vscode.Uri> = [];
 
     async function search(folder: vscode.Uri) {
-        // add folder if Package.swift/compile_commands.json/compile_flags.txt/buildServer.json exists
+        // add folder if Package.swift/compile_commands.json/compile_flags.txt/buildServer.json/.bsp exists
         if (await isValidWorkspaceFolder(folder.fsPath, disableSwiftPMIntegration, swiftVersion)) {
             folders.push(folder);
         }
-        // should I search sub-folders for more Swift Packages
+
+        // If sub-folder searches are disabled, don't search subdirectories
         if (!searchSubfoldersForPackages) {
             return;
         }
 
         await globDirectory(folder, { onlyDirectories: true }).then(async entries => {
+            const skip = new Set<string>(skipFolders);
             for (const entry of entries) {
-                if (basename(entry) !== "." && basename(entry) !== "Packages") {
+                const base = basename(entry);
+                if (!skip.has(base)) {
                     await search(vscode.Uri.file(entry));
                 }
             }
@@ -67,7 +71,7 @@ export async function hasBSPConfigurationFile(
         const bspStat = await fs.stat(bspDir).catch(() => undefined);
         if (bspStat && bspStat.isDirectory()) {
             const files = await fs.readdir(bspDir).catch(() => []);
-            if (files.some((f: string) => f.endsWith(".json"))) {
+            if (files.some(f => f.endsWith(".json"))) {
                 return true;
             }
         }
@@ -94,11 +98,11 @@ export async function isValidWorkspaceFolder(
         return true;
     }
 
-    if (await pathExists(folder, "build")) {
+    if (await folderExists(folder, "build")) {
         return true;
     }
 
-    if (await pathExists(folder, "out")) {
+    if (await folderExists(folder, "out")) {
         return true;
     }
 
