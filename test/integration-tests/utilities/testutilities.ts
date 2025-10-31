@@ -508,9 +508,12 @@ export const folderInRootWorkspace = async (
     workspaceContext: WorkspaceContext
 ): Promise<FolderContext> => {
     const workspaceFolder = getRootWorkspaceFolder();
-    let folder = workspaceContext.folders.find(f => f.workspaceFolder.name === `test/${name}`);
+    let folder = workspaceContext.folders.find(f => f.relativePath === name);
     if (!folder) {
+        workspaceContext.logger.info(`${name} not found, adding folder ${name} to workspace`);
         folder = await workspaceContext.addPackageFolder(testAssetUri(name), workspaceFolder);
+    } else {
+        workspaceContext.logger.info(`${name} found, reusing existing folder`);
     }
 
     // Folders that aren't packages (i.e. assets/tests/scripts) wont generate build tasks.

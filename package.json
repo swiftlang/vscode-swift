@@ -529,26 +529,6 @@
             "markdownDescription": "Additional arguments to pass to swift commands that do package resolution, such as `swift package resolve`, `swift package update`, `swift build` and `swift test`. Keys and values should be provided as individual entries in the list.",
             "scope": "machine-overridable"
           },
-          "swift.additionalTestArguments": {
-            "type": "array",
-            "default": [],
-            "items": {
-              "type": "string"
-            },
-            "markdownDescription": "Additional arguments to pass to the `swift test` or `swift build` commands used when building and running tests from within VS Code.",
-            "scope": "machine-overridable"
-          },
-          "swift.testEnvironmentVariables": {
-            "type": "object",
-            "patternProperties": {
-              ".*": {
-                "type": "string"
-              }
-            },
-            "default": {},
-            "markdownDescription": "Environment variables to set when running tests. To set environment variables when debugging an application you should edit the `env` field in the relevant `launch.json` configuration.",
-            "scope": "machine-overridable"
-          },
           "swift.sanitizer": {
             "type": "string",
             "default": "off",
@@ -575,7 +555,7 @@
           "swift.disableAutoResolve": {
             "type": "boolean",
             "default": false,
-            "markdownDescription": "Disable automatic running of `swift package resolve` whenever the `Package.swift` or `Package.resolve` files are updated. This will also disable searching for command plugins and the initial test discovery process.",
+            "markdownDescription": "Disable automatic running of `swift package resolve` whenever the `Package.swift` or `Package.resolved` files are updated. This will also disable searching for command plugins and the initial test discovery process.",
             "scope": "machine-overridable"
           },
           "swift.diagnosticsCollection": {
@@ -765,6 +745,26 @@
       {
         "title": "Testing",
         "properties": {
+          "swift.additionalTestArguments": {
+            "type": "array",
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "markdownDescription": "Additional arguments to pass to the `swift test` or `swift build` commands used when building and running tests from within VS Code.",
+            "scope": "machine-overridable"
+          },
+          "swift.testEnvironmentVariables": {
+            "type": "object",
+            "patternProperties": {
+              ".*": {
+                "type": "string"
+              }
+            },
+            "default": {},
+            "markdownDescription": "Environment variables to set when running tests. To set environment variables when debugging an application you should edit the `env` field in the relevant `launch.json` configuration.",
+            "scope": "machine-overridable"
+          },
           "swift.excludeFromCodeCoverage": {
             "description": "A list of paths to exclude from code coverage reports. Paths can be absolute or relative to the workspace root.",
             "type": "array",
@@ -1747,13 +1747,22 @@
         },
         "configurationAttributes": {
           "launch": {
-            "required": [
-              "program"
-            ],
             "properties": {
               "program": {
                 "type": "string",
                 "description": "Path to the program to debug."
+              },
+              "target": {
+                "type": "string",
+                "description": "The name of the SwiftPM target to debug."
+              },
+              "configuration": {
+                "type": "string",
+                "enum": [
+                  "debug",
+                  "release"
+                ],
+                "description": "The configuration of the SwiftPM target to use."
               },
               "args": {
                 "type": [
@@ -2004,7 +2013,7 @@
   "scripts": {
     "vscode:prepublish": "npm run bundle",
     "bundle": "del-cli ./dist && npm run bundle-extension && npm run bundle-documentation-webview",
-    "bundle-extension": "del-cli ./dist && esbuild ./src/extension.ts --bundle --outfile=dist/src/extension.js --external:vscode --define:process.env.NODE_ENV=\\\"production\\\" --define:process.env.CI=\\\"\\\" --format=cjs --platform=node --target=node18 --minify --sourcemap",
+    "bundle-extension": "del-cli ./dist && esbuild ./src/extension.ts ./src/askpass/askpass-main.ts --bundle --outdir=dist/src/ --external:vscode --define:process.env.NODE_ENV=\\\"production\\\" --define:process.env.CI=\\\"\\\" --format=cjs --platform=node --target=node18 --minify --sourcemap",
     "bundle-documentation-webview": "npm run compile-documentation-webview -- --minify",
     "compile": "del-cli ./dist/ && tsc --build",
     "watch": "npm run compile -- --watch",
@@ -2023,7 +2032,7 @@
     "integration-test": "npm test -- --label integrationTests",
     "unit-test": "npm test -- --label unitTests",
     "coverage": "npm test -- --coverage",
-    "compile-tests": "del-cli ./assets/test/**/.build && npm run compile",
+    "compile-tests": "del-cli ./assets/test/**/.build && del-cli ./assets/test/**/.spm-cache && npm run compile",
     "package": "tsx ./scripts/package.ts",
     "dev-package": "tsx ./scripts/dev_package.ts",
     "preview-package": "tsx ./scripts/preview_package.ts",
@@ -2032,6 +2041,10 @@
     "prepare": "husky"
   },
   "lint-staged": {
+    "**/*.ts": [
+      "eslint --max-warnings=0",
+      "prettier --write"
+    ],
     "**/*": "prettier --write --ignore-unknown"
   },
   "devDependencies": {
@@ -2049,20 +2062,21 @@
     "@types/micromatch": "^4.0.9",
     "@types/mocha": "^10.0.10",
     "@types/mock-fs": "^4.13.4",
-    "@types/node": "^20.19.18",
+    "@types/node": "^20.19.22",
     "@types/plist": "^3.0.5",
     "@types/semver": "^7.7.1",
     "@types/sinon": "^17.0.4",
     "@types/sinon-chai": "^3.2.12",
+    "@types/source-map-support": "^0.5.10",
     "@types/svg2ttf": "^5.0.3",
     "@types/svgicons2svgfont": "^10.0.5",
     "@types/ttf2woff": "^2.0.4",
     "@types/vscode": "^1.88.0",
     "@types/xml2js": "^0.4.14",
-    "@typescript-eslint/eslint-plugin": "^8.45.0",
+    "@typescript-eslint/eslint-plugin": "^8.46.2",
     "@typescript-eslint/parser": "^8.32.1",
     "@vscode/debugprotocol": "^1.68.0",
-    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.6.2",
     "chai": "^4.5.0",
@@ -2071,12 +2085,13 @@
     "decompress": "^4.2.1",
     "del-cli": "^7.0.0",
     "diff": "^8.0.2",
-    "esbuild": "^0.25.10",
+    "esbuild": "^0.25.11",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-mocha": "^10.5.0",
     "fantasticon": "^1.2.3",
     "husky": "^9.1.7",
-    "lint-staged": "^16.2.3",
+    "lint-staged": "^16.2.5",
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
     "micromatch": "^4.0.8",
@@ -2085,7 +2100,7 @@
     "octokit": "^3.2.2",
     "prettier": "^3.6.2",
     "replace-in-file": "^8.3.0",
-    "semver": "^7.7.2",
+    "semver": "^7.7.3",
     "simple-git": "^3.28.0",
     "sinon": "^21.0.0",
     "sinon-chai": "^3.7.0",
@@ -2095,12 +2110,12 @@
     "svgo": "^4.0.0",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.2",
-    "winston": "^3.17.0",
+    "typescript": "^5.9.3",
+    "winston": "^3.18.3",
     "winston-transport": "^4.9.0"
   },
   "dependencies": {
-    "@vscode/codicons": "^0.0.40",
+    "@vscode/codicons": "^0.0.41",
     "archiver": "^7.0.1",
     "fast-glob": "^3.3.3",
     "lcov-parse": "^1.0.0",

@@ -6,7 +6,7 @@
     "sourceType": "module",
     "project": true
   },
-  "plugins": ["@typescript-eslint"],
+  "plugins": ["@typescript-eslint", "mocha"],
   "rules": {
     "curly": "error",
     "eqeqeq": "warn",
@@ -14,6 +14,14 @@
     // TODO "@typescript-eslint/semi" rule moved to https://eslint.style
     "semi": "error",
     "no-console": "warn",
+    "mocha/no-exclusive-tests": "error",
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "CallExpression[callee.object.object.callee.name='tag'][callee.property.name='only']",
+        "message": "Unexpected exclusive mocha test with tag().suite.only() or tag().test.only()"
+      }
+    ],
     "@typescript-eslint/no-floating-promises": ["warn", { "checkThenables": true }],
     "@typescript-eslint/await-thenable": "warn",
     // Mostly fails tests, ex. expect(...).to.be.true returns a Chai.Assertion

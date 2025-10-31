@@ -12,6 +12,7 @@
 !assets/walkthrough/**
 !assets/documentation-webview/**
 !assets/swift-docc-render/**
+!assets/swift_askpass.sh
 !node_modules/@vscode/codicons/**
 !swift-gyb.language-configuration.json
 !syntaxes/**

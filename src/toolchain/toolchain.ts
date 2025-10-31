@@ -120,12 +120,21 @@ export class SwiftToolchain {
         this.swiftVersionString = targetInfo.compilerVersion;
     }
 
-    static async create(folder?: vscode.Uri, logger?: SwiftLogger): Promise<SwiftToolchain> {
+    static async create(
+        extensionRoot: string,
+        folder?: vscode.Uri,
+        logger?: SwiftLogger
+    ): Promise<SwiftToolchain> {
         const { path: swiftFolderPath, isSwiftlyManaged } = await this.getSwiftFolderPath(
             folder,
             logger
         );
-        const toolchainPath = await this.getToolchainPath(swiftFolderPath, folder, logger);
+        const toolchainPath = await this.getToolchainPath(
+            swiftFolderPath,
+            extensionRoot,
+            folder,
+            logger
+        );
         const targetInfo = await this.getSwiftTargetInfo(
             this._getToolchainExecutable(toolchainPath, "swift"),
             logger
@@ -612,6 +621,7 @@ export class SwiftToolchain {
      */
     private static async getToolchainPath(
         swiftPath: string,
+        extensionRoot: string,
         cwd?: vscode.Uri,
         logger?: SwiftLogger
     ): Promise<string> {
@@ -634,7 +644,11 @@ export class SwiftToolchain {
                         return path.dirname(configuration.path);
                     }
 
-                    const swiftlyToolchainLocation = await Swiftly.toolchain(logger, cwd);
+                    const swiftlyToolchainLocation = await Swiftly.toolchain(
+                        extensionRoot,
+                        logger,
+                        cwd
+                    );
                     if (swiftlyToolchainLocation) {
                         return swiftlyToolchainLocation;
                     }

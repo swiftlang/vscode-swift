@@ -223,7 +223,10 @@ suite("TestDiscovery Suite", () => {
 
     test("updates tests from classes within a swift package", async () => {
         const targetFolder = vscode.Uri.file("file:///some/");
-        const swiftPackage = await SwiftPackage.create(targetFolder, await SwiftToolchain.create());
+        const swiftPackage = await SwiftPackage.create(
+            targetFolder,
+            await SwiftToolchain.create("/path/to/extension")
+        );
         const testTargetName = "TestTarget";
         const target: Target = {
             c99name: testTargetName,

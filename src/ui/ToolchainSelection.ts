@@ -20,6 +20,7 @@ import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly } from "../toolchain/swiftly";
 import { SwiftToolchain } from "../toolchain/toolchain";
+import { isEmptyObject } from "../utilities/utilities";
 import { showReloadExtensionNotification } from "./ReloadExtension";
 
 /**
@@ -406,25 +407,17 @@ export async function showToolchainSelectionQuickPick(
     if (selectedToolchain?.type === "toolchain") {
         // Select an Xcode to build with
         let developerDir: string | undefined = undefined;
-        if (process.platform === "darwin") {
-            let selectedXcodePath: string | undefined = undefined;
-            if (selectedToolchain.category === "xcode") {
-                selectedXcodePath = selectedToolchain.xcodePath;
-            } else if (xcodePaths.length === 1) {
-                selectedXcodePath = xcodePaths[0];
-            } else if (xcodePaths.length > 1) {
-                selectedXcodePath = await showDeveloperDirQuickPick(xcodePaths);
-                if (!selectedXcodePath) {
-                    return;
-                }
+        if (selectedToolchain.category === "xcode") {
+            developerDir = await SwiftToolchain.getXcodeDeveloperDir({
+                ...process.env,
+                DEVELOPER_DIR: selectedToolchain.xcodePath,
+            });
+        } else {
+            const selectedDeveloperDir = await showDeveloperDirQuickPick(xcodePaths);
+            if (!selectedDeveloperDir) {
+                return;
             }
-            // Find the actual DEVELOPER_DIR based on the selected Xcode app
-            if (selectedXcodePath) {
-                developerDir = await SwiftToolchain.getXcodeDeveloperDir({
-                    ...process.env,
-                    DEVELOPER_DIR: selectedXcodePath,
-                });
-            }
+            developerDir = selectedDeveloperDir.developerDir;
         }
         // Update the toolchain configuration
         await setToolchainPath(selectedToolchain, developerDir);
@@ -432,24 +425,30 @@ export async function showToolchainSelectionQuickPick(
     }
 }
 
-/**
- * Prompt the user to choose a value for the DEVELOPER_DIR environment variable.
- *
- * @param xcodePaths An array of paths to available Xcode installations on the system
- * @returns The selected DEVELOPER_DIR or undefined if the user cancelled selection
- */
-async function showDeveloperDirQuickPick(xcodePaths: string[]): Promise<string | undefined> {
-    const selected = await vscode.window.showQuickPick<vscode.QuickPickItem>(
+async function showXcodeQuickPick(
+    xcodePaths: string[]
+): Promise<{ type: "selected"; xcodePath: string | undefined } | undefined> {
+    if (process.platform !== "darwin" || xcodePaths.length === 0) {
+        return { type: "selected", xcodePath: undefined };
+    }
+    if (xcodePaths.length === 1) {
+        return { type: "selected", xcodePath: xcodePaths[1] };
+    }
+    type XcodeQuickPickItem = vscode.QuickPickItem & { inUse: boolean; xcodePath: string };
+    const selected = await vscode.window.showQuickPick<XcodeQuickPickItem>(
         SwiftToolchain.getXcodeDeveloperDir(configuration.swiftEnvironmentVariables).then(
             existingDeveloperDir => {
                 return xcodePaths
                     .map(xcodePath => {
-                        const result: vscode.QuickPickItem = {
+                        const result: XcodeQuickPickItem = {
                             label: path.basename(xcodePath, ".app"),
                             detail: xcodePath,
+                            inUse: false,
+                            xcodePath,
                         };
                         if (existingDeveloperDir.startsWith(xcodePath)) {
                             result.description = "$(check) in use";
+                            result.inUse = true;
                         }
                         return result;
                     })
@@ -472,7 +471,35 @@ async function showDeveloperDirQuickPick(xcodePaths: string[]): Promise<string |
             canPickMany: false,
         }
     );
-    return selected?.detail;
+    if (!selected) {
+        return undefined;
+    }
+    return { type: "selected", xcodePath: selected.xcodePath };
+}
+
+/**
+ * Prompt the user to choose a value for the DEVELOPER_DIR environment variable.
+ *
+ * @param xcodePaths An array of paths to available Xcode installations on the system
+ * @returns The selected DEVELOPER_DIR or undefined if the user cancelled selection
+ */
+export async function showDeveloperDirQuickPick(
+    xcodePaths: string[]
+): Promise<{ developerDir: string | undefined } | undefined> {
+    const selectedXcode = await showXcodeQuickPick(xcodePaths);
+    if (!selectedXcode) {
+        return undefined;
+    }
+    if (!selectedXcode.xcodePath) {
+        return { developerDir: undefined };
+    }
+    // Find the actual DEVELOPER_DIR based on the selected Xcode app
+    return {
+        developerDir: await SwiftToolchain.getXcodeDeveloperDir({
+            ...process.env,
+            DEVELOPER_DIR: selectedXcode.xcodePath,
+        }),
+    };
 }
 
 /**
@@ -538,28 +565,29 @@ export async function askWhereToSetToolchain(): Promise<vscode.ConfigurationTarg
  * @param developerDir
  * @returns
  */
-async function setToolchainPath(
+export async function setToolchainPath(
     toolchain: {
         category: SwiftToolchainItem["category"];
         swiftFolderPath?: string;
         onDidSelect?: SwiftToolchainItem["onDidSelect"];
     },
-    developerDir?: string
+    developerDir?: string,
+    target?: vscode.ConfigurationTarget
 ): Promise<void> {
-    const target = await askWhereToSetToolchain();
+    target = target ?? (await askWhereToSetToolchain());
     if (!target) {
         return;
     }
     const toolchainPath = toolchain.category !== "swiftly" ? toolchain.swiftFolderPath : undefined;
     const swiftConfiguration = vscode.workspace.getConfiguration("swift");
     await swiftConfiguration.update("path", toolchainPath, target);
-    const swiftEnv = configuration.swiftEnvironmentVariables;
+    const swiftEnvironmentVariables = {
+        ...configuration.swiftEnvironmentVariables,
+        DEVELOPER_DIR: developerDir,
+    };
     await swiftConfiguration.update(
         "swiftEnvironmentVariables",
-        {
-            ...swiftEnv,
-            DEVELOPER_DIR: developerDir,
-        },
+        isEmptyObject(swiftEnvironmentVariables) ? undefined : swiftEnvironmentVariables,
         target
     );
     await checkAndRemoveWorkspaceSetting(target);

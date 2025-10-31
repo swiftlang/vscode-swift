@@ -15,6 +15,7 @@ import * as assert from "assert";
 import * as vscode from "vscode";
 
 import { CommentCompletionProviders } from "@src/editor/CommentCompletion";
+import { Workbench } from "@src/utilities/commands";
 
 suite("CommentCompletion Test Suite", () => {
     let provider: CommentCompletionProviders;
@@ -23,7 +24,10 @@ suite("CommentCompletion Test Suite", () => {
         provider = new CommentCompletionProviders();
     });
 
-    teardown(() => provider.dispose());
+    teardown(async () => {
+        provider.dispose();
+        await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
+    });
 
     suite("Function Comment Completion", () => {
         test("Completion on line that isn't a comment", async () => {

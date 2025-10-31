@@ -99,21 +99,42 @@ export class TestExplorer {
     ): Promise<void> {
         const target = await folder.swiftPackage.getTarget(uri.fsPath);
         if (target?.type !== "test") {
+            this.logger.info(
+                `Target ${target} is not a test target, aborting looking for tests within it`,
+                "Test Explorer"
+            );
             return;
         }
 
+        this.logger.info(`Getting tests for ${uri.toString()}`, "Test Explorer");
         try {
             const tests = await this.lspTestDiscovery.getDocumentTests(folder.swiftPackage, uri);
+            this.logger.info(
+                `LSP test discovert found ${tests.length} top level tests`,
+                "Test Explorer"
+            );
             TestDiscovery.updateTestsForTarget(
                 this.controller,
                 { id: target.c99name, label: target.name },
                 tests,
                 uri
             );
+            this.logger.info(
+                `Emitting test item change after LSP test discovery for ${uri.toString()}`,
+                "Test Explorer"
+            );
             this.onTestItemsDidChangeEmitter.fire(this.controller);
-        } catch {
+        } catch (error) {
+            this.logger.error(
+                `Error occurred during LSP test discovery for ${uri.toString()}: ${error}`,
+                "Test Explorer"
+            );
             // Fallback to parsing document symbols for XCTests only
             const tests = parseTestsFromDocumentSymbols(target.name, symbols, uri);
+            this.logger.info(
+                `Parsed ${tests.length} top level tests from document symbols from ${uri.toString()}`,
+                "Test Explorer"
+            );
             this.updateTests(this.controller, tests, uri);
         }
     }
@@ -259,6 +280,7 @@ export class TestExplorer {
         tests: TestDiscovery.TestClass[],
         uri?: vscode.Uri
     ) {
+        this.logger.debug("Updating tests in test explorer", "Test Discovery");
         TestDiscovery.updateTests(controller, tests, uri);
         this.onTestItemsDidChangeEmitter.fire(controller);
     }
@@ -361,6 +383,10 @@ export class TestExplorer {
                         explorer.deleteErrorTestItem();
 
                         const tests = parseTestsFromSwiftTestListOutput(stdout);
+                        this.logger.debug(
+                            `Discovered ${tests.length} top level tests via 'swift test --list-tests', updating test explorer`,
+                            "Test Discovery"
+                        );
                         explorer.updateTests(explorer.controller, tests);
                     }
                 );
@@ -417,18 +443,33 @@ export class TestExplorer {
      * Discover tests
      */
     private async discoverTestsInWorkspaceLSP(token: vscode.CancellationToken) {
+        this.logger.debug("Discovering tests in workspace via LSP", "Test Discovery");
+
         const tests = await this.lspTestDiscovery.getWorkspaceTests(
             this.folderContext.swiftPackage
         );
+
         if (token.isCancellationRequested) {
+            this.logger.info("Test discovery cancelled", "Test Discovery");
             return;
         }
+
+        this.logger.debug(
+            `Discovered ${tests.length} top level tests, updating test explorer`,
+            "Test Discovery"
+        );
 
         await TestDiscovery.updateTestsFromClasses(
             this.controller,
             this.folderContext.swiftPackage,
             tests
         );
+
+        this.logger.debug(
+            "Emitting test item change after LSP workspace test discovery",
+            "Test Discovery"
+        );
+
         this.onTestItemsDidChangeEmitter.fire(this.controller);
     }
 

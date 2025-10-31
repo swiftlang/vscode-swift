@@ -234,15 +234,16 @@ export class BuildFlags {
      * @returns Promise resolving to the build binary path
      */
     async getBuildBinaryPath(
-        cwd: string,
         workspacePath: string,
         buildConfiguration: "debug" | "release" = "debug",
-        logger: SwiftLogger
+        logger: SwiftLogger,
+        idSuffix: string = "",
+        extraArgs: string[] = []
     ): Promise<string> {
         // Checking the bin path requires a swift process execution, so we maintain a cache.
         // The cache key is based on workspace, configuration, and build arguments.
         const buildArgsHash = JSON.stringify(configuration.buildArguments);
-        const cacheKey = `${workspacePath}:${buildConfiguration}:${buildArgsHash}`;
+        const cacheKey = `${workspacePath}:${buildConfiguration}:${buildArgsHash}${idSuffix}`;
 
         if (BuildFlags.buildPathCache.has(cacheKey)) {
             return BuildFlags.buildPathCache.get(cacheKey)!;
@@ -258,12 +259,14 @@ export class BuildFlags {
         const baseArgs = ["build", "--show-bin-path", "--configuration", buildConfiguration];
         const fullArgs = [
             ...this.withAdditionalFlags(baseArgs),
-            ...binPathAffectingArgs(configuration.buildArguments),
+            ...binPathAffectingArgs([...configuration.buildArguments, ...extraArgs]),
         ];
 
         try {
             // Execute swift build --show-bin-path
-            const result = await execSwift(fullArgs, this.toolchain, { cwd });
+            const result = await execSwift(fullArgs, this.toolchain, {
+                cwd: workspacePath,
+            });
             const binPath = result.stdout.trim();
 
             // Cache the result

@@ -16,7 +16,12 @@ import * as vscode from "vscode";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly, SwiftlyProgressData } from "../toolchain/swiftly";
-import { askWhereToSetToolchain } from "../ui/ToolchainSelection";
+import { SwiftToolchain } from "../toolchain/toolchain";
+import {
+    askWhereToSetToolchain,
+    setToolchainPath,
+    showDeveloperDirQuickPick,
+} from "../ui/ToolchainSelection";
 
 /**
  * Installs a Swiftly toolchain and shows a progress notification to the user.
@@ -27,6 +32,7 @@ import { askWhereToSetToolchain } from "../ui/ToolchainSelection";
  */
 export async function installSwiftlyToolchainWithProgress(
     version: string,
+    extensionRoot: string,
     logger?: SwiftLogger
 ): Promise<boolean> {
     try {
@@ -43,31 +49,37 @@ export async function installSwiftlyToolchainWithProgress(
 
                 await Swiftly.installToolchain(
                     version,
+                    extensionRoot,
                     (progressData: SwiftlyProgressData) => {
-                        if (
-                            progressData.step?.percent !== undefined &&
-                            progressData.step.percent > lastProgress
-                        ) {
-                            const increment = progressData.step.percent - lastProgress;
+                        if (progressData.complete) {
+                            // Swiftly will also verify the signature and extract the toolchain after the
+                            // "complete" message has been sent, but does not report progress for this.
+                            // Provide a suitable message in this case and reset the progress back to an
+                            // indeterminate state (0) since we don't know how long it will take.
                             progress.report({
-                                increment,
-                                message:
-                                    progressData.step.text ??
-                                    `${progressData.step.percent}% complete`,
+                                message: "Verifying signature and extracting...",
+                                increment: -lastProgress,
                             });
-                            lastProgress = progressData.step.percent;
+                            return;
                         }
+                        if (!progressData.step) {
+                            return;
+                        }
+                        const increment = progressData.step.percent - lastProgress;
+                        progress.report({
+                            increment,
+                            message:
+                                progressData.step.text ?? `${progressData.step.percent}% complete`,
+                        });
+                        lastProgress = progressData.step.percent;
                     },
                     logger,
                     token
                 );
-
-                progress.report({
-                    increment: 100 - lastProgress,
-                    message: "Installation complete",
-                });
             }
         );
+
+        void vscode.window.showInformationMessage(`Successfully installed Swift ${version}`);
 
         return true;
     } catch (error) {
@@ -78,7 +90,7 @@ export async function installSwiftlyToolchainWithProgress(
             return false;
         }
 
-        logger?.error(`Failed to install Swift ${version}: ${error}`);
+        logger?.error(new Error(`Failed to install Swift ${version}`, { cause: error }));
         void vscode.window.showErrorMessage(`Failed to install Swift ${version}: ${error}`);
         return false;
     }
@@ -151,12 +163,18 @@ export async function promptToInstallSwiftlyToolchain(
         toolchain: toolchain,
     }));
 
-    const selected = await vscode.window.showQuickPick(quickPickItems, {
+    const selectedToolchain = await vscode.window.showQuickPick(quickPickItems, {
         title: "Install Swift Toolchain via Swiftly",
         placeHolder: "Pick a Swift toolchain to install",
         canPickMany: false,
     });
-    if (!selected) {
+    if (!selectedToolchain) {
+        return;
+    }
+
+    const xcodes = await SwiftToolchain.findXcodeInstalls();
+    const selectedDeveloperDir = await showDeveloperDirQuickPick(xcodes);
+    if (!selectedDeveloperDir) {
         return;
     }
 
@@ -166,17 +184,33 @@ export async function promptToInstallSwiftlyToolchain(
     }
 
     // Install the toolchain via Swiftly
-    if (!(await installSwiftlyToolchainWithProgress(selected.toolchain.version.name, ctx.logger))) {
+    if (
+        !(await installSwiftlyToolchainWithProgress(
+            selectedToolchain.toolchain.version.name,
+            ctx.extensionContext.extensionPath,
+            ctx.logger
+        ))
+    ) {
         return;
     }
+
     // Tell Swiftly to use the newly installed toolchain
-    if (target === vscode.ConfigurationTarget.Workspace) {
-        await Promise.all(
-            vscode.workspace.workspaceFolders?.map(folder =>
-                Swiftly.use(selected.toolchain.version.name, folder.uri.fsPath)
-            ) ?? []
-        );
-        return;
-    }
-    await Swiftly.use(selected.toolchain.version.name);
+    await setToolchainPath(
+        {
+            category: "swiftly",
+            async onDidSelect() {
+                if (target === vscode.ConfigurationTarget.Workspace) {
+                    await Promise.all(
+                        vscode.workspace.workspaceFolders?.map(folder =>
+                            Swiftly.use(selectedToolchain.toolchain.version.name, folder.uri.fsPath)
+                        ) ?? []
+                    );
+                    return;
+                }
+                await Swiftly.use(selectedToolchain.toolchain.version.name);
+            },
+        },
+        selectedDeveloperDir.developerDir,
+        target
+    );
 }

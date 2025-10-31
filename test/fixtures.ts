@@ -131,6 +131,20 @@ export interface SwiftTaskFixture {
 }
 
 /**
+ * @returns the path of a file in the **dist** directory.
+ */
+export function distPath(name: string): string {
+    return path.resolve(__dirname, "../../dist", name);
+}
+
+/**
+ * @returns the path of a resource in the **assets** directory.
+ */
+export function assetPath(name: string): string {
+    return path.resolve(__dirname, "../../assets", name);
+}
+
+/**
  * @returns the path of a resource in the **test** directory.
  */
 export function testAssetPath(name: string): string {

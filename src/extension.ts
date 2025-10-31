@@ -68,7 +68,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         checkAndWarnAboutWindowsSymlinks(logger);
 
         const contextKeys = createContextKeys();
-        const toolchain = await createActiveToolchain(contextKeys, logger);
+        const toolchain = await createActiveToolchain(context, contextKeys, logger);
         checkForSwiftlyInstallation(contextKeys, logger);
 
         // If we don't have a toolchain, show an error and stop initializing the extension.
@@ -76,7 +76,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         // properly configured.
         if (!toolchain) {
             // In order to select a toolchain we need to register the command first.
-            const subscriptions = commands.registerToolchainCommands(undefined, logger, undefined);
+            const subscriptions = commands.registerToolchainCommands(undefined, logger);
             const chosenRemediation = await showToolchainError();
             subscriptions.forEach(sub => sub.dispose());
 
@@ -101,11 +101,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         context.subscriptions.push(new SwiftEnvironmentVariablesManager(context));
         context.subscriptions.push(SwiftTerminalProfileProvider.register());
         context.subscriptions.push(
-            ...commands.registerToolchainCommands(
-                toolchain,
-                workspaceContext.logger,
-                workspaceContext.currentFolder?.folder
-            )
+            ...commands.registerToolchainCommands(workspaceContext, workspaceContext.logger)
         );
 
         // Watch for configuration changes the trigger a reload of the extension if necessary.
@@ -252,11 +248,12 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
 }
 
 async function createActiveToolchain(
+    extension: vscode.ExtensionContext,
     contextKeys: ContextKeys,
     logger: SwiftLogger
 ): Promise<SwiftToolchain | undefined> {
     try {
-        const toolchain = await SwiftToolchain.create(undefined, logger);
+        const toolchain = await SwiftToolchain.create(extension.extensionPath, undefined, logger);
         toolchain.logDiagnostics(logger);
         contextKeys.updateKeysBasedOnActiveVersion(toolchain.swiftVersion);
         return toolchain;
