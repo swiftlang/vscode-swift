@@ -29,6 +29,7 @@
     "workspaceContains:**/compile_commands.json",
     "workspaceContains:**/compile_flags.txt",
     "workspaceContains:**/buildServer.json",
+    "workspaceContains:**/.bsp/*.json",
     "onDebugResolve:swift-lldb",
     "onDebugResolve:swift"
   ],
@@ -544,6 +545,22 @@
             "type": "boolean",
             "default": false,
             "markdownDescription": "Search sub-folders of workspace folder for Swift Packages at start up.",
+            "scope": "machine-overridable"
+          },
+          "swift.ignoreSearchingForPackagesInSubfolders": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              ".",
+              ".build",
+              "Packages",
+              "out",
+              "bazel-out",
+              "bazel-bin"
+            ],
+            "markdownDescription": "A list of folders to ignore when searching sub-folders for Swift Packages. The `swift.searchSubfoldersForPackages` must be `true` for this setting to have an effect. Always use forward-slashes in glob expressions regardless of platform. This is combined with VS Code's `files.exclude` setting.",
             "scope": "machine-overridable"
           },
           "swift.autoGenerateLaunchConfigurations": {

@@ -61,6 +61,19 @@ export async function touch(path: string): Promise<void> {
 }
 
 /**
+ * Checks if a folder exists at the supplied path.
+ * @param pathComponents The folder path to check for existence
+ * @returns Whether or not the folder exists at the path
+ */
+export async function folderExists(...pathComponents: string[]): Promise<boolean> {
+    try {
+        return (await fs.stat(path.join(...pathComponents))).isDirectory();
+    } catch (e) {
+        return false;
+    }
+}
+
+/**
  * Return whether a file/folder is inside a folder.
  * @param subpath child file/folder
  * @param parent parent folder

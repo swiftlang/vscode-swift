@@ -5,6 +5,7 @@
 ### Added
 
 - Syntax highlighting for `*.swift.gyb` files ([#1515](https://github.com/swiftlang/vscode-swift/pull/1515))
+- Activate the extension if a workspace folder contains a `.bsp` folder ([#1865](https://github.com/swiftlang/vscode-swift/pull/1865))
 
 ## 2.12.0 - 2025-10-29
 

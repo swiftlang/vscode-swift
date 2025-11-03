@@ -448,6 +448,7 @@ export class WorkspaceContext implements vscode.Disposable {
             workspaceFolder.uri,
             configuration.disableSwiftPMIntegration,
             configuration.folder(workspaceFolder).searchSubfoldersForPackages,
+            configuration.folder(workspaceFolder).ignoreSearchingForPackagesInSubfolders,
             this.globalToolchainSwiftVersion
         );
 
