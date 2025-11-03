@@ -2,6 +2,8 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+## 2.12.0 - 2025-10-29
+
 ### Added
 
 - Swiftly toolchain installation support with commands to install stable and snapshot releases, progress tracking, and secure post-install script handling ([#1780](https://github.com/swiftlang/vscode-swift/pull/1780))
