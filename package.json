@@ -177,6 +177,28 @@
         "filenamePatterns": [
           "*.tutorial"
         ]
+      },
+      {
+        "id": "swift-gyb",
+        "aliases": [
+          "Swift GYB"
+        ],
+        "extensions": [
+          ".swift.gyb"
+        ],
+        "configuration": "./swift-gyb.language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "swift-gyb",
+        "scopeName": "source.swift.gyb",
+        "path": "./syntaxes/swift-gyb.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.gyb": "python",
+          "meta.embedded.control.begin.gyb": "python",
+          "meta.embedded.expression.gyb": "python"
+        }
       }
     ],
     "snippets": [
@@ -2005,7 +2027,8 @@
     "pretest": "npm run compile-tests",
     "soundness": "scripts/soundness.sh",
     "check-package-json": "tsx ./scripts/check_package_json.ts",
-    "test": "vscode-test",
+    "test": "vscode-test && npm run grammar-test",
+    "grammar-test": "vscode-tmgrammar-test test/unit-tests/**/*.test.swift.gyb -g test/unit-tests/syntaxes/swift.tmLanguage.json -g test/unit-tests/syntaxes/MagicPython.tmLanguage.json",
     "integration-test": "npm test -- --label integrationTests",
     "unit-test": "npm test -- --label unitTests",
     "coverage": "npm test -- --coverage",
@@ -2083,6 +2106,7 @@
     "sinon-chai": "^3.7.0",
     "source-map-support": "^0.5.21",
     "strip-ansi": "^6.0.1",
+    "vscode-tmgrammar-test": "^0.1.3",
     "svgo": "^4.0.0",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.20.6",

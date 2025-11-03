@@ -1,0 +1,111 @@
+// SYNTAX TEST "source.swift.gyb" "Character struct"
+
+%{
+// <- keyword.control.gyb
+// <~- punctuation.section.block.begin.gyb
+    abilities = ['strength', 'perception', 'endurance', 'charisma', 'intelligence', 'agility', 'luck']
+//            ^ keyword.operator.assignment.python
+//              ^ punctuation.definition.list.begin.python
+//               ^ punctuation.definition.string.begin.python
+//                ^^^^^^^^ string.quoted.single.python
+//                        ^ punctuation.definition.string.end.python
+//                         ^ punctuation.separator.element.python
+}%
+// <- punctuation.section.block.end.gyb
+// <~- keyword.control.gyb
+
+enum Hello {}
+
+% for ability in abilities:
+// <- keyword.control.flow.gyb
+// <~~--- keyword.control.flow.python
+//            ^^ keyword.control.flow.python
+//                        ^ punctuation.separator.colon.gyb
+print("${ability}")
+// <----- support.function.swift
+//   ^ punctuation.definition.arguments.begin.swift
+//    ^ punctuation.definition.string.begin.swift
+//     ^ variable.other.gyb
+//      ^ punctuation.section.expression.begin.gyb
+//              ^ punctuation.section.expression.end.gyb
+//               ^ punctuation.definition.string.end.swift
+//                ^ punctuation.definition.arguments.end.swift
+% end
+// <----- meta.embedded.control.end.gyb keyword.control.flow.gyb
+
+struct Character {
+// <------ storage.type.struct.swift
+//     ^^^^^^^^^ entity.name.type.struct.swift
+//               ^ punctuation.definition.type.begin.swift
+    let name: String
+//  ^^^ keyword.other.declaration-specifier.swift
+//      ^^^^ meta.definition.type.body.swift
+//            ^^^^^^ support.type.swift
+
+    % for ability in abilities:
+//  ^ keyword.control.flow.gyb
+//    ^^^ keyword.control.flow.python
+//                ^^ keyword.control.flow.python
+//                            ^ punctuation.separator.colon.gyb
+    let ${ability}: Int
+//  ^^^ keyword.other.declaration-specifier.swift
+//      ^ variable.other.gyb
+//      ^^ punctuation.section.expression.begin.gyb
+//               ^ punctuation.section.expression.end.gyb
+    % end
+//  ^^^^^ meta.embedded.control.end.gyb keyword.control.flow.gyb
+
+    %{
+//  ^ keyword.control.gyb
+//   ^ punctuation.section.block.begin.gyb
+        for i in range(10):
+//               ^^^^^ support.function.builtin.python
+            print(i)
+    }%
+//  ^ punctuation.section.block.end.gyb
+//   ^ keyword.control.gyb
+
+    enum Error {
+        case notFound
+
+        % for ability in abilities:
+        case ${ability}
+        % end
+    }
+}
+// <- punctuation.definition.type.end.swift
+
+enum World {}
+
+% for ability in abilities:
+// <- keyword.control.flow.gyb
+// <~~--- keyword.control.flow.python
+//            ^^ keyword.control.flow.python
+//                        ^ punctuation.separator.colon.gyb
+print("${ability}")
+// <----- support.function.swift
+//   ^ punctuation.definition.arguments.begin.swift
+//    ^ punctuation.definition.string.begin.swift
+//     ^ variable.other.gyb
+//      ^ punctuation.section.expression.begin.gyb
+//              ^ punctuation.section.expression.end.gyb
+//               ^ punctuation.definition.string.end.swift
+//                ^ punctuation.definition.arguments.end.swift
+% end
+// <----- meta.embedded.control.end.gyb keyword.control.flow.gyb
+
+struct SimpleCharacter {
+// <------ storage.type.struct.swift
+//     ^^^^^^^^^^^^^^^ entity.name.type.struct.swift
+//                     ^ punctuation.definition.type.begin.swift
+    let name: String
+//  ^^^ keyword.other.declaration-specifier.swift
+//      ^^^^ meta.definition.type.body.swift
+//            ^^^^^^ support.type.swift
+
+    % for ability in abilities:
+    let ${ability}: Int
+    % end
+}
+// <- punctuation.definition.type.end.swift
+

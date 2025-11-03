@@ -1,0 +1,89 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Swift GYB",
+  "patterns": [
+    { "include": "#gyb-code-block" },
+    { "include": "#gyb-start-control-statement" },
+    { "include": "#gyb-end-control-statement" },
+    { "include": "#gyb-expression" },
+    { "include": "source.swift" }
+  ],
+  "repository": {
+    "gyb-code-block": {
+      "name": "meta.embedded.block.gyb",
+      "begin": "^\\s*(%)\\{",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.gyb" },
+        "0": { "name": "punctuation.section.block.begin.gyb" }
+      },
+      "end": "\\}(%)",
+      "endCaptures": {
+        "1": { "name": "keyword.control.gyb" },
+        "0": { "name": "punctuation.section.block.end.gyb" }
+      },
+      "patterns": [{ "include": "source.python" }]
+    },
+    "gyb-start-control-statement": {
+      "name": "meta.embedded.control.begin.gyb",
+      "begin": "^\\s*(%)(?!\\{|\\s*end\\b)",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.flow.gyb" }
+      },
+      "end": ":",
+      "endCaptures": {
+        "0": { "name": "punctuation.separator.colon.gyb" }
+      },
+      "patterns": [{ "include": "source.python" }]
+    },
+    "gyb-end-control-statement": {
+      "name": "meta.embedded.control.end.gyb",
+      "match": "^\\s*%\\s*end\\b",
+      "captures": {
+        "0": { "name": "keyword.control.flow.gyb" }
+      }
+    },
+    "gyb-expression": {
+      "name": "meta.embedded.expression.gyb",
+      "begin": "(\\$)\\{",
+      "beginCaptures": {
+        "1": { "name": "variable.other.gyb" },
+        "0": { "name": "punctuation.section.expression.begin.gyb" }
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": { "name": "punctuation.section.expression.end.gyb" }
+      },
+      "patterns": [{ "include": "source.python" }]
+    }
+  },
+  "injections": {
+    "source.swift": {
+      "patterns": [
+        { "include": "#gyb-code-block" },
+        { "include": "#gyb-start-control-statement" },
+        { "include": "#gyb-end-control-statement" },
+        { "include": "#gyb-expression" }
+      ]
+    },
+    "source.python": {
+      "patterns": [
+        { "include": "#gyb-code-block" },
+        { "include": "#gyb-start-control-statement" },
+        { "include": "#gyb-end-control-statement" },
+        { "include": "#gyb-expression" }
+      ]
+    },
+    "source.swift.gyb": {
+      "patterns": [
+        { "include": "#gyb-code-block" },
+        { "include": "#gyb-start-control-statement" },
+        { "include": "#gyb-end-control-statement" },
+        { "include": "#gyb-expression" }
+      ]
+    }
+  },
+  "scopeName": "source.swift.gyb",
+  "fileTypes": ["swift.gyb"],
+  "foldingStartMarker": "^\\s*(?:%\\{|%[^\\{].*?:)",
+  "foldingStopMarker": "^\\s*(?:\\}%|%\\s*end\\b)"
+}
