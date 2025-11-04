@@ -217,8 +217,9 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
 
         switch (operation) {
             case FolderOperation.add:
-                // Create launch.json files based on package description.
-                await debug.makeDebugConfigurations(folder);
+                // Create launch.json files based on package description, don't block execution.
+                void debug.makeDebugConfigurations(folder);
+
                 if (await folder.swiftPackage.foundPackage) {
                     // do not await for this, let packages resolve in parallel
                     void folderAdded(folder, workspace);
@@ -226,8 +227,9 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
                 break;
 
             case FolderOperation.packageUpdated:
-                // Create launch.json files based on package description.
-                await debug.makeDebugConfigurations(folder);
+                // Create launch.json files based on package description, don't block execution.
+                void debug.makeDebugConfigurations(folder);
+
                 if (
                     (await folder.swiftPackage.foundPackage) &&
                     !configuration.folder(folder.workspaceFolder).disableAutoResolve
