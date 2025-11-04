@@ -475,12 +475,7 @@ export class WorkspaceContext implements vscode.Disposable {
         );
 
         if (this.getActiveWorkspaceFolder(vscode.window.activeTextEditor) === workspaceFolder) {
-            const focusStartTime = Date.now();
             await this.focusTextEditor(vscode.window.activeTextEditor);
-            const focusElapsed = Date.now() - focusStartTime;
-            this.logger.info(
-                `Focus text editor for ${workspaceFolder.name} completed in ${focusElapsed}ms`
-            );
         }
     }
 
