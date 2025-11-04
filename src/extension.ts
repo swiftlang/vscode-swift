@@ -54,22 +54,28 @@ export interface Api {
  * Activate the extension. This is the main entry point.
  */
 export async function activate(context: vscode.ExtensionContext): Promise<Api> {
+    const activationStartTime = Date.now();
     try {
-        await vscode.workspace.fs.createDirectory(context.logUri);
-        const logger = new SwiftLoggerFactory(context.logUri).create(
-            "Swift",
-            "swift-vscode-extension.log"
-        );
-        context.subscriptions.push(logger);
+        const logSetupStartTime = Date.now();
+        const logger = configureLogging(context);
+        const logSetupElapsed = Date.now() - logSetupStartTime;
         logger.info(
             `Activating Swift for Visual Studio Code ${context.extension.packageJSON.version}...`
         );
+        logger.info(`Log setup completed in ${logSetupElapsed}ms`);
 
+        const preToolchainStartTime = Date.now();
         checkAndWarnAboutWindowsSymlinks(logger);
 
         const contextKeys = createContextKeys();
+        const preToolchainElapsed = Date.now() - preToolchainStartTime;
+        const toolchainStartTime = Date.now();
         const toolchain = await createActiveToolchain(context, contextKeys, logger);
+        const toolchainElapsed = Date.now() - toolchainStartTime;
+
+        const swiftlyCheckStartTime = Date.now();
         checkForSwiftlyInstallation(contextKeys, logger);
+        const swiftlyCheckElapsed = Date.now() - swiftlyCheckStartTime;
 
         // If we don't have a toolchain, show an error and stop initializing the extension.
         // This can happen if the user has not installed Swift or if the toolchain is not
@@ -95,9 +101,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             }
         }
 
+        const workspaceContextStartTime = Date.now();
         const workspaceContext = new WorkspaceContext(context, contextKeys, logger, toolchain);
         context.subscriptions.push(workspaceContext);
+        const workspaceContextElapsed = Date.now() - workspaceContextStartTime;
 
+        const subscriptionsStartTime = Date.now();
         context.subscriptions.push(new SwiftEnvironmentVariablesManager(context));
         context.subscriptions.push(SwiftTerminalProfileProvider.register());
         context.subscriptions.push(
@@ -152,12 +161,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         context.subscriptions.push(TestExplorer.observeFolders(workspaceContext));
 
         context.subscriptions.push(registerSourceKitSchemaWatcher(workspaceContext));
+        const subscriptionsElapsed = Date.now() - subscriptionsStartTime;
 
         // setup workspace context with initial workspace folders
-        void workspaceContext.addWorkspaceFolders();
+        const workspaceFoldersStartTime = Date.now();
+        await workspaceContext.addWorkspaceFolders();
+        const workspaceFoldersElapsed = Date.now() - workspaceFoldersStartTime;
 
+        const finalStepsStartTime = Date.now();
         // Mark the extension as activated.
         contextKeys.isActivated = true;
+        const finalStepsElapsed = Date.now() - finalStepsStartTime;
+
+        const totalActivationTime = Date.now() - activationStartTime;
+        logger.info(
+            `Extension activation completed in ${totalActivationTime}ms (log-setup: ${logSetupElapsed}ms, pre-toolchain: ${preToolchainElapsed}ms, toolchain: ${toolchainElapsed}ms, swiftly-check: ${swiftlyCheckElapsed}ms, workspace-context: ${workspaceContextElapsed}ms, subscriptions: ${subscriptionsElapsed}ms, workspace-folders: ${workspaceFoldersElapsed}ms, final-steps: ${finalStepsElapsed}ms)`
+        );
 
         return {
             workspaceContext,
@@ -175,6 +194,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         void vscode.window.showErrorMessage(`Activating Swift extension failed: ${errorMessage}`);
         throw error;
     }
+}
+
+function configureLogging(context: vscode.ExtensionContext) {
+    // Create log directory asynchronously but don't await it to avoid blocking activation
+    const logDirPromise = vscode.workspace.fs.createDirectory(context.logUri);
+
+    const logger = new SwiftLoggerFactory(context.logUri).create(
+        "Swift",
+        "swift-vscode-extension.log"
+    );
+    context.subscriptions.push(logger);
+
+    void Promise.resolve(logDirPromise)
+        .then(() => {
+            // File transport will be added when directory is ready
+        })
+        .catch((error: unknown) => {
+            logger.warn(`Failed to create log directory: ${error}`);
+        });
+    return logger;
 }
 
 function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise<void> {

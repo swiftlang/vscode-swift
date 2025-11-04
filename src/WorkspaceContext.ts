@@ -350,7 +350,12 @@ export class WorkspaceContext implements vscode.Disposable {
         // add workspace folders, already loaded
         if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
             for (const folder of vscode.workspace.workspaceFolders) {
+                const singleFolderStartTime = Date.now();
                 await this.addWorkspaceFolder(folder);
+                const singleFolderElapsed = Date.now() - singleFolderStartTime;
+                this.logger.info(
+                    `Added workspace folder ${folder.name} in ${singleFolderElapsed}ms`
+                );
             }
         }
 
@@ -444,6 +449,7 @@ export class WorkspaceContext implements vscode.Disposable {
      * @param folder folder being added
      */
     async addWorkspaceFolder(workspaceFolder: vscode.WorkspaceFolder) {
+        const searchStartTime = Date.now();
         const folders = await searchForPackages(
             workspaceFolder.uri,
             configuration.disableSwiftPMIntegration,
@@ -451,13 +457,30 @@ export class WorkspaceContext implements vscode.Disposable {
             configuration.folder(workspaceFolder).ignoreSearchingForPackagesInSubfolders,
             this.globalToolchainSwiftVersion
         );
+        const searchElapsed = Date.now() - searchStartTime;
+        this.logger.info(
+            `Package search for ${workspaceFolder.name} completed in ${searchElapsed}ms (found ${folders.length} packages)`
+        );
 
+        const addPackagesStartTime = Date.now();
         for (const folder of folders) {
+            const singlePackageStartTime = Date.now();
             await this.addPackageFolder(folder, workspaceFolder);
+            const singlePackageElapsed = Date.now() - singlePackageStartTime;
+            this.logger.info(`Added package folder ${folder.fsPath} in ${singlePackageElapsed}ms`);
         }
+        const addPackagesElapsed = Date.now() - addPackagesStartTime;
+        this.logger.info(
+            `All package folders for ${workspaceFolder.name} added in ${addPackagesElapsed}ms`
+        );
 
         if (this.getActiveWorkspaceFolder(vscode.window.activeTextEditor) === workspaceFolder) {
+            const focusStartTime = Date.now();
             await this.focusTextEditor(vscode.window.activeTextEditor);
+            const focusElapsed = Date.now() - focusStartTime;
+            this.logger.info(
+                `Focus text editor for ${workspaceFolder.name} completed in ${focusElapsed}ms`
+            );
         }
     }
 
