@@ -16,7 +16,7 @@ This extension adds language support for Swift to Visual Studio Code, providing 
 ### Creating New Projects
 <img src="assets/walkthrough/images/createNewProject.gif" width="700">
 
-### Running Executables
+### Building and Running Executables
 <img src="assets/walkthrough/images/runExecutable.gif" width="700">
 
 ### Debugging Executables
