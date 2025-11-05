@@ -1,17 +1,29 @@
 # Swift for Visual Studio Code
 
-This extension adds language support for Swift to Visual Studio Code, providing a seamless experience for developing Swift applications on all supported platforms. It supports:
+This extension adds language support for Swift to Visual Studio Code, providing a seamless experience for developing Swift applications on all supported platforms. It supports features such as:
 
 * Code completion
-* Jump to definition, peek definition, find all references, symbol search
-* Error annotations and apply suggestions from errors
+* Jump to definition, peek definition, find all references and symbol search
+* Error annotations and fix suggestions
 * Automatic generation of launch configurations for debugging with [LLDB DAP](https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.lldb-dap)
 * Automatic task creation
-* Package dependency view
+* A Project Panel to quickly run actions and view dependencies
 * Test Explorer view
 
 > **Note**  
 > Most features of the Swift for Visual Studio Code extension only work with projects that build with Swift Package Manager. These projects will have a `Package.swift` file in their root folder. Support for Xcode projects (`.xcodeproj`) is limited.
+
+### Creating New Projects
+<img src="assets/walkthrough/images/createNewProject.gif" width="700">
+
+### Building and Running Executables
+<img src="assets/walkthrough/images/runExecutable.gif" width="700">
+
+### Debugging Executables
+<img src="assets/walkthrough/images/debugExecutable.gif" width="700">
+
+### Running Tests
+<img src="assets/walkthrough/images/runTests.gif" width="700">
 
 # Documentation
 
