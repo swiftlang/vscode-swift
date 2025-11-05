@@ -100,7 +100,7 @@ export class TestExplorer {
         const target = await folder.swiftPackage.getTarget(uri.fsPath);
         if (target?.type !== "test") {
             this.logger.info(
-                `Target ${target} is not a test target, aborting looking for tests within it`,
+                `Target ${target?.name ?? "undefined"} is not a test target, aborting looking for tests within it`,
                 "Test Explorer"
             );
             return;
@@ -110,7 +110,7 @@ export class TestExplorer {
         try {
             const tests = await this.lspTestDiscovery.getDocumentTests(folder.swiftPackage, uri);
             this.logger.info(
-                `LSP test discovert found ${tests.length} top level tests`,
+                `LSP test discovery found ${tests.length} top level tests`,
                 "Test Explorer"
             );
             TestDiscovery.updateTestsForTarget(
