@@ -7,6 +7,10 @@
 - Syntax highlighting for `*.swift.gyb` files ([#1515](https://github.com/swiftlang/vscode-swift/pull/1515))
 - Activate the extension if a workspace folder contains a `.bsp` folder ([#1865](https://github.com/swiftlang/vscode-swift/pull/1865))
 
+### Fixed 
+
+- Fixed an issue where the activation of the extension was held up while waiting on the deubg configuration to update ([#1914](https://github.com/swiftlang/vscode-swift/pull/1914))
+
 ## 2.12.0 - 2025-10-29
 
 ### Added
