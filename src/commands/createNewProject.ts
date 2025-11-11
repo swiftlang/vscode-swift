@@ -19,7 +19,6 @@ import { SwiftProjectTemplate, SwiftToolchain } from "../toolchain/toolchain";
 import { showToolchainError } from "../ui/ToolchainSelection";
 import { withDelayedProgress } from "../ui/withDelayedProgress";
 import { execSwift } from "../utilities/utilities";
-import { Version } from "../utilities/version";
 
 /**
  * Prompts the user to input project details and then executes `swift package init`
@@ -31,16 +30,6 @@ export async function createNewProject(toolchain: SwiftToolchain | undefined): P
     // this case.
     if (!toolchain) {
         void showToolchainError();
-        return;
-    }
-
-    // The context key `swift.createNewProjectAvailable` only works if the extension has been
-    // activated. As such, we also have to allow this command to run when no workspace is
-    // active. Show an error to the user if the command is unavailable.
-    if (!toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 8, 0))) {
-        void vscode.window.showErrorMessage(
-            "Creating a new swift project is only available starting in swift version 5.8.0."
-        );
         return;
     }
 
