@@ -2,6 +2,8 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+## 2.14.0 - 2025-11-11
+
 ### Added
 
 - Syntax highlighting for `*.swift.gyb` files ([#1515](https://github.com/swiftlang/vscode-swift/pull/1515))
