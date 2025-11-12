@@ -48,7 +48,8 @@ tag("medium").suite("WorkspaceContext Test Suite", () => {
 
     suite("Folder Events", () => {
         activateExtensionForSuite({
-            async setup(ctx) {
+            async setup(api) {
+                const ctx = await api.waitForWorkspaceContext();
                 workspaceContext = ctx;
             },
             // No default assets as we want to verify against a clean workspace.
@@ -95,7 +96,8 @@ tag("medium").suite("WorkspaceContext Test Suite", () => {
 
     suite("Tasks", function () {
         activateExtensionForSuite({
-            async setup(ctx) {
+            async setup(api) {
+                const ctx = await api.waitForWorkspaceContext();
                 workspaceContext = ctx;
             },
         });
@@ -193,7 +195,8 @@ tag("medium").suite("WorkspaceContext Test Suite", () => {
 
     suite("Toolchain", function () {
         activateExtensionForSuite({
-            async setup(ctx) {
+            async setup(api) {
+                const ctx = await api.waitForWorkspaceContext();
                 workspaceContext = ctx;
             },
         });
