@@ -148,10 +148,13 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             Commands.DEBUG,
             async target => await debugBuild(ctx, ...unwrapTreeItem(target))
         ),
-        vscode.commands.registerCommand(
-            Commands.PLAY,
-            async target => await runPlayground(ctx, target)
-        ),
+        vscode.commands.registerCommand(Commands.PLAY, async target => {
+            const folder = ctx.currentFolder;
+            if (!folder) {
+                return false;
+            }
+            return await runPlayground(folder, ctx.tasks, target);
+        }),
         vscode.commands.registerCommand(Commands.CLEAN_BUILD, async () => await cleanBuild(ctx)),
         vscode.commands.registerCommand(
             Commands.RUN_TESTS_MULTIPLE_TIMES,

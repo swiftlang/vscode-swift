@@ -14,8 +14,9 @@
 import * as vscode from "vscode";
 import { Location, Range } from "vscode-languageclient";
 
-import { WorkspaceContext } from "../WorkspaceContext";
+import { FolderContext } from "../FolderContext";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
+import { TaskManager } from "../tasks/TaskManager";
 import { packageName } from "../utilities/tasks";
 
 export interface PlaygroundItem {
@@ -34,9 +35,12 @@ export interface WorkspacePlaygroundItem extends PlaygroundItem {
 /**
  * Executes a {@link vscode.Task task} to run swift playground.
  */
-export async function runPlayground(ctx: WorkspaceContext, item?: PlaygroundItem) {
-    const folderContext = ctx.currentFolder;
-    if (!folderContext || !item) {
+export async function runPlayground(
+    folderContext: FolderContext,
+    tasks: TaskManager,
+    item?: PlaygroundItem
+) {
+    if (!item) {
         return false;
     }
     const id = item.label ?? item.id;
@@ -52,6 +56,6 @@ export async function runPlayground(ctx: WorkspaceContext, item?: PlaygroundItem
         folderContext.toolchain
     );
 
-    await vscode.tasks.executeTask(task);
+    await tasks.executeTaskAndWait(task);
     return true;
 }
