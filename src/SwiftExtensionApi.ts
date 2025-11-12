@@ -48,8 +48,34 @@ export interface SwiftExtensionApi {
      */
     readonly version?: Version;
 
-    /** The {@link WorkspaceContext} if it is currently available. */
-    readonly workspaceContext?: WorkspaceContext;
+    /**
+     * The {@link WorkspaceContext} if it is currently available.
+     *
+     * The Swift extension starting in 2.16.0 delays workspace initialization in order to
+     * speed up activation. Use {@link waitForWorkspaceContext} or {@link withWorkspaceContext}
+     * to wait for the workspace to be initialized.
+     */
+    workspaceContext?: WorkspaceContext;
+
+    /**
+     * Waits for workspace initialization to complete and returns the {@link WorkspaceContext}.
+     *
+     * @since 1.0.0
+     */
+    waitForWorkspaceContext(): Promise<WorkspaceContext>;
+
+    /**
+     * Waits for workspace initialization to complete and executes the provided task, passing
+     * in the {@link WorkspaceContext}.
+     *
+     * @param task The task to execute after the workspace has finished initialization.
+     * @param token An optional cancellation token used to cancel the task.
+     * @since 1.0.0
+     */
+    withWorkspaceContext<T>(
+        task: (ctx: WorkspaceContext) => T | Promise<T>,
+        token?: vscode.CancellationToken
+    ): Promise<T>;
 }
 
 /** Context containing the state of the Swift extension for the entire workspace. */
