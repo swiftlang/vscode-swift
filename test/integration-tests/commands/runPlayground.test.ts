@@ -12,21 +12,23 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
+import { stub } from "sinon";
 import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { Commands } from "@src/commands";
+import { runPlayground } from "@src/commands/runPlayground";
 import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
+import { TaskManager } from "@src/tasks/TaskManager";
 
-import { mockGlobalObject } from "../../MockUtils";
+import { MockedObject, instance, mockObject } from "../../MockUtils";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 
 suite("Run Playground Command", function () {
     let folderContext: FolderContext;
     let workspaceContext: WorkspaceContext;
-
-    const mockTasks = mockGlobalObject(vscode, "tasks");
+    let mockTaskManager: MockedObject<TaskManager>;
 
     activateExtensionForSuite({
         async setup(ctx) {
@@ -37,60 +39,71 @@ suite("Run Playground Command", function () {
 
     setup(async () => {
         await workspaceContext.focusFolder(folderContext);
+        mockTaskManager = mockObject<TaskManager>({ executeTaskAndWait: stub().resolves() });
     });
 
-    test("No playground item provided", async () => {
-        expect(await vscode.commands.executeCommand(Commands.PLAY), undefined).to.be.false;
-        expect(mockTasks.executeTask).to.not.have.been.called;
+    suite("Command", () => {
+        test("Succeeds", async () => {
+            expect(
+                await vscode.commands.executeCommand(Commands.PLAY, {
+                    id: "PackageLib/PackageLib.swift:3",
+                })
+            ).to.be.true;
+        });
+
+        test("No playground item provided", async () => {
+            expect(await vscode.commands.executeCommand(Commands.PLAY), undefined).to.be.false;
+        });
+
+        test("No folder focussed", async () => {
+            await workspaceContext.focusFolder(null);
+            expect(
+                await vscode.commands.executeCommand(Commands.PLAY, {
+                    id: "PackageLib/PackageLib.swift:3",
+                })
+            ).to.be.false;
+        });
     });
 
-    test("No folder focussed", async () => {
-        await workspaceContext.focusFolder(null);
-        expect(
-            await vscode.commands.executeCommand(Commands.PLAY, {
-                id: "PackageLib/PackageLib.swift:3",
-            })
-        ).to.be.false;
-        expect(mockTasks.executeTask).to.not.have.been.called;
-    });
+    suite("Arguments", () => {
+        test('Runs "swift play" on "id"', async () => {
+            expect(
+                await runPlayground(folderContext, instance(mockTaskManager), {
+                    id: "PackageLib/PackageLib.swift:3",
+                })
+            ).to.be.true;
+            expect(mockTaskManager.executeTaskAndWait).to.have.been.calledOnce;
 
-    test('Runs "swift play" on "id"', async () => {
-        expect(
-            await vscode.commands.executeCommand(Commands.PLAY, {
-                id: "PackageLib/PackageLib.swift:3",
-            })
-        ).to.be.true;
-        expect(mockTasks.executeTask).to.have.been.calledOnce;
+            const task = mockTaskManager.executeTaskAndWait.args[0][0] as SwiftTask;
+            expect(task.execution.args).to.deep.equal(["play", "PackageLib/PackageLib.swift:3"]);
+            expect(task.execution.options.cwd).to.equal(folderContext.folder.fsPath);
+        });
 
-        const task = mockTasks.executeTask.args[0][0] as SwiftTask;
-        expect(task.execution.args).to.deep.equal(["play", "PackageLib/PackageLib.swift:3"]);
-        expect(task.execution.options.cwd).to.equal(folderContext.folder.fsPath);
-    });
+        test('Runs "swift play" on "id" with space in path', async () => {
+            expect(
+                await runPlayground(folderContext, instance(mockTaskManager), {
+                    id: "PackageLib/Package Lib.swift:3",
+                })
+            ).to.be.true;
+            expect(mockTaskManager.executeTaskAndWait).to.have.been.calledOnce;
 
-    test('Runs "swift play" on "id" with space in path', async () => {
-        expect(
-            await vscode.commands.executeCommand(Commands.PLAY, {
-                id: "PackageLib/Package Lib.swift:3",
-            })
-        ).to.be.true;
-        expect(mockTasks.executeTask).to.have.been.calledOnce;
+            const task = mockTaskManager.executeTaskAndWait.args[0][0] as SwiftTask;
+            expect(task.execution.args).to.deep.equal(["play", "PackageLib/Package Lib.swift:3"]);
+            expect(task.execution.options.cwd).to.equal(folderContext.folder.fsPath);
+        });
 
-        const task = mockTasks.executeTask.args[0][0] as SwiftTask;
-        expect(task.execution.args).to.deep.equal(["play", "PackageLib/Package Lib.swift:3"]);
-        expect(task.execution.options.cwd).to.equal(folderContext.folder.fsPath);
-    });
+        test('Runs "swift play" on "label"', async () => {
+            expect(
+                await runPlayground(folderContext, instance(mockTaskManager), {
+                    id: "PackageLib/PackageLib.swift:3",
+                    label: "bar",
+                })
+            ).to.be.true;
+            expect(mockTaskManager.executeTaskAndWait).to.have.been.calledOnce;
 
-    test('Runs "swift play" on "label"', async () => {
-        expect(
-            await vscode.commands.executeCommand(Commands.PLAY, {
-                id: "PackageLib/PackageLib.swift:3",
-                label: "bar",
-            })
-        ).to.be.true;
-        expect(mockTasks.executeTask).to.have.been.calledOnce;
-
-        const task = mockTasks.executeTask.args[0][0] as SwiftTask;
-        expect(task.execution.args).to.deep.equal(["play", "bar"]);
-        expect(task.execution.options.cwd).to.equal(folderContext.folder.fsPath);
+            const task = mockTaskManager.executeTaskAndWait.args[0][0] as SwiftTask;
+            expect(task.execution.args).to.deep.equal(["play", "bar"]);
+            expect(task.execution.options.cwd).to.equal(folderContext.folder.fsPath);
+        });
     });
 });
