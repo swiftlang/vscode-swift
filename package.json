@@ -3,7 +3,7 @@
   "displayName": "Swift",
   "description": "Swift Language Support for Visual Studio Code.",
   "version": "2.18.0-dev",
-  "api-version": "0.1.0",
+  "api-version": "1.0.0",
   "publisher": "swiftlang",
   "icon": "icon.png",
   "repository": {
@@ -2072,6 +2072,7 @@
     "test": "vscode-test && npm run grammar-test",
     "grammar-test": "vscode-tmgrammar-test test/unit-tests/**/*.test.swift.gyb -g test/unit-tests/syntaxes/swift.tmLanguage.json -g test/unit-tests/syntaxes/MagicPython.tmLanguage.json",
     "integration-test": "npm run pretest && vscode-test --label integrationTests",
+    "code-workspace-test": "npm run pretest && vscode-test --label codeWorkspaceTests",
     "unit-test": "npm run pretest && vscode-test --label unitTests",
     "coverage": "npm run pretest && vscode-test --coverage",
     "compile-tests": "del-cli ./assets/test/**/.build && del-cli ./assets/test/**/.spm-cache && npm run compile && npm run compile-documentation-webview",
