@@ -32,7 +32,8 @@ tag("medium").suite("Documentation Live Preview", function () {
     let workspaceContext: WorkspaceContext;
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
             await waitForNoRunningTasks();
             folderContext = await folderInRootWorkspace("documentation-live-preview", ctx);

@@ -37,7 +37,8 @@ suite("SwiftTaskProvider Test Suite", () => {
     let folderContext: FolderContext;
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
             expect(workspaceContext.folders).to.not.have.lengthOf(0);
             workspaceFolder = workspaceContext.folders[0].workspaceFolder;

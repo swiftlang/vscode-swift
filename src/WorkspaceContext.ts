@@ -27,7 +27,6 @@ import {
 import { TestKind } from "./TestExplorer/TestKind";
 import { TestRunManager } from "./TestExplorer/TestRunManager";
 import configuration from "./configuration";
-import { LLDBDebugConfigurationProvider } from "./debugger/debugAdapterFactory";
 import { makeDebugConfigurations } from "./debugger/launch";
 import { DocumentationManager } from "./documentation/DocumentationManager";
 import { CommentCompletionProviders } from "./editor/CommentCompletion";
@@ -70,7 +69,6 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
     public diagnostics: DiagnosticsManager;
     public taskProvider: SwiftTaskProvider;
     public pluginProvider: SwiftPluginTaskProvider;
-    public launchProvider: LLDBDebugConfigurationProvider;
     public subscriptions: vscode.Disposable[];
     public commentCompletionProvider: CommentCompletionProviders;
     public documentation: DocumentationManager;
@@ -117,7 +115,6 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
         this.diagnostics = new DiagnosticsManager(this);
         this.taskProvider = new SwiftTaskProvider(this);
         this.pluginProvider = new SwiftPluginTaskProvider(this);
-        this.launchProvider = new LLDBDebugConfigurationProvider(process.platform, this, logger);
         this.documentation = new DocumentationManager(extensionContext, this);
         this.currentDocument = null;
         this.commentCompletionProvider = new CommentCompletionProviders();
@@ -246,7 +243,6 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
             this.diagnostics,
             this.documentation,
             this.languageClientManager,
-            this.logger,
             this.statusItem,
             this.buildStatus,
             this.projectPanel,

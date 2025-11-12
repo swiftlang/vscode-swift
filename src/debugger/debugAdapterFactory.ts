@@ -14,9 +14,9 @@
 import * as path from "path";
 import * as vscode from "vscode";
 
-import { WorkspaceContext } from "../WorkspaceContext";
+import { FolderContext } from "../FolderContext";
+import { InternalSwiftExtensionApi } from "../InternalSwiftExtensionApi";
 import configuration from "../configuration";
-import { SwiftLogger } from "../logging/SwiftLogger";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { fileExists } from "../utilities/filesystem";
 import { getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
@@ -28,10 +28,10 @@ import { registerLoggingDebugAdapterTracker } from "./logTracker";
 /**
  * Registers the active debugger with the extension, and reregisters it
  * when the debugger settings change.
- * @param workspaceContext  The workspace context
+ * @param api  The Swift extension API
  * @returns A disposable to be disposed when the extension is deactivated
  */
-export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Disposable {
+export function registerDebugger(api: InternalSwiftExtensionApi): vscode.Disposable {
     let subscriptions: vscode.Disposable[] = [];
 
     // Monitor the swift.debugger.disable setting and register automatically
@@ -48,7 +48,7 @@ export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Dis
 
     function register() {
         subscriptions.push(registerLoggingDebugAdapterTracker());
-        subscriptions.push(registerLLDBDebugAdapter(workspaceContext));
+        subscriptions.push(registerLLDBDebugAdapter(api));
     }
 
     if (!configuration.debugger.disable) {
@@ -60,13 +60,13 @@ export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Dis
 
 /**
  * Registers the LLDB debug adapter with the VS Code debug adapter descriptor factory.
- * @param workspaceContext The workspace context
+ * @param api The Swift extension API
  * @returns A disposable to be disposed when the extension is deactivated
  */
-function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
+function registerLLDBDebugAdapter(api: InternalSwiftExtensionApi): vscode.Disposable {
     return vscode.debug.registerDebugConfigurationProvider(
         SWIFT_LAUNCH_CONFIG_TYPE,
-        workspaceContext.launchProvider
+        new LLDBDebugConfigurationProvider(process.platform, api)
     );
 }
 
@@ -82,8 +82,7 @@ function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Di
 export class LLDBDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
     constructor(
         private platform: NodeJS.Platform,
-        private workspaceContext: WorkspaceContext,
-        private logger: SwiftLogger
+        private api: InternalSwiftExtensionApi
     ) {}
 
     async resolveDebugConfigurationWithSubstitutedVariables(
@@ -91,14 +90,15 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         launchConfig: vscode.DebugConfiguration
     ): Promise<vscode.DebugConfiguration | undefined | null> {
         // First attempt to find a folder context that matches the provided "folder".
-        let folderContext = this.workspaceContext.folders.find(
+        const workspaceContext = await this.api.waitForWorkspaceContext();
+        let folderContext = workspaceContext.folders.find(
             f => f.workspaceFolder.uri.fsPath === folder?.uri.fsPath
         );
 
         // If we can't find it we're likely in a multi-root workspace and we should
         // attempt to find a folder context that matches the "cwd" in the launch configuration.
         if (!folderContext && launchConfig.cwd) {
-            folderContext = this.workspaceContext.folders.find(
+            folderContext = workspaceContext.folders.find(
                 f =>
                     path.normalize(f.workspaceFolder.uri.fsPath) ===
                     path.normalize(launchConfig.cwd)
@@ -118,7 +118,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
 
         this.mergeRuntimeEnvironment(launchConfig);
 
-        const toolchain = folderContext?.toolchain ?? this.workspaceContext.globalToolchain;
+        const toolchain = folderContext?.toolchain ?? workspaceContext.globalToolchain;
         launchConfig.type = DebugAdapter.getLaunchConfigType(toolchain.swiftVersion);
 
         const adapterResult = await this.configureDebugAdapter(launchConfig, toolchain);
@@ -143,7 +143,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
 
     private async resolveTargetToProgram(
         launchConfig: vscode.DebugConfiguration,
-        folderContext: ReturnType<typeof this.workspaceContext.folders.find>
+        folderContext: FolderContext | undefined
     ): Promise<void> {
         if (typeof launchConfig.target !== "string") {
             return;
@@ -324,7 +324,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             void vscode.window.showWarningMessage(
                 `Failed to setup CodeLLDB for debugging of Swift code. Debugging may produce unexpected results. ${errorMessage}`
             );
-            this.logger.error(`Failed to setup CodeLLDB: ${errorMessage}`);
+            this.api.logger.error(`Failed to setup CodeLLDB: ${errorMessage}`);
             return;
         }
         const libLldbPath = libLldbPathResult.success;

@@ -40,7 +40,8 @@ tag("medium").suite("SwiftPluginTaskProvider Test Suite", function () {
     let folderContext: FolderContext;
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
             ctx.logger.info("Locating command-plugin folder in root workspace");
             folderContext = await folderInRootWorkspace("command-plugin", workspaceContext);
