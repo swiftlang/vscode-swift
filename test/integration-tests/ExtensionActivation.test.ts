@@ -33,21 +33,21 @@ tag("medium").suite("Extension Activation/Deactivation Tests", () => {
             await deactivateExtension();
         });
 
-        async function activate(currentTest?: Mocha.Test) {
-            assert.ok(await activateExtension(currentTest), "Extension did not return its API");
+        async function activate() {
+            assert.ok(await activateExtension(), "Extension did not return its API");
             const ext = vscode.extensions.getExtension("swiftlang.swift-vscode");
             assert.ok(ext, "Extension is not found");
             assert.strictEqual(ext.isActive, true);
         }
 
         test("Activation", async function () {
-            await activate(this.test as Mocha.Test);
+            await activate();
         });
 
         test("Duplicate Activation", async function () {
-            await activate(this.test as Mocha.Test);
+            await activate();
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
-            assert.rejects(activateExtension(this.test as Mocha.Test), err => {
+            assert.rejects(activateExtension(), err => {
                 const msg = (err as unknown as any).message;
                 return (
                     msg.includes("Extension is already activated") &&
@@ -58,18 +58,19 @@ tag("medium").suite("Extension Activation/Deactivation Tests", () => {
     });
 
     test("Deactivation", async function () {
-        const workspaceContext = await activateExtension(this.test as Mocha.Test);
+        const api = await activateExtension();
         await deactivateExtension();
         const ext = vscode.extensions.getExtension("swiftlang.swift-vscode");
         assert(ext);
-        assert.equal(workspaceContext.subscriptions.length, 0);
+        assert.equal(api.workspaceContext, undefined);
     });
 
     suite("Extension Activation per suite", () => {
         let workspaceContext: WorkspaceContext | undefined;
         let capturedWorkspaceContext: WorkspaceContext | undefined;
         activateExtensionForSuite({
-            async setup(ctx) {
+            async setup(api) {
+                const ctx = await api.waitForWorkspaceContext();
                 workspaceContext = ctx;
             },
         });
@@ -88,7 +89,8 @@ tag("medium").suite("Extension Activation/Deactivation Tests", () => {
         let workspaceContext: WorkspaceContext | undefined;
         let capturedWorkspaceContext: WorkspaceContext | undefined;
         activateExtensionForTest({
-            async setup(ctx) {
+            async setup(api) {
+                const ctx = await api.waitForWorkspaceContext();
                 workspaceContext = ctx;
             },
         });
@@ -107,7 +109,8 @@ tag("medium").suite("Extension Activation/Deactivation Tests", () => {
         let workspaceContext: WorkspaceContext;
 
         activateExtensionForTest({
-            async setup(ctx) {
+            async setup(api) {
+                const ctx = await api.waitForWorkspaceContext();
                 workspaceContext = ctx;
             },
             testAssets: ["cmake", "cmake-compile-flags"],
