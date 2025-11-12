@@ -24,14 +24,10 @@ export interface PlaygroundItem {
 }
 
 export interface DocumentPlaygroundItem extends PlaygroundItem {
-    id: string;
-    label?: string;
     range: Range;
 }
 
 export interface WorkspacePlaygroundItem extends PlaygroundItem {
-    id: string;
-    label?: string;
     location: Location;
 }
 
