@@ -24,7 +24,8 @@ suite("lldb contract test suite", () => {
     let workspaceContext: WorkspaceContext;
 
     activateExtensionForTest({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             // lldb.exe on Windows is not launching correctly, but only in Docker.
             if (
                 IS_RUNNING_UNDER_DOCKER &&
