@@ -39,8 +39,8 @@ tag("medium").suite("captureDiagnostics Test Suite", () => {
 
     suite("Minimal", () => {
         activateExtensionForSuite({
-            async setup(ctx) {
-                workspaceContext = ctx;
+            async setup(api) {
+                workspaceContext = await api.waitForWorkspaceContext();
             },
             testAssets: ["defaultPackage"],
         });
@@ -98,8 +98,8 @@ tag("medium").suite("captureDiagnostics Test Suite", () => {
 
     tag("large").suite("Full", function () {
         activateExtensionForSuite({
-            async setup(ctx) {
-                workspaceContext = ctx;
+            async setup(api) {
+                workspaceContext = await api.waitForWorkspaceContext();
             },
             testAssets: ["defaultPackage"],
         });

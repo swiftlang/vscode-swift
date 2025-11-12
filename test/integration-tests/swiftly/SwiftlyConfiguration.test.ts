@@ -15,8 +15,8 @@ import { expect } from "chai";
 import * as fs from "fs/promises";
 import * as vscode from "vscode";
 
+import { checkForSwiftlyInstallation } from "@src/InternalSwiftExtensionApi";
 import configuration from "@src/configuration";
-import { checkForSwiftlyInstallation } from "@src/extension";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { Swiftly } from "@src/toolchain/swiftly";
 import * as filesystem from "@src/utilities/filesystem";

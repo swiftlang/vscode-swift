@@ -33,8 +33,8 @@ suite("Run Playground Command", function () {
     let mockTaskManager: MockedObject<TaskManager>;
 
     activateExtensionForSuite({
-        async setup(ctx) {
-            workspaceContext = ctx;
+        async setup(api) {
+            workspaceContext = await api.waitForWorkspaceContext();
             folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
         },
     });

@@ -49,7 +49,8 @@ suite("Generate SourceKit-LSP configuration Command", function () {
     }
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
             folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
             configFileUri = vscode.Uri.file(sourcekitConfigFilePath(folderContext));

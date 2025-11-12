@@ -54,7 +54,8 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
     let cppHeaderUri: vscode.Uri;
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
             toolchain = workspaceContext.globalToolchain;
             folderContext = await folderInRootWorkspace("diagnostics", workspaceContext);
