@@ -52,7 +52,7 @@ export async function getLLDBLibPath(toolchain: SwiftToolchain): Promise<Result<
     } catch (error) {
         return Result.makeFailure(error);
     }
-    let pathHint = path.dirname(toolchain.swiftFolderPath);
+    let pathHint = toolchain.toolchainPath;
     try {
         const statement = `print('<!' + lldb.SBHostOS.GetLLDBPath(lldb.ePathTypeLLDBShlibDir).fullpath + '!>')`;
         const args = ["-b", "-O", `script ${statement}`];
@@ -65,7 +65,7 @@ export async function getLLDBLibPath(toolchain: SwiftToolchain): Promise<Result<
         // If we get an error on Windows here we should not attempt to use the fallback path. If it failed
         // it is most likely due to lldb failing to run because $PYHTONHOME environment variable is setup
         // incorrectly (this is the case in Swift < 5.7). In this situation swift lldb does not work so we
-        // should just the version of lldb that comes with CodeLLDB. We return a failure with no message
+        // should just use the version of lldb that comes with CodeLLDB. We return a failure with no message
         // to indicate we want it to fail silently.
         if (process.platform === "win32") {
             return Result.makeFailure(undefined);
@@ -79,7 +79,7 @@ export async function getLLDBLibPath(toolchain: SwiftToolchain): Promise<Result<
     }
 }
 
-export async function findLibLLDB(pathHint: string): Promise<string | undefined> {
+async function findLibLLDB(pathHint: string): Promise<string | undefined> {
     const stat = await fs.stat(pathHint);
     if (stat.isFile()) {
         return pathHint;
@@ -109,7 +109,7 @@ export async function findLibLLDB(pathHint: string): Promise<string | undefined>
     return undefined;
 }
 
-export async function findFileByPattern(path: string, pattern: RegExp): Promise<string | null> {
+async function findFileByPattern(path: string, pattern: RegExp): Promise<string | null> {
     try {
         const files = await fs.readdir(path);
         for (const file of files) {
