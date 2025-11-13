@@ -77,6 +77,7 @@ suite("SwiftTaskProvider Test Suite", () => {
                 "help",
                 { cwd: workspaceFolder.uri, scope: vscode.TaskScope.Workspace },
                 new SwiftToolchain(
+                    "unknown",
                     "/invalid/swift/path",
                     "/invalid/toolchain/path",
                     {
