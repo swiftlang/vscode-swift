@@ -27,7 +27,7 @@ import { ContextKeys } from "../contextKeys";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { showMissingToolchainDialog } from "../ui/ToolchainSelection";
 import { touch } from "../utilities/filesystem";
-import { findBinaryPath } from "../utilities/shell";
+import { findBinaryInPath } from "../utilities/shell";
 import { ExecFileError, execFile, execFileStreamOutput } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { SwiftlyConfig } from "./ToolchainVersion";
@@ -359,72 +359,49 @@ export class Swiftly {
     }
 
     /**
-     * Determine if Swiftly is being used to manage the active toolchain and if so, return
-     * the path to the active toolchain.
+     * Determine whether or not the given swift binary is managed by swiftly.
      *
-     * @returns The location of the active toolchain if swiftly is being used to manage it.
+     * @param swiftBinaryPath The path to the swift binary.
+     * @returns A boolean indicating whether or not the swift binary is managed by swiftly.
      */
-    public static async toolchain(
-        extensionRoot: string,
-        logger?: SwiftLogger,
-        cwd?: vscode.Uri
-    ): Promise<string | undefined> {
+    public static async isManagedBySwiftly(swiftBinaryPath: string): Promise<boolean> {
         const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
-        if (swiftlyHomeDir) {
-            const { stdout: swiftLocation } = await execFile("which", ["swift"]);
-            if (swiftLocation.startsWith(swiftlyHomeDir)) {
-                // Print the location of the toolchain that swiftly is using. If there
-                // is no cwd specified then it returns the global "inUse" toolchain otherwise
-                // it respects the .swift-version file in the cwd and resolves using that.
-                try {
-                    const inUse = await Swiftly.inUseLocation("swiftly", cwd);
-                    if (inUse.length > 0) {
-                        return path.join(inUse, "usr");
-                    }
-                } catch (err: unknown) {
-                    logger?.error(`Failed to retrieve Swiftly installations: ${err}`);
-                    const error = err as ExecFileError;
+        if (!swiftlyHomeDir) {
+            return false;
+        }
+        return swiftBinaryPath.startsWith(swiftlyHomeDir);
+    }
 
-                    // Check if this is a missing toolchain error
-                    const missingToolchainError = parseSwiftlyMissingToolchainError(error.stderr);
-                    if (missingToolchainError) {
-                        // Attempt automatic installation
-                        const installed = await handleMissingSwiftlyToolchain(
-                            missingToolchainError.version,
-                            extensionRoot,
-                            logger,
-                            cwd
-                        );
-
-                        if (installed) {
-                            // Retry toolchain location after successful installation
-                            try {
-                                const retryInUse = await Swiftly.inUseLocation("swiftly", cwd);
-                                if (retryInUse.length > 0) {
-                                    return path.join(retryInUse, "usr");
-                                }
-                            } catch (retryError) {
-                                logger?.error(
-                                    `Failed to use toolchain after installation: ${retryError}`
-                                );
-                            }
-                        } else {
-                            // User declined installation - gracefully fall back to global toolchain
-                            logger?.info(
-                                `Falling back to global toolchain after user declined installation of missing toolchain: ${missingToolchainError.version}`
-                            );
-                            return undefined;
-                        }
-                    }
-
-                    // Fall back to original error handling for non-missing-toolchain errors
-                    void vscode.window.showErrorMessage(
-                        `Failed to load toolchain from Swiftly: ${error.stderr}`
+    public static async getActiveToolchain(
+        extensionRoot: string,
+        cwd?: vscode.Uri,
+        logger?: SwiftLogger
+    ): Promise<string> {
+        try {
+            return await Swiftly.inUseLocation("swiftly", cwd);
+        } catch (error: unknown) {
+            if (error instanceof ExecFileError) {
+                // Check if this is a missing toolchain error
+                const missingToolchainError = parseSwiftlyMissingToolchainError(error.stderr);
+                if (missingToolchainError) {
+                    // Attempt automatic installation
+                    const installed = await handleMissingSwiftlyToolchain(
+                        missingToolchainError.version,
+                        extensionRoot,
+                        logger,
+                        cwd
                     );
+                    if (installed) {
+                        // Retry toolchain location after successful installation
+                        return await this.getActiveToolchain(extensionRoot, cwd, logger);
+                    }
                 }
             }
+            // We were unable to resolve the active swift toolchain.
+            throw Error("Failed to determine the active swift toolchain via swiftly.", {
+                cause: error,
+            });
         }
-        return undefined;
     }
 
     /**
@@ -901,8 +878,7 @@ export class Swiftly {
             return false;
         }
         try {
-            await findBinaryPath("swiftly");
-            return true;
+            return (await findBinaryInPath("swiftly")).length > 0;
         } catch (error) {
             return false;
         }

@@ -270,9 +270,10 @@ async function getQuickPickItems(
     );
 
     if (activeToolchain) {
-        const currentSwiftlyVersion = activeToolchain.isSwiftlyManaged
-            ? await Swiftly.inUseVersion("swiftly", cwd)
-            : undefined;
+        const currentSwiftlyVersion =
+            activeToolchain.manager === "swiftly"
+                ? await Swiftly.inUseVersion("swiftly", cwd)
+                : undefined;
         const toolchainInUse = [...xcodes, ...publicToolchains, ...swiftlyToolchains].find(
             toolchain => {
                 if (currentSwiftlyVersion) {
