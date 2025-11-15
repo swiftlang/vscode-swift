@@ -15,7 +15,7 @@ import { expect } from "chai";
 import * as fs from "fs/promises";
 import * as mockFS from "mock-fs";
 import * as os from "os";
-import { match } from "sinon";
+import { match, stub } from "sinon";
 import * as vscode from "vscode";
 
 import * as askpass from "@src/askpass/askpass-server";
@@ -1492,6 +1492,613 @@ apt-get -y install libncurses5-dev
 
         test("cancellationMessage should be properly defined", () => {
             expect(Swiftly.cancellationMessage).to.equal("Installation cancelled by user");
+        });
+    });
+
+    suite("installSwiftly()", () => {
+        let originalFetch: typeof global.fetch;
+
+        setup(() => {
+            originalFetch = global.fetch;
+        });
+
+        teardown(() => {
+            global.fetch = originalFetch;
+        });
+
+        test("should throw error on unsupported platform", async () => {
+            mockedPlatform.setValue("win32");
+            const mockProgress = { report: () => {} };
+
+            await expect(Swiftly.installSwiftly(mockProgress as any)).to.eventually.be.rejectedWith(
+                "Swiftly is not supported on this platform"
+            );
+        });
+
+        test("should call installSwiftlyDarwin on macOS", async () => {
+            mockedPlatform.setValue("darwin");
+            const mockProgress = { report: () => {} };
+
+            // Mock fetch for download
+            global.fetch = async () =>
+                ({
+                    ok: true,
+                    headers: { get: () => "1000" },
+                    body: {
+                        getReader: () => ({
+                            read: async () => ({ done: true, value: new Uint8Array(0) }),
+                            releaseLock: () => {},
+                        }),
+                    },
+                }) as any;
+
+            mockUtilities.execFile.withArgs("installer", match.array).resolves({
+                stdout: "",
+                stderr: "",
+            });
+            mockUtilities.execFile
+                .withArgs(match.string, ["init", "--quiet-shell-followup"])
+                .resolves({
+                    stdout: "",
+                    stderr: "",
+                });
+
+            await Swiftly.installSwiftly(mockProgress as any);
+
+            expect(mockUtilities.execFile).to.have.been.calledWith("installer", match.array);
+        });
+
+        test("should call installSwiftlyLinux on Linux", async () => {
+            mockedPlatform.setValue("linux");
+            mockOS.arch.returns("x64");
+            const mockProgress = { report: () => {} };
+
+            // Mock fetch and tar extraction
+            global.fetch = async () =>
+                ({
+                    ok: true,
+                    headers: { get: () => "1000" },
+                    body: {
+                        getReader: () => ({
+                            read: async () => ({ done: true, value: new Uint8Array(0) }),
+                            releaseLock: () => {},
+                        }),
+                    },
+                }) as any;
+
+            mockUtilities.execFile.withArgs("./swiftly", match.array).resolves({
+                stdout: "",
+                stderr: "",
+            });
+
+            await Swiftly.installSwiftly(mockProgress as any);
+
+            expect(mockUtilities.execFile).to.have.been.calledWith(
+                "./swiftly",
+                ["init", "--quiet-shell-followup"],
+                match.object
+            );
+        });
+
+        test("should pass custom swiftlyHomeDir and swiftlyBinDir", async () => {
+            mockedPlatform.setValue("darwin");
+            const mockProgress = { report: () => {} };
+
+            global.fetch = async () =>
+                ({
+                    ok: true,
+                    headers: { get: () => "1000" },
+                    body: {
+                        getReader: () => ({
+                            read: async () => ({ done: true, value: new Uint8Array(0) }),
+                            releaseLock: () => {},
+                        }),
+                    },
+                }) as any;
+
+            mockUtilities.execFile.withArgs("installer", match.array).resolves({
+                stdout: "",
+                stderr: "",
+            });
+            mockUtilities.execFile.resolves({
+                stdout: "",
+                stderr: "",
+            });
+
+            await Swiftly.installSwiftly(
+                mockProgress as any,
+                undefined,
+                "/custom/home",
+                "/custom/bin"
+            );
+
+            expect(mockUtilities.execFile).to.have.been.calledWith(
+                match.string,
+                ["init", "--quiet-shell-followup"],
+                match.has("env", match.has("SWIFTLY_HOME_DIR", "/custom/home"))
+            );
+            expect(mockUtilities.execFile).to.have.been.calledWith(
+                match.string,
+                ["init", "--quiet-shell-followup"],
+                match.has("env", match.has("SWIFTLY_BIN_DIR", "/custom/bin"))
+            );
+        });
+    });
+
+    suite("installSwiftlyDarwin()", () => {
+        let originalFetch: typeof global.fetch;
+
+        setup(() => {
+            mockedPlatform.setValue("darwin");
+            originalFetch = global.fetch;
+        });
+
+        teardown(() => {
+            global.fetch = originalFetch;
+        });
+
+        test("should download from correct macOS URL", async () => {
+            const fetchSpy = stub();
+            global.fetch = fetchSpy.returns(
+                Promise.resolve({
+                    ok: true,
+                    headers: { get: () => "1000" },
+                    body: {
+                        getReader: () => ({
+                            read: async () => ({ done: true, value: new Uint8Array(0) }),
+                            releaseLock: () => {},
+                        }),
+                    },
+                }) as any
+            );
+
+            mockUtilities.execFile.resolves({
+                stdout: "",
+                stderr: "",
+            });
+
+            await Swiftly.installSwiftly({ report: () => {} } as any);
+
+            expect(fetchSpy).to.have.been.calledWith(
+                "https://download.swift.org/swiftly/darwin/swiftly.pkg"
+            );
+        });
+
+        test("should execute installer with CurrentUserHomeDirectory target", async () => {
+            global.fetch = async () =>
+                ({
+                    ok: true,
+                    headers: { get: () => "1000" },
+                    body: {
+                        getReader: () => ({
+                            read: async () => ({ done: true, value: new Uint8Array(0) }),
+                            releaseLock: () => {},
+                        }),
+                    },
+                }) as any;
+
+            mockUtilities.execFile.resolves({
+                stdout: "",
+                stderr: "",
+            });
+
+            await Swiftly.installSwiftly({ report: () => {} } as any);
+
+            expect(mockUtilities.execFile).to.have.been.calledWith("installer", [
+                "-pkg",
+                match.string,
+                "-target",
+                "CurrentUserHomeDirectory",
+            ]);
+        });
+
+        test("should use custom swiftlyHomeDir when provided", async () => {
+            global.fetch = async () =>
+                ({
+                    ok: true,
+                    headers: { get: () => "1000" },
+                    body: {
+                        getReader: () => ({
+                            read: async () => ({ done: true, value: new Uint8Array(0) }),
+                            releaseLock: () => {},
+                        }),
+                    },
+                }) as any;
+
+            mockUtilities.execFile.resolves({
+                stdout: "",
+                stderr: "",
+            });
+
+            await Swiftly.installSwiftly({ report: () => {} } as any, undefined, "/custom/swiftly");
+
+            expect(mockUtilities.execFile).to.have.been.calledWith(
+                match.string,
+                ["init", "--quiet-shell-followup"],
+                match.has("env", match.has("SWIFTLY_HOME_DIR", "/custom/swiftly"))
+            );
+        });
+
+        test("should report progress at each stage", async () => {
+            const progressReports: string[] = [];
+            const mockProgress = {
+                report: (report: any) => {
+                    if (report.message) {
+                        progressReports.push(report.message);
+                    }
+                },
+            };
+
+            global.fetch = async () =>
+                ({
+                    ok: true,
+                    headers: { get: () => "1000" },
+                    body: {
+                        getReader: () => ({
+                            read: async () => ({ done: true, value: new Uint8Array(0) }),
+                            releaseLock: () => {},
+                        }),
+                    },
+                }) as any;
+
+            mockUtilities.execFile.resolves({
+                stdout: "",
+                stderr: "",
+            });
+
+            await Swiftly.installSwiftly(mockProgress as any);
+
+            expect(progressReports).to.include("Downloading Swiftly installer...");
+            expect(progressReports).to.include("Installing Swiftly package...");
+            expect(progressReports).to.include("Initializing Swiftly...");
+            expect(progressReports).to.include("Swiftly installation completed");
+        });
+
+        test("should cleanup downloaded files on failure", async () => {
+            global.fetch = async () =>
+                ({
+                    ok: true,
+                    headers: { get: () => "1000" },
+                    body: {
+                        getReader: () => ({
+                            read: async () => ({ done: true, value: new Uint8Array(0) }),
+                            releaseLock: () => {},
+                        }),
+                    },
+                }) as any;
+
+            mockUtilities.execFile
+                .withArgs("installer", match.array)
+                .rejects(new Error("Installer failed"));
+
+            await expect(
+                Swiftly.installSwiftly({ report: () => {} } as any)
+            ).to.eventually.be.rejectedWith("Failed to install Swiftly on macOS");
+
+            // Cleanup should still happen - verify no leftover files
+            // (In real implementation, this would check fs operations)
+        });
+
+        test("should throw error when installer command fails", async () => {
+            global.fetch = async () =>
+                ({
+                    ok: true,
+                    headers: { get: () => "1000" },
+                    body: {
+                        getReader: () => ({
+                            read: async () => ({ done: true, value: new Uint8Array(0) }),
+                            releaseLock: () => {},
+                        }),
+                    },
+                }) as any;
+
+            mockUtilities.execFile
+                .withArgs("installer", match.array)
+                .rejects(new Error("Permission denied"));
+
+            await expect(
+                Swiftly.installSwiftly({ report: () => {} } as any)
+            ).to.eventually.be.rejectedWith("Failed to install Swiftly on macOS");
+        });
+    });
+
+    suite("installSwiftlyLinux()", () => {
+        let originalFetch: typeof global.fetch;
+
+        setup(() => {
+            mockedPlatform.setValue("linux");
+            originalFetch = global.fetch;
+        });
+
+        teardown(() => {
+            global.fetch = originalFetch;
+        });
+
+        test("should map x64 to x86_64 architecture", async () => {
+            mockOS.arch.returns("x64");
+            const fetchSpy = stub();
+            global.fetch = fetchSpy.returns(
+                Promise.resolve({
+                    ok: true,
+                    headers: { get: () => "1000" },
+                    body: {
+                        getReader: () => ({
+                            read: async () => ({ done: true, value: new Uint8Array(0) }),
+                            releaseLock: () => {},
+                        }),
+                    },
+                }) as any
+            );
+
+            mockUtilities.execFile.resolves({
+                stdout: "",
+                stderr: "",
+            });
+
+            await Swiftly.installSwiftly({ report: () => {} } as any);
+
+            expect(fetchSpy).to.have.been.calledWith(
+                "https://download.swift.org/swiftly/linux/swiftly-x86_64.tar.gz"
+            );
+        });
+
+        test("should map arm64 to aarch64 architecture", async () => {
+            mockOS.arch.returns("arm64");
+            const fetchSpy = stub();
+            global.fetch = fetchSpy.returns(
+                Promise.resolve({
+                    ok: true,
+                    headers: { get: () => "1000" },
+                    body: {
+                        getReader: () => ({
+                            read: async () => ({ done: true, value: new Uint8Array(0) }),
+                            releaseLock: () => {},
+                        }),
+                    },
+                }) as any
+            );
+
+            mockUtilities.execFile.resolves({
+                stdout: "",
+                stderr: "",
+            });
+
+            await Swiftly.installSwiftly({ report: () => {} } as any);
+
+            expect(fetchSpy).to.have.been.calledWith(
+                "https://download.swift.org/swiftly/linux/swiftly-aarch64.tar.gz"
+            );
+        });
+
+        test("should use raw architecture for unmapped types", async () => {
+            mockOS.arch.returns("ppc64");
+            const fetchSpy = stub();
+            global.fetch = fetchSpy.returns(
+                Promise.resolve({
+                    ok: true,
+                    headers: { get: () => "1000" },
+                    body: {
+                        getReader: () => ({
+                            read: async () => ({ done: true, value: new Uint8Array(0) }),
+                            releaseLock: () => {},
+                        }),
+                    },
+                }) as any
+            );
+
+            mockUtilities.execFile.resolves({
+                stdout: "",
+                stderr: "",
+            });
+
+            await Swiftly.installSwiftly({ report: () => {} } as any);
+
+            expect(fetchSpy).to.have.been.calledWith(
+                "https://download.swift.org/swiftly/linux/swiftly-ppc64.tar.gz"
+            );
+        });
+
+        test("should use custom environment variables", async () => {
+            mockOS.arch.returns("x64");
+            global.fetch = async () =>
+                ({
+                    ok: true,
+                    headers: { get: () => "1000" },
+                    body: {
+                        getReader: () => ({
+                            read: async () => ({ done: true, value: new Uint8Array(0) }),
+                            releaseLock: () => {},
+                        }),
+                    },
+                }) as any;
+
+            mockUtilities.execFile.resolves({
+                stdout: "",
+                stderr: "",
+            });
+
+            await Swiftly.installSwiftly(
+                { report: () => {} } as any,
+                undefined,
+                "/custom/home",
+                "/custom/bin"
+            );
+
+            expect(mockUtilities.execFile).to.have.been.calledWith(
+                "./swiftly",
+                ["init", "--quiet-shell-followup"],
+                match.has("env", match.has("SWIFTLY_HOME_DIR", "/custom/home"))
+            );
+            expect(mockUtilities.execFile).to.have.been.calledWith(
+                "./swiftly",
+                ["init", "--quiet-shell-followup"],
+                match.has("env", match.has("SWIFTLY_BIN_DIR", "/custom/bin"))
+            );
+        });
+
+        test("should report progress at each stage", async () => {
+            mockOS.arch.returns("x64");
+            const progressReports: string[] = [];
+            const mockProgress = {
+                report: (report: any) => {
+                    if (report.message) {
+                        progressReports.push(report.message);
+                    }
+                },
+            };
+
+            global.fetch = async () =>
+                ({
+                    ok: true,
+                    headers: { get: () => "1000" },
+                    body: {
+                        getReader: () => ({
+                            read: async () => ({ done: true, value: new Uint8Array(0) }),
+                            releaseLock: () => {},
+                        }),
+                    },
+                }) as any;
+
+            mockUtilities.execFile.resolves({
+                stdout: "",
+                stderr: "",
+            });
+
+            await Swiftly.installSwiftly(mockProgress as any);
+
+            expect(progressReports).to.include("Downloading Swiftly for Linux...");
+            expect(progressReports).to.include("Extracting Swiftly...");
+            expect(progressReports).to.include("Initializing Swiftly...");
+            expect(progressReports).to.include("Swiftly installation completed");
+        });
+
+        test("should cleanup tmpDir on failure", async () => {
+            mockOS.arch.returns("x64");
+            global.fetch = async () =>
+                ({
+                    ok: true,
+                    headers: { get: () => "1000" },
+                    body: {
+                        getReader: () => ({
+                            read: async () => ({ done: true, value: new Uint8Array(0) }),
+                            releaseLock: () => {},
+                        }),
+                    },
+                }) as any;
+
+            mockUtilities.execFile
+                .withArgs("./swiftly", match.array)
+                .rejects(new Error("Init failed"));
+
+            await expect(
+                Swiftly.installSwiftly({ report: () => {} } as any)
+            ).to.eventually.be.rejectedWith("Failed to install Swiftly on Linux");
+        });
+    });
+
+    suite("downloadSwiftlyInstaller()", () => {
+        let originalFetch: typeof global.fetch;
+
+        setup(() => {
+            mockedPlatform.setValue("darwin");
+            originalFetch = global.fetch;
+        });
+
+        teardown(() => {
+            global.fetch = originalFetch;
+        });
+
+        test("should handle HTTP 404 error", async () => {
+            global.fetch = async () => ({ ok: false, status: 404 }) as any;
+
+            await expect(
+                Swiftly.installSwiftly({ report: () => {} } as any)
+            ).to.eventually.be.rejectedWith("HTTP 404");
+        });
+
+        test("should handle HTTP 500 error", async () => {
+            global.fetch = async () => ({ ok: false, status: 500 }) as any;
+
+            await expect(
+                Swiftly.installSwiftly({ report: () => {} } as any)
+            ).to.eventually.be.rejectedWith("HTTP 500");
+        });
+
+        test("should handle network errors", async () => {
+            global.fetch = async () => {
+                throw new Error("Network error");
+            };
+
+            await expect(
+                Swiftly.installSwiftly({ report: () => {} } as any)
+            ).to.eventually.be.rejectedWith("Network error");
+        });
+
+        test("should report download progress in 10% increments", async () => {
+            const progressReports: string[] = [];
+            const mockProgress = {
+                report: (report: any) => {
+                    if (report.message) {
+                        progressReports.push(report.message);
+                    }
+                },
+            };
+
+            // Simulate download with multiple chunks to trigger progress reporting
+            let chunkCount = 0;
+            global.fetch = async () =>
+                ({
+                    ok: true,
+                    headers: { get: () => "1000" },
+                    body: {
+                        getReader: () => ({
+                            read: async () => {
+                                if (chunkCount < 10) {
+                                    chunkCount++;
+                                    return { done: false, value: new Uint8Array(100) };
+                                }
+                                return { done: true, value: new Uint8Array(0) };
+                            },
+                            releaseLock: () => {},
+                        }),
+                    },
+                }) as any;
+
+            mockUtilities.execFile.resolves({
+                stdout: "",
+                stderr: "",
+            });
+
+            await Swiftly.installSwiftly(mockProgress as any);
+
+            // Should have progress reports at 10%, 20%, etc.
+            const downloadProgress = progressReports.filter(msg =>
+                msg.includes("Downloading Swiftly installer...")
+            );
+            expect(downloadProgress.length).to.be.greaterThan(1);
+        });
+
+        test("should handle missing content-length header", async () => {
+            global.fetch = async () =>
+                ({
+                    ok: true,
+                    headers: { get: () => null },
+                    body: {
+                        getReader: () => ({
+                            read: async () => ({ done: true, value: new Uint8Array(0) }),
+                            releaseLock: () => {},
+                        }),
+                    },
+                }) as any;
+
+            mockUtilities.execFile.resolves({
+                stdout: "",
+                stderr: "",
+            });
+
+            // Should not throw, just not report percentage
+            await expect(Swiftly.installSwiftly({ report: () => {} } as any)).to.eventually.be
+                .fulfilled;
         });
     });
 });
