@@ -550,6 +550,14 @@ suite("LanguageClientManager Suite", () => {
                 {
                     range: new vscode.Range(0, 0, 0, 0),
                     command: {
+                        title: 'Play "bar"',
+                        command: "swift.play",
+                    },
+                    isResolved: true,
+                },
+                {
+                    range: new vscode.Range(0, 0, 0, 0),
+                    command: {
                         title: "Run",
                         command: "some.other.command",
                     },
@@ -585,6 +593,14 @@ suite("LanguageClientManager Suite", () => {
                 command: {
                     title: "$(debug)\u00A0Debug",
                     command: "swift.debug",
+                },
+                isResolved: true,
+            },
+            {
+                range: new vscode.Range(0, 0, 0, 0),
+                command: {
+                    title: '$(play)\u00A0Play "bar"',
+                    command: "swift.play",
                 },
                 isResolved: true,
             },
