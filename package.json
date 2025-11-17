@@ -1423,11 +1423,6 @@
           "command": "swift.debugSnippet",
           "group": "1_file@5",
           "when": "swift.fileIsSnippet"
-        },
-        {
-          "command": "swift.cleanBuild",
-          "group": "2_pkg@1",
-          "when": "swift.hasPackage"
         }
       ],
       "view/title": [
