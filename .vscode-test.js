@@ -45,7 +45,6 @@ const launchArgs = [
     "--disable-gpu-sandbox",
     "--disable-chromium-sandbox",
     "--disable-extension=vscode.git",
-    "--no-xshm",
 ];
 if (dataDir) {
     launchArgs.push("--user-data-dir", dataDir);
