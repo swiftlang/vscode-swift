@@ -79,7 +79,7 @@ async function selectToolchainFolder() {
  * @returns true if the user made a selection (and potentially updated toolchain settings), false if they dismissed the dialog
  */
 export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> {
-    let selected: "Remove From Settings" | "Select Toolchain" | undefined;
+    let selected: "Remove From Settings" | "Select Toolchain" | "Open Documentation" | undefined;
     const folderName = folder ? `${FolderContext.uriName(folder)}: ` : "";
     if (configuration.path) {
         selected = await vscode.window.showErrorMessage(
@@ -90,6 +90,7 @@ export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> 
     } else {
         selected = await vscode.window.showErrorMessage(
             `${folderName}Unable to automatically discover your Swift toolchain. Either install a toolchain from Swift.org or provide the path to an existing toolchain.`,
+            "Open Documentation",
             "Select Toolchain"
         );
     }
@@ -100,6 +101,13 @@ export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> 
     } else if (selected === "Select Toolchain") {
         await selectToolchain();
         return true;
+    } else if (selected === "Open Documentation") {
+        void vscode.env.openExternal(
+            vscode.Uri.parse(
+                "https://docs.swift.org/vscode/documentation/userdocs/supported-toolchains"
+            )
+        );
+        return false;
     }
     return false;
 }
