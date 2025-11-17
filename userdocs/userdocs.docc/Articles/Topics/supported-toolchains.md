@@ -22,6 +22,10 @@ Debugging with `lldb-dap`  | 6.0
 
 The Swift extension automatically detects installations of the Swift toolchain in your environment. It looks for a `swift` binary available in `PATH` and, if one cannot be found, prompts you to [install a toolchain from Swift.org](https://www.swift.org/install).
 
+<div class="warning" markdown="1">
+If you install a toolchain or Swiftly while VS Code is open, you likely will need to fully quit VS Code and then reopen it. This makes sure the extension host gets the updated PATH so that extension can find the toolchain.
+</div>
+
 If you have multiple Swift toolchains installed on your system, use the command `Swift: Select Toolchain...` to tell the extension which toolchain to use. The command shows you a list of all the toolchains that VS Code found on your system and lets you switch between them.
 
 @Video(
