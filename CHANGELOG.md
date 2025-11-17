@@ -17,6 +17,7 @@
 ### Fixed 
 
 - Fixed an issue where the activation of the extension was held up while waiting on the debug configuration to update ([#1914](https://github.com/swiftlang/vscode-swift/pull/1914))
+- Fixed an issue where `lldb-dap` could not be found in Command Line Tools toolchains ([#1936](https://github.com/swiftlang/vscode-swift/pull/1936))
 
 ## 2.12.0 - 2025-10-29
 
