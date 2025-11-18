@@ -7,6 +7,11 @@ on:
   schedule:
     - cron: "0 0 * * *"
   workflow_dispatch:
+    inputs:
+      patchRelease:
+        description: 'Make a patch release'
+        required: false
+        type: boolean
 
 jobs:
   package:
@@ -27,7 +32,12 @@ jobs:
           . .github/workflows/scripts/setup-linux.sh
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
           npm ci
-          npm run package
+          if [ "${{github.event.inputs.patchRelease}}" = "true" ]; then
+            echo "Making patch release\n"
+            npm run patch-package
+          else
+            npm run package
+          fi
           npm run preview-package
           for file in *.vsix; do
             name="$(basename "$file" .vsix)-${{github.run_number}}.vsix"

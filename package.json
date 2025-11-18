@@ -2048,6 +2048,7 @@
     "package": "tsx ./scripts/package.ts",
     "dev-package": "tsx ./scripts/dev_package.ts",
     "preview-package": "tsx ./scripts/preview_package.ts",
+    "patch-package": "tsx ./scripts/patch_package.ts",
     "tag": "./scripts/tag_release.sh $npm_package_version",
     "contributors": "./scripts/generate_contributors_list.sh",
     "prepare": "husky"
