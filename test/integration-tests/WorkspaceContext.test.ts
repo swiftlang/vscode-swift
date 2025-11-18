@@ -67,6 +67,17 @@ tag("medium").suite("WorkspaceContext Test Suite", () => {
                     recordedFolders.push(changedFolderRecord);
                 });
 
+                // https://github.com/swiftlang/vscode-swift/issues/1944
+                // make sure get existing folder
+                let addedCount = recordedFolders.filter(
+                    ({ operation }) => operation === FolderOperation.add
+                ).length;
+                assert.strictEqual(
+                    addedCount,
+                    1,
+                    `Expected only one add folder operation, instead got folders: ${recordedFolders.map(folder => folder.folder?.name)}`
+                );
+
                 const workspaceFolder = getRootWorkspaceFolder();
 
                 assert.ok(workspaceFolder, "No workspace folders found in workspace");
@@ -79,13 +90,13 @@ tag("medium").suite("WorkspaceContext Test Suite", () => {
                 const foldersNames = await Promise.all(foldersNamePromises);
                 assertContains(foldersNames, "package2");
 
-                const addedCount = recordedFolders.filter(
+                addedCount = recordedFolders.filter(
                     ({ operation }) => operation === FolderOperation.add
                 ).length;
                 assert.strictEqual(
                     addedCount,
-                    1,
-                    `Expected only one add folder operation, instead got folders: ${recordedFolders.map(folder => folder.folder?.name)}`
+                    2,
+                    `Expected two add folder operation, instead got folders: ${recordedFolders.map(folder => folder.folder?.name)}`
                 );
             } finally {
                 observer?.dispose();

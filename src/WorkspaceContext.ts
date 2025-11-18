@@ -380,7 +380,14 @@ export class WorkspaceContext implements vscode.Disposable {
      */
     async fireEvent(folder: FolderContext | null, operation: FolderOperation) {
         for (const observer of this.observers) {
-            await observer({ folder, operation, workspace: this });
+            try {
+                await observer({ folder, operation, workspace: this });
+            } catch (error) {
+                // Make sure one observer does not stop all others from being called
+                this.logger.error(
+                    `Folder operation "${operation}" event observer failed for ${folder?.folder.fsPath}: ${error}`
+                );
+            }
         }
     }
 
@@ -525,6 +532,20 @@ export class WorkspaceContext implements vscode.Disposable {
 
     onDidChangeFolders(listener: (event: FolderEvent) => unknown): vscode.Disposable {
         this.observers.add(listener);
+
+        // https://github.com/swiftlang/vscode-swift/issues/1944
+        // make sure no FolderOperation are missed by fast activation
+        for (const folder of this.folders) {
+            listener({ folder, operation: FolderOperation.add, workspace: this });
+        }
+        if (this.currentFolder) {
+            listener({
+                folder: this.currentFolder,
+                operation: FolderOperation.focus,
+                workspace: this,
+            });
+        }
+
         return { dispose: () => this.observers.delete(listener) };
     }
 
