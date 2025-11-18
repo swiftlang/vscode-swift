@@ -5,6 +5,7 @@
 ### Fixed
 
 - Suggest "Open Documentation" when toolchain not found ([#1939](https://github.com/swiftlang/vscode-swift/pull/1939))
+- Fix colorization of standard swift-testing test runs ([#1933](https://github.com/swiftlang/vscode-swift/pull/1933))
 
 ## 2.14.0 - 2025-11-11
 
