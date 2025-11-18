@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
 import * as mockFS from "mock-fs";
-import * as path from "path";
 import * as sinon from "sinon";
 
 import * as lldb from "@src/debugger/lldb";
@@ -72,7 +71,7 @@ suite("debugger.lldb Tests", () => {
                 });
 
                 const result = await lldb.getLLDBLibPath(instance(mockToolchain));
-                expect(result.success).to.equal(path.resolve("/toolchain/Libraries/liblldb.dylib"));
+                expect(result.success).to.be.a.path("/toolchain/Libraries/liblldb.dylib");
                 expect(result.failure).to.be.undefined;
             });
 
@@ -91,7 +90,7 @@ suite("debugger.lldb Tests", () => {
                 });
 
                 const result = await lldb.getLLDBLibPath(instance(mockToolchain));
-                expect(result.success).to.equal(path.resolve("/toolchain/liblldb.dylib"));
+                expect(result.success).to.be.a.path("/toolchain/liblldb.dylib");
                 expect(result.failure).to.be.undefined;
             });
 
@@ -107,7 +106,7 @@ suite("debugger.lldb Tests", () => {
                 execFileStub.withArgs("/toolchain/bin/lldb").rejects(Error("Something went wrong"));
 
                 const result = await lldb.getLLDBLibPath(instance(mockToolchain));
-                expect(result.success).to.equal(path.resolve("/toolchain/liblldb.dylib"));
+                expect(result.success).to.be.a.path("/toolchain/liblldb.dylib");
                 expect(result.failure).to.be.undefined;
             });
         });
@@ -134,7 +133,7 @@ suite("debugger.lldb Tests", () => {
                 });
 
                 const result = await lldb.getLLDBLibPath(instance(mockToolchain));
-                expect(result.success).to.equal(path.resolve("/toolchain/Libraries/liblldb.so"));
+                expect(result.success).to.be.a.path("/toolchain/Libraries/liblldb.so");
                 expect(result.failure).to.be.undefined;
             });
 
@@ -153,7 +152,7 @@ suite("debugger.lldb Tests", () => {
                 });
 
                 const result = await lldb.getLLDBLibPath(instance(mockToolchain));
-                expect(result.success).to.equal(path.resolve("/toolchain/liblldb.so"));
+                expect(result.success).to.be.a.path("/toolchain/liblldb.so");
                 expect(result.failure).to.be.undefined;
             });
 
@@ -169,7 +168,7 @@ suite("debugger.lldb Tests", () => {
                 execFileStub.withArgs("/toolchain/bin/lldb").rejects(Error("Something went wrong"));
 
                 const result = await lldb.getLLDBLibPath(instance(mockToolchain));
-                expect(result.success).to.equal(path.resolve("/toolchain/liblldb.so"));
+                expect(result.success).to.be.a.path("/toolchain/liblldb.so");
                 expect(result.failure).to.be.undefined;
             });
         });
@@ -196,7 +195,7 @@ suite("debugger.lldb Tests", () => {
                 });
 
                 const result = await lldb.getLLDBLibPath(instance(mockToolchain));
-                expect(result.success).to.equal(path.resolve("/toolchain/Libraries/liblldb.dll"));
+                expect(result.success).to.be.a.path("/toolchain/Libraries/liblldb.dll");
                 expect(result.failure).to.be.undefined;
             });
 
@@ -215,7 +214,7 @@ suite("debugger.lldb Tests", () => {
                 });
 
                 const result = await lldb.getLLDBLibPath(instance(mockToolchain));
-                expect(result.success).to.equal(path.resolve("/toolchain/liblldb.dll"));
+                expect(result.success).to.be.a.path("/toolchain/liblldb.dll");
                 expect(result.failure).to.be.undefined;
             });
 

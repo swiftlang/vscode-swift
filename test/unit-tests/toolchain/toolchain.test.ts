@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
 import * as mockFS from "mock-fs";
-import * as path from "path";
 
 import { SwiftToolchain } from "@src/toolchain/toolchain";
 import * as utilities from "@src/utilities/utilities";
@@ -91,10 +90,8 @@ suite("SwiftToolchain Unit Test Suite", () => {
                         "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr",
                 });
 
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
-                    path.normalize(
-                        "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/lldb-dap"
-                    )
+                expect(await sut.getLLDBDebugAdapter()).to.be.a.path(
+                    "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/lldb-dap"
                 );
             });
 
@@ -141,7 +138,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                         "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr",
                 });
 
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
+                expect(await sut.getLLDBDebugAdapter()).to.be.a.path(
                     "/Applications/Xcode.app/Contents/Developer/usr/bin/lldb-dap"
                 );
             });
@@ -160,7 +157,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                     toolchainPath: "/Library/Developer/CommandLineTools/usr",
                 });
 
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
+                expect(await sut.getLLDBDebugAdapter()).to.be.a.path(
                     "/Library/Developer/CommandLineTools/usr/bin/lldb-dap"
                 );
             });
@@ -185,8 +182,8 @@ suite("SwiftToolchain Unit Test Suite", () => {
                     toolchainPath: "/toolchains/swift-6.0.0/usr",
                 });
 
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
-                    path.normalize("/toolchains/swift-6.0.0/usr/bin/lldb-dap")
+                expect(await sut.getLLDBDebugAdapter()).to.be.a.path(
+                    "/toolchains/swift-6.0.0/usr/bin/lldb-dap"
                 );
             });
 
@@ -224,8 +221,8 @@ suite("SwiftToolchain Unit Test Suite", () => {
                     toolchainPath: "/toolchains/swift-6.0.0/usr",
                 });
 
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
-                    path.normalize("/toolchains/swift-6.0.0/usr/bin/lldb-dap.exe")
+                expect(await sut.getLLDBDebugAdapter()).to.be.a.path(
+                    "/toolchains/swift-6.0.0/usr/bin/lldb-dap.exe"
                 );
             });
 
