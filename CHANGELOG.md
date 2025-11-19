@@ -6,6 +6,7 @@
 
 - Suggest "Open Documentation" when toolchain not found ([#1939](https://github.com/swiftlang/vscode-swift/pull/1939))
 - Make sure all folder operation listeners get past folder add events ([#1945](https://github.com/swiftlang/vscode-swift/pull/1945))
+- Fixed an issue where `lldb-dap` could not be found in Command Line Tools toolchains ([#1936](https://github.com/swiftlang/vscode-swift/pull/1936))
 
 ## 2.14.0 - 2025-11-11
 
@@ -17,7 +18,6 @@
 ### Fixed 
 
 - Fixed an issue where the activation of the extension was held up while waiting on the debug configuration to update ([#1914](https://github.com/swiftlang/vscode-swift/pull/1914))
-- Fixed an issue where `lldb-dap` could not be found in Command Line Tools toolchains ([#1936](https://github.com/swiftlang/vscode-swift/pull/1936))
 
 ## 2.12.0 - 2025-10-29
 

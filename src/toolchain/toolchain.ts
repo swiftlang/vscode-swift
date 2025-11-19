@@ -101,18 +101,20 @@ export function getDarwinTargetTriple(target: DarwinCompatibleTarget): string | 
     }
 }
 
+/**
+ * Different entities which are used to manage toolchain installations. Possible values are:
+ *  - `xcrun`: An Xcode/CommandLineTools toolchain controlled via the `xcrun` and `xcode-select` utilities on macOS.
+ *  - `swiftly`: A toolchain managed by `swiftly`.
+ *  - `swiftenv`: A toolchain managed by `swiftenv`.
+ *  - `unknown`: This toolchain was installed via a method unknown to the extension.
+ */
+export type ToolchainManager = "xcrun" | "swiftly" | "swiftenv" | "unknown";
+
 export class SwiftToolchain {
     public swiftVersionString: string;
 
     constructor(
-        /**
-         * Which entity manages this toolchain. Possible managers are:
-         *  - `xcrun`: An Xcode/CommandLineTools toolchain controlled via the `xcrun` and `xcode-select` utilities on macOS.
-         *  - `swiftly`: A toolchain managed by `swiftly`.
-         *  - `swiftenv`: A toolchain managed by `swiftenv`.
-         *  - `unknown`: This toolchain was installed via a method unknown to the extension.
-         */
-        public manager: "xcrun" | "swiftly" | "swiftenv" | "unknown",
+        public manager: ToolchainManager,
         public swiftFolderPath: string, // folder swift executable in $PATH was found in
         public toolchainPath: string, // toolchain folder. One folder up from swift bin folder. This is to support toolchains without usr folder
         private targetInfo: SwiftTargetInfo,
@@ -538,7 +540,7 @@ export class SwiftToolchain {
         if (!(await fileExists(binary))) {
             return false;
         }
-        const objdumpOutput = await execFile("objdump", ["-h", binary]);
+        const objdumpOutput = await execFile("/usr/bin/objdump", ["-h", binary]);
         return objdumpOutput.stdout.includes("__xcrun_shim");
     }
 
@@ -552,7 +554,7 @@ export class SwiftToolchain {
         logger?: SwiftLogger
     ): Promise<{
         toolchainPath: string;
-        toolchainManager: "xcrun" | "swiftly" | "swiftenv" | "unknown";
+        toolchainManager: ToolchainManager;
     }> {
         try {
             // swift may be a symbolic link
