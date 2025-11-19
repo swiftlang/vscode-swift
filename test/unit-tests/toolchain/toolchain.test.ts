@@ -35,23 +35,15 @@ suite("SwiftToolchain Unit Test Suite", () => {
         mockFS.restore();
     });
 
-    suite("create()", () => {
-        suite("macOS", () => {
-            setup(() => {
-                mockedPlatform.setValue("darwin");
-            });
-        });
-    });
-
     suite("getLLDBDebugAdapter()", () => {
         function createSwiftToolchain(options: {
             manager?: "xcrun" | "swiftly" | "swiftenv" | "unknown";
-            swiftBinaryPath: string;
+            swiftFolderPath: string;
             toolchainPath: string;
         }): SwiftToolchain {
             return new SwiftToolchain(
                 options.manager ?? "unknown",
-                options.swiftBinaryPath,
+                options.swiftFolderPath,
                 options.toolchainPath,
                 /* targetInfo */ {
                     compilerVersion: "6.0.0",
@@ -84,7 +76,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 });
                 const sut = createSwiftToolchain({
                     manager: "unknown",
-                    swiftBinaryPath:
+                    swiftFolderPath:
                         "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/swift",
                     toolchainPath:
                         "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr",
@@ -100,7 +92,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                     "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin": {},
                 });
                 const sut = createSwiftToolchain({
-                    swiftBinaryPath:
+                    swiftFolderPath:
                         "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin",
                     toolchainPath:
                         "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr",
@@ -133,7 +125,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 });
                 const sut = createSwiftToolchain({
                     manager: "xcrun",
-                    swiftBinaryPath: "/usr/bin/swift",
+                    swiftFolderPath: "/usr/bin/swift",
                     toolchainPath:
                         "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr",
                 });
@@ -153,7 +145,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 });
                 const sut = createSwiftToolchain({
                     manager: "xcrun",
-                    swiftBinaryPath: "/usr/bin/swift",
+                    swiftFolderPath: "/usr/bin/swift",
                     toolchainPath: "/Library/Developer/CommandLineTools/usr",
                 });
 
@@ -178,7 +170,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                     },
                 });
                 const sut = createSwiftToolchain({
-                    swiftBinaryPath: "/toolchains/swift-6.0.0/usr/bin",
+                    swiftFolderPath: "/toolchains/swift-6.0.0/usr/bin",
                     toolchainPath: "/toolchains/swift-6.0.0/usr",
                 });
 
@@ -192,7 +184,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                     "/toolchains/swift-6.0.0/usr/bin": {},
                 });
                 const sut = createSwiftToolchain({
-                    swiftBinaryPath: "/toolchains/swift-6.0.0/usr/bin",
+                    swiftFolderPath: "/toolchains/swift-6.0.0/usr/bin",
                     toolchainPath: "/toolchains/swift-6.0.0/usr",
                 });
 
@@ -217,7 +209,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                     },
                 });
                 const sut = createSwiftToolchain({
-                    swiftBinaryPath: "/toolchains/swift-6.0.0/usr/bin",
+                    swiftFolderPath: "/toolchains/swift-6.0.0/usr/bin",
                     toolchainPath: "/toolchains/swift-6.0.0/usr",
                 });
 
@@ -231,7 +223,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                     "/toolchains/swift-6.0.0/usr/bin": {},
                 });
                 const sut = createSwiftToolchain({
-                    swiftBinaryPath: "/toolchains/swift-6.0.0/usr/bin",
+                    swiftFolderPath: "/toolchains/swift-6.0.0/usr/bin",
                     toolchainPath: "/toolchains/swift-6.0.0/usr",
                 });
 
