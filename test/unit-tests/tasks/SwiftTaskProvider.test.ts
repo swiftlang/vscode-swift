@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import * as assert from "assert";
+import { expect } from "chai";
 import * as os from "os";
 import { match } from "sinon";
 import * as vscode from "vscode";
@@ -379,7 +380,9 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                     new vscode.CancellationTokenSource().token
                 );
                 const swiftExecution = resolvedTask.execution as SwiftExecution;
-                assert.equal(swiftExecution.options.cwd, `${workspaceFolder.uri.fsPath}/macos`);
+                expect(swiftExecution.options.cwd).to.equalPath(
+                    `${workspaceFolder.uri.fsPath}/macos`
+                );
             });
 
             test("includes linux cwd", () => {
@@ -403,7 +406,9 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                     new vscode.CancellationTokenSource().token
                 );
                 const swiftExecution = resolvedTask.execution as SwiftExecution;
-                assert.equal(swiftExecution.options.cwd, `${workspaceFolder.uri.fsPath}/linux`);
+                expect(swiftExecution.options.cwd).to.equalPath(
+                    `${workspaceFolder.uri.fsPath}/linux`
+                );
             });
 
             test("includes windows cwd", () => {
@@ -427,7 +432,9 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                     new vscode.CancellationTokenSource().token
                 );
                 const swiftExecution = resolvedTask.execution as SwiftExecution;
-                assert.equal(swiftExecution.options.cwd, `${workspaceFolder.uri.fsPath}/windows`);
+                expect(swiftExecution.options.cwd).to.equalPath(
+                    `${workspaceFolder.uri.fsPath}/windows`
+                );
             });
 
             test("fallback default cwd", () => {
@@ -451,7 +458,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                     new vscode.CancellationTokenSource().token
                 );
                 const swiftExecution = resolvedTask.execution as SwiftExecution;
-                assert.equal(swiftExecution.options.cwd, workspaceFolder.uri.fsPath);
+                expect(swiftExecution.options.cwd).to.equalPath(workspaceFolder.uri.fsPath);
             });
         });
 

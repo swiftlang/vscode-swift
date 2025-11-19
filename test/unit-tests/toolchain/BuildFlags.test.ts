@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import * as path from "path";
 import * as sinon from "sinon";
 
 import configuration from "@src/configuration";
@@ -209,41 +208,35 @@ suite("BuildFlags Test Suite", () => {
 
             expect(
                 BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
-            ).to.equal(path.normalize(".build"));
+            ).to.equalPath(".build");
 
             expect(
                 BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
-            ).to.equal(path.normalize("/some/full/workspace/test/path/.build"));
+            ).to.equalPath("/some/full/workspace/test/path/.build");
         });
 
         test("absolute configuration provided", () => {
-            buildPathConfig.setValue(path.normalize("/some/other/full/test/path"));
-
-            expect(
-                BuildFlags.buildDirectoryFromWorkspacePath(
-                    path.normalize("/some/full/workspace/test/path"),
-                    false
-                )
-            ).to.equal(path.normalize("/some/other/full/test/path"));
-
-            expect(
-                BuildFlags.buildDirectoryFromWorkspacePath(
-                    path.normalize("/some/full/workspace/test/path"),
-                    true
-                )
-            ).to.equal(path.normalize("/some/other/full/test/path"));
-        });
-
-        test("relative configuration provided", () => {
-            buildPathConfig.setValue(path.normalize("some/relative/test/path"));
+            buildPathConfig.setValue("/some/other/full/test/path");
 
             expect(
                 BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
-            ).to.equal(path.normalize("some/relative/test/path"));
+            ).to.equalPath("/some/other/full/test/path");
 
             expect(
                 BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
-            ).to.equal(path.normalize("/some/full/workspace/test/path/some/relative/test/path"));
+            ).to.equalPath("/some/other/full/test/path");
+        });
+
+        test("relative configuration provided", () => {
+            buildPathConfig.setValue("some/relative/test/path");
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("some/relative/test/path");
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
+            ).to.equalPath("/some/full/workspace/test/path/some/relative/test/path");
         });
     });
 
@@ -554,7 +547,7 @@ suite("BuildFlags Test Suite", () => {
             const result = await buildFlags.getBuildBinaryPath("/test/workspace", "debug", log);
 
             // Should fallback to traditional path
-            expect(result).to.equal(path.normalize("/test/workspace/.build/debug"));
+            expect(result).to.equalPath("/test/workspace/.build/debug");
             expect(log.warn).to.have.been.calledOnce;
         });
 

@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
 import * as mockFS from "mock-fs";
-import * as path from "path";
 import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
@@ -173,10 +172,11 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 target: "executable",
             }
         );
-        expect(launchConfig).to.have.property(
-            "program",
-            path.normalize("/path/to/swift-executable/.build/arm64-apple-macosx/debug/executable")
-        );
+        expect(launchConfig)
+            .to.have.property("program")
+            .that.equalsPath(
+                "/path/to/swift-executable/.build/arm64-apple-macosx/debug/executable"
+            );
     });
 
     suite("CodeLLDB selected in settings", () => {
