@@ -554,7 +554,7 @@ suite("BuildFlags Test Suite", () => {
             const result = await buildFlags.getBuildBinaryPath("/test/workspace", "debug", log);
 
             // Should fallback to traditional path
-            expect(result).to.equal(path.normalize("/test/workspace/.build/debug"));
+            expect(result).to.equalPath("/test/workspace/.build/debug");
             expect(log.warn).to.have.been.calledOnce;
         });
 

@@ -78,7 +78,7 @@ tag("large").suite("SwiftSnippet Test Suite", function () {
 
         expect(succeeded).to.be.true;
         const session = await sessionPromise;
-        expect(vscode.Uri.file(session.configuration.program).fsPath).to.equal(
+        expect(session.configuration.program).to.equalPath(
             realpathSync(
                 testAssetUri(
                     "defaultPackage/.build/debug/hello" +
@@ -118,7 +118,7 @@ tag("large").suite("SwiftSnippet Test Suite", function () {
         expect(succeeded).to.be.true;
 
         const session = await sessionPromise;
-        expect(vscode.Uri.file(session.configuration.program).fsPath).to.equal(
+        expect(session.configuration.program).to.equalPath(
             realpathSync(
                 testAssetUri(
                     "defaultPackage/.build/debug/hello" +
