@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as child_process from "child_process";
 import type * as nodePty from "node-pty";
 import * as vscode from "vscode";
 
@@ -191,108 +190,6 @@ export class SwiftPtyProcess implements SwiftProcess {
     }
 
     dispose() {
-        this.disposables.forEach(d => d.dispose());
-    }
-
-    onDidSpawn: vscode.Event<void> = this.spawnEmitter.event;
-
-    onDidWrite: vscode.Event<string> = this.writeEmitter.event;
-
-    onDidThrowError: vscode.Event<Error> = this.errorEmitter.event;
-
-    onDidClose: vscode.Event<number | void> = this.closeHandler.event;
-}
-
-/**
- * A {@link SwiftProcess} that spawns a child process and does not bind to stdio.
- *
- * Use this for Swift tasks that do not need to accept input, as its lighter weight and
- * less error prone than using a spawned node-pty process.
- *
- * Specifically node-pty on Linux suffers from a long standing issue where the last chunk
- * of output before a program exits is sometimes dropped, especially if that program produces
- * a lot of output immediately before exiting. See https://github.com/microsoft/node-pty/issues/72
- */
-export class ReadOnlySwiftProcess implements SwiftProcess {
-    private readonly spawnEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
-    private readonly writeEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
-    private readonly errorEmitter: vscode.EventEmitter<Error> = new vscode.EventEmitter<Error>();
-    private readonly closeHandler: CloseHandler = new CloseHandler();
-    private disposables: vscode.Disposable[] = [];
-
-    private spawnedProcess: child_process.ChildProcessWithoutNullStreams | undefined;
-
-    constructor(
-        public readonly command: string,
-        public readonly args: string[],
-        private readonly options: vscode.ProcessExecutionOptions = {}
-    ) {
-        this.disposables.push(
-            this.spawnEmitter,
-            this.writeEmitter,
-            this.errorEmitter,
-            this.closeHandler
-        );
-    }
-
-    spawn(): void {
-        try {
-            this.spawnedProcess = child_process.spawn(this.command, this.args, {
-                cwd: this.options.cwd,
-                env: { ...process.env, ...this.options.env },
-            });
-            this.spawnEmitter.fire();
-
-            this.spawnedProcess.stdout.on("data", data => {
-                this.writeEmitter.fire(data.toString());
-                this.closeHandler.reset();
-            });
-
-            this.spawnedProcess.stderr.on("data", data => {
-                this.writeEmitter.fire(data.toString());
-                this.closeHandler.reset();
-            });
-
-            this.spawnedProcess.on("error", error => {
-                this.errorEmitter.fire(new Error(`${error}`));
-                this.closeHandler.handle();
-            });
-
-            this.spawnedProcess.once("exit", code => {
-                this.closeHandler.handle(code ?? undefined);
-            });
-
-            this.disposables.push(
-                this.onDidClose(() => {
-                    this.dispose();
-                })
-            );
-        } catch (error) {
-            this.errorEmitter.fire(new Error(`${error}`));
-            this.closeHandler.handle();
-        }
-    }
-
-    handleInput(_s: string): void {
-        // Do nothing
-    }
-
-    terminate(signal?: NodeJS.Signals): void {
-        if (!this.spawnedProcess) {
-            return;
-        }
-        this.spawnedProcess.kill(signal);
-        this.dispose();
-    }
-
-    setDimensions(_dimensions: vscode.TerminalDimensions): void {
-        // Do nothing
-    }
-
-    dispose(): void {
-        this.spawnedProcess?.stdout.removeAllListeners();
-        this.spawnedProcess?.stderr.removeAllListeners();
-        this.spawnedProcess?.removeAllListeners();
         this.disposables.forEach(d => d.dispose());
     }
 

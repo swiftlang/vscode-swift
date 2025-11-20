@@ -5,6 +5,7 @@
 ### Fixed
 
 - Suggest "Open Documentation" when toolchain not found ([#1939](https://github.com/swiftlang/vscode-swift/pull/1939))
+- Fix colorization of standard swift-testing test runs ([#1933](https://github.com/swiftlang/vscode-swift/pull/1933))
 - Make sure all folder operation listeners get past folder add events ([#1945](https://github.com/swiftlang/vscode-swift/pull/1945))
 
 ## 2.14.0 - 2025-11-11
