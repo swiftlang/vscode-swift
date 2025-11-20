@@ -13,11 +13,12 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
-import { SwiftProcess, SwiftPtyProcess } from "./SwiftProcess";
+import { ReadOnlySwiftProcess, SwiftProcess, SwiftPtyProcess } from "./SwiftProcess";
 import { SwiftPseudoterminal } from "./SwiftPseudoterminal";
 
 export interface SwiftExecutionOptions extends vscode.ProcessExecutionOptions {
     presentation?: vscode.TaskPresentationOptions;
+    readOnlyTerminal?: boolean;
 }
 
 /**
@@ -41,7 +42,9 @@ export class SwiftExecution extends vscode.CustomExecution implements vscode.Dis
         super(async () => {
             const createSwiftProcess = () => {
                 if (!swiftProcess) {
-                    this.swiftProcess = new SwiftPtyProcess(command, args, options);
+                    this.swiftProcess = options.readOnlyTerminal
+                        ? new ReadOnlySwiftProcess(command, args, options)
+                        : new SwiftPtyProcess(command, args, options);
                     this.listen(this.swiftProcess);
                 }
                 return this.swiftProcess!;

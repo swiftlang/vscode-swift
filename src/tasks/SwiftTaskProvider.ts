@@ -291,7 +291,8 @@ export function createSwiftTask(
     name: string,
     config: TaskConfig,
     toolchain: SwiftToolchain,
-    cmdEnv: { [key: string]: string } = {}
+    cmdEnv: { [key: string]: string } = {},
+    options: { readOnlyTerminal: boolean } = { readOnlyTerminal: false }
 ): SwiftTask {
     const swift = toolchain.getToolchainExecutable("swift");
     args = toolchain.buildFlags.withAdditionalFlags(args);
@@ -339,6 +340,7 @@ export function createSwiftTask(
             cwd: fullCwd,
             env: env,
             presentation,
+            readOnlyTerminal: options.readOnlyTerminal,
         })
     );
     // This doesn't include any quotes added by VS Code.
