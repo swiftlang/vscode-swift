@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
 import * as mockFS from "mock-fs";
-import * as path from "path";
 
 import { SwiftToolchain } from "@src/toolchain/toolchain";
 import * as utilities from "@src/utilities/utilities";
@@ -27,10 +26,9 @@ suite("SwiftToolchain Unit Test Suite", () => {
 
     setup(() => {
         mockFS({});
-        mockedUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
-            stdout: "1.0.0\n",
-            stderr: "",
-        });
+        mockedUtilities.execFile.rejects(
+            Error("execFile() was not properly mocked for this test.")
+        );
     });
 
     teardown(() => {
@@ -39,10 +37,12 @@ suite("SwiftToolchain Unit Test Suite", () => {
 
     suite("getLLDBDebugAdapter()", () => {
         function createSwiftToolchain(options: {
+            manager?: "xcrun" | "swiftly" | "swiftenv" | "unknown";
             swiftFolderPath: string;
             toolchainPath: string;
         }): SwiftToolchain {
             return new SwiftToolchain(
+                options.manager ?? "unknown",
                 options.swiftFolderPath,
                 options.toolchainPath,
                 /* targetInfo */ {
@@ -75,15 +75,15 @@ suite("SwiftToolchain Unit Test Suite", () => {
                         }),
                 });
                 const sut = createSwiftToolchain({
+                    manager: "unknown",
                     swiftFolderPath:
-                        "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin",
-                    toolchainPath: "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain",
+                        "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/swift",
+                    toolchainPath:
+                        "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr",
                 });
 
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
-                    path.normalize(
-                        "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/lldb-dap"
-                    )
+                expect(await sut.getLLDBDebugAdapter()).to.be.a.path(
+                    "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/lldb-dap"
                 );
             });
 
@@ -94,11 +94,12 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 const sut = createSwiftToolchain({
                     swiftFolderPath:
                         "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin",
-                    toolchainPath: "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain",
+                    toolchainPath:
+                        "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr",
                 });
 
                 await expect(sut.getLLDBDebugAdapter()).to.eventually.be.rejectedWith(
-                    "Failed to find lldb-dap within Swift toolchain '/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain'"
+                    "Failed to find lldb-dap within Swift toolchain '/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr'"
                 );
             });
 
@@ -118,43 +119,38 @@ suite("SwiftToolchain Unit Test Suite", () => {
                         },
                     },
                 });
-                mockedUtilities.execFile.resolves({
+                mockedUtilities.execFile.withArgs("xcrun", ["--find", "lldb-dap"]).resolves({
                     stdout: "/Applications/Xcode.app/Contents/Developer/usr/bin/lldb-dap",
                     stderr: "",
                 });
                 const sut = createSwiftToolchain({
-                    swiftFolderPath:
-                        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+                    manager: "xcrun",
+                    swiftFolderPath: "/usr/bin/swift",
                     toolchainPath:
-                        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain",
+                        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr",
                 });
 
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
+                expect(await sut.getLLDBDebugAdapter()).to.be.a.path(
                     "/Applications/Xcode.app/Contents/Developer/usr/bin/lldb-dap"
                 );
             });
 
-            test("throws an error if xcrun fails when trying to find lldb-dap within an Xcode toolchain", async () => {
+            test("returns the path to lldb-dap if it exists within a CommandLineTools toolchain", async () => {
                 mockFS({
-                    "/Applications/Xcode.app/Contents/Developer": {
-                        Toolchains: {
-                            "XcodeDefault.xctoolchain": {},
-                        },
-                        usr: {
-                            bin: {},
-                        },
+                    "/usr/bin/swift": mockFS.file({ content: "", mode: 0o770 }),
+                    "/Library/Developer/CommandLineTools/usr/bin": {
+                        swift: mockFS.file({ content: "", mode: 0o770 }),
+                        "lldb-dap": mockFS.file({ content: "", mode: 0o770 }),
                     },
                 });
-                mockedUtilities.execFile.rejects(new Error("Uh oh!"));
                 const sut = createSwiftToolchain({
-                    swiftFolderPath:
-                        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
-                    toolchainPath:
-                        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain",
+                    manager: "xcrun",
+                    swiftFolderPath: "/usr/bin/swift",
+                    toolchainPath: "/Library/Developer/CommandLineTools/usr",
                 });
 
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.be.rejectedWith(
-                    "Failed to find lldb-dap within Xcode Swift toolchain '/Applications/Xcode.app':\nUh oh!"
+                expect(await sut.getLLDBDebugAdapter()).to.be.a.path(
+                    "/Library/Developer/CommandLineTools/usr/bin/lldb-dap"
                 );
             });
         });
@@ -175,11 +171,11 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 });
                 const sut = createSwiftToolchain({
                     swiftFolderPath: "/toolchains/swift-6.0.0/usr/bin",
-                    toolchainPath: "/toolchains/swift-6.0.0",
+                    toolchainPath: "/toolchains/swift-6.0.0/usr",
                 });
 
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
-                    path.normalize("/toolchains/swift-6.0.0/usr/bin/lldb-dap")
+                expect(await sut.getLLDBDebugAdapter()).to.be.a.path(
+                    "/toolchains/swift-6.0.0/usr/bin/lldb-dap"
                 );
             });
 
@@ -189,11 +185,11 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 });
                 const sut = createSwiftToolchain({
                     swiftFolderPath: "/toolchains/swift-6.0.0/usr/bin",
-                    toolchainPath: "/toolchains/swift-6.0.0",
+                    toolchainPath: "/toolchains/swift-6.0.0/usr",
                 });
 
                 await expect(sut.getLLDBDebugAdapter()).to.eventually.be.rejectedWith(
-                    "Failed to find lldb-dap within Swift toolchain '/toolchains/swift-6.0.0'"
+                    "Failed to find lldb-dap within Swift toolchain '/toolchains/swift-6.0.0/usr'"
                 );
             });
         });
@@ -214,11 +210,11 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 });
                 const sut = createSwiftToolchain({
                     swiftFolderPath: "/toolchains/swift-6.0.0/usr/bin",
-                    toolchainPath: "/toolchains/swift-6.0.0",
+                    toolchainPath: "/toolchains/swift-6.0.0/usr",
                 });
 
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
-                    path.normalize("/toolchains/swift-6.0.0/usr/bin/lldb-dap.exe")
+                expect(await sut.getLLDBDebugAdapter()).to.be.a.path(
+                    "/toolchains/swift-6.0.0/usr/bin/lldb-dap.exe"
                 );
             });
 
@@ -228,11 +224,11 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 });
                 const sut = createSwiftToolchain({
                     swiftFolderPath: "/toolchains/swift-6.0.0/usr/bin",
-                    toolchainPath: "/toolchains/swift-6.0.0",
+                    toolchainPath: "/toolchains/swift-6.0.0/usr",
                 });
 
                 await expect(sut.getLLDBDebugAdapter()).to.eventually.be.rejectedWith(
-                    "Failed to find lldb-dap.exe within Swift toolchain '/toolchains/swift-6.0.0'"
+                    "Failed to find lldb-dap.exe within Swift toolchain '/toolchains/swift-6.0.0/usr'"
                 );
             });
         });
