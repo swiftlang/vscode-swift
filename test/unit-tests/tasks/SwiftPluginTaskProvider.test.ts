@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 import * as assert from "assert";
+import { expect } from "chai";
 import * as os from "os";
-import * as path from "path";
 import { match } from "sinon";
 import * as vscode from "vscode";
 
@@ -122,7 +122,7 @@ suite("SwiftPluginTaskProvider Unit Test Suite", () => {
                 new vscode.CancellationTokenSource().token
             );
             const swiftExecution = resolvedTask.execution as SwiftExecution;
-            assert.equal(swiftExecution.options.cwd, `${workspaceFolder.uri.fsPath}/myCWD`);
+            expect(swiftExecution.options.cwd).to.equalPath(`${workspaceFolder.uri.fsPath}/myCWD`);
         });
 
         test("includes scope cwd", async () => {
@@ -141,7 +141,7 @@ suite("SwiftPluginTaskProvider Unit Test Suite", () => {
                 new vscode.CancellationTokenSource().token
             );
             const swiftExecution = resolvedTask.execution as SwiftExecution;
-            assert.equal(swiftExecution.options.cwd, workspaceFolder.uri.fsPath);
+            expect(swiftExecution.options.cwd).to.equalPath(workspaceFolder.uri.fsPath);
         });
 
         test("includes resolved cwd", async () => {
@@ -161,10 +161,7 @@ suite("SwiftPluginTaskProvider Unit Test Suite", () => {
                 new vscode.CancellationTokenSource().token
             );
             const swiftExecution = resolvedTask.execution as SwiftExecution;
-            assert.equal(
-                swiftExecution.options.cwd,
-                path.normalize(`${workspaceFolder.uri.fsPath}/myCWD`)
-            );
+            expect(swiftExecution.options.cwd).to.equalPath(`${workspaceFolder.uri.fsPath}/myCWD`);
         });
 
         test("includes fallback cwd", async () => {
