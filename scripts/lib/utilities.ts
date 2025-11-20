@@ -80,7 +80,7 @@ export async function exec(
     command: string,
     args: string[],
     options: child_process.SpawnOptionsWithoutStdio = {}
-): Promise<void> {
+): Promise<string> {
     let logMessage = "> " + command;
     if (args.length > 0) {
         logMessage += " " + args.join(" ");
@@ -93,7 +93,8 @@ export async function exec(
         command = command + ".cmd";
         options.shell = true;
     }
-    return new Promise<void>((resolve, reject) => {
+    let output = "";
+    return new Promise<string>((resolve, reject) => {
         const childProcess = child_process.spawn(command, args, { stdio: "inherit", ...options });
         childProcess.once("error", reject);
         childProcess.once("close", (code, signal) => {
@@ -102,9 +103,12 @@ export async function exec(
             } else if (code !== 0) {
                 reject(new Error(`Process exited with code ${code}`));
             } else {
-                resolve();
+                resolve(output);
             }
             console.log("");
+        });
+        childProcess.stdout?.on("data", buf => {
+            output += buf.toString("utf-8");
         });
     });
 }
@@ -186,4 +190,14 @@ export async function packageExtension(version: string, options: PackageExtensio
         console.error(`Failed to remove temporary changelog '${changelogPath}'`);
         console.error(error);
     });
+}
+
+export async function releasedVersions(extensionId: string): Promise<string[]> {
+    const output = await exec("npx", ["vsce", "show", extensionId, "--json"], {
+        stdio: "pipe",
+        cwd: getRootDirectory(),
+    });
+
+    const extensionInfo = JSON.parse(output.trim());
+    return extensionInfo.versions.map((v: { version: string }) => v.version);
 }
