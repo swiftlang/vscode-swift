@@ -34,7 +34,7 @@ export class SwiftLoggerFactory {
     }
 
     /**
-     * This is mainly only intended for testing purposes
+     * This is only intended for testing purposes
      */
     async temp(name: string): Promise<SwiftLogger> {
         const folder = await TemporaryFolder.create();

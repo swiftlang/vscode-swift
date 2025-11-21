@@ -23,7 +23,8 @@ suite("lldb contract test suite", () => {
     let workspaceContext: WorkspaceContext;
 
     activateExtensionForTest({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             // This test is failing due to toolchain issues starting with Swift 6.2.1
             // Will re-enable once that is resolved.
             //
