@@ -2,6 +2,8 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+## 2.14.1 - 2025-11-20
+
 ### Fixed
 
 - Suggest "Open Documentation" when toolchain not found ([#1939](https://github.com/swiftlang/vscode-swift/pull/1939))
