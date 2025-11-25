@@ -23,7 +23,7 @@ import configuration, { handleConfigurationChangeEvent } from "./configuration";
 import { ContextKeys, createContextKeys } from "./contextKeys";
 import { registerDebugger } from "./debugger/debugAdapterFactory";
 import { makeDebugConfigurations } from "./debugger/launch";
-import { Api } from "./extension";
+import { InternalApi } from "./extension";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
 import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "./terminal";
@@ -43,7 +43,7 @@ type State = (
     | { type: "failed"; error: Error }
 ) & { activatedBy: Error };
 
-export class SwiftExtensionApi implements Api {
+export class SwiftExtensionApi implements InternalApi {
     private state?: State;
 
     get workspaceContext(): WorkspaceContext | undefined {

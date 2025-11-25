@@ -20,6 +20,7 @@ import { SwiftExtensionApi } from "./SwiftExtensionApi";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { ContextKeys } from "./contextKeys";
 import { SwiftLogger } from "./logging/SwiftLogger";
+import { IS_RUNNING_UNDER_TEST } from "./utilities/utilities";
 
 /**
  * External API as exposed by the extension. Can be queried by other extensions
@@ -64,7 +65,9 @@ export interface Api {
         task: (ctx: WorkspaceContext) => T | Promise<T>,
         token?: vscode.CancellationToken
     ): Promise<T>;
+}
 
+export interface InternalApi extends Api {
     /**
      * Activate the extension.
      *
@@ -89,7 +92,7 @@ export interface Api {
     dispose(): void;
 }
 
-let extensionApi: Api | undefined = undefined;
+let extensionApi: InternalApi | undefined = undefined;
 
 /**
  * Activate the extension. This is the main entry point.
@@ -97,10 +100,44 @@ let extensionApi: Api | undefined = undefined;
 export async function activate(context: vscode.ExtensionContext): Promise<Api> {
     extensionApi = new SwiftExtensionApi(context);
     extensionApi.activate();
-    return extensionApi;
+    // When testing, expose the internal API for testing purposes
+    if (IS_RUNNING_UNDER_TEST) {
+        return extensionApi;
+    }
+    // Otherwise, hide the internal API using a proxy
+    return {
+        get contextKeys() {
+            if (!extensionApi) {
+                throw Error("The Swift extension has been deactivated.");
+            }
+            return extensionApi.contextKeys;
+        },
+
+        get logger() {
+            if (!extensionApi) {
+                throw Error("The Swift extension has been deactivated.");
+            }
+            return extensionApi.logger;
+        },
+
+        get waitForWorkspaceContext() {
+            if (!extensionApi) {
+                throw Error("The Swift extension has been deactivated.");
+            }
+            return extensionApi.waitForWorkspaceContext;
+        },
+
+        get withWorkspaceContext() {
+            if (!extensionApi) {
+                throw Error("The Swift extension has been deactivated.");
+            }
+            return extensionApi.withWorkspaceContext;
+        },
+    } satisfies Api;
 }
 
 export function deactivate(): void {
     extensionApi?.deactivate();
     extensionApi?.dispose();
+    extensionApi = undefined;
 }

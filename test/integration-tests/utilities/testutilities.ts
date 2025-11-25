@@ -21,7 +21,7 @@ import { FolderContext } from "@src/FolderContext";
 import { FolderOperation, WorkspaceContext } from "@src/WorkspaceContext";
 import configuration from "@src/configuration";
 import { getLLDBLibPath } from "@src/debugger/lldb";
-import { Api } from "@src/extension";
+import { InternalApi } from "@src/extension";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { buildAllTaskName, resetBuildAllTaskCache } from "@src/tasks/SwiftTaskProvider";
 import { Extension } from "@src/utilities/extensions";
@@ -103,7 +103,7 @@ function configureLogDumpOnTimeout(timeout: number, logger: ExtensionActivationL
 }
 
 const extensionBootstrapper = (() => {
-    let activatedAPI: Api | undefined = undefined;
+    let activatedAPI: InternalApi | undefined = undefined;
     const testTitle = (currentTest: Mocha.Test) => currentTest.titlePath().join(" → ");
     let activationLogger: ExtensionActivationLogger;
     let logOnError: <T>(prefix: string, work: () => Thenable<T> | T) => Promise<T>;
@@ -111,7 +111,7 @@ const extensionBootstrapper = (() => {
     function testRunnerSetup(
         before: Mocha.HookFunction,
         setup:
-            | ((this: Mocha.Context, api: Api) => Promise<(() => Promise<void>) | void>)
+            | ((this: Mocha.Context, api: InternalApi) => Promise<(() => Promise<void>) | void>)
             | undefined,
         after: Mocha.HookFunction,
         teardown: ((this: Mocha.Context) => Promise<void>) | undefined,
@@ -297,26 +297,26 @@ const extensionBootstrapper = (() => {
 
     return {
         // Activates the extension and adds the defaultPackage to the workspace.
-        // We can only truly call `vscode.Extension<Api>.activate()` once for an entire
+        // We can only truly call `vscode.Extension<InternalApi>.activate()` once for an entire
         // test run, so after it is called once we switch over to calling activate on
         // the returned API object which behaves like the extension is being launched for
         // the first time _as long as everything is disposed of properly in `deactivate()`_.
-        async activateExtension(testAssets?: string[], callSite?: Error): Promise<Api> {
+        async activateExtension(testAssets?: string[], callSite?: Error): Promise<InternalApi> {
             const extensionId = "swiftlang.swift-vscode";
-            const ext = vscode.extensions.getExtension<Api>(extensionId);
+            const ext = vscode.extensions.getExtension<InternalApi>(extensionId);
             if (!ext) {
                 throw new Error(`Unable to find extension "${extensionId}"`);
             }
 
             // We can only _really_ call activate through
-            // `vscode.extensions.getExtension<Api>("swiftlang.swift-vscode")` once.
+            // `vscode.extensions.getExtension<InternalApi>("swiftlang.swift-vscode")` once.
             // Subsequent activations must be done through the returned API object.
             if (!activatedAPI) {
                 activationLogger.info(
                     "Performing the one and only extension activation for this test run."
                 );
                 for (const depId of [Extension.CODELLDB, Extension.LLDBDAP]) {
-                    const dep = vscode.extensions.getExtension<Api>(depId);
+                    const dep = vscode.extensions.getExtension<InternalApi>(depId);
                     if (!dep) {
                         throw new Error(`Unable to find extension "${depId}"`);
                     }
@@ -418,7 +418,10 @@ const extensionBootstrapper = (() => {
         },
 
         activateExtensionForSuite: function (config?: {
-            setup?: (this: Mocha.Context, api: Api) => Promise<(() => Promise<void>) | void>;
+            setup?: (
+                this: Mocha.Context,
+                api: InternalApi
+            ) => Promise<(() => Promise<void>) | void>;
             teardown?: (this: Mocha.Context) => Promise<void>;
             testAssets?: string[];
             requiresLSP?: boolean;
@@ -436,7 +439,10 @@ const extensionBootstrapper = (() => {
         },
 
         activateExtensionForTest: function (config?: {
-            setup?: (this: Mocha.Context, api: Api) => Promise<(() => Promise<void>) | void>;
+            setup?: (
+                this: Mocha.Context,
+                api: InternalApi
+            ) => Promise<(() => Promise<void>) | void>;
             teardown?: (this: Mocha.Context) => Promise<void>;
             testAssets?: string[];
             requiresLSP?: boolean;
