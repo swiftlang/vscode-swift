@@ -24,6 +24,7 @@ import { TestRunProxy } from "./TestExplorer/TestRunner";
 import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
 import configuration from "./configuration";
 import { SwiftLogger } from "./logging/SwiftLogger";
+import { PlaygroundProvider } from "./playgrounds/PlaygroundProvider";
 import { TaskQueue } from "./tasks/TaskQueue";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { showToolchainError } from "./ui/ToolchainSelection";
@@ -35,6 +36,7 @@ export class FolderContext implements vscode.Disposable {
     public taskQueue: TaskQueue;
     public testExplorer?: TestExplorer;
     public resolvedTestExplorer: Promise<TestExplorer>;
+    public playgroundProvider?: PlaygroundProvider;
     private testExplorerResolver?: (testExplorer: TestExplorer) => void;
     private packageWatcher: PackageWatcher;
     private testRunManager: TestRunManager;
@@ -247,7 +249,7 @@ export class FolderContext implements vscode.Disposable {
         return this.testExplorer;
     }
 
-    /** Create Test explorer for this folder */
+    /** Remove Test explorer from this folder */
     removeTestExplorer() {
         this.testExplorer?.dispose();
         this.testExplorer = undefined;
@@ -260,8 +262,32 @@ export class FolderContext implements vscode.Disposable {
         }
     }
 
-    /** Return if package folder has a test explorer */
+    /** Return `true` if package folder has a test explorer */
     hasTestExplorer() {
+        return this.testExplorer !== undefined;
+    }
+
+    /** Create Playground provider for this folder */
+    addPlaygroundProvider() {
+        if (!this.playgroundProvider) {
+            this.playgroundProvider = new PlaygroundProvider(this);
+        }
+        return this.playgroundProvider;
+    }
+
+    /** Refresh the tests in the test explorer for this folder */
+    async refreshPlaygroundProvider() {
+        await this.playgroundProvider?.fetch();
+    }
+
+    /** Remove playground provider from this folder */
+    removePlaygroundProvider() {
+        this.playgroundProvider?.dispose();
+        this.playgroundProvider = undefined;
+    }
+
+    /** Return `true` if package folder has a playground provider */
+    hasPlaygroundProvider() {
         return this.testExplorer !== undefined;
     }
 
@@ -333,6 +359,25 @@ export class FolderContext implements vscode.Disposable {
             isPathInsidePath(uri.fsPath, this.folder.fsPath)
         ) {
             void this.testExplorer.getDocumentTests(this, uri, symbols);
+        }
+    }
+
+    /**
+     * Called whenever we have new document CodeLens
+     */
+    onDocumentCodeLens(
+        document: vscode.TextDocument,
+        codeLens: vscode.CodeLens[] | null | undefined
+    ) {
+        const uri = document?.uri;
+        if (
+            this.playgroundProvider &&
+            codeLens &&
+            uri &&
+            uri.scheme === "file" &&
+            isPathInsidePath(uri.fsPath, this.folder.fsPath)
+        ) {
+            void this.playgroundProvider.onDocumentCodeLens(document, codeLens);
         }
     }
 }
