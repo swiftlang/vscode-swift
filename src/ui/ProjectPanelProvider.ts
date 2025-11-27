@@ -22,6 +22,7 @@ import { Dependency, ResolvedDependency, Target } from "../SwiftPackage";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { FolderOperation } from "../WorkspaceContext";
 import configuration from "../configuration";
+import { Playground } from "../playgrounds/PlaygroundProvider";
 import { SwiftTask, TaskPlatformSpecificConfig } from "../tasks/SwiftTaskProvider";
 import { getPlatformConfig, resolveTaskCwd } from "../utilities/tasks";
 import { Version } from "../utilities/version";
@@ -399,6 +400,53 @@ class TargetNode {
     }
 }
 
+class PlaygroundNode {
+    constructor(
+        public playground: Playground,
+        private folder: FolderContext,
+        private activeTasks: Set<string>
+    ) {}
+
+    get name(): string {
+        return this.playground.label ?? this.playground.id;
+    }
+
+    get args(): string[] {
+        return [this.name];
+    }
+
+    toTreeItem(): vscode.TreeItem {
+        const name = this.name;
+        const item = new vscode.TreeItem(this.name, vscode.TreeItemCollapsibleState.None);
+        item.id = `${this.folder.name}:${this.playground.id}`;
+        item.iconPath = new vscode.ThemeIcon(this.icon());
+        item.contextValue = "playground";
+        item.accessibilityInformation = { label: name };
+        item.tooltip = `${this.name} (${this.folder.name})`;
+        item.command = {
+            title: "Open Playground",
+            command: "vscode.openWith",
+            arguments: [
+                vscode.Uri.parse(this.playground.location.uri),
+                "default",
+                { selection: this.playground.location.range },
+            ],
+        };
+        return item;
+    }
+
+    private icon(): string {
+        if (this.activeTasks.has(this.name)) {
+            return LOADING_ICON;
+        }
+        return "symbol-numeric";
+    }
+
+    getChildren(): TreeNode[] {
+        return [];
+    }
+}
+
 class HeaderNode {
     constructor(
         private id: string,
@@ -462,7 +510,14 @@ class ErrorNode {
  *
  * Can be either a {@link PackageNode}, {@link FileNode}, {@link TargetNode}, {@link TaskNode}, {@link ErrorNode} or {@link HeaderNode}.
  */
-export type TreeNode = PackageNode | FileNode | HeaderNode | TaskNode | TargetNode | ErrorNode;
+export type TreeNode =
+    | PackageNode
+    | FileNode
+    | HeaderNode
+    | TaskNode
+    | TargetNode
+    | PlaygroundNode
+    | ErrorNode;
 
 /**
  * A {@link vscode.TreeDataProvider<T> TreeDataProvider} for project dependencies, tasks and commands {@link vscode.TreeView TreeView}.
@@ -477,6 +532,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
     private lastComputedNodes: TreeNode[] = [];
     private buildPluginOutputWatcher?: vscode.FileSystemWatcher;
     private buildPluginFolderWatcher?: vscode.Disposable;
+    private playgroundWatcher?: vscode.Disposable;
 
     onDidChangeTreeData = this.didChangeTreeDataEmitter.event;
 
@@ -491,6 +547,8 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
 
     dispose() {
         this.workspaceObserver?.dispose();
+        this.buildPluginFolderWatcher?.dispose();
+        this.playgroundWatcher?.dispose();
         this.disposables.forEach(d => d.dispose());
         this.disposables.length = 0;
     }
@@ -576,7 +634,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                         if (!folder) {
                             return;
                         }
-                        this.watchBuildPluginOutputs(folder);
+                        this.observeFolder(folder);
                         treeView.title = `Swift Project (${folder.name})`;
                         this.workspaceContext.logger.info(
                             `Project panel updating, focused folder ${folder.name}`
@@ -611,7 +669,12 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         );
     }
 
-    watchBuildPluginOutputs(folderContext: FolderContext) {
+    observeFolder(folderContext: FolderContext) {
+        this.watchBuildPluginOutputs(folderContext);
+        this.watchPlaygrounds(folderContext);
+    }
+
+    private watchBuildPluginOutputs(folderContext: FolderContext) {
         if (this.buildPluginOutputWatcher) {
             this.buildPluginOutputWatcher.dispose();
         }
@@ -636,6 +699,19 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                 fire();
             }
         );
+    }
+
+    private watchPlaygrounds(folderContext: FolderContext) {
+        if (this.playgroundWatcher) {
+            this.playgroundWatcher.dispose();
+        }
+
+        const playgroundProvider = folderContext.playgroundProvider;
+        if (playgroundProvider) {
+            this.playgroundWatcher = playgroundProvider.onDidChangePlaygrounds(() =>
+                this.didChangeTreeDataEmitter.fire()
+            );
+        }
     }
 
     getTreeItem(element: TreeNode): vscode.TreeItem {
@@ -674,6 +750,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         const commands = await this.commands();
         const targets = await this.targets();
         const tasks = await this.tasks(folderContext);
+        const playgrounds = await this.playgrounds();
 
         // TODO: Control ordering
         return [
@@ -708,6 +785,13 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                 ? [
                       new HeaderNode("commands", "Commands", "debug-line-by-line", () =>
                           Promise.resolve(commands)
+                      ),
+                  ]
+                : []),
+            ...(playgrounds.length > 0
+                ? [
+                      new HeaderNode("playgrounds", "Playgrounds", "symbol-numeric", () =>
+                          Promise.resolve(playgrounds)
                       ),
                   ]
                 : []),
@@ -818,6 +902,18 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
             .filter(target => target.type === "snippet")
             .flatMap(target => new TargetNode(target, folderContext, this.activeTasks))
             .sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    private async playgrounds(): Promise<TreeNode[]> {
+        const folderContext = this.workspaceContext.currentFolder;
+        if (!folderContext) {
+            return [];
+        }
+        const playgrounds =
+            (await folderContext.playgroundProvider?.getWorkspacePlaygrounds()) ?? [];
+        return playgrounds.flatMap(
+            playground => new PlaygroundNode(playground, folderContext, this.activeTasks)
+        );
     }
 }
 
