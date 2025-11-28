@@ -15,6 +15,7 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "../FolderContext";
 import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { LSPPlaygroundsDiscovery, Playground } from "./LSPPlaygroundsDiscovery";
 
 export { Playground };
@@ -40,6 +41,10 @@ export class PlaygroundProvider implements vscode.Disposable {
 
     private get lspPlaygroundDiscovery(): LSPPlaygroundsDiscovery {
         return new LSPPlaygroundsDiscovery(this.folderContext.languageClientManager);
+    }
+
+    private get logger(): SwiftLogger {
+        return this.folderContext.workspaceContext.logger;
     }
 
     /**
@@ -107,14 +112,28 @@ export class PlaygroundProvider implements vscode.Disposable {
         this.didChangePlaygroundsEmitter.event;
 
     async fetch() {
+        if (!(await this.lspPlaygroundDiscovery.supportsPlaygrounds())) {
+            this.logger.debug(
+                `Fetching playgrounds not supported by the language server`,
+                this.folderContext.name
+            );
+            return;
+        }
         this.fetchPromise = this.lspPlaygroundDiscovery.getWorkspacePlaygrounds();
-        const playgrounds = await this.fetchPromise;
-        this.documentPlaygrounds.clear();
-        for (const playground of playgrounds) {
-            const uri = playground.location.uri;
-            this.documentPlaygrounds.set(
-                uri,
-                (this.documentPlaygrounds.get(uri) ?? []).concat(playground)
+        try {
+            const playgrounds = await this.fetchPromise;
+            this.documentPlaygrounds.clear();
+            for (const playground of playgrounds) {
+                const uri = playground.location.uri;
+                this.documentPlaygrounds.set(
+                    uri,
+                    (this.documentPlaygrounds.get(uri) ?? []).concat(playground)
+                );
+            }
+        } catch (error) {
+            this.logger.error(
+                `Failed to fetch workspace playgrounds: ${error}`,
+                this.folderContext.name
             );
         }
         this.fetchPromise = undefined;
