@@ -150,7 +150,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         ),
         vscode.commands.registerCommand(Commands.PLAY, async target => {
             const folder = ctx.currentFolder;
-            if (!folder) {
+            if (!folder || !target) {
                 return false;
             }
             return await runPlayground(folder, ctx.tasks, target);

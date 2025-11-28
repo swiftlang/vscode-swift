@@ -38,11 +38,8 @@ export interface WorkspacePlaygroundItem extends PlaygroundItem {
 export async function runPlayground(
     folderContext: FolderContext,
     tasks: TaskManager,
-    item?: PlaygroundItem
+    item: PlaygroundItem
 ) {
-    if (!item) {
-        return false;
-    }
     const id = item.label ?? item.id;
     const task = createSwiftTask(
         ["play", id],
