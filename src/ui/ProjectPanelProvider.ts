@@ -400,19 +400,34 @@ class TargetNode {
     }
 }
 
-class PlaygroundNode {
+export class PlaygroundNode {
     constructor(
         public playground: Playground,
         private folder: FolderContext,
         private activeTasks: Set<string>
     ) {}
 
+    /**
+     * "instanceof" has a bad effect in our nightly tests when the VSIX
+     * bundled source is used. For example:
+     *
+     * ```
+     * vscode.commands.registerCommand(Commands.PLAY, async (item, folder) => {
+     *  if (item instanceof PlaygroundNode) {
+     *      return await runPlayground(item.playground);
+     *  }
+     * }),
+     * ```
+     *
+     * So instead we'll check for this set boolean property. Even if the implementation of the
+     * {@link PlaygroundNode} class changes, this property should not need to change
+     */
+    static isPlaygroundNode = (item: { __isPlaygroundNode?: boolean }) =>
+        item.__isPlaygroundNode ?? false;
+    __isPlaygroundNode = true;
+
     get name(): string {
         return this.playground.label ?? this.playground.id;
-    }
-
-    get args(): string[] {
-        return [this.name];
     }
 
     toTreeItem(): vscode.TreeItem {

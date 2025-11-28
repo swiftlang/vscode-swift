@@ -51,7 +51,7 @@ import { switchPlatform } from "./commands/switchPlatform";
 import { extractTestItemsAndCount, runTestMultipleTimes } from "./commands/testMultipleTimes";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { SwiftToolchain } from "./toolchain/toolchain";
-import { PackageNode } from "./ui/ProjectPanelProvider";
+import { PackageNode, PlaygroundNode } from "./ui/ProjectPanelProvider";
 import { showToolchainSelectionQuickPick } from "./ui/ToolchainSelection";
 
 /**
@@ -153,7 +153,11 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             if (!folder || !target) {
                 return false;
             }
-            return await runPlayground(folder, ctx.tasks, target);
+            return await runPlayground(
+                folder,
+                ctx.tasks,
+                PlaygroundNode.isPlaygroundNode(target) ? target.playground : target
+            );
         }),
         vscode.commands.registerCommand(Commands.CLEAN_BUILD, async () => await cleanBuild(ctx)),
         vscode.commands.registerCommand(
