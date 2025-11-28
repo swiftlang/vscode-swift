@@ -14,6 +14,7 @@
 import { checkExperimentalCapability } from "../sourcekit-lsp/LanguageClientManager";
 import { LanguageClientManager } from "../sourcekit-lsp/LanguageClientManager";
 import { Playground, WorkspacePlaygroundsRequest } from "../sourcekit-lsp/extensions";
+import { Version } from "../utilities/version";
 
 export { Playground };
 
@@ -25,6 +26,11 @@ export { Playground };
  */
 export class LSPPlaygroundsDiscovery {
     constructor(private languageClient: LanguageClientManager) {}
+
+    private get toolchainVersion(): Version {
+        return this.languageClient.folderContext.toolchain.swiftVersion;
+    }
+
     /**
      * Return list of workspace playgrounds
      */
@@ -37,6 +43,15 @@ export class LSPPlaygroundsDiscovery {
             } else {
                 throw new Error(`${WorkspacePlaygroundsRequest.method} requests not supported`);
             }
+        });
+    }
+
+    async supportsPlaygrounds(): Promise<boolean> {
+        if (this.toolchainVersion.isLessThan(new Version(6, 3, 0))) {
+            return false;
+        }
+        return await this.languageClient.useLanguageClient(async client => {
+            return checkExperimentalCapability(client, WorkspacePlaygroundsRequest.method, 1);
         });
     }
 }
