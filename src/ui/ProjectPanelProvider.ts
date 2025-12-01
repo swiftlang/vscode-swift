@@ -672,6 +672,8 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         const dependencies = await this.dependencies();
         const snippets = await this.snippets();
         const commands = await this.commands();
+        const targets = await this.targets();
+        const tasks = await this.tasks(folderContext);
 
         // TODO: Control ordering
         return [
@@ -685,13 +687,16 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
                       ),
                   ]
                 : []),
-            new HeaderNode("targets", "Targets", "book", this.targets.bind(this)),
-            new HeaderNode(
-                "tasks",
-                "Tasks",
-                "debug-continue-small",
-                this.tasks.bind(this, folderContext)
-            ),
+            ...(targets.length > 0
+                ? [new HeaderNode("targets", "Targets", "book", () => Promise.resolve(targets))]
+                : []),
+            ...(tasks.length > 0
+                ? [
+                      new HeaderNode("tasks", "Tasks", "debug-continue-small", () =>
+                          Promise.resolve(tasks)
+                      ),
+                  ]
+                : []),
             ...(snippets.length > 0
                 ? [
                       new HeaderNode("snippets", "Snippets", "notebook", () =>

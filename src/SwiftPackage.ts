@@ -211,11 +211,14 @@ export class SwiftPackage {
     /**
      * Create a SwiftPackage from a folder
      * @param folder folder package is in
+     * @param toolchain Swift toolchain to use
+     * @param disableSwiftPMIntegration Whether to disable SwiftPM integration
      * @returns new SwiftPackage
      */
     public static async create(
         folder: vscode.Uri,
-        toolchain: SwiftToolchain
+        toolchain: SwiftToolchain,
+        disableSwiftPMIntegration: boolean = false
     ): Promise<SwiftPackage> {
         const [resolved, workspaceState] = await Promise.all([
             SwiftPackage.loadPackageResolved(folder),
@@ -223,7 +226,7 @@ export class SwiftPackage {
         ]);
         return new SwiftPackage(
             folder,
-            SwiftPackage.loadPackage(folder, toolchain),
+            SwiftPackage.loadPackage(folder, toolchain, disableSwiftPMIntegration),
             resolved,
             workspaceState
         );
@@ -250,12 +253,25 @@ export class SwiftPackage {
     /**
      * Run `swift package describe` and return results
      * @param folder folder package is in
+     * @param toolchain Swift toolchain to use
+     * @param disableSwiftPMIntegration Whether to disable SwiftPM integration
      * @returns results of `swift package describe`
      */
     static async loadPackage(
         folder: vscode.Uri,
-        toolchain: SwiftToolchain
+        toolchain: SwiftToolchain,
+        disableSwiftPMIntegration: boolean = false
     ): Promise<SwiftPackageState> {
+        // When SwiftPM integration is disabled, return empty package structure
+        if (disableSwiftPMIntegration) {
+            return {
+                name: path.basename(folder.fsPath),
+                products: [],
+                dependencies: [],
+                targets: [],
+            };
+        }
+
         try {
             // Use swift package describe to describe the package targets, products, and platforms
             // Use swift package show-dependencies to get the dependencies in a tree format
@@ -307,8 +323,14 @@ export class SwiftPackage {
     private static async loadPlugins(
         folder: vscode.Uri,
         toolchain: SwiftToolchain,
-        logger: SwiftLogger
+        logger: SwiftLogger,
+        disableSwiftPMIntegration: boolean = false
     ): Promise<PackagePlugin[]> {
+        // When SwiftPM integration is disabled, return empty plugin list
+        if (disableSwiftPMIntegration) {
+            return [];
+        }
+
         try {
             const { stdout } = await execSwift(["package", "plugin", "--list"], toolchain, {
                 cwd: folder.fsPath,
@@ -355,8 +377,12 @@ export class SwiftPackage {
     }
 
     /** Reload swift package */
-    public async reload(toolchain: SwiftToolchain) {
-        const loadedContents = await SwiftPackage.loadPackage(this.folder, toolchain);
+    public async reload(toolchain: SwiftToolchain, disableSwiftPMIntegration: boolean = false) {
+        const loadedContents = await SwiftPackage.loadPackage(
+            this.folder,
+            toolchain,
+            disableSwiftPMIntegration
+        );
         this._contents = loadedContents;
         this.contentsPromise = Promise.resolve(loadedContents);
     }
@@ -370,8 +396,17 @@ export class SwiftPackage {
         this.workspaceState = await SwiftPackage.loadWorkspaceState(this.folder);
     }
 
-    public async loadSwiftPlugins(toolchain: SwiftToolchain, logger: SwiftLogger) {
-        this.plugins = await SwiftPackage.loadPlugins(this.folder, toolchain, logger);
+    public async loadSwiftPlugins(
+        toolchain: SwiftToolchain,
+        logger: SwiftLogger,
+        disableSwiftPMIntegration: boolean = false
+    ) {
+        this.plugins = await SwiftPackage.loadPlugins(
+            this.folder,
+            toolchain,
+            logger,
+            disableSwiftPMIntegration
+        );
     }
 
     /** Return if has valid contents */

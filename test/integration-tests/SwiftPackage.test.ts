@@ -80,4 +80,32 @@ tag("medium").suite("SwiftPackage Test Suite", function () {
         assert.strictEqual(spmPackage.resolved.pins.length, 1);
         assert.strictEqual(spmPackage.resolved.pins[0].identity, "swift-log");
     });
+
+    test("Disabled SwiftPM integration returns empty package", async () => {
+        const spmPackage = await SwiftPackage.create(
+            testAssetUri("package2"),
+            toolchain,
+            true // disableSwiftPMIntegration
+        );
+        assert.strictEqual(await spmPackage.isValid, true);
+        assert.strictEqual(await spmPackage.name, "package2"); // derived from folder name
+        assert.strictEqual((await spmPackage.executableProducts).length, 0);
+        assert.strictEqual((await spmPackage.libraryProducts).length, 0);
+        assert.strictEqual((await spmPackage.dependencies).length, 0);
+        assert.strictEqual((await spmPackage.targets).length, 0);
+    });
+
+    test("Reload with disabled SwiftPM integration returns empty package", async () => {
+        const spmPackage = await SwiftPackage.create(testAssetUri("package2"), toolchain, false);
+        // First verify it loaded normally
+        assert.strictEqual(await spmPackage.isValid, true);
+        assert.strictEqual((await spmPackage.libraryProducts).length, 1);
+
+        // Now reload with disabled integration
+        await spmPackage.reload(toolchain, true);
+        assert.strictEqual(await spmPackage.isValid, true);
+        assert.strictEqual((await spmPackage.libraryProducts).length, 0);
+        assert.strictEqual((await spmPackage.dependencies).length, 0);
+        assert.strictEqual((await spmPackage.targets).length, 0);
+    });
 });
