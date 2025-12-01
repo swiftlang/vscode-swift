@@ -40,9 +40,9 @@ suite("Shell Unit Test Suite", () => {
                     stderr: "",
                 });
 
-                await expect(findBinaryInPath("node")).to.eventually.deep.equal([
-                    "/usr/local/bin/node",
-                ]);
+                await expect(findBinaryInPath("node")).to.eventually.equalPath(
+                    "/usr/local/bin/node"
+                );
             });
 
             test("throws for a non-existent binary", async () => {
@@ -67,9 +67,9 @@ suite("Shell Unit Test Suite", () => {
                         stderr: "",
                     });
 
-                await expect(findBinaryInPath("node")).to.eventually.deep.equal([
-                    "/usr/local/bin/node",
-                ]);
+                await expect(findBinaryInPath("node")).to.eventually.equalPath(
+                    "/usr/local/bin/node"
+                );
             });
 
             test("throws for a non-existent binary", async () => {
@@ -92,10 +92,9 @@ suite("Shell Unit Test Suite", () => {
                     stderr: "",
                 });
 
-                await expect(findBinaryInPath("node")).to.eventually.deep.equal([
-                    "/usr/local/bin/node",
-                    "/usr/local/other/bin/node",
-                ]);
+                await expect(findBinaryInPath("node")).to.eventually.equalPath(
+                    "/usr/local/bin/node"
+                );
             });
 
             test("throws for a non-existent binary", async () => {

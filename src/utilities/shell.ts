@@ -17,17 +17,15 @@ import { execFile } from "./utilities";
  * Asks the shell where a binary is located. Will always return at least one path unless
  * resolution fails completely, in which case the function will throw.
  *
- * Note: On Windows this has the potential to return multiple paths.
- *
  * @param binaryName The name of the binary to search for.
  * @returns An array of paths found on the system.
  */
-export async function findBinaryInPath(binaryName: string): Promise<string[]> {
+export async function findBinaryInPath(binaryName: string): Promise<string> {
     try {
         switch (process.platform) {
             case "darwin": {
                 const { stdout } = await execFile("which", [binaryName]);
-                return [stdout.trimEnd()];
+                return stdout.trimEnd();
             }
             case "win32": {
                 const command = "where.exe";
@@ -37,7 +35,7 @@ export async function findBinaryInPath(binaryName: string): Promise<string[]> {
                 if (foundPaths.length === 0) {
                     throw createParsingError({ command, args, stdout, stderr });
                 }
-                return foundPaths;
+                return foundPaths[0];
             }
             default: {
                 // use `type` to find the binary on Linux. Run inside /bin/sh to ensure
@@ -52,7 +50,7 @@ export async function findBinaryInPath(binaryName: string): Promise<string[]> {
                 if (!binaryNameMatch) {
                     throw createParsingError({ command, args, stdout, stderr });
                 }
-                return [binaryNameMatch[1]];
+                return binaryNameMatch[1];
             }
         }
     } catch (error) {

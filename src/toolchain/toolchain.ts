@@ -134,7 +134,7 @@ export class SwiftToolchain {
         folder?: vscode.Uri,
         logger?: SwiftLogger
     ): Promise<SwiftToolchain> {
-        const swiftBinaryPath = await this.findSwiftBinaryInPath(logger);
+        const swiftBinaryPath = await this.findSwiftBinaryInPath();
         const { toolchainPath, toolchainManager } = await this.getToolchainPath(
             swiftBinaryPath,
             extensionRoot,
@@ -519,21 +519,14 @@ export class SwiftToolchain {
         logger.debug(this.diagnostics);
     }
 
-    private static async findSwiftBinaryInPath(logger?: SwiftLogger): Promise<string> {
+    private static async findSwiftBinaryInPath(): Promise<string> {
         if (configuration.path !== "") {
             const pathFromSettings = expandFilePathTilde(configuration.path);
             const windowsExeSuffix = process.platform === "win32" ? ".exe" : "";
 
             return path.join(pathFromSettings, `swift${windowsExeSuffix}`);
         }
-        const foundPaths = await findBinaryInPath("swift");
-        if (foundPaths.length > 1) {
-            logger?.warn(
-                `Found multiple swift binaries in PATH: ${foundPaths.map(p => `"${p}"`).join(", ")}`
-            );
-            logger?.warn(`Using swift binary path "${foundPaths[0]}"`);
-        }
-        return foundPaths[0];
+        return await findBinaryInPath("swift");
     }
 
     private static async isXcrunShim(binary: string): Promise<boolean> {
