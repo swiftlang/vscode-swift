@@ -258,25 +258,20 @@ export class SwiftPackage {
     ): Promise<SwiftPackageState> {
         try {
             // Use swift package describe to describe the package targets, products, and platforms
-            const describe = await execSwift(["package", "describe", "--type", "json"], toolchain, {
-                cwd: folder.fsPath,
-            });
-            const packageState = JSON.parse(
-                SwiftPackage.trimStdout(describe.stdout)
-            ) as PackageContents;
-
             // Use swift package show-dependencies to get the dependencies in a tree format
-            const dependencies = await execSwift(
-                ["package", "show-dependencies", "--format", "json"],
-                toolchain,
-                {
+            const [describe, dependencies] = await Promise.all([
+                execSwift(["package", "describe", "--type", "json"], toolchain, {
                     cwd: folder.fsPath,
-                }
-            );
+                }),
+                execSwift(["package", "show-dependencies", "--format", "json"], toolchain, {
+                    cwd: folder.fsPath,
+                }),
+            ]);
 
-            packageState.dependencies = JSON.parse(
-                SwiftPackage.trimStdout(dependencies.stdout)
-            ).dependencies;
+            const packageState = {
+                ...(JSON.parse(SwiftPackage.trimStdout(describe.stdout)) as PackageContents),
+                dependencies: JSON.parse(SwiftPackage.trimStdout(dependencies.stdout)).dependencies,
+            };
 
             return packageState;
         } catch (error) {
