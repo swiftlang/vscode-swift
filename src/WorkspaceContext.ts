@@ -34,6 +34,7 @@ import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
 import { TaskManager } from "./tasks/TaskManager";
 import { BuildFlags } from "./toolchain/BuildFlags";
 import { SwiftToolchain } from "./toolchain/toolchain";
+import { ProjectPanelProvider } from "./ui/ProjectPanelProvider";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
 import { isExcluded, isPathInsidePath } from "./utilities/filesystem";
@@ -60,6 +61,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public commentCompletionProvider: CommentCompletionProviders;
     public documentation: DocumentationManager;
     public testRunManager: TestRunManager;
+    public projectPanel: ProjectPanelProvider;
     private lastFocusUri: vscode.Uri | undefined;
     private initialisationFinished = false;
 
@@ -80,7 +82,7 @@ export class WorkspaceContext implements vscode.Disposable {
     public loggerFactory: SwiftLoggerFactory;
 
     constructor(
-        extensionContext: vscode.ExtensionContext,
+        public extensionContext: vscode.ExtensionContext,
         public contextKeys: ContextKeys,
         public logger: SwiftLogger,
         public globalToolchain: SwiftToolchain
@@ -102,6 +104,7 @@ export class WorkspaceContext implements vscode.Disposable {
         this.documentation = new DocumentationManager(extensionContext, this);
         this.currentDocument = null;
         this.commentCompletionProvider = new CommentCompletionProviders();
+        this.projectPanel = new ProjectPanelProvider(this);
 
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(async event => {
             // Clear build path cache when build-related configurations change
@@ -225,6 +228,7 @@ export class WorkspaceContext implements vscode.Disposable {
             this.logger,
             this.statusItem,
             this.buildStatus,
+            this.projectPanel,
         ];
         this.lastFocusUri = vscode.window.activeTextEditor?.document.uri;
 
@@ -346,7 +350,12 @@ export class WorkspaceContext implements vscode.Disposable {
         // add workspace folders, already loaded
         if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
             for (const folder of vscode.workspace.workspaceFolders) {
+                const singleFolderStartTime = Date.now();
                 await this.addWorkspaceFolder(folder);
+                const singleFolderElapsed = Date.now() - singleFolderStartTime;
+                this.logger.info(
+                    `Added workspace folder ${folder.name} in ${singleFolderElapsed}ms`
+                );
             }
         }
 
@@ -371,7 +380,14 @@ export class WorkspaceContext implements vscode.Disposable {
      */
     async fireEvent(folder: FolderContext | null, operation: FolderOperation) {
         for (const observer of this.observers) {
-            await observer({ folder, operation, workspace: this });
+            try {
+                await observer({ folder, operation, workspace: this });
+            } catch (error) {
+                // Make sure one observer does not stop all others from being called
+                this.logger.error(
+                    `Folder operation "${operation}" event observer failed for ${folder?.folder.fsPath}: ${error}`
+                );
+            }
         }
     }
 
@@ -440,16 +456,30 @@ export class WorkspaceContext implements vscode.Disposable {
      * @param folder folder being added
      */
     async addWorkspaceFolder(workspaceFolder: vscode.WorkspaceFolder) {
+        const searchStartTime = Date.now();
         const folders = await searchForPackages(
             workspaceFolder.uri,
             configuration.disableSwiftPMIntegration,
             configuration.folder(workspaceFolder).searchSubfoldersForPackages,
+            configuration.folder(workspaceFolder).ignoreSearchingForPackagesInSubfolders,
             this.globalToolchainSwiftVersion
         );
+        const searchElapsed = Date.now() - searchStartTime;
+        this.logger.info(
+            `Package search for ${workspaceFolder.name} completed in ${searchElapsed}ms (found ${folders.length} packages)`
+        );
 
+        const addPackagesStartTime = Date.now();
         for (const folder of folders) {
+            const singlePackageStartTime = Date.now();
             await this.addPackageFolder(folder, workspaceFolder);
+            const singlePackageElapsed = Date.now() - singlePackageStartTime;
+            this.logger.info(`Added package folder ${folder.fsPath} in ${singlePackageElapsed}ms`);
         }
+        const addPackagesElapsed = Date.now() - addPackagesStartTime;
+        this.logger.info(
+            `All package folders for ${workspaceFolder.name} added in ${addPackagesElapsed}ms`
+        );
 
         if (this.getActiveWorkspaceFolder(vscode.window.activeTextEditor) === workspaceFolder) {
             await this.focusTextEditor(vscode.window.activeTextEditor);
@@ -463,8 +493,10 @@ export class WorkspaceContext implements vscode.Disposable {
         // find context with root folder
         const index = this.folders.findIndex(context => context.folder.fsPath === folder.fsPath);
         if (index !== -1) {
-            this.logger.warn(`Adding package folder ${folder} twice`);
-            return this.folders[index];
+            const existingFolder = this.folders[index];
+            this.logger.warn(`Adding package folder ${folder} twice: ${Error().stack}`);
+            this.logger.warn(`Existing folder was created by ${existingFolder.creationStack}`);
+            return existingFolder;
         }
         const folderContext = await FolderContext.create(folder, workspaceFolder, this);
         this.folders.push(folderContext);
@@ -500,6 +532,20 @@ export class WorkspaceContext implements vscode.Disposable {
 
     onDidChangeFolders(listener: (event: FolderEvent) => unknown): vscode.Disposable {
         this.observers.add(listener);
+
+        // https://github.com/swiftlang/vscode-swift/issues/1944
+        // make sure no FolderOperation are missed by fast activation
+        for (const folder of this.folders) {
+            listener({ folder, operation: FolderOperation.add, workspace: this });
+        }
+        if (this.currentFolder) {
+            listener({
+                folder: this.currentFolder,
+                operation: FolderOperation.focus,
+                workspace: this,
+            });
+        }
+
         return { dispose: () => this.observers.delete(listener) };
     }
 

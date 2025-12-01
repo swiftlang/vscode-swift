@@ -2,7 +2,7 @@
 . .github\workflows\scripts\windows\install-nodejs.ps1
 
 # Download the VSIX archived upstream
-npm ci -ignore-script node-pty
+npm ci
 $Process = Start-Process npx "tsx scripts/download_vsix.ts" -Wait -PassThru -NoNewWindow
 if ($Process.ExitCode -eq 0) {
     Write-Host 'SUCCESS'

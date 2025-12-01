@@ -22,7 +22,7 @@ import { TestLibrary } from "../TestExplorer/TestRunner";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { buildOptions } from "../tasks/SwiftTaskProvider";
-import { BuildFlags } from "../toolchain/BuildFlags";
+import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
 import { packageName } from "../utilities/tasks";
 import { regexEscapedString, swiftRuntimeEnv } from "../utilities/utilities";
 import { Version } from "../utilities/version";
@@ -61,10 +61,13 @@ export class BuildConfigurationFactory {
                 additionalArgs = [...additionalArgs, "-Xswiftc", "-enable-testing"];
             }
             if (this.isTestBuild) {
-                additionalArgs = [
-                    ...additionalArgs,
-                    ...configuration.folder(this.ctx.workspaceFolder).additionalTestArguments,
-                ];
+                // Exclude all arguments from TEST_ONLY_ARGUMENTS that would cause a `swift build` to fail.
+                const buildCompatibleArgs = BuildFlags.filterArguments(
+                    configuration.folder(this.ctx.workspaceFolder).additionalTestArguments,
+                    BuildConfigurationFactory.TEST_ONLY_ARGUMENTS,
+                    true
+                );
+                additionalArgs = [...additionalArgs, ...buildCompatibleArgs];
             }
         }
 
@@ -94,6 +97,30 @@ export class BuildConfigurationFactory {
     private get baseConfig() {
         return getBaseConfig(this.ctx, true);
     }
+
+    /**
+     * Arguments from additionalTestArguments that should be excluded from swift build commands.
+     * These are test-only arguments that would cause build failures if passed to swift build.
+     */
+    private static TEST_ONLY_ARGUMENTS: ArgumentFilter[] = [
+        { argument: "--parallel", include: 0 },
+        { argument: "--no-parallel", include: 0 },
+        { argument: "--num-workers", include: 1 },
+        { argument: "--filter", include: 1 },
+        { argument: "--skip", include: 1 },
+        { argument: "-s", include: 1 },
+        { argument: "--specifier", include: 1 },
+        { argument: "-l", include: 0 },
+        { argument: "--list-tests", include: 0 },
+        { argument: "--show-codecov-path", include: 0 },
+        { argument: "--show-code-coverage-path", include: 0 },
+        { argument: "--show-coverage-path", include: 0 },
+        { argument: "--xunit-output", include: 1 },
+        { argument: "--enable-testable-imports", include: 0 },
+        { argument: "--disable-testable-imports", include: 0 },
+        { argument: "--attachments-path", include: 1 },
+        { argument: "--skip-build", include: 0 },
+    ];
 }
 
 export class SwiftTestingBuildAguments {
@@ -409,6 +436,7 @@ export class TestingConfigurationFactory {
                         if (xcTestPath === undefined) {
                             return null;
                         }
+                        const toolchain = this.ctx.toolchain;
                         return {
                             ...baseConfig,
                             program: path.join(xcTestPath, "xctest"),
@@ -418,6 +446,16 @@ export class TestingConfigurationFactory {
                             env: {
                                 ...this.testEnv,
                                 ...this.sanitizerRuntimeEnvironment,
+                                ...(toolchain.swiftVersion.isGreaterThanOrEqual(
+                                    new Version(6, 2, 0)
+                                )
+                                    ? {
+                                          // Starting in 6.2 we need to provide libTesting.dylib for xctests
+                                          DYLD_FRAMEWORK_PATH:
+                                              toolchain.swiftTestingFrameworkPath(),
+                                          DYLD_LIBRARY_PATH: toolchain.swiftTestingLibraryPath(),
+                                      }
+                                    : {}),
                                 SWIFT_TESTING_ENABLED: "0",
                             },
                         };

@@ -4,6 +4,7 @@
             "type": "swift",
             "request": "launch",
             "name": "Debug PackageExe (defaultPackage)",
+            // Explicitly use "program" to test searching for launch configs by program.
             "program": "${workspaceFolder:test}/defaultPackage/.build/debug/PackageExe",
             "args": [],
             "cwd": "${workspaceFolder:test}/defaultPackage",
@@ -15,7 +16,9 @@
             "type": "swift",
             "request": "launch",
             "name": "Release PackageExe (defaultPackage)",
-            "program": "${workspaceFolder:test}/defaultPackage/.build/release/PackageExe",
+            // Explicitly use "target" and "configuration" to test searching for launch configs by target.
+            "target": "PackageExe",
+            "configuration": "release",
             "args": [],
             "cwd": "${workspaceFolder:test}/defaultPackage",
             "preLaunchTask": "swift: Build Release PackageExe (defaultPackage)",

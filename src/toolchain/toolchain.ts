@@ -120,14 +120,24 @@ export class SwiftToolchain {
         this.swiftVersionString = targetInfo.compilerVersion;
     }
 
-    static async create(folder?: vscode.Uri, logger?: SwiftLogger): Promise<SwiftToolchain> {
+    static async create(
+        extensionRoot: string,
+        folder?: vscode.Uri,
+        logger?: SwiftLogger
+    ): Promise<SwiftToolchain> {
         const { path: swiftFolderPath, isSwiftlyManaged } = await this.getSwiftFolderPath(
             folder,
             logger
         );
-        const toolchainPath = await this.getToolchainPath(swiftFolderPath, folder, logger);
+        const toolchainPath = await this.getToolchainPath(
+            swiftFolderPath,
+            extensionRoot,
+            folder,
+            logger
+        );
         const targetInfo = await this.getSwiftTargetInfo(
-            this._getToolchainExecutable(toolchainPath, "swift")
+            this._getToolchainExecutable(toolchainPath, "swift"),
+            logger
         );
         const swiftVersion = this.getSwiftVersion(targetInfo);
         const [runtimePath, defaultSDK] = await Promise.all([
@@ -607,6 +617,7 @@ export class SwiftToolchain {
      */
     private static async getToolchainPath(
         swiftPath: string,
+        extensionRoot: string,
         cwd?: vscode.Uri,
         logger?: SwiftLogger
     ): Promise<string> {
@@ -629,7 +640,11 @@ export class SwiftToolchain {
                         return path.dirname(configuration.path);
                     }
 
-                    const swiftlyToolchainLocation = await Swiftly.toolchain(logger, cwd);
+                    const swiftlyToolchainLocation = await Swiftly.toolchain(
+                        extensionRoot,
+                        logger,
+                        cwd
+                    );
                     if (swiftlyToolchainLocation) {
                         return swiftlyToolchainLocation;
                     }
@@ -868,24 +883,35 @@ export class SwiftToolchain {
     }
 
     /** @returns swift target info */
-    private static async getSwiftTargetInfo(swiftExecutable: string): Promise<SwiftTargetInfo> {
+    private static async getSwiftTargetInfo(
+        swiftExecutable: string,
+        logger?: SwiftLogger
+    ): Promise<SwiftTargetInfo> {
         try {
             try {
                 const { stdout } = await execSwift(["-print-target-info"], { swiftExecutable });
                 const targetInfo = JSON.parse(stdout.trimEnd()) as SwiftTargetInfo;
+                if (!targetInfo.target) {
+                    logger?.warn(
+                        `No target found in toolchain, targetInfo was: ${JSON.stringify(targetInfo)}`
+                    );
+                }
+
                 if (targetInfo.compilerVersion) {
                     return targetInfo;
                 }
-            } catch {
+            } catch (error) {
                 // hit error while running `swift -print-target-info`. We are possibly running
                 // a version of swift 5.3 or older
+                logger?.warn(`Error while running 'swift -print-target-info': ${error}`);
             }
             const { stdout } = await execSwift(["--version"], { swiftExecutable });
             return {
                 compilerVersion: stdout.split(lineBreakRegex, 1)[0],
                 paths: { runtimeLibraryPaths: [""] },
             };
-        } catch {
+        } catch (error) {
+            logger?.warn(`Error while running 'swift --version': ${error}`);
             throw Error(
                 "Failed to get swift version from either '-print-target-info' or '--version'."
             );

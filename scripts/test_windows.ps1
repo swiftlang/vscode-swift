@@ -125,7 +125,7 @@ if ($versionLine -match "Swift version (\d+)\.(\d+)") {
     exit 1
 }
 
-npm ci -ignore-script node-pty
+npm ci
 npm run lint
 npm run format
 npm run test

@@ -13,9 +13,7 @@
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
 import * as mockFS from "mock-fs";
-import * as path from "path";
 
-import { Swiftly } from "@src/toolchain/swiftly";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
 import * as utilities from "@src/utilities/utilities";
 import { Version } from "@src/utilities/version";
@@ -81,10 +79,8 @@ suite("SwiftToolchain Unit Test Suite", () => {
                     toolchainPath: "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain",
                 });
 
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
-                    path.normalize(
-                        "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/lldb-dap"
-                    )
+                await expect(sut.getLLDBDebugAdapter()).to.eventually.equalPath(
+                    "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/lldb-dap"
                 );
             });
 
@@ -130,7 +126,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                         "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain",
                 });
 
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
+                await expect(sut.getLLDBDebugAdapter()).to.eventually.equalPath(
                     "/Applications/Xcode.app/Contents/Developer/usr/bin/lldb-dap"
                 );
             });
@@ -179,8 +175,8 @@ suite("SwiftToolchain Unit Test Suite", () => {
                     toolchainPath: "/toolchains/swift-6.0.0",
                 });
 
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
-                    path.normalize("/toolchains/swift-6.0.0/usr/bin/lldb-dap")
+                await expect(sut.getLLDBDebugAdapter()).to.eventually.equalPath(
+                    "/toolchains/swift-6.0.0/usr/bin/lldb-dap"
                 );
             });
 
@@ -218,8 +214,8 @@ suite("SwiftToolchain Unit Test Suite", () => {
                     toolchainPath: "/toolchains/swift-6.0.0",
                 });
 
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
-                    path.normalize("/toolchains/swift-6.0.0/usr/bin/lldb-dap.exe")
+                await expect(sut.getLLDBDebugAdapter()).to.eventually.equalPath(
+                    "/toolchains/swift-6.0.0/usr/bin/lldb-dap.exe"
                 );
             });
 
@@ -297,108 +293,6 @@ suite("SwiftToolchain Unit Test Suite", () => {
 
             mockedPlatform.setValue("win32");
             await expect(SwiftToolchain.findXcodeInstalls()).to.eventually.be.empty;
-        });
-    });
-
-    suite("getSwiftlyToolchainInstalls()", () => {
-        const mockedEnv = mockGlobalValue(process, "env");
-
-        test("returns installed toolchains on Linux", async () => {
-            mockedPlatform.setValue("linux");
-            const mockHomeDir = "/home/user/.swiftly";
-            mockedEnv.setValue({ SWIFTLY_HOME_DIR: mockHomeDir });
-
-            mockFS({
-                [path.join(mockHomeDir, "config.json")]: JSON.stringify({
-                    installedToolchains: ["swift-5.9.0", "swift-6.0.0"],
-                }),
-            });
-
-            const toolchains = await Swiftly.listAvailableToolchains();
-            expect(toolchains).to.deep.equal([
-                path.join(mockHomeDir, "toolchains", "swift-5.9.0"),
-                path.join(mockHomeDir, "toolchains", "swift-6.0.0"),
-            ]);
-        });
-
-        test("returns installed toolchains on macOS", async () => {
-            mockedPlatform.setValue("darwin");
-            const mockHomeDir = "/Users/user/.swiftly";
-            mockedEnv.setValue({ SWIFTLY_HOME_DIR: mockHomeDir });
-
-            mockFS({
-                [path.join(mockHomeDir, "config.json")]: JSON.stringify({
-                    installedToolchains: ["swift-5.9.0", "swift-6.0.0"],
-                }),
-            });
-
-            const toolchains = await Swiftly.listAvailableToolchains();
-            expect(toolchains).to.deep.equal([
-                path.join(mockHomeDir, "toolchains", "swift-5.9.0"),
-                path.join(mockHomeDir, "toolchains", "swift-6.0.0"),
-            ]);
-        });
-
-        test("returns empty array when SWIFTLY_HOME_DIR is not set", async () => {
-            mockedPlatform.setValue("linux");
-            mockedEnv.setValue({});
-
-            const toolchains = await Swiftly.listAvailableToolchains();
-            expect(toolchains).to.be.empty;
-        });
-
-        test("returns empty array when config file does not exist", async () => {
-            mockedPlatform.setValue("linux");
-            const mockHomeDir = "/home/user/.swiftly";
-            mockedEnv.setValue({ SWIFTLY_HOME_DIR: mockHomeDir });
-
-            mockFS({});
-
-            await expect(Swiftly.listAvailableToolchains()).to.be.rejected.then(error => {
-                expect(error.message).to.include(
-                    "Failed to retrieve Swiftly installations from disk"
-                );
-            });
-        });
-
-        test("returns empty array when config has no installedToolchains", async () => {
-            mockedPlatform.setValue("linux");
-            const mockHomeDir = "/home/user/.swiftly";
-            mockedEnv.setValue({ SWIFTLY_HOME_DIR: mockHomeDir });
-
-            mockFS({
-                [path.join(mockHomeDir, "config.json")]: JSON.stringify({
-                    someOtherProperty: "value",
-                }),
-            });
-
-            const toolchains = await Swiftly.listAvailableToolchains();
-            expect(toolchains).to.be.empty;
-        });
-
-        test("returns empty array on Windows", async () => {
-            mockedPlatform.setValue("win32");
-            const toolchains = await Swiftly.listAvailableToolchains();
-            expect(toolchains).to.be.empty;
-        });
-
-        test("filters out non-string toolchain entries", async () => {
-            mockedPlatform.setValue("linux");
-            const mockHomeDir = "/home/user/.swiftly";
-            mockedEnv.setValue({ SWIFTLY_HOME_DIR: mockHomeDir });
-
-            mockFS({
-                [path.join(mockHomeDir, "config.json")]: JSON.stringify({
-                    installedToolchains: ["swift-5.9.0", null, "swift-6.0.0", 123, "swift-6.1.0"],
-                }),
-            });
-
-            const toolchains = await Swiftly.listAvailableToolchains();
-            expect(toolchains).to.deep.equal([
-                path.join(mockHomeDir, "toolchains", "swift-5.9.0"),
-                path.join(mockHomeDir, "toolchains", "swift-6.0.0"),
-                path.join(mockHomeDir, "toolchains", "swift-6.1.0"),
-            ]);
         });
     });
 });

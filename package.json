@@ -2,7 +2,7 @@
   "name": "swift-vscode",
   "displayName": "Swift",
   "description": "Swift Language Support for Visual Studio Code.",
-  "version": "2.12.0-dev",
+  "version": "2.16.0-dev",
   "publisher": "swiftlang",
   "icon": "icon.png",
   "repository": {
@@ -29,6 +29,7 @@
     "workspaceContains:**/compile_commands.json",
     "workspaceContains:**/compile_flags.txt",
     "workspaceContains:**/buildServer.json",
+    "workspaceContains:**/.bsp/*.json",
     "onDebugResolve:swift-lldb",
     "onDebugResolve:swift"
   ],
@@ -177,6 +178,28 @@
         "filenamePatterns": [
           "*.tutorial"
         ]
+      },
+      {
+        "id": "swift-gyb",
+        "aliases": [
+          "Swift GYB"
+        ],
+        "extensions": [
+          ".swift.gyb"
+        ],
+        "configuration": "./swift-gyb.language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "swift-gyb",
+        "scopeName": "source.swift.gyb",
+        "path": "./syntaxes/swift-gyb.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.gyb": "python",
+          "meta.embedded.control.begin.gyb": "python",
+          "meta.embedded.expression.gyb": "python"
+        }
       }
     ],
     "snippets": [
@@ -263,6 +286,12 @@
       {
         "command": "swift.run",
         "title": "Run Swift executable",
+        "category": "Swift",
+        "icon": "$(play)"
+      },
+      {
+        "command": "swift.play",
+        "title": "Run Swift playground",
         "category": "Swift",
         "icon": "$(play)"
       },
@@ -507,26 +536,6 @@
             "markdownDescription": "Additional arguments to pass to swift commands that do package resolution, such as `swift package resolve`, `swift package update`, `swift build` and `swift test`. Keys and values should be provided as individual entries in the list.",
             "scope": "machine-overridable"
           },
-          "swift.additionalTestArguments": {
-            "type": "array",
-            "default": [],
-            "items": {
-              "type": "string"
-            },
-            "markdownDescription": "Additional arguments to pass to the `swift test` or `swift build` commands used when building and running tests from within VS Code.",
-            "scope": "machine-overridable"
-          },
-          "swift.testEnvironmentVariables": {
-            "type": "object",
-            "patternProperties": {
-              ".*": {
-                "type": "string"
-              }
-            },
-            "default": {},
-            "markdownDescription": "Environment variables to set when running tests. To set environment variables when debugging an application you should edit the `env` field in the relevant `launch.json` configuration.",
-            "scope": "machine-overridable"
-          },
           "swift.sanitizer": {
             "type": "string",
             "default": "off",
@@ -544,6 +553,22 @@
             "markdownDescription": "Search sub-folders of workspace folder for Swift Packages at start up.",
             "scope": "machine-overridable"
           },
+          "swift.ignoreSearchingForPackagesInSubfolders": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              ".",
+              ".build",
+              "Packages",
+              "out",
+              "bazel-out",
+              "bazel-bin"
+            ],
+            "markdownDescription": "A list of folders to ignore when searching sub-folders for Swift Packages. The `swift.searchSubfoldersForPackages` must be `true` for this setting to have an effect. Always use forward-slashes in glob expressions regardless of platform. This is combined with VS Code's `files.exclude` setting.",
+            "scope": "machine-overridable"
+          },
           "swift.autoGenerateLaunchConfigurations": {
             "type": "boolean",
             "default": true,
@@ -553,7 +578,7 @@
           "swift.disableAutoResolve": {
             "type": "boolean",
             "default": false,
-            "markdownDescription": "Disable automatic running of `swift package resolve` whenever the `Package.swift` or `Package.resolve` files are updated. This will also disable searching for command plugins and the initial test discovery process.",
+            "markdownDescription": "Disable automatic running of `swift package resolve` whenever the `Package.swift` or `Package.resolved` files are updated. This will also disable searching for command plugins and the initial test discovery process.",
             "scope": "machine-overridable"
           },
           "swift.diagnosticsCollection": {
@@ -593,10 +618,29 @@
             "scope": "machine-overridable"
           },
           "swift.backgroundCompilation": {
-            "type": "boolean",
+            "type": [
+              "boolean",
+              "object"
+            ],
             "default": false,
-            "markdownDescription": "**Experimental**: Run `swift build` in the background whenever a file is saved. It is possible the background compilation will already be running when you attempt a compile yourself, so this is disabled by default.",
-            "scope": "machine-overridable"
+            "markdownDescription": "Run `swift build` in the background whenever a file is saved. Setting to `true` enables, or you can use `object` notation for more fine grained control. It is possible the background compilation will already be running when you attempt a compile yourself, so this is disabled by default.",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "default": true,
+                "description": "Enable/disable background compilation."
+              },
+              "useDefaultTask": {
+                "type": "boolean",
+                "default": true,
+                "markdownDescription": "Use the default build task configured using the `Tasks: Configure Default Build Task` command when executing the background compilation. `#enabled#` property must be `true`."
+              },
+              "release": {
+                "type": "boolean",
+                "default": false,
+                "markdownDescription": "Use the `release` variant of the `Build All` task when executing the background compilation. `#enabled#` property must be `true`. This is ignored if the `#useDefaultTask#` property is true."
+              }
+            }
           },
           "swift.actionAfterBuildError": {
             "type": "string",
@@ -724,6 +768,26 @@
       {
         "title": "Testing",
         "properties": {
+          "swift.additionalTestArguments": {
+            "type": "array",
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "markdownDescription": "Additional arguments to pass to the `swift test` or `swift build` commands used when building and running tests from within VS Code.",
+            "scope": "machine-overridable"
+          },
+          "swift.testEnvironmentVariables": {
+            "type": "object",
+            "patternProperties": {
+              ".*": {
+                "type": "string"
+              }
+            },
+            "default": {},
+            "markdownDescription": "Environment variables to set when running tests. To set environment variables when debugging an application you should edit the `env` field in the relevant `launch.json` configuration.",
+            "scope": "machine-overridable"
+          },
           "swift.excludeFromCodeCoverage": {
             "description": "A list of paths to exclude from code coverage reports. Paths can be absolute or relative to the workspace root.",
             "type": "array",
@@ -1176,6 +1240,14 @@
           "when": "swift.supportsDocumentationLivePreview"
         },
         {
+          "command": "swift.installSwiftlyToolchain",
+          "when": "swift.supportsSwiftlyInstall"
+        },
+        {
+          "command": "swift.installSwiftlySnapshotToolchain",
+          "when": "swift.supportsSwiftlyInstall"
+        },
+        {
           "command": "swift.createNewProject",
           "when": "!swift.isActivated || swift.createNewProjectAvailable"
         },
@@ -1306,6 +1378,10 @@
         {
           "command": "swift.openEducationalNote",
           "when": "false"
+        },
+        {
+          "command": "swift.play",
+          "when": "false"
         }
       ],
       "editor/context": [
@@ -1357,11 +1433,6 @@
           "command": "swift.debugSnippet",
           "group": "1_file@5",
           "when": "swift.fileIsSnippet"
-        },
-        {
-          "command": "swift.cleanBuild",
-          "group": "2_pkg@1",
-          "when": "swift.hasPackage"
         }
       ],
       "view/title": [
@@ -1698,13 +1769,22 @@
         },
         "configurationAttributes": {
           "launch": {
-            "required": [
-              "program"
-            ],
             "properties": {
               "program": {
                 "type": "string",
                 "description": "Path to the program to debug."
+              },
+              "target": {
+                "type": "string",
+                "description": "The name of the SwiftPM target to debug."
+              },
+              "configuration": {
+                "type": "string",
+                "enum": [
+                  "debug",
+                  "release"
+                ],
+                "description": "The configuration of the SwiftPM target to use."
               },
               "args": {
                 "type": [
@@ -1955,7 +2035,7 @@
   "scripts": {
     "vscode:prepublish": "npm run bundle",
     "bundle": "del-cli ./dist && npm run bundle-extension && npm run bundle-documentation-webview",
-    "bundle-extension": "del-cli ./dist && esbuild ./src/extension.ts --bundle --outfile=dist/src/extension.js --external:vscode --define:process.env.NODE_ENV=\\\"production\\\" --define:process.env.CI=\\\"\\\" --format=cjs --platform=node --target=node18 --minify --sourcemap",
+    "bundle-extension": "del-cli ./dist && esbuild ./src/extension.ts ./src/askpass/askpass-main.ts --bundle --outdir=dist/src/ --external:vscode --define:process.env.NODE_ENV=\\\"production\\\" --define:process.env.CI=\\\"\\\" --format=cjs --platform=node --target=node18 --minify --sourcemap",
     "bundle-documentation-webview": "npm run compile-documentation-webview -- --minify",
     "compile": "del-cli ./dist/ && tsc --build",
     "watch": "npm run compile -- --watch",
@@ -1969,88 +2049,96 @@
     "pretest": "npm run compile-tests",
     "soundness": "scripts/soundness.sh",
     "check-package-json": "tsx ./scripts/check_package_json.ts",
-    "test": "vscode-test",
-    "integration-test": "npm test -- --label integrationTests",
-    "unit-test": "npm test -- --label unitTests",
-    "coverage": "npm test -- --coverage",
-    "compile-tests": "del-cli ./assets/test/**/.build && npm run compile",
+    "test": "vscode-test && npm run grammar-test",
+    "grammar-test": "vscode-tmgrammar-test test/unit-tests/**/*.test.swift.gyb -g test/unit-tests/syntaxes/swift.tmLanguage.json -g test/unit-tests/syntaxes/MagicPython.tmLanguage.json",
+    "integration-test": "npm run pretest && vscode-test --label integrationTests",
+    "unit-test": "npm run pretest && vscode-test --label unitTests",
+    "coverage": "npm run pretest && vscode-test --coverage",
+    "compile-tests": "del-cli ./assets/test/**/.build && del-cli ./assets/test/**/.spm-cache && npm run compile",
     "package": "tsx ./scripts/package.ts",
     "dev-package": "tsx ./scripts/dev_package.ts",
     "preview-package": "tsx ./scripts/preview_package.ts",
+    "patch-package": "tsx ./scripts/patch_package.ts",
     "tag": "./scripts/tag_release.sh $npm_package_version",
     "contributors": "./scripts/generate_contributors_list.sh",
     "prepare": "husky"
   },
   "lint-staged": {
+    "**/*.ts": [
+      "eslint --max-warnings=0",
+      "prettier --write"
+    ],
     "**/*": "prettier --write --ignore-unknown"
   },
   "devDependencies": {
     "@actions/core": "^1.11.1",
-    "@trivago/prettier-plugin-sort-imports": "^5.2.2",
-    "@types/archiver": "^6.0.3",
+    "@trivago/prettier-plugin-sort-imports": "^6.0.0",
+    "@types/archiver": "^7.0.0",
     "@types/chai": "^4.3.19",
     "@types/chai-as-promised": "^7.1.8",
     "@types/chai-subset": "^1.3.6",
     "@types/decompress": "^4.2.7",
-    "@types/diff": "^7.0.2",
+    "@types/diff": "^8.0.0",
     "@types/lcov-parse": "^1.0.2",
     "@types/lodash.debounce": "^4.0.9",
     "@types/lodash.throttle": "^4.1.9",
-    "@types/micromatch": "^4.0.9",
+    "@types/micromatch": "^4.0.10",
     "@types/mocha": "^10.0.10",
     "@types/mock-fs": "^4.13.4",
-    "@types/node": "^20.19.13",
+    "@types/node": "^20.19.25",
     "@types/plist": "^3.0.5",
     "@types/semver": "^7.7.1",
-    "@types/sinon": "^17.0.4",
+    "@types/sinon": "^21.0.0",
     "@types/sinon-chai": "^3.2.12",
+    "@types/source-map-support": "^0.5.10",
     "@types/svg2ttf": "^5.0.3",
     "@types/svgicons2svgfont": "^10.0.5",
     "@types/ttf2woff": "^2.0.4",
     "@types/vscode": "^1.88.0",
     "@types/xml2js": "^0.4.14",
-    "@typescript-eslint/eslint-plugin": "^8.43.0",
+    "@typescript-eslint/eslint-plugin": "^8.47.0",
     "@typescript-eslint/parser": "^8.32.1",
     "@vscode/debugprotocol": "^1.68.0",
-    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
-    "@vscode/vsce": "^3.6.0",
+    "@vscode/vsce": "^3.7.1",
     "chai": "^4.5.0",
     "chai-as-promised": "^7.1.2",
     "chai-subset": "^1.6.0",
     "decompress": "^4.2.1",
-    "del-cli": "^6.0.0",
+    "del-cli": "^7.0.0",
     "diff": "^8.0.2",
-    "esbuild": "^0.25.9",
+    "esbuild": "^0.27.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^10.1.8",
-    "fantasticon": "^3.0.0",
+    "eslint-plugin-mocha": "^10.5.0",
+    "fantasticon": "^1.2.3",
     "husky": "^9.1.7",
-    "lint-staged": "^16.1.6",
+    "lint-staged": "^16.2.7",
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
     "micromatch": "^4.0.8",
-    "mocha": "^11.7.2",
+    "mocha": "^11.7.5",
     "mock-fs": "^5.5.0",
-    "node-pty": "^1.0.0",
     "octokit": "^3.2.2",
     "prettier": "^3.6.2",
     "replace-in-file": "^8.3.0",
-    "semver": "^7.7.2",
-    "simple-git": "^3.28.0",
+    "semver": "^7.7.3",
+    "simple-git": "^3.30.0",
     "sinon": "^21.0.0",
     "sinon-chai": "^3.7.0",
     "source-map-support": "^0.5.21",
     "strip-ansi": "^6.0.1",
+    "vscode-tmgrammar-test": "^0.1.3",
     "svgo": "^4.0.0",
     "tsconfig-paths": "^4.2.0",
-    "tsx": "^4.20.5",
-    "typescript": "^5.9.2",
-    "winston": "^3.17.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "winston": "^3.18.3",
     "winston-transport": "^4.9.0"
   },
   "dependencies": {
-    "@vscode/codicons": "^0.0.40",
+    "@vscode/codicons": "^0.0.43",
     "archiver": "^7.0.1",
     "fast-glob": "^3.3.3",
     "lcov-parse": "^1.0.0",

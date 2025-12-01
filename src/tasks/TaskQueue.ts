@@ -163,7 +163,7 @@ class QueuedOperation {
  *
  * Queue swift task operations to be executed serially
  */
-export class TaskQueue {
+export class TaskQueue implements vscode.Disposable {
     queue: QueuedOperation[];
     activeOperation?: QueuedOperation;
     workspaceContext: WorkspaceContext;
@@ -174,6 +174,11 @@ export class TaskQueue {
         this.workspaceContext = folderContext.workspaceContext;
         this.activeOperation = undefined;
         this.disabled = false;
+    }
+
+    dispose() {
+        this.queue = [];
+        this.activeOperation = undefined;
     }
 
     /**

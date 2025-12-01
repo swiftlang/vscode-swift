@@ -78,6 +78,8 @@ export interface FolderConfiguration {
     readonly additionalTestArguments: string[];
     /** search sub-folder of workspace folder for Swift Packages */
     readonly searchSubfoldersForPackages: boolean;
+    /** Folders to ignore when searching for Swift Packages */
+    readonly ignoreSearchingForPackagesInSubfolders: string[];
     /** auto-generate launch.json configurations */
     readonly autoGenerateLaunchConfigurations: boolean;
     /** disable automatic running of swift package resolve */
@@ -103,6 +105,15 @@ export interface PluginPermissionConfiguration {
      * https://github.com/swiftlang/swift-package-manager/blob/0401a2ae55077cfd1f4c0acd43ae0a1a56ab21ef/Sources/Commands/PackageCommands/PluginCommand.swift#L62
      */
     allowNetworkConnections?: string;
+}
+
+export interface BackgroundCompilationConfiguration {
+    /** enable background compilation task on save */
+    enabled: boolean;
+    /** use the default `swift` build task when background compilation is enabled */
+    useDefaultTask: boolean;
+    /** Use the `release` variant of the build all task */
+    release: boolean;
 }
 
 /**
@@ -222,6 +233,15 @@ const configuration = {
                 return vscode.workspace
                     .getConfiguration("swift", workspaceFolder)
                     .get<boolean>("searchSubfoldersForPackages", false);
+            },
+            /** Folders to ignore when searching for Swift Packages */
+            get ignoreSearchingForPackagesInSubfolders(): string[] {
+                return vscode.workspace
+                    .getConfiguration("swift", workspaceFolder)
+                    .get<
+                        string[]
+                    >("ignoreSearchingForPackagesInSubfolders", [".", ".build", "Packages", "out", "bazel-out", "bazel-bin"])
+                    .map(substituteVariablesInString);
             },
             get attachmentsPath(): string {
                 return substituteVariablesInString(
@@ -414,10 +434,21 @@ const configuration = {
             .get<boolean>("createTasksForLibraryProducts", false);
     },
     /** background compilation */
-    get backgroundCompilation(): boolean {
-        return vscode.workspace
+    get backgroundCompilation(): BackgroundCompilationConfiguration {
+        const value = vscode.workspace
             .getConfiguration("swift")
-            .get<boolean>("backgroundCompilation", false);
+            .get<BackgroundCompilationConfiguration | boolean>("backgroundCompilation", false);
+        return {
+            get enabled(): boolean {
+                return typeof value === "boolean" ? value : value.enabled;
+            },
+            get useDefaultTask(): boolean {
+                return typeof value === "boolean" ? true : (value.useDefaultTask ?? true);
+            },
+            get release(): boolean {
+                return typeof value === "boolean" ? false : (value.release ?? false);
+            },
+        };
     },
     /** background indexing */
     get backgroundIndexing(): "on" | "off" | "auto" {

@@ -27,13 +27,95 @@ suite("Workspace Utilities Unit Test Suite", () => {
         const testSwiftVersion = new Version(5, 9, 0);
 
         test("returns only root package when search for subpackages disabled", async () => {
-            const folders = await searchForPackages(packageFolder, false, false, testSwiftVersion);
+            const folders = await searchForPackages(
+                packageFolder,
+                false,
+                false,
+                [],
+                testSwiftVersion
+            );
 
-            expect(folders.map(folder => folder.fsPath)).eql([packageFolder.fsPath]);
+            expect(folders.map(folder => folder.fsPath)).deep.equal([packageFolder.fsPath]);
         });
 
         test("returns subpackages when search for subpackages enabled", async () => {
-            const folders = await searchForPackages(packageFolder, false, true, testSwiftVersion);
+            const folders = await searchForPackages(
+                packageFolder,
+                false,
+                true,
+                [],
+                testSwiftVersion
+            );
+
+            expect(folders.map(folder => folder.fsPath).sort()).deep.equal([
+                packageFolder.fsPath,
+                firstModuleFolder.fsPath,
+                secondModuleFolder.fsPath,
+            ]);
+        });
+
+        test("skips specified folders when skipFolders contains Module1", async () => {
+            const folders = await searchForPackages(
+                packageFolder,
+                false,
+                true,
+                ["Module1"],
+                testSwiftVersion
+            );
+
+            expect(folders.map(folder => folder.fsPath).sort()).deep.equal([
+                packageFolder.fsPath,
+                secondModuleFolder.fsPath,
+            ]);
+        });
+
+        test("skips specified folders when skipFolders contains Module2", async () => {
+            const folders = await searchForPackages(
+                packageFolder,
+                false,
+                true,
+                ["Module2"],
+                testSwiftVersion
+            );
+
+            expect(folders.map(folder => folder.fsPath).sort()).deep.equal([
+                packageFolder.fsPath,
+                firstModuleFolder.fsPath,
+            ]);
+        });
+
+        test("skips multiple folders when skipFolders contains both modules", async () => {
+            const folders = await searchForPackages(
+                packageFolder,
+                false,
+                true,
+                ["Module1", "Module2"],
+                testSwiftVersion
+            );
+
+            expect(folders.map(folder => folder.fsPath)).deep.equal([packageFolder.fsPath]);
+        });
+
+        test("skipFolders has no effect when search for subpackages is disabled", async () => {
+            const folders = await searchForPackages(
+                packageFolder,
+                false,
+                false,
+                ["Module1", "Module2"],
+                testSwiftVersion
+            );
+
+            expect(folders.map(folder => folder.fsPath)).deep.equal([packageFolder.fsPath]);
+        });
+
+        test("skipFolders with non-existent folder names does not affect results", async () => {
+            const folders = await searchForPackages(
+                packageFolder,
+                false,
+                true,
+                ["NonExistentModule", "AnotherFakeModule"],
+                testSwiftVersion
+            );
 
             expect(folders.map(folder => folder.fsPath).sort()).deep.equal([
                 packageFolder.fsPath,

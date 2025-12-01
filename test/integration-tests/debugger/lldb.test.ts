@@ -15,7 +15,6 @@ import { expect } from "chai";
 
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { getLLDBLibPath } from "@src/debugger/lldb";
-import { IS_RUNNING_UNDER_DOCKER } from "@src/utilities/utilities";
 import { Version } from "@src/utilities/version";
 
 import { activateExtensionForTest } from "../utilities/testutilities";
@@ -25,12 +24,13 @@ suite("lldb contract test suite", () => {
 
     activateExtensionForTest({
         async setup(ctx) {
-            // lldb.exe on Windows is not launching correctly, but only in Docker.
+            // This test is failing due to toolchain issues starting with Swift 6.2.1
+            // Will re-enable once that is resolved.
+            //
+            // https://github.com/swiftlang/vscode-swift/issues/1947
             if (
-                IS_RUNNING_UNDER_DOCKER &&
                 process.platform === "win32" &&
-                ctx.globalToolchainSwiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
-                ctx.globalToolchainSwiftVersion.isLessThan(new Version(6, 0, 2))
+                ctx.globalToolchainSwiftVersion.isGreaterThanOrEqual(new Version(6, 2, 1))
             ) {
                 this.skip();
             }

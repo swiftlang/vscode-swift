@@ -16,6 +16,7 @@ import { afterEach, beforeEach } from "mocha";
 import * as path from "path";
 import * as vscode from "vscode";
 
+import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { Commands } from "@src/commands";
 import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
@@ -44,14 +45,21 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
+
             const folderContext = await folderInRootWorkspace("targets", workspaceContext);
             await vscode.workspace.openTextDocument(
                 path.join(folderContext.folder.fsPath, "Package.swift")
             );
             const logger = await ctx.loggerFactory.temp("ProjectPanelProvider.tests");
             await folderContext.loadSwiftPlugins(logger);
-            expect(logger.logs.length).to.equal(0, `Expected no output channel logs`);
-            treeProvider = new ProjectPanelProvider(workspaceContext);
+            if (logger.logs.length > 0) {
+                expect.fail(
+                    `Expected no output channel logs: ${JSON.stringify(logger.logs, undefined, 2)}`
+                );
+            }
+
+            treeProvider = ctx.projectPanel;
+
             await workspaceContext.focusFolder(folderContext);
             const buildAllTask = await createBuildAllTask(folderContext);
             buildAllTask.definition.dontTriggerTestDiscovery = true;
@@ -59,7 +67,6 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
         },
         async teardown() {
             workspaceContext.contextKeys.flatDependenciesList = false;
-            treeProvider.dispose();
         },
         testAssets: ["targets"],
     });
@@ -306,9 +313,8 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
             const dep = items.find(n => n.name === "swift-markdown") as PackageNode;
             expect(dep, `${JSON.stringify(items, null, 2)}`).to.not.be.undefined;
             expect(dep?.location).to.equal("https://github.com/swiftlang/swift-markdown.git");
-            assertPathsEqual(
-                dep?.path,
-                path.join(testAssetPath("targets"), ".build/checkouts/swift-markdown")
+            expect(dep?.path).to.equalPath(
+                testAssetPath("targets/.build/checkouts/swift-markdown")
             );
         });
 
@@ -319,8 +325,8 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
                 dep,
                 `Expected to find defaultPackage, but instead items were ${items.map(n => n.name)}`
             ).to.not.be.undefined;
-            assertPathsEqual(dep?.location, testAssetPath("defaultPackage"));
-            assertPathsEqual(dep?.path, testAssetPath("defaultPackage"));
+            expect(dep?.location).to.equalPath(testAssetPath("defaultPackage"));
+            expect(dep?.path).to.equalPath(testAssetPath("defaultPackage"));
         });
 
         test("Lists local dependency file structure", async () => {
@@ -336,24 +342,22 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
             const folder = folders.find(n => n.name === "Sources") as FileNode;
             expect(folder).to.not.be.undefined;
 
-            assertPathsEqual(folder?.path, path.join(testAssetPath("defaultPackage"), "Sources"));
+            expect(folder?.path).to.equalPath(testAssetPath("defaultPackage/Sources"));
 
             const childFolders = await treeProvider.getChildren(folder);
             const childFolder = childFolders.find(n => n.name === "PackageExe") as FileNode;
             expect(childFolder).to.not.be.undefined;
 
-            assertPathsEqual(
-                childFolder?.path,
-                path.join(testAssetPath("defaultPackage"), "Sources/PackageExe")
+            expect(childFolder?.path).to.equalPath(
+                testAssetPath("defaultPackage/Sources/PackageExe")
             );
 
             const files = await treeProvider.getChildren(childFolder);
             const file = files.find(n => n.name === "main.swift") as FileNode;
             expect(file).to.not.be.undefined;
 
-            assertPathsEqual(
-                file?.path,
-                path.join(testAssetPath("defaultPackage"), "Sources/PackageExe/main.swift")
+            expect(file?.path).to.equalPath(
+                testAssetPath("defaultPackage/Sources/PackageExe/main.swift")
             );
         });
 
@@ -368,19 +372,19 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
             expect(folder).to.not.be.undefined;
 
             const depPath = path.join(testAssetPath("targets"), ".build/checkouts/swift-markdown");
-            assertPathsEqual(folder?.path, path.join(depPath, "Sources"));
+            expect(folder?.path).to.equalPath(path.join(depPath, "Sources"));
 
             const childFolders = await treeProvider.getChildren(folder);
             const childFolder = childFolders.find(n => n.name === "CAtomic") as FileNode;
             expect(childFolder).to.not.be.undefined;
 
-            assertPathsEqual(childFolder?.path, path.join(depPath, "Sources/CAtomic"));
+            expect(childFolder?.path).to.equalPath(path.join(depPath, "Sources/CAtomic"));
 
             const files = await treeProvider.getChildren(childFolder);
             const file = files.find(n => n.name === "CAtomic.c") as FileNode;
             expect(file).to.not.be.undefined;
 
-            assertPathsEqual(file?.path, path.join(depPath, "Sources/CAtomic/CAtomic.c"));
+            expect(file?.path).to.equalPath(path.join(depPath, "Sources/CAtomic/CAtomic.c"));
         });
 
         test("Shows a flat dependency list", async () => {
@@ -400,13 +404,31 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
             expect(items.find(n => n.name === "defaultpackage")).to.not.be.undefined;
         });
 
-        test("Shows an error node when there is a problem compiling Package.swift", async () => {
-            workspaceContext.folders[0].hasResolveErrors = true;
-            workspaceContext.currentFolder = workspaceContext.folders[0];
-            const treeProvider = new ProjectPanelProvider(workspaceContext);
-            const children = await treeProvider.getChildren();
-            const errorNode = children.find(n => n.name === "Error Parsing Package.swift");
-            expect(errorNode).to.not.be.undefined;
+        suite("Error handling", () => {
+            let savedCurrentFolder: FolderContext | null | undefined;
+            let errorTreeProvider: ProjectPanelProvider | undefined;
+
+            beforeEach(async () => {
+                workspaceContext.folders[0].hasResolveErrors = true;
+                savedCurrentFolder = workspaceContext.currentFolder;
+                workspaceContext.currentFolder = workspaceContext.folders[0];
+            });
+
+            afterEach(() => {
+                errorTreeProvider?.dispose();
+                errorTreeProvider = undefined;
+                workspaceContext.folders[0].hasResolveErrors = false;
+                workspaceContext.currentFolder = savedCurrentFolder;
+            });
+
+            test("Shows an error node when there is a problem compiling Package.swift", async () => {
+                workspaceContext.folders[0].hasResolveErrors = true;
+                workspaceContext.currentFolder = workspaceContext.folders[0];
+                errorTreeProvider = new ProjectPanelProvider(workspaceContext);
+                const children = await errorTreeProvider.getChildren();
+                const errorNode = children.find(n => n.name === "Error Parsing Package.swift");
+                expect(errorNode).to.not.be.undefined;
+            });
         });
 
         suite("Excluded files", () => {
@@ -475,12 +497,5 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
         if (error) {
             throw error;
         }
-    }
-
-    function assertPathsEqual(path1: string | undefined, path2: string | undefined) {
-        expect(path1).to.not.be.undefined;
-        expect(path2).to.not.be.undefined;
-        // Convert to vscode.Uri to normalize paths, including drive letter capitalization on Windows.
-        expect(vscode.Uri.file(path1!).fsPath).to.equal(vscode.Uri.file(path2!).fsPath);
     }
 });

@@ -15,7 +15,8 @@ import * as vscode from "vscode";
 import * as winston from "winston";
 
 import configuration from "../configuration";
-import { IS_RUNNING_UNDER_TEST } from "../utilities/utilities";
+import { IS_RUNNING_IN_DEVELOPMENT_MODE, IS_RUNNING_UNDER_TEST } from "../utilities/utilities";
+import { FileTransport } from "./FileTransport";
 import { OutputChannelTransport } from "./OutputChannelTransport";
 import { RollingLog } from "./RollingLog";
 import { RollingLogTransport } from "./RollingLogTransport";
@@ -31,6 +32,8 @@ export class SwiftLogger implements vscode.Disposable {
     private logger: winston.Logger;
     protected rollingLog: RollingLog;
     protected outputChannel: vscode.OutputChannel;
+    private fileTransport: FileTransport;
+    private cachedOutputChannelLevel: string | undefined;
 
     constructor(
         public readonly name: string,
@@ -42,16 +45,24 @@ export class SwiftLogger implements vscode.Disposable {
         const ouptutChannelTransport = new OutputChannelTransport(this.outputChannel);
         ouptutChannelTransport.level = this.outputChannelLevel;
         const rollingLogTransport = new RollingLogTransport(this.rollingLog);
+
+        // Create file transport
+        this.fileTransport = new FileTransport(this.logFilePath);
+        this.fileTransport.level = "debug"; // File logging at the 'debug' level always
+
+        // Create logger with all transports
+        const transports = [
+            ouptutChannelTransport,
+            this.fileTransport,
+            // Only want to capture the rolling log in memory when testing
+            ...(IS_RUNNING_UNDER_TEST ? [rollingLogTransport] : []),
+            ...(IS_RUNNING_IN_DEVELOPMENT_MODE
+                ? [new winston.transports.Console({ level: "debug" })]
+                : []),
+        ];
+
         this.logger = winston.createLogger({
-            transports: [
-                new winston.transports.File({
-                    filename: this.logFilePath,
-                    level: "debug", // File logging at the 'debug' level always
-                }),
-                ouptutChannelTransport,
-                // Only want to capture the rolling log in memory when testing
-                ...(IS_RUNNING_UNDER_TEST ? [rollingLogTransport] : []),
-            ],
+            transports: transports,
             format: winston.format.combine(
                 winston.format.errors({ stack: true }),
                 winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss.SSS" }), // This is the format of `vscode.LogOutputChannel`
@@ -71,6 +82,7 @@ export class SwiftLogger implements vscode.Disposable {
                     if (rollingLogTransport.close) {
                         rollingLogTransport.close();
                     }
+                    this.fileTransport.close();
                 },
             },
             vscode.workspace.onDidChangeConfiguration(e => {
@@ -78,6 +90,8 @@ export class SwiftLogger implements vscode.Disposable {
                     e.affectsConfiguration("swift.outputChannelLogLevel") ||
                     e.affectsConfiguration("swift.diagnostics")
                 ) {
+                    // Clear cache when configuration changes
+                    this.cachedOutputChannelLevel = undefined;
                     ouptutChannelTransport.level = this.outputChannelLevel;
                 }
             })
@@ -85,23 +99,36 @@ export class SwiftLogger implements vscode.Disposable {
     }
 
     debug(message: LoggerMeta, label?: string, options?: LogMessageOptions) {
-        this.logger.debug(this.normalizeMessage(message, label), options);
+        const normalizedMessage = this.normalizeMessage(message, label);
+        this.logWithBuffer("debug", normalizedMessage, options);
     }
 
     info(message: LoggerMeta, label?: string, options?: LogMessageOptions) {
-        this.logger.info(this.normalizeMessage(message, label), options);
+        const normalizedMessage = this.normalizeMessage(message, label);
+        this.logWithBuffer("info", normalizedMessage, options);
     }
 
     warn(message: LoggerMeta, label?: string, options?: LogMessageOptions) {
-        this.logger.warn(this.normalizeMessage(message, label), options);
+        const normalizedMessage = this.normalizeMessage(message, label);
+        this.logWithBuffer("warn", normalizedMessage, options);
     }
 
     error(message: LoggerMeta, label?: string, options?: LogMessageOptions) {
         if (message instanceof Error) {
-            this.logger.error(message);
+            this.logWithBuffer("error", message);
             return;
         }
-        this.logger.error(this.normalizeMessage(message, label), options);
+        const normalizedMessage = this.normalizeMessage(message, label);
+        this.logWithBuffer("error", normalizedMessage, options);
+    }
+
+    private logWithBuffer(level: string, message: string | Error, meta?: LoggerMeta) {
+        // Log to all transports (output channel, file, console, etc.)
+        if (message instanceof Error) {
+            this.logger.log(level, message);
+        } else {
+            this.logger.log(level, message, meta);
+        }
     }
 
     get logs(): string[] {
@@ -131,16 +158,22 @@ export class SwiftLogger implements vscode.Disposable {
     }
 
     private get outputChannelLevel(): string {
-        const info = vscode.workspace.getConfiguration("swift").inspect("outputChannelLogLevel");
-        // If the user has explicitly set `outputChannelLogLevel` then use it, otherwise
-        // check the deprecated `diagnostics` property
-        if (info?.globalValue || info?.workspaceValue || info?.workspaceFolderValue) {
-            return configuration.outputChannelLogLevel;
-        } else if (configuration.diagnostics) {
-            return "debug";
-        } else {
-            return configuration.outputChannelLogLevel;
+        // Cache the configuration lookup to avoid repeated expensive calls during initialization
+        if (this.cachedOutputChannelLevel === undefined) {
+            const info = vscode.workspace
+                .getConfiguration("swift")
+                .inspect("outputChannelLogLevel");
+            // If the user has explicitly set `outputChannelLogLevel` then use it, otherwise
+            // check the deprecated `diagnostics` property
+            if (info?.globalValue || info?.workspaceValue || info?.workspaceFolderValue) {
+                this.cachedOutputChannelLevel = configuration.outputChannelLogLevel;
+            } else if (configuration.diagnostics) {
+                this.cachedOutputChannelLevel = "debug";
+            } else {
+                this.cachedOutputChannelLevel = configuration.outputChannelLogLevel;
+            }
         }
+        return this.cachedOutputChannelLevel;
     }
 
     dispose() {

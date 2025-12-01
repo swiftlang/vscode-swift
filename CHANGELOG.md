@@ -2,12 +2,32 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Fixed
+
+- Suggest "Open Documentation" when toolchain not found ([#1939](https://github.com/swiftlang/vscode-swift/pull/1939))
+- Make sure all folder operation listeners get past folder add events ([#1945](https://github.com/swiftlang/vscode-swift/pull/1945))
+
+## 2.14.0 - 2025-11-11
+
+### Added
+
+- Syntax highlighting for `*.swift.gyb` files ([#1515](https://github.com/swiftlang/vscode-swift/pull/1515))
+- Activate the extension if a workspace folder contains a `.bsp` folder ([#1865](https://github.com/swiftlang/vscode-swift/pull/1865))
+
+### Fixed 
+
+- Fixed an issue where the activation of the extension was held up while waiting on the debug configuration to update ([#1914](https://github.com/swiftlang/vscode-swift/pull/1914))
+
+## 2.12.0 - 2025-10-29
+
 ### Added
 
 - Swiftly toolchain installation support with commands to install stable and snapshot releases, progress tracking, and secure post-install script handling ([#1780](https://github.com/swiftlang/vscode-swift/pull/1780))
 - Prompt to restart `SourceKit-LSP` after changing `.sourcekit-lsp/config.json` files ([#1744](https://github.com/swiftlang/vscode-swift/issues/1744))
 - Prompt to cancel and replace the active test run if one is in flight ([#1774](https://github.com/swiftlang/vscode-swift/pull/1774))
 - A walkthrough for first time extension users ([#1560](https://github.com/swiftlang/vscode-swift/issues/1560))
+- Allow `swift.backgroundCompilation` setting to accept an object where enabling the `useDefaultTask` property will run the default build task, and the `release` property will run the `release` variant of the Build All task ([#1857](https://github.com/swiftlang/vscode-swift/pull/1857))
+- Added new `target` and `configuration` properties to `swift` launch configurations that can be used instead of `program` for SwiftPM based projects ([#1890](https://github.com/swiftlang/vscode-swift/pull/1890))
 
 ### Fixed
 
@@ -16,6 +36,7 @@
 - Fix an error when performing "Run/Debug Tests Multiple Times" on Linux ([#1824](https://github.com/swiftlang/vscode-swift/pull/1824))
 - Fix the `> Swift: Run Swift Script` command not running unless a Swift Package folder is open ([#1832](https://github.com/swiftlang/vscode-swift/pull/1832))
 - Fix the SourceKit-LSP diagnostics reported progress ([#1799](https://github.com/swiftlang/vscode-swift/pull/1799))
+- Omit incompatible `additionalTestArgs` when building tests for debugging ([#1864](https://github.com/swiftlang/vscode-swift/pull/1864))
 
 ## 2.11.20250806 - 2025-08-06
 

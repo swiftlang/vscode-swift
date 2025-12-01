@@ -229,15 +229,16 @@ export class BuildFlags {
      * @returns Promise resolving to the build binary path
      */
     async getBuildBinaryPath(
-        cwd: string,
         workspacePath: string,
         buildConfiguration: "debug" | "release" = "debug",
-        logger: SwiftLogger
+        logger: SwiftLogger,
+        idSuffix: string = "",
+        extraArgs: string[] = []
     ): Promise<string> {
         // Checking the bin path requires a swift process execution, so we maintain a cache.
         // The cache key is based on workspace, configuration, and build arguments.
         const buildArgsHash = JSON.stringify(configuration.buildArguments);
-        const cacheKey = `${workspacePath}:${buildConfiguration}:${buildArgsHash}`;
+        const cacheKey = `${workspacePath}:${buildConfiguration}:${buildArgsHash}${idSuffix}`;
 
         if (BuildFlags.buildPathCache.has(cacheKey)) {
             return BuildFlags.buildPathCache.get(cacheKey)!;
@@ -253,12 +254,14 @@ export class BuildFlags {
         const baseArgs = ["build", "--show-bin-path", "--configuration", buildConfiguration];
         const fullArgs = [
             ...this.withAdditionalFlags(baseArgs),
-            ...binPathAffectingArgs(configuration.buildArguments),
+            ...binPathAffectingArgs([...configuration.buildArguments, ...extraArgs]),
         ];
 
         try {
             // Execute swift build --show-bin-path
-            const result = await execSwift(fullArgs, this.toolchain, { cwd });
+            const result = await execSwift(fullArgs, this.toolchain, {
+                cwd: workspacePath,
+            });
             const binPath = result.stdout.trim();
 
             // Cache the result
@@ -291,34 +294,53 @@ export class BuildFlags {
     }
 
     /**
-     *  Filter argument list
+     *  Filter argument list with support for both inclusion and exclusion logic
      * @param args argument list
      * @param filter argument list filter
+     * @param exclude if true, remove matching arguments (exclusion mode); if false, keep only matching arguments (inclusion mode)
      * @returns filtered argument list
      */
-    static filterArguments(args: string[], filter: ArgumentFilter[]): string[] {
+    static filterArguments(args: string[], filter: ArgumentFilter[], exclude = false): string[] {
         const filteredArguments: string[] = [];
-        let includeCount = 0;
+        let pendingCount = 0;
+
         for (const arg of args) {
-            if (includeCount > 0) {
-                filteredArguments.push(arg);
-                includeCount -= 1;
+            if (pendingCount > 0) {
+                if (!exclude) {
+                    filteredArguments.push(arg);
+                }
+                pendingCount -= 1;
                 continue;
             }
-            const argFilter = filter.find(item => item.argument === arg);
-            if (argFilter) {
-                filteredArguments.push(arg);
-                includeCount = argFilter.include;
+
+            // Check if this argument matches any filter
+            const matchingFilter = filter.find(item => item.argument === arg);
+            if (matchingFilter) {
+                if (!exclude) {
+                    filteredArguments.push(arg);
+                }
+                pendingCount = matchingFilter.include;
                 continue;
             }
-            // find arguments of form arg=value
-            const argFilter2 = filter.find(
+
+            // Check for arguments of form --arg=value (only for filters with include=1)
+            const combinedArgFilter = filter.find(
                 item => item.include === 1 && arg.startsWith(item.argument + "=")
             );
-            if (argFilter2) {
+            if (combinedArgFilter) {
+                if (!exclude) {
+                    filteredArguments.push(arg);
+                }
+                continue;
+            }
+
+            // Handle unmatched arguments
+            if (exclude) {
                 filteredArguments.push(arg);
             }
+            // In include mode, unmatched arguments are not added
         }
+
         return filteredArguments;
     }
 }

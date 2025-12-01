@@ -21,6 +21,7 @@ import { SwiftToolchain } from "../toolchain/toolchain";
 import { fileExists } from "../utilities/filesystem";
 import { getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
 import { DebugAdapter, LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
+import { getTargetBinaryPath, swiftPrelaunchBuildTaskArguments } from "./launch";
 import { getLLDBLibPath, updateLaunchConfigForCI } from "./lldb";
 import { registerLoggingDebugAdapterTracker } from "./logTracker";
 
@@ -94,10 +95,49 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         folder: vscode.WorkspaceFolder | undefined,
         launchConfig: vscode.DebugConfiguration
     ): Promise<vscode.DebugConfiguration | undefined | null> {
-        const workspaceFolder = this.workspaceContext.folders.find(
+        const folderContext = this.workspaceContext.folders.find(
             f => f.workspaceFolder.uri.fsPath === folder?.uri.fsPath
         );
-        const toolchain = workspaceFolder?.toolchain ?? this.workspaceContext.globalToolchain;
+        const toolchain = folderContext?.toolchain ?? this.workspaceContext.globalToolchain;
+
+        // "launch" requests must have either a "target" or "program" property
+        if (
+            launchConfig.request === "launch" &&
+            !("program" in launchConfig) &&
+            !("target" in launchConfig)
+        ) {
+            throw new Error(
+                "You must specify either a 'program' or a 'target' when 'request' is set to 'launch' in a Swift debug configuration. Please update your debug configuration."
+            );
+        }
+
+        // Convert the "target" and "configuration" properties to a "program"
+        if (typeof launchConfig.target === "string") {
+            if ("program" in launchConfig) {
+                throw new Error(
+                    `Unable to set both "target" and "program" on the same Swift debug configuration. Please remove one of them from your debug configuration.`
+                );
+            }
+            const targetName = launchConfig.target;
+            if (!folderContext) {
+                throw new Error(
+                    `Unable to resolve target "${targetName}". No Swift package is available to search within.`
+                );
+            }
+            const buildConfiguration = launchConfig.configuration ?? "debug";
+            if (!["debug", "release"].includes(buildConfiguration)) {
+                throw new Error(
+                    `Unknown configuration property "${buildConfiguration}" in Swift debug configuration. Valid options are "debug" or "release. Please update your debug configuration.`
+                );
+            }
+            launchConfig.program = await getTargetBinaryPath(
+                targetName,
+                buildConfiguration,
+                folderContext,
+                await swiftPrelaunchBuildTaskArguments(launchConfig, folderContext.workspaceFolder)
+            );
+            delete launchConfig.target;
+        }
 
         // Fix the program path on Windows to include the ".exe" extension
         if (
@@ -148,9 +188,9 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                     return undefined;
                 }
             }
-            if (!(await this.promptForCodeLldbSettings(toolchain))) {
-                return undefined;
-            }
+
+            await this.promptForCodeLldbSettingsIfRequired(toolchain);
+
             // Rename lldb-dap's "terminateCommands" to "preTerminateCommands" for CodeLLDB
             if ("terminateCommands" in launchConfig) {
                 launchConfig["preTerminateCommands"] = launchConfig["terminateCommands"];
@@ -203,7 +243,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         }
     }
 
-    async promptForCodeLldbSettings(toolchain: SwiftToolchain): Promise<boolean> {
+    async promptForCodeLldbSettingsIfRequired(toolchain: SwiftToolchain) {
         const libLldbPathResult = await getLLDBLibPath(toolchain);
         if (!libLldbPathResult.success) {
             const errorMessage = `Error: ${getErrorDescription(libLldbPathResult.failure)}`;
@@ -211,7 +251,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                 `Failed to setup CodeLLDB for debugging of Swift code. Debugging may produce unexpected results. ${errorMessage}`
             );
             this.logger.error(`Failed to setup CodeLLDB: ${errorMessage}`);
-            return true;
+            return;
         }
         const libLldbPath = libLldbPathResult.success;
         const lldbConfig = vscode.workspace.getConfiguration("lldb");
@@ -219,7 +259,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             lldbConfig.get<string>("library") === libLldbPath &&
             lldbConfig.get<string>("launch.expressions") === "native"
         ) {
-            return true;
+            return;
         }
         let userSelection: "Global" | "Workspace" | "Run Anyway" | undefined = undefined;
         switch (configuration.debugger.setupCodeLLDB) {
@@ -272,7 +312,6 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                 );
                 break;
         }
-        return true;
     }
 
     private convertEnvironmentVariables(map: { [key: string]: string }): string[] {

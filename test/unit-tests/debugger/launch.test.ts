@@ -18,7 +18,7 @@ import { FolderContext } from "@src/FolderContext";
 import { Product, SwiftPackage } from "@src/SwiftPackage";
 import configuration, { FolderConfiguration } from "@src/configuration";
 import { SWIFT_LAUNCH_CONFIG_TYPE } from "@src/debugger/debugAdapter";
-import { makeDebugConfigurations } from "@src/debugger/launch";
+import { makeDebugConfigurations, swiftPrelaunchBuildTaskArguments } from "@src/debugger/launch";
 
 import {
     MockedObject,
@@ -77,7 +77,8 @@ suite("Launch Configurations Test", () => {
                     args: [],
                     cwd: "${workspaceFolder:folder}",
                     name: "Debug executable",
-                    program: "${workspaceFolder:folder}/.build/debug/executable",
+                    target: "executable",
+                    configuration: "debug",
                     preLaunchTask: "swift: Build Debug executable",
                 },
                 {
@@ -86,7 +87,8 @@ suite("Launch Configurations Test", () => {
                     args: [],
                     cwd: "${workspaceFolder:folder}",
                     name: "Release executable",
-                    program: "${workspaceFolder:folder}/.build/release/executable",
+                    target: "executable",
+                    configuration: "release",
                     preLaunchTask: "swift: Build Release executable",
                 },
             ],
@@ -115,7 +117,8 @@ suite("Launch Configurations Test", () => {
                     args: [],
                     cwd: "${workspaceFolder:folder}",
                     name: "Debug executable",
-                    program: "${workspaceFolder:folder}/.build/debug/executable",
+                    target: "executable",
+                    configuration: "debug",
                     preLaunchTask: "swift: Build Debug executable",
                 },
                 {
@@ -124,7 +127,8 @@ suite("Launch Configurations Test", () => {
                     args: [],
                     cwd: "${workspaceFolder:folder}",
                     name: "Release executable",
-                    program: "${workspaceFolder:folder}/.build/release/executable",
+                    target: "executable",
+                    configuration: "release",
                     preLaunchTask: "swift: Build Release executable",
                 },
             ],
@@ -140,7 +144,8 @@ suite("Launch Configurations Test", () => {
                 args: [],
                 cwd: "${workspaceFolder:folder}",
                 name: "Debug executable",
-                program: "${workspaceFolder:folder}/.build/debug/executable",
+                target: "executable",
+                configuration: "debug",
                 preLaunchTask: "swift: Build Debug executable",
             },
             {
@@ -149,7 +154,8 @@ suite("Launch Configurations Test", () => {
                 args: [],
                 cwd: "${workspaceFolder:folder}",
                 name: "Release executable",
-                program: "${workspaceFolder:folder}/.build/release/executable",
+                target: "executable",
+                configuration: "release",
                 preLaunchTask: "swift: Build Release executable",
             },
         ]);
@@ -164,7 +170,8 @@ suite("Launch Configurations Test", () => {
                     args: [],
                     cwd: "${workspaceFolder:folder}",
                     name: "Debug executable",
-                    program: "${workspaceFolder:folder}/.build/debug/executable",
+                    target: "executable",
+                    configuration: "debug",
                     preLaunchTask: "swift: Build Debug executable",
                 },
                 {
@@ -173,7 +180,8 @@ suite("Launch Configurations Test", () => {
                     args: [],
                     cwd: "${workspaceFolder:folder}",
                     name: "Release executable",
-                    program: "${workspaceFolder:folder}/.build/release/executable",
+                    target: "executable",
+                    configuration: "release",
                     preLaunchTask: "swift: Build Release executable",
                 },
             ],
@@ -190,7 +198,8 @@ suite("Launch Configurations Test", () => {
                 args: [],
                 cwd: "${workspaceFolder:folder}",
                 name: "Debug executable",
-                program: "${workspaceFolder:folder}/.build/debug/executable",
+                target: "executable",
+                configuration: "debug",
                 preLaunchTask: "swift: Build Debug executable",
             },
             {
@@ -199,7 +208,8 @@ suite("Launch Configurations Test", () => {
                 args: [],
                 cwd: "${workspaceFolder:folder}",
                 name: "Release executable",
-                program: "${workspaceFolder:folder}/.build/release/executable",
+                target: "executable",
+                configuration: "release",
                 preLaunchTask: "swift: Build Release executable",
             },
         ]);
@@ -217,7 +227,8 @@ suite("Launch Configurations Test", () => {
                 args: [],
                 cwd: "${workspaceFolder:folder}",
                 name: "Debug executable",
-                program: "${workspaceFolder:folder}/.build/debug/executable",
+                target: "executable",
+                configuration: "debug",
                 preLaunchTask: "swift: Build Debug executable",
             },
             {
@@ -226,7 +237,8 @@ suite("Launch Configurations Test", () => {
                 args: [],
                 cwd: "${workspaceFolder:folder}",
                 name: "Release executable",
-                program: "${workspaceFolder:folder}/.build/release/executable",
+                target: "executable",
+                configuration: "release",
                 preLaunchTask: "swift: Build Release executable",
             },
         ]);
@@ -242,7 +254,8 @@ suite("Launch Configurations Test", () => {
                     args: [],
                     cwd: "${workspaceFolder:folder}",
                     name: "Debug executable",
-                    program: "${workspaceFolder:folder}/.build/debug/executable",
+                    target: "executable",
+                    configuration: "debug",
                     preLaunchTask: "swift: Build Debug executable",
                 },
                 {
@@ -251,7 +264,8 @@ suite("Launch Configurations Test", () => {
                     args: [],
                     cwd: "${workspaceFolder:folder}",
                     name: "Release executable",
-                    program: "${workspaceFolder:folder}/.build/release/executable",
+                    target: "executable",
+                    configuration: "release",
                     preLaunchTask: "swift: Build Release executable",
                 },
             ],
@@ -267,7 +281,8 @@ suite("Launch Configurations Test", () => {
                 args: [],
                 cwd: "${workspaceFolder:folder}",
                 name: "Debug executable",
-                program: "${workspaceFolder:folder}/.build/debug/executable",
+                target: "executable",
+                configuration: "debug",
                 preLaunchTask: "swift: Build Debug executable",
             },
             {
@@ -276,12 +291,161 @@ suite("Launch Configurations Test", () => {
                 args: [],
                 cwd: "${workspaceFolder:folder}",
                 name: "Release executable",
-                program: "${workspaceFolder:folder}/.build/release/executable",
+                target: "executable",
+                configuration: "release",
                 preLaunchTask: "swift: Build Release executable",
             },
         ]);
 
         expect(await makeDebugConfigurations(instance(folder), { yes: true })).to.be.false;
         expect(mockLaunchWSConfig.update).to.not.have.been.called;
+    });
+});
+
+suite("Swift PreLaunch Build Task Arguments Test", () => {
+    const mockTasks = mockGlobalObject(vscode, "tasks");
+
+    setup(() => {
+        // Reset mocks before each test
+        mockTasks.fetchTasks.reset();
+    });
+
+    test("swiftPrelaunchBuildTaskArguments returns task args for Swift build task", async () => {
+        const expectedArgs = ["build", "--product", "executable", "--build-system"];
+        const mockTask = mockObject<vscode.Task>({
+            name: "swift: Build Debug executable",
+            definition: {
+                type: "swift",
+                args: expectedArgs,
+            },
+            scope: vscode.TaskScope.Workspace,
+            source: "swift",
+            isBackground: false,
+            presentationOptions: {},
+            problemMatchers: [],
+            runOptions: {},
+        });
+
+        mockTasks.fetchTasks.resolves([instance(mockTask)]);
+
+        const launchConfig: vscode.DebugConfiguration = {
+            type: "swift",
+            request: "launch",
+            name: "Debug executable",
+            preLaunchTask: "swift: Build Debug executable",
+        };
+
+        const result = await swiftPrelaunchBuildTaskArguments(launchConfig);
+        expect(result).to.deep.equal(expectedArgs);
+    });
+
+    test("swiftPrelaunchBuildTaskArguments returns undefined for non-Swift task", async () => {
+        const mockTask = mockObject<vscode.Task>({
+            name: "npm: build",
+            definition: {
+                type: "npm",
+                args: ["run", "build"],
+            },
+            scope: vscode.TaskScope.Workspace,
+            source: "npm",
+            isBackground: false,
+            presentationOptions: {},
+            problemMatchers: [],
+            runOptions: {},
+        });
+
+        mockTasks.fetchTasks.resolves([instance(mockTask)]);
+
+        const launchConfig: vscode.DebugConfiguration = {
+            type: "swift",
+            request: "launch",
+            name: "Debug executable",
+            preLaunchTask: "npm: build",
+        };
+
+        const result = await swiftPrelaunchBuildTaskArguments(launchConfig);
+        expect(result).to.be.undefined;
+    });
+
+    test("swiftPrelaunchBuildTaskArguments returns undefined for Swift task without build arg", async () => {
+        const mockTask = mockObject<vscode.Task>({
+            name: "swift: Test",
+            definition: {
+                type: "swift",
+                args: ["test", "--build-system"],
+            },
+            scope: vscode.TaskScope.Workspace,
+            source: "swift",
+            isBackground: false,
+            presentationOptions: {},
+            problemMatchers: [],
+            runOptions: {},
+        });
+
+        mockTasks.fetchTasks.resolves([instance(mockTask)]);
+
+        const launchConfig: vscode.DebugConfiguration = {
+            type: "swift",
+            request: "launch",
+            name: "Debug executable",
+            preLaunchTask: "swift: Test",
+        };
+
+        const result = await swiftPrelaunchBuildTaskArguments(launchConfig);
+        expect(result).to.be.undefined;
+    });
+
+    test("swiftPrelaunchBuildTaskArguments returns undefined for launch config without preLaunchTask", async () => {
+        const launchConfig: vscode.DebugConfiguration = {
+            type: "swift",
+            request: "launch",
+            name: "Debug executable",
+        };
+
+        const result = await swiftPrelaunchBuildTaskArguments(launchConfig);
+        expect(result).to.be.undefined;
+    });
+
+    test("swiftPrelaunchBuildTaskArguments handles errors gracefully", async () => {
+        mockTasks.fetchTasks.rejects(new Error("Failed to fetch tasks"));
+
+        const launchConfig: vscode.DebugConfiguration = {
+            type: "swift",
+            request: "launch",
+            name: "Debug executable",
+            preLaunchTask: "swift: Build Debug executable",
+        };
+
+        const result = await swiftPrelaunchBuildTaskArguments(launchConfig);
+        expect(result).to.be.undefined;
+    });
+
+    test("swiftPrelaunchBuildTaskArguments handles task name variations", async () => {
+        const expectedArgs = ["build", "--product", "executable", "--build-system"];
+        const mockTask = mockObject<vscode.Task>({
+            name: "Build Debug executable",
+            definition: {
+                type: "swift",
+                args: expectedArgs,
+            },
+            scope: vscode.TaskScope.Workspace,
+            source: "swift",
+            isBackground: false,
+            presentationOptions: {},
+            problemMatchers: [],
+            runOptions: {},
+        });
+
+        mockTasks.fetchTasks.resolves([instance(mockTask)]);
+
+        const launchConfig: vscode.DebugConfiguration = {
+            type: "swift",
+            request: "launch",
+            name: "Debug executable",
+            preLaunchTask: "swift: Build Debug executable",
+        };
+
+        const result = await swiftPrelaunchBuildTaskArguments(launchConfig);
+        expect(result).to.deep.equal(expectedArgs);
     });
 });

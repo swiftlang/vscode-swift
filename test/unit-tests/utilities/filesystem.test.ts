@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import * as path from "path";
 import { Uri } from "vscode";
 
 import {
@@ -36,8 +35,8 @@ suite("File System Utilities Unit Test Suite", () => {
 
     suite("expandFilePathTilde", () => {
         test("expands tilde", () => {
-            expect(expandFilePathTilde("~/Test", "/Users/John", "darwin")).to.equal(
-                path.normalize("/Users/John/Test")
+            expect(expandFilePathTilde("~/Test", "/Users/John", "darwin")).to.equalPath(
+                "/Users/John/Test"
             );
         });
 

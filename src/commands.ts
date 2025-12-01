@@ -30,10 +30,7 @@ import { useLocalDependency } from "./commands/dependencies/useLocal";
 import { generateLaunchConfigurations } from "./commands/generateLaunchConfigurations";
 import { generateSourcekitConfiguration } from "./commands/generateSourcekitConfiguration";
 import { insertFunctionComment } from "./commands/insertFunctionComment";
-import {
-    installSwiftlySnapshotToolchain,
-    installSwiftlyToolchain,
-} from "./commands/installSwiftlyToolchain";
+import { promptToInstallSwiftlyToolchain } from "./commands/installSwiftlyToolchain";
 import { newSwiftFile } from "./commands/newFile";
 import { openDocumentation } from "./commands/openDocumentation";
 import { openEducationalNote } from "./commands/openEducationalNote";
@@ -45,6 +42,7 @@ import { reindexProject } from "./commands/reindexProject";
 import { resetPackage } from "./commands/resetPackage";
 import restartLSPServer from "./commands/restartLSPServer";
 import { runAllTests } from "./commands/runAllTests";
+import { runPlayground } from "./commands/runPlayground";
 import { runPluginTask } from "./commands/runPluginTask";
 import { runSwiftScript } from "./commands/runSwiftScript";
 import { runTask } from "./commands/runTask";
@@ -68,16 +66,19 @@ import { showToolchainSelectionQuickPick } from "./ui/ToolchainSelection";
 export type WorkspaceContextWithToolchain = WorkspaceContext & { toolchain: SwiftToolchain };
 
 export function registerToolchainCommands(
-    toolchain: SwiftToolchain | undefined,
-    logger: SwiftLogger,
-    cwd?: vscode.Uri
+    ctx: WorkspaceContext | undefined,
+    logger: SwiftLogger
 ): vscode.Disposable[] {
     return [
         vscode.commands.registerCommand("swift.createNewProject", () =>
-            createNewProject(toolchain)
+            createNewProject(ctx?.globalToolchain)
         ),
         vscode.commands.registerCommand("swift.selectToolchain", () =>
-            showToolchainSelectionQuickPick(toolchain, logger, cwd)
+            showToolchainSelectionQuickPick(
+                ctx?.currentFolder?.toolchain ?? ctx?.globalToolchain,
+                logger,
+                ctx?.currentFolder?.folder
+            )
         ),
         vscode.commands.registerCommand("swift.pickProcess", configuration =>
             pickProcess(configuration)
@@ -88,6 +89,7 @@ export function registerToolchainCommands(
 export enum Commands {
     RUN = "swift.run",
     DEBUG = "swift.debug",
+    PLAY = "swift.play",
     CLEAN_BUILD = "swift.cleanBuild",
     RESOLVE_DEPENDENCIES = "swift.resolveDependencies",
     SHOW_FLAT_DEPENDENCIES_LIST = "swift.flatDependenciesList",
@@ -146,6 +148,13 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             Commands.DEBUG,
             async target => await debugBuild(ctx, ...unwrapTreeItem(target))
         ),
+        vscode.commands.registerCommand(Commands.PLAY, async target => {
+            const folder = ctx.currentFolder;
+            if (!folder || !target) {
+                return false;
+            }
+            return await runPlayground(folder, ctx.tasks, target);
+        }),
         vscode.commands.registerCommand(Commands.CLEAN_BUILD, async () => await cleanBuild(ctx)),
         vscode.commands.registerCommand(
             Commands.RUN_TESTS_MULTIPLE_TIMES,
@@ -356,11 +365,11 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         ),
         vscode.commands.registerCommand(
             Commands.INSTALL_SWIFTLY_TOOLCHAIN,
-            async () => await installSwiftlyToolchain(ctx)
+            async () => await promptToInstallSwiftlyToolchain(ctx, "stable")
         ),
         vscode.commands.registerCommand(
             Commands.INSTALL_SWIFTLY_SNAPSHOT_TOOLCHAIN,
-            async () => await installSwiftlySnapshotToolchain(ctx)
+            async () => await promptToInstallSwiftlyToolchain(ctx, "snapshot")
         ),
     ];
 }

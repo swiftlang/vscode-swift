@@ -37,6 +37,7 @@ export class FolderContext implements vscode.Disposable {
     private testExplorerResolver?: (testExplorer: TestExplorer) => void;
     private packageWatcher: PackageWatcher;
     private testRunManager: TestRunManager;
+    public creationStack?: string;
 
     /**
      * FolderContext constructor
@@ -57,6 +58,10 @@ export class FolderContext implements vscode.Disposable {
         this.taskQueue = new TaskQueue(this);
         this.testRunManager = new TestRunManager();
 
+        // In order to track down why a FolderContext may be created when we don't want one,
+        // capture the stack so we can log it if we find a duplicate.
+        this.creationStack = new Error().stack;
+
         // Tests often need to wait for the test explorer to be created before they can run.
         // This promise resolves when the test explorer is created, allowing them to wait for it before starting.
         this.resolvedTestExplorer = new Promise<TestExplorer>(resolve => {
@@ -70,6 +75,7 @@ export class FolderContext implements vscode.Disposable {
         this.packageWatcher.dispose();
         this.testExplorer?.dispose();
         this.backgroundCompilation.dispose();
+        this.taskQueue.dispose();
     }
 
     /**
@@ -88,7 +94,10 @@ export class FolderContext implements vscode.Disposable {
 
         let toolchain: SwiftToolchain;
         try {
-            toolchain = await SwiftToolchain.create(folder);
+            toolchain = await SwiftToolchain.create(
+                workspaceContext.extensionContext.extensionPath,
+                folder
+            );
         } catch (error) {
             // This error case is quite hard for the user to get in to, but possible.
             // Typically on startup the toolchain creation failure is going to happen in
@@ -102,7 +111,10 @@ export class FolderContext implements vscode.Disposable {
             if (userMadeSelection) {
                 // User updated toolchain settings, retry once
                 try {
-                    toolchain = await SwiftToolchain.create(folder);
+                    toolchain = await SwiftToolchain.create(
+                        workspaceContext.extensionContext.extensionPath,
+                        folder
+                    );
                     workspaceContext.logger.info(
                         `Successfully created toolchain for ${FolderContext.uriName(folder)} after user selection`,
                         FolderContext.uriName(folder)

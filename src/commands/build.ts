@@ -73,7 +73,7 @@ export async function folderCleanBuild(folderContext: FolderContext) {
 export async function debugBuildWithOptions(
     ctx: WorkspaceContext,
     options: vscode.DebugSessionOptions,
-    targetName?: string
+    targetName: string | undefined
 ) {
     const current = ctx.currentFolder;
     if (!current) {
@@ -107,7 +107,7 @@ export async function debugBuildWithOptions(
         return;
     }
 
-    const launchConfig = await getLaunchConfiguration(target.name, current);
+    const launchConfig = await getLaunchConfiguration(target.name, "debug", current);
     if (launchConfig) {
         ctx.buildStarted(target.name, launchConfig, options);
         const result = await debugLaunchConfig(

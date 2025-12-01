@@ -26,6 +26,7 @@ import { activateExtensionForSuite, getRootWorkspaceFolder } from "./utilities/t
 
 suite("FolderContext Error Handling Test Suite", () => {
     let workspaceContext: WorkspaceContext;
+    let folderContext: FolderContext | undefined;
     let swiftToolchainCreateStub: MockedFunction<typeof SwiftToolchain.create>;
     const showToolchainError = mockGlobalValue(toolchain, "showToolchainError");
 
@@ -38,6 +39,7 @@ suite("FolderContext Error Handling Test Suite", () => {
     });
 
     afterEach(() => {
+        folderContext?.dispose();
         restore();
     });
 
@@ -52,11 +54,7 @@ suite("FolderContext Error Handling Test Suite", () => {
         const workspaceFolder = getRootWorkspaceFolder();
         const testFolder = testAssetUri("package2");
 
-        const folderContext = await FolderContext.create(
-            testFolder,
-            workspaceFolder,
-            workspaceContext
-        );
+        folderContext = await FolderContext.create(testFolder, workspaceFolder, workspaceContext);
 
         assert.ok(folderContext, "FolderContext should be created despite toolchain failure");
         assert.strictEqual(
@@ -74,7 +72,10 @@ suite("FolderContext Error Handling Test Suite", () => {
         assert.ok(errorLogs.length > 0, "Should log error message with folder context");
 
         assert.ok(
-            swiftToolchainCreateStub.calledWith(testFolder),
+            swiftToolchainCreateStub.calledWith(
+                workspaceContext.extensionContext.extensionPath,
+                testFolder
+            ),
             "Should attempt to create toolchain for specific folder"
         );
         assert.strictEqual(
@@ -99,11 +100,7 @@ suite("FolderContext Error Handling Test Suite", () => {
         const showToolchainErrorStub = stub().resolves(true);
         showToolchainError.setValue(showToolchainErrorStub);
 
-        const folderContext = await FolderContext.create(
-            testFolder,
-            workspaceFolder,
-            workspaceContext
-        );
+        folderContext = await FolderContext.create(testFolder, workspaceFolder, workspaceContext);
 
         // Assert: FolderContext should be created successfully
         assert.ok(folderContext, "FolderContext should be created after retry");
@@ -146,11 +143,7 @@ suite("FolderContext Error Handling Test Suite", () => {
         const showToolchainErrorStub = stub().resolves(true);
         showToolchainError.setValue(showToolchainErrorStub);
 
-        const folderContext = await FolderContext.create(
-            testFolder,
-            workspaceFolder,
-            workspaceContext
-        );
+        folderContext = await FolderContext.create(testFolder, workspaceFolder, workspaceContext);
 
         assert.ok(
             folderContext,

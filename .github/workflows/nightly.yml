@@ -1,9 +1,17 @@
 name: Nightly
 
+permissions:
+  contents: read
+
 on:
   schedule:
     - cron: "0 0 * * *"
   workflow_dispatch:
+    inputs:
+      patchRelease:
+        description: 'Make a patch release'
+        required: false
+        type: boolean
 
 jobs:
   package:
@@ -24,7 +32,12 @@ jobs:
           . .github/workflows/scripts/setup-linux.sh
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
           npm ci
-          npm run package
+          if [ "${{github.event.inputs.patchRelease}}" = "true" ]; then
+            echo "Making patch release\n"
+            npm run patch-package
+          else
+            npm run package
+          fi
           npm run preview-package
           for file in *.vsix; do
             name="$(basename "$file" .vsix)-${{github.run_number}}.vsix"
@@ -62,7 +75,7 @@ jobs:
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./scripts/test.sh
       # Windows
-      windows_exclude_swift_versions: '[{"swift_version": "nightly-6.1"},{"swift_version": "nightly"}]'  # Missing https://github.com/swiftlang/swift/pull/80144
+      windows_exclude_swift_versions: '[{"swift_version": "nightly-6.1"}, {"swift_version": "nightly"},  {"swift_version": "6.2"}]'  # Missing https://github.com/swiftlang/swift/pull/80144
       windows_env_vars: |
         CI=1
         VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
@@ -101,3 +114,5 @@ jobs:
       windows_pre_build_command: . .github\workflows\scripts\windows\setup.ps1
       windows_build_command: Invoke-Program scripts\test_windows.ps1
       enable_windows_docker: false
+      # TODO re-enable when 6.2.1 toolchain working
+      enable_windows_checks: false

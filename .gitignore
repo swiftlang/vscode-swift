@@ -6,6 +6,9 @@ coverage
 test-results
 userdocs/userdocs.docc/.docc-build
 
+# SwiftPM cache for tests
+.spm-cache
+
 # Generated Assets
 assets/documentation-webview
 assets/icons
