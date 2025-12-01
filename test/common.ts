@@ -21,6 +21,7 @@ import * as sinonChai from "sinon-chai";
 import * as sourceMapSupport from "source-map-support";
 import * as tsConfigPaths from "tsconfig-paths";
 
+import { chaiPathPlugin } from "./chai-path-plugin";
 import { installTagSupport } from "./tags";
 
 // Use source-map-support to get better stack traces.
@@ -48,8 +49,11 @@ tsConfigPaths.register({
     paths: tsConfig.compilerOptions.paths,
 });
 
+// Install chai plugins
 chai.use(sinonChai);
-chai.use(chaiAsPromised);
 chai.use(chaiSubset);
+chai.use(chaiPathPlugin);
+// chai-as-promised must always be installed last!
+chai.use(chaiAsPromised);
 
 installTagSupport();

@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
 import * as fs from "fs/promises";
-import * as path from "path";
 import * as vscode from "vscode";
 
 import { FileNode, PackageNode } from "@src/ui/ProjectPanelProvider";
@@ -75,7 +74,7 @@ suite("PackageDependencyProvider Unit Test Suite", function () {
             const node = new PackageNode(
                 {
                     identity: "SwiftMarkdown",
-                    path: path.normalize("/path/to/.build/swift-markdown"),
+                    path: "/path/to/.build/swift-markdown",
                     location: "https://github.com/swiftlang/swift-markdown.git",
                     dependencies: [],
                     version: "1.2.3",
@@ -84,7 +83,7 @@ suite("PackageDependencyProvider Unit Test Suite", function () {
                 () => [
                     {
                         identity: "SomeChildDependency",
-                        path: path.normalize("/path/to/.build/child-dependency"),
+                        path: "/path/to/.build/child-dependency",
                         location: "https://github.com/swiftlang/some-child-dependency.git",
                         dependencies: [],
                         version: "1.2.4",
@@ -94,8 +93,8 @@ suite("PackageDependencyProvider Unit Test Suite", function () {
                 undefined,
                 () =>
                     Promise.resolve([
-                        path.normalize("/path/to/.build/swift-markdown/file1"),
-                        path.normalize("/path/to/.build/swift-markdown/file2"),
+                        "/path/to/.build/swift-markdown/file1",
+                        "/path/to/.build/swift-markdown/file2",
                     ])
             );
 
@@ -112,12 +111,10 @@ suite("PackageDependencyProvider Unit Test Suite", function () {
                 }
 
                 const expectedName = `file${index + 1}`;
-                const expectedPath = path.normalize(
-                    `/path/to/.build/swift-markdown/file${index + 1}`
-                );
+                const expectedPath = `/path/to/.build/swift-markdown/file${index + 1}`;
 
                 expect(file.name).to.equal(expectedName, `File name should be file${index + 1}`);
-                expect(file.path).to.equal(expectedPath, `File path should match expected path`);
+                expect(file.path).to.equalPath(expectedPath);
                 expect(file.isDirectory).to.be.false;
             });
         });
