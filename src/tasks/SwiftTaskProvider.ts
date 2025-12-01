@@ -312,7 +312,11 @@ export function createSwiftTask(
     } else {
         cwd = config.cwd.fsPath;
     }*/
-    const env = { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv(), ...cmdEnv };
+    const env = {
+        ...swiftRuntimeEnv(), // From process.env first
+        ...configuration.swiftEnvironmentVariables, // Then swiftEnvironmentVariables settings
+        ...cmdEnv, // Task configuration takes highest precedence
+    };
     const presentation = config?.presentationOptions ?? {};
     if (config?.packageName) {
         name += ` (${config?.packageName})`;
@@ -469,9 +473,9 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         const env = platform?.env ?? task.definition.env;
         const fullCwd = resolveTaskCwd(task, platform?.cwd ?? task.definition.cwd);
         const fullEnv = {
-            ...configuration.swiftEnvironmentVariables,
-            ...swiftRuntimeEnv(),
-            ...env,
+            ...swiftRuntimeEnv(), // From process.env first
+            ...configuration.swiftEnvironmentVariables, // Then swiftEnvironmentVariables settings
+            ...env, // Task configuration takes highest precedence
         };
 
         const presentation = task.definition.presentation ?? task.presentationOptions ?? {};
