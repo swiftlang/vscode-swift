@@ -529,12 +529,25 @@ export class SwiftToolchain {
         return await findBinaryInPath("swift");
     }
 
-    private static async isXcrunShim(binary: string): Promise<boolean> {
+    private static async isXcrunShim(binary: string, logger?: SwiftLogger): Promise<boolean> {
         if (!(await fileExists(binary))) {
             return false;
         }
-        const objdumpOutput = await execFile("/usr/bin/objdump", ["-h", binary]);
-        return objdumpOutput.stdout.includes("__xcrun_shim");
+        // Make sure that either Xcode or CommandLineTools are installed before attempting to run objdump.
+        try {
+            await execFile("xcode-select", ["-p"]);
+        } catch (error) {
+            logger?.error(error);
+            return false;
+        }
+        // Use objdump to determine if this is an xcrun shim.
+        try {
+            const objdumpOutput = await execFile("/usr/bin/objdump", ["-h", binary]);
+            return objdumpOutput.stdout.includes("__xcrun_shim");
+        } catch (error) {
+            logger?.error(error);
+            return false;
+        }
     }
 
     /**
@@ -553,7 +566,7 @@ export class SwiftToolchain {
             // swift may be a symbolic link
             const realSwiftBinaryPath = await fs.realpath(swiftBinaryPath);
             // Check if the swift binary is managed by xcrun
-            if (process.platform === "darwin" && (await this.isXcrunShim(realSwiftBinaryPath))) {
+            if (await this.isXcrunShim(realSwiftBinaryPath, logger)) {
                 const { stdout } = await execFile("xcrun", ["--find", "swift"], {
                     env: configuration.swiftEnvironmentVariables,
                 });
