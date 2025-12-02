@@ -571,7 +571,7 @@ export class SwiftToolchain {
 
             if (path.basename(realSwift) === "swiftly") {
                 try {
-                    const inUse = await Swiftly.inUseLocation(realSwift, cwd);
+                    const inUse = await Swiftly.inUseLocation("swiftly", cwd);
                     if (inUse) {
                         realSwift = path.join(inUse, "usr", "bin", "swift");
                         isSwiftlyManaged = true;
