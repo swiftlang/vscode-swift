@@ -542,7 +542,7 @@ export class SwiftToolchain {
         }
         // Use objdump to determine if this is an xcrun shim.
         try {
-            const objdumpOutput = await execFile("/usr/bin/objdump", ["-h", binary]);
+            const objdumpOutput = await execFile("xcrun", ["objdump", "-h", binary]);
             return objdumpOutput.stdout.includes("__xcrun_shim");
         } catch (error) {
             logger?.error(error);
