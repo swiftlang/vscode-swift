@@ -23,7 +23,7 @@
             // Add the IDs of extensions you want installed when the container is created.
             "extensions": [
                 "dbaeumer.vscode-eslint",
-                "esbenp.prettier-vscode",
+                "prettier.prettier-vscode",
                 "llvm-vs-code-extensions.lldb-dap"
             ]
         }
