@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import * as fs from "fs/promises";
+import * as mockFS from "mock-fs";
 import * as sinon from "sinon";
 
 import * as lldb from "@src/debugger/lldb";
@@ -24,113 +24,215 @@ import {
     MockedObject,
     instance,
     mockFn,
-    mockGlobalModule,
     mockGlobalValue,
     mockObject,
 } from "../../MockUtils";
 
 suite("debugger.lldb Tests", () => {
-    suite("getLLDBLibPath Tests", () => {
+    suite("getLLDBLibPath()", () => {
         let mockToolchain: MockedObject<SwiftToolchain>;
-        let mockFindLibLLDB: MockedFunction<(typeof lldb)["findLibLLDB"]>;
+        let execFileStub: MockedFunction<typeof util.execFile>;
         const mockedPlatform = mockGlobalValue(process, "platform");
-        const mockUtil = mockGlobalModule(util);
 
         setup(() => {
-            mockFindLibLLDB = sinon.stub();
+            mockFS();
+            execFileStub = sinon.stub(util, "execFile");
             mockToolchain = mockObject<SwiftToolchain>({
-                getLLDB: mockFn(),
-                swiftFolderPath: "",
+                swiftFolderPath: "/usr/bin",
+                toolchainPath: "/toolchain",
+                getLLDB: mockFn(s => s.resolves("/toolchain/bin/lldb")),
             });
         });
 
-        test("should return failure if toolchain.getLLDB() throws an error", async () => {
-            mockToolchain.getLLDB.rejects(new Error("Failed to get LLDB"));
-            const result = await lldb.getLLDBLibPath(instance(mockToolchain));
-            expect(result.failure).to.have.property("message", "Failed to get LLDB");
+        teardown(() => {
+            mockFS.restore();
+            sinon.restore();
         });
 
-        test("should return failure when execFile throws an error on windows", async () => {
-            mockedPlatform.setValue("win32");
-            mockToolchain.getLLDB.resolves("/path/to/lldb");
-            mockUtil.execFile.rejects(new Error("execFile failed"));
-            const result = await lldb.getLLDBLibPath(instance(mockToolchain));
-            // specific behaviour: return success and failure both undefined
-            expect(result.failure).to.equal(undefined);
-            expect(result.success).to.equal(undefined);
+        suite("macOS", () => {
+            setup(() => {
+                mockedPlatform.setValue("darwin");
+            });
+
+            test("returns the path to the LLDB dynamic library found by querying LLDB", async () => {
+                mockFS({
+                    "/toolchain": {
+                        bin: {
+                            lldb: mockFS.file({ mode: 0o777, content: "" }),
+                        },
+                        Libraries: {
+                            "liblldb.dylib": mockFS.file({ mode: 0o777, content: "" }),
+                        },
+                    },
+                });
+                execFileStub.withArgs("/toolchain/bin/lldb").resolves({
+                    stdout: "<!/toolchain/Libraries!>\n",
+                    stderr: "",
+                });
+
+                const result = await lldb.getLLDBLibPath(instance(mockToolchain));
+                expect(result.success).to.equalPath("/toolchain/Libraries/liblldb.dylib");
+                expect(result.failure).to.be.undefined;
+            });
+
+            test("falls back to searching the toolchain path if querying LLDB returns nothing", async () => {
+                mockFS({
+                    "/toolchain": {
+                        bin: {
+                            lldb: mockFS.file({ mode: 0o777, content: "" }),
+                        },
+                        "liblldb.dylib": mockFS.file({ mode: 0o777, content: "" }),
+                    },
+                });
+                execFileStub.withArgs("/toolchain/bin/lldb").resolves({
+                    stdout: "",
+                    stderr: "",
+                });
+
+                const result = await lldb.getLLDBLibPath(instance(mockToolchain));
+                expect(result.success).to.equalPath("/toolchain/liblldb.dylib");
+                expect(result.failure).to.be.undefined;
+            });
+
+            test("falls back to searching the toolchain path if querying LLDB fails", async () => {
+                mockFS({
+                    "/toolchain": {
+                        bin: {
+                            lldb: mockFS.file({ mode: 0o777, content: "" }),
+                        },
+                        "liblldb.dylib": mockFS.file({ mode: 0o777, content: "" }),
+                    },
+                });
+                execFileStub.withArgs("/toolchain/bin/lldb").rejects(Error("Something went wrong"));
+
+                const result = await lldb.getLLDBLibPath(instance(mockToolchain));
+                expect(result.success).to.equalPath("/toolchain/liblldb.dylib");
+                expect(result.failure).to.be.undefined;
+            });
         });
 
-        test("should return failure if findLibLLDB returns falsy values", async () => {
-            mockToolchain.getLLDB.resolves("/path/to/lldb");
-            mockUtil.execFile.resolves({ stdout: "", stderr: "" });
-            mockFindLibLLDB.onFirstCall().resolves(undefined);
+        suite("Linux", () => {
+            setup(() => {
+                mockedPlatform.setValue("linux");
+            });
 
-            let result = await lldb.getLLDBLibPath(instance(mockToolchain));
-            expect(result.failure).to.not.equal(undefined);
+            test("returns the path to the LLDB dynamic library found by querying LLDB", async () => {
+                mockFS({
+                    "/toolchain": {
+                        bin: {
+                            lldb: mockFS.file({ mode: 0o777, content: "" }),
+                        },
+                        Libraries: {
+                            "liblldb.so": mockFS.file({ mode: 0o777, content: "" }),
+                        },
+                    },
+                });
+                execFileStub.withArgs("/toolchain/bin/lldb").resolves({
+                    stdout: "<!/toolchain/Libraries!>\n",
+                    stderr: "",
+                });
 
-            mockFindLibLLDB.onSecondCall().resolves("");
+                const result = await lldb.getLLDBLibPath(instance(mockToolchain));
+                expect(result.success).to.equalPath("/toolchain/Libraries/liblldb.so");
+                expect(result.failure).to.be.undefined;
+            });
 
-            result = await lldb.getLLDBLibPath(instance(mockToolchain));
-            expect(result.failure).to.not.equal(undefined);
-        });
-        // NB(separate itest): contract test with toolchains of various platforms
-    });
+            test("falls back to searching the toolchain path if querying LLDB returns nothing", async () => {
+                mockFS({
+                    "/toolchain": {
+                        bin: {
+                            lldb: mockFS.file({ mode: 0o777, content: "" }),
+                        },
+                        "liblldb.so": mockFS.file({ mode: 0o777, content: "" }),
+                    },
+                });
+                execFileStub.withArgs("/toolchain/bin/lldb").resolves({
+                    stdout: "",
+                    stderr: "",
+                });
 
-    suite("findLibLLDB Tests", () => {
-        const fsMock = mockGlobalModule(fs);
+                const result = await lldb.getLLDBLibPath(instance(mockToolchain));
+                expect(result.success).to.equalPath("/toolchain/liblldb.so");
+                expect(result.failure).to.be.undefined;
+            });
 
-        test("should return undefined if no file matches the pattern", async () => {
-            fsMock.readdir.resolves(["file1", "file2"] as any);
-            fsMock.stat.resolves({ isFile: () => false } as any);
+            test("falls back to searching the toolchain path if querying LLDB fails", async () => {
+                mockFS({
+                    "/toolchain": {
+                        bin: {
+                            lldb: mockFS.file({ mode: 0o777, content: "" }),
+                        },
+                        "liblldb.so": mockFS.file({ mode: 0o777, content: "" }),
+                    },
+                });
+                execFileStub.withArgs("/toolchain/bin/lldb").rejects(Error("Something went wrong"));
 
-            const result = await lldb.findLibLLDB("/path/hint");
-
-            expect(result).to.be.undefined;
-        });
-
-        test("should return path if file exists", async () => {
-            fsMock.stat.resolves({ isFile: () => true } as any);
-
-            const result = await lldb.findLibLLDB("/path/hint");
-
-            expect(result).to.equal("/path/hint");
-        });
-        // NB(separate itest): contract test with toolchains of various platforms
-    });
-
-    suite("findFileByPattern Tests", () => {
-        const fsMock = mockGlobalModule(fs);
-
-        test("should return null if no file matches the pattern", async () => {
-            fsMock.readdir.resolves(["file1", "file2"] as any);
-
-            const result = await lldb.findFileByPattern("/some/path", /pattern/);
-
-            expect(result).to.be.null;
-        });
-
-        test("should return the first match if one file matches the pattern", async () => {
-            fsMock.readdir.resolves(["match1", "nomatch"] as any);
-
-            const result = await lldb.findFileByPattern("/some/path", /match1/);
-
-            expect(result).to.equal("match1");
-        });
-
-        test("should return the first match if multiple files match the pattern", async () => {
-            fsMock.readdir.resolves(["match1", "match2"] as any);
-
-            const result = await lldb.findFileByPattern("/some/path", /match/);
-
-            expect(result).to.equal("match1");
+                const result = await lldb.getLLDBLibPath(instance(mockToolchain));
+                expect(result.success).to.equalPath("/toolchain/liblldb.so");
+                expect(result.failure).to.be.undefined;
+            });
         });
 
-        test("should return null if directory reading fails", async () => {
-            fsMock.readdir.rejects(new Error("Some error"));
+        suite("Windows", () => {
+            setup(() => {
+                mockedPlatform.setValue("win32");
+            });
 
-            const result = await lldb.findFileByPattern("/some/path", /pattern/);
+            test("returns the path to the LLDB dynamic library found by querying LLDB", async () => {
+                mockFS({
+                    "/toolchain": {
+                        bin: {
+                            lldb: mockFS.file({ mode: 0o777, content: "" }),
+                        },
+                        Libraries: {
+                            "liblldb.dll": mockFS.file({ mode: 0o777, content: "" }),
+                        },
+                    },
+                });
+                execFileStub.withArgs("/toolchain/bin/lldb").resolves({
+                    stdout: "<!/toolchain/Libraries!>\n",
+                    stderr: "",
+                });
 
-            expect(result).to.be.null;
+                const result = await lldb.getLLDBLibPath(instance(mockToolchain));
+                expect(result.success).to.equalPath("/toolchain/Libraries/liblldb.dll");
+                expect(result.failure).to.be.undefined;
+            });
+
+            test("falls back to searching the toolchain path if querying LLDB returns nothing", async () => {
+                mockFS({
+                    "/toolchain": {
+                        bin: {
+                            lldb: mockFS.file({ mode: 0o777, content: "" }),
+                        },
+                        "liblldb.dll": mockFS.file({ mode: 0o777, content: "" }),
+                    },
+                });
+                execFileStub.withArgs("/toolchain/bin/lldb").resolves({
+                    stdout: "",
+                    stderr: "",
+                });
+
+                const result = await lldb.getLLDBLibPath(instance(mockToolchain));
+                expect(result.success).to.equalPath("/toolchain/liblldb.dll");
+                expect(result.failure).to.be.undefined;
+            });
+
+            test("fails with an undefined error if querying LLDB fails", async () => {
+                mockFS({
+                    "/toolchain": {
+                        bin: {
+                            lldb: mockFS.file({ mode: 0o777, content: "" }),
+                        },
+                        "liblldb.so": mockFS.file({ mode: 0o777, content: "" }),
+                    },
+                });
+                execFileStub.withArgs("/toolchain/bin/lldb").rejects(Error("Something went wrong"));
+
+                const result = await lldb.getLLDBLibPath(instance(mockToolchain));
+                expect(result.success).to.be.undefined;
+                expect(result.failure).to.be.undefined;
+            });
         });
     });
 });

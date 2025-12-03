@@ -20,7 +20,7 @@ import * as vscode from "vscode";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { expandFilePathTilde, fileExists, pathExists } from "../utilities/filesystem";
-import { findBinaryPath } from "../utilities/shell";
+import { findBinaryInPath } from "../utilities/shell";
 import { lineBreakRegex } from "../utilities/tasks";
 import { execFile, execSwift } from "../utilities/utilities";
 import { Version } from "../utilities/version";
@@ -101,10 +101,20 @@ export function getDarwinTargetTriple(target: DarwinCompatibleTarget): string | 
     }
 }
 
+/**
+ * Different entities which are used to manage toolchain installations. Possible values are:
+ *  - `xcrun`: An Xcode/CommandLineTools toolchain controlled via the `xcrun` and `xcode-select` utilities on macOS.
+ *  - `swiftly`: A toolchain managed by `swiftly`.
+ *  - `swiftenv`: A toolchain managed by `swiftenv`.
+ *  - `unknown`: This toolchain was installed via a method unknown to the extension.
+ */
+export type ToolchainManager = "xcrun" | "swiftly" | "swiftenv" | "unknown";
+
 export class SwiftToolchain {
     public swiftVersionString: string;
 
     constructor(
+        public manager: ToolchainManager,
         public swiftFolderPath: string, // folder swift executable in $PATH was found in
         public toolchainPath: string, // toolchain folder. One folder up from swift bin folder. This is to support toolchains without usr folder
         private targetInfo: SwiftTargetInfo,
@@ -114,8 +124,7 @@ export class SwiftToolchain {
         public customSDK?: string,
         public xcTestPath?: string,
         public swiftTestingPath?: string,
-        public swiftPMTestingHelperPath?: string,
-        public isSwiftlyManaged: boolean = false // true if this toolchain is managed by Swiftly
+        public swiftPMTestingHelperPath?: string
     ) {
         this.swiftVersionString = targetInfo.compilerVersion;
     }
@@ -125,12 +134,9 @@ export class SwiftToolchain {
         folder?: vscode.Uri,
         logger?: SwiftLogger
     ): Promise<SwiftToolchain> {
-        const { path: swiftFolderPath, isSwiftlyManaged } = await this.getSwiftFolderPath(
-            folder,
-            logger
-        );
-        const toolchainPath = await this.getToolchainPath(
-            swiftFolderPath,
+        const swiftBinaryPath = await this.findSwiftBinaryInPath();
+        const { toolchainPath, toolchainManager } = await this.getToolchainPath(
+            swiftBinaryPath,
             extensionRoot,
             folder,
             logger
@@ -148,7 +154,7 @@ export class SwiftToolchain {
         const [xcTestPath, swiftTestingPath, swiftPMTestingHelperPath] = await Promise.all([
             this.getXCTestPath(
                 targetInfo,
-                swiftFolderPath,
+                toolchainPath,
                 swiftVersion,
                 runtimePath,
                 customSDK ?? defaultSDK,
@@ -165,7 +171,8 @@ export class SwiftToolchain {
         ]);
 
         return new SwiftToolchain(
-            swiftFolderPath,
+            toolchainManager,
+            path.dirname(swiftBinaryPath),
             toolchainPath,
             targetInfo,
             swiftVersion,
@@ -174,8 +181,7 @@ export class SwiftToolchain {
             customSDK,
             xcTestPath,
             swiftTestingPath,
-            swiftPMTestingHelperPath,
-            isSwiftlyManaged
+            swiftPMTestingHelperPath
         );
     }
 
@@ -412,7 +418,7 @@ export class SwiftToolchain {
      * @throws Throws an error if the executable cannot be found
      */
     public async getLLDB(): Promise<string> {
-        return this.findToolchainOrXcodeExecutable("lldb");
+        return this.findToolchainExecutable("lldb");
     }
 
     /**
@@ -423,51 +429,32 @@ export class SwiftToolchain {
      * @throws Throws an error if the executable cannot be found
      */
     public async getLLDBDebugAdapter(): Promise<string> {
-        return this.findToolchainOrXcodeExecutable("lldb-dap");
+        return this.findToolchainExecutable("lldb-dap");
     }
 
     /**
      * Search for the supplied executable in the toolchain.
-     * If the user is on macOS and has no OSS toolchain selected, also
-     * search inside Xcode.
      */
-    private async findToolchainOrXcodeExecutable(executable: string): Promise<string> {
+    private async findToolchainExecutable(executable: string): Promise<string> {
         if (process.platform === "win32") {
             executable += ".exe";
         }
-        const toolchainExecutablePath = path.join(this.swiftFolderPath, executable);
-
+        // First search the toolchain's 'bin' directory
+        const toolchainExecutablePath = path.join(this.toolchainPath, "bin", executable);
         if (await pathExists(toolchainExecutablePath)) {
             return toolchainExecutablePath;
         }
-
-        if (process.platform !== "darwin") {
-            throw new Error(
-                `Failed to find ${executable} within Swift toolchain '${this.toolchainPath}'`
-            );
+        // Fallback to xcrun if the active toolchain comes from Xcode/CommandLineTools
+        if (
+            this.manager === "xcrun" ||
+            (this.manager === "swiftly" && (await Swiftly.inUseVersion()) === "xcode")
+        ) {
+            const { stdout } = await execFile("xcrun", ["--find", executable]);
+            return stdout.trim();
         }
-        return this.findXcodeExecutable(executable);
-    }
-
-    private async findXcodeExecutable(executable: string): Promise<string> {
-        const xcodeDirectory = SwiftToolchain.getXcodeDirectory(this.toolchainPath);
-        if (!xcodeDirectory) {
-            throw new Error(
-                `Failed to find ${executable} within Swift toolchain '${this.toolchainPath}'`
-            );
-        }
-        try {
-            const { stdout } = await execFile("xcrun", ["-find", executable], {
-                env: { ...process.env, DEVELOPER_DIR: xcodeDirectory },
-            });
-            return stdout.trimEnd();
-        } catch (error) {
-            let errorMessage = `Failed to find ${executable} within Xcode Swift toolchain '${xcodeDirectory}'`;
-            if (error instanceof Error) {
-                errorMessage += `:\n${error.message}`;
-            }
-            throw new Error(errorMessage);
-        }
+        throw new Error(
+            `Failed to find ${executable} within Swift toolchain '${this.toolchainPath}'`
+        );
     }
 
     private basePlatformDeveloperPath(): string | undefined {
@@ -532,87 +519,34 @@ export class SwiftToolchain {
         logger.debug(this.diagnostics);
     }
 
-    private static async getSwiftFolderPath(
-        cwd?: vscode.Uri,
-        logger?: SwiftLogger
-    ): Promise<{ path: string; isSwiftlyManaged: boolean }> {
-        try {
-            let swift: string;
-            if (configuration.path !== "") {
-                const windowsExeSuffix = process.platform === "win32" ? ".exe" : "";
-                swift = path.join(configuration.path, `swift${windowsExeSuffix}`);
-            } else {
-                switch (process.platform) {
-                    case "darwin": {
-                        const { stdout } = await execFile("which", ["swift"]);
-                        swift = stdout.trimEnd();
-                        break;
-                    }
-                    case "win32": {
-                        const { stdout } = await execFile("where", ["swift"]);
-                        const paths = stdout.trimEnd().split("\r\n");
-                        if (paths.length > 1) {
-                            void vscode.window.showWarningMessage(
-                                `Found multiple swift executables in in %PATH%. Using excutable found at ${paths[0]}`
-                            );
-                        }
-                        swift = paths[0];
-                        break;
-                    }
-                    default: {
-                        swift = await findBinaryPath("swift");
-                        break;
-                    }
-                }
-            }
-            // swift may be a symbolic link
-            let realSwift = await fs.realpath(swift);
-            let isSwiftlyManaged = false;
+    private static async findSwiftBinaryInPath(): Promise<string> {
+        if (configuration.path !== "") {
+            const pathFromSettings = expandFilePathTilde(configuration.path);
+            const windowsExeSuffix = process.platform === "win32" ? ".exe" : "";
 
-            if (path.basename(realSwift) === "swiftly") {
-                try {
-                    const inUse = await Swiftly.inUseLocation("swiftly", cwd);
-                    if (inUse) {
-                        realSwift = path.join(inUse, "usr", "bin", "swift");
-                        isSwiftlyManaged = true;
-                    }
-                } catch {
-                    // Ignore, will fall back to original path
-                }
-            }
-            const swiftPath = expandFilePathTilde(path.dirname(realSwift));
-            return {
-                path: await this.getSwiftEnvPath(swiftPath),
-                isSwiftlyManaged,
-            };
-        } catch (error) {
-            logger?.error(`Failed to find swift executable: ${error}`);
-            throw Error("Failed to find swift executable");
+            return path.join(pathFromSettings, `swift${windowsExeSuffix}`);
         }
+        return await findBinaryInPath("swift");
     }
 
-    /**
-     * swiftenv is a popular way to install swift on Linux. It uses shim shell scripts
-     * for all of the swift executables. This is problematic when we are trying to find
-     * the lldb version. Also swiftenv can also change the swift version beneath which
-     * could cause problems. This function will return the actual path to the swift
-     * executable instead of the shim version
-     * @param swiftPath Path to swift folder
-     * @returns Path to swift folder installed by swiftenv
-     */
-    private static async getSwiftEnvPath(swiftPath: string): Promise<string> {
-        if (process.platform === "linux" && swiftPath.endsWith(".swiftenv/shims")) {
-            try {
-                const swiftenvPath = path.dirname(swiftPath);
-                const swiftenv = path.join(swiftenvPath, "libexec", "swiftenv");
-                const { stdout } = await execFile(swiftenv, ["which", "swift"]);
-                const swift = stdout.trimEnd();
-                return path.dirname(swift);
-            } catch {
-                return swiftPath;
-            }
-        } else {
-            return swiftPath;
+    private static async isXcrunShim(binary: string, logger?: SwiftLogger): Promise<boolean> {
+        if (!(await fileExists(binary))) {
+            return false;
+        }
+        // Make sure that either Xcode or CommandLineTools are installed before attempting to run objdump.
+        try {
+            await execFile("xcode-select", ["-p"]);
+        } catch (error) {
+            logger?.error(error);
+            return false;
+        }
+        // Use objdump to determine if this is an xcrun shim.
+        try {
+            const objdumpOutput = await execFile("xcrun", ["objdump", "-h", binary]);
+            return objdumpOutput.stdout.includes("__xcrun_shim");
+        } catch (error) {
+            logger?.error(error);
+            return false;
         }
     }
 
@@ -620,51 +554,59 @@ export class SwiftToolchain {
      * @returns path to Toolchain folder
      */
     private static async getToolchainPath(
-        swiftPath: string,
+        swiftBinaryPath: string,
         extensionRoot: string,
         cwd?: vscode.Uri,
         logger?: SwiftLogger
-    ): Promise<string> {
+    ): Promise<{
+        toolchainPath: string;
+        toolchainManager: ToolchainManager;
+    }> {
         try {
-            switch (process.platform) {
-                case "darwin": {
-                    const configPath = configuration.path;
-                    if (configPath !== "") {
-                        const swiftlyPath = path.join(configPath, "swiftly");
-                        if (await fileExists(swiftlyPath)) {
-                            try {
-                                const inUse = await Swiftly.inUseLocation(swiftlyPath, cwd);
-                                if (inUse) {
-                                    return path.join(inUse, "usr");
-                                }
-                            } catch {
-                                // Ignore, will fall back to original path
-                            }
-                        }
-                        return path.dirname(configuration.path);
-                    }
-
-                    const swiftlyToolchainLocation = await Swiftly.toolchain(
-                        extensionRoot,
-                        logger,
-                        cwd
-                    );
-                    if (swiftlyToolchainLocation) {
-                        return swiftlyToolchainLocation;
-                    }
-
-                    const { stdout } = await execFile("xcrun", ["--find", "swift"], {
-                        env: configuration.swiftEnvironmentVariables,
-                    });
-                    const swift = stdout.trimEnd();
-                    return path.dirname(path.dirname(swift));
-                }
-                default: {
-                    return path.dirname(swiftPath);
+            // swift may be a symbolic link
+            const realSwiftBinaryPath = await fs.realpath(swiftBinaryPath);
+            // Check if the swift binary is managed by xcrun
+            if (await this.isXcrunShim(realSwiftBinaryPath, logger)) {
+                const { stdout } = await execFile("xcrun", ["--find", "swift"], {
+                    env: configuration.swiftEnvironmentVariables,
+                });
+                return {
+                    toolchainPath: path.resolve(stdout.trim(), "../../"),
+                    toolchainManager: "xcrun",
+                };
+            }
+            // Check if the swift binary is managed by swiftly
+            if (await Swiftly.isManagedBySwiftly(realSwiftBinaryPath)) {
+                const swiftlyToolchainPath = await Swiftly.getActiveToolchain(extensionRoot, cwd);
+                return {
+                    toolchainPath: path.resolve(swiftlyToolchainPath, "usr"),
+                    toolchainManager: "swiftly",
+                };
+            }
+            // Check if the swift binary is managed by swiftenv
+            if (
+                process.platform === "linux" &&
+                realSwiftBinaryPath.endsWith(".swiftenv/shims/swift")
+            ) {
+                try {
+                    const swiftenvPath = path.join(realSwiftBinaryPath, "../..");
+                    const swiftenv = path.join(swiftenvPath, "libexec", "swiftenv");
+                    const { stdout } = await execFile(swiftenv, ["which", "swift"]);
+                    return {
+                        toolchainPath: path.resolve(stdout.trim(), "../.."),
+                        toolchainManager: "swiftenv",
+                    };
+                } catch (error) {
+                    logger?.error(error);
                 }
             }
-        } catch {
-            throw Error("Failed to find swift toolchain");
+            // Unable to determine who manages the swift toolchain.
+            return {
+                toolchainPath: path.resolve(realSwiftBinaryPath, "../.."),
+                toolchainManager: "unknown",
+            };
+        } catch (error) {
+            throw Error("Failed to find swift toolchain", { cause: error });
         }
     }
 
@@ -777,7 +719,7 @@ export class SwiftToolchain {
      */
     private static async getXCTestPath(
         targetInfo: SwiftTargetInfo,
-        swiftFolderPath: string,
+        toolchainPath: string,
         swiftVersion: Version,
         runtimePath: string | undefined,
         sdkroot: string | undefined,
@@ -785,7 +727,7 @@ export class SwiftToolchain {
     ): Promise<string | undefined> {
         switch (process.platform) {
             case "darwin": {
-                const xcodeDirectory = this.getXcodeDirectory(swiftFolderPath);
+                const xcodeDirectory = this.getXcodeDirectory(toolchainPath);
                 const swiftEnvironmentVariables = configuration.swiftEnvironmentVariables;
                 if (xcodeDirectory && !("DEVELOPER_DIR" in swiftEnvironmentVariables)) {
                     swiftEnvironmentVariables["DEVELOPER_DIR"] = xcodeDirectory;

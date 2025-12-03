@@ -498,7 +498,7 @@
           "swift.path": {
             "type": "string",
             "default": "",
-            "markdownDescription": "Override the default path of the folder containing the Swift executables. The default is to look in the `PATH` environment variable. This path is also used to search for other executables used by the extension like `sourcekit-lsp` and `lldb`.",
+            "markdownDescription": "Override the default path of the folder containing the Swift executables. The default is to look in the `PATH` environment variable.",
             "scope": "machine-overridable"
           },
           "swift.buildArguments": {

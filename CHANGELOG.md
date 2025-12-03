@@ -6,6 +6,7 @@
 
 - Fix extension failing to activate when Swiftly was installed via Homebrew ([#1975](https://github.com/swiftlang/vscode-swift/pull/1975))
 - Fix running `swift package` commands with `swift.disableSwiftPMIntegration` enabled ([#1969](https://github.com/swiftlang/vscode-swift/pull/1969))
+- Fixed an issue where `lldb-dap` could not be found in Command Line Tools toolchains ([#1936](https://github.com/swiftlang/vscode-swift/pull/1936))
 
 ## 2.14.1 - 2025-11-20
 
