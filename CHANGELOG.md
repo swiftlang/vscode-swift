@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fix extension failing to activate when Swiftly was installed via Homebrew ([#1975](https://github.com/swiftlang/vscode-swift/pull/1975))
+- Fix running `swift package` commands with `swift.disableSwiftPMIntegration` enabled ([#1969](https://github.com/swiftlang/vscode-swift/pull/1969))
 
 ## 2.14.1 - 2025-11-20
 
