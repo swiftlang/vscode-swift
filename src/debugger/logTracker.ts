@@ -54,11 +54,7 @@ export function registerLoggingDebugAdapterTracker(): vscode.Disposable {
     ];
 
     // Return a disposable that cleans everything up.
-    return {
-        dispose() {
-            subscriptions.forEach(sub => sub.dispose());
-        },
-    };
+    return vscode.Disposable.from(...subscriptions);
 }
 
 /**

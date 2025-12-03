@@ -457,16 +457,3 @@ export function destructuredPromise<T>(): {
     return { promise: p, resolve: resolve!, reject: reject! };
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
-
-/**
- * Creates a composite disposable from multiple disposables.
- * @param disposables The disposables to include.
- * @returns A composite disposable that disposes all included disposables.
- */
-export function compositeDisposable(...disposables: vscode.Disposable[]): vscode.Disposable {
-    return {
-        dispose: () => {
-            disposables.forEach(d => d.dispose());
-        },
-    };
-}
