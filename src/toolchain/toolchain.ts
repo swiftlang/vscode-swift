@@ -576,7 +576,7 @@ export class SwiftToolchain {
                 };
             }
             // Check if the swift binary is managed by swiftly
-            if (await Swiftly.isManagedBySwiftly(realSwiftBinaryPath)) {
+            if (await Swiftly.isManagedBySwiftly(swiftBinaryPath)) {
                 const swiftlyToolchainPath = await Swiftly.getActiveToolchain(extensionRoot, cwd);
                 return {
                     toolchainPath: path.resolve(swiftlyToolchainPath, "usr"),
