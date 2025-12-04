@@ -22,6 +22,7 @@ import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { TestRunManager } from "./TestExplorer/TestRunManager";
 import { TestRunProxy } from "./TestExplorer/TestRunner";
 import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
+import configuration from "./configuration";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { TaskQueue } from "./tasks/TaskQueue";
 import { SwiftToolchain } from "./toolchain/toolchain";
@@ -135,7 +136,11 @@ export class FolderContext implements vscode.Disposable {
         const { linuxMain, swiftPackage } =
             await workspaceContext.statusItem.showStatusWhileRunning(statusItemText, async () => {
                 const linuxMain = await LinuxMain.create(folder);
-                const swiftPackage = await SwiftPackage.create(folder, toolchain);
+                const swiftPackage = await SwiftPackage.create(
+                    folder,
+                    toolchain,
+                    configuration.disableSwiftPMIntegration
+                );
                 return { linuxMain, swiftPackage };
             });
         workspaceContext.statusItem.end(statusItemText);
@@ -193,7 +198,7 @@ export class FolderContext implements vscode.Disposable {
 
     /** reload swift package for this folder */
     async reload() {
-        await this.swiftPackage.reload(this.toolchain);
+        await this.swiftPackage.reload(this.toolchain, configuration.disableSwiftPMIntegration);
     }
 
     /** reload Package.resolved for this folder */
@@ -208,7 +213,11 @@ export class FolderContext implements vscode.Disposable {
 
     /** Load Swift Plugins and store in Package */
     async loadSwiftPlugins(logger: SwiftLogger) {
-        await this.swiftPackage.loadSwiftPlugins(this.toolchain, logger);
+        await this.swiftPackage.loadSwiftPlugins(
+            this.toolchain,
+            logger,
+            configuration.disableSwiftPMIntegration
+        );
     }
 
     /**
