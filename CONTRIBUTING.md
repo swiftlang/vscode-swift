@@ -93,11 +93,11 @@ Please keep your PRs to a minimal number of changes. If a PR is large, try to sp
 ### Testing
 
 > [!NOTE]
-> For a detailed guide on how to write tests for the VS Code Swift extension, see [the guide about writing tests for the VS Code Swift extension](docs/contributor/writing-tests-for-vscode-swift.md).
+> For a detailed guide on how to write tests for the VS Code Swift extension, see [the guide about writing tests for the VS Code Swift extension](Contributor Documentation/writing-tests-for-vscode-swift.md).
 
 Where possible any new feature should have tests that go along with it, to ensure it works and will continue to work in the future. When a PR is submitted one of the prerequisites for it to be merged is that all tests pass.
 
-For information on levels of testing done in this extension, see the [test strategy](docs/contributor/test-strategy.md).
+For information on levels of testing done in this extension, see the [test strategy](Contributor Documentation/test-strategy.md).
 
 To get started running tests first import the `testing-debug.code-profile` VS Code profile used by the tests. Run the `> Profiles: Import Profile...` command then `Select File` and pick `./.vscode/testing-debug.code-profile`.
 
