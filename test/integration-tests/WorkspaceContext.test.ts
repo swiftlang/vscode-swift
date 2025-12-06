@@ -213,14 +213,6 @@ tag("medium").suite("WorkspaceContext Test Suite", () => {
         });
 
         tag("small").test("get project templates", async () => {
-            // This is only supported in swift versions >=5.8.0
-            const swiftVersion = workspaceContext.globalToolchain.swiftVersion;
-            if (swiftVersion.isLessThan(new Version(5, 8, 0))) {
-                await expect(
-                    workspaceContext.globalToolchain.getProjectTemplates()
-                ).to.eventually.deep.equal([]);
-                return;
-            }
             // The output of `swift package init --help` will probably change at some point.
             // Just make sure that the most complex portions of the output are parsed correctly.
             const projectTemplates = await workspaceContext.globalToolchain.getProjectTemplates();
@@ -234,6 +226,7 @@ tag("medium").suite("WorkspaceContext Test Suite", () => {
                     "A package with an executable that uses Swift Argument Parser. Use this template if you plan to have a rich set of command-line arguments.",
             });
             // build-tool-plugin is only available in swift versions >=5.9.0
+            const swiftVersion = workspaceContext.globalToolchain.swiftVersion;
             if (swiftVersion.isLessThan(new Version(5, 9, 0))) {
                 return;
             }
