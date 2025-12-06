@@ -64,7 +64,7 @@ jobs:
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./scripts/test.sh
       # Windows
-      windows_exclude_swift_versions: "${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && '[{\"swift_version\": \"nightly-6.1\"},{\"swift_version\": \"nightly\"},{\"swift_version\": \"6.2\"}]' || '[{\"swift_version\": \"nightly-6.1\"},{\"swift_version\": \"nightly-6.2\"},{\"swift_version\": \"nightly\"}]' }}"
+      windows_exclude_swift_versions: "${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && '[{\"swift_version\": \"nightly-6.1\"},{\"swift_version\": \"nightly\"}]' || '[{\"swift_version\": \"nightly-6.1\"},{\"swift_version\": \"nightly-6.2\"},{\"swift_version\": \"nightly\"}]' }}"
       windows_env_vars: |
         CI=1
         FAST_TEST_RUN=${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && '0' || '1'}}

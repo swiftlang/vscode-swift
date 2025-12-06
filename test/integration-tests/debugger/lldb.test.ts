@@ -15,7 +15,6 @@ import { expect } from "chai";
 
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { getLLDBLibPath } from "@src/debugger/lldb";
-import { Version } from "@src/utilities/version";
 
 import { activateExtensionForTest } from "../utilities/testutilities";
 
@@ -24,16 +23,6 @@ suite("lldb contract test suite", () => {
 
     activateExtensionForTest({
         async setup(ctx) {
-            // This test is failing due to toolchain issues starting with Swift 6.2.1
-            // Will re-enable once that is resolved.
-            //
-            // https://github.com/swiftlang/vscode-swift/issues/1947
-            if (
-                process.platform === "win32" &&
-                ctx.globalToolchainSwiftVersion.isGreaterThanOrEqual(new Version(6, 2, 1))
-            ) {
-                this.skip();
-            }
             workspaceContext = ctx;
         },
         requiresDebugger: true,
