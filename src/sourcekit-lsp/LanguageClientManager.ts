@@ -168,7 +168,7 @@ export class LanguageClientManager implements vscode.Disposable {
         // Swift versions prior to 5.6 don't support file changes, so need to restart
         // lSP server when a file is either created or deleted
         if (this.swiftVersion.isLessThan(new Version(5, 6, 0))) {
-            folderContext.workspaceContext.logger.debug("LSP: Adding new/delete file handlers");
+            folderContext.logger.debug("LSP: Adding new/delete file handlers");
             // restart LSP server on creation of a new file
             const onDidCreateFileDisposable = vscode.workspace.onDidCreateFiles(() => {
                 void this.restart();
@@ -382,7 +382,7 @@ export class LanguageClientManager implements vscode.Disposable {
                     if (reason.message === "Stopping the server timed out") {
                         await this.setupLanguageClient(workspaceFolder);
                     }
-                    this.folderContext.workspaceContext.logger.error(reason);
+                    this.folderContext.logger.error(reason);
                 });
             await this.restartedPromise;
         }
@@ -504,13 +504,13 @@ export class LanguageClientManager implements vscode.Disposable {
             });
         });
         if (client.clientOptions.workspaceFolder) {
-            this.folderContext.workspaceContext.logger.info(
+            this.folderContext.logger.info(
                 `SourceKit-LSP setup for ${FolderContext.uriName(
                     client.clientOptions.workspaceFolder.uri
                 )}`
             );
         } else {
-            this.folderContext.workspaceContext.logger.info(`SourceKit-LSP setup`);
+            this.folderContext.logger.info(`SourceKit-LSP setup`);
         }
 
         client.onNotification(SourceKitLogMessageNotification.type, params => {
@@ -551,9 +551,7 @@ export class LanguageClientManager implements vscode.Disposable {
                     // do nothing, the experimental capability is not supported
                 }
             } catch (reason) {
-                this.folderContext.workspaceContext.logger.error(
-                    `Error starting SourceKit-LSP: ${reason}`
-                );
+                this.folderContext.logger.error(`Error starting SourceKit-LSP: ${reason}`);
                 if (this.languageClient?.state === State.Running) {
                     await this.languageClient?.stop();
                 }

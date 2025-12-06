@@ -52,7 +52,8 @@ export class FolderContext implements vscode.Disposable {
         public linuxMain: LinuxMain,
         public swiftPackage: SwiftPackage,
         public workspaceFolder: vscode.WorkspaceFolder,
-        public workspaceContext: WorkspaceContext
+        public workspaceContext: WorkspaceContext,
+        public logger: SwiftLogger
     ) {
         this.packageWatcher = new PackageWatcher(this, workspaceContext.logger);
         this.backgroundCompilation = new BackgroundCompilation(this);
@@ -151,7 +152,8 @@ export class FolderContext implements vscode.Disposable {
             linuxMain,
             swiftPackage,
             workspaceFolder,
-            workspaceContext
+            workspaceContext,
+            workspaceContext.logger
         );
 
         const error = await swiftPackage.error;
@@ -159,7 +161,7 @@ export class FolderContext implements vscode.Disposable {
             void vscode.window.showErrorMessage(
                 `Failed to load ${folderContext.name}/Package.swift: ${error.message}`
             );
-            workspaceContext.logger.info(
+            folderContext.logger.info(
                 `Failed to load Package.swift: ${error.message}`,
                 folderContext.name
             );
@@ -239,7 +241,7 @@ export class FolderContext implements vscode.Disposable {
             this.testExplorer = new TestExplorer(
                 this,
                 this.workspaceContext.tasks,
-                this.workspaceContext.logger,
+                this.logger,
                 this.workspaceContext.onDidChangeSwiftFiles.bind(this.workspaceContext)
             );
             this.testExplorerResolver?.(this.testExplorer);

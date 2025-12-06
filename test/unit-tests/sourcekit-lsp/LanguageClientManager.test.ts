@@ -140,6 +140,7 @@ suite("LanguageClientManager Suite", () => {
             ),
             swiftVersion: new Version(6, 0, 0),
             toolchain: instance(mockedToolchain),
+            logger: instance(mockLogger),
         });
         mockedWorkspace = mockObject<WorkspaceContext>({
             globalToolchain: instance(mockedToolchain),
@@ -251,6 +252,8 @@ suite("LanguageClientManager Suite", () => {
                 },
                 workspaceContext: instance(mockedWorkspace),
                 swiftVersion: mockedFolder.swiftVersion,
+                toolchain: instance(mockedToolchain),
+                logger: instance(mockLogger),
             });
             mockedWorkspace.folders.push(instance(newFolder));
             const factory = new LanguageClientToolchainCoordinator(
@@ -267,6 +270,14 @@ suite("LanguageClientManager Suite", () => {
         });
 
         test("returns the a new language client for folders with different toolchains", async () => {
+            const differentToolchain = mockObject<SwiftToolchain>({
+                swiftVersion: new Version(6, 1, 0),
+                buildFlags: mockedBuildFlags as unknown as BuildFlags,
+                getToolchainExecutable: mockFn(s =>
+                    s.withArgs("sourcekit-lsp").returns("/path/to/toolchain/bin/sourcekit-lsp")
+                ),
+            });
+
             const newFolder = mockObject<FolderContext>({
                 isRootFolder: false,
                 folder: vscode.Uri.file("/folder11"),
@@ -277,6 +288,8 @@ suite("LanguageClientManager Suite", () => {
                 },
                 workspaceContext: instance(mockedWorkspace),
                 swiftVersion: new Version(6, 1, 0),
+                toolchain: instance(differentToolchain),
+                logger: instance(mockLogger),
             });
             mockedWorkspace.folders.push(instance(newFolder));
             const factory = new LanguageClientToolchainCoordinator(
@@ -289,7 +302,7 @@ suite("LanguageClientManager Suite", () => {
             const sut2 = factory.get(instance(newFolder));
 
             expect(sut1).to.not.equal(sut2, "Expected different LanguageClients to be returned");
-            expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledOnce;
+            expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledTwice;
         });
     });
 
@@ -411,6 +424,8 @@ suite("LanguageClientManager Suite", () => {
             },
             workspaceContext: instance(mockedWorkspace),
             swiftVersion: new Version(6, 0, 0),
+            toolchain: instance(mockedToolchain),
+            logger: instance(mockLogger),
         });
         const folder2 = mockObject<FolderContext>({
             isRootFolder: false,
@@ -422,6 +437,8 @@ suite("LanguageClientManager Suite", () => {
             },
             workspaceContext: instance(mockedWorkspace),
             swiftVersion: new Version(6, 0, 0),
+            toolchain: instance(mockedToolchain),
+            logger: instance(mockLogger),
         });
 
         new LanguageClientToolchainCoordinator(
@@ -909,6 +926,7 @@ suite("LanguageClientManager Suite", () => {
                 workspaceContext: instance(mockedWorkspace),
                 workspaceFolder,
                 toolchain: instance(mockedToolchain),
+                logger: instance(mockLogger),
             });
             mockedFolder.swiftVersion = mockedToolchain.swiftVersion;
             mockedWorkspace = mockObject<WorkspaceContext>({
@@ -927,6 +945,7 @@ suite("LanguageClientManager Suite", () => {
                 workspaceContext: instance(mockedWorkspace),
                 toolchain: instance(mockedToolchain),
                 swiftVersion: mockedToolchain.swiftVersion,
+                logger: instance(mockLogger),
             });
             folder2 = mockObject<FolderContext>({
                 isRootFolder: false,
@@ -939,6 +958,7 @@ suite("LanguageClientManager Suite", () => {
                 workspaceContext: instance(mockedWorkspace),
                 toolchain: instance(mockedToolchain),
                 swiftVersion: mockedToolchain.swiftVersion,
+                logger: instance(mockLogger),
             });
         });
 
