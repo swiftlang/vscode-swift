@@ -39,6 +39,11 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
                 document: vscode.TextDocument,
                 symbols: vscode.DocumentSymbol[] | null | undefined
             ) => void;
+            onDocumentCodeLens?: (
+                folder: FolderContext,
+                document: vscode.TextDocument,
+                symbols: vscode.CodeLens[] | null | undefined
+            ) => void;
         } = {},
         languageClientFactory: LanguageClientFactory = new LanguageClientFactory() // used for testing only
     ) {

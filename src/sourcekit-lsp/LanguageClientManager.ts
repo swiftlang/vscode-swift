@@ -43,14 +43,20 @@ import { activateGetReferenceDocument } from "./getReferenceDocument";
 import { activateLegacyInlayHints } from "./inlayHints";
 import { activatePeekDocuments } from "./peekDocuments";
 
+/**
+ * Options for the LanguageClientManager
+ */
 interface LanguageClientManageOptions {
-    /**
-     * Options for the LanguageClientManager
-     */
     onDocumentSymbols?: (
         folder: FolderContext,
         document: vscode.TextDocument,
         symbols: vscode.DocumentSymbol[] | null | undefined
+    ) => void;
+
+    onDocumentCodeLens?: (
+        folder: FolderContext,
+        document: vscode.TextDocument,
+        codeLens: vscode.CodeLens[] | null | undefined
     ) => void;
 }
 
@@ -472,6 +478,18 @@ export class LanguageClientManager implements vscode.Disposable {
                     return;
                 }
                 this.options.onDocumentSymbols?.(documentFolderContext, document, symbols);
+            },
+            (document, codeLens) => {
+                const documentFolderContext = [this.folderContext, ...this.addedFolders].find(
+                    folderContext => document.uri.fsPath.startsWith(folderContext.folder.fsPath)
+                );
+                if (!documentFolderContext) {
+                    this.languageClientOutputChannel?.warn(
+                        "Unable to find folder for document: " + document.uri.fsPath
+                    );
+                    return;
+                }
+                this.options.onDocumentCodeLens?.(documentFolderContext, document, codeLens);
             }
         );
 

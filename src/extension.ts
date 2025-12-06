@@ -28,6 +28,7 @@ import { registerDebugger } from "./debugger/debugAdapterFactory";
 import * as debug from "./debugger/launch";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
+import { PlaygroundProvider } from "./playgrounds/PlaygroundProvider";
 import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "./terminal";
 import { SelectedXcodeWatcher } from "./toolchain/SelectedXcodeWatcher";
 import { checkForSwiftlyInstallation } from "./toolchain/swiftly";
@@ -159,6 +160,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         // observer that will resolve package and build launch configurations
         context.subscriptions.push(workspaceContext.onDidChangeFolders(handleFolderEvent(logger)));
         context.subscriptions.push(TestExplorer.observeFolders(workspaceContext));
+        context.subscriptions.push(PlaygroundProvider.observeFolders(workspaceContext));
 
         context.subscriptions.push(registerSourceKitSchemaWatcher(workspaceContext));
         const subscriptionsElapsed = Date.now() - subscriptionsStartTime;
