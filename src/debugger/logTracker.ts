@@ -114,6 +114,8 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
             return;
         }
 
+        this.handleBreakpointFallback(debugMessage);
+
         if (debugMessage.event === "exited" && debugMessage.body.exitCode) {
             this.exitCode = debugMessage.body.exitCode;
             this.exitHandler?.(debugMessage.body.exitCode);
@@ -128,6 +130,102 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
             } else {
                 this.output.push(output);
             }
+        }
+    }
+
+    private handleBreakpointFallback(rawMsg: unknown): void {
+        try {
+            // Minimal typed view of the event payload we care about.
+            type FrameLike = { source?: { path?: string }; line?: number };
+            type BodyLike = {
+                exitCode?: number;
+                category?: string;
+                output?: string;
+                reason?: string;
+                thread?: { frames?: FrameLike[] };
+                source?: { path?: string };
+                line?: number;
+            };
+
+            const msg = rawMsg as { type?: string; event?: string; body?: BodyLike | undefined };
+            if (!msg || msg.type !== "event") {
+                return;
+            }
+
+            // Case A: stopped event with reason = "breakpoint"
+            if (msg.event === "stopped" && msg.body?.reason === "breakpoint") {
+                const frames = msg.body.thread?.frames;
+                if (!Array.isArray(frames) || frames.length === 0) {
+                    return;
+                }
+
+                const top = frames[0];
+                const sourcePath = top?.source?.path;
+                const line = top?.line;
+                if (!sourcePath || typeof line !== "number") {
+                    return;
+                }
+
+                const bpLine0 = line - 1; // VS Code uses 0-based lines
+
+                const breakpoints = vscode.debug.breakpoints.filter(
+                    b => b instanceof vscode.SourceBreakpoint
+                ) as vscode.SourceBreakpoint[];
+
+                for (const bp of breakpoints) {
+                    const loc = bp.location;
+                    if (!loc) {
+                        continue;
+                    }
+                    if (loc.uri.fsPath !== sourcePath) {
+                        continue;
+                    }
+                    if (loc.range.start.line !== bpLine0) {
+                        continue;
+                    }
+
+                    // Force a UI refresh so the breakpoint shows as installed.
+                    vscode.debug.removeBreakpoints([bp]);
+                    vscode.debug.addBreakpoints([bp]);
+                    break;
+                }
+                return;
+            }
+
+            // Case B: explicit "breakpoint" event that carries source+line info
+            if (msg.event === "breakpoint" && msg.body) {
+                const sourcePath = msg.body.source?.path;
+                const line = msg.body.line;
+                if (!sourcePath || typeof line !== "number") {
+                    return;
+                }
+
+                const bpLine0 = line - 1;
+                const breakpoints = vscode.debug.breakpoints.filter(
+                    b => b instanceof vscode.SourceBreakpoint
+                ) as vscode.SourceBreakpoint[];
+
+                for (const bp of breakpoints) {
+                    const loc = bp.location;
+                    if (!loc) {
+                        continue;
+                    }
+                    if (loc.uri.fsPath !== sourcePath) {
+                        continue;
+                    }
+                    if (loc.range.start.line !== bpLine0) {
+                        continue;
+                    }
+
+                    vscode.debug.removeBreakpoints([bp]);
+                    vscode.debug.addBreakpoints([bp]);
+                    break;
+                }
+                return;
+            }
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error("Breakpoint fallback error:", err);
         }
     }
 
