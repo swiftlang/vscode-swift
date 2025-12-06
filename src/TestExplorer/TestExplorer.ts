@@ -21,7 +21,7 @@ import { SwiftLogger } from "../logging/SwiftLogger";
 import { buildOptions, getBuildAllTask } from "../tasks/SwiftTaskProvider";
 import { TaskManager } from "../tasks/TaskManager";
 import { SwiftExecOperation, TaskOperation } from "../tasks/TaskQueue";
-import { compositeDisposable, getErrorDescription } from "../utilities/utilities";
+import { getErrorDescription } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { parseTestsFromDocumentSymbols } from "./DocumentSymbolTestDiscovery";
 import { LSPTestDiscovery } from "./LSPTestDiscovery";
@@ -208,7 +208,7 @@ export class TestExplorer {
             }
         });
 
-        return compositeDisposable(endProcessDisposable, didChangeSwiftFileDisposable);
+        return vscode.Disposable.from(endProcessDisposable, didChangeSwiftFileDisposable);
     }
 
     /**
@@ -229,7 +229,7 @@ export class TestExplorer {
                     break;
             }
         });
-        return compositeDisposable(tokenSource, disposable);
+        return vscode.Disposable.from(tokenSource, disposable);
     }
 
     /**

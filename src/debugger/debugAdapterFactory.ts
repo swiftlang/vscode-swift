@@ -55,12 +55,7 @@ export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Dis
         register();
     }
 
-    return {
-        dispose: () => {
-            configurationEvent.dispose();
-            subscriptions.map(sub => sub.dispose());
-        },
-    };
+    return vscode.Disposable.from(configurationEvent, ...subscriptions);
 }
 
 /**
