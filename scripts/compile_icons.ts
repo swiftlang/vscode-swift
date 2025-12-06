@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 /* eslint-disable no-console */
-import { FontAssetType, generateFonts } from "fantasticon";
-import { CodepointsMap } from "fantasticon/lib/utils/codepoints";
+import { FontAssetType, generateFonts } from "@twbs/fantasticon";
+import { CodepointsMap } from "@twbs/fantasticon/lib/utils/codepoints";
 import { mkdir, readFile, readdir, rm, writeFile } from "fs/promises";
 import * as path from "path";
 import * as svgo from "svgo";
