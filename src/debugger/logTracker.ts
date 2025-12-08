@@ -11,6 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import { DebugProtocol } from "@vscode/debugprotocol";
 import * as vscode from "vscode";
 
 import { SwiftLogger } from "../logging/SwiftLogger";
@@ -72,6 +73,7 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
     private exitHandler?: (exitCode: number) => void;
     private output: string[] = [];
     private exitCode: number | undefined;
+    private logger?: SwiftLogger;
 
     constructor(public id: string) {
         LoggingDebugAdapterTracker.debugSessionIdMap[id] = this;
@@ -90,6 +92,7 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
                 cb(o);
             }
             if (loggingDebugAdapter.exitCode) {
+                loggingDebugAdapter.logger = logger;
                 exitHandler(loggingDebugAdapter.exitCode);
             }
             loggingDebugAdapter.output = [];
@@ -114,7 +117,7 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
             return;
         }
 
-        this.handleBreakpointFallback(debugMessage);
+        this.handleBreakpointEvent(debugMessage);
 
         if (debugMessage.event === "exited" && debugMessage.body.exitCode) {
             this.exitCode = debugMessage.body.exitCode;
@@ -134,27 +137,50 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
     }
 
     private handleBreakpointEvent(rawMsg: unknown): void {
-        try {
-            // Minimal typed view of the event payload we care about.
-            type FrameLike = { source?: { path?: string }; line?: number };
-            type BodyLike = {
-                exitCode?: number;
-                category?: string;
-                output?: string;
-                reason?: string;
-                thread?: { frames?: FrameLike[] };
-                source?: { path?: string };
-                line?: number;
+        // Narrow-bodied shapes for just the fields we use (local to this function).
+        type StoppedBodyLike = {
+            reason?: string;
+            thread?: {
+                frames?: {
+                    source?: { path?: string };
+                    line?: number;
+                }[];
             };
+        };
 
-            const msg = rawMsg as { type?: string; event?: string; body?: BodyLike | undefined };
+        type BreakpointBodyLike = {
+            source?: { path?: string };
+            line?: number;
+        };
+
+        try {
+            const msg = rawMsg as DebugProtocol.ProtocolMessage;
+            const eventMsg = msg as DebugProtocol.Event;
+
             if (!msg || msg.type !== "event") {
                 return;
             }
 
+            const normalizePath = (p: string): string => {
+                try {
+                    // If adapter sends a URI-like path, parse it
+                    if (p.startsWith("file://") || p.includes("://")) {
+                        return vscode.Uri.parse(p).fsPath;
+                    }
+                    // Otherwise treat as filesystem path
+                    return vscode.Uri.file(p).fsPath;
+                } catch {
+                    // Fallback: return raw
+                    return p;
+                }
+            };
+
             // Case A: stopped event with reason = "breakpoint"
-            if (msg.event === "stopped" && msg.body?.reason === "breakpoint") {
-                const frames = msg.body.thread?.frames;
+            if (
+                eventMsg.event === "stopped" &&
+                (eventMsg.body as StoppedBodyLike)?.reason === "breakpoint"
+            ) {
+                const frames = (eventMsg.body as StoppedBodyLike)?.thread?.frames;
                 if (!Array.isArray(frames) || frames.length === 0) {
                     return;
                 }
@@ -169,7 +195,7 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
                 const bpLine0 = line - 1; // VS Code uses 0-based lines
 
                 const breakpoints = vscode.debug.breakpoints.filter(
-                    b => b instanceof vscode.SourceBreakpoint
+                    b => !!(b as vscode.SourceBreakpoint).location
                 ) as vscode.SourceBreakpoint[];
 
                 for (const bp of breakpoints) {
@@ -177,7 +203,7 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
                     if (!loc) {
                         continue;
                     }
-                    if (loc.uri.fsPath !== sourcePath) {
+                    if (loc.uri.fsPath !== normalizePath(sourcePath)) {
                         continue;
                     }
                     if (loc.range.start.line !== bpLine0) {
@@ -193,9 +219,10 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
             }
 
             // Case B: explicit "breakpoint" event that carries source+line info
-            if (msg.event === "breakpoint" && msg.body) {
-                const sourcePath = msg.body.source?.path;
-                const line = msg.body.line;
+            if (eventMsg.event === "breakpoint" && eventMsg.body) {
+                const body = eventMsg.body as BreakpointBodyLike;
+                const sourcePath = body.source?.path;
+                const line = body.line;
                 if (!sourcePath || typeof line !== "number") {
                     return;
                 }
@@ -210,7 +237,7 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
                     if (!loc) {
                         continue;
                     }
-                    if (loc.uri.fsPath !== sourcePath) {
+                    if (loc.uri.fsPath !== normalizePath(sourcePath)) {
                         continue;
                     }
                     if (loc.range.start.line !== bpLine0) {
@@ -225,7 +252,7 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
             }
         } catch (err) {
             // eslint-disable-next-line no-console
-            console.error("Breakpoint fallback error:", err);
+            this.logger?.error(`Breakpoint fallback error: ${String(err)}`);
         }
     }
 
