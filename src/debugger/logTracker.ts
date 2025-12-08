@@ -133,7 +133,7 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
         }
     }
 
-    private handleBreakpointFallback(rawMsg: unknown): void {
+    private handleBreakpointEvent(rawMsg: unknown): void {
         try {
             // Minimal typed view of the event payload we care about.
             type FrameLike = { source?: { path?: string }; line?: number };
