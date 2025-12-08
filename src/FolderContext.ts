@@ -288,7 +288,7 @@ export class FolderContext implements vscode.Disposable {
 
     /** Return `true` if package folder has a playground provider */
     hasPlaygroundProvider() {
-        return this.testExplorer !== undefined;
+        return this.playgroundProvider !== undefined;
     }
 
     static uriName(uri: vscode.Uri): string {

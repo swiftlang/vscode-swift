@@ -32,6 +32,7 @@ export interface PlaygroundChangeEvent {
  * these results.
  */
 export class PlaygroundProvider implements vscode.Disposable {
+    private hasFetched: boolean = false;
     private fetchPromise: Promise<Playground[]> | undefined;
     private documentPlaygrounds: Map<string, Playground[]> = new Map();
     private didChangePlaygroundsEmitter: vscode.EventEmitter<PlaygroundChangeEvent> =
@@ -40,7 +41,7 @@ export class PlaygroundProvider implements vscode.Disposable {
     constructor(private folderContext: FolderContext) {}
 
     private get lspPlaygroundDiscovery(): LSPPlaygroundsDiscovery {
-        return new LSPPlaygroundsDiscovery(this.folderContext.languageClientManager);
+        return new LSPPlaygroundsDiscovery(this.folderContext);
     }
 
     private get logger(): SwiftLogger {
@@ -79,6 +80,8 @@ export class PlaygroundProvider implements vscode.Disposable {
     async getWorkspacePlaygrounds(): Promise<Playground[]> {
         if (this.fetchPromise) {
             return await this.fetchPromise;
+        } else if (!this.hasFetched) {
+            await this.fetch();
         }
         return Array.from(this.documentPlaygrounds.values()).flatMap(v => v);
     }
@@ -112,6 +115,11 @@ export class PlaygroundProvider implements vscode.Disposable {
         this.didChangePlaygroundsEmitter.event;
 
     async fetch() {
+        this.hasFetched = true;
+        if (this.fetchPromise) {
+            await this.fetchPromise;
+            return;
+        }
         if (!(await this.lspPlaygroundDiscovery.supportsPlaygrounds())) {
             this.logger.debug(
                 `Fetching playgrounds not supported by the language server`,

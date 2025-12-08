@@ -11,6 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import { FolderContext } from "../FolderContext";
 import { checkExperimentalCapability } from "../sourcekit-lsp/LanguageClientManager";
 import { LanguageClientManager } from "../sourcekit-lsp/LanguageClientManager";
 import { Playground, WorkspacePlaygroundsRequest } from "../sourcekit-lsp/extensions";
@@ -25,10 +26,12 @@ export { Playground };
  * these results.
  */
 export class LSPPlaygroundsDiscovery {
-    constructor(private languageClient: LanguageClientManager) {}
+    private languageClient: LanguageClientManager;
+    private toolchainVersion: Version;
 
-    private get toolchainVersion(): Version {
-        return this.languageClient.folderContext.toolchain.swiftVersion;
+    constructor(folderContext: FolderContext) {
+        this.languageClient = folderContext.languageClientManager;
+        this.toolchainVersion = folderContext.toolchain.swiftVersion;
     }
 
     /**
