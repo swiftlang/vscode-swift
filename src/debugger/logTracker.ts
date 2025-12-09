@@ -252,7 +252,7 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
             }
         } catch (err) {
             // eslint-disable-next-line no-console
-            this.logger?.error(`Breakpoint fallback error: ${String(err)}`);
+            this.logger?.error(Error('Breakpoint fallback error', { cause: err });
         }
     }
 
