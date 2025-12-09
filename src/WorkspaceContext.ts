@@ -97,6 +97,9 @@ export class WorkspaceContext implements vscode.Disposable {
             onDocumentSymbols: (folder, document, symbols) => {
                 folder.onDocumentSymbols(document, symbols);
             },
+            onDocumentCodeLens: (folder, document, codelens) => {
+                folder.onDocumentCodeLens(document, codelens);
+            },
         });
         this.tasks = new TaskManager(this);
         this.diagnostics = new DiagnosticsManager(this);

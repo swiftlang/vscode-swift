@@ -19,8 +19,10 @@ import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { Commands } from "@src/commands";
 import { runPlayground } from "@src/commands/runPlayground";
+import { Playground } from "@src/sourcekit-lsp/extensions";
 import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
 import { TaskManager } from "@src/tasks/TaskManager";
+import { PlaygroundNode } from "@src/ui/ProjectPanelProvider";
 
 import { MockedObject, instance, mockObject } from "../../MockUtils";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
@@ -43,11 +45,27 @@ suite("Run Playground Command", function () {
     });
 
     suite("Command", () => {
-        test("Succeeds", async () => {
+        test("Succeeds with PlaygroundItem", async () => {
             expect(
                 await vscode.commands.executeCommand(Commands.PLAY, {
                     id: "PackageLib/PackageLib.swift:3",
                 })
+            ).to.be.true;
+        });
+
+        test("Succeeds with PlaygroundNode", async () => {
+            expect(
+                await vscode.commands.executeCommand(
+                    Commands.PLAY,
+                    new PlaygroundNode(
+                        {
+                            label: "foo",
+                            id: "PackageLib/PackageLib.swift:3",
+                        } as Playground,
+                        folderContext,
+                        new Set()
+                    )
+                )
             ).to.be.true;
         });
 

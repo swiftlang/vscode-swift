@@ -1527,6 +1527,11 @@
           "command": "swift.coverAllTests",
           "when": "view == projectPanel && viewItem == 'test_runnable'",
           "group": "inline@3"
+        },
+        {
+          "command": "swift.play",
+          "when": "view == projectPanel && viewItem == 'playground'",
+          "group": "inline@1"
         }
       ]
     },
