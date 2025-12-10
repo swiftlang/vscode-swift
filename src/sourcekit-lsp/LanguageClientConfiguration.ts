@@ -215,7 +215,8 @@ export function lspClientOptions(
     documentSymbolWatcher?: (
         document: vscode.TextDocument,
         symbols: vscode.DocumentSymbol[]
-    ) => void
+    ) => void,
+    documentCodeLensWatcher?: (document: vscode.TextDocument, codeLens: vscode.CodeLens[]) => void
 ): LanguageClientOptions {
     return {
         documentSelector: LanguagerClientDocumentSelectors.sourcekitLSPDocumentTypes(),
@@ -247,6 +248,9 @@ export function lspClientOptions(
             },
             provideCodeLenses: async (document, token, next) => {
                 const result = await next(document, token);
+                if (documentCodeLensWatcher && result) {
+                    documentCodeLensWatcher(document, result);
+                }
                 return result?.map(codelens => {
                     switch (codelens.command?.command) {
                         case "swift.run":
