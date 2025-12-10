@@ -148,11 +148,6 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
             };
         };
 
-        type BreakpointBodyLike = {
-            source?: { path?: string };
-            line?: number;
-        };
-
         try {
             const msg = rawMsg as DebugProtocol.ProtocolMessage;
             const eventMsg = msg as DebugProtocol.Event;
@@ -163,15 +158,13 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
 
             const normalizePath = (p: string): string => {
                 try {
-                    // If adapter sends a URI-like path, parse it
-                    if (p.startsWith("file://") || p.includes("://")) {
-                        return vscode.Uri.parse(p).fsPath;
-                    }
-                    // Otherwise treat as filesystem path
-                    return vscode.Uri.file(p).fsPath;
+                    return vscode.Uri.parse(p, true).fsPath;
                 } catch {
-                    // Fallback: return raw
-                    return p;
+                    try {
+                        return vscode.Uri.file(p).fsPath;
+                    } catch {
+                        return p;
+                    }
                 }
             };
 
@@ -200,10 +193,8 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
 
                 for (const bp of breakpoints) {
                     const loc = bp.location;
-                    if (!loc) {
-                        continue;
-                    }
-                    if (loc.uri.fsPath !== normalizePath(sourcePath)) {
+
+                    if (normalizePath(loc.uri.fsPath) !== normalizePath(sourcePath)) {
                         continue;
                     }
                     if (loc.range.start.line !== bpLine0) {
@@ -220,24 +211,33 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
 
             // Case B: explicit "breakpoint" event that carries source+line info
             if (eventMsg.event === "breakpoint" && eventMsg.body) {
-                const body = eventMsg.body as BreakpointBodyLike;
-                const sourcePath = body.source?.path;
-                const line = body.line;
+                const bpEvent = eventMsg as DebugProtocol.BreakpointEvent;
+                const dapBp = bpEvent.body?.breakpoint;
+                if (!dapBp) {
+                    return;
+                }
+
+                // If the adapter already marked this breakpoint as verified/resolved,
+                // there's no need to re-add it.
+                if (dapBp.verified === true) {
+                    return;
+                }
+
+                const sourcePath = dapBp.source?.path;
+                const line = dapBp.line;
                 if (!sourcePath || typeof line !== "number") {
                     return;
                 }
 
                 const bpLine0 = line - 1;
                 const breakpoints = vscode.debug.breakpoints.filter(
-                    b => b instanceof vscode.SourceBreakpoint
+                    b => !!(b as vscode.SourceBreakpoint).location
                 ) as vscode.SourceBreakpoint[];
 
                 for (const bp of breakpoints) {
                     const loc = bp.location;
-                    if (!loc) {
-                        continue;
-                    }
-                    if (loc.uri.fsPath !== normalizePath(sourcePath)) {
+
+                    if (normalizePath(loc.uri.fsPath) !== normalizePath(sourcePath)) {
                         continue;
                     }
                     if (loc.range.start.line !== bpLine0) {
@@ -250,9 +250,12 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
                 }
                 return;
             }
-        } catch (err) {
-            // eslint-disable-next-line no-console
-            this.logger?.error(Error('Breakpoint fallback error', { cause: err });
+        } catch (err: unknown) {
+            try {
+                this.logger?.error(new Error("Breakpoint fallback error", { cause: err }));
+            } catch {
+                this.logger?.error("Breakpoint fallback error: " + String(err));
+            }
         }
     }
 
