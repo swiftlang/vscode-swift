@@ -21,9 +21,9 @@ import * as Stream from "stream";
 import * as vscode from "vscode";
 import { z } from "zod/v4/mini";
 
+import { ContextKeys } from "../ContextKeyManager";
 import { withAskpassServer } from "../askpass/askpass-server";
 import { installSwiftlyToolchainWithProgress } from "../commands/installSwiftlyToolchain";
-import { ContextKeys } from "../contextKeys";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { showMissingToolchainDialog } from "../ui/ToolchainSelection";
 import { touch } from "../utilities/filesystem";
