@@ -71,7 +71,7 @@ main(async () => {
     await rm(outputDirectory, { force: true, recursive: true });
     await withTemporaryDirectory("update-swift-docc-render_", async buildDirectory => {
         const swiftDocCRenderDirectory = await cloneSwiftDocCRender(buildDirectory);
-        await exec("npm", ["install"], { cwd: swiftDocCRenderDirectory });
+        await exec("npm", ["ci"], { cwd: swiftDocCRenderDirectory });
         await exec("npx", ["vue-cli-service", "build"], {
             cwd: swiftDocCRenderDirectory,
             env: {
