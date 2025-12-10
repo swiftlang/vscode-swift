@@ -2,9 +2,17 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+## 2.14.2 - 2025-12-07
+
 ### Fixed
 
 - Fix breakpoint filtering fallback in debugger logging ([#1989](https://github.com/swiftlang/vscode-swift/pull/1989))
+
+### Added
+
+- When editing .sourcekit-lsp/config.json use the JSON schema from the toolchain ([#1979](https://github.com/swiftlang/vscode-swift/pull/1979))
+
+## 2.14.2 - 2025-12-07
 
 ### Fixed
 
