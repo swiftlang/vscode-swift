@@ -70,7 +70,7 @@ main(async () => {
     checkNodeVersion();
     await rm(outputDirectory, { force: true, recursive: true });
     await mkdir(outputDirectory, { recursive: true });
-    await withTemporaryDirectory("update-swift-docc-render_", async buildDirectory => {
+    await withTemporaryDirectory("build-swift-docc-render_", async buildDirectory => {
         const swiftDocCRenderDirectory = await cloneSwiftDocCRender(buildDirectory);
         await exec("npm", ["install"], { cwd: swiftDocCRenderDirectory });
         await exec("npx", ["vue-cli-service", "build", "--dest", outputDirectory], {
