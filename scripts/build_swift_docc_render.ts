@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 /* eslint-disable no-console */
-import { mkdir, readdir, rm, stat } from "fs/promises";
+import { cp, readdir, rm, stat } from "fs/promises";
 import * as path from "path";
 import * as semver from "semver";
 import simpleGit, { ResetMode } from "simple-git";
@@ -69,16 +69,16 @@ main(async () => {
     }
     checkNodeVersion();
     await rm(outputDirectory, { force: true, recursive: true });
-    await mkdir(outputDirectory, { recursive: true });
-    await withTemporaryDirectory("build-swift-docc-render_", async buildDirectory => {
+    await withTemporaryDirectory("update-swift-docc-render_", async buildDirectory => {
         const swiftDocCRenderDirectory = await cloneSwiftDocCRender(buildDirectory);
         await exec("npm", ["install"], { cwd: swiftDocCRenderDirectory });
-        await exec("npx", ["vue-cli-service", "build", "--dest", outputDirectory], {
+        await exec("npx", ["vue-cli-service", "build"], {
             cwd: swiftDocCRenderDirectory,
             env: {
                 ...process.env,
                 VUE_APP_TARGET: "ide",
             },
         });
+        await cp(path.join(swiftDocCRenderDirectory, "dist"), outputDirectory, { recursive: true });
     });
 });
