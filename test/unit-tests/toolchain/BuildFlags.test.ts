@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
+import { beforeEach } from "mocha";
 import * as sinon from "sinon";
 
 import configuration from "@src/configuration";
@@ -242,6 +243,13 @@ suite("BuildFlags Test Suite", () => {
 
     suite("withAdditionalFlags", () => {
         const sdkConfig = mockGlobalValue(configuration, "sdk");
+        const buildPathConfig = mockGlobalValue(configuration, "buildPath");
+
+        beforeEach(() => {
+            buildPathConfig.setValue("");
+            sdkConfig.setValue("");
+            sandboxConfig.setValue(false);
+        });
 
         test("package", () => {
             for (const sub of ["dump-symbol-graph", "diagnose-api-breaking-changes", "resolve"]) {
@@ -282,6 +290,29 @@ suite("BuildFlags Test Suite", () => {
                 "-disable-sandbox",
                 "init",
             ]);
+        });
+
+        test("package plugin", () => {
+            buildPathConfig.setValue("");
+            sdkConfig.setValue("");
+            expect(
+                buildFlags.withAdditionalFlags(["package", "plugin", "my-plugin"])
+            ).to.deep.equal(["package", "plugin", "my-plugin"]);
+
+            buildPathConfig.setValue("/some/build/path");
+            expect(
+                buildFlags.withAdditionalFlags(["package", "plugin", "my-plugin", "--verbose"])
+            ).to.deep.equal(["package", "plugin", "my-plugin", "--verbose"]);
+
+            sdkConfig.setValue("/some/full/path/to/sdk");
+            expect(
+                buildFlags.withAdditionalFlags(["package", "plugin", "my-plugin"])
+            ).to.deep.equal(["package", "plugin", "my-plugin"]);
+
+            sandboxConfig.setValue(true);
+            expect(
+                buildFlags.withAdditionalFlags(["package", "plugin", "my-plugin"])
+            ).to.deep.equal(["package", "plugin", "my-plugin"]);
         });
 
         test("build", () => {
