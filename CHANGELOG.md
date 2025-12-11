@@ -12,6 +12,7 @@
 
 ### Fixed
 
+- Show progress when describing/listing dependencies on package load ([#1997](https://github.com/swiftlang/vscode-swift/pull/1997))
 - Fix extension failing to find `lldb-dap` when `swift.path` points at an Xcode toolchain ([#1998](https://github.com/swiftlang/vscode-swift/pull/1998))
 - Omit `--scratch-path` when enumerating plugins with `swift package plugin --list` ([#1996](https://github.com/swiftlang/vscode-swift/pull/1996))
 

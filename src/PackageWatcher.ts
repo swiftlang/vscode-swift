@@ -195,10 +195,6 @@ export class PackageWatcher {
      */
     private async handleWorkspaceStateChange() {
         await this.folderContext.reloadWorkspaceState();
-        // TODO: Remove this
-        this.logger.info(
-            `Package watcher state updated workspace-state.json: ${JSON.stringify(this.folderContext.swiftPackage.workspaceState, null, 2)}`
-        );
         await this.folderContext.fireEvent(FolderOperation.workspaceStateUpdated);
     }
 }

@@ -170,9 +170,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         const subscriptionsElapsed = Date.now() - subscriptionsStartTime;
 
         // setup workspace context with initial workspace folders
-        const workspaceFoldersStartTime = Date.now();
-        await workspaceContext.addWorkspaceFolders();
-        const workspaceFoldersElapsed = Date.now() - workspaceFoldersStartTime;
+        void workspaceContext.addWorkspaceFolders();
 
         const finalStepsStartTime = Date.now();
         // Mark the extension as activated.
@@ -181,7 +179,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
 
         const totalActivationTime = Date.now() - activationStartTime;
         logger.info(
-            `Extension activation completed in ${totalActivationTime}ms (log-setup: ${logSetupElapsed}ms, pre-toolchain: ${preToolchainElapsed}ms, toolchain: ${toolchainElapsed}ms, swiftly-check: ${swiftlyCheckElapsed}ms, workspace-context: ${workspaceContextElapsed}ms, subscriptions: ${subscriptionsElapsed}ms, workspace-folders: ${workspaceFoldersElapsed}ms, final-steps: ${finalStepsElapsed}ms)`
+            `Extension activation completed in ${totalActivationTime}ms (log-setup: ${logSetupElapsed}ms, pre-toolchain: ${preToolchainElapsed}ms, toolchain: ${toolchainElapsed}ms, swiftly-check: ${swiftlyCheckElapsed}ms, workspace-context: ${workspaceContextElapsed}ms, subscriptions: ${subscriptionsElapsed}ms, final-steps: ${finalStepsElapsed}ms)`
         );
 
         return {
