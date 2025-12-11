@@ -14,7 +14,6 @@
 import { expect } from "chai";
 import * as path from "path";
 import * as sinon from "sinon";
-import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
 import {
@@ -23,31 +22,16 @@ import {
     localSchemaPath,
 } from "@src/commands/generateSourcekitConfiguration";
 import configuration from "@src/configuration";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
 import * as filesystemModule from "@src/utilities/filesystem";
-import { Version } from "@src/utilities/version";
 
 import { mockGlobalModule } from "../../MockUtils";
+import { createMockFolderContext } from "../../utilities/mocks";
 
 suite("generateSourcekitConfiguration - Schema Detection", () => {
     let sandbox: sinon.SinonSandbox;
     let mockFolderContext: FolderContext;
     let fileExistsStub: sinon.SinonStub;
     const mockedConfiguration = mockGlobalModule(configuration);
-
-    function createMockFolderContext(toolchainPath: string, version: Version): FolderContext {
-        const mockToolchain = {
-            toolchainPath,
-            swiftVersion: version,
-        } as SwiftToolchain;
-
-        return {
-            folder: vscode.Uri.file("/test/workspace"),
-            swiftVersion: version,
-            toolchain: mockToolchain,
-            name: "TestFolder",
-        } as FolderContext;
-    }
 
     setup(() => {
         sandbox = sinon.createSandbox();
@@ -60,8 +44,8 @@ suite("generateSourcekitConfiguration - Schema Detection", () => {
     });
 
     suite("localSchemaPath()", () => {
-        test("returns correct path for toolchain", () => {
-            mockFolderContext = createMockFolderContext("/path/to/toolchain", new Version(6, 3, 0));
+        test("returns correct path for toolchain", async () => {
+            mockFolderContext = await createMockFolderContext("/path/to/toolchain");
 
             const result = localSchemaPath(mockFolderContext);
 
@@ -70,10 +54,9 @@ suite("generateSourcekitConfiguration - Schema Detection", () => {
             );
         });
 
-        test("returns correct path for toolchain with trailing slash", () => {
-            mockFolderContext = createMockFolderContext(
-                path.normalize("/path/to/toolchain/"),
-                new Version(6, 3, 0)
+        test("returns correct path for toolchain with trailing slash", async () => {
+            mockFolderContext = await createMockFolderContext(
+                path.normalize("/path/to/toolchain/")
             );
 
             const result = localSchemaPath(mockFolderContext);
@@ -83,10 +66,9 @@ suite("generateSourcekitConfiguration - Schema Detection", () => {
             );
         });
 
-        test("returns correct path for nested toolchain directory", () => {
-            mockFolderContext = createMockFolderContext(
-                path.normalize("/usr/local/swift-6.3.0"),
-                new Version(6, 3, 0)
+        test("returns correct path for nested toolchain directory", async () => {
+            mockFolderContext = await createMockFolderContext(
+                path.normalize("/usr/local/swift-6.3.0")
             );
 
             const result = localSchemaPath(mockFolderContext);
@@ -99,10 +81,7 @@ suite("generateSourcekitConfiguration - Schema Detection", () => {
 
     suite("hasLocalSchema()", () => {
         test("returns true when schema file exists", async () => {
-            mockFolderContext = createMockFolderContext(
-                path.normalize("/path/to/toolchain"),
-                new Version(6, 3, 0)
-            );
+            mockFolderContext = await createMockFolderContext(path.normalize("/path/to/toolchain"));
             fileExistsStub.resolves(true);
 
             const result = await hasLocalSchema(mockFolderContext);
@@ -114,10 +93,7 @@ suite("generateSourcekitConfiguration - Schema Detection", () => {
         });
 
         test("returns false when schema file doesn't exist", async () => {
-            mockFolderContext = createMockFolderContext(
-                path.normalize("/path/to/toolchain"),
-                new Version(6, 1, 0)
-            );
+            mockFolderContext = await createMockFolderContext(path.normalize("/path/to/toolchain"));
             fileExistsStub.resolves(false);
 
             const result = await hasLocalSchema(mockFolderContext);
@@ -126,7 +102,7 @@ suite("generateSourcekitConfiguration - Schema Detection", () => {
         });
 
         test("returns false on filesystem errors", async () => {
-            mockFolderContext = createMockFolderContext("/path/to/toolchain", new Version(6, 3, 0));
+            mockFolderContext = await createMockFolderContext("/path/to/toolchain");
             fileExistsStub.resolves(false);
 
             const result = await hasLocalSchema(mockFolderContext);
@@ -137,7 +113,7 @@ suite("generateSourcekitConfiguration - Schema Detection", () => {
 
     suite("determineSchemaURL()", () => {
         test("returns file:// URL when local schema exists", async () => {
-            mockFolderContext = createMockFolderContext("/path/to/toolchain", new Version(6, 3, 0));
+            mockFolderContext = await createMockFolderContext("/path/to/toolchain");
             fileExistsStub.resolves(true);
 
             const result = await determineSchemaURL(mockFolderContext);
@@ -148,10 +124,7 @@ suite("generateSourcekitConfiguration - Schema Detection", () => {
         });
 
         test("returns https:// URL when local schema doesn't exist", async () => {
-            mockFolderContext = createMockFolderContext(
-                path.normalize("/path/to/toolchain"),
-                new Version(6, 1, 0)
-            );
+            mockFolderContext = await createMockFolderContext(path.normalize("/path/to/toolchain"));
             fileExistsStub.resolves(false);
 
             const result = await determineSchemaURL(mockFolderContext);
@@ -162,9 +135,8 @@ suite("generateSourcekitConfiguration - Schema Detection", () => {
         });
 
         test("local schema path includes share/sourcekit-lsp/config.schema.json", async () => {
-            mockFolderContext = createMockFolderContext(
-                path.normalize("/usr/local/swift-6.3"),
-                new Version(6, 3, 0)
+            mockFolderContext = await createMockFolderContext(
+                path.normalize("/usr/local/swift-6.3")
             );
             fileExistsStub.resolves(true);
 
@@ -175,10 +147,7 @@ suite("generateSourcekitConfiguration - Schema Detection", () => {
         });
 
         test("remote URL uses correct branch for release version", async () => {
-            mockFolderContext = createMockFolderContext(
-                path.normalize("/path/to/toolchain"),
-                new Version(6, 2, 0)
-            );
+            mockFolderContext = await createMockFolderContext(path.normalize("/path/to/toolchain"));
             fileExistsStub.resolves(false);
 
             const fetchStub = sandbox.stub(globalThis, "fetch");
@@ -193,9 +162,9 @@ suite("generateSourcekitConfiguration - Schema Detection", () => {
         });
 
         test("remote URL uses main for dev version", async () => {
-            mockFolderContext = createMockFolderContext(
+            mockFolderContext = await createMockFolderContext(
                 path.normalize("/path/to/toolchain"),
-                new Version(6, 3, 0, true)
+                true
             );
             fileExistsStub.resolves(false);
 
@@ -211,10 +180,7 @@ suite("generateSourcekitConfiguration - Schema Detection", () => {
         });
 
         test("falls back to main when branch doesn't exist", async () => {
-            mockFolderContext = createMockFolderContext(
-                path.normalize("/path/to/toolchain"),
-                new Version(5, 9, 0)
-            );
+            mockFolderContext = await createMockFolderContext(path.normalize("/path/to/toolchain"));
             fileExistsStub.resolves(false);
 
             const fetchStub = sandbox.stub(globalThis, "fetch");

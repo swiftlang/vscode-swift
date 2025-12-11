@@ -34,7 +34,6 @@ import {
     TextDocumentTestsRequest,
     WorkspaceTestsRequest,
 } from "@src/sourcekit-lsp/extensions";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
 
 import { instance, mockFn, mockObject } from "../../MockUtils";
 
@@ -88,7 +87,7 @@ suite("LSPTestDiscovery Suite", () => {
 
     beforeEach(async function () {
         this.timeout(10000000);
-        pkg = await SwiftPackage.create(file, await SwiftToolchain.create("/path/to/extension"));
+        pkg = await SwiftPackage.create(file);
         client = new TestLanguageClient();
         discoverer = new LSPTestDiscovery(
             instance(

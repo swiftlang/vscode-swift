@@ -15,6 +15,9 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import * as vscode from "vscode";
 
+import { FolderContext } from "./FolderContext";
+import { describePackage } from "./commands/dependencies/describe";
+import { showPackageDependencies } from "./commands/dependencies/show";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { BuildFlags } from "./toolchain/BuildFlags";
 import { SwiftToolchain } from "./toolchain/toolchain";
@@ -23,7 +26,7 @@ import { lineBreakRegex } from "./utilities/tasks";
 import { execSwift, getErrorDescription, hashString } from "./utilities/utilities";
 
 /** Swift Package Manager contents */
-interface PackageContents {
+export interface PackageContents {
     name: string;
     products: Product[];
     dependencies: Dependency[];
@@ -192,7 +195,11 @@ function isError(state: SwiftPackageState): state is Error {
  */
 export class SwiftPackage {
     public plugins: PackagePlugin[] = [];
+
     private _contents: SwiftPackageState | undefined;
+    private contentsPromise: Promise<SwiftPackageState>;
+    private contentsResolve: (value: SwiftPackageState | PromiseLike<SwiftPackageState>) => void;
+    private contentsReject: (reason?: unknown) => void;
 
     /**
      * SwiftPackage Constructor
@@ -202,11 +209,19 @@ export class SwiftPackage {
      */
     private constructor(
         readonly folder: vscode.Uri,
-        private contentsPromise: Promise<SwiftPackageState>,
         public resolved: PackageResolved | undefined,
         // TODO: Make private again
         public workspaceState: WorkspaceState | undefined
-    ) {}
+    ) {
+        let res: (value: SwiftPackageState | PromiseLike<SwiftPackageState>) => void;
+        let rej: (reason?: unknown) => void;
+        this.contentsPromise = new Promise((resolve, reject) => {
+            res = resolve;
+            rej = reject;
+        });
+        this.contentsResolve = res!;
+        this.contentsReject = rej!;
+    }
 
     /**
      * Create a SwiftPackage from a folder
@@ -215,21 +230,12 @@ export class SwiftPackage {
      * @param disableSwiftPMIntegration Whether to disable SwiftPM integration
      * @returns new SwiftPackage
      */
-    public static async create(
-        folder: vscode.Uri,
-        toolchain: SwiftToolchain,
-        disableSwiftPMIntegration: boolean = false
-    ): Promise<SwiftPackage> {
+    public static async create(folder: vscode.Uri): Promise<SwiftPackage> {
         const [resolved, workspaceState] = await Promise.all([
             SwiftPackage.loadPackageResolved(folder),
             SwiftPackage.loadWorkspaceState(folder),
         ]);
-        return new SwiftPackage(
-            folder,
-            SwiftPackage.loadPackage(folder, toolchain, disableSwiftPMIntegration),
-            resolved,
-            workspaceState
-        );
+        return new SwiftPackage(folder, resolved, workspaceState);
     }
 
     /**
@@ -257,39 +263,32 @@ export class SwiftPackage {
      * @param disableSwiftPMIntegration Whether to disable SwiftPM integration
      * @returns results of `swift package describe`
      */
-    static async loadPackage(
-        folder: vscode.Uri,
-        toolchain: SwiftToolchain,
+    public async loadPackageState(
+        folderContext: FolderContext,
         disableSwiftPMIntegration: boolean = false
-    ): Promise<SwiftPackageState> {
+    ): Promise<void> {
         // When SwiftPM integration is disabled, return empty package structure
         if (disableSwiftPMIntegration) {
-            return {
-                name: path.basename(folder.fsPath),
+            this.contentsResolve({
+                name: path.basename(folderContext.folder.fsPath),
                 products: [],
                 dependencies: [],
                 targets: [],
-            };
+            });
         }
 
         try {
             // Use swift package describe to describe the package targets, products, and platforms
             // Use swift package show-dependencies to get the dependencies in a tree format
-            const [describe, dependencies] = await Promise.all([
-                execSwift(["package", "describe", "--type", "json"], toolchain, {
-                    cwd: folder.fsPath,
-                }),
-                execSwift(["package", "show-dependencies", "--format", "json"], toolchain, {
-                    cwd: folder.fsPath,
-                }),
-            ]);
-
+            // Each of these locks the folder so we can't run them in parallel, so just serially run them.
+            const describe = await describePackage(folderContext);
+            const dependencies = await showPackageDependencies(folderContext);
             const packageState = {
-                ...(JSON.parse(SwiftPackage.trimStdout(describe.stdout)) as PackageContents),
-                dependencies: JSON.parse(SwiftPackage.trimStdout(dependencies.stdout)).dependencies,
+                ...(describe as PackageContents),
+                dependencies: dependencies,
             };
 
-            return packageState;
+            this.contentsResolve(packageState);
         } catch (error) {
             const execError = error as { stderr: string };
             // if caught error and it begins with "error: root manifest" then there is no Package.swift
@@ -298,11 +297,18 @@ export class SwiftPackage {
                 (execError.stderr.startsWith("error: root manifest") ||
                     execError.stderr.startsWith("error: Could not find Package.swift"))
             ) {
-                return undefined;
+                this.contentsResolve({
+                    name: path.basename(folderContext.folder.fsPath),
+                    products: [],
+                    dependencies: [],
+                    targets: [],
+                });
+                return;
             } else {
                 // otherwise it is an error loading the Package.swift so return `null` indicating
                 // we have a package but we failed to load it
-                return Error(getErrorDescription(error));
+                this.contentsReject(Error(getErrorDescription(error)));
+                return;
             }
         }
     }
@@ -377,14 +383,16 @@ export class SwiftPackage {
     }
 
     /** Reload swift package */
-    public async reload(toolchain: SwiftToolchain, disableSwiftPMIntegration: boolean = false) {
-        const loadedContents = await SwiftPackage.loadPackage(
-            this.folder,
-            toolchain,
-            disableSwiftPMIntegration
-        );
-        this._contents = loadedContents;
-        this.contentsPromise = Promise.resolve(loadedContents);
+    public async reload(folderContext: FolderContext, disableSwiftPMIntegration: boolean = false) {
+        let res: (value: SwiftPackageState | PromiseLike<SwiftPackageState>) => void;
+        let rej: (reason?: unknown) => void;
+        this.contentsPromise = new Promise((resolve, reject) => {
+            res = resolve;
+            rej = reject;
+        });
+        this.contentsResolve = res!;
+        this.contentsReject = rej!;
+        await this.loadPackageState(folderContext, disableSwiftPMIntegration);
     }
 
     /** Reload Package.resolved file */
@@ -572,7 +580,7 @@ export class SwiftPackage {
         );
     }
 
-    private static trimStdout(stdout: string): string {
+    static trimStdout(stdout: string): string {
         // remove lines from `swift package describe` until we find a "{"
         while (!stdout.startsWith("{")) {
             const firstNewLine = stdout.indexOf("\n");
