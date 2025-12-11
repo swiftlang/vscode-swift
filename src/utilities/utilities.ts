@@ -315,6 +315,21 @@ export function compactMap<T, U>(
         return acc;
     }, []);
 }
+
+/**
+ * Create a promise that can be resolved outside the promise executor.
+ * @returns An object containing the promise that can be awaited, and its resolve and reject functions.
+ */
+export function unwrapPromise<T>() {
+    let resolve: (value: T | PromiseLike<T>) => void;
+    let reject: (reason?: unknown) => void;
+    const promise = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+    });
+    return { promise, resolve: resolve!, reject: reject! };
+}
+
 /**
  * Get path to swift executable, or executable in swift bin folder
  *

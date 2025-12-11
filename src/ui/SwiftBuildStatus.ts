@@ -67,7 +67,10 @@ export class SwiftBuildStatus implements vscode.Disposable {
         const execution = task.execution as SwiftExecution;
         const isBuildTask = task.group === vscode.TaskGroup.Build;
         const disposables: vscode.Disposable[] = [];
-        const handleTaskOutput = (update: (message: string) => void) =>
+        const handleTaskOutput = (
+            options: { showProgressStatus: boolean },
+            update: (message: string) => void
+        ) =>
             new Promise<void>(res => {
                 const done = () => {
                     disposables.forEach(d => d.dispose());
@@ -79,6 +82,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
                         execution,
                         isBuildTask,
                         showBuildStatus,
+                        options.showProgressStatus,
                         update,
                         done
                     ),
@@ -98,11 +102,16 @@ export class SwiftBuildStatus implements vscode.Disposable {
                             ? vscode.ProgressLocation.Window
                             : vscode.ProgressLocation.Notification,
                 },
-                progress => handleTaskOutput(message => progress.report({ message }))
+                progress =>
+                    handleTaskOutput({ showProgressStatus: true }, message =>
+                        progress.report({ message })
+                    )
             );
         } else {
             void this.statusItem.showStatusWhileRunning(task, () =>
-                handleTaskOutput(message => this.statusItem.update(task, message))
+                handleTaskOutput({ showProgressStatus: false }, message =>
+                    this.statusItem.update(task, message)
+                )
             );
         }
     }
@@ -112,6 +121,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
         execution: SwiftExecution,
         isBuildTask: boolean,
         showBuildStatus: ShowBuildStatusOptions,
+        showProgressStatus: boolean,
         update: (message: string) => void,
         done: () => void
     ): vscode.Disposable {
@@ -146,7 +156,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
 
         // Begin by showing a message that the build is preparing, as there is sometimes
         // a delay before building starts, especially in large projects.
-        if (!started && showBuildStatus !== "never") {
+        if (!started && showBuildStatus !== "never" && showProgressStatus) {
             update(`${name}: Preparing...`);
         }
 

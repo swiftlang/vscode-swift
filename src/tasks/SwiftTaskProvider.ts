@@ -366,6 +366,8 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
     static cleanBuildName = "Clean Build";
     static resolvePackageName = "Resolve Package Dependencies";
     static updatePackageName = "Update Package Dependencies";
+    static showDependenciesName = "List Package Dependencies";
+    static describePackageName = "Describe Package";
 
     constructor(private workspaceContext: WorkspaceContext) {}
 
