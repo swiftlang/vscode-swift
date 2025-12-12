@@ -11,10 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import { dirname } from "path";
 import * as vscode from "vscode";
 import { Location, Range } from "vscode-languageclient";
 
 import { FolderContext } from "../FolderContext";
+import configuration from "../configuration";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import { TaskManager } from "../tasks/TaskManager";
 import { packageName } from "../utilities/tasks";
@@ -50,7 +52,12 @@ export async function runPlayground(
             packageName: packageName(folderContext),
             presentationOptions: { reveal: vscode.TaskRevealKind.Always },
         },
-        folderContext.toolchain
+        folderContext.toolchain,
+        configuration.swiftPlayPath
+            ? {
+                  PATH: `${dirname(configuration.swiftPlayPath)}${process.platform === "win32" ? ";" : ":"}${process.env["PATH"]}`,
+              }
+            : undefined
     );
 
     await tasks.executeTaskAndWait(task);
