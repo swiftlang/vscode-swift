@@ -153,6 +153,14 @@ export async function execFile(
             options.env = { ...(options.env ?? process.env), ...runtimeEnv };
         }
     }
+    if (Object.keys(configuration.swiftEnvironmentVariables).length > 0) {
+        // when adding environment vars we either combine with vars passed
+        // into the function or the process environment vars
+        options.env = {
+            ...(options.env ?? process.env),
+            ...configuration.swiftEnvironmentVariables,
+        };
+    }
     options = {
         ...options,
         maxBuffer: options.maxBuffer ?? 1024 * 1024 * 64, // 64MB
@@ -260,14 +268,6 @@ export async function execSwift(
     } else {
         swift = toolchain.getToolchainExecutable("swift");
         args = toolchain.buildFlags.withAdditionalFlags(args);
-    }
-    if (Object.keys(configuration.swiftEnvironmentVariables).length > 0) {
-        // when adding environment vars we either combine with vars passed
-        // into the function or the process environment vars
-        options.env = {
-            ...(options.env ?? process.env),
-            ...configuration.swiftEnvironmentVariables,
-        };
     }
     options = {
         ...options,

@@ -6,6 +6,10 @@
 
 - When editing .sourcekit-lsp/config.json use the JSON schema from the toolchain ([#1979](https://github.com/swiftlang/vscode-swift/pull/1979))
 
+### Fixed
+
+- Fix extension failing to find `lldb-dap` when `swift.path` points at an Xcode toolchain ([#1998](https://github.com/swiftlang/vscode-swift/pull/1998))
+
 ## 2.14.2 - 2025-12-07
 
 ### Fixed

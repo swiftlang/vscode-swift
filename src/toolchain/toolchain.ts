@@ -436,25 +436,25 @@ export class SwiftToolchain {
      * Search for the supplied executable in the toolchain.
      */
     private async findToolchainExecutable(executable: string): Promise<string> {
-        if (process.platform === "win32") {
-            executable += ".exe";
+        let cause: unknown = undefined;
+        try {
+            if (process.platform === "win32") {
+                executable += ".exe";
+            }
+            // First search the toolchain's 'bin' directory
+            const toolchainExecutablePath = path.join(this.toolchainPath, "bin", executable);
+            if (await pathExists(toolchainExecutablePath)) {
+                return toolchainExecutablePath;
+            }
+            // Fallback to using xcrun if we're on macOS
+            if (process.platform === "darwin") {
+                const { stdout } = await execFile("xcrun", ["--find", executable]);
+                return stdout.trim();
+            }
+        } catch (error) {
+            cause = error;
         }
-        // First search the toolchain's 'bin' directory
-        const toolchainExecutablePath = path.join(this.toolchainPath, "bin", executable);
-        if (await pathExists(toolchainExecutablePath)) {
-            return toolchainExecutablePath;
-        }
-        // Fallback to xcrun if the active toolchain comes from Xcode/CommandLineTools
-        if (
-            this.manager === "xcrun" ||
-            (this.manager === "swiftly" && (await Swiftly.inUseVersion()) === "xcode")
-        ) {
-            const { stdout } = await execFile("xcrun", ["--find", executable]);
-            return stdout.trim();
-        }
-        throw new Error(
-            `Failed to find ${executable} within Swift toolchain '${this.toolchainPath}'`
-        );
+        throw new Error(`Failed to find ${executable} within Swift toolchain`, { cause });
     }
 
     private basePlatformDeveloperPath(): string | undefined {

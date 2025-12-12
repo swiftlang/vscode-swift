@@ -99,7 +99,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 });
 
                 await expect(sut.getLLDBDebugAdapter()).to.eventually.be.rejectedWith(
-                    "Failed to find lldb-dap within Swift toolchain '/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr'"
+                    "Failed to find lldb-dap within Swift toolchain"
                 );
             });
 
@@ -153,6 +153,39 @@ suite("SwiftToolchain Unit Test Suite", () => {
                     "/Library/Developer/CommandLineTools/usr/bin/lldb-dap"
                 );
             });
+
+            test("returns the path to lldb-dap if it exists within an Xcode toolchain selected using swift.path", async () => {
+                mockFS({
+                    "/Applications/Xcode.app/Contents/Developer": {
+                        Toolchains: {
+                            "XcodeDefault.xctoolchain": {},
+                        },
+                        usr: {
+                            bin: {
+                                "lldb-dap": mockFS.file({
+                                    content: "",
+                                    mode: 0o770,
+                                }),
+                            },
+                        },
+                    },
+                });
+                mockedUtilities.execFile.withArgs("xcrun", ["--find", "lldb-dap"]).resolves({
+                    stdout: "/Applications/Xcode.app/Contents/Developer/usr/bin/lldb-dap",
+                    stderr: "",
+                });
+                const sut = createSwiftToolchain({
+                    manager: "unknown",
+                    swiftFolderPath:
+                        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr",
+                    toolchainPath:
+                        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr",
+                });
+
+                await expect(sut.getLLDBDebugAdapter()).to.eventually.equalPath(
+                    "/Applications/Xcode.app/Contents/Developer/usr/bin/lldb-dap"
+                );
+            });
         });
 
         suite("Linux", () => {
@@ -189,7 +222,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 });
 
                 await expect(sut.getLLDBDebugAdapter()).to.eventually.be.rejectedWith(
-                    "Failed to find lldb-dap within Swift toolchain '/toolchains/swift-6.0.0/usr'"
+                    "Failed to find lldb-dap within Swift toolchain"
                 );
             });
         });
@@ -228,7 +261,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 });
 
                 await expect(sut.getLLDBDebugAdapter()).to.eventually.be.rejectedWith(
-                    "Failed to find lldb-dap.exe within Swift toolchain '/toolchains/swift-6.0.0/usr'"
+                    "Failed to find lldb-dap.exe within Swift toolchain"
                 );
             });
         });
