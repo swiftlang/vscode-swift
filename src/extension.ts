@@ -222,10 +222,9 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
     // function called when a folder is added. I broke this out so we can trigger it
     // without having to await for it.
     async function folderAdded(folder: FolderContext, workspace: WorkspaceContext) {
-        if (
-            !configuration.folder(folder.workspaceFolder).disableAutoResolve ||
-            configuration.backgroundCompilation.enabled
-        ) {
+        const disableAutoResolve = configuration.folder(folder.workspaceFolder).disableAutoResolve;
+        const backgroundCompilationEnabled = configuration.backgroundCompilation.enabled;
+        if (!disableAutoResolve || backgroundCompilationEnabled) {
             // if background compilation is set then run compile at startup unless
             // this folder is a sub-folder of the workspace folder. This is to avoid
             // kicking off compile for multiple projects at the same time

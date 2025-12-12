@@ -6,6 +6,10 @@
 
 - When editing .sourcekit-lsp/config.json use the JSON schema from the toolchain ([#1979](https://github.com/swiftlang/vscode-swift/pull/1979))
 
+### Fixed
+
+- Omit `--scratch-path` when enumerating plugins with `swift package plugin --list` ([#1996](https://github.com/swiftlang/vscode-swift/pull/1996))
+
 ## 2.14.2 - 2025-12-07
 
 ### Fixed
