@@ -15,6 +15,7 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "../FolderContext";
 import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
+import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { LSPPlaygroundsDiscovery, Playground } from "./LSPPlaygroundsDiscovery";
 
@@ -120,8 +121,11 @@ export class PlaygroundProvider implements vscode.Disposable {
             await this.fetchPromise;
             return;
         }
-        if (!(await this.lspPlaygroundDiscovery.supportsPlaygrounds())) {
-            this.logger.debug(
+        if (
+            !configuration.swiftPlayPath &&
+            !(await this.lspPlaygroundDiscovery.supportsPlaygrounds())
+        ) {
+            this.logger.warn(
                 `Fetching playgrounds not supported by the language server`,
                 this.folderContext.name
             );
