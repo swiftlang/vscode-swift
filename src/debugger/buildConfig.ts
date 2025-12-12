@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 import * as fs from "fs/promises";
-import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
 
@@ -82,10 +81,6 @@ export class BuildConfigurationFactory {
 
     /** flag for enabling test discovery */
     private testDiscoveryFlag(ctx: FolderContext): string[] {
-        // Test discovery is only available in SwiftPM 5.1 and later.
-        if (ctx.swiftVersion.isLessThan(new Version(5, 1, 0))) {
-            return [];
-        }
         // Test discovery is always enabled on Darwin.
         if (process.platform !== "darwin") {
             const hasLinuxMain = ctx.linuxMain.exists;
@@ -465,17 +460,6 @@ export class TestingConfigurationFactory {
                             },
                         };
                     default:
-                        const swiftVersion = this.ctx.toolchain.swiftVersion;
-                        if (
-                            swiftVersion.isLessThan(new Version(5, 7, 0)) &&
-                            swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0)) &&
-                            process.platform === "darwin"
-                        ) {
-                            // if debugging on macOS with Swift 5.6 we need to create a custom launch
-                            // configuration so we can set the system architecture
-                            return await this.createDarwin56TestConfiguration();
-                        }
-
                         let xcTestArgs = [
                             "test",
                             ...(this.testKind === TestKind.coverage
@@ -514,60 +498,6 @@ export class TestingConfigurationFactory {
         }
     }
     /* eslint-enable no-case-declarations */
-
-    /**
-     * Return custom Darwin test configuration that works with Swift 5.6
-     **/
-    private async createDarwin56TestConfiguration(): Promise<vscode.DebugConfiguration | null> {
-        if ((await this.ctx.swiftPackage.getTargets(TargetType.test)).length === 0) {
-            return null;
-        }
-
-        let testFilterArg: string;
-        const testList = this.testList.join(",");
-        if (testList.length > 0) {
-            testFilterArg = `-XCTest ${testList}`;
-        } else {
-            testFilterArg = "";
-        }
-
-        const { folder, nameSuffix } = getFolderAndNameSuffix(this.ctx, true);
-        // On macOS, find the path to xctest
-        // and point it at the .xctest bundle from the configured build directory.
-        const xctestPath = this.ctx.toolchain.xcTestPath;
-        if (xctestPath === undefined) {
-            return null;
-        }
-        let arch: string;
-        switch (os.arch()) {
-            case "x64":
-                arch = "x86_64";
-                break;
-            case "arm64":
-                arch = "arm64e";
-                break;
-            default:
-                return null;
-        }
-        const sanitizer = this.ctx.toolchain.sanitizer(configuration.sanitizer);
-        const envCommands = Object.entries({
-            ...swiftRuntimeEnv(),
-            ...configuration.folder(this.ctx.workspaceFolder).testEnvironmentVariables,
-            ...sanitizer?.runtimeEnvironment,
-        }).map(([key, value]) => `settings set target.env-vars ${key}="${value}"`);
-
-        return {
-            type: SWIFT_LAUNCH_CONFIG_TYPE,
-            request: "custom",
-            name: `Test ${await this.ctx.swiftPackage.name}`,
-            targetCreateCommands: [`file -a ${arch} ${xctestPath}/xctest`],
-            processCreateCommands: [
-                ...envCommands,
-                `process launch -w ${folder} -- ${testFilterArg} ${this.xcTestOutputPath()}`,
-            ],
-            preLaunchTask: `swift: Build All${nameSuffix}`,
-        };
-    }
 
     private addSwiftTestingFlagsArgs(args: string[]): string[] {
         if (!this.swiftTestingArguments) {
