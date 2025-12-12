@@ -9,6 +9,7 @@
 ### Fixed
 
 - Fix breakpoint filtering fallback in debugger logging ([#1989](https://github.com/swiftlang/vscode-swift/pull/1989))
+- Fix extension failing to find `lldb-dap` when `swift.path` points at an Xcode toolchain ([#1998](https://github.com/swiftlang/vscode-swift/pull/1998))
 
 ## 2.14.2 - 2025-12-07
 
