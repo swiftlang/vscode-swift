@@ -138,8 +138,16 @@ export async function determineSchemaURL(folderContext: FolderContext): Promise<
     // Fall back to remote URL for older toolchains
     const version = folderContext.toolchain.swiftVersion;
     const versionString = `${version.major}.${version.minor}`;
-    let branch =
-        configuration.lspConfigurationBranch || (version.dev ? "main" : `release/${versionString}`);
+
+    // If configuration branch is set, use it
+    if (configuration.lspConfigurationBranch) {
+        return schemaURL(configuration.lspConfigurationBranch);
+    }
+
+    // Determine branch based on version
+    let branch = version.dev ? "main" : `release/${versionString}`;
+
+    // Check if the branch-specific URL exists, fallback to main if not
     if (!(await checkURLExists(schemaURL(branch)))) {
         branch = "main";
     }

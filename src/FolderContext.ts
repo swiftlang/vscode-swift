@@ -138,11 +138,7 @@ export class FolderContext implements vscode.Disposable {
         const { linuxMain, swiftPackage } =
             await workspaceContext.statusItem.showStatusWhileRunning(statusItemText, async () => {
                 const linuxMain = await LinuxMain.create(folder);
-                const swiftPackage = await SwiftPackage.create(
-                    folder,
-                    toolchain,
-                    configuration.disableSwiftPMIntegration
-                );
+                const swiftPackage = await SwiftPackage.create(folder);
                 return { linuxMain, swiftPackage };
             });
         workspaceContext.statusItem.end(statusItemText);
@@ -156,16 +152,19 @@ export class FolderContext implements vscode.Disposable {
             workspaceContext
         );
 
-        const error = await swiftPackage.error;
-        if (error) {
-            void vscode.window.showErrorMessage(
-                `Failed to load ${folderContext.name}/Package.swift: ${error.message}`
-            );
-            workspaceContext.logger.info(
-                `Failed to load Package.swift: ${error.message}`,
-                folderContext.name
-            );
-        }
+        // List the package's dependencies without blocking folder creation
+        void swiftPackage.loadPackageState(folderContext).then(async () => {
+            const error = await swiftPackage.error;
+            if (error) {
+                void vscode.window.showErrorMessage(
+                    `Failed to load ${folderContext.name}/Package.swift: ${error.message}`
+                );
+                workspaceContext.logger.info(
+                    `Failed to load Package.swift: ${error.message}`,
+                    folderContext.name
+                );
+            }
+        });
 
         // Start watching for changes to Package.swift, Package.resolved and .swift-version
         await folderContext.packageWatcher.install();
@@ -200,7 +199,7 @@ export class FolderContext implements vscode.Disposable {
 
     /** reload swift package for this folder */
     async reload() {
-        await this.swiftPackage.reload(this.toolchain, configuration.disableSwiftPMIntegration);
+        await this.swiftPackage.reload(this, configuration.disableSwiftPMIntegration);
     }
 
     /** reload Package.resolved for this folder */
