@@ -28,7 +28,6 @@ import { CommentCompletionProviders } from "./editor/CommentCompletion";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
 import { LanguageClientToolchainCoordinator } from "./sourcekit-lsp/LanguageClientToolchainCoordinator";
-import { SourcekitSchemaRegistry } from "./sourcekit-lsp/SourcekitSchemaRegistry";
 import { DocCDocumentationRequest, ReIndexProjectRequest } from "./sourcekit-lsp/extensions";
 import { SwiftPluginTaskProvider } from "./tasks/SwiftPluginTaskProvider";
 import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
@@ -63,7 +62,6 @@ export class WorkspaceContext implements vscode.Disposable {
     public documentation: DocumentationManager;
     public testRunManager: TestRunManager;
     public projectPanel: ProjectPanelProvider;
-    private sourcekitSchemaRegistry: SourcekitSchemaRegistry;
     private lastFocusUri: vscode.Uri | undefined;
     private initialisationFinished = false;
 
@@ -110,7 +108,6 @@ export class WorkspaceContext implements vscode.Disposable {
         this.currentDocument = null;
         this.commentCompletionProvider = new CommentCompletionProviders();
         this.projectPanel = new ProjectPanelProvider(this);
-        this.sourcekitSchemaRegistry = new SourcekitSchemaRegistry(this);
 
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(async event => {
             // Clear build path cache when build-related configurations change
@@ -235,7 +232,6 @@ export class WorkspaceContext implements vscode.Disposable {
             this.statusItem,
             this.buildStatus,
             this.projectPanel,
-            this.sourcekitSchemaRegistry.register(),
         ];
         this.lastFocusUri = vscode.window.activeTextEditor?.document.uri;
 
@@ -251,7 +247,6 @@ export class WorkspaceContext implements vscode.Disposable {
     }
 
     dispose() {
-        this.sourcekitSchemaRegistry.dispose();
         this.folders.forEach(f => f.dispose());
         this.folders.length = 0;
         this.subscriptions.forEach(item => item.dispose());
