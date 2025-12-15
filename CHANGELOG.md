@@ -5,9 +5,6 @@
 ### Fixed
 
 - Fix extension failing to find `lldb-dap` when `swift.path` points at an Xcode toolchain ([#1998](https://github.com/swiftlang/vscode-swift/pull/1998))
-
-### Fixed
-
 - Omit `--scratch-path` when enumerating plugins with `swift package plugin --list` ([#1996](https://github.com/swiftlang/vscode-swift/pull/1996))
 
 ## 2.14.2 - 2025-12-07
