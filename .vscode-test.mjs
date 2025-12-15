@@ -13,11 +13,12 @@
 //===----------------------------------------------------------------------===//
 // @ts-check
 import { defineConfig } from "@vscode/test-cli";
+import { mkdir } from "fs/promises";
 import * as path from "path";
 
 import * as packageJSON from "./package.json" with { type: "json" };
 
-function createTestConfig() {
+async function createTestConfig() {
     const isCIBuild = process.env["CI"] === "1";
 
     const dataDir = process.env["VSCODE_DATA_DIR"];
@@ -37,9 +38,13 @@ function createTestConfig() {
     // Keep this up to date with the timeout of a 'small' test in 'test/tags.ts'.
     const timeout = isDebugRun ? 0 : 2000;
 
+    const crashReporterDirectory = path.join(import.meta.dirname, "test-results", "crash-reports");
+    await mkdir(crashReporterDirectory, { recursive: true });
+
     const launchArgs = [
         "--disable-updates",
         "--disable-crash-reporter",
+        `--crash-reporter-directory=${crashReporterDirectory}`,
         "--disable-workspace-trust",
         "--disable-telemetry",
         "--disable-gpu",
