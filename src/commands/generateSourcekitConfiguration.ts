@@ -18,11 +18,10 @@ import { FolderContext } from "../FolderContext";
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
 import { selectFolder } from "../ui/SelectFolderQuickPick";
-import { fileExists } from "../utilities/filesystem";
 import restartLSPServer from "./restartLSPServer";
 
-const sourcekitDotFolder: string = ".sourcekit-lsp";
-const sourcekitConfigFileName: string = "config.json";
+export const sourcekitDotFolder: string = ".sourcekit-lsp";
+export const sourcekitConfigFileName: string = "config.json";
 
 export async function generateSourcekitConfiguration(ctx: WorkspaceContext): Promise<boolean> {
     if (ctx.folders.length === 0) {
@@ -129,13 +128,6 @@ async function checkURLExists(url: string): Promise<boolean> {
 }
 
 export async function determineSchemaURL(folderContext: FolderContext): Promise<string> {
-    // Check if local schema exists first
-    if (await hasLocalSchema(folderContext)) {
-        const localPath = localSchemaPath(folderContext);
-        return vscode.Uri.file(localPath).toString();
-    }
-
-    // Fall back to remote URL for older toolchains
     const version = folderContext.toolchain.swiftVersion;
     const versionString = `${version.major}.${version.minor}`;
     let branch =
@@ -144,26 +136,6 @@ export async function determineSchemaURL(folderContext: FolderContext): Promise<
         branch = "main";
     }
     return schemaURL(branch);
-}
-
-/**
- * Returns the path to the local sourcekit-lsp schema file in the toolchain.
- * This file only exists in newer toolchains (approximately Swift 6.3+).
- */
-export function localSchemaPath(folderContext: FolderContext): string {
-    return join(
-        folderContext.toolchain.toolchainPath,
-        "share",
-        "sourcekit-lsp",
-        "config.schema.json"
-    );
-}
-
-/**
- * Checks if the local schema file exists in the toolchain.
- */
-export async function hasLocalSchema(folderContext: FolderContext): Promise<boolean> {
-    return await fileExists(localSchemaPath(folderContext));
 }
 
 async function getValidatedFolderContext(
