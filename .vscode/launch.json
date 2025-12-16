@@ -59,6 +59,13 @@
       "runtimeArgs": ["${workspaceFolder}/scripts/update_swift_docc_render.ts"]
     },
     {
+      "name": "Upload Test Results",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+      "runtimeArgs": ["${workspaceFolder}/scripts/upload_test_results.ts"]
+    },
+    {
       "name": "Preview Package",
       "type": "node",
       "request": "launch",

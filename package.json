@@ -2060,6 +2060,7 @@
     "unit-test": "npm run pretest && vscode-test --label unitTests",
     "coverage": "npm run pretest && vscode-test --coverage",
     "compile-tests": "del-cli ./assets/test/**/.build && del-cli ./assets/test/**/.spm-cache && npm run compile",
+    "upload-test-results": "tsx ./scripts/upload_test_results.ts",
     "package": "tsx ./scripts/package.ts",
     "dev-package": "tsx ./scripts/dev_package.ts",
     "preview-package": "tsx ./scripts/preview_package.ts",
@@ -2076,6 +2077,7 @@
     "**/*": "prettier --write --ignore-unknown"
   },
   "devDependencies": {
+    "@actions/artifact": "^5.0.1",
     "@actions/core": "^1.11.1",
     "@trivago/prettier-plugin-sort-imports": "^6.0.0",
     "@twbs/fantasticon": "^3.1.0",
