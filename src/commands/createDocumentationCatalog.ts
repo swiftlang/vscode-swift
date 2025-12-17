@@ -25,27 +25,31 @@ export async function createDocumentationCatalog(): Promise<void> {
         return;
     }
 
+    const rootPath = folders[0].uri.fsPath;
+
     const moduleName = await vscode.window.showInputBox({
         prompt: "Enter Swift module name",
         placeHolder: "MyModule",
-        validateInput: value =>
-            value.trim().length === 0 ? "Module name cannot be empty" : undefined,
+        validateInput: value => {
+            if (value.trim().length === 0) {
+                return "Module name cannot be empty";
+            }
+
+            const doccDir = path.join(rootPath, `${value}.docc`);
+            if (fsSync.existsSync(doccDir)) {
+                return `Documentation catalog "${value}.docc" already exists`;
+            }
+
+            return undefined;
+        },
     });
 
     if (!moduleName) {
         return; // user cancelled
     }
 
-    const rootPath = folders[0].uri.fsPath;
     const doccDir = path.join(rootPath, `${moduleName}.docc`);
     const markdownFile = path.join(doccDir, `${moduleName}.md`);
-
-    if (fsSync.existsSync(doccDir)) {
-        void vscode.window.showErrorMessage(
-            `Documentation catalog "${moduleName}.docc" already exists.`
-        );
-        return;
-    }
 
     await fs.mkdir(doccDir, { recursive: true });
     await fs.writeFile(markdownFile, `# ${moduleName}\n`, "utf8");
