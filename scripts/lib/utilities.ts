@@ -34,6 +34,27 @@ export function main(mainFn: () => Promise<void>) {
 }
 
 /**
+ * Determines whether or not the provided object is a NodeJS ErrnoException.
+ *
+ * @param obj The object to test.
+ * @returns A boolean indicating whether or not `obj` is an ErrnoException.
+ */
+export function isErrnoException(obj: unknown): obj is NodeJS.ErrnoException {
+    return (
+        typeof obj === "object" &&
+        obj instanceof Error &&
+        "errno" in obj &&
+        (obj.errno === undefined || typeof obj.errno === "number") &&
+        "code" in obj &&
+        (obj.code === undefined || typeof obj.code === "string") &&
+        "path" in obj &&
+        (obj.path === undefined || typeof obj.path === "string") &&
+        "syscall" in obj &&
+        (obj.syscall === undefined || typeof obj.syscall === "string")
+    );
+}
+
+/**
  * Returns the root directory of the repository.
  */
 export function getRootDirectory(): string {

@@ -20,7 +20,7 @@
       "name": "Integration Tests",
       "type": "extensionHost",
       "request": "launch",
-      "testConfiguration": "${workspaceFolder}/.vscode-test.js",
+      "testConfiguration": "${workspaceFolder}/.vscode-test.mjs",
       "testConfigurationLabel": "integrationTests",
       "args": ["--profile=testing-debug"],
       "outFiles": ["${workspaceFolder}/dist/**/*.js"],
@@ -33,7 +33,7 @@
       "name": "Code Workspace Tests",
       "type": "extensionHost",
       "request": "launch",
-      "testConfiguration": "${workspaceFolder}/.vscode-test.js",
+      "testConfiguration": "${workspaceFolder}/.vscode-test.mjs",
       "testConfigurationLabel": "codeWorkspaceTests",
       "args": ["--profile=testing-debug"],
       "outFiles": ["${workspaceFolder}/dist/**/*.js"],
@@ -46,7 +46,7 @@
       "name": "Unit Tests",
       "type": "extensionHost",
       "request": "launch",
-      "testConfiguration": "${workspaceFolder}/.vscode-test.js",
+      "testConfiguration": "${workspaceFolder}/.vscode-test.mjs",
       "testConfigurationLabel": "unitTests",
       "outFiles": ["${workspaceFolder}/dist/**/*.js"],
       "preLaunchTask": "compile-tests"
@@ -57,6 +57,13 @@
       "request": "launch",
       "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
       "runtimeArgs": ["${workspaceFolder}/scripts/update_swift_docc_render.ts"]
+    },
+    {
+      "name": "Upload Test Results",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+      "runtimeArgs": ["${workspaceFolder}/scripts/upload_test_results.ts"]
     },
     {
       "name": "Preview Package",

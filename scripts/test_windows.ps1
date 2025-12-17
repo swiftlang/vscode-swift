@@ -12,6 +12,16 @@
 ##
 ##===----------------------------------------------------------------------===##
 
+$ExitCode=0
+function Update-ExitCode {
+    param (
+        [int]$Value
+    )
+    if ($Value -ne 0) {
+        Set-Variable -Name "ExitCode" -Scope "Script" -Value $Value
+    }
+}
+
 function Update-SwiftBuildAndPackageArguments {
     param (
         [string]$jsonFilePath = "./assets/test/.vscode/settings.json",
@@ -125,13 +135,15 @@ if ($versionLine -match "Swift version (\d+)\.(\d+)") {
     exit 1
 }
 
-npm ci
-npm run lint
-npm run format
-npm run test
-if ($LASTEXITCODE -eq 0) {
+npm ci; Update-ExitCode -Value $LASTEXITCODE
+npm run lint; Update-ExitCode -Value $LASTEXITCODE
+npm run format; Update-ExitCode -Value $LASTEXITCODE
+npm run test; Update-ExitCode -Value $LASTEXITCODE
+# npm run upload-test-results; Update-ExitCode -Value $LASTEXITCODE
+
+if ($ExitCode -eq 0) {
     Write-Host 'SUCCESS'
 } else {
-    Write-Host ('FAILED ({0})' -f $LASTEXITCODE)
-    exit 1
+    Write-Host ('FAILED ({0})' -f $ExitCode)
+    exit $ExitCode
 }

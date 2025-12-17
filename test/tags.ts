@@ -31,7 +31,7 @@ interface TaggedTest extends Test {
 
 function getTimeout(size: TestSize): number {
     // Don't time out when debugging.
-    // The 'VSCODE_DEBUG' environment variable gets set by '.vscode-test.js'.
+    // The 'VSCODE_DEBUG' environment variable gets set by '.vscode-test.mjs'.
     const isDebugRun = process.env["VSCODE_DEBUG"] === "1";
     if (isDebugRun) {
         return 0;

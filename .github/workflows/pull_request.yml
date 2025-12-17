@@ -48,7 +48,7 @@ jobs:
   tests:
     name: ${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && 'Full Test Run' || 'Test'}}
     needs: package
-    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.2
+    uses: matthewbastien/github-workflows/.github/workflows/swift_package_test.yml@upload-artifact
     with:
       needs_token: true
       # Linux
@@ -73,10 +73,14 @@ jobs:
       windows_pre_build_command: . .github\workflows\scripts\windows\setup.ps1
       windows_build_command: Invoke-Program scripts\test_windows.ps1
       enable_windows_docker: false
+      # Test Artifacts
+      enable_upload_artifact: true
+      artifact_name: "Test Results"
+      artifact_path: "test-results/"
 
   soundness:
     name: Soundness
-    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.2
+    uses: matthewbastien/github-workflows/.github/workflows/soundness.yml@upload-artifact
     with:
       # Pending https://github.com/swiftlang/vscode-swift/pull/1176
       license_header_check_enabled: false

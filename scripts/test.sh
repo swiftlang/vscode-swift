@@ -36,6 +36,11 @@ npm run soundness -- --force-run
 xvfb-run -a npm run coverage 2>&1 | grep -Ev "Failed to connect to the bus|GPU stall due to ReadPixels"
 exit_code=${PIPESTATUS[0]}
 
+# npm run upload-test-results
+
+rm -rf "${current_directory}/test-results"
+cp -R ./test-results "${current_directory}" || true
+
 rm -rf "${current_directory}/coverage"
 cp -R ./coverage "${current_directory}" || true
 
