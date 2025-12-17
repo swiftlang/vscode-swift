@@ -489,6 +489,11 @@
         "command": "swift.generateSourcekitConfiguration",
         "title": "Generate SourceKit-LSP Configuration",
         "category": "Swift"
+      },
+      {
+        "command": "swift.createDocumentationCatalog",
+        "title": "Create Documentation Catalog",
+        "category": "Swift"
       }
     ],
     "configuration": [
