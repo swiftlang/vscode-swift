@@ -1,11 +1,27 @@
-import * as fs from "fs";
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the VS Code Swift open source project
+//
+// Copyright (c) 2021-2024 the VS Code Swift project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.txt for the list of VS Code Swift project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+import * as fsSync from "fs";
+import * as fs from "fs/promises";
 import * as path from "path";
 import * as vscode from "vscode";
 
 export async function createDocumentationCatalog(): Promise<void> {
     const folders = vscode.workspace.workspaceFolders;
     if (!folders || folders.length === 0) {
-        await vscode.window.showErrorMessage("Open a workspace first.");
+        void vscode.window.showErrorMessage(
+            "Creating a documentation catalog requires that a folder or workspace be opened"
+        );
         return;
     }
 
@@ -24,17 +40,17 @@ export async function createDocumentationCatalog(): Promise<void> {
     const doccDir = path.join(rootPath, `${moduleName}.docc`);
     const markdownFile = path.join(doccDir, `${moduleName}.md`);
 
-    if (fs.existsSync(doccDir)) {
-        await vscode.window.showErrorMessage(
+    if (fsSync.existsSync(doccDir)) {
+        void vscode.window.showErrorMessage(
             `Documentation catalog "${moduleName}.docc" already exists.`
         );
         return;
     }
 
-    fs.mkdirSync(doccDir, { recursive: true });
-    fs.writeFileSync(markdownFile, `# ${moduleName}\n`, { encoding: "utf8" });
+    await fs.mkdir(doccDir, { recursive: true });
+    await fs.writeFile(markdownFile, `# ${moduleName}\n`, "utf8");
 
-    await vscode.window.showInformationMessage(
+    void vscode.window.showInformationMessage(
         `Created DocC documentation catalog: ${moduleName}.docc`
     );
 }
