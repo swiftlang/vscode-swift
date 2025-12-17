@@ -60,7 +60,7 @@ jobs:
   tests_release:
     name: Test Release
     needs: package
-    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.2
+    uses: matthewbastien/github-workflows/.github/workflows/swift_package_test.yml@upload-artifact
     with:
       needs_token: true
       # Linux
@@ -91,7 +91,7 @@ jobs:
   tests_insiders:
     name: Test Insiders
     needs: package
-    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.2
+    uses: matthewbastien/github-workflows/.github/workflows/swift_package_test.yml@upload-artifact
     with:
       needs_token: true
       # Linux
