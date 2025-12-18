@@ -19,6 +19,19 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 
+/**
+ * Custom error type for configuration validation errors that includes the setting name
+ */
+export class ConfigurationValidationError extends Error {
+    constructor(
+        public readonly settingName: string,
+        message: string
+    ) {
+        super(message);
+        this.name = "ConfigurationValidationError";
+    }
+}
+
 export type DebugAdapters = "auto" | "lldb-dap" | "CodeLLDB";
 export type SetupCodeLLDBOptions =
     | "prompt"
@@ -675,14 +688,20 @@ export function substituteVariablesInString(val: string): string {
 
 function validateBooleanSetting(val: boolean, settingName: string): boolean {
     if (typeof val !== "boolean") {
-        throw new Error(`The setting ${settingName} must be a boolean`);
+        throw new ConfigurationValidationError(
+            settingName,
+            `The setting \`${settingName}\` must be a boolean`
+        );
     }
     return val;
 }
 
 function validateStringSetting<T extends string = string>(val: string, settingName: string): T {
     if (typeof val !== "string") {
-        throw new Error(`The setting ${settingName} must be a string`);
+        throw new ConfigurationValidationError(
+            settingName,
+            `The setting \`${settingName}\` must be a string`
+        );
     }
     return val as T;
 }
@@ -690,7 +709,10 @@ function validateStringSetting<T extends string = string>(val: string, settingNa
 function validateStringArraySettings(arr: string[], settingName: string): string[] {
     for (const v of arr) {
         if (typeof v !== "string") {
-            throw new Error(`The setting ${settingName} must be an array of strings`);
+            throw new ConfigurationValidationError(
+                settingName,
+                `The setting \`${settingName}\` must be an array of strings`
+            );
         }
     }
     return arr;

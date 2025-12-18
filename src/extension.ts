@@ -22,7 +22,10 @@ import { FolderEvent, FolderOperation, WorkspaceContext } from "./WorkspaceConte
 import * as commands from "./commands";
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConfiguration";
-import configuration, { handleConfigurationChangeEvent } from "./configuration";
+import configuration, {
+    ConfigurationValidationError,
+    handleConfigurationChangeEvent,
+} from "./configuration";
 import { ContextKeys, createContextKeys } from "./contextKeys";
 import { registerDebugger } from "./debugger/debugAdapterFactory";
 import * as debug from "./debugger/launch";
@@ -190,10 +193,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
             },
         };
     } catch (error) {
-        const errorMessage = getErrorDescription(error);
-        // show this error message as the VS Code error message only shows when running
-        // the extension through the debugger
-        void vscode.window.showErrorMessage(`Activating Swift extension failed: ${errorMessage}`);
+        // Handle configuration validation errors with UI that points the user to the poorly configured setting
+        if (error instanceof ConfigurationValidationError) {
+            void vscode.window.showErrorMessage(error.message, "Open Settings").then(selection => {
+                if (selection === "Open Settings") {
+                    void vscode.commands.executeCommand(
+                        "workbench.action.openSettings",
+                        error.settingName
+                    );
+                }
+            });
+        } else {
+            const errorMessage = getErrorDescription(error);
+            // show this error message as the VS Code error message only shows when running
+            // the extension through the debugger
+            void vscode.window.showErrorMessage(
+                `Activating Swift extension failed: ${errorMessage}`
+            );
+        }
         throw error;
     }
 }
