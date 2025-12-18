@@ -25,7 +25,21 @@ export async function createDocumentationCatalog(): Promise<void> {
         return;
     }
 
-    const rootPath = folders[0].uri.fsPath;
+    let folder: vscode.WorkspaceFolder | undefined;
+
+    if (folders.length === 1) {
+        folder = folders[0];
+    } else {
+        folder = await vscode.window.showWorkspaceFolderPick({
+            placeHolder: "Select a workspace folder to create the DocC catalog in",
+        });
+    }
+
+    if (!folder) {
+        return;
+    }
+
+    const rootPath = folder.uri.fsPath;
 
     const moduleName = await vscode.window.showInputBox({
         prompt: "Enter Swift module name",
