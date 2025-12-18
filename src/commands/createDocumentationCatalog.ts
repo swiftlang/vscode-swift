@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as fsSync from "fs";
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as vscode from "vscode";
@@ -44,17 +43,18 @@ export async function createDocumentationCatalog(): Promise<void> {
     const moduleName = await vscode.window.showInputBox({
         prompt: "Enter Swift module name",
         placeHolder: "MyModule",
-        validateInput: value => {
+        validateInput: async value => {
             if (value.trim().length === 0) {
                 return "Module name cannot be empty";
             }
 
-            const doccDir = path.join(rootPath, `${value}.docc`);
-            if (fsSync.existsSync(doccDir)) {
+            try {
+                await fs.access(doccDir);
                 return `Documentation catalog "${value}.docc" already exists`;
+            } catch {
+                // does not exist → OK
+                return undefined;
             }
-
-            return undefined;
         },
     });
 
