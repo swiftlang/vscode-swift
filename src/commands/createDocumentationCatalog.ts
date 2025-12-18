@@ -20,7 +20,7 @@ export async function createDocumentationCatalog(): Promise<void> {
     const folders = vscode.workspace.workspaceFolders;
     if (!folders || folders.length === 0) {
         void vscode.window.showErrorMessage(
-            "Creating a documentation catalog requires that a folder or workspace be opened"
+            "Creating a documentation catalog requires that a folder or workspace be opened."
         );
         return;
     }
