@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 /* eslint-disable no-console */
-import { mkdir, readdir, rm, stat } from "fs/promises";
+import { cp, readdir, rm, stat } from "fs/promises";
 import * as path from "path";
 import * as semver from "semver";
 import simpleGit, { ResetMode } from "simple-git";
@@ -26,9 +26,9 @@ function checkNodeVersion() {
             "Unable to determine the version of NodeJS that this script is running under."
         );
     }
-    if (!semver.satisfies(nodeVersion, "20")) {
+    if (!semver.satisfies(nodeVersion, "^22.17")) {
         throw new Error(
-            `Cannot build swift-docc-render with NodeJS v${nodeVersion.raw}. Please install and use NodeJS v20.`
+            `Cannot build swift-docc-render with NodeJS v${nodeVersion.raw}. Please install and use at least NodeJS v22.17.x.`
         );
     }
 }
@@ -38,7 +38,7 @@ async function cloneSwiftDocCRender(buildDirectory: string): Promise<string> {
     const swiftDocCRenderDirectory = path.join(buildDirectory, "swift-docc-render");
     const git = simpleGit({ baseDir: buildDirectory });
     console.log("> git clone https://github.com/swiftlang/swift-docc-render.git");
-    const revision = "10b097153d89d7bfc2dd400b47181a782a0cfaa0";
+    const revision = "c781d3783f23fda5a4721f5361c6c523772b7a62";
     await git.clone("https://github.com/swiftlang/swift-docc-render.git", swiftDocCRenderDirectory);
     await git.cwd(swiftDocCRenderDirectory);
     await git.reset(ResetMode.HARD, [revision]);
@@ -69,16 +69,16 @@ main(async () => {
     }
     checkNodeVersion();
     await rm(outputDirectory, { force: true, recursive: true });
-    await mkdir(outputDirectory, { recursive: true });
     await withTemporaryDirectory("update-swift-docc-render_", async buildDirectory => {
         const swiftDocCRenderDirectory = await cloneSwiftDocCRender(buildDirectory);
-        await exec("npm", ["install"], { cwd: swiftDocCRenderDirectory });
-        await exec("npx", ["vue-cli-service", "build", "--dest", outputDirectory], {
+        await exec("npm", ["ci"], { cwd: swiftDocCRenderDirectory });
+        await exec("npx", ["vue-cli-service", "build"], {
             cwd: swiftDocCRenderDirectory,
             env: {
                 ...process.env,
                 VUE_APP_TARGET: "ide",
             },
         });
+        await cp(path.join(swiftDocCRenderDirectory, "dist"), outputDirectory, { recursive: true });
     });
 });
